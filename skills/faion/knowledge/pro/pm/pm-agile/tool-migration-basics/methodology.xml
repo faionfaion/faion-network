@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tool-migration-basics">
+  <metadata>
+    <tier>pro</tier>
+    <group>pm</group>
+    <domain>pm-agile</domain>
+    <summary>Structured PM tool migration covering pre-migration audit, field mapping, ETL execution, and post-cutover validation with three-run strategy and legacy ID preservation.</summary>
+    <category>migration</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>migration</tag>
+      <tag>pm-tools</tag>
+      <tag>data-etl</tag>
+      <tag>jira</tag>
+      <tag>linear</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="tool-migration-process"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cross-Tool Migration Basics</title>
+
+    <summary>A structured approach to migrating project management data between tools, covering pre-migration audit, field mapping, ETL execution, and post-cutover validation. The critical rule: run the migration three times — dev test, full dry-run with rollback, real cutover — and preserve source IDs in a legacy_id custom field on the target so every external link and commit message that hardcoded PROJ-1234 still resolves.</summary>
+
+    <why>
+      <p>Tool migrations routinely underestimate hidden costs: field semantics rarely map 1:1, attachment size limits silently drop files mid-migration, and comment threads lose ordering when user IDs don't resolve in the target. Migration cost (data, automations, integrations, training, parallel-run period) is frequently 30-50% of year-1 TCO — quantifying this before committing is the methodology's primary value.</p>
+      <p>Field semantics rarely map 1:1; "Priority: High" in Jira ≠ "Priority: High" in Linear if scales differ. Attachment size limits and rate limits silently drop files mid-migration. Comment threads lose ordering or @mentions when user IDs don't resolve in the target. Custom Jira plugins (Tempo, Structure, ScriptRunner) have no target equivalent — features get lost. "Reporter" / "Created date" fields are usually system-managed in the target → audit trail gap. ID changes (PROJ-1234 → ABC-5) break every external link, commit message, and bookmark.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Switching PM tools (Jira to Linear, Trello to ClickUp, Asana to Notion).</item>
+        <item>Consolidating two or more tools after acquisition or department merge.</item>
+        <item>Outgrowing a starter tool (Trello/Notion) onto an enterprise tool (Jira/Azure DevOps).</item>
+        <item>Compliance push forces migration to a tool with stronger security posture.</item>
+        <item>Current vendor's pricing model becomes hostile (per-seat hike, mandatory tier upgrade).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One person and fewer than 100 issues — re-create them by hand in an afternoon.</item>
+        <item>Vendor offers a guided managed migration that already handles data ETL — use it; this brief adds overhead.</item>
+        <item>Tool change is driven by hype rather than measurable pain — wait three months and re-evaluate.</item>
+        <item>Active product launch or freeze period — defer until after.</item>
+        <item>Source data is too dirty to be worth migrating; archive and start fresh.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pre-migration-audit">
+      <p>Complete a pre-migration audit before any data movement to uncover hidden costs and blocking issues.</p>
+
+      <rule testable="true">
+        <statement>Complete a pre-migration audit before any data movement: count total issues, attachments (by byte), custom fields, automation rules, and integrations; classify each integration as critical or non-critical.</statement>
+        <rationale>Skipping the audit produces mid-migration surprises — attachment size limits exceed target storage, custom fields have no target equivalent, critical integrations break with no rollback plan.</rationale>
+      </rule>
+
+      <example type="good" title="Pre-migration audit checklist">
+        <code lang="yaml"><![CDATA[audit_checklist:
+  data_inventory:
+    total_projects: count
+    total_issues: count
+    total_attachments_gb: size
+    custom_fields: list
+    automations: count
+    integrations: list
+  usage_patterns:
+    active_users: count
+    key_workflows: list
+    power_users: list
+    pain_points: list
+  dependencies:
+    ci_cd: [tool, criticality]
+    slack: [channels, automations]
+    documentation_links: [wiki, confluence]
+  compliance:
+    audit_requirements: yes_or_no
+    data_retention: policy
+    access_controls: requirements]]></code>
+      </example>
+    </section>
+
+    <section name="field-mapping-rules">
+      <p>Field mapping is the core of any migration strategy. Each source field must have an explicit decision — map, transform, or document as "won't migrate".</p>
+
+      <rule testable="true">
+        <statement>Every source field must be explicitly mapped to a target field OR explicitly marked as "won't migrate" with a documented reason; unmapped fields that silently drop data create post-cutover blame cycles.</statement>
+        <rationale>Documenting every "won't migrate" decision pre-empts post-cutover disputes about missing data. Silence is not agreement.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Preserve source IDs in a "legacy_id" custom field on the target tool; external systems that hardcoded source issue IDs (commit messages, bookmarks, documentation links) still resolve.</statement>
+        <rationale>ID changes (PROJ-1234 → ABC-5) break every external link simultaneously. The legacy_id field is the only safe bridge.</rationale>
+      </rule>
+
+      <example type="good" title="Field mapping with won't-migrate documentation">
+        <code lang="markdown"><![CDATA[| Source (Jira)    | Target (Linear)  | Transformation        | Won't Migrate |
+|------------------|------------------|-----------------------|---------------|
+| Summary          | Title            | Direct copy           | No            |
+| Description      | Description      | Markdown convert      | No            |
+| Issue Type       | Label            | Bug→bug, Story→feat   | No            |
+| Status           | State            | See status mapping    | No            |
+| Priority         | Priority         | See priority mapping  | No            |
+| Sprint           | Cycle            | Match by date range   | No            |
+| Epic Link        | Project          | Create Linear projects| No            |
+| Reporter         | —                | System-managed        | Yes — log     |
+| Custom Plugin X  | —                | No equivalent         | Yes — archive |]]></code>
+      </example>
+    </section>
+
+    <section name="status-and-priority-mapping">
+      <p>Status and priority scales vary between tools and require careful explicit mapping to prevent silent data corruption.</p>
+
+      <rule testable="true">
+        <statement>Map status fields explicitly with a lookup table showing source state, target state, and any behavioral differences; "Resolved" in Jira may mean approved-not-yet-deployed while the target tool's "Done" means shipped.</statement>
+        <rationale>Status semantics rarely map 1:1. Reviewing each mapping for behavioral differences prevents silent reinterpretation of work state.</rationale>
+      </rule>
+
+      <example type="good" title="Status and priority mapping tables">
+        <code lang="yaml"><![CDATA[status_mapping:
+  "Open":        "Backlog"
+  "To Do":       "Todo"
+  "In Progress": "In Progress"
+  "In Review":   "In Review"
+  "Done":        "Done"
+  "Won't Do":    "Canceled"
+
+priority_mapping:
+  "Highest": "Urgent"
+  "High":    "High"
+  "Medium":  "Medium"
+  "Low":     "Low"
+  "Lowest":  "No Priority"]]></code>
+        <note>Status semantics rarely map 1:1. Review each mapping for behavioral differences: "Resolved" in Jira means approved-not-yet-deployed; check whether the target tool has an equivalent state or if items should map to "Done".</note>
+      </example>
+    </section>
+
+    <section name="three-run-migration-strategy">
+      <p>Run every migration three times to catch different classes of bug at each level: logic errors, scale issues, and live-load issues.</p>
+
+      <rule testable="true">
+        <statement>Run the migration three times: dev-environment test, full dry-run with rollback on a clone of production, real cutover; each run catches a different class of bug.</statement>
+        <rationale>Dev test catches logic errors. Full dry-run catches rate limits, size limits, and data-edge cases that only appear at scale. Real cutover catches timing and concurrency issues under live load.</rationale>
+      </rule>
+
+      <list>
+        <item>Run 1 (dev test): validate field mappings, auth, and basic ETL flow on a small data sample.</item>
+        <item>Run 2 (dry-run): run against a full production data clone; validate counts, comments, and attachments; confirm rollback path.</item>
+        <item>Run 3 (real cutover): freeze source, execute migration, validate three numbers, declare success or rollback.</item>
+      </list>
+    </section>
+
+    <section name="freeze-period">
+      <p>Freezing the source tool during cutover prevents reconciliation complexity from issues created mid-migration.</p>
+
+      <rule testable="true">
+        <statement>Freeze the source tool 4 hours before cutover; route new tickets created during the window to a known "intake" queue and re-key them by hand after cutover.</statement>
+        <rationale>Issues created during migration create reconciliation complexity. A short freeze with a manual intake queue is simpler and less risky than attempting live-sync.</rationale>
+      </rule>
+    </section>
+
+    <section name="post-cutover-validation">
+      <p>Validate migration success at three independent levels: aggregate counts, sample inspection, and integration testing.</p>
+
+      <rule testable="true">
+        <statement>Validate three numbers before declaring migration successful: total issue count, total comment count, and total attachment volume by byte.</statement>
+        <rationale>Three independent counts at different granularities catch distinct failure modes: issues lost, comments orphaned, and attachments silently dropped at size limits.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Manually sample-validate 50 random issues by hand, comparing source to target field-by-field; automated count validation does not catch field-content corruption.</statement>
+        <rationale>Status mapping bugs, Markdown-to-HTML conversion failures, and @mention resolution failures appear in field content, not in counts.</rationale>
+      </rule>
+
+      <example type="good" title="Post-migration validation with issue sampling">
+        <note>After migrating 12,000 Jira issues to Linear: count matched (12,000 = 12,000); comment count matched (47,831 = 47,831); attachment bytes matched (8.4 GB = 8.4 GB). Manual sample of 50 issues revealed 3 with status mapping errors (Resolved → Done instead of In Review). Fix applied; re-run of status correction script; re-validate.</note>
+      </example>
+    </section>
+
+    <section name="parallel-run-and-rollback">
+      <p>Plan for continued access to the source tool and a reversible rollback path during the transition.</p>
+
+      <rule testable="true">
+        <statement>Keep the source tool read-only for at least 30 days after cutover; users will need to look up historical context for months after the switch.</statement>
+        <rationale>Post-cutover lookup requests are predictable and frequent. Read-only access at no cost is safer than full decommission and cheaper than rebuilding access when needed.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Decommissioning the source tool immediately after cutover success.</description>
+        <reason>"Inevitably someone needs to look up what was decided in PROJ-456" — this is guaranteed to happen within days. Premature decommission forces re-provisioning under pressure.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflows">
+      <p>When using agents or subagents to assist migrations, follow these patterns and watch for these failure modes.</p>
+
+      <rule testable="true">
+        <statement>Human-in-the-loop checkpoints are mandatory at: mapping approval, cutover go/no-go decision, and rollback decisions.</statement>
+        <rationale>Each is an irreversible or high-impact decision. Agent errors at these gates compound into expensive remediation.</rationale>
+      </rule>
+
+      <example type="good" title="Field-mapper subagent prompt pattern">
+        <code lang="text"><![CDATA[You are field-mapper. Inputs: source_schema.json, target_schema.json,
+org_policy.md. Output a Markdown table with columns:
+source_field, target_field, transformation, ambiguity_flag.
+Where mapping is lossy or ambiguous, set ambiguity_flag=YES and propose
+two alternatives. Do not invent target fields not in source_schema.json.]]></code>
+      </example>
+
+      <list>
+        <item>migration-auditor (sonnet) — runs pre-migration audit, returns YAML with counts, custom fields, integrations.</item>
+        <item>field-mapper (sonnet) — proposes source-to-target field mappings and lookup tables; flags ambiguities for human decision.</item>
+        <item>dry-run-extractor (haiku) — calls source API read-only, validates auth, counts records, exports to JSONL.</item>
+        <item>mapping-validator (haiku) — checks mapping coverage: 100% of source fields either mapped or explicitly dropped.</item>
+      </list>
+
+      <antipattern>
+        <description>Agents running migration without a resumable checkpoint file per issue ID.</description>
+        <reason>Rate limits and network failures crash mid-batch migrations. Without a checkpoint file (last successfully migrated ID), the entire run must restart from the beginning.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents migrating @mentions without user ID resolution.</description>
+        <reason>Source and target user IDs differ. Unresolved @mentions silently become plain text or broken links. Resolve user ID mapping in advance; log and drop unresolvable mentions.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Accepting an LLM-estimated migration cost without a 2x multiplier.</description>
+        <reason>LLM migration estimates are systematically low; they omit training, parallel-run period, and integration rebuild cost. Multiply by 2x minimum and add a parallel-run period.</reason>
+      </antipattern>
+    </section>
+
+    <section name="cli-tools-and-services">
+      <p>Reference tooling and services available for migration execution.</p>
+
+      <list>
+        <item>jira-cli (ankitpokhrel) — Jira export, JQL, batch mutations. https://github.com/ankitpokhrel/jira-cli</item>
+        <item>Linear CLI / GraphQL — Linear ingestion via official GraphQL API. https://developers.linear.app</item>
+        <item>gh CLI — GitHub Projects v2 (GraphQL) for source or target. https://cli.github.com</item>
+        <item>notion-cli (community) — Notion exports/imports for migration drafts. https://github.com/jakeswenson/notion</item>
+        <item>csvkit — Slice/dice large issue CSV exports during mapping. pip install csvkit</item>
+        <item>jq — Transform JSONL exports between API shapes. https://stedolan.github.io/jq/</item>
+        <item>dataset (Python) — Quick SQLite staging of intermediate rows. pip install dataset</item>
+      </list>
+
+      <list>
+        <item>Atlassian JCMA (SaaS, managed) — Use for Jira Server→Cloud only; no agent hooks.</item>
+        <item>Linear Importer (SaaS) — Decent Jira/Asana coverage; no API to drive it.</item>
+        <item>Plandek / Unito (SaaS sync) — Two-way sync during parallel-run phase, not full migration. REST API available.</item>
+        <item>Project Migrator (Solidify, SaaS) — Azure DevOps ↔ Jira, supports CMMI; non-trivial cost.</item>
+        <item>Exalate (SaaS) — Sync rules between Jira/Zendesk/ServiceNow during cutover. Groovy scripts.</item>
+        <item>Backbone (community, OSS) — Open-source Jira→GitHub Issues; hackable. Node.</item>
+        <item>ClickUp Importer (SaaS) — Zapier or built-in only.</item>
+      </list>
+    </section>
+
+    <section name="best-practices-summary">
+      <list>
+        <item>Run the migration three times: dev test, full dry-run with rollback, real cutover. Each catches a different class of bug.</item>
+        <item>Freeze the source 4 hours before cutover; new tickets created during the window go to a known "intake" queue and get re-keyed by hand.</item>
+        <item>Preserve source IDs in a "legacy_id" custom field on the target — every external system that hardcoded PROJ-123 still resolves.</item>
+        <item>Keep the source read-only for 30+ days. Inevitably someone needs to look up "what was decided in PROJ-456".</item>
+        <item>Validate three numbers before declaring success: total issues, total comments, total attachments by byte count.</item>
+        <item>Document every "won't migrate" decision; it pre-empts the post-cutover blame meeting.</item>
+        <item>Agents underestimate rate limits and crash mid-batch — always implement exponential backoff and resumable state (issue ID checkpoint file).</item>
+        <item>LLMs invent custom-field names confidently; constrain field-mapping output to the actual target schema, fail fast if hallucinated.</item>
+        <item>Comment migration breaks @mentions because user IDs differ; map users in advance, drop unresolved mentions, log them.</item>
+        <item>A "successful" migration with wrong status mapping silently buries 30% of work in the wrong column. Always sample-validate 50 random items by hand.</item>
+        <item>Token cost scales with issue count × description size; export to JSONL and let agents read summaries, not raw bodies.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/field-mapping.md" purpose="Source-to-target field mapping table with transformation rules and ambiguity flags."/>
+      <template path="templates/count-check.py" purpose="Compare source vs target issue counts post-migration; exit 1 if drift exceeds 1%."/>
+    </templates>
+
+    <see-also>
+      <ref slug="tool-migration-process"/>
+      <link href="https://support.atlassian.com/jira-cloud/docs/migrate-from-jira-server-to-jira-cloud/"/>
+      <link href="https://linear.app/docs/import"/>
+      <link href="https://www.prosci.com/methodology/adkar"/>
+    </see-also>
+  </content>
+</methodology>

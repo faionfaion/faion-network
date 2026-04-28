@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tool-migration-process">
+  <metadata>
+    <tier>pro</tier>
+    <group>pm</group>
+    <domain>pm-agile</domain>
+    <summary>Phase-by-phase execution playbook for org-scale PM tool migrations: six phases (Planning through Stabilization) with ETL engine, cutover checklist, rollback strategy, and change-management comms plan.</summary>
+    <category>migration</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>migration</tag>
+      <tag>pm-tools</tag>
+      <tag>cutover</tag>
+      <tag>etl</tag>
+      <tag>change-management</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <requires>
+      <ref slug="tool-migration-basics"/>
+    </requires>
+  </metadata>
+
+  <content>
+    <title>Cross-Tool PM Migration — Process</title>
+
+    <summary>A phase-by-phase execution playbook for migrating project data between PM tools at org scale: six phases (Planning → Preparation → Pilot → Full Migration → Cutover → Stabilization) with an ETL engine, cutover checklist, rollback strategy, and change-management comms plan. Designed for migrations touching ≥3 teams, ≥1k issues, or any compliance scope.</summary>
+
+    <why>
+      <p>Large PM migrations fail most often at two points: data transformation (field mismatches surface only in production) and cutover (rate limits, missing ID mappings, and silent attachment loss). A phase-gated playbook with dry-run-first ETL and rehearsed rollback converts unpredictable cutovers into repeatable operations with clear abort criteria.</p>
+      <p>Phase durations from guidelines are guidance, not law; novel custom-field setups blow up the Preparation phase. Cutover windows assume linear API access; rate limits routinely double the planned downtime. Stabilization always overruns; budget 2× the planned support window. Rollback only works if no critical data was created in the target during cutover — a single shipped feature with target-only context can pin you. Mid-migration "small scope additions" silently double the work; freeze the mapping spec at the end of Preparation.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>You have completed field-mapping and audit (see tool-migration-basics) and need an execution playbook.</item>
+        <item>Org-wide migration touching ≥3 teams, ≥1k issues, or a compliance scope.</item>
+        <item>Multi-wave migrations where teams cut over in batches across weeks.</item>
+        <item>Cutover windows requiring rollback rehearsal and freeze coordination.</item>
+        <item>Post-merger consolidation requiring two source tools → one target.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-team or &lt;100 issue migration — use basics + a one-day cutover; this playbook adds overhead.</item>
+        <item>Vendor-managed migration where their tooling does extract/transform/load — defer to it.</item>
+        <item>Migrations during an active product launch or incident — wait for a quieter window.</item>
+        <item>Projects where the primary risk is political (team adoption), not technical — invest in change management depth instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="six-migration-phases">
+      <p>Execute all six phases in order; skipping Preparation or Pilot is the leading cause of data-loss incidents at cutover. Phase 3 (Pilot) surfaces field-mapping failures on a small dataset at low cost; skipping it causes those failures to appear at Phase 4 scale with no rollback window.</p>
+
+      <section name="phase-1-planning">
+        <rule testable="true">
+          <statement>Complete Phase 1 Planning with explicit stakeholder alignment, tool selection or evaluation, scope definition, timeline with 50% buffer over measured dry-run time, and risk assessment.</statement>
+          <rationale>Skipping planning or condensing it into a few days causes scope creep, misaligned expectations, and timeline overruns that compound through subsequent phases.</rationale>
+        </rule>
+        <list>
+          <item>Stakeholder alignment and sponsorship</item>
+          <item>Tool selection or evaluation (see pm-tools-comparison)</item>
+          <item>Migration scope definition — in-scope projects, date range, attachments threshold</item>
+          <item>Timeline creation with explicit buffer (50% over measured dry-run time)</item>
+          <item>Risk assessment: data loss, integration failure, adoption resistance</item>
+        </list>
+      </section>
+
+      <section name="phase-2-preparation">
+        <rule testable="true">
+          <statement>Freeze the field mapping specification at end of Preparation; mid-migration mapping changes silently double scope.</statement>
+          <rationale>Each mapping change requires re-transforming and re-validating already-migrated records.</rationale>
+        </rule>
+        <list>
+          <item>Target tool setup and admin configuration</item>
+          <item>Field mapping design — document every source field to target field, with fallback for unmapped</item>
+          <item>Migration script development (ETL engine)</item>
+          <item>Test environment creation for dry-run</item>
+          <item>Team communication: announce timeline, schedule training</item>
+        </list>
+      </section>
+
+      <section name="phase-3-pilot-migration">
+        <antipattern>
+          <description>Picking the simplest team for the pilot project.</description>
+          <reason>Creates false confidence; the simplest team has the fewest edge cases and the most forgiving stakeholders. Failures surface in Phase 4 at scale instead.</reason>
+        </antipattern>
+        <list>
+          <item>Select pilot project — representative complexity, NOT the simplest team</item>
+          <item>Execute migration with dry-run flag first, then live</item>
+          <item>Validate issue count, comment count, attachment byte count</item>
+          <item>Sample 50 items by hand before declaring pilot success</item>
+          <item>Gather feedback, adjust approach</item>
+        </list>
+      </section>
+
+      <section name="phase-4-full-migration">
+        <list>
+          <item>Execute in waves by team or project, not by record type</item>
+          <item>Validate each wave (three numbers: issues, comments, attachments-by-byte)</item>
+          <item>Address issues between waves; do not accumulate debt</item>
+          <item>Monitor rate limits; add 50% buffer to planned wave duration</item>
+        </list>
+      </section>
+
+      <section name="phase-5-cutover">
+        <rule testable="true">
+          <statement>Keep the source tool read-only for at least 30 days post-cutover; never delete it during stabilization.</statement>
+          <rationale>Teams reference historical context from source; premature deletion forces re-migration of data that was intentionally excluded.</rationale>
+        </rule>
+        <list>
+          <item>T-24h: final export from source, backup target, notify all users</item>
+          <item>T-4h: set source to read-only, run final migration sync, validate counts</item>
+          <item>T-0: enable target for all users, send go-live announcement, support team on standby</item>
+          <item>T+1h: verify login success, automations running, address immediate issues</item>
+          <item>T+24h: review error logs, collect feedback, document known issues</item>
+          <item>T+1w: adoption metrics, complete missing migrations, retrospective, plan source decommission</item>
+        </list>
+      </section>
+
+      <section name="phase-6-stabilization">
+        <rule testable="true">
+          <statement>Budget 2x the planned stabilization window; it always overruns.</statement>
+          <rationale>Edge cases and user adaptation issues accumulate in week 3-4 after initial excitement fades.</rationale>
+        </rule>
+        <list>
+          <item>Active support channel with named owner</item>
+          <item>Fix issues within 24 hours of report</item>
+          <item>Run training sessions for high-friction groups</item>
+          <item>Document lessons learned; schedule source decommission on a calendar date</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="etl-migration-engine">
+      <p>The ETL engine is the core of Phase 3–4 execution. Design it as a CLI tool that agents invoke, not as inline LLM calls. Long-running migrations exceed agent token budgets; the CLI pattern keeps the agent as orchestrator with human-reviewable artifacts at each checkpoint.</p>
+
+      <rule testable="true">
+        <statement>Design the migration engine as a CLI tool the agent invokes; do not run migrations as inline LLM calls.</statement>
+        <rationale>Long-running migrations exceed agent token budgets; the CLI pattern keeps the agent as orchestrator with human-reviewable artifacts at each checkpoint.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run a full dry-run on production data into a sandbox target one week before cutover; measure exact runtime then add 50% buffer.</statement>
+        <rationale>Rate limits routinely double planned cutover downtime; dry-run measurement is the only reliable source of timing data.</rationale>
+      </rule>
+
+      <example type="good" title="MigrationConfig dataclass">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass
+from typing import Dict
+
+@dataclass
+class MigrationConfig:
+    source_tool: str
+    target_tool: str
+    field_mapping: Dict[str, str]   # source_field -> target_field
+    status_mapping: Dict[str, str]  # source_status -> target_status
+    priority_mapping: Dict[str, str]
+    dry_run: bool = True  # always default to dry_run=True
+]]></code>
+        <note>Always default dry_run to True to prevent accidental live migrations.</note>
+      </example>
+
+      <section name="extract-transform-load">
+        <rule testable="true">
+          <statement>Freeze the field mapping specification before the first dry-run; forbid runtime mapping mutations.</statement>
+          <rationale>Each mapping change requires re-transforming already-processed records; LLMs that "fix" mappings on the fly silently corrupt the ID mapping and cause orphaned links.</rationale>
+        </rule>
+        <list>
+          <item>Extract: pull all issues from source; log count before processing</item>
+          <item>Transform: apply field_mapping, status_mapping, priority_mapping per record; log per-record errors without halting</item>
+          <item>Load: create issues in target; record source_id → target_id mapping; checkpoint after each successful write</item>
+          <item>Validate: compare three counts (issues, comments, attachments-by-byte) and sample 50 random items by hand</item>
+        </list>
+      </section>
+
+      <section name="checkpointed-loader">
+        <p>The checkpoint file enables resume from any point; critical for multi-hour migrations interrupted by rate limits.</p>
+
+        <example type="good" title="Checkpointed loader script">
+          <code lang="python"><![CDATA[
+#!/usr/bin/env python3
+"""Load JSONL of target-shaped issues; resumes from .checkpoint on rerun."""
+import json, os, sys, time, requests
+
+CHECKPOINT = ".load_checkpoint"
+done = set(open(CHECKPOINT).read().split()) if os.path.exists(CHECKPOINT) else set()
+URL = os.environ["TARGET_API_URL"]
+TOK = os.environ["TARGET_TOKEN"]
+
+with open(CHECKPOINT, "a") as ck:
+    for line in sys.stdin:
+        rec = json.loads(line)
+        sid = rec["_source_id"]
+        if sid in done:
+            continue
+        for attempt in range(5):
+            r = requests.post(URL, json=rec, headers={"Authorization": TOK})
+            if r.status_code < 300:
+                break
+            if r.status_code == 429:
+                time.sleep(2 ** attempt)
+                continue
+            sys.exit(f"FAIL {sid}: {r.status_code} {r.text[:200]}")
+        ck.write(sid + "\n")
+        ck.flush()
+        print(f"OK {sid} -> {r.json()['id']}")
+]]></code>
+        </example>
+      </section>
+
+      <section name="post-migration-link-fixing">
+        <p>Issue links, @mentions in comments, and commit message references all contain source-tool IDs. Fix these in a separate pass after the main migration using the ID mapping JSON.</p>
+
+        <rule testable="true">
+          <statement>Force-list the 0.5% of failed records; they are always the most-linked tickets.</statement>
+          <rationale>A 99.5% success rate looks fine in aggregate but the missing records are disproportionately high-value due to cross-reference density.</rationale>
+        </rule>
+
+        <antipattern>
+          <description>Skipping @mention and user-ID resolution during comment migration.</description>
+          <reason>Strips all @mentions silently, breaking notification chains and audit trails for team collaboration history.</reason>
+        </antipattern>
+      </section>
+    </section>
+
+    <section name="cutover-and-rollback">
+      <p>Cutover execution and rollback strategy determine whether migrations succeed or catastrophically fail.</p>
+
+      <rule testable="true">
+        <statement>Validate three numbers before declaring any wave or cutover successful: issue count, comment count, and attachment count by byte.</statement>
+        <rationale>Issue count alone misses corrupted comments and missing attachments; the three-number check catches the most common silent data-loss patterns.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Cutover on a low-traffic window (Friday afternoon if org tolerates weekend quiet); never mid-week for large migrations.</statement>
+        <rationale>Weekend windows provide recovery time before full business-hours load resumes; mid-week cutovers interrupt peak productivity with no buffer.</rationale>
+      </rule>
+
+      <section name="cutover-checklist">
+        <list>
+          <item>T-24h: final data export from source, backup target environment, notify all users of timeline, prepare support team</item>
+          <item>T-4h: set source tool to read-only, run final migration sync, validate issue counts, test critical integrations</item>
+          <item>T-0: enable target tool for all users, send go-live announcement, support team on standby, monitor error rate</item>
+          <item>T+1h: verify user login success, confirm automations running, address immediate issues, update stakeholders</item>
+          <item>T+24h: review error logs, collect user feedback, document known issues, plan remediation</item>
+          <item>T+1w: measure adoption metrics, complete any missing migrations, conduct retrospective, plan source tool decommission date</item>
+        </list>
+
+        <antipattern>
+          <description>Agent marks checklist steps complete based on stdout text matches rather than process exit codes.</description>
+          <reason>Text matches lie; a process can print "success" while returning exit code 1. Use exit codes for machine-verified steps.</reason>
+        </antipattern>
+      </section>
+
+      <section name="rollback-strategy">
+        <rule testable="true">
+          <statement>Pre-write rollback communications before cutover begins so they can be sent within seconds of a decision to revert.</statement>
+          <rationale>Rollback decisions under stress are slowed by the need to draft communications; pre-writing removes this bottleneck and enables faster response.</rationale>
+        </rule>
+
+        <section name="rollback-triggers">
+          <list>
+            <item>Data loss detected → immediate rollback</item>
+            <item>Critical integration failure → immediate rollback</item>
+            <item>Team productivity drop ≥50% → rollback within 48 hours</item>
+            <item>User adoption under 30% at end of week 1 → rollback within 1 week</item>
+          </list>
+        </section>
+
+        <section name="rollback-procedure">
+          <list>
+            <item>Pause migration — halt all ETL processes</item>
+            <item>Notify stakeholders immediately with pre-written message</item>
+            <item>Assess damage scope — what data was created only in target during cutover?</item>
+            <item>Restore source read access</item>
+            <item>Document failure root cause</item>
+            <item>Export any target-only data before reverting</item>
+          </list>
+
+          <rule testable="true">
+            <statement>Rollback only works if no critical data was created exclusively in the target during cutover; a single shipped feature with target-only context can pin you.</statement>
+            <rationale>Once teams start creating tickets in the new tool, those records don't exist in the source; rollback would lose that work, making true revert impossible.</rationale>
+          </rule>
+        </section>
+      </section>
+
+      <section name="change-management-communications">
+        <list>
+          <item>T-4 weeks: migration announcement to all users via email + Slack + meeting</item>
+          <item>T-2 weeks: training schedule distributed via email + calendar invites</item>
+          <item>T-1 week: final preparation checklist via email + Slack</item>
+          <item>T-0: go-live announcement via email + Slack + meeting for high-impact teams</item>
+          <item>Daily for 2 weeks post-cutover: tips, FAQs, and support channel reminder via Slack</item>
+        </list>
+
+        <rule testable="true">
+          <statement>Rate-limit webhook-based notifications to one summary per migration phase; do not send a message per event.</statement>
+          <rationale>Retry storms in migration engines can trigger hundreds of webhook notifications, spamming channels and causing teams to mute the notifications needed for real alerts.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="agentic-workflows">
+      <p>When using agents or subagents to assist multi-phase migrations, watch for these failure modes.</p>
+
+      <list>
+        <item>migration-planner — produces the project plan Markdown from scope inputs, risk register, comms calendar.</item>
+        <item>migration-engine — runs Extract → Transform → Load with dry-run flag, checkpoint files, ID mapping JSON.</item>
+        <item>cutover-runner — executes the checklist top-to-bottom, halts on validation failure, posts status updates.</item>
+        <item>link-fixer — runs after main migration; updates issue links in commit messages, wikis, Slack archives via search/replace bots.</item>
+        <item>migration-retro — collects user-feedback survey + support tickets, produces lessons-learned doc.</item>
+      </list>
+
+      <example type="good" title="migration-engine subagent prompt pattern">
+        <code lang="text"><![CDATA[You are migration-engine running in dry-run mode. Inputs: source export (JSONL),
+field mapping (YAML), target schema (JSON). For each source record output a JSON object
+matching target schema with a `_source_id` field. Set `_validation_errors` array per
+record where mapping failed. Do not call any APIs. Do not invent fields.]]></code>
+      </example>
+
+      <example type="good" title="cutover-runner subagent prompt pattern">
+        <code lang="text"><![CDATA[You are cutover-runner. Input: checklist YAML with steps, owners, validation commands.
+Execute one step at a time. Wait for the command's exit code. If non-zero, halt and emit
+{step, command, exit_code, stdout, stderr} as JSON. Never skip steps. Never run two in parallel.]]></code>
+      </example>
+    </section>
+
+    <section name="cli-tools-and-services">
+      <p>Reference tooling available for migration execution.</p>
+
+      <list>
+        <item>jira-cli / Linear GraphQL / gh / az devops — Source/target API drivers</item>
+        <item>parallel (GNU) — Batch ETL with controlled concurrency + retries. apt install parallel</item>
+        <item>flock — Single-writer cutover lock for shared state. coreutils builtin</item>
+        <item>restic / rclone — Backup source attachments before cutover. https://restic.net</item>
+        <item>dataset (Python) — SQLite staging for ID mapping + checkpoints. pip install dataset</item>
+        <item>httpx (Python) — Async HTTP client with retry/backoff for migration engine. pip install httpx[http2]</item>
+      </list>
+
+      <list>
+        <item>Unito (SaaS sync) — Two-way mirror during parallel run; useful for soft cutover. REST API.</item>
+        <item>Exalate (SaaS) — Programmable sync rules; good for partial scope migration. Groovy.</item>
+        <item>Atlassian Jira Cloud Migration Assistant (SaaS) — Server→Cloud only; not for cross-vendor.</item>
+        <item>Solidify Migrator (SaaS) — Azure DevOps ↔ Jira, supports CMMI; non-trivial cost.</item>
+        <item>Linear Importer (SaaS) — Good for one-shot, not for incremental waves. JSON upload.</item>
+        <item>Slack / Teams (notifications, SaaS) — Post each phase milestone for stakeholder transparency. Webhooks.</item>
+        <item>1Password / Vault (SaaS/OSS) — Store source + target API tokens; rotate post-cutover. CLI.</item>
+      </list>
+    </section>
+
+    <section name="best-practices-summary">
+      <list>
+        <item>Migrate in waves by team or by project, not by record-type (so each team gets a complete-feeling tool, not a half-mirror).</item>
+        <item>Keep the source read-only for ≥30 days post-cutover; cheap insurance.</item>
+        <item>Cutover on Friday afternoon if the org tolerates a quiet weekend; never mid-week.</item>
+        <item>Pre-write the rollback comms — "we are reverting to &lt;source&gt; while we resolve &lt;issue&gt;" — so you can ship it in seconds.</item>
+        <item>Always validate three numbers (issues, comments, attachments-by-byte) and 50 random sampled items by hand before declaring success.</item>
+        <item>Decommission source on a calendar reminder, not on a vibe; teams will stay on it for years if you don't force the move.</item>
+        <item>Long-running migrations exceed agent token budgets; design the engine as a CLI tool the agent invokes, not as inline LLM calls.</item>
+        <item>LLMs love to "fix" mappings on the fly — explicitly forbid runtime mapping mutation; mapping is frozen at start.</item>
+        <item>A successful Phase 4 with 99.5% success looks fine, but the missing 0.5% is always the most-linked tickets. Force-list them.</item>
+        <item>Cutover checklist: agents mark steps complete based on stdout text matches, which lie. Use exit codes, not greps.</item>
+        <item>Comment / mention preservation needs user-ID resolution; agents that skip this strip @mentions silently.</item>
+        <item>Webhook-based comms can spam channels under retry storms; rate-limit notifications, prefer one summary per phase.</item>
+        <item>Token costs balloon if agents read raw issue bodies; pre-summarize to ≤200 tokens per record before reasoning.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/migration-plan.md" purpose="Project plan template: scope, timeline, risk register, success criteria."/>
+      <template path="templates/load_resume.py" purpose="Checkpointed loader — resumes from .checkpoint on rerun; handles rate-limit backoff."/>
+    </templates>
+
+    <see-also>
+      <ref slug="tool-migration-basics"/>
+      <link href="https://www.prosci.com/methodology/adkar"/>
+      <link href="https://martinfowler.com/articles/branching-patterns.html"/>
+      <link href="https://sre.google/sre-book/release-engineering/"/>
+    </see-also>
+  </content>
+</methodology>
