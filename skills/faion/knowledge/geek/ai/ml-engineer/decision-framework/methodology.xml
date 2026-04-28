@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="decision-framework">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Structured decision process for selecting the right AI approach (prompt, RAG, fine-tuning) and model tier. Progressive enhancement strategy reduces cost 40-60% through complexity-based routing.</summary>
+    <tags>
+      <tag>decision-framework</tag>
+      <tag>model-selection</tag>
+      <tag>rag</tag>
+      <tag>fine-tuning</tag>
+      <tag>cost-optimization</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>ML/AI Decision Framework</title>
+    <summary>A structured decision process for selecting the right AI approach (prompt engineering, RAG, fine-tuning) and the right model tier for a given task. Applies a progressive enhancement strategy: start with prompting → add RAG when external data is needed → add fine-tuning only when behavioral specialization is required at scale. Implements complexity-based model routing to reduce cost by 40-60%.</summary>
+    <why>
+      <p>Defaulting to GPT or Opus for all tasks leads to 2-3x overspending on simple tasks. Fine-tuning ROI is often overestimated: 6x inference cost + training + maintenance rarely breaks even below 1M requests/month. Model pricing shifts dramatically — the framework must be re-evaluated quarterly. A lightweight complexity classifier routing simple tasks to DeepSeek and complex tasks to Opus captures most of the savings with minimal complexity.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Starting a new AI feature and choosing between prompting, RAG, or fine-tuning</item>
+        <item>Monthly API spend has grown and you suspect model over-selection</item>
+        <item>A model is deprecated or a cheaper/faster alternative has appeared</item>
+        <item>Different pipeline stages require different capability/cost trade-offs</item>
+        <item>Evaluating whether to switch providers for a specific workload</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>The task is trivial and the model is already decided — don't over-engineer</item>
+        <item>A deadline is imminent — pick the safe default (Claude Sonnet or GPT-4o) and optimize later</item>
+        <item>Purely creative tasks (marketing copy, story generation) — model quality differences are subjective; user preference testing matters more than a framework</item>
+      </list>
+    </when-not-to-use>
+    <section name="progressive-enhancement-strategy">
+      <summary>Stack enhancement strategy: start with prompt engineering, add RAG only when external data is needed, add fine-tuning only at scale.</summary>
+      <rule>
+        <statement>Start with prompt engineering; add RAG only when external/private data is required; add fine-tuning only when behavioral specialization is required at scale (greater than 1M requests/month).</statement>
+        <rationale>Each step up the stack adds cost, complexity, and maintenance burden. Fine-tuning at low volume rarely breaks even: 6x inference cost + training cost + dataset maintenance outweighs quality gains for most workloads.</rationale>
+      </rule>
+      <p>Decision path: prompt engineering ($0 extra, hours to deploy) → RAG ($70-1000/month infra, days to deploy) → fine-tuning (6x inference cost, weeks to deploy, ongoing dataset maintenance).</p>
+    </section>
+    <section name="when-to-choose-rag">
+      <summary>RAG is appropriate when data changes frequently, is private/proprietary, requires citations, or exceeds context window.</summary>
+      <rule>
+        <statement>Choose RAG when: data changes frequently (daily/weekly), knowledge is private/proprietary, users need source citations, or the corpus is too large for context window.</statement>
+        <rationale>RAG doesn't require retraining as data changes. It provides traceable citations. It scales to large corpora without context window limits.</rationale>
+      </rule>
+      <antipattern name="rag-on-small-corpus">
+        <description>Using RAG when the corpus is under 50 documents that fit in a single long-context prompt.</description>
+        <reason>RAG adds retrieval latency, chunking artifacts, and index maintenance overhead. For small static corpora, stuffing everything into a single prompt is simpler and more accurate.</reason>
+      </antipattern>
+    </section>
+    <section name="when-to-choose-fine-tuning">
+      <summary>Fine-tuning is appropriate for behavioral specialization at high volume, not factual recall.</summary>
+      <rule>
+        <statement>Choose fine-tuning only when: knowledge is behavioral (writing style, domain jargon, persona) rather than factual, data is stable (updates monthly at most), and volume is high enough for ROI.</statement>
+        <rationale>Fine-tuning bakes behavioral patterns into model weights. It doesn't help with factual recall (use RAG for that). At low volume, 6x inference cost rarely recovers the training investment.</rationale>
+      </rule>
+      <antipattern name="fine-tuning-roi">
+        <description>Committing to fine-tuning without calculating ROI: training cost + 6x inference cost + dataset maintenance vs quality gain vs volume.</description>
+        <reason>Fine-tuning decisions are hard to reverse short-term. The dataset must be maintained and retraining must happen as the base model updates.</reason>
+      </antipattern>
+    </section>
+    <section name="hybrid-approach-raft">
+      <summary>Combine fine-tuned model with RAG when behavioral specialization and current facts both matter.</summary>
+      <p>Combine fine-tuned model with RAG retrieval when: domain-specific language/terminology requires fine-tuning AND current factual information requires RAG. Use fine-tuning to teach the model how to reason about your domain; use RAG to provide current facts.</p>
+    </section>
+    <section name="model-tier-routing">
+      <summary>Route by task complexity, not by default. Save 40-60% through intelligent model selection.</summary>
+      <rule>
+        <statement>Route by task complexity, not by default: simple extraction/classification → DeepSeek V3 or Haiku; standard generation → Sonnet or GPT-4o; complex reasoning where errors cost money → Opus.</statement>
+        <rationale>Model routing saves 40-60% on typical mixed-workload pipelines. Using Opus for simple tasks is 50-100x more expensive than DeepSeek for the same quality on mechanical tasks.</rationale>
+      </rule>
+      <p>2025-2026 cost reference (per 1M tokens): DeepSeek V3 $0.14/$0.28 input/output; Claude Haiku 3.5 $0.80/$4.00; GPT-4o $2.50/$10.00; Claude Sonnet 4 $3.00/$15.00; Gemini 2 Pro $3.50/$10.50; Claude Opus 4.5 $15.00/$75.00. Re-evaluate quarterly — pricing shifts dramatically.</p>
+      <rule>
+        <statement>Measure actual task distribution before implementing routing; deploy with one model for 2 weeks, collect traces, then apply routing based on real workload data.</statement>
+        <rationale>Routing logic based on assumed task distribution may route the wrong way. Real traces reveal that "complex" tasks may be only 5% of volume, making the routing overhead not worth it.</rationale>
+      </rule>
+    </section>
+    <section name="latency-budgets">
+      <summary>Match model selection to latency constraints. Opus in synchronous flows breaks UX.</summary>
+      <rule>
+        <statement>Do not use Opus in synchronous user-facing flows; 10s+ responses break user experience. Use async/batch for long-running Opus tasks.</statement>
+        <rationale>Opus generates at ~50 tokens/sec; a 500-token response takes ~10s. User-facing latency tolerance is 2-4s maximum for interactive chat.</rationale>
+      </rule>
+      <p>Latency reference: GPT-4o/Sonnet ~120-180 tok/s (~2.8-4.2s for 500 tokens); Opus ~50 tok/s (~10s); DeepSeek V3 ~100 tok/s (~5s).</p>
+    </section>
+    <section name="multi-model-routing">
+      <summary>Implementation rules for routing across multiple models in production pipelines.</summary>
+      <rule>
+        <statement>Enforce structured output on every model in a multi-model routing pipeline; different models produce inconsistent output formats without enforcement.</statement>
+        <rationale>If one stage uses Opus and another uses Haiku, the downstream stage may break on format differences. Structured output (Pydantic schema) normalizes this across models.</rationale>
+      </rule>
+      <rule>
+        <statement>Set a hard budget cap in Helicone/Langfuse to catch runaway agentic loops calling expensive models in retry loops.</statement>
+        <rationale>An agent that retries Opus calls in a loop can exhaust a monthly budget in minutes. Hard caps trigger alerts before costs become critical.</rationale>
+      </rule>
+    </section>
+    <section name="agentic-workflow">
+      <p>An orchestrator agent receives a task description and routes it through the decision framework: it first checks whether external/private data is needed (→ RAG), then whether behavioral specialization is required (→ fine-tuning), and finally selects the appropriate model tier based on task complexity. For high-volume pipelines, a lightweight classifier subagent scores incoming tasks by complexity (simple/medium/complex) and routes them to DeepSeek, Sonnet, or Opus respectively, logging actual cost vs. quality to a metrics store for continuous optimization.</p>
+      <p>Recommended subagents: Complexity classifier subagent — lightweight Haiku/DeepSeek call that scores task complexity before routing to a heavier model. Cost monitor subagent — reads Langfuse/Helicone traces, computes per-task cost, flags when routing decisions are suboptimal.</p>
+    </section>
+    <section name="prompt-pattern">
+      <summary>Task router prompt for structured decision output.</summary>
+      <code lang="text"><![CDATA[
+You are a task router. Given the following task description, output JSON:
+{
+  "approach": "prompt_engineering" | "rag" | "fine_tuning",
+  "model": "haiku" | "sonnet" | "opus" | "deepseek",
+  "reasoning": "<one sentence>"
+}
+
+Rules:
+- If task requires external/private data: approach = "rag"
+- If task requires domain-specific style/behavior and data is stable: approach = "fine_tuning"
+- Otherwise: approach = "prompt_engineering"
+- Map complexity (simple/medium/complex) to model tier
+]]></code>
+    </section>
+    <section name="litellm-router-example">
+      <summary>Complexity-based routing implementation with LiteLLM.</summary>
+      <code lang="python"><![CDATA[
+from litellm import Router
+
+router = Router(
+    model_list=[
+        {"model_name": "fast", "litellm_params": {"model": "deepseek/deepseek-chat"}},
+        {"model_name": "balanced", "litellm_params": {"model": "anthropic/claude-sonnet-4-20250514"}},
+        {"model_name": "powerful", "litellm_params": {"model": "anthropic/claude-opus-4-5-20251101"}},
+    ]
+)
+
+def route_by_complexity(task: str, complexity: str) -> str:
+    model_map = {"simple": "fast", "medium": "balanced", "complex": "powerful"}
+    model = model_map.get(complexity, "balanced")
+    response = router.completion(
+        model=model,
+        messages=[{"role": "user", "content": task}],
+    )
+    return response.choices[0].message.content
+]]></code>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Default to Claude Sonnet 4 for balanced tasks — it's faster and significantly cheaper than Opus with comparable quality for most workloads</item>
+        <item>Calculate total cost of ownership: API cost + developer fix-time + prompt engineering time — simple models may require more prompt engineering, erasing savings</item>
+        <item>Route simple classification/extraction to DeepSeek V3 or Haiku; reserve Opus for verifiable reasoning where errors cost real money</item>
+        <item>Measure before optimizing: deploy with one model, collect traces for 2 weeks, then apply routing logic based on real task distribution</item>
+        <item>Re-evaluate the framework quarterly — model pricing and capabilities shift dramatically (DeepSeek V3 cut prices ~10x vs GPT-4o equivalents in late 2024)</item>
+        <item>Latency budgets matter for UX: 10s+ responses (Opus) break user experience in synchronous flows; use async/batch for long-running tasks</item>
+      </list>
+    </section>
+    <section name="limitations">
+      <p>Cost comparison tables become stale within weeks as providers change pricing — treat as directional, not absolute. Framework favors quantifiable factors (cost, latency, tokens) over hard-to-measure ones (trust, brand alignment, compliance). "Match model to complexity" advice requires prior knowledge of what "complex" means for your workload — benchmark first. Fine-tuning ROI is often overestimated: 6x inference cost + training cost + maintenance rarely breaks even unless volume is very high (1M+ requests/month). Multi-model routing adds operational complexity: more failure modes, more SDKs to maintain, inconsistent output formatting.</p>
+    </section>
+    <section name="ai-agent-gotchas">
+      <p>Multi-model routing introduces inconsistent output formats — if one pipeline stage uses Opus and another uses Haiku, the output schema must be enforced via structured output on every model. Model fallback chains must be tested: if Opus is unavailable, the fallback to Sonnet should produce acceptable (not just non-empty) output — test the fallback path explicitly. Human-in-loop checkpoint: before switching a production pipeline from a capable model (Opus) to a cheaper one (DeepSeek), run a side-by-side quality evaluation with a human reviewer on a representative sample. Cost alerts: set a hard budget cap in Helicone/Langfuse to catch runaway agentic loops that call expensive models in a retry loop. Fine-tuning decision is irreversible in the short term — committing to fine-tuning a model means maintaining the dataset and retraining as the base model updates.</p>
+    </section>
+    <templates>
+      <template path="templates/model-selection-record.md" purpose="Decision record template: requirements, options considered, cost projection, success metrics"/>
+      <template path="templates/litellm-router.py" purpose="LiteLLM complexity-based routing: simple→DeepSeek, balanced→Sonnet, complex→Opus"/>
+    </templates>
+    <see-also>
+      <link href="https://www.helicone.ai/blog/the-complete-llm-model-comparison-guide"/>
+      <link href="https://www.oreilly.com/radar/llm-system-design-and-model-selection/"/>
+      <link href="https://docs.litellm.ai/docs/routing"/>
+      <link href="https://langfuse.com/docs/model-usage-and-cost"/>
+      <link href="https://cognaptus.com/blog/2025-07-08-beyond-the-pareto-frontier-pricing-llm-mistakes-in-the-real-world/"/>
+      <ref slug="cost-optimization"/>
+      <ref slug="claude-api"/>
+    </see-also>
+  </content>
+</methodology>
