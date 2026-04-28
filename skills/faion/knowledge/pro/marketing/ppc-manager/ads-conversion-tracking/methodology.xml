@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ads-conversion-tracking">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>ppc-manager</domain>
+    <summary>Multi-platform pixel + server-side (CAPI) setup to track macro/micro conversions, bypass browser restrictions (ad blockers, iOS privacy), and feed accurate signal to smart bidding.</summary>
+    <category>tracking</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tags>
+      <tag>conversion-tracking</tag>
+      <tag>pixel-implementation</tag>
+      <tag>event-setup</tag>
+      <tag>platform-pixels</tag>
+      <tag>capi</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>javascript</language>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Ads Conversion Tracking</title>
+
+    <summary>Multi-platform conversion tracking setup: define macro and micro conversion events with dollar values, install browser-side pixels (Meta Pixel, Google Tag, LinkedIn Insight Tag), implement server-side APIs (Meta CAPI, Google Ads offline upload), verify all events fire correctly, and configure attribution windows. The core rule is: always implement server-side (CAPI/Conversions API) in addition to browser pixels — browser tracking degrades by 20-40% due to ad blockers and iOS privacy restrictions, causing smart bidding to optimize on incomplete data.</summary>
+
+    <why>
+      <p>Ad platform algorithms (Meta, Google) optimize bidding toward the conversion signal you provide. If browser tracking is the only source and 30% of events are blocked, the algorithm sees inflated CPA and under-delivers on good audiences. Server-side events pass directly from your server, bypassing browser restrictions, and can include offline CRM data. Accurate conversion data is the single highest-leverage optimization lever in paid advertising.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up conversion tracking on a new site, app, or ad account</item>
+        <item>Auditing tracking accuracy when reported conversions don't match CRM data</item>
+        <item>Implementing Meta Conversions API (CAPI) for server-side event deduplication</item>
+        <item>Uploading offline conversions from CRM systems to Meta or Google</item>
+        <item>Configuring attribution windows to match the product's sales cycle length</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Attribution model comparison and selection — use ads-attribution-models</item>
+        <item>Analytics property setup (GA4 events, Mixpanel) — this covers ad-platform pixels only</item>
+        <item>Campaign creation — tracking must be in place first; see ads-meta-campaign-setup</item>
+        <item>Bid strategy configuration — tracking is a prerequisite, not the bidding logic itself</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="conversion-definition">
+      <p>Conversion tracking starts with taxonomy: macro conversions are primary business goals, while micro conversions are funnel steps that provide signal during ramp-up when macro volume is low.</p>
+
+      <rule testable="true">
+        <statement>Always track both macro conversions (primary business goal) and micro conversions (funnel steps) — micro conversions provide optimization signal when macro volume is too low for smart bidding.</statement>
+        <rationale>Smart bidding requires 30-50 conversions per week to function; new campaigns rarely achieve this on macro events alone. Micro conversions (add-to-cart, pricing page view) fill the signal gap during ramp-up.</rationale>
+      </rule>
+
+      <list>
+        <item>Macro — Purchase, Trial start, Lead form submit, Account registration</item>
+        <item>Micro — Add to cart, Begin checkout, Pricing page view, Content download</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Pass dynamic purchase values whenever possible — static values prevent Target ROAS bidding from optimizing for high-value orders over low-value ones.</statement>
+        <rationale>Static values make all conversions look equal to the algorithm; with dynamic values, bidding can allocate more spend toward user segments that produce larger orders.</rationale>
+      </rule>
+
+      <list>
+        <item>Fixed value — Lead = $50 (estimated average value)</item>
+        <item>Dynamic value — Purchase = actual transaction amount (recommended)</item>
+        <item>Estimated LTV value — Trial = $100 (based on historical LTV/conversion rate)</item>
+      </list>
+
+      <p>Cross-platform event name mapping ensures consistency across Meta, Google, and LinkedIn:</p>
+
+      <list>
+        <item>Sign up: Meta=CompleteRegistration, Google=sign_up, LinkedIn=signUp</item>
+        <item>Lead: Meta=Lead, Google=generate_lead, LinkedIn=lead</item>
+        <item>Add to cart: Meta=AddToCart, Google=add_to_cart, LinkedIn=N/A</item>
+        <item>Purchase: Meta=Purchase, Google=purchase, LinkedIn=conversion</item>
+        <item>Trial: Meta=StartTrial, Google=trial_started, LinkedIn=N/A</item>
+      </list>
+    </section>
+
+    <section name="pixel-installation">
+      <p>Browser-side pixels must be installed on every page to enable audience building and retargeting across the site, not just on conversion pages.</p>
+
+      <rule testable="true">
+        <statement>Install the Meta Pixel base code on every page of the site, not just conversion pages.</statement>
+        <rationale>The base code enables audience building from all page visitors, not just converters — required for website custom audiences and retargeting.</rationale>
+      </rule>
+
+      <reference path="templates/meta-pixel.html">Meta Pixel base code with PageView</reference>
+
+      <example type="good" title="Meta standard event calls">
+        <code lang="javascript"><![CDATA[
+// Lead form submission
+fbq('track', 'Lead', {
+  value: 50.00,
+  currency: 'USD'
+});
+
+// Purchase with dynamic value
+fbq('track', 'Purchase', {
+  value: 99.00,
+  currency: 'USD',
+  content_ids: ['prod_123'],
+  content_type: 'product'
+});
+
+// Add to cart
+fbq('track', 'AddToCart', {
+  value: 49.99,
+  currency: 'USD',
+  content_ids: ['SKU123'],
+  content_type: 'product'
+});
+        ]]></code>
+      </example>
+
+      <reference path="templates/google-tag.html">Google Ads conversion tag</reference>
+
+      <example type="good" title="Google Ads conversion event">
+        <code lang="javascript"><![CDATA[
+// Google Ads conversion event
+gtag('event', 'conversion', {
+  'send_to': 'AW-XXXXXXXXXX/YYYYYYYYY',
+  'value': 99.00,
+  'currency': 'USD',
+  'transaction_id': 'txn_123'
+});
+        ]]></code>
+        <note>transaction_id deduplicates conversions if the thank-you page fires twice — always include it for purchase events.</note>
+      </example>
+    </section>
+
+    <section name="server-side-tracking">
+      <p>Server-side tracking via Meta CAPI and Google Conversions API bypasses all browser restrictions and provides the ground truth for optimization.</p>
+
+      <rule testable="true">
+        <statement>Always implement server-side tracking alongside browser pixels — never rely on browser pixels alone.</statement>
+        <rationale>Ad blockers, iOS App Tracking Transparency, and browser privacy features block 20-40% of browser pixel events. Server-side events pass directly from your server, bypassing all browser restrictions, and can include richer user data for better match rates.</rationale>
+      </rule>
+
+      <example type="good" title="Meta CAPI Node.js implementation">
+        <code lang="javascript"><![CDATA[
+const bizSdk = require('facebook-nodejs-business-sdk');
+const { EventRequest, UserData, ServerEvent } = bizSdk;
+
+async function sendPurchaseEvent(pixelId, accessToken, userData, purchaseData) {
+  const user = (new UserData())
+    .setEmail(userData.email_sha256)
+    .setPhone(userData.phone_sha256)
+    .setClientIpAddress(userData.ip)
+    .setClientUserAgent(userData.user_agent);
+
+  const event = (new ServerEvent())
+    .setEventName('Purchase')
+    .setEventTime(Math.floor(Date.now() / 1000))
+    .setEventId(purchaseData.event_id)  // for deduplication with browser pixel
+    .setUserData(user)
+    .setCustomData({
+      value: purchaseData.value,
+      currency: purchaseData.currency,
+      order_id: purchaseData.order_id
+    })
+    .setEventSourceUrl(purchaseData.page_url);
+
+  const request = (new EventRequest(accessToken, pixelId))
+    .setEvents([event]);
+
+  return request.execute();
+}
+        ]]></code>
+        <note>event_id must match the browser pixel's eventID parameter to enable Meta's deduplication — same event_id from browser + server = counted once.</note>
+      </example>
+
+      <rule testable="true">
+        <statement>Set matching event_id values in both the browser fbq() call and the CAPI server event — mismatched IDs cause double-counting, inflating reported conversions by up to 2x.</statement>
+        <rationale>Meta deduplicates events within a 48-hour window when event_id matches; without this, the algorithm sees twice the conversions and bids accordingly, wasting budget.</rationale>
+      </rule>
+    </section>
+
+    <section name="verification">
+      <p>Verification tools and testing processes vary by platform but follow the same principle: confirm events fire in production before and after launch.</p>
+
+      <list>
+        <item>Meta: Meta Pixel Helper (Chrome extension) + Events Manager Test Events tab</item>
+        <item>Google: Google Tag Assistant (Chrome extension) + Google Ads Tag Diagnostics</item>
+        <item>LinkedIn: LinkedIn Insight Tag Helper (Chrome extension)</item>
+        <item>All platforms: Browser DevTools → Network tab → filter by pixel domain</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Test every conversion type manually before launch — never rely on code review alone to confirm events fire in production.</statement>
+        <rationale>CSP headers, async loading conflicts, and SPA routing all cause pixel silencing in production that is invisible in staging environments.</rationale>
+      </rule>
+
+      <list>
+        <item>Install browser verification extension</item>
+        <item>Complete a test conversion action (form submit, simulated purchase)</item>
+        <item>Confirm event appears in platform's real-time event viewer</item>
+        <item>Verify the value field contains the correct amount and currency</item>
+        <item>If CAPI implemented: confirm server event appears separately from browser event</item>
+        <item>Monitor Events Manager for 24-48 hours post-launch for error rates</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Set attribution windows to match your product's typical sales cycle — a B2B SaaS with a 30-day trial should use a 30-day click window, not 7 days.</statement>
+        <rationale>Shorter windows than the sales cycle under-attribute conversions to ads, making campaigns appear less efficient and causing premature budget cuts on campaigns that are actually working.</rationale>
+      </rule>
+
+      <p>Platform default attribution windows:</p>
+      <list>
+        <item>Meta default: 7-day click, 1-day view</item>
+        <item>Google default: 30-day click</item>
+        <item>LinkedIn default: 30-day click, 7-day view</item>
+      </list>
+
+      <reference path="templates/tracking-plan.md">Conversion tracking plan template</reference>
+    </section>
+
+    <section name="agent-integration">
+      <p>Tracking work has two phases: build (one-time) and monitor (continuous). Build phase requires high human-in-loop oversight; monitor phase is autonomous.</p>
+
+      <p>Build phase: agent generates pixel snippets, infra agent deploys them, QA agent runs synthetic conversions and verifies. Monitor phase: agent diffs Meta Events Manager numbers vs GA4 vs server logs nightly, alerts on &gt;10% delta. Never let an agent silently re-deploy pixel code without seeing a live Test Event — broken tracking is invisible until the campaign report.</p>
+
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-ads-agent — generates pixel/CAPI code per platform, configures conversion actions in ad platforms.</item>
+        <item>faion-improver — nightly reconciliation: pixel vs server vs GA4, drift alerts.</item>
+        <item>faion-sdd-executor-agent — gates production deploy of new tracking behind synthetic tests.</item>
+      </list>
+
+      <example type="good" title="Pixel generation prompt">
+        <code lang="text"><![CDATA[
+Generate pixel + CAPI for {platform=Meta} on {framework=Next.js}. Events:
+PageView (auto), ViewContent (product page), AddToCart, InitiateCheckout,
+Purchase. Use event_id = order_id for dedup. Hash email/phone with SHA-256
+before sending. Output: client snippet, server endpoint, env-var list.
+        ]]></code>
+      </example>
+
+      <example type="good" title="Tracking reconciliation prompt">
+        <code lang="text"><![CDATA[
+Reconcile {date_range}: pull Meta Insights conversions, GA4 events, Stripe
+payments. Group by date. Report rows where |meta - stripe| / stripe > 0.15.
+For each, list missing event_ids and propose fix (CAPI gap vs pixel block).
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <rule testable="true">
+        <statement>Always send a unique event_id (order ID, lead ID) on both pixel and CAPI for the same event — Meta dedupes within a 48-hour window. No event_id = double-count.</statement>
+        <rationale>Event ID is the primary deduplication key. Without it, the same business event gets counted twice, inflating conversion reports and burning budget.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Hash PII (email, phone, first/last name, city, zip) with lowercase-trim then SHA-256 before sending — and verify in Events Manager that match-quality score is &gt; 5.0.</statement>
+        <rationale>PII hashing enables Meta to match server events to users without transmitting PII in plaintext. Match quality score measures success; scores below 5.0 indicate data quality issues.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Fire one and only one Purchase per order. If your thank-you page can be reloaded, gate the pixel on sessionStorage or send only from server.</statement>
+        <rationale>Multiple Purchase events per order inflate reported conversions and make optimization signal noisy. Server-side de-duplication is the most reliable approach.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Keep event names canonical across platforms via a single mapping table; never sprinkle platform-specific names through the codebase.</statement>
+        <rationale>Event name standardization prevents drift where the same business action gets different names on different platforms. A mapping table makes audits and migrations easier.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set CAPI as the source of truth in the ad platform once both are stable — pixel becomes a redundant backup, not the primary signal.</statement>
+        <rationale>CAPI provides server-side data that is more accurate and less subject to browser restrictions. Once CAPI is working, make it primary so algorithms optimize on the most reliable signal.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Test on an iOS Safari device with Private Relay on — that's where 30% of the data loss hides.</statement>
+        <rationale>iOS Private Relay removes IP addresses from server-side requests for some users. Testing with Private Relay reveals fingerprinting gaps and match-rate drops that staging environments miss.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations">
+      <p>Tracking has hard limits due to platform architecture and privacy constraints that no implementation can overcome.</p>
+
+      <antipattern>
+        <description>iOS 14.5+ ATT, Safari ITP, and EU consent banners cut browser-only pixel coverage by 30-60% — server-side is mandatory for accurate numbers.</description>
+        <reason>Browser privacy features are beyond an advertiser's control. Browser-only tracking is inherently incomplete in 2026; CAPI is the only path to ground truth.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Meta CAPI events without event_id get deduped against the pixel by event_name + timestamp window — easy to double-count if you skip event IDs.</description>
+        <reason>Meta's fallback deduplication is imprecise. Events with the same name fired within seconds can appear different. Event IDs prevent this false-positive dedup.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>predicted_ltv on Meta is a custom param Meta doesn't actually use for bidding (yet) — don't optimize on it.</description>
+        <reason>Meta's documentation promises LTV-aware bidding but has not shipped it. Agents that instrument predicted_ltv are building for a future that may not arrive; focus on actual conversion signals instead.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LinkedIn Insight Tag has 90-day attribution but only fires on direct site visits — single-page apps need explicit _linkedin_partner_id push on route change.</description>
+        <reason>LinkedIn's tag is not universal; SPAs must hook route changes manually. Agents deploying LinkedIn without SPA-specific handling will get zero conversions.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>gtag/GTM server containers don't replicate Meta's automatic advanced matching — you must hash and send PII fields explicitly.</description>
+        <reason>Advanced matching requires PII; GTM's server container defaults to anonymous tracking. Agents must explicitly include PII hashing to enable matching.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Apple's Private Relay strips IP from server-side requests for some users — fingerprinting fallbacks degrade silently.</description>
+        <reason>When IP is unavailable, match rates drop sharply. Agents are blind to the failure because no error is raised — the event lands but with zero match rate.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/tracking-plan.md" purpose="Conversion tracking plan: macro/micro events, values, platforms, implementation checklist"/>
+      <template path="templates/meta-pixel.html" purpose="Meta Pixel base code snippet with PageView"/>
+      <template path="templates/google-tag.html" purpose="Google Ads conversion tag snippet"/>
+    </templates>
+
+    <see-also>
+      <link href="https://developers.facebook.com/docs/facebook-pixel/"/>
+      <link href="https://developers.google.com/google-ads/api/docs/conversions/overview"/>
+      <link href="https://learn.microsoft.com/en-us/linkedin/marketing/"/>
+    </see-also>
+  </content>
+</methodology>
