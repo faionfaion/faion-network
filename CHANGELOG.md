@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/dev/backend-enterprise methodologies → methodology.xml (java-spring-boot, java-spring-boot-patterns, laravel-patterns; feature-045 batch)
 - migrate: 3/3 pro/dev/backend-systems Go methodologies → methodology.xml (go-concurrency-patterns, go-error-handling, go-error-handling-patterns; feature-045 batch)
 - migrate: 3/3 pro/dev/backend-systems Rust methodologies → methodology.xml (rust-error-handling, rust-http-handlers, rust-ownership; feature-045 batch)
 - migrate: 3/3 pro/dev/backend-enterprise Java methodologies → methodology.xml (java-junit-testing, java-spring, java-spring-async; feature-045 batch)
