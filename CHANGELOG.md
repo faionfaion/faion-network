@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- fix: trim methodology summary use-case-modeling
 - fix: trim methodology summary stakeholder-analysis
 - fix: trim methodology summary solution-assessment
 - migrate: 2/2 pro/marketing/ppc-manager methodologies → methodology.xml (google-search-ads, google-shopping-ads; feature-045 batch 303 — FINAL)
