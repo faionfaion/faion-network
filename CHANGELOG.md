@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/ml-ops methodologies → methodology.xml (fine-tuning-lora, fine-tuning-openai-basics, fine-tuning-openai-production; feature-045 batch 269)
 - migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (vector-databases, voice-agents, cost-reduction-strategies; feature-045 batch 267)
 - migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (openai-api, rag, rag-pipeline-design; feature-045 batch 265)
 - migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (reasoning-first-architectures, structured-output, text-to-speech; feature-045 batch 266)

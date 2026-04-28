@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="fine-tuning-lora">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-ops</domain>
+    <summary>LoRA fine-tuning with PEFT+TRL: freeze base weights, inject low-rank adapters (rank 8-64), reduce parameters 100-250x. Includes QLoRA, multi-adapter management, production LoRATrainingPipeline.</summary>
+    <tags>
+      <tag>lora</tag>
+      <tag>qlora</tag>
+      <tag>fine-tuning</tag>
+      <tag>peft</tag>
+      <tag>gpu-optimization</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Fine-tuning (LoRA)</title>
+    <summary>LoRA (Low-Rank Adaptation) fine-tuning methodology using PEFT + TRL: freezing base model weights and injecting small trainable matrices (rank 8-64) into attention layers, reducing trainable parameters by 100-250x. Covers QLoRA (4-bit quantization), multiple-adapter management, hyperparameter search, and the LoRATrainingPipeline production class.</summary>
+    <why>
+      <p>LoRA enables fine-tuning on consumer GPUs (8-24GB VRAM) where full fine-tuning requires 80GB+. The adapter approach preserves general capabilities (frozen base) while specializing behavior for the target task. Multiple adapters can share one base model and be switched at runtime — critical for multi-tenant or multi-task production deployments.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Consumer GPU available (8-24GB VRAM) and full fine-tuning is not feasible</item>
+        <item>Need to maintain multiple task-specific adapters on one base model without reloading weights</item>
+        <item>Quick iteration experiments where training must complete in hours, not days</item>
+        <item>Adapting model style/behavior without degrading general capabilities</item>
+        <item>Production scenario where a specialized smaller model is cheaper to serve than a large prompted model</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Task requires injecting new factual knowledge — LoRA adapters do not reliably encode facts; use RAG</item>
+        <item>Dataset is smaller than 50 examples — adapter overfits immediately; use few-shot prompting</item>
+        <item>Target inference server does not support on-the-fly adapter loading — merge the adapter first</item>
+        <item>Real-time latency requirement below 100ms — adapter overhead adds ~5-10ms; merging eliminates this</item>
+        <item>Multiple simultaneous LoRA experiments on the same GPU — they will OOM; serialize jobs</item>
+      </list>
+    </when-not-to-use>
+    <section name="LoraConfig Construction">
+      <rule>
+        <statement>Print trainable parameter count immediately after get_peft_model() — if it shows 0, stop and fix target_modules before starting training.</statement>
+        <rationale>Wrong target_modules names cause 0 trainable parameters; training proceeds silently for hours producing a model identical to the base model.</rationale>
+      </rule>
+      <example type="good" title="Correct LoRA Config and Parameter Check">
+        <code lang="python"><![CDATA[
+from peft import LoraConfig, get_peft_model, TaskType
+
+lora_config = LoraConfig(
+    r=16,
+    lora_alpha=16,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+    lora_dropout=0.05,
+    bias="none",
+    task_type=TaskType.CAUSAL_LM,
+)
+model = get_peft_model(model, lora_config)
+
+def check_lora_params(model) -> dict:
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total = sum(p.numel() for p in model.parameters())
+    if trainable == 0:
+        raise ValueError("No trainable params — check target_modules names")
+    return {"trainable": trainable, "total": total,
+            "pct": f"{100 * trainable / total:.4f}%"}
+
+stats = check_lora_params(model)
+print(stats)  # Expected: trainable% between 0.01% and 2%
+]]></code>
+        <note>Raises immediately if target_modules are wrong, preventing hours of wasted GPU time.</note>
+      </example>
+    </section>
+    <section name="Rank and Alpha Selection">
+      <rule>
+        <statement>Set lora_alpha equal to lora_r as a default; only deviate after observing training dynamics.</statement>
+        <rationale>The scaling factor lora_alpha/r controls effective learning rate for the adapter; equal values provide a neutral baseline that works for most tasks.</rationale>
+      </rule>
+      <list>
+        <item>rank 8: minimal memory, simple extraction or classification tasks</item>
+        <item>rank 16: general-purpose default for instruction following and style adaptation</item>
+        <item>rank 32: complex tasks requiring nuanced behavioral changes</item>
+        <item>rank 64+: rarely justified; use only when rank 32 validation loss is still plateauing with &gt;5k examples</item>
+      </list>
+    </section>
+    <section name="Tokenizer Setup">
+      <rule>
+        <statement>Always set tokenizer.pad_token = tokenizer.eos_token before training if the tokenizer has no pad token.</statement>
+        <rationale>Missing pad token causes silent data corruption in batched training; the model trains on misaligned sequences.</rationale>
+      </rule>
+      <rule>
+        <statement>Save the tokenizer alongside the adapter: tokenizer.save_pretrained(output_dir) — never save the adapter alone.</statement>
+        <rationale>An adapter saved without the tokenizer cannot be reproduced or shared; model IDs without matching tokenizers are not deployable.</rationale>
+      </rule>
+    </section>
+    <section name="QLoRA — 4-bit Quantization with LoRA Adapters">
+      <rule>
+        <statement>Call prepare_model_for_kbit_training() BEFORE get_peft_model() — reversing the order causes silent training failure.</statement>
+        <rationale>prepare_model_for_kbit_training() configures gradient checkpointing and layer normalization for 4-bit training; applying LoRA before this produces incompatible layer states.</rationale>
+      </rule>
+      <example type="good" title="QLoRA Configuration with Correct Ordering">
+        <code lang="python"><![CDATA[
+from transformers import BitsAndBytesConfig, AutoModelForCausalLM
+from peft import prepare_model_for_kbit_training, get_peft_model
+import torch
+
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.bfloat16,
+    bnb_4bit_use_double_quant=True,
+)
+model = AutoModelForCausalLM.from_pretrained(
+    "meta-llama/Llama-3.1-8B",
+    quantization_config=bnb_config,
+    device_map="auto",
+)
+model = prepare_model_for_kbit_training(model)  # MUST come before get_peft_model
+model = get_peft_model(model, lora_config)
+]]></code>
+        <note>bnb_4bit_compute_dtype=bfloat16 avoids NaN loss on A100/H100. Use float16 on older GPUs.</note>
+      </example>
+      <section name="Memory Savings">
+        <list>
+          <item>7B model: full FT 28GB → LoRA fp16 16GB → QLoRA 4-bit 6-8GB</item>
+          <item>13B model: full FT 52GB → LoRA fp16 28GB → QLoRA 4-bit 10-12GB</item>
+          <item>70B model: full FT 280GB → LoRA fp16 140GB → QLoRA 4-bit 40-48GB</item>
+        </list>
+      </section>
+      <section name="paged_adamw_8bit Optimizer">
+        <rule>
+          <statement>Use paged_adamw_8bit optimizer only when bitsandbytes is installed and CUDA is available — fall back to adamw_torch for CPU training.</statement>
+          <rationale>paged_adamw_8bit is a bitsandbytes-specific optimizer that uses paged memory to handle optimizer state spikes; it is not available in non-CUDA environments.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="SFTTrainer, LoRATrainingPipeline, and Multiple-Adapter Switching">
+      <rule>
+        <statement>Use SFTTrainer from TRL instead of raw HF Trainer — it handles dataset formatting, sample packing, and LoRA integration more reliably.</statement>
+        <rationale>Raw Trainer requires manual dataset tokenization, label masking, and data collator setup. SFTTrainer automates these with proven defaults and supports peft_config directly.</rationale>
+      </rule>
+      <rule>
+        <statement>Set evaluation_strategy="epoch" only when an eval_dataset is also provided — setting the strategy without the dataset raises a ValueError at epoch end, wasting compute.</statement>
+        <rationale>The error is not raised at job start but at epoch end; a full epoch of training is wasted before the crash.</rationale>
+      </rule>
+      <rule>
+        <statement>Merge LoRA adapter into base model weights with model.merge_and_unload() before deploying to vLLM or TGI — adapter overhead is zero after merge.</statement>
+        <rationale>vLLM requires a standard HF model; PEFT-wrapped models cause startup errors. Merge is lossless and removes the adapter lookup overhead from every forward pass.</rationale>
+      </rule>
+      <example type="good" title="Merge LoRA Adapter for Deployment">
+        <code lang="python"><![CDATA[
+from peft import PeftModel
+from transformers import AutoModelForCausalLM
+import torch
+
+# Load base + adapter, merge, save as standard HF model
+base = AutoModelForCausalLM.from_pretrained(
+    "meta-llama/Llama-3.1-8B",
+    torch_dtype=torch.float16,
+    device_map="auto",
+)
+model = PeftModel.from_pretrained(base, "./lora-adapter")
+merged = model.merge_and_unload()
+merged.save_pretrained("./merged_model")
+# Deploy merged_model to vLLM as a standard model
+]]></code>
+        <note>merge_and_unload() is lossless — merged weights are mathematically identical to adapter-applied weights.</note>
+      </example>
+      <section name="Multiple Adapters">
+        <rule>
+          <statement>Keep adapters separate for multi-task workflows; do not merge adapters trained on incompatible tasks into the same base model.</statement>
+          <rationale>Merging two adapters trained on different tasks can produce weight interference; task-specific adapters should be switched at runtime, not merged.</rationale>
+        </rule>
+        <rule>
+          <statement>For multi-adapter runtime switching, load adapters with model.load_adapter(path, adapter_name=name) and activate with model.set_adapter(name).</statement>
+          <rationale>PeftModel supports multiple adapters sharing one base model instance; switching adapters at runtime avoids loading the base model multiple times.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="Agentic Workflow and Integration">
+      <p>Claude subagents handle the non-GPU portions of the LoRA pipeline: generating training data, selecting rank and target modules based on model family and task type, constructing the LoraConfig, and writing the training script. The actual trainer.train() call is dispatched to a GPU instance via shell command or cloud API. Post-training, an agent can load the adapter, run sample inferences, and decide whether to merge-and-export or discard. Human review is required before merging adapters into a production base model.</p>
+      <section name="Recommended Subagents">
+        <list>
+          <item>faion-sdd-execution — generate LoRA config from task description and model family, validate target_modules match model architecture</item>
+          <item>Custom eval agent — load adapter, run 20-30 representative test prompts, score outputs, return pass/fail</item>
+        </list>
+      </section>
+      <section name="Prompt Pattern">
+        <p>Given model family "{model_family}" and task type "{task_type}", select:</p>
+        <list>
+          <item>Appropriate lora_rank (8/16/32/64)</item>
+          <item>target_modules list (provide exact names for this architecture)</item>
+          <item>learning_rate</item>
+          <item>Whether to include MLP layers</item>
+        </list>
+        <p>Output JSON: {rank, alpha, target_modules, learning_rate, rationale}</p>
+        <p>Examine these 5 sample outputs from the LoRA-tuned model vs the base model. Score each on: format_adherence (0-1), content_quality (0-1), regression_risk (0-1). Flag any output where regression_risk &gt; 0.7 for human review.</p>
+      </section>
+    </section>
+    <section name="Best Practices and Gotchas">
+      <list>
+        <item>Print trainable parameter count immediately after get_peft_model() — if it shows 0, stop and fix target_modules</item>
+        <item>Use SFTTrainer from TRL instead of raw Trainer — it handles dataset formatting, packing, and LoRA integration more reliably</item>
+        <item>Set use_gradient_checkpointing="unsloth" when using Unsloth — saves ~30% VRAM vs. standard gradient checkpointing</item>
+        <item>Always save tokenizer alongside adapter: model.save_pretrained(path) + tokenizer.save_pretrained(path)</item>
+        <item>When doing hyperparameter search, vary rank (8/16/32) first; alpha usually set equal to rank is fine for initial experiments</item>
+        <item>Merge the adapter before deployment to vLLM: model.merge_and_unload() — this has zero quality loss and removes adapter overhead</item>
+        <item>For multi-adapter workflows: keep adapters separate, load at runtime; do not mix-merge adapters trained on incompatible tasks</item>
+        <item>prepare_model_for_kbit_training() must be called before get_peft_model() for QLoRA; reversing order causes silent training failure</item>
+        <item>GPU OOM during training is recoverable by reducing per_device_train_batch_size to 1 and increasing gradient_accumulation_steps proportionally — an agent can attempt this automatically</item>
+        <item>Adapter checkpointing writes partial files during training; an agent reading an intermediate checkpoint will get a corrupt model — always load from the final output_dir</item>
+        <item>Multiple simultaneous LoRA experiments on the same GPU will OOM — agents must serialize GPU jobs, not parallelize them</item>
+        <item>evaluation_strategy="epoch" with no eval_dataset raises a ValueError at epoch end, not at job start — a common source of wasted compute</item>
+      </list>
+    </section>
+    <section name="CLI Tools">
+      <list>
+        <item>peft — LoRA/QLoRA adapter creation and management | pip install peft · huggingface.co/docs/peft</item>
+        <item>trl — SFTTrainer, DPOTrainer, ORPOTrainer | pip install trl · huggingface.co/docs/trl</item>
+        <item>bitsandbytes — 4-bit/8-bit quantization for QLoRA | pip install bitsandbytes · github.com/TimDettmers/bitsandbytes</item>
+        <item>accelerate — Multi-GPU training launcher | pip install accelerate · huggingface.co/docs/accelerate</item>
+        <item>mergekit — Merge LoRA adapter into base model weights | pip install mergekit · github.com/arcee-ai/mergekit</item>
+        <item>unsloth — 2x faster LoRA, direct GGUF export | pip install unsloth · github.com/unslothai/unsloth</item>
+      </list>
+    </section>
+    <section name="Services and Deployments">
+      <list>
+        <item>Hugging Face Hub (SaaS/OSS, agent-friendly via SDK) — Push/pull adapters; model.push_to_hub()</item>
+        <item>Weights &amp; Biases (SaaS, agent-friendly via REST) — Loss tracking, adapter artifact registry</item>
+        <item>RunPod (SaaS, partial agent support) — GPU pod launch via API; SSH for training</item>
+        <item>Modal (SaaS, agent-friendly via Python SDK) — Serverless GPU; run trainer.train() as a Modal function</item>
+        <item>Ollama (OSS, agent-friendly via REST :11434) — Serve merged GGUF; agent calls /api/generate</item>
+        <item>vLLM (OSS, agent-friendly via OpenAI API) — Serve merged model; requires merge before deployment</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/lora-pipeline.py" purpose="LoRATrainingPipeline class with QLoRA, SFTTrainer, and merge-and-unload"/>
+      <template path="templates/check-trainable-params.py" purpose="Verify trainable parameter count after applying LoRA; raises if 0"/>
+      <template path="templates/lora-config-prompt.txt" purpose="Prompt for selecting rank, target_modules, and learning rate given model family and task"/>
+    </templates>
+    <see-also>
+      <link href="https://arxiv.org/abs/2106.09685">LoRA paper</link>
+      <link href="https://arxiv.org/abs/2305.14314">QLoRA paper</link>
+      <link href="https://huggingface.co/docs/peft/conceptual_guides/lora">HuggingFace PEFT LoRA guide</link>
+      <link href="https://huggingface.co/docs/trl/sft_trainer">HuggingFace TRL SFTTrainer</link>
+      <link href="https://github.com/unslothai/unsloth">Unsloth GitHub</link>
+      <link href="https://github.com/arcee-ai/mergekit">Mergekit GitHub</link>
+    </see-also>
+  </content>
+</methodology>
