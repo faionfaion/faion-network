@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="a11y-testing">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>accessibility-specialist</domain>
+    <summary>Five-step accessibility testing: automated scanning, keyboard, screen reader, cognitive checks, documentation. Automated tools catch 30-40% of violations; manual testing required.</summary>
+    <tags>
+      <tag>accessibility</tag>
+      <tag>testing</tag>
+      <tag>a11y</tag>
+      <tag>screen-readers</tag>
+      <tag>wcag</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Accessibility Testing Process</title>
+    <summary>Five-step accessibility testing process combining automated scanning (axe, WAVE, Lighthouse, Pa11y), manual keyboard testing, screen reader verification, cognitive accessibility checks, and prioritized issue documentation. Automated tools catch ~30-40% of WCAG violations; the rest require structured manual walkthroughs with real AT.</summary>
+    <why>
+      <p>Automated scanners produce false confidence: a "0 violations" axe report does not equal WCAG conformance. SC 1.3.1 (Info and Relationships), 2.4.6 (Headings and Labels), 3.3.3 (Error Suggestion) require human judgment. Running both axe and Pa11y catches ~15% more issues than either alone because their rule sets diverge. The complete process — automated + keyboard + screen reader + cognitive + documentation — is the minimum evidence trail for ADA Title II and EAA compliance.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Pre-release WCAG 2.1/2.2 audit on a web product</item>
+        <item>CI gate for new pages or components — automated scan must pass before merge</item>
+        <item>Quarterly compliance review for ADA Title II or EAA-bound products</item>
+        <item>Procurement: generating VPAT/ACR evidence from real test runs</item>
+        <item>Triage: converting a raw a11y issue dump into a prioritized remediation plan</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Design-stage review — use accessibility-first-design (cheaper to fix in Figma than in code)</item>
+        <item>Native mobile-only flows — axe/Pa11y do not cover XCUITest/Espresso; use platform-specific scanners</item>
+        <item>XR/spatial interfaces — WCAG does not fully cover them; use spatial-accessibility and W3C XAUR</item>
+        <item>Quick one-off contrast tweak — run Colour Contrast Analyser directly, not a full audit</item>
+      </list>
+    </when-not-to-use>
+    <section name="Step 1: Automated Scanning">
+      <rule>
+        <statement>Run both axe AND Pa11y on every audit — their rule sets diverge on ~15% of issues; use the union of violations, not the intersection.</statement>
+        <rationale>axe-core and Pa11y have different heuristics and catch different subsets of WCAG violations. A scan with only one tool produces a systematically incomplete picture.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[What automated tools find:
+  - Missing alt text (axe 1.1.1)
+  - Color contrast failures (axe 1.4.3, 1.4.11)
+  - Missing form labels (axe 1.3.1, 4.1.2)
+  - Incorrect heading structure (axe 1.3.1)
+  - Missing language attribute (axe 3.1.1)
+
+What they miss:
+  - Alt text quality (meaningful vs. generic)
+  - Keyboard operability and trap detection
+  - Reading order vs. visual order
+  - Context and user understanding
+  - WCAG 2.2 drag alternatives and redundant entry]]></code>
+      </example>
+      <antipattern>
+        <description>Treating "0 violations" in axe as equivalent to WCAG conformance.</description>
+        <reason>axe covers ~30-40% of WCAG criteria. The "incomplete" and "inapplicable" arrays in axe JSON must be inspected; items in "incomplete" mean the tool gave up, not that the criterion passes.</reason>
+      </antipattern>
+    </section>
+    <section name="Step 2: Keyboard Testing">
+      <rule>
+        <statement>Tab through the entire page without touching the mouse; every interactive element must be reachable, operable, and have a visible focus indicator.</statement>
+        <rationale>Screen reader users navigate by keyboard; axe cannot detect keyboard traps, illogical tab order, or missing skip links — these require a human Tab walkthrough.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[Check               | How to Test                     | Pass Condition
+Tab navigation      | Tab through entire page          | All interactive elements reachable
+Focus visible       | Watch for focus indicator         | Always visible; contrast >= 3:1
+Tab order           | Tab and note sequence             | Matches visual/logical flow
+Skip links          | Tab from top of page              | "Skip to main content" appears
+Keyboard traps      | Tab everywhere                   | Can always Tab out
+Custom components   | Test accordions, tabs, modals     | APG patterns followed]]></code>
+      </example>
+    </section>
+    <section name="Step 3: Screen Reader Testing">
+      <rule>
+        <statement>Test with at least NVDA+Firefox and VoiceOver+Safari; a pass on one AT+browser combo does not generalize to another.</statement>
+        <rationale>Screen readers and browsers diverge on ARIA interpretation. NVDA+JAWS differ on Windows for the same DOM; mobile AT (VoiceOver iOS, TalkBack) have additional gesture-specific behaviors.</rationale>
+      </rule>
+      <list>
+        <item>Navigate by headings (H key) — hierarchy correct and present?</item>
+        <item>Navigate by landmarks (D key in NVDA) — main, nav, header, footer marked?</item>
+        <item>All images described — meaningful alt text announced?</item>
+        <item>Forms: label announced on focus; errors announced on invalid submit?</item>
+        <item>Dynamic content: live region updates announced (ARIA live)?</item>
+        <item>Can complete key user tasks end-to-end using only AT?</item>
+      </list>
+    </section>
+    <section name="Step 4: Cognitive Accessibility">
+      <list>
+        <item>Clear language: plain language, no jargon, Flesch reading ease >= 60.</item>
+        <item>Consistent navigation: same location throughout.</item>
+        <item>Error prevention: confirmation before destructive actions.</item>
+        <item>Error recovery: clear error messages with actionable solutions; non-blaming tone.</item>
+        <item>Timeouts: warnings before timeout; option to extend or eliminate.</item>
+        <item>Animation: can be paused; no excessive motion; respects prefers-reduced-motion.</item>
+      </list>
+    </section>
+    <section name="Step 5: Document and Fix">
+      <rule>
+        <statement>Every a11y bug must be linked to a WCAG criterion number and include a pre-fix screenshot; never close a bug without both.</statement>
+        <rationale>Without criterion mapping and evidence, audit drift is undetectable and VPAT/ACR cannot be produced from the issue tracker.</rationale>
+      </rule>
+    </section>
+    <section name="Priority Rubric">
+      <rule>
+        <statement>Assign every issue one of four priority levels based on whether it blocks access completely, creates a significant barrier, creates difficulty, or is an enhancement.</statement>
+        <rationale>Without explicit triage, all issues compete equally and critical ones are delayed. Priority drives fix timeline, not just backlog ordering.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[Priority  | Definition                                      | Fix Target
+Critical  | Blocks access completely (no workaround)         | Immediately / hotfix
+High      | Major barrier; workaround is difficult           | Current sprint
+Medium    | Creates difficulty; workaround available         | Next sprint
+Low       | Enhancement; not blocking any task              | Backlog]]></code>
+      </example>
+    </section>
+    <section name="CI Integration">
+      <rule>
+        <statement>Run axe + Pa11y on every PR against a known URL; snapshot axe JSON per release and diff against the previous release to detect regressions.</statement>
+        <rationale>Without a CI gate, a11y regressions accumulate silently between releases. Diffing JSON identifies whether a new release introduced new violations.</rationale>
+      </rule>
+      <list>
+        <item>Tag Playwright/Cypress tests with @a11y-critical for PR CI; run full crawl nightly only.</item>
+        <item>For SPA: wait for networkidle AND a route-specific selector before scanning to avoid pre-render snapshots.</item>
+        <item>Maintain an a11y-exemptions.yml with WCAG criterion + justification + expiry date — never silently ignore violations.</item>
+        <item>Dismiss cookie banners/consent overlays before measurement; log which cookie state was used.</item>
+      </list>
+    </section>
+    <section name="False Positive Management">
+      <antipattern>
+        <description>Accepting "0 axe violations" as compliance without checking the "incomplete" array.</description>
+        <reason>Items in the axe "incomplete" array are criteria the scanner could not evaluate (not "passed"). Treating incomplete as pass creates systematic blind spots.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Running agent "fix until axe passes" loops more than 3 iterations without an AT regression test.</description>
+        <reason>Automated fix loops produce ARIA soup that passes axe but breaks real screen readers. Limit auto-fix iterations and require a human screen reader check after each batch of fixes.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Pipeline">
+      <p>Step 1 (automated) and Step 2 (keyboard via Playwright) and Step 5 (triage and doc generation) are agent-driveable. Steps 3 (screen reader) and 4 (cognitive) require human-in-loop — agent prepares scripts and templates, a tester executes. Pipeline: scanner agent → keyboard-bot → triage agent → report writer.</p>
+      <list>
+        <item>Scanner agent: run axe + Pa11y, parse JSON, group violations by WCAG criterion with fix recommendation.</item>
+        <item>Triage agent: deduplicate by selector+rule across tools, map to WCAG 2.2 AA, assign priority per rubric.</item>
+        <item>Report writer: populate audit-report.md template from triage output; flag untested criteria as "Not Tested", never "Supports".</item>
+      </list>
+    </section>
+    <section name="Agent Integration">
+      <p>Drive Steps 1, 2 (keyboard via Playwright), and 5 (issue triage/doc generation) with Claude subagents. Steps 3 (screen reader) and Step 4 (cognitive) require human-in-loop — agent prepares scripts and result templates but a tester executes. Pipeline: scanner agent → keyboard-bot → triage agent → report writer. Persist axe JSON between runs to track regressions.</p>
+      <section name="Recommended Subagents">
+        <list>
+          <item>faion-sdd-executor-agent — wrap remediation as SDD tasks once issues are categorized; quality-gate enforces WCAG criterion check before "done".</item>
+          <item>General-purpose subagent driven by this methodology — runs axe-core + Pa11y, parses JSON, opens issues with WCAG criterion + code snippet.</item>
+          <item>A "screen reader script writer" subagent — generates NVDA/VoiceOver test scripts (utterance expectations) for a human tester to execute.</item>
+        </list>
+      </section>
+      <section name="Prompt Patterns">
+        <p>You are an a11y-testing agent. Run axe --stdout --tags wcag2aa,wcag22aa $URL, parse JSON, group violations by WCAG criterion, attach the offending HTML snippet (&lt;=20 lines) and a fix recommendation. Output a markdown table sorted by impact (critical → minor). Do NOT mark issues "passed" that axe couldn't test (look at "incomplete" array).</p>
+        <p>Given this axe JSON + Pa11y JSON, deduplicate by selector+rule, map to WCAG 2.2 AA criterion, assign priority {Critical, High, Medium, Low} per README rubric, and write findings into the Audit Template.</p>
+      </section>
+      <section name="CLI Tools">
+        <list>
+          <item>@axe-core/cli — Headless axe scan, JSON output. npm i -g @axe-core/cli; https://github.com/dequelabs/axe-core-npm</item>
+          <item>pa11y / pa11y-ci — CI-friendly WCAG scanner, sitemap support. npm i -g pa11y pa11y-ci; https://pa11y.org</item>
+          <item>lighthouse — Audit incl. accessibility category. npm i -g lighthouse</item>
+          <item>accessibility-insights — MS scanner CLI + tab-stop validator. https://accessibilityinsights.io</item>
+          <item>axe-playwright / jest-axe — In-test a11y assertions. npm i -D axe-playwright</item>
+          <item>cypress-axe — Cypress integration. npm i -D cypress-axe</item>
+          <item>Colour Contrast Analyser — Pixel-sample contrast on any screen. https://www.tpgi.com/color-contrast-checker/</item>
+          <item>unified-doc-parse-pdf + pac-2024 — PDF a11y validation. https://pdfua.foundation/en/pdf-accessibility-checker-pac/</item>
+        </list>
+      </section>
+      <section name="Services &amp; SaaS">
+        <list>
+          <item>Deque axe DevTools Pro — SaaS. API + GitHub Action. IGT (Intelligent Guided Tests), bigger rule pack than OSS axe-core.</item>
+          <item>Siteimprove — SaaS. REST API. Site-wide crawl, monitors regressions, exports VPAT data.</item>
+          <item>Tenon.io — SaaS. REST API. Pure API a11y scanner — easy for agent loops.</item>
+          <item>Level Access (formerly eSSENTIAL) — SaaS. API. Enterprise audit + manual testing services.</item>
+          <item>Stark — Figma plugin / SaaS. Plugin only (no agent API). Use during design phase.</item>
+          <item>Pa11y Dashboard — OSS. self-hosted, REST. Long-term tracking on multiple URLs.</item>
+          <item>Microsoft Accessibility Insights — OSS. CLI + extension. Free, includes guided manual checks.</item>
+          <item>Fable — SaaS (assistive tech user testing). Human-in-loop. Connect to real disabled testers — agent cannot replace this.</item>
+        </list>
+      </section>
+      <section name="Best Practices">
+        <list>
+          <item>Always run BOTH axe AND Pa11y — their rule sets diverge on ~15% of issues; union catches more.</item>
+          <item>Tag Playwright/Cypress tests with @a11y-critical and run on every PR; full crawl nightly only.</item>
+          <item>Snapshot axe JSON per release in reports/v&lt;x.y&gt;/axe.json — diff against last release to catch regressions.</item>
+          <item>For SPA: wait for networkidle AND a route-specific selector before scanning.</item>
+          <item>Combine automated keyboard test (page.keyboard.press('Tab') loop, capture :focus-visible) with axe to cover focus order.</item>
+          <item>Keep an "exempt" allowlist in repo (a11y-exemptions.yml) with WCAG criterion + reason + expiry — never silently ignore.</item>
+          <item>Test with at least two screen readers per platform (e.g., NVDA+JAWS on Windows) — they diverge in ARIA interpretation.</item>
+        </list>
+      </section>
+      <section name="AI-Agent Gotchas">
+        <list>
+          <item>Don't trust "0 violations" — always check axe incomplete and inapplicable arrays; "incomplete" means it gave up, not passed.</item>
+          <item>LLM-rewritten alt text often invents content — clamp to what's literally visible/in surrounding text; require human approval for images of people, charts, diagrams.</item>
+          <item>Headless Chrome reports different contrast than real device with OS-level color filters — sanity-check critical UI on hardware.</item>
+          <item>Agent loop "fix until axe passes" can produce ARIA soup that breaks real screen readers. Limit to &lt;=3 auto-fix iterations and require AT regression test.</item>
+          <item>Cookie banners/consent overlays distort scan results — dismiss them before measurement, log which cookie state you used.</item>
+          <item>WCAG 2.2 added 9 new criteria (e.g., 2.5.7 Dragging Movements, 2.5.8 Target Size Min). Pin axe-core >= 4.8 to include them.</item>
+          <item>Never let an agent close a a11y bug without linking to the WCAG criterion AND attaching pre/post screenshot — drift reviewers cannot audit otherwise.</item>
+        </list>
+      </section>
+    </section>
+    <templates>
+      <template path="templates/audit-report.md" purpose="Accessibility audit report template with executive summary, methodology table, findings by WCAG principle, and issue detail format"/>
+      <template path="templates/a11y-scan.sh" purpose="Shell script running axe + Pa11y + Lighthouse in sequence, outputting JSON reports and a summary.md"/>
+    </templates>
+    <see-also>
+      <link href="https://webaim.org/articles/testing/"/>
+      <link href="https://www.deque.com/blog/automated-testing-best-practices/"/>
+      <link href="https://www.w3.org/WAI/test-evaluate/preliminary/"/>
+      <link href="https://accessibilityinsights.io"/>
+      <link href="https://www.a11yproject.com/checklist/"/>
+      <link href="https://www.w3.org/WAI/WCAG22/quickref/"/>
+    </see-also>
+  </content>
+</methodology>
