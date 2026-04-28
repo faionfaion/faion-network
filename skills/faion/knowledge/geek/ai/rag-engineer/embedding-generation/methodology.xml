@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="embedding-generation">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Converts text chunks into dense vectors for storage in vector databases and semantic retrieval. Covers model selection, batching, caching, normalization, and provider integration.</summary>
+    <tags>
+      <tag>embeddings</tag>
+      <tag>vectors</tag>
+      <tag>semantic-search</tag>
+      <tag>rag</tag>
+      <tag>indexing</tag>
+    </tags>
+    <category>embedding</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+
+  <content>
+    <title>Embedding Generation</title>
+
+    <summary>Converts text chunks into dense vectors using an embedding model so they can be stored in a vector database and retrieved by semantic similarity. The indexing step takes {id, text} chunk dicts, batches them, and returns {id, embedding, model, dimensions} dicts. The query step embeds the user query with the same model and measures cosine similarity against the stored vectors.</summary>
+
+    <why>
+      <p>Semantic search requires all text to live in a shared vector space where distance reflects meaning. Without consistent embedding (same model, same preprocessing), similarity scores are meaningless — querying with a different model than was used for indexing returns garbage rankings. Batching and caching are required to make the embedding step economical at scale.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building the indexing step of any RAG pipeline (chunks to vectors).</item>
+        <item>Implementing semantic search over a document corpus.</item>
+        <item>Text clustering, deduplication by semantic similarity, or recommendation systems.</item>
+        <item>Evaluating embedding model options for a new project before committing to a provider.</item>
+        <item>Optimizing an existing embedding pipeline for cost, latency, or quality.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Exact-string keyword search is sufficient — embeddings add cost/latency with no precision gain for exact matches.</item>
+        <item>Very short texts (less than 10 tokens) — BM25 outperforms semantic similarity at this scale.</item>
+        <item>Corpus is in a low-resource language without a multilingual model — embeddings may produce near-random vectors.</item>
+        <item>Storage budget is constrained and 1536-3072 dimension vectors would overflow it — benchmark with reduced dimensions first.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="model-selection">
+      <p>Model selection is the highest-impact decision in embedding generation. Different models define incompatible vector spaces; mixing models within a single collection produces incorrect similarity scores.</p>
+
+      <rule testable="true">
+        <statement>Use the same embedding model for indexing and querying; never mix models within a single collection. Pin the model name and provider in a config file before indexing begins; treat any model change as a full re-index event. For OpenAI text-embedding-3 models, prefer native dimension reduction over post-hoc PCA when storage is constrained.</statement>
+        <rationale>Each model defines its own vector space. Querying with a different model than was used for indexing produces incorrect similarity scores because the vectors live in incompatible spaces. Config-pinning makes model changes explicit and prevents accidental drift. Native reduction (via the dimensions parameter) preserves the model's internal geometry; PCA applied after the fact discards directions the model considers important.</rationale>
+      </rule>
+
+      <example type="good" title="OpenAI text-embedding-3 with native dimension reduction">
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+
+client = OpenAI()
+
+def get_reduced_embedding(text: str, dimensions: int = 256) -> list[float]:
+    """Use native dimension reduction for storage savings."""
+    response = client.embeddings.create(
+        input=text,
+        model="text-embedding-3-small",
+        dimensions=dimensions
+    )
+    return response.data[0].embedding
+]]></code>
+        <note>Native reduction retains 95% quality at 33% of storage/cost when using 256 dimensions instead of full 1536 dims.</note>
+      </example>
+
+      <antipattern>
+        <description>Switching embedding models mid-pipeline because "the new model ranks higher on MTEB".</description>
+        <reason>Vector spaces are incompatible. Switching models invalidates all stored vectors — the entire collection must be re-indexed. This is an O(corpus size) operation that costs time and API budget.</reason>
+      </antipattern>
+    </section>
+
+    <section name="batching">
+      <p>Batching is essential for cost and speed. Single-text embedding calls waste API round-trip latency; batching cuts wall-clock time by 10-100x and reduces rate-limit exposure.</p>
+
+      <rule testable="true">
+        <statement>Always batch embedding requests; never call the API once per text in a loop. Cap OpenAI embedding batches at 2048 items; validate before sending to avoid a 400 error. Sort OpenAI batch response by item.index before mapping back to inputs.</statement>
+        <rationale>API round-trip latency dominates at small batch sizes. The API enforces a hard 2048-item-per-request limit and may return embeddings out of order. Skipping the sort step produces misaligned embeddings for shuffled input lists.</rationale>
+      </rule>
+
+      <example type="good" title="OpenAI batch embedding with sorting">
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+
+client = OpenAI()
+
+def get_embeddings_batch(
+    texts: list[str],
+    model: str = "text-embedding-3-small",
+    batch_size: int = 2048,
+) -> list[list[float]]:
+    """Embed texts in batches with correct index mapping."""
+    texts = [t.replace("\n", " ") for t in texts]
+    all_embeddings = []
+
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i : i + batch_size]
+        response = client.embeddings.create(input=batch, model=model)
+        # Critical: sort by index because API may return out of order
+        sorted_data = sorted(response.data, key=lambda x: x.index)
+        all_embeddings.extend([e.embedding for e in sorted_data])
+
+    return all_embeddings
+]]></code>
+        <note>Batching in chunks of 2048 (API limit) and sorting response by index is mandatory for correctness.</note>
+      </example>
+
+      <antipattern>
+        <description>Calling the embedding API once per text in a loop because "it's simpler".</description>
+        <reason>API round-trip latency is 0.5–2 seconds per call. Embedding 10,000 texts one-by-one takes hours; batching takes minutes. Batching is not optional.</reason>
+      </antipattern>
+    </section>
+
+    <section name="caching">
+      <p>Embeddings are expensive. Caching prevents re-embedding identical texts on re-indexing, which is a major hidden cost in production pipelines.</p>
+
+      <rule testable="true">
+        <statement>Cache embeddings keyed by hash(model + text); retrieve from cache before calling the API. Use SHA-256 for cache keys in production; MD5 has non-zero collision probability at billion-document scale.</statement>
+        <rationale>Repeated texts (common in RAG pipelines that re-ingest updated documents) waste API budget without caching. MD5 collisions exist in practice. A collision silently returns the wrong embedding for a text.</rationale>
+      </rule>
+
+      <example type="good" title="Embedding cache with SHA-256 keys">
+        <code lang="python"><![CDATA[
+import hashlib
+import json
+from pathlib import Path
+
+class EmbeddingCache:
+    """File-based embedding cache with SHA-256 keys."""
+
+    def __init__(self, cache_dir: str = ".embedding_cache"):
+        self.cache_dir = Path(cache_dir)
+        self.cache_dir.mkdir(exist_ok=True)
+
+    def _key(self, model: str, text: str) -> str:
+        """Generate SHA-256 key."""
+        combined = f"{model}:{text}".encode()
+        return hashlib.sha256(combined).hexdigest()
+
+    def get(self, model: str, text: str) -> list[float] | None:
+        """Retrieve embedding from cache."""
+        key = self._key(model, text)
+        path = self.cache_dir / f"{key}.json"
+        if path.exists():
+            with open(path) as f:
+                return json.load(f)
+        return None
+
+    def put(self, model: str, text: str, embedding: list[float]) -> None:
+        """Store embedding in cache."""
+        key = self._key(model, text)
+        path = self.cache_dir / f"{key}.json"
+        with open(path, "w") as f:
+            json.dump(embedding, f)
+]]></code>
+        <note>SHA-256 keys are collision-safe at scale. Cache is checked before any API call.</note>
+      </example>
+
+      <antipattern>
+        <description>Using MD5 for cache keys in production with billions of documents.</description>
+        <reason>MD5 collisions exist in practice. A collision silently returns the wrong embedding for a text. The probability becomes measurable at billion-document scale.</reason>
+      </antipattern>
+    </section>
+
+    <section name="normalization">
+      <p>Embedding normalization converts cosine similarity (angle between vectors) to a dot product operation, which is faster on most vector databases.</p>
+
+      <rule testable="true">
+        <statement>Normalize embeddings to unit length before storing when cosine similarity is the intended metric. Guard against zero-length vectors before normalizing; skip or flag them rather than dividing by zero.</statement>
+        <rationale>Pre-normalization reduces query-time computation to a dot product, which is faster than the full cosine formula and numerically identical for unit vectors. Empty strings and whitespace-only texts can produce near-zero vectors that cause division-by-zero or NaN propagation.</rationale>
+      </rule>
+
+      <example type="good" title="Safe normalization with zero-guard">
+        <code lang="python"><![CDATA[
+import numpy as np
+
+def normalize_embedding(embedding: np.ndarray) -> np.ndarray:
+    """Normalize to unit length, guarding against zero vectors."""
+    norm = np.linalg.norm(embedding)
+    return embedding if norm == 0 else embedding / norm
+
+def normalize_batch(embeddings: np.ndarray) -> np.ndarray:
+    """Batch normalization with zero guard."""
+    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+    norms[norms == 0] = 1  # avoid division by zero on zero vectors
+    return embeddings / norms
+]]></code>
+        <note>Checks for zero-length vectors and avoids division-by-zero NaN.</note>
+      </example>
+
+      <antipattern>
+        <description>Using Euclidean distance on unnormalized vectors when cosine similarity was intended.</description>
+        <reason>Euclidean distance conflates vector magnitude with direction. Cosine similarity requires normalization to measure directional agreement alone. Using the wrong metric silently produces wrong rankings.</reason>
+      </antipattern>
+    </section>
+
+    <section name="provider-integration">
+      <p>Different embedding providers have different APIs, rate limits, and strengths. Provider choice depends on privacy, cost, quality, and multilingual support.</p>
+
+      <rule testable="true">
+        <statement>For OpenAI, use text-embedding-3-small for cost ($0.02/1M tokens) and text-embedding-3-large for quality. For Cohere, always pass input_type parameter: "search_document" for indexing, "search_query" for query embedding; omitting this degrades retrieval quality by 5-10%. For local embedding (SentenceTransformers), instantiate the model once per process — multiple instances OOM on GPU. For Ollama, use SentenceTransformers instead of Ollama's per-text embedding loop, which is O(n) API calls.</statement>
+        <rationale>text-embedding-3-small is the best cost/quality ratio for most RAG systems. Cohere's input_type tunes embeddings for asymmetric retrieval and is a free 5-15% quality boost. SentenceTransformer instances load multi-GB models into RAM; duplicates cause OOM. Ollama's per-call overhead makes single-text embedding 10-50x slower than batched local models.</rationale>
+      </rule>
+
+      <example type="good" title="OpenAI batch embedding">
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+
+client = OpenAI()
+
+def get_embeddings_batch(
+    texts: list[str],
+    model: str = "text-embedding-3-small",
+    batch_size: int = 2048,
+) -> list[list[float]]:
+    """Batch embeddings with newline normalization."""
+    texts = [t.replace("\n", " ") for t in texts]
+    all_embeddings = []
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i : i + batch_size]
+        response = client.embeddings.create(input=batch, model=model)
+        sorted_data = sorted(response.data, key=lambda x: x.index)
+        all_embeddings.extend([e.embedding for e in sorted_data])
+    return all_embeddings
+]]></code>
+        <note>OpenAI's best practice: batch in chunks of 2048, sort by index, replace newlines.</note>
+      </example>
+
+      <example type="good" title="Cohere with input_type">
+        <code lang="python"><![CDATA[
+import cohere
+
+co = cohere.Client(api_key="YOUR_API_KEY")
+
+def get_cohere_embeddings(
+    texts: list[str],
+    input_type: str = "search_document",  # or "search_query"
+) -> list[list[float]]:
+    """
+    input_type tunes embeddings for asymmetric retrieval.
+    Use "search_document" when indexing, "search_query" when embedding queries.
+    """
+    response = co.embed(
+        texts=texts,
+        model="embed-english-v3.0",
+        input_type=input_type,
+        truncate="END",
+    )
+    return response.embeddings
+]]></code>
+        <note>input_type is mandatory for v3 models and improves retrieval quality by 5-10%.</note>
+      </example>
+
+      <example type="good" title="Local SentenceTransformers (instantiate once)">
+        <code lang="python"><![CDATA[
+import torch
+from sentence_transformers import SentenceTransformer
+import numpy as np
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+# Instantiate ONCE per process — multiple instances OOM on GPU
+model = SentenceTransformer("BAAI/bge-large-en-v1.5", device=device)
+
+def get_local_embeddings_batch(
+    texts: list[str],
+    batch_size: int = 32
+) -> np.ndarray:
+    """Batch embedding with local model."""
+    return model.encode(
+        texts,
+        batch_size=batch_size,
+        show_progress_bar=True,
+        convert_to_numpy=True,
+        normalize_embeddings=True,
+    )
+]]></code>
+        <note>Global model instance prevents OOM. normalize_embeddings=True applies unit normalization.</note>
+      </example>
+
+      <antipattern>
+        <description>Using Ollama embeddings in a per-text loop because "it's local".</description>
+        <reason>Ollama has no batch endpoint; the loop is O(n) HTTP calls. For corpora of 10,000+ documents, this is impractically slow. Use SentenceTransformers instead for local batch embedding.</reason>
+      </antipattern>
+    </section>
+
+    <section name="pitfalls">
+      <p>Common errors that silently degrade retrieval quality or crash at scale.</p>
+
+      <rule testable="true">
+        <statement>Pre-check all texts for empty strings, whitespace-only, and token-limit violations before embedding — all three produce zero or truncated vectors. Embedding texts that exceed the model's token limit without truncation loses the tail content. Instantiate SentenceTransformer models once per process; multiple instances load multi-GB models and OOM on limited RAM. Do not instantiate multiple SentenceTransformer model instances in the same process.</statement>
+        <rationale>Empty texts produce near-zero vectors that fail normalization. Token truncation is silent in some SDKs but loses tail content. SentenceTransformer instances load multi-GB models into GPU/CPU RAM; two instances of bge-large-en-v1.5 on 16 GB GPU will OOM. Model version changes invalidate stored vectors; agents must version collections and re-embed on deprecation.</rationale>
+      </rule>
+
+      <example type="good" title="Text validation before embedding">
+        <code lang="python"><![CDATA[
+def validate_text_for_embedding(text: str, token_limit: int = 8191) -> bool:
+    """Validate text before embedding."""
+    if not text or not text.strip():
+        return False  # Empty or whitespace-only
+
+    # Rough token count (words ≈ tokens)
+    token_count = len(text.split())
+    if token_count > token_limit:
+        return False  # Exceeds model's token limit
+
+    return True
+
+# Pre-filter before embedding
+valid_texts = [t for t in texts if validate_text_for_embedding(t)]
+]]></code>
+        <note>Validates before API call to prevent wasted embeddings on invalid inputs.</note>
+      </example>
+
+      <antipattern>
+        <description>Embedding texts that exceed the model's token limit without validation.</description>
+        <reason>Some SDKs silently truncate overlong inputs; others raise an error. Either way, the tail of the text is lost, producing embeddings that do not represent the full content.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Initializing multiple SentenceTransformer models in the same process for "parallelism".</description>
+        <reason>Each model loads multi-GB of weights into RAM. Two instances of bge-large-en-v1.5 (1.3 GB each) exhaust a 16 GB GPU. Use a single model instance with higher batch_size instead.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/embedding_service.py" purpose="Provider-dispatching EmbeddingService with caching, batch support, and similarity computation."/>
+      <template path="templates/embedding_cache.py" purpose="File-based EmbeddingCache with SHA-256-keyed storage for embedding reuse."/>
+    </templates>
+
+    <see-also>
+      <ref slug="embedding-models"/>
+      <ref slug="embedding-applications"/>
+      <ref slug="db-qdrant"/>
+      <ref slug="db-weaviate"/>
+      <ref slug="db-chroma"/>
+      <ref slug="rag-architecture"/>
+      <ref slug="chunking-basics"/>
+      <link href="https://platform.openai.com/docs/guides/embeddings"/>
+      <link href="https://www.sbert.net/"/>
+      <link href="https://huggingface.co/spaces/mteb/leaderboard"/>
+      <link href="https://docs.cohere.com/reference/embed"/>
+      <link href="https://huggingface.co/BAAI/bge-m3"/>
+      <link href="https://ollama.com/blog/embedding-models"/>
+    </see-also>
+  </content>
+</methodology>
