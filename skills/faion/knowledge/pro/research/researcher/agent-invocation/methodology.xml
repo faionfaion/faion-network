@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="agent-invocation">
+  <metadata>
+    <tier>pro</tier>
+    <group>research</group>
+    <domain>researcher</domain>
+    <summary>Reference for invoking faion-researcher agents from orchestrators. Covers two agents with 9 modes and a sequential workflow pattern where each output feeds the next to .aidocs/product_docs/.</summary>
+    <tags>
+      <tag>research</tag>
+      <tag>agents</tag>
+      <tag>orchestration</tag>
+      <tag>workflow</tag>
+      <tag>subagents</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Agent Invocation Reference</title>
+
+    <summary>Reference for invoking faion-researcher agents from orchestrators. Covers two agents (faion-research-agent with 9 modes, faion-domain-checker-agent) and a sequential workflow pattern where each mode's output feeds the next. All outputs land in .aidocs/product_docs/.</summary>
+
+    <why>
+      <p>The mode-dispatch pattern in the original README uses pseudocode that does not match Claude Code's actual Task tool semantics — subagent_type must match the literal name: in agent frontmatter, not a runtime string. This reference documents the correct invocation shape, sequential constraint, and output-path convention so orchestrators do not hallucinate mode routing or trigger rate-limit cascades from parallel calls.</p>
+      <p>A full 9-mode run with deep mode (8-12 searches each) emits 60-100k tokens of output. Pipe each mode through a summarizer agent or persist to disk and reload only the executive summary to manage context.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Orchestrating a multi-stage research run (ideas → market → competitors → pains → personas → validate → niche → pricing → names → domain-check).</item>
+        <item>Picking the right mode for a user "research X" request without polluting parent context.</item>
+        <item>Naming + domain-check workflows where names mode must chain to faion-domain-checker-agent.</item>
+        <item>Ensuring outputs land deterministically in .aidocs/product_docs/&lt;file&gt;.md for downstream consumption by faion-sdd or faion-product-manager.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-off factual lookup (single TAM number, single competitor URL) — call WebSearch directly; a research subagent costs 10x more tokens.</item>
+        <item>Internal codebase research — use Grep/Glob/Agent instead; this agent is tuned for external web sources.</item>
+        <item>Purely creative ideation (brand voice, copy variants) — use faion-brainstorm instead of mode: ideas.</item>
+        <item>Project already has fresh market-research.md / competitive-analysis.md — re-running burns budget; read existing files first.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="nine-research-modes">
+      <p>Nine operational modes for faion-research-agent plus domain checker, with correct invocation pattern, required context, and output file for each. Use faion-research-agent for all research modes. Use faion-domain-checker-agent only for domain and handle availability checks. Each agent is tuned for a specific scope; mixing them duplicates context and degrades output quality. Model selection by task: haiku for data lookup (ideas, names, domain-check); sonnet for pattern analysis (pains, personas, competitors, validate); opus for strategic synthesis (market, niche, pricing).</p>
+
+      <p>The mode invocation pattern is critical: pass the mode inside the prompt field, not in subagent_type. The subagent_type must match the literal name in the agent frontmatter file. Claude Code's Task tool resolves subagent_type against the agent file's name field. "faion-research-agent (mode: market)" is pseudocode — it does not route to a real agent.</p>
+
+      <example type="good" title="Correct mode invocation in prompt">
+        <code lang="python"><![CDATA[
+Task(
+    subagent_type="faion-research-agent",
+    prompt="Research TAM/SAM/SOM for {product}. Geography: {geo}. Vertical: {vertical}. "
+           "Output to .aidocs/product_docs/market-research.md. Cite every figure with "
+           "[Source](URL). If a figure is unavailable, write 'Data not available'."
+)
+        ]]></code>
+        <note>Mode is expressed in the prompt; subagent_type is the literal agent name.</note>
+      </example>
+
+      <example type="bad" title="Incorrect subagent_type with mode parenthetical">
+        <code lang="python"><![CDATA[
+Task(
+    subagent_type="faion-research-agent (mode: market)",
+    prompt="Research market for {product}"
+)
+        ]]></code>
+        <note>subagent_type string does not match any agent frontmatter name. Task will fail to route.</note>
+      </example>
+
+      <p>Nine modes with required context and output file path:</p>
+      <list>
+        <item>ideas — context: user skills, available time, motivation | output: idea-validation.md | model: haiku</item>
+        <item>market — context: product description, geography, industry | output: market-research.md | model: opus</item>
+        <item>competitors — context: product description, key features, target market | output: competitive-analysis.md | model: opus</item>
+        <item>pains — context: idea or product description | output: pain-points.md | model: sonnet</item>
+        <item>personas — context: product, target market, known segments | output: user-personas.md | model: sonnet</item>
+        <item>validate — context: problem statement | output: problem-validation.md | model: sonnet</item>
+        <item>niche — context: idea description | output: niche-evaluation.md | model: sonnet</item>
+        <item>pricing — context: product, geography | output: pricing-research.md | model: opus</item>
+        <item>names — context: product description, target audience, tone | output: name-candidates.md | model: haiku</item>
+      </list>
+
+      <rule>
+        <statement>Always pass geography explicitly in the prompt for market, pricing, and competitors modes.</statement>
+        <rationale>Without geography the agent returns US-default figures; EU/UA context shifts pricing by ~30% and competitor rankings substantially.</rationale>
+      </rule>
+
+      <p>faion-domain-checker-agent checks .com, .io, .co domains plus GitHub username and Twitter handle. Chain it after names mode: generate 20 names, let the checker filter to survivors, present only those with .com available or acquirable at reasonable cost.</p>
+
+      <rule>
+        <statement>Generate 20 names before invoking domain check. Do not generate 5 and check — zero survivors occur ~70% of the time with a small candidate pool.</statement>
+        <rationale>Domain availability is a hard filter; a larger candidate pool absorbs collisions without restarting the ideation loop.</rationale>
+      </rule>
+    </section>
+
+    <section name="multi-mode-workflows">
+      <p>Always run research modes sequentially, never in parallel. Each mode's output must exist before the next mode starts. Parallel mode invocations hit shared WebSearch quota (HTTP 429s), produce partial outputs, and corrupt the .aidocs/product_docs/ state. Nothing in the code enforces this; the orchestrator must implement it explicitly with a semaphore or sequential loop.</p>
+
+      <p>Pass the file path of prior outputs to subsequent mode prompts, not the file contents. The subagent re-reads the file on demand, saving 5-20k tokens per call while giving the subagent full access to the prior output.</p>
+
+      <rule>
+        <statement>Run pains mode before validate mode. Never run validate before a pain inventory exists.</statement>
+        <rationale>Validation without a pain inventory becomes self-confirmation. The pains output grounds the validate prompts in real user language.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Every output file must start with a 1-line provenance header: comment with agent name, mode, and ISO date.</statement>
+        <rationale>Lets faion-improver audit staleness and detect when a pricing or competitor report needs a refresh.</rationale>
+      </rule>
+
+      <example type="good" title="Provenance header in output file">
+        <code lang="markdown"><![CDATA[
+<!-- generated: faion-research-agent mode=market on 2026-04-26 -->
+        ]]></code>
+      </example>
+
+      <p>Run modes in this order for a full package: ideas, pains, niche, market, competitors, personas, validate, pricing, names. After names, chain to faion-domain-checker-agent. All outputs go to .aidocs/product_docs/.</p>
+
+      <p>Output location map:</p>
+      <list>
+        <item>.aidocs/product_docs/idea-validation.md — ideas mode</item>
+        <item>.aidocs/product_docs/market-research.md — market mode</item>
+        <item>.aidocs/product_docs/competitive-analysis.md — competitors mode</item>
+        <item>.aidocs/product_docs/pain-points.md — pains mode</item>
+        <item>.aidocs/product_docs/user-personas.md — personas mode</item>
+        <item>.aidocs/product_docs/problem-validation.md — validate mode</item>
+        <item>.aidocs/product_docs/niche-evaluation.md — niche mode</item>
+        <item>.aidocs/product_docs/pricing-research.md — pricing mode</item>
+        <item>.aidocs/product_docs/name-candidates.md — names mode</item>
+        <item>.aidocs/product_docs/executive-summary.md — full research package synthesis</item>
+      </list>
+
+      <p>Error handling when research modes fail:</p>
+      <list>
+        <item>No ideas resonate — try a different framework, ask about hobbies and daily frustrations</item>
+        <item>No pain points found — broaden search to adjacent problems and communities</item>
+        <item>High competition — look for underserved segment rather than abandoning the idea</item>
+        <item>All .com taken — suggest .io, check premium domain acquirability</item>
+        <item>Trademark conflict detected — remove name from candidates, note reason in output</item>
+        <item>Data not found — write "Data not available" in output file, do not estimate</item>
+      </list>
+    </section>
+
+    <section name="agent-invocation-gotchas">
+      <p>Critical failure modes when invoking research agents: routing mismatches, hallucinated URLs, context overflow, and human-in-the-loop checkpoints.</p>
+
+      <antipattern>
+        <description>Using subagent_type="faion-research-agent (mode: market)" expecting it to dispatch to a market-specific agent.</description>
+        <reason>Claude Code resolves subagent_type against the literal name field in agent frontmatter. The parenthetical is ignored or causes a lookup failure. Pass mode in the prompt.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Launching 9 parallel Task calls for all research modes simultaneously.</description>
+        <reason>Nothing prevents parallel launch in code. The result is shared WebSearch quota exhaustion, HTTP 429 errors, partial outputs, and corrupted .aidocs/product_docs/ state. Use sequential execution enforced by the orchestrator.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Accepting G2, Capterra, or Trustpilot URLs without WebFetch verification.</description>
+        <reason>Models invent plausible-looking slugs (g2.com/products/plausible-name) that return 404. Require a WebFetch round-trip for every URL before it appears in output.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Running pricing mode without specifying geography.</description>
+        <reason>Without geography the agent returns US-default pricing; EU/UA markets differ by ~30%. Always pass geography explicitly.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Creating personas from pains mode output that has no source cap.</description>
+        <reason>Without a cap (e.g. "top 10 pains, 3+ sources each") agents return 40+ pains with thin sourcing. Cap in the prompt; gate personas on pains existing first.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Reading all 9 mode output files into one executive-summary prompt.</description>
+        <reason>Nine verbose deep-run files total 60-100k tokens. Summarize each file to 2k tokens first, then synthesize the summaries.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using WebSearch alone for competitors or market modes.</description>
+        <reason>WebSearch returns snippets; modes like competitors need full pricing pages. Include WebFetch in the allowed-tools list alongside WebSearch.</reason>
+      </antipattern>
+
+      <rule>
+        <statement>Treat pricing and competitor mode outputs as stale after 3-6 months. Never trust an output older than the last release of any cited competitor.</statement>
+        <rationale>Competitor pricing, feature flags, and traction change faster than LLM training data. Stale competitive intelligence leads to wrong positioning decisions.</rationale>
+      </rule>
+
+      <p>Human-in-the-loop checkpoints:</p>
+      <list>
+        <item>After names mode output: human reviews trademark status before any domain purchase. USPTO TESS scraping is brittle; false negatives cost real money.</item>
+        <item>After personas mode: human reviews transcript citations. Any persona trait without a [transcript:line] citation is fiction.</item>
+        <item>Before merging executive summary into roadmap: human signs off on framing; this shapes roadmap conversations.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow-patterns">
+      <p>Drive faion-researcher from a parent orchestrator that owns the mode sequence and writes outputs to .aidocs/product_docs/. The parent calls Task once per mode, passes the previous mode's output path in the prompt for context-passing, and waits for each Task to return before launching the next. For naming workflows, chain mode: names → faion-domain-checker-agent and discard names with .com taken or trademark conflicts before the user sees them. Keep each subagent's tool list minimal (Read, Write, WebSearch, WebFetch) so it cannot accidentally edit code or call shell.</p>
+
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-research-agent — Orchestrator implementing the 9 modes. One agent file per mode is cleaner than runtime mode dispatch (lets you tune description, tools, model per mode: haiku for data lookup, sonnet for pattern analysis, opus for strategic positioning per README.md table).</item>
+        <item>faion-domain-checker-agent — Sonnet-tier; uses WebFetch against whois.com, domains.google, github.com/&lt;name&gt;, twitter.com/&lt;name&gt;. Returns availability table.</item>
+        <item>faion-sdd-executor-agent (this repo, agents/faion-sdd-executor-agent.md) — Consumes finished research artifacts to produce spec.md / design.md. Not part of the research loop itself; downstream consumer.</item>
+        <item>password-scrubber-agent (this repo) — Run before persisting any scraped content that may contain leaked tokens from forum dumps.</item>
+      </list>
+
+      <p>Prompt pattern for mode: market:</p>
+      <code lang="text"><![CDATA[
+Research TAM/SAM/SOM for {product}. Geography: {geo}. Vertical: {vertical}.
+Output to .aidocs/product_docs/market-research.md. Cite every figure with
+[Source](URL). If a figure is unavailable, write 'Data not available' — do
+not estimate. Read .aidocs/product_docs/idea-validation.md first if it
+exists. Return only the absolute path of the file you wrote.
+      ]]></code>
+
+      <p>Prompt pattern for names → domain check chain:</p>
+      <code lang="text"><![CDATA[
+Generate 15 names for {product_description}, tone={tone}. For each name,
+immediately invoke Task(faion-domain-checker-agent, '{name}'). Drop any
+name where .com is taken AND no premium acquirable, OR trademark conflict
+exists (USPTO TESS lookup). Persist survivors to
+.aidocs/product_docs/name-candidates.md sorted by score.
+      ]]></code>
+    </section>
+
+    <section name="tools-and-services">
+      <p>CLI tools for research orchestration:</p>
+      <list>
+        <item>gh — GitHub username/repo availability for naming mode | apt install gh · https://cli.github.com</item>
+        <item>whois — Direct domain lookup, faster than scraping registrars | apt install whois</item>
+        <item>dig +short &lt;name&gt;.com NS — Confirm domain has nameservers (parked vs taken) | iputils-host</item>
+        <item>tldextract (Python) — Parse domains from competitor URLs | pip install tldextract</item>
+        <item>tavily-python — Citation-quality search for mode: market/competitors | pip install tavily-python · https://tavily.com</item>
+        <item>perplexity API — High-citation answers for validate/pricing modes | https://docs.perplexity.ai</item>
+        <item>firecrawl CLI — Headless scrape of paywalled competitor docs | npm i -g @mendable/firecrawl-js</item>
+        <item>wappalyzer CLI — Detect competitor stack for mode: competitors | npm i -g wappalyzer-cli</item>
+        <item>simfin / yfinance — Public-company financials for TAM models | pip install yfinance</item>
+        <item>op (1Password CLI) — Pull research API keys from vault | https://developer.1password.com/docs/cli</item>
+      </list>
+
+      <p>Services and apps for research agents:</p>
+      <list>
+        <item>Tavily Search API (SaaS) — Yes, agent-friendly. REST + Python SDK, returns citations as structured JSON. Best default for WebSearch replacement when running research at scale.</item>
+        <item>Perplexity API (SaaS) — Yes, agent-friendly. /sonar endpoint returns answer+citations. Higher quality than raw search for validate mode.</item>
+        <item>Exa.ai (SaaS) — Yes, agent-friendly. Neural search, supports embeddings. Good for finding adjacent / similar companies in competitors.</item>
+        <item>Firecrawl (SaaS + OSS) — Yes, agent-friendly. Handles JS-rendered competitor sites. Fallback when WebFetch returns empty body.</item>
+        <item>SimilarWeb API (SaaS) — Partial, agent-friendly. Strict rate limits, expensive. Traffic estimates for competitors; usually overkill.</item>
+        <item>Crunchbase API (SaaS) — Yes, agent-friendly. Paid tier required. Funding data for competitors/market.</item>
+        <item>Google Trends (pytrends) (OSS wrapper) — Yes, agent-friendly. Unofficial, fragile. Search-volume signal for validate.</item>
+        <item>Reddit API (PRAW) (OSS wrapper) — Yes, agent-friendly. Rate limits OK with auth. Pain-point mining for pains mode.</item>
+        <item>Hacker News Algolia API (SaaS, free) — Yes, agent-friendly. No auth. Pain-point mining for pains mode.</item>
+        <item>G2 / Capterra (SaaS, no public API) — Scrape-only, fragile. Use Firecrawl, expect breakage every quarter.</item>
+        <item>USPTO TESS (Government) — Yes, agent-friendly. HTML scrape. Trademark conflict check for names mode.</item>
+        <item>Domainr API (SaaS) — Yes, agent-friendly. Domain availability across 500+ TLDs. Replaces multiple whois calls in domain-check.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>One mode = one file = one Task call. Never bundle 2 modes in one prompt — output gets entangled and re-runs become impossible.</item>
+        <item>Pass file paths of prior outputs to subsequent modes, not the file contents. The subagent re-Reads on demand. Saves 5–20k tokens per call.</item>
+        <item>Pin a model per mode in the agent file frontmatter: haiku for ideas/names/domain-check, sonnet for pains/personas/competitors/validate, opus for market/niche/pricing (matches the agent-selection table in README.md).</item>
+        <item>Run pains BEFORE validate. Validation without a pain inventory becomes self-confirmation. README's example sequences this correctly; preserve order.</item>
+        <item>For names mode, generate 20 and let faion-domain-checker-agent filter to 5. Generating 5 directly yields zero survivors ~70% of the time.</item>
+        <item>Every mode's output file MUST start with a 1-line provenance header: comment with agent name, mode, and ISO date. Lets faion-improver audit staleness later.</item>
+        <item>Keep WebFetch in the allowed-tools list — WebSearch alone returns snippets, and modes like competitors need full pricing pages.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/research-run.sh" purpose="Bash dispatcher that drives modes sequentially with output-path tracking."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/sub-agents"/>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/agent-sdk"/>
+      <link href="https://docs.tavily.com"/>
+      <link href="https://docs.perplexity.ai/docs/getting-started"/>
+      <link href="https://docs.firecrawl.dev"/>
+      <link href="https://tmsearch.uspto.gov"/>
+      <link href="https://domainr.com/docs/api"/>
+    </see-also>
+  </content>
+</methodology>
