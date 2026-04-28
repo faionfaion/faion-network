@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="writing-implementation-plans">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd-planning</domain>
+    <summary>Bridges design.md to executor-ready TASK files via an ordered, wave-structured plan. 11-phase process: prerequisites, WBS, dependencies, waves, critical path, risks, testing, rollout.</summary>
+    <tags>
+      <tag>implementation-plan</tag>
+      <tag>task-breakdown</tag>
+      <tag>waves</tag>
+      <tag>dependencies</tag>
+      <tag>100k-rule</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Writing Implementation Plans</title>
+
+    <summary>Bridges design.md (AD-X decisions) and executor-ready TASK files by producing an ordered, wave-structured implementation plan. The 11-phase writing process: load SDD context → prerequisites → WBS → dependency graph → wave analysis → phase definition → task format → critical path → risk assessment → testing strategy → rollout strategy. Output is implementation-plan.md; TASK_*.md files are created separately, wave by wave.</summary>
+
+    <why>
+      <p>Design documents are too high-level to act on directly — no ordering of operations, no dependency visibility, no success criteria per step. The impl-plan is the coordination artifact that lets faion-sdd-executor-agent process tasks in dependency order without re-reading the entire design. Wave-based decomposition also exposes parallelism opportunities and enforces the 100k token budget before any task file is written.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Design doc is finalized (Accepted status) and the feature is promoted to todo/ or in-progress/</item>
+        <item>Feature has 3+ components that interact and sequencing matters</item>
+        <item>Multiple waves of parallel tasks are possible (API before frontend, schema before service layer)</item>
+        <item>Handoff is needed between agents or sessions — the impl-plan is the coordination artifact</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Feature has fewer than 3 tasks — skip the plan, write TASK files directly</item>
+        <item>Spec or design doc is still in draft — writing the plan too early wastes tokens when requirements shift</item>
+        <item>Bug fixes — use a single TASK file</item>
+        <item>Exploratory spikes — impl-plans assume known solutions; spikes discover the solution</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="document-hierarchy">
+      <p>The implementation plan sits between design and execution:</p>
+      <list>
+        <item>Spec (FR-X): WHAT and WHY — requirements and acceptance criteria</item>
+        <item>Design (AD-X): HOW — architecture decisions, file structure, API contracts</item>
+        <item>Implementation Plan (TASK-XXX outline): IN WHAT ORDER — task breakdown, waves, token budgets</item>
+        <item>TASK_*.md files (executor input): WHAT EXACTLY — atomic work units with AC and file lists</item>
+      </list>
+      <rule>
+        <statement>Write the implementation plan only after design.md has Accepted status. Writing the plan on a Draft design wastes tokens when requirements shift.</statement>
+        <rationale>Implementation plans derived from Draft designs must be rewritten when the design changes. The cost of rewriting a plan is higher than the cost of waiting for design approval.</rationale>
+      </rule>
+    </section>
+
+    <section name="11-phase-writing-process">
+      <rule>
+        <statement>Execute all 11 phases in order. Do not skip prerequisites check (Phase 2) or risk assessment (Phase 9) — these are the phases most commonly omitted under time pressure.</statement>
+        <rationale>Skipped prerequisites cause execution blockers. Skipped risk assessment means the executor encounters surprises that require mid-execution plan changes, which are expensive.</rationale>
+      </rule>
+      <list>
+        <item>Phase 1: Load SDD context — read constitution.md, spec.md (extract FR-X), design.md (extract AD-X), features/done/ for patterns</item>
+        <item>Phase 2: Prerequisites check — external services, database schema, no circular dependencies, all ADs documented</item>
+        <item>Phase 3: WBS — list all CREATE/MODIFY/DELETE files, group into logical work units, apply 8-80 rule (not too big, not too small)</item>
+        <item>Phase 4: Dependency graph — map each task to its dependencies, verify no circular deps, identify critical path</item>
+        <item>Phase 5: Wave analysis — group independent tasks (Wave 1), tasks depending on Wave 1 (Wave 2), continue; define checkpoint criteria per wave</item>
+        <item>Phase 6: Phase definition — logical groupings above waves (e.g., Phase 1: Infrastructure, Phase 2: Core Logic)</item>
+        <item>Phase 7: Task format — fill TASK v2.0 format for Wave 1 only; later waves created after execution</item>
+        <item>Phase 8: Critical path analysis — mark longest dependency chain explicitly</item>
+        <item>Phase 9: Risk assessment — identify at least 3 risks with mitigation and contingency per risk</item>
+        <item>Phase 10: Testing strategy — unit, integration, E2E test requirements; quality gates per wave</item>
+        <item>Phase 11: Rollout strategy — deployment approach, data migrations, rollback trigger conditions</item>
+      </list>
+    </section>
+
+    <section name="wave-analysis-rules">
+      <rule>
+        <statement>Wave 1 must contain only tasks with zero dependencies. Agents can run them in parallel. If Wave 1 has no parallel-safe tasks, the dependency graph has a problem — review it.</statement>
+        <rationale>A Wave 1 with serial dependencies means the plan is not exploiting available parallelism. Review the dependency graph to identify incorrectly declared FS dependencies that should be concurrent.</rationale>
+      </rule>
+      <rule>
+        <statement>Define explicit checkpoint criteria between waves. The executor must verify all Wave N tasks pass before creating Wave N+1 task files.</statement>
+        <rationale>Without checkpoint criteria, a Wave 1 failure is not detected until Wave 2 executes and produces wrong results. Checkpoints enforce the gate before the cost of Wave 2 is incurred.</rationale>
+      </rule>
+    </section>
+
+    <section name="quality-gate-checklist">
+      <rule>
+        <statement>An implementation plan passes the quality gate only when all of these hold: every AD-X decision is mapped to at least one task, every FR-X requirement is mapped to at least one task, no task exceeds 100k token budget, dependency graph is acyclic, every task has testable success criteria, testing strategy covers happy path and error cases, at least 3 risks are identified with mitigation, critical path is marked explicitly.</statement>
+        <rationale>Each unchecked item represents a gap that will surface during execution at higher cost. The quality gate makes gaps explicit before tokens are spent on task execution.</rationale>
+      </rule>
+    </section>
+
+    <section name="common-mistakes">
+      <antipattern>
+        <description>Writing the implementation plan before design.md reaches Accepted status.</description>
+        <reason>Draft designs change. Plans written on Draft designs must be rewritten when requirements shift during design review.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Omitting test-writing tasks and CHANGELOG updates from the WBS.</description>
+        <reason>These tasks consume 20-40k tokens each but are consistently omitted. They must appear as explicit tasks with token estimates.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Implementation plan contradicting design.md on task scope or file targets.</description>
+        <reason>Agents silently follow the impl-plan when it contradicts design.md. Reconcile both documents before execution begins — the discrepancy may indicate a design error.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Token estimates are order-of-magnitude only with no breakdown.</description>
+        <reason>Unitemized estimates run 2-3x over in practice. Itemized estimates by file class are diagnosable when they overrun.</reason>
+      </antipattern>
+    </section>
+
+    <section name="rollout-strategy-requirements">
+      <rule>
+        <statement>Every implementation plan must include a rollout strategy with: deployment approach (all-at-once vs phased), data migration plan (if any), rollback trigger condition (specific metric or error rate that triggers rollback), and stakeholder communication plan.</statement>
+        <rationale>Generic rollout strategies ("deploy to production") provide no guidance when something goes wrong. A specific rollback trigger condition makes the decision mechanical rather than judgment-based under pressure.</rationale>
+      </rule>
+      <rule>
+        <statement>Include "rollback trigger" as a specific, measurable condition: "error rate exceeds 1% for 5 minutes" or "p95 latency exceeds 2000ms". Not "if something breaks".</statement>
+        <rationale>Vague rollback conditions mean the rollback decision is made under pressure by whoever is on-call. A measurable trigger removes judgment from the decision.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents conflate "design phase" and "implementation planning"; keep prompts scoped to one phase at a time</item>
+        <item>100k token rule applies to the agent session context, not just the task file — include codebase file reads in the budget</item>
+        <item>Agents will skip risk assessment unless the prompt explicitly requires it with "list at least 3 risks"</item>
+        <item>Wave boundaries are a human-in-loop checkpoint in multi-agent pipelines; one agent's output becomes the next agent's input</item>
+        <item>If impl-plan and design.md contradict each other, agents will silently follow impl-plan — always reconcile before execution</item>
+        <item>Token estimates in impl-plans are order-of-magnitude only; actual sessions can run 2-3x over</item>
+        <item>Wave sequencing breaks if dependency graph has cycles — agent may miss circular deps without explicit prompting</item>
+        <item>Critical path analysis requires accurate effort estimates; agents produce estimates that need human review</item>
+        <item>Rollout strategy section is often generated as generic; must be customized for the actual deployment topology</item>
+      </list>
+    </section>
+
+    <section name="where-it-fails-limitations">
+      <list>
+        <item>Wave sequencing breaks if dependency graph has cycles — agent may miss circular deps without explicit prompting</item>
+        <item>100k token rule applies per agent session, not per file; large codebases can exceed this even for "small" tasks</item>
+        <item>Critical path analysis requires accurate effort estimates; agents produce estimates that need human review</item>
+        <item>Rollout strategy section is often generated as generic; must be customized for the actual deployment topology</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/create-tasks.sh" purpose="Bash script: creates empty TASK_*.md stubs with objective, files, AC, and token budget fields from a task ID list"/>
+    </templates>
+
+    <see-also>
+      <ref slug="workflow-spec-phase"/>
+      <ref slug="workflow-design-phase"/>
+      <ref slug="impl-plan-100k-rule"/>
+      <ref slug="impl-plan-components"/>
+      <ref slug="task-creation-principles"/>
+    </see-also>
+  </content>
+</methodology>
