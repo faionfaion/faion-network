@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 solo/ux/ui-designer methodologies → methodology.xml (spatial-ux-fundamentals, tailwind-design-tokens, voice-ui-basics)
 - migrate: 3/3 solo/ux methodologies → methodology.xml (accessibility-specialist/visibility-of-system-status, ui-designer/design-tokens-fundamentals, ui-designer/prototyping)
 - migrate: 3/3 solo/sdd/sdd-planning methodologies → methodology.xml (workflow-spec-phase, workflows, writing-implementation-plans)
 - migrate: 3/3 solo/ux/accessibility-specialist methodologies → methodology.xml (help-documentation, match-real-world, recognition-over-recall)
