@@ -7,6 +7,10 @@
 - fix: trim methodology summary use-case-modeling
 - fix: trim methodology summary stakeholder-analysis
 - fix: trim methodology summary solution-assessment
+- fix: META_SUMMARY_LEN in growth-conversion-optimization, ab-testing-setup, activation-framework, growth-content-marketing, growth-copywriting-fundamentals, growth-customer-testimonials
+- fix: XML_PARSE unescaped & in activation-framework title
+- fix: UNKNOWN_TAG strong in event-sourcing-implementation
+- fix: MISSING_ATTR section name in growth-content-marketing, growth-copywriting-fundamentals, growth-customer-testimonials
 - migrate: 2/2 pro/marketing/ppc-manager methodologies → methodology.xml (google-search-ads, google-shopping-ads; feature-045 batch 303 — FINAL)
 - migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (ads-google-keywords, ads-google-reporting, google-pmax; feature-045 batch 302)
 - migrate: 2/3 geek/ux + pro/marketing methodologies → methodology.xml (multimodal-vui-design, ops-upselling-cross-selling; feature-045 batch 301)
