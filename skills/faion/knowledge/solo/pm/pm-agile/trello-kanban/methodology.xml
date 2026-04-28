@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="trello-kanban">
+  <metadata>
+    <tier>solo</tier>
+    <group>pm</group>
+    <domain>pm-agile</domain>
+    <summary>Trello is a card-based kanban tool for small teams. Work items move through 5-7 named lists with WIP limits embedded in names. Butler automation handles mechanical card moves without custom code.</summary>
+    <tags>
+      <tag>trello</tag>
+      <tag>kanban</tag>
+      <tag>pm</tag>
+      <tag>board</tag>
+      <tag>automation</tag>
+    </tags>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Trello Kanban</title>
+    <summary>Trello is a card-based kanban tool where work items move left-to-right through 5–7 named lists. Boards are the fastest PM setup for visual thinkers and non-technical stakeholders. Butler automation handles mechanical card moves without custom code. WIP limits are enforced by embedding them in list names (e.g., "In Progress [WIP:3]").</summary>
+    <why>
+      <p>Trello's visual model eliminates the overhead of database schemas and custom fields required by heavier tools. For small teams with linear flows, the board IS the process — no configuration layer between the team and their work. Butler rules handle 90% of repetitive moves (auto-archive, auto-assign) as English natural-language rules, keeping automation accessible to non-developers.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Small teams (2–8 people) needing a visual board fast without field configuration</item>
+        <item>Non-technical stakeholders (marketing, ops, content) who find Jira or Linear intimidating</item>
+        <item>Projects with a simple linear flow: cards move left-to-right through defined stages</item>
+        <item>Butler automation covers most repetitive moves without custom code</item>
+        <item>Prototyping a new workflow before committing to a heavier tool</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Engineering teams needing native Git/PR integration — Trello's GitHub Power-Up is shallow</item>
+        <item>Projects requiring sub-tasks, epics, or multi-level hierarchy — cards are flat; checklists are a poor substitute</item>
+        <item>Teams needing velocity tracking, cycle time analytics, or burndown charts without third-party Power-Ups</item>
+        <item>Large backlogs (500+ cards) — board performance degrades and visual scanning becomes impractical</item>
+        <item>Organizations requiring SSO, audit logs, or enterprise compliance — Enterprise plan only</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="board-setup">
+      <title>Trello Board Structure and Card Anatomy</title>
+      <p>Core patterns for structuring Trello boards: list naming with WIP limits, card anatomy, and label system.</p>
+
+      <section name="board-structure">
+        <title>Board Structure</title>
+        <rule testable="true">
+          <statement>Keep boards to 5–7 lists maximum; embed WIP limits directly in list names.</statement>
+          <rationale>Visual scanning degrades beyond 7 lists; embedding WIP limits ("In Progress [WIP:3]") makes limits visible to humans and queryable by agents without a separate config file.</rationale>
+        </rule>
+        <example type="good">
+          <note>Basic kanban: Backlog, To Do (This Sprint), In Progress [WIP:3], In Review [WIP:2], Done</note>
+        </example>
+        <example type="good">
+          <note>Enhanced: Icebox, Backlog, Ready for Dev, In Development [WIP:3], Code Review [WIP:2], QA [WIP:2], Done, Archive</note>
+        </example>
+        <antipattern>
+          <description>Using 10+ lists to model every possible state.</description>
+          <reason>Board becomes unreadable; WIP limits are meaningless across too many stages.</reason>
+        </antipattern>
+      </section>
+
+      <section name="card-anatomy">
+        <title>Card Anatomy</title>
+        <rule testable="true">
+          <statement>Use custom fields (Story Points, Sprint) instead of encoding metadata in card titles.</statement>
+          <rationale>Agents can query custom fields directly via API with customFieldItems=true; parsing metadata from titles requires fragile string matching.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>One deliverable per card; use checklists for subtasks, not separate cards.</statement>
+          <rationale>Atomic cards keep WIP limits meaningful and flow metrics accurate.</rationale>
+        </rule>
+        <reference path="templates/card-feature.md">Feature card description template</reference>
+        <reference path="templates/card-bug.md">Bug report card template</reference>
+      </section>
+
+      <section name="label-system">
+        <title>Label System</title>
+        <rule testable="true">
+          <statement>Limit labels to 8–12; use one type label per card (Feature OR Bug, not both).</statement>
+          <rationale>Over-labeling creates noise; type exclusivity makes pie-chart reporting accurate.</rationale>
+        </rule>
+        <example type="good">
+          <note>Type labels: Feature (green), Bug (red), Tech Debt (orange), Docs (purple). Priority labels: P0-Critical (red), P1-High (orange), P2-Medium (yellow), P3-Low (blue). State labels: Blocked (black), Quick Win (lime).</note>
+        </example>
+        <antipattern>
+          <description>Creating labels per team member or per sprint.</description>
+          <reason>Labels multiply unboundedly; use custom fields for sprint and assignee metadata instead.</reason>
+        </antipattern>
+      </section>
+
+      <section name="custom-fields">
+        <title>Custom Fields</title>
+        <rule testable="true">
+          <statement>Define custom fields: Story Points (number), Sprint (dropdown), Estimate (dropdown: XS/S/M/L/XL), Component (dropdown), PR Link (text).</statement>
+          <rationale>Custom fields enable agent queries and reporting without text parsing; dropdown fields prevent free-text variants.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="automation">
+      <title>Trello Butler Automation and Power-Ups</title>
+      <p>Butler rules, board buttons, essential Power-Ups, and Trello REST API patterns for automation.</p>
+
+      <section name="butler-automation">
+        <title>Butler Automation</title>
+        <rule testable="true">
+          <statement>Use Butler rules for mechanical card moves; use Butler buttons for triggered multi-step workflows that require human initiation (Start Work, Submit for Review, Archive Completed).</statement>
+          <rationale>Rules run automatically and should be reserved for deterministic transitions; buttons give humans control over multi-step state changes that should not run without intent.</rationale>
+        </rule>
+        <example type="good">
+          <note>Rule: "When all checklists on a card are completed → move card to Done." Button: "Start Work → move to In Development + add me + set due date 3 working days."</note>
+        </example>
+        <example type="bad">
+          <note>Using Butler to auto-move cards to Done based on due date passing — this archives incomplete work silently.</note>
+        </example>
+        <reference path="templates/butler-rules.yaml">Butler automation rule and button examples</reference>
+      </section>
+
+      <section name="essential-power-ups">
+        <title>Essential Power-Ups</title>
+        <rule testable="true">
+          <statement>Enable these Power-Ups in order of value: Butler (automation), Custom Fields (metadata), Card Aging (stale detection), Calendar (due date visualization). Add GitHub and Slack only if the team actively uses both.</statement>
+          <rationale>Free and Standard plans allow 1 Power-Up on free tier; prioritize automation and metadata over visualization. Card Aging surfaces stale work passively without a separate process.</rationale>
+        </rule>
+      </section>
+
+      <section name="trello-rest-api">
+        <title>Trello REST API</title>
+        <rule testable="true">
+          <statement>Always request customFieldItems=true when fetching cards that need custom field values; resolve member IDs to names via GET /1/members/{id} before producing human-readable reports.</statement>
+          <rationale>The default card response omits custom field values; member IDs are UUIDs that agents must resolve to names for any report a human will read.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Archive cards via PUT /1/cards/{id}?closed=true; never delete cards.</statement>
+          <rationale>Archived cards remain queryable via GET /boards/{id}/cards?filter=closed for history and metrics; deleted cards are unrecoverable.</rationale>
+        </rule>
+        <antipattern>
+          <description>Registering webhooks per card instead of per board.</description>
+          <reason>Per-card webhooks must be re-registered whenever a card is copied or the board is recreated; board-level webhooks catch all card events in one stream.</reason>
+        </antipattern>
+      </section>
+    </section>
+
+    <section name="agent-integration">
+      <title>Trello Agent Integration and Gotchas</title>
+      <p>Agentic workflow patterns, recommended subagents, API gotchas, and best practices for Claude agents using the Trello REST API.</p>
+
+      <section name="agentic-workflow">
+        <title>Agentic Workflow</title>
+        <rule testable="true">
+          <statement>Agents must request customFieldItems=true in card list queries and resolve member IDs to names before producing any human-readable output.</statement>
+          <rationale>Default card responses omit custom fields; member IDs (UUIDs) are meaningless to humans in reports. Both require extra API calls that must be built into the agent pipeline, not added ad-hoc.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Register webhooks at board level, not per-card; always compare incoming webhook payloads against cached state to determine what changed — Trello sends the full card object on every event, not a diff.</statement>
+          <rationale>Board-level webhooks survive card copies and board recreations; without diff comparison an agent cannot determine whether the label changed, the due date changed, or both.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Require human approval before bulk label changes or bulk archiving — there is no bulk undo in Trello.</statement>
+          <rationale>Bulk operations without human review are irreversible; a single bad filter can archive hundreds of active cards.</rationale>
+        </rule>
+      </section>
+
+      <section name="butler-race-condition">
+        <title>Butler Race Condition</title>
+        <rule testable="true">
+          <statement>When an agent creates a card and immediately queries it, add a 2-second delay before the query — Butler rules run asynchronously and the card may not yet reflect applied labels or moves.</statement>
+          <rationale>Butler rule execution is async; the agent's read immediately after write may see the pre-Butler state, producing incorrect validation results.</rationale>
+        </rule>
+      </section>
+
+      <section name="rate-limits">
+        <title>Rate Limits</title>
+        <rule testable="true">
+          <statement>Trello API rate limit is 300 requests per 10 seconds per token. When looping over 500+ cards with custom field fetches, implement batching with a 100ms delay between requests to stay under the limit.</statement>
+          <rationale>Each custom-field fetch is a separate request; 500 cards with custom fields = 1000+ requests. Hitting the limit causes 429 errors that break the pipeline mid-run.</rationale>
+        </rule>
+      </section>
+
+      <section name="recommended-subagents">
+        <title>Recommended Subagents</title>
+        <list>
+          <item>trello-intake-agent: triggered by board webhook on card creation; validates description completeness, applies labels from title keywords, posts comment with next steps.</item>
+          <item>trello-standup-agent: queries "In Progress" and "Blocked" lists daily; formats standup digest; posts to Slack.</item>
+          <item>trello-archive-agent: weekly job; archives cards in "Done" list older than 7 days.</item>
+        </list>
+        <reference path="templates/prompt-fetch-cards.txt">Prompt for agent to fetch and report in-progress cards</reference>
+      </section>
+    </section>
+
+    <section name="best-practices">
+      <title>Best Practices</title>
+      <list>
+        <item>Define list names as verb phrases ("In Development", "Awaiting Review") so their meaning is unambiguous when agents filter by list name.</item>
+        <item>Store the Trello API key and user token in environment variables — never embed them in card descriptions or board names where they appear in webhook payloads.</item>
+        <item>Use custom fields (Story Points, Sprint) instead of encoding metadata in card titles — agents can query custom fields directly via API without text parsing.</item>
+        <item>Keep WIP limits explicit in list names ("In Progress [WIP:3]") so humans and agents can check limits without a separate config file.</item>
+        <item>Register webhooks at the board level, not per-card — fewer webhook registrations and you catch all card events in one stream.</item>
+        <item>Archive cards rather than deleting — archived cards are still queryable via GET /1/boards/{id}/cards?filter=closed for history.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <title>AI-Agent Gotchas</title>
+      <list>
+        <item>Custom field values are NOT included in the default GET /1/lists/{id}/cards response — agents must request customFieldItems=true as a query param or fetch separately.</item>
+        <item>Trello API returns member IDs, not names — agents must resolve IDs via GET /1/members/{id} to produce human-readable reports.</item>
+        <item>Butler rules run asynchronously; an agent that creates a card and immediately queries it may see the pre-Butler state (e.g., no label yet applied).</item>
+        <item>Webhook model: Trello sends the entire card object on every change, not a diff — agents must compare against cached state to know what changed.</item>
+        <item>Rate limit (300 req/10s) looks generous but is per token; an agent looping over 500 cards with extra custom-field fetches can hit it quickly.</item>
+        <item>Human checkpoint required before bulk label changes or bulk archiving — there is no bulk undo in Trello.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/card-feature.md" purpose="Feature card description template with user story and acceptance criteria"/>
+      <template path="templates/card-bug.md" purpose="Bug report card template with reproduction steps and severity"/>
+      <template path="templates/butler-rules.yaml" purpose="Butler automation rule examples: sprint flow, stale card alert, blocked escalation"/>
+      <template path="templates/prompt-fetch-cards.txt" purpose="Prompt for agent to fetch and report in-progress cards"/>
+    </templates>
+
+    <see-also>
+      <link href="https://developer.atlassian.com/cloud/trello/rest/"/>
+      <link href="https://trello.com/butler"/>
+      <link href="https://trello.com/power-ups"/>
+      <link href="https://trello.com/templates"/>
+    </see-also>
+  </content>
+</methodology>

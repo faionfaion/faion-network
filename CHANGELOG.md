@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 growth-marketer/gtm-strategist marketing methodologies → methodology.xml (plausible-analytics, growth-app-store-optimization, growth-cold-outreach)
 - migrate: 3/3 project-manager methodologies → methodology.xml (github-projects, linear-issue-tracking, notion-pm)
 - migrate: 3/3 gtm-strategist methodologies → methodology.xml (growth-hacker-news-launch, growth-indiehackers-strategy, growth-product-hunt-launch)
 - migrate: 3/3 content-marketer methodologies → methodology.xml (growth-podcast-strategy, growth-reddit-marketing, growth-tiktok-basics)
