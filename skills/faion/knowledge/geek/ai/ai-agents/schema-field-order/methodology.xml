@@ -1,0 +1,406 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="schema-field-order">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>In structured-output schemas, place dependent fields AFTER their dependencies so the model generates with full context and avoids hallucinations.</summary>
+    <tags>
+      <tag>schema</tag>
+      <tag>field-order</tag>
+      <tag>structured-output</tag>
+      <tag>autoregressive</tag>
+      <tag>chain-of-thought</tag>
+    </tags>
+    <category>so</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Schema Field Order — Autoregressive Steering</title>
+
+    <summary>In a structured-output schema (JSON schema, Pydantic model, tool input schema, response_format), place dependent fields AFTER their dependencies. The model generates left-to-right and each field can attend only to fields that came before it. If field B is conceptually derived from field A, A must appear earlier in the schema than B. This is free chain-of-thought: every "thought" field placed before the "answer" field acts as scratchpad, and every "input echo" field placed before "output" acts as a re-grounding step.</summary>
+
+    <why>
+      <p>LLMs are autoregressive: they emit tokens one at a time, each conditioned on everything emitted before. Structured output is no exception — schema fields are filled in declaration order. A field defined later in the schema sees all fields defined earlier as context, but not vice versa.</p>
+      <p>That means: putting summary before body forces the model to write the summary before it has written the body — it must guess what the body will say. Putting body before summary lets the summary actually summarize the produced body. This is free chain-of-thought: every "thought" field placed before the "answer" field acts as scratchpad. Every "input echo" field placed before "output" acts as a re-grounding step.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Whenever your schema has fields where one depends on another (almost always).</item>
+        <item>When you want a "reasoning before answer" effect without using extended-thinking APIs.</item>
+        <item>When you want a "title from content" pattern — content first, title last.</item>
+        <item>When you need re-grounding on long inputs — put a field that restates the question before the answer.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Schemas with no semantic dependency (pure parallel extraction of independent facts) — order does not matter.</item>
+        <item>When your runtime parses fields in arbitrary order (rare; almost all do declaration-order generation).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="the-rule">
+      <p>In a structured-output schema (JSON schema, Pydantic model, tool input schema, response_format), place dependent fields AFTER their dependencies. The model generates left-to-right and each field can attend only to fields that came before it.</p>
+      <p>If field B is conceptually derived from field A, A must appear earlier in the schema than B.</p>
+    </section>
+
+    <section name="canonical-examples">
+      <rule testable="true">
+        <statement>Every field that depends on another field must be positioned AFTER the fields it depends on in the schema declaration order.</statement>
+        <rationale>The model generates field values in declaration order. If field B is placed before field A, the model emits B's value without having generated A yet, forcing hallucination or placeholder values.</rationale>
+      </rule>
+
+      <example type="bad" title="Wrong order — title and summary before body">
+        <code lang="python"><![CDATA[
+class Article(BaseModel):
+    title: str        # generated first — model has no content yet, must hallucinate
+    summary: str      # also too early
+    body: str         # generated last — but title/summary already locked in
+]]></code>
+        <note>Result: title is generic, summary does not match the body that follows.</note>
+      </example>
+
+      <example type="good" title="Right order — body, then summary, then title">
+        <code lang="python"><![CDATA[
+class Article(BaseModel):
+    body: str         # generated first — full content
+    summary: str      # generated next — sees body, can compress it
+    title: str        # generated last — sees both, picks sharpest hook
+]]></code>
+        <note>Result: tight, coherent, no hallucinated title.</note>
+      </example>
+
+      <example type="good" title="Reasoning-before-answer">
+        <code lang="python"><![CDATA[
+class Decision(BaseModel):
+    options_considered: list[str]   # scratchpad
+    risks_per_option: list[str]     # more scratchpad
+    chosen_option: str              # final answer — sees its own reasoning
+]]></code>
+        <note>Each scratchpad field acts as intermediate thinking before the final decision.</note>
+      </example>
+
+      <example type="good" title="Re-ground on long input">
+        <code lang="python"><![CDATA[
+class Critique(BaseModel):
+    restate_user_intent: str        # forces the model to re-encode the question
+    findings: list[str]
+    overall_verdict: Literal["approve", "request_changes"]
+]]></code>
+        <note>The restate_user_intent field is only there to make the model re-encode the task before producing findings — it consistently improves quality on long inputs.</note>
+      </example>
+    </section>
+
+    <section name="common-anti-patterns">
+      <p>Several patterns violate the ordering rule and should be avoided:</p>
+      <antipattern>
+        <description>id field first based on title that does not exist yet.</description>
+        <reason>Model invents a placeholder, then writes a title that does not match the slug. Move id last.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>confidence before answer.</description>
+        <reason>Model commits to confidence with no answer to be confident about. Move confidence last.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>next_action before analysis.</description>
+        <reason>Action is decided blind. Analysis first, action last.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>tags before summary.</description>
+        <reason>Tags pulled from thin air. Summary first, tags last.</reason>
+      </antipattern>
+    </section>
+
+    <section name="field-description-reinforcement">
+      <p>Even with correct order, write the description to make the dependency explicit:</p>
+      <code lang="python"><![CDATA[
+class Article(BaseModel):
+    body: str = Field(description="Full article content; write this first.")
+    title: str = Field(description="A sharp title derived from the body above. 6-10 words.")
+]]></code>
+      <p>Field descriptions ARE part of the prompt the model sees during generation; the description tells it both what the field is and that it should look back at the previous fields.</p>
+    </section>
+
+    <section name="verifying-the-order">
+      <p>Run the same task with both orders, compare:</p>
+      <list>
+        <item>Coherence: do the dependent fields actually reflect the source fields?</item>
+        <item>Hallucination rate: how often does the early field commit to something the later field contradicts?</item>
+        <item>Token cost: reversed order is usually FASTER overall because the model is not backtracking.</item>
+      </list>
+    </section>
+
+    <section name="news-article-generation-example">
+      <p>Example 1: News article generation from neromedia.</p>
+      <example type="bad" title="Wrong: title, hook, body">
+        <code lang="python"><![CDATA[
+class TGPost(BaseModel):
+    title: str
+    hook: str
+    body: str
+]]></code>
+        <note>Result: title is generic, hook does not match the body that follows.</note>
+      </example>
+
+      <example type="good" title="Right: body, hook, title">
+        <code lang="python"><![CDATA[
+class TGPost(BaseModel):
+    body: str   # 200-500 words
+    hook: str   # one-line cliff-hanger derived from body
+    title: str  # 6-10 word title derived from body+hook
+]]></code>
+        <note>Result: tight, coherent, no hallucinated title.</note>
+      </example>
+    </section>
+
+    <section name="code-review-example">
+      <p>Example 2: Code review.</p>
+      <example type="bad" title="Wrong: verdict, issues, summary">
+        <code lang="python"><![CDATA[
+class Review(BaseModel):
+    verdict: Literal["approve", "request_changes"]
+    issues: list[Issue]
+    summary: str
+]]></code>
+      </example>
+
+      <example type="good" title="Right: issues, summary, verdict">
+        <code lang="python"><![CDATA[
+class Review(BaseModel):
+    issues: list[Issue]                              # find issues first
+    summary: str                                     # summarize the findings
+    verdict: Literal["approve", "request_changes"]   # decide based on summary
+]]></code>
+      </example>
+    </section>
+
+    <section name="research-then-answer">
+      <p>Example 3: Research-then-answer.</p>
+      <example type="bad" title="Wrong: final_answer, sources, reasoning">
+        <code lang="python"><![CDATA[
+class Answer(BaseModel):
+    final_answer: str
+    sources_used: list[str]
+    reasoning: str
+]]></code>
+      </example>
+
+      <example type="good" title="Right: sources, reasoning, final_answer">
+        <code lang="python"><![CDATA[
+class Answer(BaseModel):
+    sources_used: list[str]
+    reasoning: str
+    final_answer: str
+]]></code>
+      </example>
+    </section>
+
+    <section name="slug-from-title-from-content">
+      <p>Example 4: Slug from title from content.</p>
+      <code lang="python"><![CDATA[
+class Article(BaseModel):
+    body: str
+    title: str
+    slug: str  # derived from title — must come AFTER title
+]]></code>
+    </section>
+
+    <section name="echo-input-first-long-context">
+      <p>Example 5: Echo input first (long-context).</p>
+      <code lang="python"><![CDATA[
+class TaskBreakdown(BaseModel):
+    restate_goal: str             # rewrites the goal in own words
+    constraints_observed: list[str]
+    subtasks: list[Subtask]
+]]></code>
+      <p>The restate_goal field is only there to make the model re-encode the task before producing the breakdown — it consistently improves quality on long inputs.</p>
+    </section>
+
+    <section name="multi-step-pipeline">
+      <p>Example 6: Multi-step pipeline.</p>
+      <p>Stage 1 schema (filter):</p>
+      <code lang="python"><![CDATA[
+class Filter(BaseModel):
+    rationale: str
+    keep: bool
+]]></code>
+      <p>Stage 2 schema (writer, only sees items where keep=True):</p>
+      <code lang="python"><![CDATA[
+class Writer(BaseModel):
+    body: str
+    title: str
+]]></code>
+      <p>Each stage uses field order INTERNALLY; the pipeline composes by passing only the relevant fields downstream.</p>
+    </section>
+
+    <section name="confidence-after-answer">
+      <p>Example 7: Confidence after answer.</p>
+      <p>Wrong: confidence field first means model picks 0.85 reflexively.</p>
+      <p>Right: answer field first, then confidence field means confidence reflects the actual answer.</p>
+    </section>
+
+    <section name="tool-call-argument-ordering">
+      <p>Example 8: Tool-call argument ordering.</p>
+      <p>When designing a tool input schema, the same rule applies:</p>
+      <code lang="json"><![CDATA[
+{
+  "name": "create_pr",
+  "input_schema": {
+    "properties": {
+      "diff_summary": {"type": "string"},
+      "title": {"type": "string"},
+      "branch_name": {"type": "string"}
+    }
+  }
+}
+]]></code>
+      <p>diff_summary is generated first, then title (derived from summary), then branch_name (derived from title).</p>
+    </section>
+
+    <section name="pydantic-templates">
+      <p>Pydantic + OpenAI / Anthropic SDK:</p>
+      <code lang="python"><![CDATA[
+from pydantic import BaseModel, Field
+
+class ArticleDraft(BaseModel):
+    body: str = Field(description="Full article content. Write this first.")
+    summary: str = Field(description="3-sentence summary of the body above.")
+    title: str = Field(description="Sharp 6-10 word title derived from body and summary.")
+    slug: str = Field(description="URL slug — lowercase, hyphenated, derived from title.")
+    tags: list[str] = Field(description="3-5 keywords, taken from the body.")
+]]></code>
+    </section>
+
+    <section name="anthropic-tool-schema">
+      <p>Anthropic tool input schema (JSON):</p>
+      <code lang="json"><![CDATA[
+{
+  "name": "save_article",
+  "description": "Persist a finished article",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "body":    {"type": "string", "description": "Full content. Write first."},
+      "summary": {"type": "string", "description": "3-sentence summary of body above."},
+      "title":   {"type": "string", "description": "Sharp title derived from body."},
+      "tags":    {"type": "array",  "items": {"type": "string"}}
+    },
+    "required": ["body", "summary", "title", "tags"]
+  }
+}
+]]></code>
+      <p>JSON Schema preserves declaration order in modern parsers; both OpenAI structured outputs and Anthropic tool input respect property order.</p>
+    </section>
+
+    <section name="reasoning-before-answer-template">
+      <p>Reasoning-before-answer template:</p>
+      <code lang="python"><![CDATA[
+class Critique(BaseModel):
+    restate_intent: str = Field(description="Restate what the user asked.")
+    observations: list[str] = Field(description="Concrete observations from the input.")
+    risks: list[str] = Field(description="Risks identified.")
+    verdict: Literal["approve", "reject"] = Field(description="Final verdict — based on observations and risks above.")
+    rationale: str = Field(description="One sentence explaining the verdict.")
+]]></code>
+    </section>
+
+    <section name="generic-dependency-ordering-template">
+      <p>Generic dependency-ordering template:</p>
+      <code lang="text"><![CDATA[
+schema = {
+    inputs / echoes,           # restate, ground
+    intermediate observations, # what you see
+    intermediate plans,        # what you propose
+    final answer,              # what you commit to
+    metadata about answer,     # confidence, tags, slug
+}
+]]></code>
+    </section>
+
+    <section name="openai-responses-api">
+      <p>OpenAI Responses API response_format:</p>
+      <code lang="python"><![CDATA[
+response = client.responses.create(
+    model="gpt-...",
+    input=...,
+    response_format={
+        "type": "json_schema",
+        "json_schema": {
+            "name": "Article",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "body": {"type": "string"},
+                    "summary": {"type": "string"},
+                    "title": {"type": "string"},
+                },
+                "required": ["body", "summary", "title"],
+                "additionalProperties": False,
+            },
+        },
+    },
+)
+]]></code>
+    </section>
+
+    <section name="gemini-controlled-generation">
+      <p>Gemini controlled generation:</p>
+      <code lang="python"><![CDATA[
+from google.genai import types
+
+response_schema = types.Schema(
+    type=types.Type.OBJECT,
+    properties={
+        "body":    types.Schema(type=types.Type.STRING),
+        "summary": types.Schema(type=types.Type.STRING),
+        "title":   types.Schema(type=types.Type.STRING),
+    },
+    required=["body", "summary", "title"],
+    property_ordering=["body", "summary", "title"],  # Gemini-specific
+)
+]]></code>
+      <p>Gemini supports property_ordering explicitly — use it.</p>
+    </section>
+
+    <section name="llm-prompts">
+      <p>Prompt 1: Schema review. Review this Pydantic model. For each field, identify what other fields it depends on. Then check if dependent fields appear AFTER their dependencies. If not, reorder them. Output format: dependency_graph (list of "B depends on A"), order_violations (list of "B should be after A but isn't"), reordered_model (corrected Pydantic class).</p>
+      <p>Prompt 2: Add reasoning fields. This schema produces a final answer with no reasoning trace. Add 1-3 reasoning/scratchpad fields BEFORE the final answer. Keep them lean — single-purpose, with clear descriptions explaining what to think about. Do not add reasoning to schemas that already have it. Do not expand the schema beyond 7 fields.</p>
+      <p>Prompt 3: Convert nested to flat-ordered. Take this nested schema and produce an equivalent flat schema where every field's position reflects its generation order. Output the flat version with a comment per field explaining what it depends on.</p>
+      <p>Prompt 4: Self-review of generated output. After producing your output, verify each field used the values of the fields above it. If any field contradicts an earlier field, flag it in a _self_review field at the END.</p>
+    </section>
+
+    <templates>
+      <template path="templates.md" purpose="Code examples in Pydantic, JSON Schema, OpenAI, Anthropic, and Gemini formats"/>
+    </templates>
+
+    <checklist>
+      <check>List every field your schema produces.</check>
+      <check>For each pair (A, B), ask: does B depend on A? If yes, A must come before B.</check>
+      <check>Identify the "final answer" field — it should be LAST.</check>
+      <check>Identify any "reasoning / scratchpad / plan" fields — they go BEFORE the answer.</check>
+      <check>Identify "echo / restate" fields — they re-ground long inputs; place near the start.</check>
+      <check>No field commits to a value before its inputs exist.</check>
+      <check>No id / slug / tags field is positioned before the content it derives from.</check>
+      <check>No confidence / score field is before the answer it scores.</check>
+      <check>No next_action / decision is before the analysis.</check>
+      <check>Field descriptions explicitly reference earlier fields where useful.</check>
+      <check>Compared output quality: schema-correct order vs reversed order, on at least 5 tasks.</check>
+      <check>Counted hallucinations on the dependent field — should drop with correct order.</check>
+      <check>If using extended thinking / thinking blocks, the in-schema reasoning still helps as additional grounding for the OUTPUT phase.</check>
+      <check>If using prompt caching, the schema is part of the cached prompt — order is fixed at cache time.</check>
+      <check>If chaining steps, the output of step N becomes the input of step N+1 — make sure step N's last field is what step N+1 cares about most.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="semantic-field-naming"/>
+      <ref slug="stream-json-orchestration"/>
+    </see-also>
+  </content>
+</methodology>
