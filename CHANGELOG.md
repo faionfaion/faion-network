@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 2/2 pro/marketing/ppc-manager methodologies → methodology.xml (google-search-ads, google-shopping-ads; feature-045 batch 303 — FINAL)
 - migrate: 2/3 geek/ux + pro/marketing methodologies → methodology.xml (multimodal-vui-design, ops-upselling-cross-selling; feature-045 batch 301)
 - migrate: 3/3 geek/ux/ux-ui-designer methodologies → methodology.xml (figma-vs-adobe-strategy-2026, generative-ui-design, llm-powered-conversational-ai; feature-045 batch 300)
 - migrate: 3/3 geek/ux/ux-ui-designer methodologies → methodology.xml (ai-assisted-accessibility, ai-design-assistant-patterns, ai-enhanced-design-systems; feature-045 batch 298)

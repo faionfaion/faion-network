@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="google-search-ads">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>ppc-manager</domain>
+    <summary>Search campaign creation with network settings, ad group setup, keyword management, match types, Quality Score optimization, and API best practices for Google Search campaigns.</summary>
+    <tags>
+      <tag>google-ads</tag>
+      <tag>search-campaigns</tag>
+      <tag>keywords</tag>
+      <tag>quality-score</tag>
+      <tag>bidding</tag>
+    </tags>
+    <category>search</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Google Search Ads Campaign Management</title>
+    <summary>Master Google Search campaign setup via API: network targeting, ad group creation, keyword match types, Quality Score optimization, and Search Terms Report analysis.</summary>
+    <why>
+      <p>Search campaigns require precise configuration at the campaign, ad group, and keyword level. Misconfiguration cascades: including the wrong network distorts metrics, broad match without negatives bleeds budget, and ignoring Quality Score increases effective CPC by 20-40%.</p>
+      <p>The Google Ads API surfaces all these configuration points but requires understanding their interaction and precedence rules. Agents must know network settings, budget units (micros), bid update masks, and keyword matching logic to avoid silent failures.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Setting up or modifying Google Search campaigns programmatically.</item>
+        <item>Building agents that manage keyword bids, match types, or negative keyword lists.</item>
+        <item>Automating Quality Score diagnosis and ad copy optimization.</item>
+        <item>Integrating Search campaign data into multi-channel campaign management tools.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Display Network or YouTube campaigns — different ad types and network settings apply.</item>
+        <item>Shopping campaigns — use google-shopping-ads instead.</item>
+        <item>Manual, one-off bid adjustments where API overhead exceeds value.</item>
+      </list>
+    </when-not-to-use>
+    <section name="network-settings">
+      <rule>
+        <statement>Set target_google_search=True and target_content_network=False for a pure Search campaign. The default includes the content network, which mixes display inventory into search campaigns.</statement>
+        <rationale>Content network (Display) traffic has much lower intent than search traffic. Including it distorts Quality Score, CTR, and conversion rate metrics.</rationale>
+      </rule>
+      <list>
+        <item>target_google_search: True — Google Search results</item>
+        <item>target_search_network: True — Google Search partner sites (optional)</item>
+        <item>target_partner_search_network: False — exclude partner search network</item>
+        <item>target_content_network: False — exclude Display Network</item>
+      </list>
+    </section>
+    <section name="budget-in-micros">
+      <rule>
+        <statement>All monetary values use micros (1/1,000,000 of currency unit). 1,000,000 micros = $1.00. Always divide by 1_000_000 when displaying or comparing to human-readable amounts.</statement>
+        <rationale>Micros are used throughout the Google Ads API (budget, bids, cost metrics). Forgetting to convert produces 1,000,000x wrong values.</rationale>
+      </rule>
+    </section>
+    <section name="ad-group-types">
+      <list>
+        <item>SEARCH_STANDARD: standard keyword-targeted search ads</item>
+        <item>SEARCH_DYNAMIC_ADS: Dynamic Search Ads that auto-generate headlines from page content</item>
+      </list>
+    </section>
+    <section name="bid-updates">
+      <rule>
+        <statement>Use an update_mask (field_mask) when updating ad group bids. Sending an update operation without a field mask resets all unspecified fields to defaults.</statement>
+        <rationale>Without a field mask, the API interprets missing fields as "clear to default," which can reset bidding strategy, status, and other settings silently.</rationale>
+      </rule>
+    </section>
+    <section name="match-types">
+      <list>
+        <item>BROAD: no symbol — matches synonyms and related queries (high volume, lower intent)</item>
+        <item>PHRASE: "keyword" — matches queries containing the phrase in order (medium volume)</item>
+        <item>EXACT: [keyword] — matches the exact query or close variants (low volume, highest intent)</item>
+      </list>
+      <rule>
+        <statement>Start with PHRASE and EXACT match types. Add BROAD only after establishing negative keyword lists from search terms reports. BROAD without negatives wastes budget on irrelevant queries.</statement>
+        <rationale>BROAD match can trigger for semantically unrelated searches. Without negatives built from real search term data, 20-40% of BROAD budget goes to irrelevant traffic.</rationale>
+      </rule>
+      <reference path="templates/keyword-list.py">Keyword dict format for add_keywords()</reference>
+    </section>
+    <section name="negative-keywords">
+      <rule>
+        <statement>Add negative keywords at the campaign level for terms that should never match any ad group. Add negatives at ad group level for terms that are relevant to other ad groups but not this one.</statement>
+        <rationale>Campaign-level negatives are inherited by all ad groups. Ad group-level negatives enable funneling: "shoes" at campaign level might be too broad, but "running shoes" at the running ad group should exclude "dress shoes" to prevent cross-ad-group competition.</rationale>
+      </rule>
+    </section>
+    <section name="keyword-planner">
+      <p>Use GenerateKeywordIdeasRequest with seed keywords and location/language targeting to get avg_monthly_searches, competition level, and top/bottom bid estimates. Requires Basic Access developer token or higher.</p>
+    </section>
+    <section name="quality-score">
+      <p>Quality Score (1-10) is Google's estimate of ad relevance and landing page experience. It affects ad rank and effective CPC. Three components: expected CTR (ABOVE_AVERAGE / AVERAGE / BELOW_AVERAGE), ad relevance, and landing page experience.</p>
+      <rule>
+        <statement>Diagnose low Quality Score by component: if expected_ctr is BELOW_AVERAGE, improve ad copy; if post_click_quality_score is BELOW_AVERAGE, improve landing page relevance and speed.</statement>
+        <rationale>Quality Score below 6 increases effective CPC by 20-40%. Identifying the failing component directs remediation to the right layer (ad vs. landing page).</rationale>
+      </rule>
+    </section>
+    <section name="search-terms-report">
+      <p>Query search_term_view to see actual queries that triggered ads. Use to add high-converting search terms as exact-match keywords and to identify irrelevant terms for negatives. Run weekly.</p>
+      <antipattern>
+        <description>Not reviewing the search terms report for the first 30 days of a new campaign.</description>
+        <reason>New BROAD and PHRASE campaigns accumulate irrelevant search terms quickly. Each unreviewed week is wasted budget on non-converting queries.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/keyword-list.py" purpose="Keyword dictionary format for add_keywords() API calls"/>
+    </templates>
+  </content>
+</methodology>
