@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ai-agent-patterns">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Control flow patterns for AI agents: Chain of Thought, ReAct, Plan-and-Execute, Tool Use. Pattern selection drives task success more than model size.</summary>
+    <tags>
+      <tag>agents</tag>
+      <tag>patterns</tag>
+      <tag>frameworks</tag>
+      <tag>orchestration</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>AI Agent Patterns</title>
+    <summary>Fundamental control flow patterns for AI agents. Chain of Thought (CoT) for reasoning-only tasks, ReAct (Reason + Act) for tool-dependent work, Plan-and-Execute for multi-step projects, Tool Use Pattern for framework-based agents. Framework selection (LangGraph, AutoGen, CrewAI, OpenAI Agents SDK) depends on pattern complexity.</summary>
+    <why>
+      <p>Simple prompt to response is insufficient for complex tasks. Agents that solve interesting problems require a structured control flow that allows reasoning, tool use, and iteration. Different task types benefit from different control patterns. Choosing the right pattern based on task structure is more impactful than upgrading the underlying model. An agent with no pattern (just chaining prompts) fails more often than a well-structured agent on a smaller model.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Choosing a control flow pattern (CoT, ReAct, Plan-and-Execute) for a new agent task</item>
+        <item>Explaining why a single prompt-response fails and what pattern would address the gap</item>
+        <item>Selecting a framework (LangGraph, AutoGen, CrewAI, OpenAI Agents SDK) for a new agent project</item>
+        <item>Debugging an agent that loops, hallucinates, or fails to use tools correctly where pattern mismatch is often the root cause</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Tasks solvable in a single LLM call where adding an agent pattern introduces latency and token overhead with no benefit</item>
+        <item>Creative generation tasks where strict control flow degrades output quality</item>
+        <item>When the framework dependency cost exceeds the project lifetime (e.g., a one-off script using LangGraph)</item>
+        <item>Hard real-time tasks where multi-iteration loops are too slow (under 500 milliseconds SLA)</item>
+      </list>
+    </when-not-to-use>
+    <section name="Agent Design Patterns Overview">
+      <p>The fundamental problem is that simple prompt to response is insufficient. Complex tasks require the model to reason about intermediate results, decide whether more information is needed, and iterate. Different agent patterns address different task requirements:</p>
+      <list>
+        <item>Chain of Thought (CoT) — "Let's think step by step." Output: Reasoning, Intermediate steps, Final answer. Best for pure reasoning without external tools.</item>
+        <item>ReAct (Reason + Act) — Thought, Action, Observation, Repeat. Thought: What do I need? Action: search(query). Observation: search results. Best for research and investigation.</item>
+        <item>Plan-and-Execute — Create plan with subtasks, Execute each subtask, Verify results, Adjust plan if needed, Synthesize final output. Best for complex projects.</item>
+        <item>Tool Use Pattern — Agent decides which tool to use based on task. Tools have schemas. Best for framework-based implementations.</item>
+      </list>
+    </section>
+    <section name="Pattern Details and Framework Mapping">
+      <p>Chain of Thought (CoT) prompts the model to think through the problem step-by-step before answering. This works well on Claude and GPT-4 class models for reasoning tasks, but degrades on smaller models. CoT alone has no tool access and no iteration.</p>
+      <p>ReAct adds tool use and observation loops. The agent reasons about what it needs, calls a tool, observes the result, and reasons again. This naturally handles tool-dependent research tasks. However, ReAct can get stuck in repetitive loops if tool results are ambiguous.</p>
+      <p>Plan-and-Execute decomposes the goal upfront into subtasks with dependencies, then executes each step. This prevents the agent from getting stuck mid-task by committing to a full plan first. The tradeoff is that plans become stale if early steps produce unexpected results.</p>
+      <p>Tool Use Pattern is a framework-level abstraction where the model selects from a set of available tools based on the task. This is how LangGraph, AutoGen, CrewAI, and OpenAI Agents SDK work. Tools are defined with schemas, and the framework handles tool calling, result injection, and retry logic.</p>
+      <p>Frameworks map to patterns as follows: LangGraph supports state machines for Plan-and-Execute and complex ReAct. AutoGen handles multi-agent conversations. CrewAI provides role-based agent teams. OpenAI Agents SDK provides official OpenAI support with tight model coupling.</p>
+    </section>
+    <section name="When Pattern Fails and Limitations">
+      <p>Chain of Thought (CoT) degrades on tasks requiring factual recall; the model reasons confidently to wrong conclusions. If the model has never learned the answer during training, CoT cannot recover that knowledge.</p>
+      <p>ReAct (Reason + Act) loops can get stuck in circular Thought → Action → Observation cycles without progress if the tool returns ambiguous results. The agent may call the same tool twice with slightly different arguments, getting similar unhelpful results both times.</p>
+      <p>Plan-and-Execute breaks when the initial plan is wrong and the replanning step is not implemented. Agents proceed to execute an invalid plan to completion instead of stopping to revise the plan.</p>
+      <p>Framework abstractions (LangGraph state machines, AutoGen conversations) add debugging complexity; errors manifest several layers below the business logic.</p>
+      <p>Tool Use Pattern requires precise tool descriptions; vague descriptions cause the agent to select the wrong tool or pass malformed arguments.</p>
+    </section>
+    <section name="Agentic Workflow and Model Selection">
+      <p>Use Claude Haiku to generate initial tool definitions from an API schema (mechanical transformation). Use Claude Sonnet to review agent reasoning chains (requires logic analysis across multiple steps). Use Claude Opus only when designing multi-agent orchestration where coordination patterns are genuinely complex. For production NERO pipelines, ReAct is the default pattern; Plan-and-Execute is used when a task has more than 5 sequential steps requiring inter-step dependencies.</p>
+      <p>Model selection by task: Haiku for tool definition generation from API schemas (mechanical, no reasoning). Sonnet for reviewing agent reasoning chains (requires logic analysis). Opus for designing multi-agent orchestration (complex coordination).</p>
+    </section>
+    <section name="Prompt Patterns for Agent Pattern Selection">
+      <code lang="xml"><![CDATA[<agent_pattern_selection>
+  <task>Gather competitor pricing data for 10 SaaS tools, synthesize into a comparison table</task>
+  <constraints>
+    <tools_available>web_search, file_write</tools_available>
+    <max_steps>15</max_steps>
+  </constraints>
+  <candidate_patterns>CoT, ReAct, Plan-and-Execute</candidate_patterns>
+  <output>Selected pattern with rationale. If Plan-and-Execute: output initial plan as numbered steps.</output>
+</agent_pattern_selection>]]></code>
+      <p>For ReAct loops, use a system prompt that establishes the format:</p>
+      <code lang="xml"><![CDATA[<react_loop>
+  <system>You are a research agent. For each step, output:
+Thought: <reasoning>
+Action: <tool_name>(<args>)
+Then wait for Observation before continuing.
+Only output Final Answer when the task is complete.</system>
+  <task>{{research_task}}</task>
+</react_loop>]]></code>
+    </section>
+    <section name="CLI Tools and Frameworks">
+      <p>anthropic SDK provides core LLM calls for all patterns. langgraph is the state machine for Plan-and-Execute and complex ReAct with built-in persistence and graph visualization. autogen handles multi-agent conversation patterns where agents negotiate and debate. crewai provides role-based agent teams with built-in task prioritization. openai SDK is the OpenAI Agents SDK reference implementation. LangSmith is essential for pattern execution tracing and debugging. Modal provides sandboxed tool execution to prevent host contamination.</p>
+      <list>
+        <item>anthropic SDK — Core LLM calls for all patterns with native tool_use support. pip install anthropic</item>
+        <item>langgraph — State machine for Plan-and-Execute and complex ReAct. Built-in graph visualization. pip install langgraph</item>
+        <item>autogen — Multi-agent conversation pattern where agents negotiate. pip install pyautogen</item>
+        <item>crewai — Role-based agent teams with task prioritization and backstory. pip install crewai</item>
+        <item>openai SDK — OpenAI Agents SDK (tool use pattern reference and official OpenAI implementation). pip install openai</item>
+      </list>
+    </section>
+    <section name="Services and Observability Tools">
+      <p>LangGraph is OSS and best for stateful Plan-and-Execute but has a steep learning curve. AutoGen is OSS (Microsoft) for multi-agent conversation with role specialization. CrewAI is OSS with a simpler API than AutoGen. OpenAI Agents SDK is official OpenAI but tightly coupled to OpenAI models. LangSmith is SaaS for pattern execution tracing and is essential for ReAct debugging. Modal is SaaS for sandboxed tool execution.</p>
+      <list>
+        <item>LangGraph — OSS. Best for stateful Plan-and-Execute. Steep learning curve.</item>
+        <item>AutoGen — OSS (Microsoft). Multi-agent conversation. Good for role specialization.</item>
+        <item>CrewAI — OSS. Role-based teams. Simpler API than AutoGen.</item>
+        <item>OpenAI Agents SDK — SaaS/OSS. Official OpenAI. Tightly coupled to OpenAI models.</item>
+        <item>LangSmith — SaaS. Pattern execution tracing. Essential for ReAct debugging.</item>
+        <item>Modal — SaaS. Sandboxed tool execution for Tool Use Pattern.</item>
+      </list>
+    </section>
+    <section name="Best Practices">
+      <p>Match pattern to task structure before selecting a framework: CoT for pure reasoning, ReAct for tool-dependent research, Plan-and-Execute for multi-step workflows with dependencies. This matching step is the single most important decision — the right pattern on a small model beats the wrong pattern on a large model.</p>
+      <p>Implement explicit loop-detection: if the last 3 Thought to Action cycles are identical, break and return an error rather than continuing indefinitely. This prevents agents from wasting tokens on repetitive cycles.</p>
+      <p>Use structured output (JSON schema) for Plan-and-Execute plan steps; free-text plans degrade execution reliability. The agent is more likely to follow a structured plan with explicit task IDs and dependencies than a narrative description.</p>
+      <p>Test each pattern on a known-answer benchmark before production deployment; patterns that work on toy examples often fail on real tasks. Run each pattern on 10-20 representative tasks and measure success rate before shipping.</p>
+      <p>For multi-agent patterns (AutoGen, CrewAI), assign exactly one responsibility per agent; agents with overlapping roles produce contradictory outputs. If Agent A can do both data gathering and analysis, and Agent B can do analysis, they will conflict on analysis tasks.</p>
+    </section>
+    <section name="Common Gotchas">
+      <p>ReAct agents with access to a general web-search tool will spend iterations searching for information they already have in context. They will search for "Python 3.11 release date" ten times if the context grows large enough that the agent forgets it saw that information already. Set a no_redundant_search rule in the system prompt: "Do not search for the same query twice. If you find the answer once, use it."</p>
+      <p>Plan-and-Execute agents that don't replan after a failed step will complete all remaining steps against an invalid intermediate state. If step 3 fails because a data source is unavailable but steps 4-7 all depend on step 3's output, the agent will proceed to steps 4-7 with garbage input and produce worthless output. Implement a check after each step: if status != completed, replan or fail.</p>
+      <p>CoT prompting ("Let's think step by step") works on Claude and GPT-4 but degrades on smaller models and on non-English languages; don't assume it transfers. Test CoT on your target model and language before production deployment.</p>
+      <p>Framework abstractions (LangGraph, CrewAI) hide token costs; always instrument token usage per agent call, not per framework invocation. A LangGraph graph might invoke the model 5 times internally but the framework won't report token usage per call. Use LangSmith or manual logging to track costs.</p>
+      <p>The Tool Use Pattern requires tools to return deterministic, parseable output; tools that return HTML, markdown, or unstructured text cause the agent to hallucinate parsed results. If a web search tool returns raw HTML, the agent will extract the wrong information or make up facts about what it thinks the HTML contains. Preprocess tool outputs to extract structure before returning to the agent.</p>
+    </section>
+    <see-also>
+      <link href="https://arxiv.org/abs/2210.03629">ReAct Paper</link>
+      <link href="https://langchain-ai.github.io/langgraph/">LangGraph Docs</link>
+      <link href="https://microsoft.github.io/autogen/">AutoGen Docs</link>
+      <link href="https://docs.crewai.com/">CrewAI Docs</link>
+      <link href="https://platform.openai.com/docs/guides/agents">OpenAI Agents SDK</link>
+      <link href="https://docs.anthropic.com/en/docs/tool-use">Anthropic Tool Use</link>
+    </see-also>
+  </content>
+</methodology>
