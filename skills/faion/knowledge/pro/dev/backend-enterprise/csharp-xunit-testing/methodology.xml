@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="csharp-xunit-testing">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>Comprehensive testing methodology for .NET applications using xUnit, Moq, FluentAssertions, and WebApplicationFactory covering unit and integration tests.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>xunit</tag>
+      <tag>testing</tag>
+      <tag>dotnet</tag>
+      <tag>moq</tag>
+      <tag>integration-tests</tag>
+    </tags>
+    <languages>
+      <language>csharp</language>
+    </languages>
+    <frameworks>
+      <framework>aspnet-core</framework>
+    </frameworks>
+  </metadata>
+  <content>
+    <title>xUnit Testing (.NET)</title>
+    <summary>Comprehensive testing methodology for .NET applications using xUnit, Moq, FluentAssertions, and WebApplicationFactory. Covers unit tests (controller + service layers), data-driven [Theory] cases, and integration tests against a real in-process HTTP host. One [Fact] or [Theory] per branch is the testable rule; constructor injection replaces setup methods.</summary>
+    <why>
+      <p>xUnit creates a new class instance per test, making the constructor the natural setup point and eliminating shared-state bugs. WebApplicationFactory&lt;TEntryPoint&gt; spins up a real ASP.NET Core pipeline without a listening socket, giving integration tests realistic HTTP semantics (auth, DI, routing) at unit-test speed. FluentAssertions produces readable failure messages that reduce debugging overhead compared to raw Assert.Equal.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Writing unit tests for ASP.NET Core controllers, services, validators, or domain logic on .NET 6+ projects standardized on xUnit + Moq.</item>
+        <item>Writing integration tests for API endpoints with real HTTP semantics, auth, and DI replacement.</item>
+        <item>Backfilling characterization tests on legacy .NET code before refactoring.</item>
+        <item>Property-based testing with FsCheck.Xunit when invariants matter (parsers, validators).</item>
+        <item>Generating tests from a coverage report (coverlet JSON) to fill uncovered branches.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Project uses MSTest or NUnit and migration is out of scope — adapt, don't add a second framework.</item>
+        <item>UI testing for Blazor or MAUI — use bUnit or platform-specific test runners instead.</item>
+        <item>Pure performance benchmarking — use BenchmarkDotNet; timing assertions in xUnit are unreliable.</item>
+        <item>End-to-end HTTP across multiple deployed services — use Playwright/Postman/k6, not WebApplicationFactory.</item>
+      </list>
+    </when-not-to-use>
+    <section name="unit-tests">
+      <p>xUnit unit test structure for ASP.NET Core controllers using Moq and Arrange-Act-Assert.</p>
+      <rule>
+        <statement>Use the constructor for all test setup; never use [Fact]-level setup methods. xUnit creates a new instance per test, so the constructor IS the setup.</statement>
+        <rationale>Shared state between tests causes flaky, order-dependent failures that are hard to diagnose.</rationale>
+      </rule>
+      <example type="good" title="Test class setup with constructor injection">
+        <code lang="csharp"><![CDATA[
+public class UsersControllerTests
+{
+    private readonly Mock<IUserService> _mockService;
+    private readonly UsersController _controller;
+
+    public UsersControllerTests()
+    {
+        _mockService = new Mock<IUserService>();
+        _controller = new UsersController(
+            _mockService.Object,
+            Mock.Of<ILogger<UsersController>>()
+        );
+    }
+}
+]]></code>
+      </example>
+      <rule>
+        <statement>Write one [Fact] per branch (happy path, not-found, validation failure). Assert on result type first, then content.</statement>
+        <rationale>One assertion concept per test makes failure messages unambiguous and avoids hiding secondary failures.</rationale>
+      </rule>
+      <example type="good" title="Fact tests: happy path and not-found">
+        <code lang="csharp"><![CDATA[
+[Fact]
+public async Task GetUser_WhenUserExists_ReturnsOkWithUser()
+{
+    // Arrange
+    var userDto = new UserDto { Id = 1, Name = "John", Email = "john@example.com" };
+    _mockService.Setup(s => s.GetByIdAsync(1)).ReturnsAsync(userDto);
+
+    // Act
+    var result = await _controller.GetUser(1);
+
+    // Assert
+    var okResult = Assert.IsType<OkObjectResult>(result.Result);
+    var returned = Assert.IsType<UserDto>(okResult.Value);
+    Assert.Equal(1, returned.Id);
+}
+
+[Fact]
+public async Task GetUser_WhenUserNotFound_ReturnsNotFound()
+{
+    _mockService.Setup(s => s.GetByIdAsync(999)).ReturnsAsync((UserDto?)null);
+    var result = await _controller.GetUser(999);
+    Assert.IsType<NotFoundResult>(result.Result);
+}
+]]></code>
+      </example>
+      <rule>
+        <statement>Use [Theory] + [InlineData] or [MemberData] for data-driven branches. Deduplicate InlineData rows — identical logical cases waste coverage signal.</statement>
+        <rationale>Theory collapses N similar test bodies into one parameterized test, reducing maintenance and making gaps visible.</rationale>
+      </rule>
+      <example type="good" title="Theory tests: data-driven cases">
+        <code lang="csharp"><![CDATA[
+[Theory]
+[InlineData("", "Email is required")]
+[InlineData("not-an-email", "Email format is invalid")]
+[InlineData("a@b", "Email domain too short")]
+public async Task CreateUser_WithInvalidEmail_ReturnsBadRequest(
+    string email, string expectedError)
+{
+    var dto = new CreateUserDto { Name = "Test", Email = email };
+    var result = await _controller.CreateUser(dto);
+    var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+    Assert.Contains(expectedError, badRequest.Value?.ToString());
+}
+]]></code>
+      </example>
+      <antipattern>
+        <description>Over-specifying Verify calls on implementation-detail interactions.</description>
+        <reason>Moq.Verify on internal calls couples tests to implementation; refactoring breaks tests even when behavior is correct.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Stubbing extension methods or non-virtual members with Moq.</description>
+        <reason>Moq generates "Expression tree may not contain..." errors. Wrap in an interface instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using Assert.True(condition) without a message.</description>
+        <reason>Produces useless failure output. Use Assert.Equal(expected, actual) or FluentAssertions .Should().Be().</reason>
+      </antipattern>
+    </section>
+    <section name="integration-tests">
+      <p>Integration test patterns using WebApplicationFactory for real HTTP semantics without a listening socket.</p>
+      <rule>
+        <statement>Inherit from IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt; for expensive shared setup. Add public partial class Program {} in Program.cs for .NET 6+ minimal hosting visibility.</statement>
+        <rationale>IClassFixture shares one factory instance per test class, avoiding repeated startup cost while keeping class-level isolation.</rationale>
+      </rule>
+      <example type="good" title="Basic integration test setup">
+        <code lang="csharp"><![CDATA[
+public class UsersApiTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly HttpClient _client;
+
+    public UsersApiTests(WebApplicationFactory<Program> factory)
+    {
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task GetUsers_ReturnsSuccessAndCorrectContentType()
+    {
+        var response = await _client.GetAsync("/api/v1/users");
+        response.EnsureSuccessStatusCode();
+        Assert.Equal("application/json; charset=utf-8",
+            response.Content.Headers.ContentType?.ToString());
+    }
+
+    [Fact]
+    public async Task CreateUser_WithValidData_ReturnsCreated()
+    {
+        var dto = new CreateUserDto
+        {
+            Name = "Test User",
+            Email = "test@example.com",
+            Password = "password123"
+        };
+        var response = await _client.PostAsJsonAsync("/api/v1/users", dto);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var user = await response.Content.ReadFromJsonAsync<UserDto>();
+        Assert.NotNull(user);
+        Assert.Equal("Test User", user.Name);
+    }
+}
+]]></code>
+      </example>
+      <rule>
+        <statement>Tag database-touching tests with [Collection("DB")] or DisableParallelization=true. Use Respawn to reset DB state between tests in the same fixture.</statement>
+        <rationale>xUnit runs tests in parallel within a collection by default; database-touching tests without isolation produce cross-test contamination and flaky failures.</rationale>
+      </rule>
+      <rule>
+        <statement>Tag slow integration tests with [Trait("Category", "Integration")] and run them in a separate CI stage.</statement>
+        <rationale>Mixing unit and integration tests in one dotnet test run serializes CI and inflates feedback loop to engineers.</rationale>
+      </rule>
+      <rule>
+        <statement>Use Testcontainers (PostgreSql, Redis) for integration tests requiring real infrastructure. Implement IAsyncLifetime on the fixture for container lifecycle management.</statement>
+        <rationale>Missing IAsyncLifetime causes container leaks across test runs; Testcontainers without it produce orphaned Docker containers.</rationale>
+      </rule>
+      <example type="good" title="Testcontainers fixture with IAsyncLifetime">
+        <code lang="csharp"><![CDATA[
+public class DatabaseFixture : IAsyncLifetime
+{
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder().Build();
+
+    public string ConnectionString => _postgres.GetConnectionString();
+
+    public async Task InitializeAsync() => await _postgres.StartAsync();
+    public async Task DisposeAsync() => await _postgres.DisposeAsync();
+}
+]]></code>
+      </example>
+    </section>
+    <section name="agent-critical-rules">
+      <p>Critical agent rules for xUnit test generation: async signatures, non-determinism, coverage loop, and legal patterns.</p>
+      <rule>
+        <statement>All [Fact] and [Theory] test methods must return async Task, never async void.</statement>
+        <rationale>xUnit cannot await async void tests; exceptions are swallowed, tests appear to pass when they should fail.</rationale>
+      </rule>
+      <rule>
+        <statement>Replace DateTime.UtcNow with an IClock interface before generating timestamp assertions.</statement>
+        <rationale>Tests asserting on real timestamps are non-deterministic and produce flaky Assert.Equal failures on slow CI runners.</rationale>
+      </rule>
+      <rule>
+        <statement>Reject any generated test that uses Thread.Sleep or polling. Use TaskCompletionSource or IHostApplicationLifetime instead.</statement>
+        <rationale>Sleep-based tests are timing-sensitive and create random CI failures that are hard to reproduce locally.</rationale>
+      </rule>
+      <rule>
+        <statement>Use Assert.Equal(expected, actual) form; never Assert.True(expected == actual).</statement>
+        <rationale>Assert.True without a message produces "Expected: True, Actual: False" — no information about what failed.</rationale>
+      </rule>
+    </section>
+    <section name="coverage-driven-test-loop">
+      <p>Systematic coverage-driven test generation to avoid over-testing happy paths and leaving error branches uncovered.</p>
+      <rule>
+        <statement>Run coverlet after each test pass. For lines with hit count 0, emit one new [Theory] + [InlineData] case per uncovered branch, then re-run until line coverage threshold is met.</statement>
+        <rationale>Systematic coverage-driven generation avoids the common pattern of writing many tests for the same happy path while leaving error branches uncovered.</rationale>
+      </rule>
+      <example type="good" title="Coverage collection with threshold">
+        <code lang="bash"><![CDATA[
+dotnet test MyApp.Tests \
+  --collect:"XPlat Code Coverage" \
+  --results-directory ./TestResults \
+  /p:Threshold=80 /p:ThresholdType=line
+]]></code>
+        <note>Threshold=80 blocks the test run and returns exit code 2 if line coverage drops below 80%. Agents use this as a hard quality gate.</note>
+      </example>
+    </section>
+    <section name="common-agent-mistakes">
+      <antipattern>
+        <description>Generating _mock.Setup(...) for every dependency method including ones the SUT never calls.</description>
+        <reason>Over-specified mocks make tests break when refactoring adds or removes method calls that are not part of the public contract.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Generating duplicate [InlineData] rows with the same logical case under different labels.</description>
+        <reason>Duplicates inflate test count without adding coverage signal; they hide the actual set of cases being exercised.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using WebApplicationFactory without public partial class Program {} in .NET 6+ minimal hosting.</description>
+        <reason>The test assembly cannot see Program unless it is public or has InternalsVisibleTo set; integration tests fail to compile silently.</reason>
+      </antipattern>
+    </section>
+    <section name="agentic-workflow">
+      <p>Spawn a Claude subagent per controller/service to generate &lt;TypeName&gt;Tests.cs from the SUT and any existing DTOs. The agent reads the source, identifies public methods + branches, emits Arrange-Act-Assert tests using xUnit + Moq, and runs dotnet test in a sandboxed worktree to verify they compile and pass before reporting back. Coverage gaps are a separate sonnet pass that reads the coverlet JSON output and proposes additional [Theory] cases.</p>
+      <rule>
+        <statement>Recommended subagents: faion-sdd-executor-agent (drives the test-write/run/fix loop with quality gates); faion-backend-agent (domain-aware test generation when the SUT has rich business rules); custom dotnet-test-runner agent (scoped to Bash(dotnet test:*), Read, Edit only for minimal blast radius).</statement>
+        <rationale>Subagent decomposition isolates test generation, verification, and coverage optimization into separate, verifiable tasks.</rationale>
+      </rule>
+      <example type="good" title="Prompt pattern for test generation">
+        <code lang="text"><![CDATA[
+Generate xUnit tests for <path/to/Service.cs>. Use Moq for IRepository,
+FluentAssertions for assertions. Cover: happy path, validation failure,
+not-found, concurrency conflict. One [Fact] or [Theory] per branch.
+Run `dotnet test --filter FullyQualifiedName~<TestClass>` and fix until green.
+Do not assert on Moq.Verify unless the call is part of the public contract.
+]]></code>
+      </example>
+      <example type="good" title="Prompt pattern for coverage-driven test completion">
+        <code lang="text"><![CDATA[
+Read coverlet.json. Find lines in <Service.cs> with hit count 0.
+For each uncovered branch, emit one new [Theory] case with InlineData.
+Re-run dotnet test; report final line + branch coverage.
+]]></code>
+      </example>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>One assertion concept per test; multiple Assert.Equal for the same logical claim is fine, but split when claims diverge.</item>
+        <item>Prefer constructor injection in test classes over [Fact] setup methods — xUnit creates a new instance per test, so the constructor IS the setup.</item>
+        <item>Use IClassFixture&lt;T&gt; for expensive setup (DB, WebApplicationFactory); ICollectionFixture only when sharing across classes.</item>
+        <item>Replace DateTime.UtcNow with an IClock interface before generating tests — otherwise tests are non-deterministic and agents will produce flaky Assert.Equal on timestamps.</item>
+        <item>Snapshot tests (Verify) excel for large DTO/JSON outputs; instruct agents to use them instead of dozens of Assert.Equal lines.</item>
+        <item>Tag slow integration tests with [Trait("Category", "Integration")] and run them in a separate CI stage.</item>
+      </list>
+    </section>
+    <section name="where-it-fails">
+      <list>
+        <item>WebApplicationFactory shares state across [Fact]s in the same IClassFixture; agents that generate tests assuming isolation will produce flaky cross-test contamination — instruct the agent to seed/reset DB per test or use Respawn.</item>
+        <item>Moq generates verbose "Expression tree may not contain..." errors when stubbing extension methods or non-virtual members; agents should detect this and recommend wrapping in an interface.</item>
+        <item>xUnit runs tests in parallel by default within a collection; database-touching tests need [Collection("DB")] or DisablePerTestCollectionParallelization.</item>
+        <item>LLM tends to assert on Assert.True(condition) without messages — produces useless failure output. Force Assert.Equal(expected, actual) or FluentAssertions .Should().Be().</item>
+        <item>Generated mocks frequently over-specify (Verify(... Times.Once) on calls that are implementation detail), which makes refactoring brittle.</item>
+      </list>
+    </section>
+    <section name="tools-and-cli">
+      <p>xUnit tooling and utilities for test execution, coverage analysis, and mutation testing.</p>
+      <commands>
+        <command name="dotnet test">Run xUnit tests, filter, collect coverage; bundled with .NET SDK.</command>
+        <command name="dotnet add package coverlet.collector">Cross-platform coverage (lcov, opencover, json).</command>
+        <command name="dotnet tool install -g dotnet-reportgenerator-globaltool">Convert coverage to HTML.</command>
+        <command name="dotnet tool install -g dotnet-stryker">Mutation testing for .NET.</command>
+        <command name="dotnet add package Respawn">Reset DB between integration tests.</command>
+        <command name="dotnet add package Verify.Xunit">Snapshot testing.</command>
+        <command name="dotnet add package Bogus">Realistic test data.</command>
+        <command name="dotnet add package Testcontainers.PostgreSql">Real Postgres/Redis/etc. in tests.</command>
+        <command name="dotnet tool install -g dotnet-format">Format generated test files.</command>
+      </commands>
+    </section>
+    <section name="services">
+      <p>SaaS and hosted services for test execution, coverage reporting, and mutation analysis.</p>
+      <list>
+        <item>GitHub Actions dotnet test: Standard setup-dotnet + dotnet test --collect:"XPlat Code Coverage".</item>
+        <item>Codecov / Coveralls: Upload lcov/opencover; agents can post PR comments via GH API.</item>
+        <item>Azure DevOps Test Plans: Useful for human QA; less agent-friendly than raw dotnet test.</item>
+        <item>SonarCloud / SonarQube: Consumes opencover; agent can fail PR on coverage drop.</item>
+        <item>Stryker dashboard: Mutation score over time; CLI uploads JSON.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/controller-test.cs" purpose="[Fact] + [Theory] skeleton for a controller under test with Moq."/>
+      <template path="templates/integration-test.cs" purpose="IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt; integration test skeleton."/>
+      <template path="templates/run-tests-with-coverage.sh" purpose="Agent entry point: run tests, collect coverlet output, report line coverage."/>
+    </templates>
+    <see-also>
+      <link href="https://xunit.net/docs/getting-started/netcore/cmdline"/>
+      <link href="https://learn.microsoft.com/aspnet/core/test/integration-tests"/>
+      <link href="https://fluentassertions.com/introduction"/>
+      <link href="https://stryker-mutator.io/docs/stryker-net/introduction/"/>
+      <link href="https://dotnet.testcontainers.org/"/>
+    </see-also>
+  </content>
+</methodology>

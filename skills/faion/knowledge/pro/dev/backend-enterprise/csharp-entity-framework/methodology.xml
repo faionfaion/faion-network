@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="csharp-entity-framework">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>EF Core data-layer methodology for .NET 6+ services: entity configuration, repository abstractions, paged query objects, and migration safety checks.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>entity-framework</tag>
+      <tag>dotnet</tag>
+      <tag>orm</tag>
+      <tag>data-layer</tag>
+      <tag>database</tag>
+    </tags>
+    <languages>
+      <language>csharp</language>
+    </languages>
+    <frameworks>
+      <framework>aspnet-core</framework>
+    </frameworks>
+  </metadata>
+  <content>
+    <title>Entity Framework Core Patterns</title>
+    <summary>EF Core data-layer methodology for .NET 6+ services: entity configuration via IEntityTypeConfiguration&lt;T&gt;, repository abstractions, paged query objects, and migration safety checks. The testable rule: every entity gets its own configuration class; OnModelCreating must not contain inline builder calls beyond ApplyConfigurationsFromAssembly.</summary>
+    <why>
+      <p>Keeping entity configs in separate files prevents OnModelCreating from becoming unmaintainable past 5 entities. AsNoTracking() on reads eliminates identity-map collisions. Reviewing migration SQL before apply catches cascade-delete cycles (SQL Server) and missing FK indexes that EF Core skips in some providers. Projection over Include chains avoids Cartesian joins on multi-level navigation properties.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing or refactoring the EF Core data layer for a .NET 6+ service.</item>
+        <item>Generating migrations from a clean domain model (not database-first scaffolding).</item>
+        <item>Performance-tuning N+1 queries, projection vs. tracking trade-offs, compiled queries.</item>
+        <item>Splitting read/write concerns (CQRS-lite) where commands use SaveChanges and queries use AsNoTracking() projections.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Codebase uses Dapper or raw ADO.NET intentionally for hot paths — do not insert EF.</item>
+        <item>Read-only OLAP / data warehouse — change tracking is pure overhead; use Dapper.</item>
+        <item>Cross-database migrations where EF provider gaps matter (Postgres JSONB ops, advisory locks) — drop to FromSqlInterpolated for those paths.</item>
+        <item>Sub-millisecond latency requirements — EF expression-tree compilation adds 5-10 ms even with AsNoTracking.</item>
+      </list>
+    </when-not-to-use>
+    <section name="entity-configuration">
+      <p>EF Core entity configuration using IEntityTypeConfiguration for clean, maintainable data-layer setup.</p>
+      <rule>
+        <statement>Extract every entity's configuration into a separate IEntityTypeConfiguration&lt;T&gt; class. Never inline builder calls in OnModelCreating beyond ApplyConfigurationsFromAssembly.</statement>
+        <rationale>OnModelCreating becomes unmaintainable past 5 entities when configurations are inlined. Separate files allow focused review and independent version history per entity.</rationale>
+      </rule>
+      <example type="good" title="IEntityTypeConfiguration pattern">
+        <code lang="csharp"><![CDATA[
+// Data/Configurations/UserConfiguration.cs
+public class UserConfiguration : IEntityTypeConfiguration<User>
+{
+    public void Configure(EntityTypeBuilder<User> builder)
+    {
+        builder.ToTable("users");
+        builder.HasKey(u => u.Id);
+
+        builder.Property(u => u.Name)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        builder.Property(u => u.Email)
+            .IsRequired()
+            .HasMaxLength(255);
+
+        builder.HasIndex(u => u.Email).IsUnique();
+
+        builder.Property(u => u.CreatedAt)
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+        builder.HasMany(u => u.Roles)
+            .WithMany(r => r.Users)
+            .UsingEntity<Dictionary<string, object>>(
+                "user_roles",
+                j => j.HasOne<Role>().WithMany().HasForeignKey("RoleId"),
+                j => j.HasOne<User>().WithMany().HasForeignKey("UserId")
+            );
+
+        builder.HasMany(u => u.Orders)
+            .WithOne(o => o.User)
+            .HasForeignKey(o => o.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+    }
+}
+]]></code>
+      </example>
+      <rule>
+        <statement>In OnModelCreating, call only modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly). No entity-specific calls.</statement>
+        <rationale>Single-call convention makes the context trivially testable and allows new configurations to be discovered automatically without editing the context class.</rationale>
+      </rule>
+      <example type="good" title="OnModelCreating convention">
+        <code lang="csharp"><![CDATA[
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+}
+]]></code>
+      </example>
+      <rule>
+        <statement>Use HasConversion for value objects (Money, Email). Use OwnsOne for owned entities. Use HasDiscriminator only when polymorphic queries are needed.</statement>
+        <rationale>HasConversion keeps the domain model free of EF attributes. Owned types map cleanly to columns without a join. Discriminator inheritance adds query complexity that is rarely needed.</rationale>
+      </rule>
+      <rule>
+        <statement>Index every foreign key explicitly. EF Core does not add FK indexes automatically in some provider/version combinations.</statement>
+        <rationale>Missing FK indexes cause full table scans on joins; the performance regression only appears under production data volumes.</rationale>
+      </rule>
+      <antipattern>
+        <description>Using OnDelete(DeleteBehavior.Cascade) on multiple paths in SQL Server without checking the migration SQL.</description>
+        <reason>SQL Server rejects FK cycles caused by multiple cascade paths, producing a migration error only at apply time, not at code review time.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Omitting RowVersion or ConcurrencyCheck on aggregate roots.</description>
+        <reason>Without optimistic concurrency, last-write-wins silently corrupts data under concurrent updates.</reason>
+      </antipattern>
+    </section>
+    <section name="repository-pattern">
+      <p>IRepository interface, AsNoTracking read queries, paged results, and SaveChangesAsync patterns for EF Core.</p>
+      <rule>
+        <statement>Define an IRepository interface per aggregate root. Include GetByIdAsync, GetPagedAsync, AddAsync, Remove, and SaveChangesAsync. Do not expose IQueryable from the interface.</statement>
+        <rationale>Exposing IQueryable leaks EF concerns to callers and makes the repository untestable without a real DbContext. Concrete query methods are mockable via standard interface mocking.</rationale>
+      </rule>
+      <example type="good" title="Repository interface">
+        <code lang="csharp"><![CDATA[
+public interface IUserRepository
+{
+    Task<User?> GetByIdAsync(int id);
+    Task<User?> GetByEmailAsync(string email);
+    Task<PagedResult<User>> GetPagedAsync(int page, int pageSize);
+    Task AddAsync(User user);
+    void Remove(User user);
+    Task SaveChangesAsync();
+}
+]]></code>
+      </example>
+      <rule>
+        <statement>All read-only queries (list, paged, report) must use AsNoTracking(). Only queries that will SaveChanges on the same entity may use tracking.</statement>
+        <rationale>Tracking read-only queries adds identity-map overhead and causes InvalidOperationException when the same entity is fetched twice in the same scope.</rationale>
+      </rule>
+      <example type="good" title="AsNoTracking for read queries">
+        <code lang="csharp"><![CDATA[
+public async Task<PagedResult<User>> GetPagedAsync(int page, int pageSize)
+{
+    var query = _context.Users
+        .AsNoTracking()
+        .OrderByDescending(u => u.CreatedAt);
+
+    var totalCount = await query.CountAsync();
+    var items = await query
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .ToListAsync();
+
+    return new PagedResult<User>(items, totalCount, page, pageSize);
+}
+]]></code>
+      </example>
+      <rule>
+        <statement>Prefer Select projection over Include for read queries. Use Include only when the caller needs to modify navigation properties.</statement>
+        <rationale>Include chains produce Cartesian joins on multi-level navigations; AsSplitQuery reduces row count but adds round trips. Projection selects exactly the columns needed and never tracks.</rationale>
+      </rule>
+      <antipattern>
+        <description>Chaining multiple Include().ThenInclude() calls for large object graphs.</description>
+        <reason>Each additional level multiplies the result set rows. A 3-level Include on a 1000-row table can return 10^6 rows to the client.</reason>
+      </antipattern>
+      <rule>
+        <statement>Register DbContext with AddDbContextPool for high-throughput APIs. Do not pool contexts that hold state between requests.</statement>
+        <rationale>Pooling eliminates the allocation and initialization cost of DbContext per request, measurably improving throughput on APIs handling 100+ req/s.</rationale>
+      </rule>
+    </section>
+    <section name="version-pinning">
+      <p>Version-specific guidance for EF Core; incompatibilities between versions.</p>
+      <rule>
+        <statement>Pin the EF Core major version in every prompt. EF Core 8/9 changed JSON column behavior, complex types, and primitive-collection mapping; EF 6 knowledge is incompatible.</statement>
+        <rationale>LLMs conflate EF 6 (full framework) with EF Core; generated code using DbSet.Find + synchronous SaveChanges semantics silently produces incorrect async behavior.</rationale>
+      </rule>
+      <rule>
+        <statement>Use ExecuteSqlInterpolated for raw SQL, never ExecuteSqlRaw with string concatenation.</statement>
+        <rationale>String concatenation in ExecuteSqlRaw is a SQL injection vector; interpolated parameters are always bound as query parameters.</rationale>
+      </rule>
+    </section>
+    <section name="migration-safety">
+      <p>Agent-critical protocol for generating and applying migrations safely.</p>
+      <rule>
+        <statement>After generating a migration, always run dotnet ef migrations script --idempotent and review the SQL before applying. Block any migration that contains DROP, CASCADE, TRUNCATE, or RENAME COLUMN without human approval.</statement>
+        <rationale>Destructive operations in migrations are irreversible on production data. SQL review catches cascade cycles, missing indexes, and unexpected column drops before they reach prod.</rationale>
+      </rule>
+      <example type="good" title="Migration safety protocol">
+        <code lang="bash"><![CDATA[
+# safe-migration.sh: generate migration SQL and block on destructive ops
+dotnet ef migrations add "$NAME" --project "$PROJ" --no-build
+SCRIPT=$(mktemp).sql
+dotnet ef migrations script --idempotent --project "$PROJ" -o "$SCRIPT"
+grep -iE 'DROP|CASCADE|TRUNCATE|RENAME COLUMN' "$SCRIPT" && {
+  echo "DESTRUCTIVE OPS DETECTED — human approval required"; exit 2;
+} || echo "Migration looks safe (auto-check only)"
+]]></code>
+        <note>This check is necessary but not sufficient. Human review is still required for any migration touching more than one table.</note>
+      </example>
+    </section>
+    <section name="agentic-workflow">
+      <p>A subagent generates the entity, configuration, and repository in one pass, then runs dotnet ef migrations add against a SQLite scratch DB to validate the schema before producing the SQL Server / Postgres migration. A second sonnet pass reviews the generated SQL via dotnet ef migrations script for cascade cycles, missing indexes on FKs, and oversized varchar defaults. Performance audits use dotnet ef dbcontext optimize and EF.CompileQuery for hot reads.</p>
+      <rule>
+        <statement>Recommended subagents: faion-sdd-executor-agent (orchestrates "design → migration → test → review" with quality gates that block on raw SQL diff); faion-backend-agent (domain model design, aggregate boundaries, value objects, owned entities); custom ef-migrations-reviewer (sonnet, scoped to Read + Bash(dotnet ef migrations script:*), can't apply destructive migrations).</statement>
+        <rationale>Subagent decomposition keeps each task bounded and verifiable. SQL review automation prevents unsafe migrations from reaching production.</rationale>
+      </rule>
+      <example type="good" title="Prompt pattern for entity migration">
+        <code lang="text"><![CDATA[
+Add entity <Name> with fields <...>. Write IEntityTypeConfiguration<Name>
+in Data/Configurations. Create migration AddName against SQLite scratch DB,
+then output `dotnet ef migrations script` SQL. Do NOT apply to production.
+Flag any cascade delete that creates a cycle.
+]]></code>
+      </example>
+      <example type="good" title="Prompt pattern for query optimization">
+        <code lang="text"><![CDATA[
+Optimize <Repository.GetX>. Read current generated SQL via
+`dotnet ef dbcontext optimize` or QueryString. Replace Include chains
+with projection where possible. Justify each AsNoTracking / AsSplitQuery.
+]]></code>
+      </example>
+    </section>
+    <section name="common-agent-mistakes">
+      <antipattern>
+        <description>Generated queries using FirstOrDefault(u => u.Email == email) without case normalization.</description>
+        <reason>SQL Server comparisons are case-insensitive by default but Postgres is not; .ToLower() on both sides is required for cross-provider consistency.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Wrapping await _context.SaveChangesAsync() inside Task.Run.</description>
+        <reason>EF SaveChangesAsync is already async I/O; wrapping in Task.Run adds a thread-pool context switch with no benefit and can cause DbContext threading violations.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Adding audit fields (CreatedAt, UpdatedBy) ad-hoc in every entity's configuration.</description>
+        <reason>Cross-cutting concerns belong in a SaveChangesInterceptor, not duplicated per entity. Duplication causes inconsistent implementation and missed fields.</reason>
+      </antipattern>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Always extract IEntityTypeConfiguration&lt;T&gt; into separate files; OnModelCreating becomes unmaintainable past 5 entities.</item>
+        <item>Use HasConversion for value objects (Money, Email) — keeps the domain pure without infra leakage.</item>
+        <item>Add [ConcurrencyCheck] or RowVersion on aggregate roots; without it, last-write-wins silently corrupts data.</item>
+        <item>Prefer projection (Select(x =&gt; new Dto { ... })) over Include + manual mapping — fewer columns, no tracking overhead.</item>
+        <item>Index FKs explicitly; EF 6 added them automatically, EF Core does not for some cases.</item>
+        <item>Pool DbContext via AddDbContextPool for high-throughput APIs; not for scoped services holding state.</item>
+        <item>Owned types for value objects; inheritance (HasDiscriminator) only when you really need polymorphism in queries.</item>
+      </list>
+    </section>
+    <section name="where-it-fails">
+      <list>
+        <item>LLM-generated Include chains explode into Cartesian joins; an agent must check the generated SQL, not just the LINQ. Use AsSplitQuery() or projection.</item>
+        <item>Migrations created by agents on top of pending model changes accumulate "shadow" properties or rename mistakes when the agent didn't read the prior ModelSnapshot.cs.</item>
+        <item>OnDelete(DeleteBehavior.Cascade) defaults silently create cycles in SQL Server; agent must inspect the generated migration before applying.</item>
+        <item>Tracking and identity-map collisions: agents that fetch the same entity twice and call Update produce InvalidOperationException unless AsNoTracking is used on the read.</item>
+        <item>EF Core 8/9 changed JSON column behavior, complex types, and primitive-collection mapping; agents trained on EF 6 / EF Core 3 advice produce wrong code.</item>
+      </list>
+    </section>
+    <section name="tools-and-services">
+      <p>EF Core tooling, utilities, and cloud integration.</p>
+      <commands>
+        <command name="dotnet ef">Migrations, scaffolding, dbcontext info. Install: dotnet tool install -g dotnet-ef</command>
+        <command name="dotnet ef migrations script">Generate idempotent SQL; bundled with dotnet-ef.</command>
+        <command name="dotnet ef dbcontext optimize">Pre-compile model, find issues; EF Core 7+.</command>
+        <command name="dotnet tool install -g dotnet-ef-naming-conventions">EFCore.NamingConventions: snake_case / camelCase auto-config.</command>
+        <command name="dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL">Postgres provider.</command>
+        <command name="dotnet add package Microsoft.EntityFrameworkCore.Sqlite">Scratch DB for migration tests.</command>
+        <command name="dotnet add package EFCore.BulkExtensions">Bulk insert/update/delete.</command>
+        <command name="dotnet add package Respawn">Reset DB state between tests.</command>
+      </commands>
+      <p>Services: Azure SQL / Postgres Flexible (EF connects via standard providers); RDS Postgres / Aurora (same, use IAM auth tokens via Npgsql data source); Liquibase / DbUp (sometimes preferred over dotnet ef for prod migrations); Azure Data Studio / pgAdmin (visual review); Datadog APM, MiniProfiler (captures EF SQL + duration).</p>
+    </section>
+    <templates>
+      <template path="templates/entity-configuration.cs" purpose="IEntityTypeConfiguration skeleton with common patterns."/>
+      <template path="templates/repository.cs" purpose="IRepository interface + implementation with paged query and email lookup."/>
+      <template path="templates/safe-migration.sh" purpose="Migration generation + SQL review script with destructive-op detection."/>
+    </templates>
+    <see-also>
+      <link href="https://learn.microsoft.com/ef/core/"/>
+      <link href="https://learn.microsoft.com/ef/core/managing-schemas/migrations/"/>
+      <link href="https://learn.microsoft.com/ef/core/performance/"/>
+      <link href="https://andrewlock.net"/>
+      <link href="https://www.npgsql.org/efcore/"/>
+    </see-also>
+  </content>
+</methodology>
