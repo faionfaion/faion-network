@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/research/researcher methodologies → methodology.xml (distribution-channel-research, frameworks, market-research-tam-sam-som; feature-045 batch 204)
 - migrate: 3/3 pro/research/researcher methodologies → methodology.xml (agent-invocation, audience-segmentation, business-model-research; feature-045 batch 202)
 - migrate: 3/3 pro/product/product-planning methodologies → methodology.xml (competitive-positioning, continuous-discovery-habits, portfolio-strategy; feature-045 batch 199)
 - migrate: 3/3 pro/product/product-operations methodologies → methodology.xml (product-led-growth, product-operations, stakeholder-management; feature-045 batch 198)
