@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/ba/ba-modeling methodologies → methodology.xml (acceptance-criteria, business-process-analysis, data-analysis; feature-045 batch)
+- migrate: 3/3 pro/ba/business-analyst methodologies → methodology.xml (business-process-analysis, data-analysis, data-driven-requirements; feature-045 batch)
 - migrate: 3/3 pro/ba/business-analyst methodologies → methodology.xml (decision-analysis, elicitation-techniques, interface-analysis; feature-045 batch)
 - migrate: 3/3 pro/ba methodologies → methodology.xml (user-story-mapping, acceptance-criteria, agile-ba-frameworks; feature-045 batch)
 - migrate: 3/3 pro/ba/business-analyst methodologies → methodology.xml (modern-ba-framework, process-mining-automation, requirements-documentation; feature-045 batch)

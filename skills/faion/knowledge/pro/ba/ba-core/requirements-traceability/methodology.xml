@@ -4,7 +4,7 @@
     <tier>pro</tier>
     <group>ba</group>
     <domain>ba-core</domain>
-    <summary>Link requirements to their origins and to downstream artifacts using a closed set of five typed link roles (satisfies, derives, implements, verifies, conflicts). The RTM is a generated artifact from frontmatter-typed links in source files — never hand-edited. Three separate coverage gates: forward (BR → TC, target ≥95%), backward (TC → BR, target 100%), horizontal (conflicts/derives, target 0 cycles).</summary>
+    <summary>Without traceability, changed requirements cause unknown impact. Five link roles with RTM generated from frontmatter. Three gates: forward ≥95%, backward 100%, horizontal zero cycles.</summary>
     <tags>
       <tag>traceability</tag>
       <tag>rtm</tag>
@@ -84,20 +84,39 @@
       </rule>
     </section>
 
+    <section name="limitations-and-failure-modes">
+      <p>Understanding failure modes prevents silent errors where the matrix looks crisp but encodes incorrect assumptions. The most common issues are decay, granularity collapse, role conflation, and coverage gaming.</p>
+
+      <list>
+        <item>Asymmetry of "bidirectional": forward (need → test) is mechanical; backward (test → need) breaks when a test exists for a non-functional concern with no explicit requirement. Treat the two directions as separate gates with different thresholds.</item>
+        <item>Granularity collapse: the right level is the lowest one at which a defect would be material to a stakeholder. Anything finer is noise.</item>
+        <item>Link-role conflation: humans and LLMs both confuse satisfies (parent → child) with derives (peer requirements) with verifies (test → req). Without a published vocabulary the matrix becomes lossy within a quarter.</item>
+        <item>Horizontal trace blindness: forward and backward are vertical; the horizontal axis (req ↔ req: derives, conflicts, duplicates) is where consistency bugs hide and is rarely matrixed by default.</item>
+        <item>Coverage-metric gaming: 100% forward coverage is trivially achieved with one tautological test per requirement; pair with AC-density, mutation testing, or independent reviewer sampling.</item>
+        <item>Stale-by-default: a hand-edited matrix decays in 2-3 sprints. Without a generator that derives the matrix from typed links in source artifacts, decay is inevitable.</item>
+        <item>Matrix bloat: O(n*m) cells across artifact types is unreadable beyond ~50 requirements; switch to a graph view once n > 50.</item>
+      </list>
+    </section>
+
     <section name="anti-patterns">
       <antipattern>
         <description>100% forward coverage achieved with one tautological test per requirement.</description>
-        <reason>Coverage metric gaming; pair with AC-density, mutation testing, or independent reviewer sampling.</reason>
+        <reason>Coverage metric gaming; pair with AC-density, mutation testing, or independent reviewer sampling. A tautological test is one that passes automatically by design, offering no real validation of the requirement.</reason>
       </antipattern>
 
       <antipattern>
         <description>Horizontal trace blindness — only vertical links (forward/backward) are tracked.</description>
-        <reason>The horizontal axis (derives, conflicts) is where consistency bugs hide and is rarely matrixed by default.</reason>
+        <reason>The horizontal axis (derives, conflicts) is where consistency bugs hide and is rarely matrixed by default. Missing horizontal links means derived requirements can diverge silently from parent requirements.</reason>
       </antipattern>
 
       <antipattern>
         <description>Baselining an RTM during volatile discovery.</description>
-        <reason>Formal baselines imply a contract; baselining in flux is theatre and creates change-control overhead for items that should still be under discovery.</reason>
+        <reason>Formal baselines imply a contract; baselining in flux is theatre and creates change-control overhead for items that should still be under discovery. Baseline only after Approved state.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Hand-edited matrix maintained as a spreadsheet instead of generated from source frontmatter.</description>
+        <reason>Hand-edited matrices decay within 2-3 sprints; a generator makes the matrix a build product, not a maintenance burden. Every manual update is an opportunity for drift.</reason>
       </antipattern>
     </section>
 
@@ -222,6 +241,35 @@ Output: impact table (artifact_id, type, action, rationale) +
         <item>Any conflicts edge proposed — human resolves before accepting</item>
         <item>Coverage drop greater than 1 percentage point from last baseline</item>
         <item>Deletion of an auditor-signed-off link</item>
+      </list>
+    </section>
+
+    <section name="cli-and-automation">
+      <p>Traceability is a build product, not manual work. Use CLI tools to maintain the matrix and keep it in sync with source artifacts:</p>
+
+      <list>
+        <item>`yq` + `jq`: Read `traces:` frontmatter, build the link graph as JSON for further processing</item>
+        <item>`python -m yaml`: Validate frontmatter parses cleanly before commit; catch YAML syntax errors early</item>
+        <item>`lychee`: Verify every `[REQ-XXX]` reference in markdown resolves to an existing file; detect orphan references</item>
+        <item>`mermaid-cli` (`mmdc`): Render the link graph as a coloured DAG (directed acyclic graph) for human review and visualization</item>
+        <item>`pre-commit`: Wire the generator + orphan check into every commit to maintain matrix validity</item>
+        <item>`git log --grep='REQ-' --all`: Backward trace: code commits → requirement IDs via Conventional Commits scope</item>
+        <item>`pytest -k 'req_'` + custom marker: Tag tests with REQ IDs (`@pytest.mark.req("REQ-101")`) and emit coverage report</item>
+        <item>Gherkin `@REQ-101` tags: BDD scenarios double as test-to-req trace; reports pipe straight into the matrix</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Three trace directions, three gates independently. Forward: coverage ≥95%. Backward: justification 100%. Horizontal: consistency zero cycles. Track separately.</item>
+        <item>One link-role vocabulary, lint-enforced. Use five roles (satisfies, derives, implements, verifies, conflicts). Reject any other string at lint time.</item>
+        <item>Generate, never hand-edit. Typed links live in source artifacts; the matrix is a build product, not a maintenance burden.</item>
+        <item>Quote evidence on every link. A link without a quoted span from both artifacts is rejected. Forces real reading; blocks hallucination.</item>
+        <item>Tag a baseline at every release (rtm-baseline-2026-Q2). PRs surface the diff against baseline; regression is visible on PR page.</item>
+        <item>Decide once on tests-without-requirements policy. Either delete (gold-plating) or write the requirement (implicit NFR). Mixing both rules is fatal.</item>
+        <item>Narrow node set. Only artifact types where ownership changes hands (BR, SR, FR, D, TC). UI strings, log lines, helper code are leaves on TC, not nodes.</item>
+        <item>Switch to a graph at n >50. Tables stop being readable; render DAG with mermaid-cli, colour edges by role.</item>
+        <item>Conventional Commits with REQ scope. `feat(REQ-045): ...` and `Refs: REQ-046, REQ-047` give free code → req trace via git log.</item>
       </list>
     </section>
 

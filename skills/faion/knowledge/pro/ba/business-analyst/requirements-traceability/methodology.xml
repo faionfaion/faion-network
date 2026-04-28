@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="requirements-traceability">
+  <metadata>
+    <tier>pro</tier>
+    <group>ba</group>
+    <domain>business-analyst</domain>
+    <summary>Bidirectional traceability links artifacts to origins and dependents, enabling coverage and justification analysis. RTM is generated from frontmatter links, never hand-edited.</summary>
+    <tags>
+      <tag>traceability</tag>
+      <tag>requirements</tag>
+      <tag>rtm</tag>
+      <tag>coverage</tag>
+      <tag>impact-analysis</tag>
+    </tags>
+    <category>requirements</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+    <related>
+      <ref slug="requirements-lifecycle"/>
+      <ref slug="requirements-validation"/>
+    </related>
+  </metadata>
+  <content>
+    <title>Requirements Traceability Matrix (RTM) Generation and Maintenance</title>
+    <summary>Requirements traceability links every artifact (business requirement, stakeholder requirement, solution requirement, design, code, test) to its origin and its downstream dependents, enabling forward coverage analysis (need → test) and backward justification (test → need). The RTM is a generated artifact, not a hand-edited file: typed links in source artifact frontmatter (`traces: [BR-05, SR-12]`) feed a generator script that builds the matrix and computes coverage metrics. Agents propose links, detect orphans, and walk the graph for impact analysis — they never write the matrix directly.</summary>
+    <why>
+      <p>Without traceability, a changed business goal propagates invisibly through the artifact stack. Test coverage gaps go undetected until late. Requirements exist without justification and components exist without requirements. In regulated builds, auditors require a complete forward+backward chain from business need to code to test; traceability is the contractual deliverable that enables incremental acceptance in vendor/outsourced delivery.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Regulated builds (ISO 13485, IEC 62304, ISO 26262, DO-178C, SOX) where auditors demand a complete chain</item>
+        <item>Multi-team programs where a single change request hits four or more artifact types</item>
+        <item>Pairing with requirements-lifecycle and requirements-validation to close the Specify → Verify loop with coverage numbers</item>
+        <item>Migrations where every legacy capability must be provably preserved or explicitly retired</item>
+        <item>Vendor/outsourced delivery where the RTM is the contractual acceptance deliverable</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pre-PMF/discovery work — opportunity-solution-trees and lightweight user stories suffice; an RTM ossifies premature decisions</item>
+        <item>Solo developer or 2-person team — git log --grep plus issue links already provide enough trace</item>
+        <item>Pure infrastructure/SRE work where requirements are SLOs, not features</item>
+        <item>When the team will not enforce maintenance discipline — an outdated RTM gives false assurance to auditors</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="what-traceability-answers">
+      <p>Traceability links requirements to their origins and downstream artifacts. It answers four questions:</p>
+      <list>
+        <item>Where did this requirement come from? (upstream trace)</item>
+        <item>What does this requirement affect? (downstream trace)</item>
+        <item>Is every business need covered? (forward coverage)</item>
+        <item>Is every component justified? (backward coverage)</item>
+      </list>
+    </section>
+
+    <section name="traceability-directions">
+      <rule>
+        <statement>Maintain bidirectional traceability: forward from need to implementation (coverage) and backward from implementation to need (justification). Both directions are required for regulated audits.</statement>
+        <rationale>Forward coverage without backward traceability produces unjustified tests and code; backward traceability without forward coverage produces unverified requirements.</rationale>
+      </rule>
+      <list>
+        <item>Forward — from business need to stakeholder req to solution req to design to code to test. Purpose: verify coverage.</item>
+        <item>Backward — from test to code to design to solution req to stakeholder req to business need. Purpose: justify every artifact.</item>
+      </list>
+    </section>
+
+    <section name="link-role-vocabulary">
+      <rule>
+        <statement>Use exactly five link roles across the program: satisfies, derives, implements, verifies, conflicts. Reject any other role at lint time.</statement>
+        <rationale>A consistent role vocabulary enables automated coverage analysis; ad-hoc roles produce a matrix that no tool can query reliably.</rationale>
+      </rule>
+      <list>
+        <item>satisfies — need → requirement (stakeholder need satisfies business need)</item>
+        <item>derives — requirement → requirement (solution req derived from stakeholder req)</item>
+        <item>implements — requirement → code or design artifact</item>
+        <item>verifies — test → requirement</item>
+        <item>conflicts — requirement to requirement (bidirectional conflict requiring resolution)</item>
+      </list>
+    </section>
+
+    <section name="traceability-strategy-levels">
+      <p>Choose the traceability depth appropriate to the project context:</p>
+      <list>
+        <item>Minimum — business req to functional req only. Appropriate for low-risk internal tools.</item>
+        <item>Standard — adds design to test links. Appropriate for most enterprise projects.</item>
+        <item>Full — adds code to user story to epic links. Required for regulated industries.</item>
+      </list>
+    </section>
+
+    <section name="coverage-and-gap-analysis">
+      <rule>
+        <statement>Pin coverage thresholds in CI: forward coverage at least 95%, backward coverage 100%, orphan count 0. Failure blocks the merge.</statement>
+        <rationale>Thresholds without enforcement are decoration; unchecked RTMs go stale within 2-3 sprints and give false assurance to auditors.</rationale>
+      </rule>
+      <p>Coverage analysis questions:</p>
+      <list>
+        <item>Are all business requirements traced to solution requirements? Gap = business requirement without solution requirement.</item>
+        <item>Are all solution requirements traced to tests? Gap = testing gap.</item>
+        <item>Are there orphan requirements with no parent? These require linking or deletion.</item>
+        <item>Are there tests without requirements? These are possible gold-plating or undocumented NFRs.</item>
+      </list>
+    </section>
+
+    <section name="traceability-metrics">
+      <list>
+        <item>Forward coverage — (linked requirements / total requirements) x 100. Target: more than 95%.</item>
+        <item>Backward coverage — (justified items / total items) x 100. Target: 100%.</item>
+        <item>Test coverage — (requirements with tests / total requirements) x 100. Target: more than 90%.</item>
+        <item>Orphan count — items with no links. Target: 0.</item>
+      </list>
+    </section>
+
+    <section name="step-1-define-strategy">
+      <rule>
+        <statement>Decide traceability depth (minimum/standard/full) and the complete link role vocabulary before creating any artifact. Encode both in a YAML config file committed to the repo root.</statement>
+        <rationale>Strategy decisions made after artifacts exist produce inconsistent coverage; changing the strategy mid-project requires retroactive linking that agents and humans both do poorly.</rationale>
+      </rule>
+    </section>
+
+    <section name="step-2-create-matrix-generated-not-maintained">
+      <rule>
+        <statement>The RTM is a generated artifact, not a hand-edited file. Each source artifact carries typed links in its frontmatter (traces: [BR-05, SR-12]); a builder script aggregates them into the matrix and computes coverage. Agents emit patches to source artifact frontmatter; the generator owns the canonical matrix state.</statement>
+        <rationale>Spreadsheet RTMs go stale within 2-3 sprints because no single person owns the maintenance burden. Generated matrices stay current as long as source artifacts are edited and the generator runs in CI.</rationale>
+      </rule>
+      <reference path="templates/rtm.py">Python script generating RTM from frontmatter traces across a docs tree</reference>
+    </section>
+
+    <section name="step-3-maintain-on-change">
+      <rule>
+        <statement>When a requirement is added, link it to its parent before committing. When a requirement changes, walk downstream links and flag affected artifacts. When a requirement is deleted, remove all links and update the matrix.</statement>
+        <rationale>Unlinked new requirements become orphans that fail coverage checks; unchanged downstream links after a requirement change produce misleading impact assessments.</rationale>
+      </rule>
+      <rule>
+        <statement>Use Conventional Commits with REQ scope (feat(REQ-045): ...) and Refs: footers for multi-requirement commits to get a free code-to-req trace via git log.</statement>
+        <rationale>Structured commit messages feed backward traceability from code to requirement without any additional tooling beyond the git log.</rationale>
+      </rule>
+    </section>
+
+    <section name="step-4-analyze-coverage">
+      <rule>
+        <statement>Tag a traceability baseline at every release. PRs must show the coverage diff so a regression is visible in review.</statement>
+        <rationale>Baseline diffs make coverage regression visible before merge; without them, regressions accumulate silently until audit time.</rationale>
+      </rule>
+      <antipattern>
+        <description>Agents write the RTM directly instead of patching source artifact frontmatter.</description>
+        <reason>Direct RTM edits bypass the generator and produce inconsistencies between source artifacts and the matrix; the generator must own the canonical state.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LLMs hallucinate links by associating artifacts that share a keyword but have no actual dependency.</description>
+        <reason>Hallucinated links poison the matrix and pass coverage thresholds while hiding real gaps. Every proposed link must cite a quoted span from each artifact as evidence; links below 0.9 confidence require human review.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Too granular tracing — linking every UI label and log message.</description>
+        <reason>Over-tracing buries signal in noise; trace only at the lowest level where a defect would be material to the business or auditor.</reason>
+      </antipattern>
+    </section>
+
+    <section name="e-commerce-checkout-traceability">
+      <example type="good">
+        <note>Business Requirement BR-05: Enable customers to complete purchases online.</note>
+        <note>SR-12: Customer can checkout cart (satisfies BR-05).</note>
+        <note>FR-30: Display cart summary (derives SR-12) → D-15: Cart component design (implements FR-30) → TC-45: Verify cart displays correctly (verifies FR-30).</note>
+        <note>FR-31: Accept payment information (derives SR-12) → D-16: Payment form design (implements FR-31) → TC-46: Verify payment entry (verifies FR-31).</note>
+        <note>FR-32: Confirm order (derives SR-12) → D-17: Confirmation page design (implements FR-32) → TC-47: Verify order confirmation (verifies FR-32).</note>
+        <note>Coverage: BR-05 is fully covered (forward) and every test cites its FR (backward). Orphan count: 0.</note>
+      </example>
+    </section>
+
+    <section name="impact-analysis-example">
+      <example type="good">
+        <note>Scenario: Business requirement BR-03 is changing. Use the link graph to identify all affected artifacts within 2 hops.</note>
+        <note>Stakeholder Requirements: SR-05, SR-06 — needs review.</note>
+        <note>Solution Requirements: FR-10, FR-11, FR-12 — may need update.</note>
+        <note>Design Documents: D-08, D-09 — needs revision.</note>
+        <note>Test Cases: TC-20, TC-21, TC-22 — needs update.</note>
+        <note>Human-in-the-loop gate: impact sign-off required before any artifact is modified.</note>
+      </example>
+    </section>
+
+    <section name="tools-for-traceability">
+      <list>
+        <item>Requirements Management — Jira, Azure DevOps, Jama Connect: best for KA-3 traceability matrices via issue links.</item>
+        <item>Specialized RM — IBM DOORS Next, Polarion ALM, StrictDoc: required for regulated industries (ISO 13485, IEC 62304, DO-178C).</item>
+        <item>Git-native RM — Doorstop: Markdown + YAML with built-in link and publish commands.</item>
+        <item>Spreadsheets — Excel, Google Sheets: acceptable for small projects only; go stale without a generator.</item>
+        <item>Generator script — rtm.py: aggregates frontmatter traces across a docs tree into a coverage report.</item>
+      </list>
+      <reference path="templates/rtm.py">RTM generator from frontmatter traces</reference>
+    </section>
+
+    <section name="hand-editing-antipattern">
+      <antipattern>
+        <description>Hand-editing the RTM instead of patching source artifact frontmatter.</description>
+        <reason>Manual RTM edits bypass the generator and produce inconsistencies; the matrix must be a build product, not a hand-maintained document.</reason>
+      </antipattern>
+      <antipattern>
+        <description>One-time traceability exercise — not updating on changes.</description>
+        <reason>An outdated RTM is worse than none because it gives false assurance to auditors and misleads impact analysis.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Coverage metrics gaming — linking one tautological test per requirement to achieve 100% forward coverage.</description>
+        <reason>Tautological links pass coverage thresholds while hiding real gaps; pair coverage metrics with mutation testing or acceptance-criteria density to detect gaming.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Treat the RTM as a generated artifact, not a hand-edited file. Each artifact (REQ, design, code, test) carries typed links in its frontmatter / docstring / tag (`traces: [BR-05, SR-12]`); a builder script aggregates links into the matrix and computes coverage. Subagents do three jobs: (1) propose links when a new artifact lands, (2) detect orphans and gaps in the generated matrix, (3) walk the graph for impact analysis on a change request. They never write the matrix directly — a deterministic generator owns the canonical state, and agents only emit patches to source artifacts. Human-in-the-loop gates: link approval, gap acceptance, change-request impact sign-off.</p>
+    </section>
+
+    <section name="recommended-subagents">
+      <list>
+        <item>faion-sdd-executor-agent — runs link-proposal as an SDD task per artifact: read spec.md, emit traces: frontmatter into related design.md and test-plan.md. Each commit is one trace edit, easy to revert.</item>
+        <item>password-scrubber-agent — sweeps requirement and test docs for leaked credentials before commit; relevant because RTM aggregation tends to copy-paste stakeholder transcripts and ticket comments.</item>
+        <item>Custom ba-trace-linker-agent (model: sonnet) — reads pairs of artifacts and proposes typed links with a confidence score and rationale; never auto-merges below 0.9 confidence.</item>
+        <item>Custom ba-impact-agent (model: opus) — given a change-request and the link graph, walks 1-2 hops downstream, lists every affected artifact, and drafts the impact section of the CR.</item>
+        <item>Custom ba-coverage-auditor-agent (model: haiku) — runs the generator, diff coverage against baseline tag, opens an issue when forward coverage drops below threshold.</item>
+      </list>
+    </section>
+
+    <section name="prompt-pattern">
+      <p>Two-shot: link proposal then impact walk.</p>
+      <code lang="text"><![CDATA[You are the trace linker. Source artifact (id={id}, type={type}) is below.
+Candidate targets (with abstracts) follow. For each candidate, decide LINK / NO LINK
+and assign confidence in [0,1]. Use ONLY content; do not invent IDs.
+
+Return strict JSON:
+{ "source": "{id}", "links": [
+  { "target": "<id>", "type": "satisfies|verifies|derives|implements|conflicts",
+    "confidence": <float>, "rationale": "<=1 sentence" } ] }
+
+SOURCE:
+---
+{frontmatter + body}
+---
+CANDIDATES:
+{list}]]></code>
+      <p>Impact analysis prompt:</p>
+      <code lang="text"><![CDATA[Given the link graph (JSON below) and CR-{n} description, list every artifact within
+2 hops of the changed REQ. Group by type. Mark each as Update / Review / No-op.
+Do NOT speculate beyond the supplied graph. Output the table from
+requirements-traceability/README.md "Impact analysis" example.]]></code>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>strictdoc — OSS requirements-as-code with native traceability, HTML export, link checking. https://strictdoc.readthedocs.io</item>
+        <item>doorstop — Git-native RM in Markdown+YAML; built-in doorstop link / doorstop publish. https://doorstop.readthedocs.io</item>
+        <item>reqif-tools — Round-trip ReqIF with Polarion / DOORS Next / Jama. https://github.com/strictdoc-project/reqif</item>
+        <item>yq + jq — Aggregate traces: frontmatter across files into a JSON link graph. apt install yq jq</item>
+        <item>pytest --require plugin (pytest-reqs) or custom marker — Tag tests with REQ IDs (@pytest.mark.req("REQ-101")) and emit a coverage report. https://pytest.org</item>
+        <item>gherkin + Cucumber tags — @REQ-101 tags on scenarios so BDD reports double as test-to-req trace. https://cucumber.io</item>
+        <item>git log --grep="REQ-" — Trace commits to requirements via Conventional Commits scope. preinstalled</item>
+        <item>gh api graphql — Pull issue ↔ PR ↔ commit graph for backward trace from code to requirement. https://cli.github.com</item>
+        <item>mermaid-cli (mmdc) — Render the link graph as a diagram for review. npm i -g @mermaid-js/mermaid-cli</item>
+        <item>lychee — Validate that every [REQ-XXX] link in markdown resolves to an existing file. https://github.com/lycheeverse/lychee</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>Jama Connect (SaaS) — First-class Relationships API; agents can fetch impact graphs server-side. OAuth.</item>
+        <item>IBM DOORS Next (SaaS / on-prem) — Industry standard for safety-critical; OSLC verbose, build adapters once and reuse.</item>
+        <item>Polarion ALM (SaaS / on-prem) — Strong work-item linking + LiveDoc; map link roles to linkedWorkItems.</item>
+        <item>Jira (Cloud) + Issue Links (SaaS) — Cheap baseline; "is implemented by" / "verifies" link types cover the basics. Watch rate limits on bulk link creation.</item>
+        <item>Azure DevOps + Test Plans (SaaS) — Native trace from work item → test case → test run; agents drive via az boards work-item update.</item>
+        <item>TestRail (SaaS) — Excellent for the test side of the matrix; each case stores refs: field for REQ IDs.</item>
+        <item>Xray for Jira (SaaS) — Deep BDD + manual + automated test trace into Jira issues.</item>
+        <item>StrictDoc (OSS) — Best fit for fully agentic flows; deterministic, git-native, ReqIF in/out.</item>
+        <item>ReqView (Desktop / SaaS) — Lightweight RM for small teams; export JSON, agents diff.</item>
+        <item>Modern Requirements (ADO) (SaaS) — Adds RTM views on top of Azure DevOps.</item>
+        <item>Codebeamer (PTC) (SaaS / on-prem) — Heavy enterprise; integrated with safety-critical workflows.</item>
+        <item>Helix RM (Perforce) (SaaS / on-prem) — Legacy; weaker LLM ecosystem; OK if already in stack.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Generate the matrix, never hand-maintain it. Store typed links in source artifacts (frontmatter, code annotations, test markers); the matrix is a build product, regenerated on every commit.</item>
+        <item>One link role vocabulary across the program: satisfies (need → req), derives (req → req), implements (req → code/design), verifies (test → req), conflicts (req ↔ req). Reject anything else at lint time.</item>
+        <item>Pin coverage thresholds in CI: forward >= 95%, backward == 100%, orphans == 0. Failure blocks the merge.</item>
+        <item>Distinguish "linked" from "verified": a link is structural; the verification gate (test pass + reviewer sign-off) is what makes the trace meaningful for audit.</item>
+        <item>Use Conventional Commits with REQ scope (feat(REQ-045): ...) and Refs: footers for multi-req commits — gives a free code-to-req trace via git log.</item>
+        <item>Tag a baseline (rtm-baseline-2026-Q2) at every release; PRs show the diff in coverage so a regression is visible.</item>
+        <item>For ML / LLM features, treat the eval dataset row as a test case and link to the REQ; rerun in CI so a model swap that breaks an AC fails the trace gate.</item>
+        <item>Keep the matrix narrow but deep: only artifact types that change ownership (BR, FR, design, test) are nodes; UI strings and log lines are leaves on a test case.</item>
+        <item>Decide once whether tests-without-requirements are gold-plating (delete) or implicit NFRs (write the requirement). Both are valid; mixing is fatal.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Hallucinated links are the dominant failure: pin every link to evidence (a quoted span from each artifact) and reject low-confidence proposals automatically. Too sparse is amplified when reviewers rubber-stamp confident-looking but bogus links.</item>
+        <item>Always pass the existing link graph (or the relevant subgraph) into the agent's context for impact analysis. Without it, the model invents downstream nodes.</item>
+        <item>LLMs conflate verifies with satisfies. State the role definitions in the system prompt every time; do not assume the model retained them.</item>
+        <item>Bulk operations are dangerous: cap any agent run to N (e.g. 20) link edits, require human review on the diff. A runaway linker that adds 500 spurious links is hard to clean up.</item>
+        <item>Use the LLM to phrase the trace, not to discover it: discovery should run a deterministic NER / ID-extraction pass first, then the LLM proposes role + rationale per candidate pair.</item>
+        <item>ReqIF imports lose custom link types — never let the agent recreate them from text; carry a YAML mapping file and reapply.</item>
+        <item>Token budget at >1000 artifacts: do not load full bodies; index titles + first 200 chars + frontmatter only. Load full body on demand for the focal pair.</item>
+        <item>Human-in-the-loop checkpoints (mandatory): (1) link confidence &lt; 0.9, (2) coverage drop &gt; 1pp from baseline, (3) any conflicts link, (4) deletion of a link that the auditor previously signed off on.</item>
+        <item>Frontmatter parsers fail silently on smart quotes / non-breaking spaces pasted from email; reject non-ASCII keys with a pre-commit hook.</item>
+        <item>Always emit a diff (+ traces: [REQ-101]), not the rewritten file — review surface is smaller and history is preserved.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/rtm.md" purpose="Requirements Traceability Matrix template with coverage summary and orphan/gap sections"/>
+      <template path="templates/per-req-trace.md" purpose="Single-requirement trace template showing upstream and downstream links with change history"/>
+    </templates>
+
+    <see-also>
+      <ref slug="requirements-lifecycle"/>
+      <ref slug="requirements-validation"/>
+      <link href="https://www.iiba.org/standards-and-resources/babok/"/>
+      <link href="https://www.iso.org/standard/72089.html"/>
+      <link href="https://www.iso.org/standard/38421.html"/>
+      <link href="https://www.rtca.org"/>
+      <link href="https://strictdoc.readthedocs.io"/>
+      <link href="https://doorstop.readthedocs.io"/>
+      <link href="https://www.omg.org/spec/ReqIF/"/>
+    </see-also>
+  </content>
+</methodology>

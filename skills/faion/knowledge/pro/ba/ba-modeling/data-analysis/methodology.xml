@@ -52,6 +52,12 @@
         <item>Frontend-only features with no new data persistence.</item>
         <item>When an authoritative data dictionary already exists and is up to date — extend it, do not duplicate.</item>
         <item>Pure UI/UX research where the output is a prototype, not a data model.</item>
+        <item>Greenfield prototypes pre-PMF where the schema changes weekly — formal data dictionaries become stale faster than written.</item>
+        <item>Statistical / exploratory data analysis (EDA, pandas, notebooks) — that is data science, not BA Data Analysis.</item>
+        <item>Pure ML feature engineering — features evolve through training pipelines, not through a BA-owned dictionary.</item>
+        <item>Tiny CRUD apps with under 10 entities — the ceremony costs more than it saves.</item>
+        <item>One-off ad-hoc reports where data lives only in a spreadsheet for a week.</item>
+        <item>High-trust regulated domains (HIPAA, PCI, SOX) where data classification MUST be human-signed — agents may draft, humans must approve.</item>
       </list>
     </when-not-to-use>
 
@@ -92,6 +98,19 @@
         <statement>Never declare a dimension "Green" without a measured sample from production data of at least 100 records or 10% of total volume, whichever is larger.</statement>
         <rationale>Small samples miss systemic issues; a 1% error rate on 10,000 records represents 100 corrupted records that will affect operations.</rationale>
       </rule>
+    </section>
+
+    <section name="specific-use-cases-agentic">
+      <p>Specific agentic-automation use cases for data analysis:</p>
+      <list>
+        <item>Greenfield feature spec needs a data dictionary: agent reads the spec + existing schema, emits new entities + attributes with types, validations, and ownership before DDL is written.</item>
+        <item>Pre-migration data quality assessment: agent profiles a source table, fills the six-dimension scorecard (accuracy / completeness / consistency / timeliness / validity / uniqueness), and flags blockers per entity.</item>
+        <item>Cross-system definition reconciliation: agent diffs customer.email semantics across CRM, billing, and product DBs and produces a canonical definition + mapping table.</item>
+        <item>Conceptual → logical → physical drift check: agent compares data-dictionary.md against live schema (Postgres information_schema, dbt manifest) and opens issues per drift.</item>
+        <item>ERD generation from spec: agent writes Mermaid / dbml ERD from the entity table, keeps it in git, regenerates on every dictionary change.</item>
+        <item>Business-rule extraction from legacy code/SQL: agent reads stored procedures or app validators and reverse-engineers validation/derivation/constraint rule rows.</item>
+        <item>Data-volume sizing for capacity planning: agent reads dictionary + traffic assumptions and produces volumes table (current / 1yr / 3yr).</item>
+      </list>
     </section>
 
     <section name="modeling-levels">
@@ -195,6 +214,224 @@ Symbols:
       <antipattern>
         <description>Ignoring historical data — modeling current state without considering how data changes over time.</description>
         <reason>Temporal requirements (audit trails, soft deletes, effective-date ranges) discovered after the physical model is built require schema rework.</reason>
+      </antipattern>
+    </section>
+
+    <section name="limitations-and-failure-modes">
+      <antipattern>
+        <description>Definition drift between systems: The same entity (Customer, Order, Product) is defined differently across 4-7 systems.</description>
+        <reason>The methodology offers no reconciliation pattern. Force a reconciliation step requiring both sources cited before merge.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>No lineage column: A data element without lineage (source system → transformations → consumers) is half-documented.</description>
+        <reason>Agents and humans both omit it because the template does not require it. Lineage is mandatory; reject dictionaries lacking it.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Static quality scorecard: Six dimensions are point-in-time; quality decays.</description>
+        <reason>Without recurring re-assessment, scorecard is outdated within a quarter. Schedule weekly.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>PII / classification handled as afterthought: "Data Security" is one row at the bottom.</description>
+        <reason>Classification (Public / Internal / Confidential / Restricted) drives storage, retention, masking, access. Make it first-class.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Volume estimates without growth model: 1yr/3yr columns invite linear extrapolation.</description>
+        <reason>Agents plug numbers without questioning the model. State the model explicitly (linear / exponential / seasonal).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>No event / state-transition modelling: Entities have lifecycles (Order: created → paid → shipped).</description>
+        <reason>Methodology models attributes but not state machines. Add status enum + transitions table.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Conflates relational with non-relational data: ERD assumes relational.</description>
+        <reason>Document stores, event streams, and graph data need different primitives. Agents force everything into entity-attribute-relationship form.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Business rules in prose: Rule examples are English sentences, not executable.</description>
+        <reason>Agents cannot verify them mechanically without a DSL (JSON Schema, OPA Rego, dbt tests). Use executable rules.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-prompt-patterns">
+      <p>Prompt pattern for dictionary draft from spec:</p>
+      <prompt purpose="data-dictionary-generation"><![CDATA[
+You are a BA data modeller. Read the feature spec in <spec> and the canonical dictionary in <data-dictionary.md>. Output the diff: new entities, new attributes on existing entities, deprecated attributes.
+
+For every attribute provide: name (PascalCase entity, snake_case attr), type, required (Y/N), valid values / range, validation rule (executable: regex, enum, FK), source system, owner (GitHub handle), classification (Public/Internal/Confidential/Restricted), lineage (source → transforms → consumers).
+
+Reject any attribute lacking classification or owner. Output as the README's Data Dictionary table format plus a Mermaid ER diagram.
+      ]]></prompt>
+
+      <p>Prompt pattern for quality scorecard:</p>
+      <prompt purpose="data-quality-assessment"><![CDATA[
+You profiled <table> with sample size <n>. Fill the six-dimension scorecard (accuracy, completeness, consistency, timeliness, validity, uniqueness).
+
+For each: state metric, finding, examples (redacted), score (1-5), priority (H/M/L). Use a 4-week rolling window for timeliness. For consistency, compare against <reference-system>.
+
+No claim without a count + percentage. End with the top three remediation actions, each with owner and effort estimate.
+      ]]></prompt>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive BA Data Analysis as a four-stage pipeline:</p>
+      <list>
+        <item>Extract — ingest the feature spec, existing dictionary, and live schema (information_schema, dbt manifest.json, Prisma schema.prisma).</item>
+        <item>Draft — produce or update the data dictionary with attributes, validations, classification, lineage, and Mermaid/dbml ERD.</item>
+        <item>Validate — run quality probes against sample data (Great Expectations / dbt tests / Soda checks) and fill the six-dimension scorecard.</item>
+        <item>Govern — diff against canonical dictionary, open PRs per drift, request human sign-off for any classification change.</item>
+      </list>
+
+      <p>Persist data-dictionary.md, erd.mmd, and quality-scorecard.md in git so every run is a reviewable diff.</p>
+
+      <rule>
+        <statement>Recommended subagents: faion-sdd-executor-agent (converts approved changes into SDD tasks), password-scrubber-agent (mandatory pre-step; SOPs contain credentials), a purpose-built data-modeller agent (canonical dictionary + classification rules; output JSON Schema for codegen), a schema-drift agent (cron, daily; diffs information_schema against data-dictionary.md), a data-quality agent (cron, weekly; runs quality suites and posts scorecard).</statement>
+      </rule>
+    </section>
+
+    <section name="cli-tools-and-services">
+      <p>Data modeling and quality tools:</p>
+      <list>
+        <item>dbt (data build tool) — Logical/physical model + executable tests. (https://docs.getdbt.com)</item>
+        <item>dbt-osmosis — Auto-propagates column descriptions and tests across dbt models.</item>
+        <item>great_expectations — Data quality suites mapping to six dimensions. (https://docs.greatexpectations.io)</item>
+        <item>soda-core — YAML-defined quality checks runnable in CI. (https://docs.soda.io)</item>
+        <item>sqlfluff — Lint dictionary-bound SQL before agents run it. (https://docs.sqlfluff.com)</item>
+        <item>schemaspy — Generates HTML + ERDs from any JDBC database. (https://schemaspy.org)</item>
+        <item>tbls — CI-friendly DB documentation (markdown + Mermaid ERD) from live schema. (https://github.com/k1LoW/tbls)</item>
+        <item>dbml-cli — Render ERDs from .dbml; round-trips to SQL. (https://dbml.dbdiagram.io/cli)</item>
+        <item>mermaid-cli — Render erDiagram Mermaid blocks to SVG/PNG in CI.</item>
+        <item>datacontract-cli — Lint and verify Data Contract YAML. (https://cli.datacontract.com)</item>
+        <item>sqlglot — Parse + transpile SQL, extract column lineage. (https://github.com/tobymao/sqlglot)</item>
+        <item>openlineage / marquez — Capture column-level lineage from dbt, Airflow, Spark. (https://openlineage.io)</item>
+        <item>presidio (Microsoft) — PII detection/redaction before LLM ingestion. (https://microsoft.github.io/presidio)</item>
+        <item>liquibase / flyway / alembic — Migrations as the executable physical model.</item>
+      </list>
+
+      <p>Platforms and services for data catalogs and governance:</p>
+      <list>
+        <item>dbt Cloud / dbt Core — SaaS / OSS. Canonical contract layer; agents read manifest.json for typed model graph.</item>
+        <item>dbdiagram.io / dbdocs.io — SaaS. .dbml is plain text, git-versionable. Best-fit for reviewable ERD in PR.</item>
+        <item>DataHub — OSS (LinkedIn). Catalog + lineage; agents push/pull definitions, classifications. (GraphQL + REST)</item>
+        <item>OpenMetadata — OSS. Catalog with column-level lineage and quality test integration. (REST + Python SDK)</item>
+        <item>Atlan / Alation / Collibra — SaaS. Enterprise catalogs; SSO + governance gates often slow agent loops.</item>
+        <item>Monte Carlo / Bigeye / Anomalo — SaaS. Observability layer feeding timeliness dimension automatically.</item>
+        <item>Soda Cloud — SaaS. Pairs with soda-core for quality reports.</item>
+        <item>Great Expectations Cloud — SaaS. Hosted GX with API.</item>
+        <item>Postgres / MySQL / SQL Server / Snowflake / BigQuery — DB. Agents introspect live schema via information_schema.</item>
+        <item>Apache Atlas — OSS. Heavyweight; pick only if already running Hadoop ecosystem.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <rule>
+        <statement>Classification is mandatory, not optional: Every attribute carries Public / Internal / Confidential / Restricted; downstream tooling keys off it.</statement>
+      </rule>
+      <rule>
+        <statement>Owner is a human handle, not a team: GitHub username or email; one per attribute.</statement>
+      </rule>
+      <rule>
+        <statement>Lineage column on every attribute: source_system → transforms → consumers. Without it the dictionary is a graveyard.</statement>
+      </rule>
+      <rule>
+        <statement>Executable rules, not English: Validation expressed as regex, enum, FK, or dbt/GX test ID. Prose rules drift; tests fail loudly.</statement>
+      </rule>
+      <rule>
+        <statement>Naming is an ADR: Pick snake_case columns + PascalCase entities + singular table names and write it down once.</statement>
+      </rule>
+      <rule>
+        <statement>Conceptual model first, in Mermaid, in git: Stakeholder review happens in PR comments, not Visio.</statement>
+      </rule>
+      <rule>
+        <statement>Reconcile before extending: When adding customer.email, search every system for existing email and document mapping.</statement>
+      </rule>
+      <rule>
+        <statement>Quality scorecard is recurring, not point-in-time: Schedule weekly; track trend, not snapshot.</statement>
+      </rule>
+      <rule>
+        <statement>State machines for entities with lifecycles: Add status enum + transitions table; reject transitions outside table.</statement>
+      </rule>
+      <rule>
+        <statement>Retention + DPA columns for Confidential / Restricted: Tie to records-of-processing-activity (GDPR Article 30).</statement>
+      </rule>
+      <rule>
+        <statement>Volumes assume explicit growth model: Linear / exponential / seasonal; cite assumption next to number.</statement>
+      </rule>
+      <rule>
+        <statement>Definitions are versioned: Definition change is semantic-versioned PR with deprecation notice; consumers get migration time.</statement>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Hallucinated columns: Agents invent created_at / updated_at columns that live schema does not have.</description>
+        <reason>Always pass introspected schema in prompt; reject any column not present without explicit ADD task.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Type-coercion blind spots: Agents map varchar(50) to text interchangeably.</description>
+        <reason>In some warehouses (BigQuery STRING vs SQL Server NVARCHAR) the difference matters. Pin types to target dialect.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Silent classification downgrade: Agent re-emits attribute and drops Confidential tag.</description>
+        <reason>Always include classification of every existing attribute in prompt; reject diffs lowering classification without ADR.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Definition collision: Two systems both define Customer; agent picks one and overwrites.</description>
+        <reason>Force reconciliation step requiring both sources cited before merge.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>PII leakage in sample rows: "Show me 5 example rows" → real emails in prompt.</description>
+        <reason>Always pre-redact via Presidio or use synthetic samples generated from schema.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Volume math fabrication: Agents produce confident 3-year numbers from single multiplier.</description>
+        <reason>Require statement of model (linear / exp / seasonal) + assumption inputs; otherwise "needs human estimate".</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Cardinality misnaming: 1:N vs N:M confusion creates wrong ERDs.</description>
+        <reason>Constrain agent to derive cardinality from FK + uniqueness constraints in information_schema, never prose.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Dropped historical context: Agents rewrite description, losing rationale.</description>
+        <reason>Always require change-log row appended, never a description replacement.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>No nullability invariants: Agents flag Required: Y but emit no NOT NULL constraint.</description>
+        <reason>Bind the dictionary's Required column to migration generator (alembic / liquibase) so they cannot diverge.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Inferring meaning from name: is_active differs in CRM vs billing.</description>
+        <reason>Force lineage + business definition on every Boolean.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Token bombs from full schema dumps: 400-table catalog blows context window.</description>
+        <reason>Slice by feature scope; pass only entities the spec touches.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Dictionary becomes only source of truth, then rots: Agent updates dictionary but not migration.</description>
+        <reason>Always pair dictionary PRs with migration + dbt tests in same commit, gated by tbls/schemaspy diff.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mermaid ERD limits: Diagrams over 30 entities become unreadable.</description>
+        <reason>Force per-bounded-context diagrams (one Mermaid file per domain).</reason>
       </antipattern>
     </section>
 
