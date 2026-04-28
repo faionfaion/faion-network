@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/infra/cicd-engineer methodologies → methodology.xml (argocd-gitops, azure-compute, dora-metrics; feature-045 batch)
+- migrate: 3/3 pro/marketing/growth-marketer methodologies → methodology.xml (cohort-implementation, conversion-tracking, google-analytics; feature-045 batch)
 - migrate: 3/3 pro/dev/software-developer methodologies → methodology.xml (csharp-xunit-testing, java-junit-testing, java-jpa-hibernate; feature-045 batch)
 - migrate: 3/3 pro/dev/software-developer methodologies → methodology.xml (java-spring-boot-patterns, laravel-patterns, php-eloquent; feature-045 batch)
 - migrate: 3/3 pro/dev methodologies → methodology.xml (quality-attributes-analysis, api-gateway-patterns, csharp-aspnet-core; feature-045 batch)
