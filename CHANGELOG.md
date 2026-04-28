@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 solo/product/product-operations methodologies → methodology.xml (feature-prioritization-moscow, feature-prioritization-rice, feedback-management)
 - migrate: 3/3 solo/marketing/content-marketer methodologies → methodology.xml (growth-content-marketing, growth-copywriting-fundamentals, growth-customer-testimonials)
 - migrate: 3/3 solo/marketing/smm-manager methodologies → methodology.xml (growth-linkedin-strategy, growth-social-media-strategy, growth-twitter-x-growth)
 - migrate: 3/3 solo/pm/pm-agile methodologies → methodology.xml (dashboard-setup, github-projects, linear-issue-tracking)
