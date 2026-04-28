@@ -1,0 +1,543 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="multi-agent-basics">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Coordinate specialized AI agents with sequential pipelines, parallel execution, hierarchical delegation, debate, and collaboration to solve complex multi-faceted problems beyond single-agent scope.</summary>
+    <tags>
+      <tag>multi-agent</tag>
+      <tag>orchestration</tag>
+      <tag>coordination</tag>
+      <tag>specialization</tag>
+      <tag>collaboration</tag>
+    </tags>
+    <category>patterns</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-24</created>
+  </metadata>
+  <content>
+    <title>Multi-Agent Systems Basics</title>
+    <summary>Multi-agent systems coordinate multiple specialized AI agents to solve complex problems collaboratively. By dividing tasks among experts and enabling communication, these systems can tackle challenges beyond single-agent capabilities.</summary>
+    <why>
+      <p>Single agents have finite context windows and struggle with complex, multi-faceted problems. Multi-agent systems distribute the problem across specialized agents, each handling a focused domain or task type. This enables better reasoning, cross-validation through debate, and cleaner separation of concerns.</p>
+      <p>Role specialization reduces cognitive load per agent, making responses more accurate. Communication patterns (sequential pipelines, parallel execution, hierarchical delegation, debate) let you choose the coordination strategy best suited to the problem. A specialist Researcher handles information gathering better than a generalist trying to do research, implementation, and review simultaneously.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Complex tasks requiring diverse expertise — problems with natural role divisions (research, writing, review).</item>
+        <item>Single agent struggles with scope — task requires more context than one conversation can hold.</item>
+        <item>Debate and verification scenarios — adversarial review needed to catch errors a single agent would miss.</item>
+        <item>Simulation and role-playing — multiple viewpoints or actors must be modeled.</item>
+        <item>Building reusable agent infrastructure — will serve many different task types over time.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Simple question-answering or single-step data transformation — orchestration overhead exceeds value.</item>
+        <item>Environments without reliable message persistence — agents lose context on failure.</item>
+        <item>When role definitions cannot be made non-overlapping — overlapping roles produce conflicting outputs.</item>
+        <item>Proof-of-concept stages — debugging a multi-agent system is harder than building it.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Coordination Patterns">
+      <p>Different coordination patterns suit different problems:</p>
+      <term name="Sequential">Agents work in order, each processing the output of the previous one. Use for pipelines and workflows like research → implement → test.</term>
+      <term name="Parallel">Agents work simultaneously on independent subtasks. Use for decomposable problems where tasks don't depend on each other, like multiple reviewers examining the same code.</term>
+      <term name="Hierarchical">Manager agent delegates to worker agents and synthesizes results. Use for complex projects with clear hierarchy and decomposable goals.</term>
+      <term name="Debate">Agents argue competing positions; a judge evaluates. Use for verification and high-stakes decisions where different perspectives reduce blind spots.</term>
+      <term name="Collaborative">Agents work together iteratively, refining shared output. Use for creative tasks and synthesis where ideas build on each other.</term>
+    </section>
+    <section name="Multi-Agent Architecture">
+      <p>A typical architecture consists of:</p>
+      <list>
+        <item>Orchestrator — distributes tasks, routes communication, resolves conflicts. The single point of coordination.</item>
+        <item>Specialized agents — each focused on one role (Researcher, Developer, Reviewer). Non-overlapping responsibilities.</item>
+        <item>Message routing — direct (agent-to-agent) or broadcast (one-to-all). In practice, all communication routes through the orchestrator.</item>
+      </list>
+      <p>In practice, the orchestrator is the single point of coordination. Workers never talk to each other directly — all communication routes through the orchestrator. This simplifies debugging and prevents deadlocks.</p>
+      <p>Example architecture for a content creation workflow:</p>
+      <code lang="text"><![CDATA[
+┌─────────────────────────────────────────────────────────────┐
+│                    ORCHESTRATOR                              │
+│  - Task distribution                                         │
+│  - Communication routing                                     │
+│  - Conflict resolution                                       │
+└─────────────────────────────────────────────────────────────┘
+            │                    │                    │
+    ┌───────▼───────┐   ┌───────▼───────┐   ┌───────▼───────┐
+    │   AGENT A     │   │   AGENT B     │   │   AGENT C     │
+    │  (Researcher) │   │  (Developer)  │   │  (Reviewer)   │
+    └───────────────┘   └───────────────┘   └───────────────┘
+]]></code>
+    </section>
+    <section name="Agent Specialization">
+      <rule>
+        <statement>Each agent must have a single, focused responsibility. If a role description uses "and", split it into two agents.</statement>
+        <rationale>Overlapping roles cause duplication and conflicting outputs. Clear specialization reduces tokens and improves accuracy.</rationale>
+      </rule>
+      <rule>
+        <statement>Give each agent an appropriate system prompt that defines its expertise, constraints, and output format.</statement>
+        <rationale>System prompts guide agent behavior. Vague prompts produce unfocused outputs; specific ones are easier for orchestrators to parse.</rationale>
+      </rule>
+      <example type="good" title="Focused Role Definition">
+        <code lang="text"><![CDATA[
+You are a research specialist. Your role:
+- Gather information from the task context
+- Summarize relevant findings
+- Cite your sources
+- Output ONLY structured JSON with fields: findings, confidence, limitations
+]]></code>
+      </example>
+    </section>
+    <section name="Agent Foundation and Base Implementation">
+      <p>A basic Agent class stores configuration and maintains message history:</p>
+      <code lang="python"><![CDATA[
+from dataclasses import dataclass
+from typing import List, Dict, Optional
+from openai import OpenAI
+import json
+
+client = OpenAI()
+
+@dataclass
+class AgentConfig:
+    name: str
+    role: str
+    system_prompt: str
+    model: str = "gpt-4o"
+    tools: List[Dict] = None
+
+class Agent:
+    """Individual agent in a multi-agent system."""
+
+    def __init__(self, config: AgentConfig):
+        self.config = config
+        self.messages: List[Dict] = []
+        self.reset()
+
+    def reset(self):
+        """Reset agent state."""
+        self.messages = [
+            {"role": "system", "content": self.config.system_prompt}
+        ]
+
+    def respond(self, message: str, context: Dict = None) -> str:
+        """Generate a response to a message."""
+        user_content = message
+        if context:
+            user_content = f"Context: {json.dumps(context)}\n\n{message}"
+
+        self.messages.append({"role": "user", "content": user_content})
+
+        response = client.chat.completions.create(
+            model=self.config.model,
+            messages=self.messages,
+            tools=self.config.tools
+        )
+
+        assistant_message = response.choices[0].message.content
+        self.messages.append({"role": "assistant", "content": assistant_message})
+
+        return assistant_message
+]]></code>
+    </section>
+    <section name="Multi-Agent Orchestrator">
+      <p>The orchestrator manages communication between agents:</p>
+      <code lang="python"><![CDATA[
+class MultiAgentOrchestrator:
+    """Orchestrates communication between agents."""
+
+    def __init__(self, agents: List[Agent]):
+        self.agents = {a.config.name: a for a in agents}
+        self.conversation_history: List[Dict] = []
+
+    def send_message(
+        self,
+        from_agent: str,
+        to_agent: str,
+        message: str,
+        context: Dict = None
+    ) -> str:
+        """Send message from one agent to another."""
+        if to_agent not in self.agents:
+            raise ValueError(f"Unknown agent: {to_agent}")
+
+        prefixed_message = f"[From {from_agent}]: {message}"
+
+        response = self.agents[to_agent].respond(prefixed_message, context)
+
+        self.conversation_history.append({
+            "from": from_agent,
+            "to": to_agent,
+            "message": message,
+            "response": response
+        })
+
+        return response
+
+    def broadcast(self, message: str, exclude: List[str] = None) -> Dict[str, str]:
+        """Broadcast message to all agents."""
+        exclude = exclude or []
+        responses = {}
+
+        for name, agent in self.agents.items():
+            if name not in exclude:
+                responses[name] = agent.respond(message)
+
+        return responses
+
+    def get_summary(self) -> str:
+        """Get summary of conversation."""
+        summary = "Conversation Summary:\n"
+        for entry in self.conversation_history:
+            summary += f"\n{entry['from']} -> {entry['to']}:\n"
+            summary += f"  Message: {entry['message'][:100]}...\n"
+            summary += f"  Response: {entry['response'][:100]}...\n"
+        return summary
+]]></code>
+    </section>
+    <section name="Sequential Pipeline Pattern">
+      <p>Sequential pipelines chain agents in order. Each agent receives the output of the previous stage and produces output for the next.</p>
+      <code lang="python"><![CDATA[
+class SequentialPipeline:
+    """Agents process tasks in sequence."""
+
+    def __init__(self, agents: List[Agent]):
+        self.agents = agents
+
+    def run(self, initial_input: str) -> Dict:
+        """Run the pipeline."""
+        current_output = initial_input
+        results = []
+
+        for agent in self.agents:
+            response = agent.respond(current_output)
+            results.append({
+                "agent": agent.config.name,
+                "input": current_output[:200],
+                "output": response
+            })
+            current_output = response
+
+        return {
+            "final_output": current_output,
+            "pipeline_results": results
+        }
+
+# Example: Research -> Write -> Edit pipeline
+researcher = Agent(AgentConfig(
+    name="Researcher",
+    role="Research Specialist",
+    system_prompt="You are a research specialist. Gather and summarize relevant information."
+))
+
+writer = Agent(AgentConfig(
+    name="Writer",
+    role="Content Writer",
+    system_prompt="You are a content writer. Create engaging content from research findings."
+))
+
+editor = Agent(AgentConfig(
+    name="Editor",
+    role="Editor",
+    system_prompt="You are an editor. Improve clarity, fix errors, and polish the content."
+))
+
+pipeline = SequentialPipeline([researcher, writer, editor])
+result = pipeline.run("Write an article about AI agents")
+]]></code>
+      <rule>
+        <statement>Implement per-worker timeouts so a single slow agent cannot block the entire pipeline.</statement>
+      </rule>
+    </section>
+    <section name="Debate System Pattern">
+      <p>Debate systems run two agents with opposite positions, alternating rebuttals, then call a judge to evaluate:</p>
+      <code lang="python"><![CDATA[
+class DebateSystem:
+    """Two agents debate a topic to reach better conclusions."""
+
+    def __init__(
+        self,
+        proponent: Agent,
+        opponent: Agent,
+        judge: Agent,
+        max_rounds: int = 3
+    ):
+        self.proponent = proponent
+        self.opponent = opponent
+        self.judge = judge
+        self.max_rounds = max_rounds
+
+    def debate(self, topic: str) -> Dict:
+        """Run a debate on the topic."""
+        debate_history = []
+
+        # Initial positions
+        pro_position = self.proponent.respond(
+            f"Argue IN FAVOR of: {topic}\nProvide your strongest arguments."
+        )
+        con_position = self.opponent.respond(
+            f"Argue AGAINST: {topic}\nProvide your strongest arguments."
+        )
+
+        debate_history.append({
+            "round": 0,
+            "proponent": pro_position,
+            "opponent": con_position
+        })
+
+        # Debate rounds
+        for round_num in range(1, self.max_rounds + 1):
+            # Opponent responds to proponent
+            con_response = self.opponent.respond(
+                f"Counter the following argument:\n{pro_position}"
+            )
+
+            # Proponent responds to opponent
+            pro_response = self.proponent.respond(
+                f"Defend against and counter:\n{con_response}"
+            )
+
+            debate_history.append({
+                "round": round_num,
+                "proponent": pro_response,
+                "opponent": con_response
+            })
+
+            pro_position = pro_response
+
+        # Judge evaluates
+        debate_summary = json.dumps(debate_history, indent=2)
+        judgment = self.judge.respond(
+            f"""Evaluate this debate and determine the stronger position.
+
+Topic: {topic}
+
+Debate:
+{debate_summary}
+
+Provide:
+1. Summary of key arguments
+2. Strengths and weaknesses of each side
+3. Your judgment on which side argued more effectively
+4. A synthesized conclusion incorporating the best points"""
+        )
+
+        return {
+            "topic": topic,
+            "debate_history": debate_history,
+            "judgment": judgment
+        }
+
+# Example
+debate = DebateSystem(
+    proponent=Agent(AgentConfig(
+        name="Proponent",
+        role="Advocate",
+        system_prompt="You are a skilled debater arguing in favor of positions. Be persuasive and logical."
+    )),
+    opponent=Agent(AgentConfig(
+        name="Opponent",
+        role="Critic",
+        system_prompt="You are a skilled debater arguing against positions. Find weaknesses and counter-arguments."
+    )),
+    judge=Agent(AgentConfig(
+        name="Judge",
+        role="Impartial Judge",
+        system_prompt="You are an impartial judge. Evaluate arguments fairly and provide balanced conclusions."
+    ))
+)
+
+result = debate.debate("AI will create more jobs than it eliminates")
+]]></code>
+    </section>
+    <section name="Communication Patterns">
+      <rule>
+        <statement>Use structured JSON for all inter-agent communication; free-form text introduces parsing fragility.</statement>
+      </rule>
+      <rule>
+        <statement>Log all inter-agent messages with sender, receiver, content hash, and token count from the start.</statement>
+      </rule>
+      <rule>
+        <statement>Pass full context in each handoff message, not just the delta. Agents have separate message histories.</statement>
+        <rationale>Agents cannot see each other's conversation history. If the orchestrator sends only a summary, context is lost on handoff.</rationale>
+      </rule>
+    </section>
+    <section name="Common Failure Modes">
+      <antipattern>
+        <description>Role confusion — overlapping agent responsibilities cause agents to duplicate work.</description>
+        <reason>If two agents have similar system prompts and responsibilities, they produce redundant outputs, wasting tokens and confusing the orchestrator.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Communication overhead — every send/receive consumes tokens; small tasks pay disproportionate coordination tax.</description>
+        <reason>Multi-agent systems have setup cost. For simple problems, direct single-agent approach is cheaper.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Deadlocks — agents waiting on each other's outputs without timeout hang indefinitely.</description>
+        <reason>If Agent A waits for B and B waits for A, the system deadlocks. Use a coordinator that detects cycles at plan-time.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Echo chambers — agents with similar training data converge on the same (possibly wrong) answer in debate or review.</description>
+        <reason>Large language models trained on similar data produce correlated outputs. Debate is less useful if both sides reach the same incorrect conclusion.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Coordination failure — without a clear decision-making authority, no consensus is reached.</description>
+        <reason>Specify upfront who decides: the orchestrator, the judge, majority vote, or consensus.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Resource waste — parallel agents sharing a rate-limited API key hit limits faster.</description>
+        <reason>5 parallel agents hitting the same key multiply effective request rate by 5. Use per-agent rate limiters or a shared token bucket.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Sequential bottlenecks — debate and collaborative patterns serialize naturally; parallelism gains are limited.</description>
+        <reason>Not all patterns parallelize equally. Debate requires sequential rounds; only independent stages can run in parallel.</reason>
+      </antipattern>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Agent Specialization: Clear, focused roles. Non-overlapping responsibilities. Appropriate expertise levels.</item>
+        <item>Communication Design: Clear message protocols. Structured information exchange (JSON). Conflict resolution mechanisms.</item>
+        <item>Coordination: Choose appropriate pattern for task. Minimize unnecessary communication. Handle failures gracefully.</item>
+        <item>Monitoring: Log all inter-agent messages. Track individual agent performance. Monitor for deadlocks and resource exhaustion.</item>
+        <item>Testing: Test agents individually before testing coordination. Test coordination logic. Simulate edge cases and failures.</item>
+        <item>Set explicit token budgets per agent and per run; alert when 80% is consumed.</item>
+        <item>Test each agent in isolation before testing coordination — most bugs are in individual agents, not orchestration.</item>
+        <item>Any irreversible action (write to DB, send message, deploy) must pause for explicit human approval, even in a multi-agent pipeline.</item>
+      </list>
+    </section>
+    <section name="Recommended Subagents">
+      <list>
+        <item>orchestrator — top-level coordinator; decomposes task and synthesizes results; uses Opus.</item>
+        <item>specialist-worker — domain-specific execution (research, coding, design critique); uses Sonnet.</item>
+        <item>debate-judge — impartial evaluation of competing agent outputs; uses Opus.</item>
+        <item>pipeline-stage — sequential transformer in a multi-step content pipeline; uses Haiku for simple transformations.</item>
+      </list>
+    </section>
+    <section name="Prompt Patterns">
+      <example type="good" title="Sequential Pipeline Prompt">
+        <code lang="xml"><![CDATA[
+<role>{{agent_role}}</role>
+<previous_stage_output>{{upstream_result}}</previous_stage_output>
+<task>{{this_stage_task}}</task>
+<output_format>{{schema_or_format}}</output_format>
+]]></code>
+      </example>
+      <example type="good" title="Broadcast Prompt">
+        <code lang="xml"><![CDATA[
+<broadcast>true</broadcast>
+<task>{{shared_task}}</task>
+<instruction>Provide your perspective from the viewpoint of your role. Be specific and non-redundant.</instruction>
+]]></code>
+      </example>
+    </section>
+    <section name="Available Frameworks and Tools">
+      <term name="AutoGen">Microsoft conversational multi-agent framework. Install: pip install pyautogen. Docs: microsoft.github.io/autogen</term>
+      <term name="CrewAI">Role-based agent teams. Install: pip install crewai. Docs: crewai.com</term>
+      <term name="LangGraph">Graph-based agent coordination with state management. Install: pip install langgraph. Docs: langchain-ai.github.io/langgraph</term>
+      <term name="AgentOps">Observability and cost tracking per agent. Install: pip install agentops. Docs: agentops.ai</term>
+    </section>
+    <section name="Managed Services">
+      <term name="AutoGen Studio">No-code GUI for building multi-agent configs locally. OSS.</term>
+      <term name="CrewAI Enterprise">Managed crew execution with role-based teams. SaaS.</term>
+      <term name="LangGraph Cloud">Persistent agent state, checkpointing, human-in-loop. SaaS.</term>
+      <term name="LangSmith">Full trace of every inter-agent message and tool call. SaaS.</term>
+      <term name="Helicone">Per-agent cost attribution, rate-limit monitoring. SaaS.</term>
+    </section>
+    <section name="Implementation Checklist">
+      <checklist>
+        <check>Define agent roles and non-overlapping responsibilities</check>
+        <check>Write focused system prompts for each agent</check>
+        <check>Choose appropriate coordination pattern for the task</check>
+        <check>Implement or select an orchestration framework</check>
+        <check>Build message routing logic (direct or broadcast)</check>
+        <check>Add error handling for each agent call</check>
+        <check>Test agents individually in isolation first</check>
+        <check>Test coordination logic with synthetic scenarios</check>
+        <check>Log all inter-agent messages with timestamps and token counts</check>
+        <check>Set token budgets and monitoring alerts</check>
+        <check>Add timeouts for agent responses</check>
+        <check>Test edge cases and failure scenarios</check>
+      </checklist>
+    </section>
+    <section name="LLM Prompts for Multi-Agent Implementation">
+      <p>Prompts for AI-assisted multi-agent system implementation:</p>
+      <example type="good" title="Agent Prompt Template">
+        <code lang="text"><![CDATA[
+You are a {{role_name}}. Your responsibilities:
+- {{responsibility_1}}
+- {{responsibility_2}}
+- {{responsibility_3}}
+
+When responding:
+1. Stay focused on your role
+2. Be concise and specific
+3. Output structured JSON with fields: {{output_fields}}
+4. Flag any concerns or ambiguities
+
+Do NOT attempt tasks outside your role.
+]]></code>
+      </example>
+      <example type="good" title="Orchestrator Composition Prompt">
+        <code lang="text"><![CDATA[
+You are coordinating a team of specialist agents for this task: {{task}}
+
+Available agents:
+- {{agent_name}}: {{agent_description}}
+- {{agent_name}}: {{agent_description}}
+
+Decompose the task into steps and assign each to the appropriate agent.
+Specify the order of execution and any data to pass between agents.
+
+Output format:
+{
+  "steps": [
+    {"agent": "...", "task": "...", "inputs_from": ["..."]}
+  ],
+  "coordination": "sequential|parallel|hierarchical"
+}
+]]></code>
+      </example>
+      <example type="good" title="Debate Prompt">
+        <code lang="text"><![CDATA[
+Debate topic: {{topic}}
+
+Your role: {{proponent|opponent}}
+
+Instructions for {{role}}:
+1. Provide your strongest 3-4 arguments
+2. Use evidence and reasoning
+3. Anticipate counter-arguments
+4. Be concise (max 500 words)
+
+Format your response as JSON: {"arguments": [...], "evidence": [...]}
+]]></code>
+      </example>
+    </section>
+    <section name="Implementation Gotchas and Solutions">
+      <p>Common pitfalls when building multi-agent systems:</p>
+      <list>
+        <item>Deadlock via mutual dependency — Agent A waits for B, B waits for A. Use a coordinator that detects cycles at plan-time. Never allow bidirectional dependencies.</item>
+        <item>Context loss on handoff — agents have separate message histories. Pass full context in each handoff message, not just the delta. Include previous outputs completely.</item>
+        <item>Rate limit amplification — 5 parallel agents hitting the same API key multiplies effective request rate by 5. Use per-agent rate limiters or a shared token bucket.</item>
+        <item>Synthesizer anchoring — if the orchestrator reads worker outputs one by one (streaming), early outputs anchor the synthesis. Collect all outputs before synthesizing.</item>
+        <item>Human-in-loop checkpoint — any irreversible action must pause for explicit approval. The orchestrator is responsible for surfacing this gate with full context.</item>
+        <item>Debug complexity — failures in multi-agent runs are harder to reproduce because message order may vary. Always record full conversation history with timestamps.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/agent-foundation.py" purpose="Base Agent class with message history and response generation"/>
+      <template path="templates/multi-agent-orchestrator.py" purpose="Orchestrator for routing messages between agents"/>
+      <template path="templates/sequential-pipeline.py" purpose="Sequential pipeline for chained agent execution"/>
+      <template path="templates/debate-system.py" purpose="Debate system with proponent, opponent, and judge"/>
+      <template path="templates/minimal-orchestrator.py" purpose="Minimal orchestrator (≤20 lines) with broadcast and routing"/>
+    </templates>
+    <see-also>
+      <link href="https://microsoft.github.io/autogen/"/>
+      <link href="https://github.com/joaomdmoura/crewAI"/>
+      <link href="https://github.com/geekan/MetaGPT"/>
+      <link href="https://arxiv.org/abs/2308.08155"/>
+      <link href="https://www.anthropic.com/research/building-effective-agents"/>
+    </see-also>
+  </content>
+</methodology>
