@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 methodologies → methodology.xml (voice-basics, voice-implementation, chunking-basics; feature-045 batch 275)
 - migrate: 3/3 geek/ai/rag-engineer methodologies → methodology.xml (db-chroma, db-comparison, db-qdrant; feature-045 batch 276)
 - chore: migrate evaluation-metrics to methodology.xml (feature-045 sonnet-recovery)
 - migrate: 3/3 geek/ai/multimodal-ai methodologies → methodology.xml (video-gen-tools, vision-applications, vision-basics; feature-045 batch 274)
