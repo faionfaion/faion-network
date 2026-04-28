@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (token-organization, tree-testing, voice-ui; feature-045 batch 233)
 - migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (vr-design-patterns, vui-accessibility-inclusivity, vui-conversation-design; feature-045 batch 234)
 - migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (spatial-ux-fundamentals, surveys, testing-with-assistive-technology; feature-045 batch 232)
 - migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (spatial-design-tools, spatial-interaction-patterns, spatial-ui-patterns; feature-045 batch 231)
