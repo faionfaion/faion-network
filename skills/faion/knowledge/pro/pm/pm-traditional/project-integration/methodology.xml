@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="project-integration">
+  <metadata>
+    <tier>pro</tier>
+    <group>pm</group>
+    <domain>pm-traditional</domain>
+    <summary>The PM as integrator ensures that decisions in scope, schedule, cost, quality, risk, resources, communications, and procurement are consistent and mutually reinforcing.</summary>
+    <tags>
+      <tag>project-integration</tag>
+      <tag>change-control</tag>
+      <tag>status-reporting</tag>
+      <tag>project-charter</tag>
+      <tag>baseline-management</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Project Integration Management</title>
+
+    <summary>The PM as integrator ensures that decisions in scope, schedule, cost, quality, risk, resources, communications, and procurement are consistent and mutually reinforcing. All component plans live as typed YAML/JSON artifacts in git; status RAG is computed from measurable variance thresholds, never from opinion; and every baseline change goes through a documented change-control PR. Agents propose; sponsors approve baseline changes.</summary>
+
+    <why>
+      <p>Silo management — optimising each knowledge area independently — routinely produces locally good and globally bad outcomes: a scope addition that is "free" for engineering adds cost and schedule risk that the PM discovers two weeks later. Integration is the discipline that catches cross-area effects before they become surprises. Without an integration view, status reports reflect the best news from each silo rather than the worst constraint across them.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Multi-team / multi-vendor programs where decisions in one area routinely affect another</item>
+        <item>Regulated programs where the Project Charter is a contractual artifact requiring version control</item>
+        <item>Hybrid agile+waterfall environments with component plans in different tools needing a single source of truth</item>
+        <item>Portfolio PMO reporting where dozens of projects feed the same status rollup</item>
+        <item>Integrated Change Control when a change request affects more than one baseline</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Solo or duo teams — overhead exceeds value; a one-page README and a kanban board cover integration</item>
+        <item>Pure agile single-team with one product backlog — Scrum already integrates work; bolting on PMBoK integration creates conflict</item>
+        <item>Pre-charter exploratory spikes — formalising integration too early kills learning</item>
+        <item>Portfolios where project owners refuse to share artifacts in a common format — fix governance first</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="project-charter-elements">
+      <p>Rules for authoring a project charter that is legally valid as a contractual artifact, version-controlled, and re-baselined only through approved change requests.</p>
+
+      <rule testable="true">
+        <statement>A project charter must include: project purpose, SMART objectives, high-level scope (in/out), named success criteria with baseline and target, key stakeholders with roles, PM authority level, and high-level budget and timeline. Missing any element makes the charter unenforceable.</statement>
+        <rationale>Charters without measurable success criteria degenerate into "on time, on budget, on scope" — meaningless without baselines. Every element must be present before formal authorization.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Success criteria must be SMART: specific metric, current baseline, target value, and by-date. Reject "improve customer satisfaction" — require "NPS from 32 to 45 by Q3 2026".</statement>
+        <rationale>Vague success criteria enable scope creep and make project closure decisions impossible. Every criterion must answer: how will we know we succeeded?</rationale>
+      </rule>
+    </section>
+
+    <section name="charter-version-control">
+      <rule testable="true">
+        <statement>Store the charter in git as charter.yaml, signed (Signed-off-by or digital signature reference), and tagged baseline-v1 at authorization. Re-baseline only via approved change requests with sponsor sign-off recorded in git history.</statement>
+        <rationale>Charters that drift from reality without version history cannot be audited. A PDF filed and never reconciled is not a controlled document.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Re-baseline triggers: scope change greater than 10%, schedule slip greater than 15%, cost overrun greater than 10%, or sponsor change. Anything below these thresholds is managed via the change log without a full re-baseline.</statement>
+        <rationale>Frequent re-baselines reset performance measurement and hide variance history. Reserve re-baselining for genuine scope shifts that make the original baseline meaningless.</rationale>
+      </rule>
+    </section>
+
+    <section name="rag-computation-rules">
+      <p>Deterministic RAG computation rules from EVM metrics, change control workflow as git PRs, and integration antipatterns.</p>
+
+      <rule testable="true">
+        <statement>Compute RAG from measurable thresholds, never from opinion. Schedule: GREEN if SPI >= 0.95, YELLOW 0.85-0.95, RED below 0.85. Cost: GREEN if CPI >= 0.95, YELLOW 0.85-0.95, RED below 0.85. Overall: worst single dimension.</statement>
+        <rationale>Opinion-based status defaults to GREEN because pessimistic framing is rarer in training data and in human psychology. Threshold-based computation removes the bias.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Missing data is YELLOW with reason, not GREEN. If a required metric is null, surface it as a gap rather than assuming everything is on track.</statement>
+        <rationale>LLMs return GREEN when data is absent; the correct response is to flag the missing input as a monitoring gap requiring investigation.</rationale>
+      </rule>
+
+      <reference path="templates/status-rag.py">Deterministic RAG from EVM + risk YAML baselines</reference>
+    </section>
+
+    <section name="integrated-change-control">
+      <rule testable="true">
+        <statement>Every change request must traverse all 8 component plans (scope, schedule, cost, quality, risk, resources, comms, procurement) and emit an impact matrix before approval. Standalone scope edits without schedule and cost re-estimates are rejected.</statement>
+        <rationale>Silo approval of scope changes is the primary mechanism by which integration fails. A scope addition that "won't affect timeline" always affects timeline — the PM just hasn't computed it yet.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run change control as a PR: CR description, cross-area impact matrix, baseline patch proposal, sponsor approval, merge tagged baseline-vN+1. Every baseline change must have a unique CR ID and immutable diff in git history.</statement>
+        <rationale>Audit trails are mandatory in regulated programs. A git-based change control system provides immutable history with timestamps and approvers.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Agents have zero authority to approve baseline changes. The agent proposes baseline patches; the sponsor or change board approves via their recorded sign-off before merge.</statement>
+        <rationale>Autonomous baseline changes by agents constitute an audit risk and a governance failure. Human approval is non-negotiable for any change touching cost or schedule baselines.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Agent drafts charter with fabricated stakeholder names, dollar figures, and milestone dates.</description>
+        <reason>All numeric and named values must come from explicit input fields; never let the agent infer or fill in charter data from context. Charter hallucinations become contractual commitments.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent edits a charter mid-flight without a change request reference.</description>
+        <reason>Charter freeze is a governance discipline. Enforce with branch protection and CODEOWNERS; any edit without an approved CR ID in the commit message is rejected.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Component plans in heterogeneous tools (Jira for tasks, Smartsheet for schedule, Excel for budget) without a normalised export layer.</description>
+        <reason>Without a common format, the integration agent cannot compute cross-area impact. Require each plan owner to export to a canonical YAML schema at each status cycle.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Status report generation that leaks vendor pricing, customer names, or employee performance into a shared report.</description>
+        <reason>Component plans often contain commercially sensitive and personally identifiable information. Run a scrubber on the integration report before publishing to broad channels.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Charters drift from reality if not version-controlled; many orgs sign a PDF, file it, and never reconcile against the live plan.</description>
+        <reason>Version control with git tags enables audits and baseline resets. A PDF filed once and never updated is a liability in regulated programs.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Integrated change control becomes a bottleneck when CAB / CCB meets infrequently — agile tempo collides with waterfall governance.</description>
+        <reason>Async PR-based change control with async approval (e.g., 24-hour approval SLA) scales better than synchronous CAB meetings.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LLMs producing status reports tend toward "GREEN washing" unless forced to compute RAG from quantitative inputs (variance thresholds).</description>
+        <reason>Threshold-based RAG computation is the only reliable antidote to LLM optimism bias in status reporting.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>The PM-as-integrator model assumes the PM has access; in matrix orgs functional managers gate visibility and the integration view is incomplete.</description>
+        <reason>Integration requires transparency across all 8 areas. Matrix orgs need a central repository (git, Confluence, SharePoint) where all plans are visible to the PM role, not just to function leads.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Charter "success criteria" often degenerate into "on time, on budget, on scope" — meaningless without baselines and measurable outcomes.</description>
+        <reason>Success criteria must be SMART and tied to business value, not just schedule/cost/scope conformance. "NPS 45 by Q3" is measurable; "increase revenue" is not.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Treat each component plan as a typed YAML/JSON artifact in git: charter.yaml, scope-baseline.yaml, schedule-baseline.yaml, cost-baseline.yaml, quality-plan.yaml, resource-plan.yaml, risk-register.yaml, comms-plan.yaml, procurement-plan.yaml. An integration subagent reads all baselines, computes RAG status from variance thresholds, and emits the weekly Project Status Report deterministically. A change-control subagent intercepts every change request, runs cross-area impact analysis, and proposes baseline patches that humans approve. The agent never auto-approves changes touching cost or schedule baselines — those require sponsor sign-off recorded in git.</p>
+
+      <p>Recommended subagents: faion-sdd-executor-agent — drives integration as SDD tasks (TASK_charter, TASK_baseline_lock, TASK_status_report, TASK_change_request_NN). Custom charter-author-agent (opus) — drafts charter from intake form + business case; flags missing SMART objectives and acceptance criteria. Custom status-aggregator-agent (sonnet) — reads all baseline files, EVM metrics, risk register; emits Status Report with computed RAG (no opinion-based GREEN). Custom change-impact-agent (opus) — for each change request, walks scope/schedule/cost/quality/risk/resources and emits an impact matrix plus baseline patch proposal. Custom plan-coherence-agent (sonnet) — runs after every plan update; catches misalignments (schedule task not in WBS, cost line without WBS code, risk without owner). password-scrubber-agent — runs over charter / status reports before commit; charters often contain sponsor names, vendor pricing, customer NDAs.</p>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Charter is law — version it in git, sign it (digital sign or Signed-off-by:), and re-baseline only via approved change requests.</item>
+        <item>One source of truth per artifact: schedule lives in one tool, exported to YAML for integration; banning duplicate plans prevents drift.</item>
+        <item>Status RAG must be computed, never opinion-based. Define variance thresholds in .integration.yaml and have the agent enforce them.</item>
+        <item>Integrated Change Control runs through PRs (or equivalent) — CR description, impact matrix, baseline patch, sponsor approval, merge tagged baseline-vN+1.</item>
+        <item>Status reports go out on a calendar cadence; missed reports trigger automatic escalation, not silence.</item>
+        <item>Component plan owners are named in .CODEOWNERS so PRs route correctly; PM owns integration, not every plan.</item>
+        <item>Tie integration to lessons-learned — every approved CR generates a candidate lesson if it crossed >2 baselines.</item>
+        <item>Charter success criteria must be SMART and measurable; reject "improve customer satisfaction" without metric, baseline, target, and date.</item>
+        <item>Always pair scope changes with schedule and cost re-estimates in the same PR; refuse standalone scope edits.</item>
+        <item>Re-baseline triggers: scope change > 10%, schedule slip > 15%, cost overrun > 10%, or sponsor change.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>LLMs default to "GREEN" status when data is missing — force null on missing inputs and compute RAG only from non-null values; missing data → YELLOW with reason.</item>
+        <item>Agents drafting charters fabricate stakeholders, dollar figures, and dates; require all numbers to come from explicit input fields, no inference.</item>
+        <item>Integrated change control without an audit trail breaks regulator audits; every CR must have a unique ID, immutable diff, and approver signature in git history.</item>
+        <item>Cross-baseline impact analysis hallucinates dependencies — feed the agent the actual dependency graph (WBS + schedule predecessors), do not let it infer.</item>
+        <item>Status report generation can leak confidential info (vendor pricing, customer names, employee performance) when sourced from raw plans; run scrubber before publishing.</item>
+        <item>Agents conflate "Project Manager authority" with "agent autonomy"; the agent has zero authority to approve baseline changes — it proposes, sponsor approves.</item>
+        <item>Reading multiple component plan files into one prompt explodes context; use a summary index and pull individual files on demand.</item>
+        <item>Charter freeze is a discipline gap: agents will happily edit a charter mid-flight; enforce with branch protection and CODEOWNERS.</item>
+        <item>Human-in-the-loop checkpoints (mandatory): charter approval, baseline lock, baseline change, scope/cost/schedule deltas, change-request approval, project closure.</item>
+      </list>
+    </section>
+
+    <reference path="templates/status-rag.py">Deterministic RAG from EVM + risk YAML baselines</reference>
+
+    <templates>
+      <template path="templates/status-rag.py" purpose="Deterministic RAG computation from EVM and risk YAML baselines"/>
+    </templates>
+
+    <see-also>
+      <ref slug="change-control"/>
+      <ref slug="communications-management"/>
+      <ref slug="scope-management"/>
+      <ref slug="risk-management"/>
+      <ref slug="quality-management"/>
+      <ref slug="cost-estimation"/>
+      <ref slug="earned-value-management"/>
+      <ref slug="lessons-learned"/>
+      <link href="https://www.pmi.org/pmbok-guide">PMI PMBOK 7e — Project Integration Management; Performance Domain integration.</link>
+      <link href="https://www.iso.org/standard/74633">ISO 21500 / 21502 — Project management — Guidance on project, programme and portfolio management.</link>
+    </see-also>
+  </content>
+</methodology>
