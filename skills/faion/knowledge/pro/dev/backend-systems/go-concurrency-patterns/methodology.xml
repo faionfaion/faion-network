@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-concurrency-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Four battle-tested Go concurrency primitives — worker pool, fan-out/fan-in, errgroup with semaphore, and pipeline — selected by workload type (IO-bound vs CPU-bound vs streaming vs fail fast).</summary>
+    <tags>
+      <tag>go</tag>
+      <tag>concurrency</tag>
+      <tag>goroutines</tag>
+      <tag>patterns</tag>
+      <tag>performance</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Go Concurrency Patterns</title>
+    <summary>Four battle-tested Go concurrency primitives — worker pool, fan-out/fan-in, errgroup with semaphore, and pipeline — selected by workload type (IO-bound vs CPU-bound vs streaming vs fail fast). Every pattern requires context propagation, panic recovery, and a goleak-based goroutine-leak test.</summary>
+    <why>
+      <p>Ad-hoc go func() calls without WaitGroup discipline, context cancellation, or error channels are the leading cause of goroutine leaks, silent error drops, and race conditions in Go services. Choosing the wrong primitive (e.g., custom pool when errgroup fits) adds complexity with no benefit. The four patterns here cover over 90% of real workloads and have known correctness invariants.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building a worker pool to consume from a queue (Kafka, NATS, SQS) with bounded parallelism.</item>
+        <item>Fan-out/fan-in over a slice where each item has independent IO.</item>
+        <item>Pipelines of transforming stages joined by channels.</item>
+        <item>Replacing ad-hoc goroutine launches lacking Context/WaitGroup discipline.</item>
+        <item>Rate-limiting outbound calls.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure CPU-bound number crunching — simple parallel for without channels.</item>
+        <item>Single-flight de-duplication — use golang.org/x/sync/singleflight.</item>
+        <item>First error cancels siblings — use errgroup directly, not a custom pool.</item>
+        <item>Hot path with billions of tiny tasks — goroutine-per-request already in the runtime.</item>
+        <item>Libraries exposing their own concurrency (e.g., DB pool) — don't double-wrap.</item>
+      </list>
+    </when-not-to-use>
+    <section name="worker-pool-pattern">
+      <p>A long-lived worker pool for consuming queued jobs with bounded parallelism, context cancellation, and panic recovery. Use when jobs are long-lived and backpressure on Submit is acceptable.</p>
+      <rule>
+        <statement>Worker goroutines must: (1) select on both ctx.Done() and the jobs channel, (2) recover panics with defer/recover and send to an error channel or logger, (3) call wg.Done() in a deferred call so it runs even on panic.</statement>
+        <rationale>Without ctx.Done() selection, goroutines leak when the context is cancelled. Without panic recovery, one bad job takes the whole process down. Deferred wg.Done() ensures the WaitGroup counter is correct even after a panic.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="go"><![CDATA[
+func (p *Pool) worker(ctx context.Context) {
+    defer p.wg.Done()
+    for {
+        select {
+        case <-ctx.Done():
+            return
+        case job, ok := <-p.jobs:
+            if !ok {
+                return
+            }
+            func() {
+                defer func() {
+                    if r := recover(); r != nil {
+                        p.logger.Error("worker panic", "recover", r)
+                    }
+                }()
+                if err := job(ctx); err != nil {
+                    p.logger.Error("job error", "err", err)
+                }
+            }()
+        }
+    }
+}
+]]></code>
+      </example>
+    </section>
+    <section name="backpressure-and-buffer-sizing">
+      <p>Buffer sizing and backpressure handling for worker pools.</p>
+      <rule>
+        <statement>Size the jobs buffer to match the upstream burst rate, not to an arbitrary constant. Callers must select on ctx.Done() when submitting to avoid blocking forever if the pool is full.</statement>
+        <rationale>An unbuffered or undersized channel causes Submit to block under burst load, potentially deadlocking if the caller cannot cancel. An oversized buffer hides backpressure problems.</rationale>
+      </rule>
+      <antipattern>
+        <description>Silently dropping job errors: _ = job(ctx)</description>
+        <reason>The caller cannot know whether jobs succeeded. Wire to an error channel or at minimum a structured logger with the job identifier.</reason>
+      </antipattern>
+    </section>
+    <section name="fan-out-fan-in-pattern">
+      <p>Fan-out/fan-in for batch processing and the preferred errgroup+semaphore pattern for all-or-nothing bounded parallelism with first-error cancellation.</p>
+      <rule>
+        <statement>Use golang.org/x/sync/errgroup for first error cancels siblings semantics. Use a custom worker pool only for long-lived consumers. Use a semaphore+stream for large collections where N is not known up front. Do not implement a custom pool when errgroup fits.</statement>
+        <rationale>errgroup handles WaitGroup, error propagation, and context cancellation in ~3 lines. Custom pools duplicate this logic with more opportunity for bugs (missing close(jobs), dropped errors).</rationale>
+      </rule>
+      <example type="good">
+        <code lang="go"><![CDATA[
+// errgroup + semaphore: parallel IO with bounded concurrency, fail-fast on first error.
+func ProcessAll[T any, R any](
+    ctx context.Context, items []T, concurrency int64,
+    fn func(context.Context, T) (R, error),
+) ([]R, error) {
+    results := make([]R, len(items))
+    sem := semaphore.NewWeighted(concurrency)
+    g, gctx := errgroup.WithContext(ctx)
+
+    for i, it := range items {
+        i, it := i, it // capture (pre-Go 1.22)
+        if err := sem.Acquire(gctx, 1); err != nil {
+            return nil, err
+        }
+        g.Go(func() error {
+            defer sem.Release(1)
+            r, err := fn(gctx, it)
+            if err != nil {
+                return err
+            }
+            results[i] = r
+            return nil
+        })
+    }
+    if err := g.Wait(); err != nil {
+        return nil, err
+    }
+    return results, nil
+}
+]]></code>
+      </example>
+    </section>
+    <section name="goroutine-leak-testing">
+      <p>Detecting and preventing goroutine leaks via testing.</p>
+      <rule>
+        <statement>Every test file that spawns goroutines must call goleak.VerifyNone(t) in TestMain or t.Cleanup. Run go test -race to detect data races alongside leak detection.</statement>
+        <rationale>Goroutine leaks are silent: tests pass, CI passes, but the service slowly exhausts memory in production. goleak catches leaks at test time where they are cheap to fix.</rationale>
+      </rule>
+    </section>
+    <section name="primitive-selection-guide">
+      <p>Decision guide for choosing a Go concurrency primitive.</p>
+      <rule>
+        <statement>Classify the workload before picking a primitive: IO-bound batch with all or none → errgroup + semaphore. Long-lived queue consumer → worker pool. Stages with transform → pipeline. Single-flight de-dup → singleflight. Rate-limited outbound → token-bucket or semaphore.</statement>
+        <rationale>Using a worker pool for all or none work forces custom error aggregation that errgroup provides for free. Using errgroup for a long-lived consumer requires restarting on every error.</rationale>
+      </rule>
+    </section>
+    <section name="io-bound-concurrency-sizing">
+      <p>Determining appropriate concurrency levels for IO-bound work.</p>
+      <rule>
+        <statement>For IO-bound work, set concurrency to a tunable limit (10–100x CPU count depending on remote service tolerances), not runtime.NumCPU(). Document the source of the chosen value.</statement>
+        <rationale>NumCPU() is appropriate for CPU-bound parallel work. IO goroutines spend most time waiting; NumCPU() severely under-utilizes the available parallelism.</rationale>
+      </rule>
+    </section>
+    <section name="agent-gotchas">
+      <p>Common mistakes made by AI agents when generating concurrency code.</p>
+      <antipattern>
+        <description>Loop variable capture (pre-Go 1.22): for _, x := range xs { go func() { use(x) }() }</description>
+        <reason>All goroutines capture the same loop variable and read its final value. Force x := x before the go statement, or use Go 1.22+ range semantics.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Adding a default: branch to a select that waits on a channel and ctx.Done().</description>
+        <reason>default: converts the blocking select into a busy-loop, consuming 100% CPU while waiting.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Forgetting close(jobs) after all work is submitted in a worker pool.</description>
+        <reason>Workers wait on the channel forever. Tests hang until go test -timeout kills them. Always defer close(jobs) after the submit loop.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Mixing sync.Mutex and channels on the same shared state.</description>
+        <reason>Two concurrency models on one variable creates a category of bugs that neither model's tools can catch. Pick one: mutex for shared state, channels for message passing.</reason>
+      </antipattern>
+    </section>
+    <section name="agentic-workflow">
+      <p>How to use this methodology with AI agents and recommended tools.</p>
+      <p>The agent should (1) classify the task: IO-bound vs CPU-bound vs streaming, (2) pick the primitive: errgroup for wait all, fail fast, worker pool for long-lived consumer, semaphore for rate-limit, pipeline for stages, (3) generate the implementation with mandatory context.Context, error reporting, panic recovery, (4) generate a goleak test that asserts no goroutines leak after teardown. Always require go test -race to pass — race detector catches the most common LLM mistakes (closing over loop variables, shared maps).</p>
+    </section>
+    <section name="cli-tools">
+      <p>Essential tools for validating concurrency code.</p>
+      <list>
+        <item>go test -race — Detects data races at runtime (stdlib)</item>
+        <item>go vet — Catches obvious concurrency mistakes (stdlib)</item>
+        <item>staticcheck — Detects misuse of channels, sync primitives (https://staticcheck.dev)</item>
+        <item>golangci-lint — Aggregator (govet, staticcheck, ineffassign) (https://golangci-lint.run)</item>
+        <item>pprof — Goroutine, mutex, block profiles (go tool pprof)</item>
+        <item>goleak (uber-go) — Goroutine-leak assertions in tests (https://github.com/uber-go/goleak)</item>
+        <item>errcheck — Catches dropped errors (https://github.com/kisielk/errcheck)</item>
+      </list>
+    </section>
+    <section name="best-practices">
+      <p>Proven practices for concurrent Go code.</p>
+      <list>
+        <item>Always pass context.Context as the first arg of the worker function and check ctx.Done() in tight loops.</item>
+        <item>Cap concurrency with a semaphore.Weighted instead of an unbounded goroutine fan-out.</item>
+        <item>Recover panics in worker goroutines with defer func() { if r := recover(); r != nil { log... } }(); one bad panic shouldn't kill the process.</item>
+        <item>Capture loop variables explicitly (i, it := i, it) until Go 1.22+ is enforced; mistakes here are silent for years.</item>
+        <item>Wire structured logging with the trace ID into every spawned goroutine — error logs without correlation are useless.</item>
+        <item>Prefer errgroup.WithContext over hand-rolled WaitGroup+error-channel for fail fast semantics.</item>
+        <item>Test with goleak.VerifyNone(t) in TestMain to catch leaks across the suite.</item>
+        <item>Use buffered channels deliberately, with size set to the upstream burst; unbuffered is the safer default for backpressure.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/worker_pool.go" purpose="Generic worker pool with context, panic recovery, error reporting."/>
+      <template path="templates/process_all.go" purpose="errgroup + semaphore bounded-parallel helper (generic, Go 1.21+)."/>
+    </templates>
+    <see-also>
+      <link href="https://go.dev/doc/effective_go#concurrency"/>
+      <link href="https://go.dev/blog/pipelines"/>
+      <link href="https://pkg.go.dev/golang.org/x/sync/errgroup"/>
+      <link href="https://pkg.go.dev/golang.org/x/sync/semaphore"/>
+      <link href="https://github.com/uber-go/goleak"/>
+      <link href="https://go.dev/doc/articles/race_detector"/>
+    </see-also>
+  </content>
+</methodology>
