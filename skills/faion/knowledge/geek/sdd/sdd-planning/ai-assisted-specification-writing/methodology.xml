@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ai-assisted-specification-writing">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdd</group>
+    <domain>sdd-planning</domain>
+    <summary>AI-assisted specification workflow at the SDD planning layer: translate a product concept or backlog item into spec.md + implementation-plan.md before the design phase.</summary>
+    <tags>
+      <tag>specification</tag>
+      <tag>sdd-planning</tag>
+      <tag>requirements</tag>
+      <tag>implementation-plan</tag>
+      <tag>ai-assisted</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>AI-Assisted Specification Writing (SDD Planning)</title>
+    <summary>AI-assisted specification workflow at the planning layer: translate a product concept or backlog item into spec.md + implementation-plan.md before the design phase. The agent reads feature intent, asks clarifying questions, generates FR list with Given-When-Then acceptance criteria, then generates task breakdown with token estimates. Human approval is required before implementation tasks are created.</summary>
+    <why>
+      <p>The planning layer bottleneck in SDD is spec quality. Agents generating implementation plans from under-specified features create tasks executed out of order that fail mid-sprint. Separating the spec generation call from the plan generation call — with a human review gate between them — catches ambiguity before it propagates into implementation tasks. Token estimates (not time) keep planning honest about execution cost.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>At the sdd-planning phase: translating a product concept or backlog item into a structured spec.md before the design phase starts</item>
+        <item>When a feature ticket (e.g., Linear issue, Jira story) exists but the acceptance criteria are vague or missing</item>
+        <item>For sprint planning: AI drafts specifications for upcoming sprint items so the team can review and approve them in advance</item>
+        <item>When iterative refinement of a rough draft spec is needed — using an AI dialogue to progressively sharpen requirements</item>
+        <item>For generating task breakdowns (implementation-plan.md) from an approved spec</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>As a replacement for stakeholder discovery — AI cannot substitute for interviews, user research, or business requirements sessions</item>
+        <item>When the spec is a regulatory artifact (e.g., FDA submission, GDPR DPA) — legal precision is beyond AI spec generation reliability</item>
+        <item>For real-time collaborative specification during a meeting — the async AI drafting + human review loop is not suited for synchronous sessions</item>
+        <item>When no product context is available — agent cannot invent a business model or market requirements</item>
+      </list>
+    </when-not-to-use>
+    <section name="limitations">
+      <p>AI-generated specifications for novel product ideas (no analogous products) have a higher hallucination rate for requirements.</p>
+      <p>The Given-When-Then format produced by agents tends to describe happy-path scenarios by default — agents require explicit prompting to generate error path and boundary condition tests.</p>
+      <p>Agents cannot resolve ambiguous requirements without additional context; they default to the most common interpretation, which may not match intent.</p>
+      <p>Implementation plan task breakdown generated from spec frequently underestimates integration complexity between components.</p>
+      <p>150-200 FR limit per single spec call is a practical limit for model consistency — beyond this, coherence degrades.</p>
+    </section>
+    <section name="planning-layer-role">
+      <rule>
+        <statement>Separate the spec generation call from the implementation plan generation call — never combine both in one prompt.</statement>
+        <rationale>Mixing both tasks in one prompt degrades quality for both outputs. The planning phase requires the spec to be complete and human-approved before task breakdown begins. Combining creates a situation where the plan is based on an unreviewed spec.</rationale>
+      </rule>
+      <rule>
+        <statement>Never proceed from spec generation to implementation plan without an explicit human approval signal on the spec.</statement>
+        <rationale>Planning agents cannot self-assess whether a spec is good enough. The human approval gate is the quality signal that enables faion-feature-executor to start executing tasks. Without it, agents execute against incorrect specifications.</rationale>
+      </rule>
+    </section>
+    <section name="agentic-workflow">
+      <list>
+        <item>Agent reads feature intent or backlog item</item>
+        <item>Agent asks structured clarifying questions before generating spec</item>
+        <item>Agent generates draft spec.md: FR list, edge cases, Given-When-Then ACs, dependencies, out-of-scope</item>
+        <item>Human reviews and approves spec</item>
+        <item>Agent generates implementation-plan.md: phase breakdown, task list, token estimates, dependency order</item>
+        <item>faion-feature-executor picks up approved implementation plan</item>
+      </list>
+    </section>
+    <section name="recommended-subagents">
+      <list>
+        <item>faion-sdd-execution: validate spec quality against SDD patterns before human review</item>
+        <item>faion-feature-executor: downstream executor of approved implementation plans generated from spec</item>
+        <item>faion-brainstorm: for ambiguous or novel feature areas where requirements need diverge-converge cycles before spec drafting</item>
+      </list>
+    </section>
+    <section name="agent-gotchas">
+      <rule>
+        <statement>After an agent refines a spec based on feedback, always diff the before/after FR list — agents silently drop FRs that seem "implied" by the feedback.</statement>
+        <rationale>This is one of the most destructive planning-layer failure modes. An agent editing spec "to address feedback about performance" may remove FRs it judges as performance-adjacent — without flagging the removals. The human must verify the FR count is stable or removals are intentional.</rationale>
+      </rule>
+      <list>
+        <item>Agents generating implementation plans from specs frequently create tasks without capturing their dependency order — tasks executed out of order will fail; always validate the dependency graph before execution</item>
+        <item>When an agent refines a spec based on feedback, it may silently drop FRs that "seemed implied" by the feedback — always diff the before/after FR list after a refinement pass</item>
+        <item>Planning agents tend to generate overly optimistic task granularity — a task described as "implement authentication" is not a single agent task; agents should flag tasks that are under-specified</item>
+        <item>Agents cannot self-assess whether a spec is "good enough" for implementation to start — quality gates in faion-sdd-execution must be the formal acceptance signal, not the agent's own judgment</item>
+        <item>Implementation plan token estimates generated by agents are approximations; actual token consumption varies by codebase complexity and context loading</item>
+      </list>
+    </section>
+    <section name="phase-1-intent-capture">
+      <list>
+        <item>Describe the problem or feature clearly in natural language</item>
+        <item>Identify product context: domain, target users</item>
+        <item>List business constraints</item>
+        <item>Document technical constraints: stack, existing APIs, DB schema</item>
+        <item>Define success criteria</item>
+        <item>Identify stakeholders: who approves this spec</item>
+        <item>State explicit out-of-scope exclusions before prompting AI</item>
+      </list>
+    </section>
+    <section name="phase-2-ai-assisted-requirement-generation">
+      <list>
+        <item>Prepare context prompt: product, users, constraints, out-of-scope</item>
+        <item>Request functional requirements in FR-X format (FR-1, FR-2, ...)</item>
+        <item>Review AI-generated requirements for completeness and correctness</item>
+        <item>Request edge case enumeration: "what could go wrong"</item>
+        <item>Validate edge cases against domain knowledge</item>
+        <item>Request Given-When-Then acceptance criteria for each requirement</item>
+        <item>Verify each criterion is testable without ambiguity</item>
+      </list>
+    </section>
+    <section name="phase-3-specification-structure">
+      <list>
+        <item>Use standard spec.md template</item>
+        <item>Document all functional requirements with FR-X IDs</item>
+        <item>Write user stories: As [user], I want [action], so that [benefit]</item>
+        <item>List dependencies explicitly</item>
+        <item>Mark constraints as testable and measurable</item>
+        <item>Define scope clearly: what is NOT included</item>
+        <item>Note potential risks</item>
+      </list>
+    </section>
+    <section name="phase-4-quality-gates">
+      <list>
+        <item>All functional requirements have acceptance criteria</item>
+        <item>Edge cases documented and handled</item>
+        <item>Dependencies listed</item>
+        <item>Constraints are measurable</item>
+        <item>Scope boundaries explicit</item>
+        <item>No conflicting requirements (run AI consistency check)</item>
+        <item>FR count stable after any AI refinement pass</item>
+      </list>
+    </section>
+    <section name="phase-5-human-review-and-approval">
+      <list>
+        <item>Review AI-generated content against domain knowledge</item>
+        <item>Verify completeness with product team</item>
+        <item>Get stakeholder sign-off</item>
+        <item>Address feedback — run diff on FR list to verify no silent drops</item>
+        <item>Commit approved spec to git</item>
+        <item>Only then generate implementation-plan.md task breakdown</item>
+      </list>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Separate the spec generation call from the implementation plan generation call — mixing both in one prompt degrades quality for both artifacts</item>
+        <item>Include existing related specs as context (Related specs: [link]) so the agent can maintain consistent terminology and avoid duplicate requirements</item>
+        <item>Explicitly prompt for error paths: "For each FR, also document what happens when the operation fails"</item>
+        <item>Treat the first AI draft as a structured outline, not a finished spec — plan for at least one human refinement cycle</item>
+        <item>Use token estimates (not time estimates) in implementation-plan.md tasks; this is enforced by the SDD methodology and the pre-commit hook</item>
+        <item>Keep implementation-plan.md tasks small enough that each fits in a single agent session (~20-30k tokens execution budget per task)</item>
+      </list>
+    </section>
+    <section name="cli-tools">
+      <list>
+        <item>markdownlint: Validate spec.md and plan.md formatting. Install: npm i -g markdownlint-cli / https://github.com/DavidAnson/markdownlint</item>
+        <item>vale: Prose style linting for spec language clarity. Docs: https://vale.sh/</item>
+        <item>git log --follow: Track spec document revision history. System tool</item>
+        <item>wc -l: Quick check that spec stays within size limits. System tool</item>
+      </list>
+    </section>
+    <section name="services-and-apps">
+      <list>
+        <item>Linear: SaaS REST API. Read issue descriptions as spec input; write generated tasks back as sub-issues. Yes — REST API agent-friendly.</item>
+        <item>GitHub Issues: SaaS REST API. Source for feature intent; agent can read issue body and generate spec. Yes — REST API agent-friendly.</item>
+        <item>Notion: SaaS API. Store and version spec.md documents; readable by agents via API. Yes — API agent-friendly.</item>
+        <item>AWS Kiro: SaaS IDE. Native spec→plan→execute flow; agent must operate inside IDE. Partial — IDE plugin.</item>
+        <item>Claude Code: OSS/local. Direct file write for spec.md and implementation-plan.md. Yes — native agent support.</item>
+      </list>
+    </section>
+    <section name="prompt-patterns">
+      <p>Prompt for drafting spec.md and implementation-plan.md from feature intent:</p>
+      <code lang="xml"><![CDATA[<task>Draft a spec.md and implementation-plan.md for this feature.</task>
+<feature>{{feature_name}}</feature>
+<intent>{{one_paragraph_description_of_what_it_should_do}}</intent>
+<constraints>
+  <technical>{{stack, existing APIs, DB schema constraints}}</technical>
+  <business>{{scope limits, budget, regulatory}}</business>
+  <out_of_scope>{{explicit exclusions}}</out_of_scope>
+</constraints>
+<output_format>
+  1. spec.md: FR list (FR-1..N), edge cases, Given-When-Then ACs, dependencies, out-of-scope
+  2. implementation-plan.md: phase breakdown, task list with token estimates, dependency order
+  Note: no time estimates — token estimates only.
+</output_format>]]></code>
+      <p>Prompt for refining spec based on reviewer feedback:</p>
+      <code lang="xml"><![CDATA[<task>Refine this draft specification based on review feedback.</task>
+<current_spec>{{spec_content}}</current_spec>
+<feedback>{{reviewer_comments}}</feedback>
+<instructions>
+  Update only the sections affected by feedback.
+  Preserve all FRs not mentioned in feedback.
+  Flag any feedback that contradicts existing requirements.
+</instructions>]]></code>
+    </section>
+    <section name="linear-issue-to-spec-script">
+      <p>Shell script to scaffold spec.md from Linear issue (requires LINEAR_API_KEY):</p>
+      <code lang="bash"><![CDATA[#!/bin/bash
+# linear-to-spec.sh — scaffold spec.md from Linear issue
+ISSUE_ID="${1:?Usage: $0 <ISSUE_ID>}"
+
+ISSUE=$(curl -s -X POST https://api.linear.app/graphql \
+  -H "Authorization: $LINEAR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{\"query\": \"{ issue(id: \\\"$ISSUE_ID\\\") { title description priority labels { nodes { name } } } }\"}")
+
+TITLE=$(echo "$ISSUE" | jq -r '.data.issue.title')
+DESC=$(echo "$ISSUE" | jq -r '.data.issue.description')
+
+cat <<EOF
+# Spec: $TITLE
+
+## Intent
+$DESC
+
+## Functional Requirements
+- FR-1: [To be filled based on intent above]
+
+## Out of Scope
+- [To be determined]
+
+## Acceptance Criteria
+### FR-1
+- Given ...
+- When ...
+- Then ...
+EOF]]></code>
+    </section>
+    <see-also>
+      <link href="https://kiro.dev/docs/specs/">AWS Kiro spec-driven development</link>
+      <link href="https://addyosmani.com/blog/ai-coding-workflow/">LLM Coding Workflow 2026 (Addy Osmani)</link>
+      <link href="https://githubnext.com/projects/copilot-workspace">GitHub Copilot Workspace spec workflow</link>
+      <link href="https://gojko.net/books/specification-by-example/">Specification by Example</link>
+      <link href="https://www.frontiersin.org/journals/computer-science/articles/10.3389/fcomp.2025.1519437/full">LLM in Requirements Engineering (2025 systematic review)</link>
+    </see-also>
+    <templates>
+      <template path="templates/prompt-spec-plan.txt" purpose="XML prompt: draft spec.md + implementation-plan.md from feature intent"/>
+      <template path="templates/prompt-refine.txt" purpose="XML prompt: refine draft spec based on reviewer feedback"/>
+      <template path="templates/linear-to-spec.sh" purpose="Shell script: scaffold spec.md from Linear issue via GraphQL API"/>
+    </templates>
+  </content>
+</methodology>
