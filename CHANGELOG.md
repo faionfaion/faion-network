@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ux/ux-ui-designer methodologies → methodology.xml (CLAUDE-methodologies, adobe-firefly-integration, ai-accessibility-automation-2026; feature-045 batch 297)
 - migrate: 3/3 geek/ux/user-researcher methodologies → methodology.xml (ai-interview-analysis, ai-persona-building, synthetic-users; feature-045 batch 296)
 - migrate: 3/3 geek/ux methodologies → methodology.xml (llm-powered-conversational-ai, multimodal-vui-design, ai-assisted-persona-building; feature-045 batch 295)
 - migrate: 3/3 geek/ux/ui-designer methodologies → methodology.xml (figma-ai-ecosystem, figma-vs-adobe-strategy-2026, generative-ui-design; feature-045 batch 294)
