@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="llm-decision-framework">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Framework for choosing LLM enhancement strategy: prompting, RAG, fine-tuning, or RAFT. Score prompting first before investing in retrieval or training infrastructure.</summary>
+    <tags>
+      <tag>llm-architecture</tag>
+      <tag>rag</tag>
+      <tag>fine-tuning</tag>
+      <tag>decision-framework</tag>
+      <tag>cost-optimization</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>LLM Decision Framework</title>
+    <summary>A systematic framework for choosing the right LLM enhancement strategy — prompt engineering, RAG, fine-tuning, or RAFT (hybrid) — based on data freshness, accuracy requirements, budget, latency, and team constraints. Always score prompting first before investing in retrieval or training infrastructure.</summary>
+    <why>
+      <p>Without a structured decision process, teams default to RAG or fine-tuning prematurely and waste infrastructure budget. The framework enforces the correct evaluation order: prompting (free, immediate) → RAG (medium investment) → fine-tuning (high investment) → RAFT (highest investment). It also provides a scoreable decision matrix that an agent can apply programmatically to produce a structured recommendation with rationale.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>At the start of any AI feature design: choose the right architecture before writing code</item>
+        <item>Evaluating whether to augment an existing LLM feature</item>
+        <item>During cost optimization: deciding whether a fine-tuned cheaper model can replace an expensive general model</item>
+        <item>When accuracy is inadequate: diagnosing if the root cause is knowledge, style, or reasoning</item>
+        <item>Business justification for AI budget: quantify cost/benefit before committing</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Prototype needed in under a day — default to prompt engineering, evaluate later</item>
+        <item>Decision already made by stakeholders — use the framework to document trade-offs, not re-litigate</item>
+        <item>Task is purely generative (creative writing) — retrieval and fine-tuning do not apply</item>
+        <item>No eval data exists — the framework requires measurable accuracy targets; skip until measurable</item>
+      </list>
+    </when-not-to-use>
+    <section name="Decision Hierarchy">
+      <rule>
+        <statement>Always evaluate approaches in this order: prompt engineering first, then RAG, then fine-tuning, then RAFT. Never skip directly to fine-tuning without measuring baseline accuracy with prompting.</statement>
+        <rationale>Each step up the hierarchy adds infrastructure cost and operational burden. Prompt engineering is free and reversible; fine-tuning costs thousands of dollars and locks in a data snapshot. Measuring baseline accuracy first prevents over-engineering.</rationale>
+      </rule>
+      <rule>
+        <statement>Use RAG when data changes more often than monthly, volume exceeds 100 documents, or citations are required. Use fine-tuning when output format must be exact, domain vocabulary is specialized, and 500+ labeled examples exist.</statement>
+        <rationale>RAG provides freshness; fine-tuning provides format and style consistency. These are complementary, not competing — RAFT combines both when maximum accuracy is required and budget/expertise allows.</rationale>
+      </rule>
+    </section>
+    <section name="Cost Matrix (2026)">
+      <p>Setup and ongoing cost ranges by approach:</p>
+      <list>
+        <item>Prompt engineering: $0 setup, $0.01-0.10/1K tokens ongoing, hours to production</item>
+        <item>Structured output: $0 setup, +10-20% tokens vs baseline, hours to production</item>
+        <item>RAG: $500-5K setup, $100-2K/month infrastructure + tokens, days to weeks</item>
+        <item>Fine-tuning: $1K-50K setup, 2-6x inference cost vs base model, weeks to months</item>
+        <item>RAFT (hybrid): $5K-100K setup, full infrastructure cost, months</item>
+      </list>
+      <rule>
+        <statement>Calculate fine-tuning break-even as: (fine-tuning cost) / (savings per 1M tokens * volume). If break-even exceeds 6 months, choose RAG instead.</statement>
+        <rationale>Fine-tuning ROI calculations typically ignore retraining cost on data drift. At low-to-medium query volumes, RAG is almost always cheaper even when fine-tuning quality is marginally higher.</rationale>
+      </rule>
+    </section>
+    <section name="Key Metrics for Decision">
+      <rule>
+        <statement>Define accuracy metrics before choosing an approach. If you cannot measure accuracy, you cannot apply the framework — collect eval data first.</statement>
+        <rationale>Teams applying this framework without eval data produce subjective recommendations that get reversed when metrics become available. "Good enough" without measurement leads to systematic over-engineering.</rationale>
+      </rule>
+      <list>
+        <item>Accuracy target: factual correctness; &gt;95% required for production</item>
+        <item>Latency target: &lt;2s for user-facing; &lt;500ms for cached RAG</item>
+        <item>Cost per query: &lt;$0.01 for high-volume applications</item>
+        <item>Data freshness: real-time requires RAG; static knowledge allows fine-tuning</item>
+        <item>Hallucination rate: &lt;1% for safety-critical applications</item>
+      </list>
+    </section>
+    <section name="Phase 1: Data Requirements">
+      <rule>
+        <statement>Assess data freshness, volume, and sensitivity before evaluating any technical approach; these three factors eliminate at least one or two options before reaching budget or team constraints.</statement>
+        <rationale>Daily-changing data eliminates fine-tuning as the primary approach. Fewer than 100 documents eliminates RAG. On-premise data residency eliminates cloud-only managed services. Early elimination saves weeks of work on approaches that were never viable.</rationale>
+      </rule>
+      <list>
+        <item>Data freshness: daily/hourly → RAG required; monthly → RAG or periodic fine-tuning; rarely/never → fine-tuning viable</item>
+        <item>Data volume: &lt;100 documents → prompt engineering with context; 100-10K → RAG; 10K+ → RAG with advanced retrieval</item>
+        <item>Data sensitivity: public cloud OK → any approach; private cloud only → self-hosted models + RAG; on-premise only → local models, on-prem vector DB</item>
+      </list>
+    </section>
+    <section name="Phase 2: Performance and Functional Requirements">
+      <list>
+        <item>Latency: &lt;500ms → prompt engineering or cached RAG; 500ms-2s → RAG acceptable; &gt;2s → any approach</item>
+        <item>Accuracy: general quality → prompt engineering; high accuracy with sources → RAG; domain-specific precision → fine-tuning</item>
+        <item>Citations required: yes → RAG (provides source documents); no → any approach</item>
+        <item>Output format: flexible → prompt engineering; consistent JSON/XML → structured output; domain-specific format → fine-tuning</item>
+        <item>Scale: &lt;1K queries/day → any approach; 1K-100K → cost-optimize with caching; &gt;100K → fine-tuned smaller models</item>
+      </list>
+    </section>
+    <section name="Phase 3: Budget and Team Constraints">
+      <list>
+        <item>Setup budget: &lt;$1K → prompt engineering only; $1K-10K → RAG viable; $10K-50K → fine-tuning viable; &gt;$50K → full stack including RAFT</item>
+        <item>Monthly budget: &lt;$100 → prompt engineering + caching; $100-1K → basic RAG; $1K-10K → production RAG or fine-tuning</item>
+        <item>ML expertise: none → prompt engineering, managed services; basic → RAG with existing tools; advanced → fine-tuning</item>
+        <item>Timeline: days → prompt engineering only; weeks → RAG; months → fine-tuning</item>
+      </list>
+      <rule>
+        <statement>Re-evaluate the decision after 3 months in production: LLM provider pricing drops 50-70% annually and the cost-quality frontier shifts regularly.</statement>
+        <rationale>A fine-tuning decision made on 2025 pricing may not hold in 2026 when the base model quality improves enough to match the fine-tuned output at standard pricing. Document the decision with current pricing in an ADR for easy future revisit.</rationale>
+      </rule>
+    </section>
+    <section name="Customer Support Chatbot Example">
+      <example type="good" title="Customer support: 500 articles, weekly updates (RAG)">
+        <code lang="text"><![CDATA[Decision factors:
+  data_freshness: weekly      → RAG viable
+  data_volume: 500 articles   → RAG appropriate
+  citations_required: yes     → RAG required
+  latency: less than 2s      → RAG acceptable
+  volume: 10K/day            → add caching
+
+Architecture: OpenAI ada-002 → Qdrant → Cohere reranker → GPT-4o
+Monthly cost: ~$850 (vector DB $200 + embeddings $50 + reranker $100 + LLM $500)]]></code>
+      </example>
+    </section>
+    <section name="Legal Document Analyzer Example">
+      <example type="good" title="Legal: static contracts, strict JSON output">
+        <code lang="text"><![CDATA[Decision factors:
+  data_freshness: static        → fine-tuning OK
+  output_format: strict JSON    → structured output + fine-tuning
+  domain_expertise: high        → fine-tuning beneficial
+  accuracy: greater than 98%  → fine-tuning + evaluation
+  volume: 100/day               → cost not primary concern
+
+Architecture: PDF parser → fine-tuned GPT-4o → JSON schema validation
+Setup: $5,000 (1,000 annotated contracts, OpenAI SFT)
+Monthly: $300 (100 docs * 10K tokens)]]></code>
+      </example>
+    </section>
+    <section name="Internal Docs Q&amp;A Example">
+      <example type="good" title="Internal docs: 2000 pages, low budget">
+        <code lang="text"><![CDATA[Decision factors:
+  data_volume: 2,000 pages     → basic RAG
+  privacy: internal only       → self-hosted or private cloud
+  budget: low                  → open-source stack
+  complexity: simple           → managed solutions
+
+Architecture: Confluence sync → Chroma (file-based) → GPT-4o-mini → Slack bot
+Monthly cost: ~$150 ($50 infra + $100 LLM)]]></code>
+      </example>
+    </section>
+    <section name="Medical Diagnosis Example">
+      <example type="good" title="Medical: maximum accuracy and compliance">
+        <code lang="text"><![CDATA[Decision factors:
+  data_volume: 10M+ papers     → advanced RAG required
+  citations: required          → RAG essential
+  accuracy: maximum            → RAFT justified
+  regulation: FDA              → full documentation and audit
+
+Architecture: Medical NER (fine-tuned) → Multi-index RAG (PubMed + guidelines) →
+             Fine-tuned medical LLM → Differential diagnosis + citations →
+             Human expert review
+
+Setup: $50,000 (data prep + fine-tuning + infra)
+Monthly: $10,000 ($5K infra + $3K LLM + $2K compliance)
+Note: RAFT is only justified here because simpler approaches
+      demonstrably cannot meet the accuracy and citation requirements.]]></code>
+      </example>
+    </section>
+    <section name="Antipatterns">
+      <antipattern>
+        <description>Recommending RAFT (RAG + fine-tuning hybrid) as the first option for a new feature.</description>
+        <reason>RAFT requires continuous retraining infrastructure most teams lack. It is theoretically optimal but operationally fragile. Start with RAG alone; add fine-tuning only when RAG alone cannot meet the accuracy bar after tuning.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Choosing RAFT for a customer support chatbot with 500 articles.</description>
+        <reason>RAG alone meets all requirements at 1/10th the cost. RAFT adds fine-tuning infrastructure, retraining cycles, and operational complexity with no accuracy benefit when the knowledge base is small and well-structured.</reason>
+      </antipattern>
+    </section>
+    <section name="Best Practices">
+      <rule>
+        <statement>Always run the "start with prompting" step first and measure baseline accuracy before investing in RAG or fine-tuning.</statement>
+        <rationale>Baseline establishes if the problem is solvable at all without expensive infrastructure.</rationale>
+      </rule>
+      <rule>
+        <statement>Define accuracy metrics before choosing an approach — "good enough" without measurement leads to over-engineering.</statement>
+        <rationale>Measurable targets prevent subjective decisions that get reversed later.</rationale>
+      </rule>
+      <rule>
+        <statement>RAG vs fine-tuning is not either/or: use RAG for knowledge, fine-tuning for style/format, RAFT for both.</statement>
+        <rationale>They solve different problems and often complement each other.</rationale>
+      </rule>
+      <rule>
+        <statement>For fine-tuning ROI: calculate break-even at (fine-tuning cost) / (savings per 1M tokens * volume) — often >6 months.</statement>
+        <rationale>ROI analysis prevents uneconomical fine-tuning investments.</rationale>
+      </rule>
+      <rule>
+        <statement>Re-evaluate the decision after 3 months: cost/quality curves change as LLM providers compete.</statement>
+        <rationale>Quarterly review ensures the recommendation stays aligned with market changes.</rationale>
+      </rule>
+      <rule>
+        <statement>Document the decision in an Architecture Decision Record (ADR) with the scoring rationale — avoids revisiting without data.</statement>
+        <rationale>ADRs create institutional memory and prevent re-litigating decisions.</rationale>
+      </rule>
+      <rule>
+        <statement>Test RAG before fine-tuning: RAG is reversible and often matches fine-tuning accuracy at lower cost for knowledge tasks.</statement>
+        <rationale>RAG is the lower-risk first option for knowledge-based problems.</rationale>
+      </rule>
+    </section>
+    <section name="Agent Gotchas">
+      <rule>
+        <statement>Agents applying this framework tend to default to RAG for everything — prompt them to score prompting first.</statement>
+        <rationale>Agents need explicit instruction to follow the evaluation order.</rationale>
+      </rule>
+      <rule>
+        <statement>The framework output (a recommendation) should be a human-in-loop checkpoint: agent proposes, human approves before infra is provisioned.</statement>
+        <rationale>Major architecture decisions should never be fully automated.</rationale>
+      </rule>
+      <rule>
+        <statement>Cost estimates must use current provider pricing — training an agent on stale cost data produces wrong recommendations.</statement>
+        <rationale>Pricing changes rapidly; agent prompts must include current rates.</rationale>
+      </rule>
+      <rule>
+        <statement>RAFT recommendation from an agent is almost always premature — it requires continuous retraining infra that most teams lack.</statement>
+        <rationale>Agents should be prompted to recommend RAFT only when simpler approaches fail eval on multiple metrics.</rationale>
+      </rule>
+      <rule>
+        <statement>When the agent recommends fine-tuning, validate that sufficient labeled data exists (≥1000 examples) before proceeding.</statement>
+        <rationale>Fine-tuning without sufficient data produces degraded models.</rationale>
+      </rule>
+    </section>
+    <section name="Agentic Workflow Integration">
+      <rule>
+        <statement>A meta-agent applies this framework at the planning stage of a feature. It takes a requirements document as input, scores each approach against the decision matrix (data freshness, accuracy target, cost budget, latency requirement), and outputs a structured recommendation with rationale. The recommendation is then used to configure downstream subagents.</statement>
+        <rationale>Systematic scoring produces defensible decisions. For iterative improvement, the meta-agent monitors live metrics and re-triggers the decision framework when accuracy or cost thresholds drift beyond acceptable bounds.</rationale>
+      </rule>
+    </section>
+    <templates>
+      <template path="templates/decision-matrix.py" purpose="Scoring function that outputs recommendation given FeatureRequirements dataclass"/>
+      <template path="templates/adr.md" purpose="Architecture Decision Record template for documenting LLM enhancement choice"/>
+      <template path="templates/prompt-requirements.txt" purpose="Prompt for LLM-assisted requirements extraction and approach recommendation"/>
+    </templates>
+    <see-also>
+      <link href="https://www.montecarlodata.com/blog-rag-vs-fine-tuning/">RAG vs Fine-Tuning — Monte Carlo</link>
+      <link href="https://kanerika.com/blogs/rag-vs-fine-tuning/">RAG vs Fine-Tuning 2026 — Kanerika</link>
+      <link href="https://arxiv.org/abs/2403.10131">RAFT: Adapting Language Model to Domain Specific RAG</link>
+      <link href="https://platform.openai.com/docs/guides/fine-tuning">OpenAI Fine-Tuning Guide</link>
+      <link href="https://docs.ragas.io/">Ragas Evaluation Framework</link>
+      <link href="https://www.promptfoo.dev/">Promptfoo</link>
+    </see-also>
+  </content>
+</methodology>
