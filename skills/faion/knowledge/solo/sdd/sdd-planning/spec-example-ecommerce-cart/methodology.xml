@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="spec-example-ecommerce-cart">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd-planning</domain>
+    <summary>Fully-populated shopping cart spec covering problem statement, personas, user stories, FR/NFR, acceptance criteria, out-of-scope, dependencies, and data model. Use as few-shot reference.</summary>
+    <tags>
+      <tag>spec</tag>
+      <tag>example</tag>
+      <tag>ecommerce</tag>
+      <tag>sdd</tag>
+      <tag>reference</tag>
+    </tags>
+    <category>example</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Spec Example: E-commerce Cart</title>
+    <summary>A fully-populated SDD spec for a shopping cart feature — covering personas, user stories, functional and non-functional requirements, Given/When/Then acceptance criteria, out-of-scope table, and a preliminary data model. Use as a few-shot reference when generating or reviewing specs for similar features.</summary>
+    <why>
+      <p>Agents writing specs without a concrete reference produce structurally incomplete documents: missing the "Out of Scope / When" column, omitting open questions, copying story-point estimates instead of token budgets, and writing NFRs without measurement sources. A worked example with these sections present (and some intentionally incomplete) teaches by demonstration what a complete spec looks like and where gaps hide.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Agent or developer needs to see what a fully-populated spec looks like in practice.</item>
+        <item>Calibrating spec-writing output quality — compare agent output against this example.</item>
+        <item>Bootstrapping a new e-commerce cart-adjacent feature (persistence, guest-vs-logged-in, quantity limits, session merge patterns recur across cart-related features).</item>
+        <item>Onboarding a new contributor to the SDD workflow.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Starting a new spec by editing this file directly — use template-spec instead.</item>
+        <item>Non-e-commerce domains: guest cart, localStorage, product-catalog dependency are domain-specific and transfer poorly without significant reframing.</item>
+        <item>Taking NFR targets (200ms p95, 50k concurrent) as real project targets — they have no measurement source and must be replaced.</item>
+      </list>
+    </when-not-to-use>
+    <section name="problem-statement">
+      <p>WHO: Online shoppers on an e-commerce platform. PROBLEM: Cannot save products for later purchase or manage multiple items before checkout. IMPACT: Users abandon purchases due to friction, reducing conversion rate from 2.1% baseline. SOLUTION: Persistent shopping cart with quantity management and price calculation. SUCCESS METRIC: Increase conversion rate from 2.1% to 3.5%.</p>
+    </section>
+    <section name="user-personas">
+      <example type="good" title="Persona 1: Busy Parent Sarah">
+        <description>Role: Working parent shopping for household items. Goal: Add items throughout the week and checkout once. Pain: Forgets items, no time for multiple checkout sessions. Context: Mobile during commute, desktop at home.</description>
+      </example>
+      <example type="good" title="Persona 2: Deal Hunter Mike">
+        <description>Role: Budget-conscious shopper comparing prices. Goal: Save items, wait for sales, then purchase. Pain: Items disappear from browser, can't track prices. Context: Multiple devices, checks daily.</description>
+      </example>
+      <rule>
+        <statement>Define at least two personas with distinct goals and pain points; single-persona specs miss edge cases.</statement>
+        <rationale>Sarah drives the "quick add" UX; Mike drives the "persistence across sessions" requirement. Different personas justify different acceptance criteria that would otherwise look redundant.</rationale>
+      </rule>
+    </section>
+    <section name="user-stories-and-functional-requirements">
+      <p>US-001: As Sarah, I want to add products with one click so I can save items for later checkout. Priority: Must. Traces to: AC-001, AC-002. US-002: As a shopper, I want to change quantities so I can adjust my order. Priority: Must. Traces to: AC-003. US-003: As a shopper, I want to remove products. Priority: Must. Traces to: AC-004. US-004: As Mike, I want my cart to persist across sessions. Priority: Must. Traces to: AC-005, AC-006.</p>
+      <list>
+        <item>FR-001: System SHALL allow adding products to cart (US-001). Validation: product must be in stock; duplicate adds increase quantity; max 99 per product.</item>
+        <item>FR-002: System SHALL update cart total in real-time (US-001).</item>
+        <item>FR-003: System SHALL allow quantity updates 1-99 (US-002).</item>
+        <item>FR-004: System SHALL allow removing items (US-003).</item>
+        <item>FR-005: System SHALL persist cart for logged-in users (US-004).</item>
+        <item>FR-006: System SHALL use localStorage for guest users, expire after 7 days (US-004).</item>
+      </list>
+    </section>
+    <section name="non-functional-requirements">
+      <list>
+        <item>NFR-001 Performance: Add-to-cart operation &lt; 200ms p95 client-side. Validation: load test with 50k concurrent users. [SOURCE REQUIRED — replace with real measurement]</item>
+        <item>NFR-002 Scalability: Support 50k concurrent cart operations. [SOURCE REQUIRED]</item>
+        <item>NFR-003 Availability: Cart data recovery RTO &lt; 1 min.</item>
+        <item>NFR-004 Usability: Cart visible in 1 click from any page.</item>
+      </list>
+      <rule>
+        <statement>Mark every NFR target with [SOURCE REQUIRED] when adapting this example; never copy numeric targets without a real measurement basis.</statement>
+        <rationale>NFR values without measurement sources survive unchanged into design and implementation. The 200ms / 50k figures are plausible for a mid-scale platform but have no basis in any specific project.</rationale>
+      </rule>
+    </section>
+    <section name="acceptance-criteria">
+      <example type="good" title="AC-001 Happy Path">
+        <description>Given product "Wireless Mouse $25" in stock and empty cart. When user clicks "Add to Cart". Then: product added, badge shows "1", total shows "$25.00", success message 2s, product page stays.</description>
+      </example>
+      <example type="good" title="AC-002 Duplicate">
+        <description>Given cart has "Wireless Mouse" qty 1. When user clicks "Add to Cart" again. Then: qty becomes 2, total "$50.00", no duplicate entry.</description>
+      </example>
+      <example type="good" title="AC-003 Quantity Update">
+        <description>Given cart has "Wireless Mouse" qty 2. When user changes qty to 5. Then: total "$125.00", DB/localStorage updates within 500ms.</description>
+      </example>
+      <example type="good" title="AC-004 Remove">
+        <description>Given cart has 2 products (total $75). When user removes "Wireless Mouse $25". Then: product gone, total "$50.00", badge updates.</description>
+      </example>
+      <example type="good" title="AC-005 Logged-in Persistence">
+        <description>Given logged-in user with "Wireless Mouse" in cart. When browser closed and reopened 2 days later after login. Then: cart still contains item with current price.</description>
+      </example>
+      <example type="good" title="AC-006 Guest Persistence">
+        <description>Given guest user with "Wireless Mouse". When browser closed and returned within 7 days. Then: cart still contains item.</description>
+      </example>
+      <p>Coverage matrix: [x] Happy path [x] Duplicate adds [x] Quantity limits [x] Persistence logged-in [x] Guest persistence [ ] Security (cart tampering) — documented risk [ ] Performance (large carts) — documented risk</p>
+    </section>
+    <section name="out-of-scope">
+      <list>
+        <item>Save for Later — Phase 2</item>
+        <item>Share Cart via URL — Phase 3 (complexity)</item>
+        <item>Cart Price Alerts — Not planned (external dependency)</item>
+        <item>Multi-currency — v2.0 (international expansion only)</item>
+      </list>
+      <rule>
+        <statement>Include a "When" column in Out of Scope; "Not now" without a timeline reappears as scope creep in the next sprint.</statement>
+        <rationale>The "Out of Scope / When" column is the highest-ROI section for preventing feature creep mid-sprint. Copy this pattern into every spec.</rationale>
+      </rule>
+    </section>
+    <section name="constraints-and-dependencies">
+      <list>
+        <item>Constraint: Max 50 unique products per cart (DB performance)</item>
+        <item>Constraint: Max 99 quantity per product (business rule)</item>
+        <item>Constraint: localStorage max 5MB (browser limit)</item>
+        <item>Internal dep: Product Catalog (feature 01) — must be done</item>
+        <item>Internal dep: User Authentication (feature 02) — for logged-in cart</item>
+        <item>External dep: PostgreSQL database</item>
+        <item>External dep: Redis for cart session caching</item>
+        <item>Blocks: Checkout (feature 04)</item>
+      </list>
+    </section>
+    <section name="preliminary-data-model">
+      <rule testable="false">
+        <statement>Mark all data models in a spec as "preliminary — subject to change in design.md".</statement>
+        <rationale>Agents treat TypeScript interfaces in spec Appendix as canonical data models. The spec model is intent only; the approved model lives in design.md after architectural decisions are made.</rationale>
+      </rule>
+      <example type="good" title="Preliminary Cart Data Model">
+        <code lang="typescript"><![CDATA[// PRELIMINARY — subject to change in design.md
+interface CartItem {
+  id: string;
+  productId: string;
+  quantity: number;
+  priceAtAdd: number; // historical snapshot
+}
+
+interface Cart {
+  id: string;
+  userId?: string; // null for guest
+  items: CartItem[];
+  createdAt: Date;
+  updatedAt: Date;
+}]]></code>
+      </example>
+    </section>
+    <section name="open-questions">
+      <list>
+        <item>Should cart merge when guest user logs in? (cart merge on login is the most commonly overlooked question in cart specs)</item>
+        <item>How to handle out-of-stock items already in cart?</item>
+        <item>Show "X people have this in cart" social proof?</item>
+      </list>
+      <rule>
+        <statement>Include an Open Questions section in every spec; if there are no questions, either the spec is complete or the author didn't look hard enough.</statement>
+        <rationale>Open questions are forcing functions: unanswered, they become assumptions in design.md. Documented, they become explicit review targets before approval.</rationale>
+      </rule>
+    </section>
+    <section name="reusable-patterns">
+      <list>
+        <item>FR → US traceability table: every FR row has a Traces To column pointing to US-X</item>
+        <item>NFR measurement format: requirement + target + measurement method + validation load test</item>
+        <item>AC Given/When/Then with specific values: "$25.00" not "valid price", "2 days later" not "some time"</item>
+        <item>Out of Scope with "When" column: Phase 2 / Phase 3 / v2.0 / Not planned</item>
+        <item>AC coverage matrix with explicit unchecked items as documented risks</item>
+        <item>Open Questions as a forcing function — minimum 3 per complex feature</item>
+      </list>
+    </section>
+    <section name="prompt-patterns">
+      <example type="good" title="Few-shot generation prompt">
+        <description>Use the following completed spec as a reference for structure and quality. Reference spec: [paste content/01-full-spec.xml]. Now write a spec for: [new feature name]. Problem: [problem statement]. User types: [list]. Key constraints: [list]. Follow the same section structure. Replace all domain-specific content. NFRs must use [MEASURE_NEEDED] where targets are unknown.</description>
+      </example>
+      <example type="good" title="Gap analysis prompt">
+        <description>Compare this draft spec against the e-commerce cart example. Identify: (1) sections present in example but missing from draft, (2) AC scenarios (error, edge case, persistence) missing from draft, (3) traceability gaps (FR with no AC, US with no FR). Output: gap list only.</description>
+      </example>
+    </section>
+    <section name="agent-failure-modes">
+      <antipattern>
+        <description>Agent copies story-point estimates (5 pts, 3 pts) from this example into new specs.</description>
+        <reason>SDD replaces story points with token estimates. Explicitly instruct agents to remove story points and replace with token estimates per the 100k rule.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent treats the TypeScript interface in the Appendix as the canonical data model.</description>
+        <reason>The interface is labeled preliminary. Without this label, agents use it in design.md as approved, bypassing the architectural decision process.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent copies NFR targets (200ms p95, 50k concurrent) verbatim into new specs.</description>
+        <reason>These values have no measurement source. Add a required [SOURCE] tag next to each NFR target when adapting to force replacement with real measurements.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent expands personas (Busy Parent Sarah, Deal Hunter Mike) with hallucinated pain points.</description>
+        <reason>Persona pain points must come from real user research. Agents generate plausible-sounding but fabricated persona context. Provide real research or use placeholder text explicitly.</reason>
+      </antipattern>
+    </section>
+    <scripts>
+      <script path="scripts/check-coverage.sh" purpose="Print all unchecked AC coverage items from a spec file"/>
+    </scripts>
+  </content>
+</methodology>
