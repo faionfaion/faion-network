@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/dev/software-developer methodologies → methodology.xml (csharp-xunit-testing, java-junit-testing, java-jpa-hibernate; feature-045 batch)
 - migrate: 3/3 pro/dev/software-developer methodologies → methodology.xml (java-spring-boot-patterns, laravel-patterns, php-eloquent; feature-045 batch)
 - migrate: 3/3 pro/dev methodologies → methodology.xml (quality-attributes-analysis, api-gateway-patterns, csharp-aspnet-core; feature-045 batch)
 - migrate: 3/3 pro/dev/backend-enterprise Ruby methodologies → methodology.xml (ruby-rails, ruby-rails-patterns, ruby-rspec-testing; feature-045 batch)
