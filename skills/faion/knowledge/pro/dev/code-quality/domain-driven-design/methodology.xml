@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="domain-driven-design">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>code-quality</domain>
+    <summary>DDD models complex business domains via shared ubiquitous language, bounded contexts, and rich domain objects enforcing invariants as the single authority.</summary>
+    <tags>
+      <tag>ddd</tag>
+      <tag>domain</tag>
+      <tag>architecture</tag>
+      <tag>modeling</tag>
+      <tag>ubiquitous-language</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-24</created>
+  </metadata>
+
+  <content>
+    <title>Domain-Driven Design</title>
+
+    <summary>Domain-Driven Design (DDD) is a software development approach that models complex business domains through a shared ubiquitous language, explicit bounded contexts, and rich domain objects (entities, value objects, aggregates) that enforce business invariants. The core rule: domain logic lives inside the model, not in services — an Order that cannot be placed when empty is safer than a service that checks emptiness before calling order.place(). Without DDD, business rules scatter across controllers, services, and database queries, creating the anemic domain model antipattern where the same invariant is enforced in multiple places and breaks silently when one copy is missed.</summary>
+
+    <why>
+      <p>Without DDD, business rules scatter across controllers, services, and database queries, creating the anemic domain model antipattern where the same invariant is enforced in multiple places and breaks silently when one copy is missed. DDD solves this by making the domain model the single authority for business rules, with bounded contexts preventing model pollution across team boundaries.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Complex business domain where rules will keep changing (orders, billing, inventory, claims, pricing)</item>
+        <item>Splitting a monolith — DDD bounded contexts define service boundaries before you draw service lines</item>
+        <item>Refactoring an anemic codebase where logic has leaked into controllers/services</item>
+        <item>A team includes a domain expert who can sit in modeling sessions</item>
+        <item>Multiple teams share a codebase and need explicit context maps to negotiate ownership</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>CRUD admin tools, reporting dashboards, or scrapers — the "domain" is just data; DDD adds ceremony with no payoff</item>
+        <item>Solo prototype or MVP under ~2k LOC where requirements still flip weekly</item>
+        <item>Hot data-pipeline / ETL code — the model is rows and transformations, not aggregates with invariants</item>
+        <item>Real-time / latency-critical paths where repository hydration and event dispatch cost is not justified</item>
+        <item>Team has no access to a domain expert — you will produce a developer-invented model the business does not recognize</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="ubiquitous-language">
+      <rule>
+        <statement>Maintain a ubiquitous language glossary in domain/GLOSSARY.md and load it as the first context block of every LLM prompt — single largest quality lever for generated DDD code.</statement>
+        <rationale>Without an authoritative glossary, LLMs invent synonyms (User vs Customer vs Account) within the same session, poisoning the codebase across multiple files.</rationale>
+      </rule>
+    </section>
+
+    <section name="entities">
+      <rule>
+        <statement>An entity has a stable identity (UUID) that persists over its lifetime. It encapsulates business behavior as methods that enforce invariants, never as naked setters.</statement>
+        <rationale>Getters and setters push invariant enforcement to callers, which creates duplication. The entity is the single authority for its own consistency rules.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Anemic entity: all fields public, all logic in service classes, entity is a bag of data with no behavior.</description>
+        <reason>The same invariant ends up enforced in multiple service methods and breaks when one copy is missed.</reason>
+      </antipattern>
+    </section>
+
+    <section name="value-objects">
+      <rule>
+        <statement>Value objects are immutable (frozen=True in Python, record in Java), defined by their attributes, and validated in the constructor. Two VOs with equal attributes are interchangeable.</statement>
+        <rationale>Mutable VOs break equality semantics and allow illegal states to be introduced after construction. If Money(-5, USD) cannot be constructed, every consumer is automatically safe.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Push validation into the VO or entity constructor/factory method, not into a service.</statement>
+        <rationale>Services that validate before creating objects duplicate the rule and leave the window open when called without the guard.</rationale>
+      </rule>
+
+      <example type="good" title="Value Objects">
+        <code lang="python"><![CDATA[
+@dataclass(frozen=True)
+class Money:
+    amount: Decimal
+    currency: str
+
+    def __post_init__(self):
+        if self.amount < 0:
+            raise ValueError("Amount cannot be negative")
+        if len(self.currency) != 3:
+            raise ValueError("Currency must be 3-letter code")
+
+    def __add__(self, other: "Money") -> "Money":
+        if self.currency != other.currency:
+            raise ValueError("Cannot add different currencies")
+        return Money(self.amount + other.amount, self.currency)
+
+@dataclass(frozen=True)
+class Address:
+    street: str
+    city: str
+    state: str
+    postal_code: str
+    country: str
+
+    def __post_init__(self):
+        if not all([self.street, self.city, self.postal_code, self.country]):
+            raise ValueError("Address fields cannot be empty")
+]]></code>
+        <note>frozen=True enforces immutability. Validation in __post_init__ makes invalid states unconstructable.</note>
+      </example>
+    </section>
+
+    <section name="aggregates">
+      <rule>
+        <statement>An aggregate is a cluster of entities with one aggregate root. External objects reference the aggregate only through the root, and only by ID — never by direct object pointer to internal entities.</statement>
+        <rationale>Object references between aggregates create tight coupling and tempt callers to traverse and mutate internals, breaking the aggregate's consistency boundary.</rationale>
+      </rule>
+
+      <rule>
+        <statement>One aggregate per transaction, always. If two aggregates must change together, publish a domain event from the first and handle it to update the second in a separate transaction.</statement>
+        <rationale>Transactions spanning multiple aggregates cause contention, make it hard to reason about consistency, and break the aggregate invariant model.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Crossing aggregate boundaries: order.customer.wallet.balance accessed directly inside Order.place().</description>
+        <reason>Hydrates related aggregates implicitly, creates hidden dependencies, and breaks the aggregate root as the authority for invariants.</reason>
+      </antipattern>
+
+      <example type="good" title="Order Aggregate Root">
+        <code lang="python"><![CDATA[
+@dataclass
+class Order:
+    """Order aggregate root — all state changes go through methods."""
+    id: UUID = field(default_factory=uuid4)
+    customer_id: UUID = field(default=None)
+    status: OrderStatus = OrderStatus.DRAFT
+    lines: List[OrderLine] = field(default_factory=list)
+    _events: List = field(default_factory=list, repr=False)
+
+    def add_line(self, product_id: UUID, name: str, quantity: int, price: Money) -> None:
+        if self.status != OrderStatus.DRAFT:
+            raise DomainError("Cannot modify a placed order")
+        if quantity <= 0:
+            raise DomainError("Quantity must be positive")
+        self.lines.append(OrderLine(product_id, name, quantity, price))
+
+    def place(self, shipping_address: Address) -> None:
+        if self.status != OrderStatus.DRAFT:
+            raise DomainError("Order already placed")
+        if not self.lines:
+            raise DomainError("Cannot place empty order")
+        self.shipping_address = shipping_address
+        self.status = OrderStatus.PLACED
+        self.placed_at = datetime.utcnow()
+        self._events.append(OrderPlaced(order_id=self.id, customer_id=self.customer_id, total=self.total))
+
+    def collect_events(self) -> List:
+        events = self._events.copy()
+        self._events.clear()
+        return events
+]]></code>
+        <note>Aggregate enforces all state-transition rules. No public setters. Events collected for post-commit dispatch.</note>
+      </example>
+    </section>
+
+    <section name="bounded-contexts">
+      <rule>
+        <statement>A bounded context is an explicit boundary within which a domain model and ubiquitous language are consistent. Different contexts may use the same word for different concepts — translate at the boundary via an Anti-Corruption Layer.</statement>
+        <rationale>Without explicit boundaries, model concepts bleed between teams, creating a mudball where Customer in Sales conflicts with Customer in Billing.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Co-locate aggregate, value objects, events, and repository interface in one folder per aggregate (e.g., order/domain/). Forbid imports between sibling aggregate folders.</statement>
+        <rationale>Folder boundaries become architectural firewalls. Without them, agents freely import across aggregates.</rationale>
+      </rule>
+    </section>
+
+    <section name="domain-events">
+      <rule>
+        <statement>Dispatch domain events post-commit only (outbox pattern). Collect events on the aggregate during the transaction; drain the buffer after the unit-of-work commits.</statement>
+        <rationale>Publishing events before the transaction commits means consumers act on data that may be rolled back, creating phantom side effects (emails sent for orders that never existed).</rationale>
+      </rule>
+    </section>
+
+    <section name="anti-corruption-layer">
+      <rule>
+        <statement>Wrap every external system whose model you do not control behind an ACL interface defined in the domain. Translate in the infrastructure implementation, never inside the domain.</statement>
+        <rationale>Letting external API terminology leak into the domain contaminates the ubiquitous language and couples business rules to third-party contracts.</rationale>
+      </rule>
+
+      <example type="good" title="Anti-Corruption Layer">
+        <code lang="python"><![CDATA[
+# infrastructure/acl/inventory_adapter.py
+class InventoryAdapter(InventoryChecker):
+    """Translates external inventory API to domain concepts."""
+    def __init__(self, client: InventoryApiClient):
+        self._client = client
+
+    async def check_availability(self, product_id: UUID, quantity: int) -> bool:
+        try:
+            response = await self._client.get_stock_level(str(product_id))
+            return response.get("availableUnits", 0) >= quantity
+        except ExternalApiError:
+            return True  # fail safe
+]]></code>
+        <note>External API terminology (availableUnits) is translated here. Domain code only sees the InventoryChecker interface it defined.</note>
+      </example>
+    </section>
+
+    <section name="repository-interface">
+      <p>Repository interfaces are defined in the domain. Implementations live in infrastructure. The domain is never imported from infrastructure.</p>
+
+      <example type="good" title="Repository Interface">
+        <code lang="python"><![CDATA[
+# domain/repositories.py — lives in domain, no infrastructure imports
+class OrderRepository(ABC):
+    @abstractmethod
+    async def find_by_id(self, order_id: UUID) -> Optional[Order]: ...
+
+    @abstractmethod
+    async def find_by_customer(self, customer_id: UUID) -> List[Order]: ...
+
+    @abstractmethod
+    async def save(self, order: Order) -> None: ...
+]]></code>
+        <note>Interface is defined in domain. SQLAlchemy implementation lives in infrastructure. Domain is never imported from infrastructure.</note>
+      </example>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p>"DDD-lite" cargo cult: folders named entities/, value_objects/, aggregates/ but the model is still anemic — same setters, same service-driven flow.</p>
+
+      <p>Aggregate boundaries drawn around UI screens instead of true invariants → contention on the aggregate root, eventual lock storms.</p>
+
+      <p>Repositories that leak ORM types (Query, Session, lazy-loaded relations) — the domain layer becomes infrastructure-coupled.</p>
+
+      <p>Domain events fired before transaction commit → consumers act on data that gets rolled back. Always dispatch post-commit.</p>
+
+      <p>LLMs over-decompose: every noun becomes an aggregate, every verb a domain service. The model fragments faster than humans can read it.</p>
+
+      <p>Strategic design (context maps, core/supporting/generic subdomains) skipped because it requires business conversations that LLMs cannot have alone.</p>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>DDD splits cleanly into a strategic phase (event storming, context mapping — human-led, LLM as scribe) and a tactical phase (entities/VOs/aggregates/repos — LLM does most of the typing under human review). Drive the strategic phase with faion-brainstorm to diverge on candidate bounded contexts, then converge on a context map. Drive the tactical phase with faion-sdd-executor-agent per bounded context: spec → design → implementation-plan → tasks, with faion-sdd-execution enforcing quality gates (no anemic models, no cross-aggregate references, repos return aggregates not rows). Always pass the ubiquitous-language glossary as the first context block of every prompt — without it the LLM invents synonyms within a single session.</p>
+
+      <p>Recommended subagents: faion-brainstorm — diverge/converge on bounded context candidates; surface domain events from event-storming notes; propose aggregate boundaries with rationale. faion-sdd-executor-agent — pick up a bounded-context task (e.g. "implement Order aggregate") and run spec → design → impl-plan → code with commit lifecycle. faion-sdd-execution — quality-gate hook: rejects PRs with anemic entities (only getters/setters), aggregate-to-aggregate object references, or domain code importing ORM/HTTP modules. faion-feature-executor — sequential execution across the tasks of one bounded context once the design is approved. password-scrubber-agent — run before committing example code; DDD examples often inline test credentials in repository fixtures.</p>
+
+      <p>Prompt pattern: You are modeling the [bounded context] context. Ubiquitous language (authoritative, do not rename): [terms]. Produce: aggregates (with root + invariants), value objects (frozen), domain events, repository interface (returns aggregates only). Forbidden: ORM imports in domain layer, setters on entities, references between aggregate roots (use IDs). For each invariant, cite the business rule it enforces.</p>
+
+      <p>Review prompt: Review this diff against DDD tactical patterns. Reject if: anemic entity, aggregate root with public mutable state, repository returning DTOs/rows, domain service with infrastructure deps, event published before transaction commit. Output one verdict block.</p>
+    </section>
+
+    <templates>
+      <template path="templates/domain-purity-check.sh" purpose="Pre-commit script: fails if domain/ imports infrastructure libs"/>
+      <template path="templates/import-linter.ini" purpose="import-linter contract: domain layer must not import infrastructure"/>
+      <template path="templates/ddd-prompt.txt" purpose="LLM prompt pattern for aggregate modeling with ubiquitous language"/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.domainlanguage.com/ddd/"/>
+      <link href="https://contextmapper.org"/>
+      <link href="https://plantuml.com"/>
+      <link href="https://mermaid.js.org"/>
+      <ref slug="event-sourcing-basics"/>
+      <ref slug="cqrs-pattern"/>
+    </see-also>
+  </content>
+</methodology>

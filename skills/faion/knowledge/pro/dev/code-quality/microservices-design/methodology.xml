@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="microservices-design">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>code-quality</domain>
+    <summary>Microservices architecture structures an application as independently deployable services where each service owns its data, exposes a well-defined API, and communicates through HTTP or async messaging.</summary>
+    <category>architecture</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>microservices</tag>
+      <tag>architecture</tag>
+      <tag>distributed-systems</tag>
+      <tag>async-messaging</tag>
+      <tag>fastapi</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Microservices Design</title>
+
+    <summary>Microservices architecture structures an application as independently deployable services where each service owns its data, exposes a well-defined API, and communicates through HTTP or async messaging. The core rules: each service has exactly one database (no shared tables); services never import each other's code directly; failures in one service must not cascade to others.</summary>
+
+    <why>
+      <p>A monolith scales as a unit even when only one feature is under load, and deploys as a unit even when only one team is ready. Microservices allow each team to deploy independently and scale individual services to their actual demand. The organizational alignment (Conway's Law) is as important as the technical benefit: services mirror team boundaries, reducing cross-team coordination overhead.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Large application where multiple teams work on different features simultaneously</item>
+        <item>Systems requiring independent scaling (checkout scales at 10x normal during flash sales; user service does not)</item>
+        <item>Organizations practicing continuous deployment where lockstep releases are a bottleneck</item>
+        <item>Technology diversity is justified (ML service in Python, billing in Java, web frontend in Node)</item>
+        <item>High availability requirement where a single service failure must not take down the whole product</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single team or early-stage startup — operational overhead (observability, CI/CD per service, networking) exceeds benefit</item>
+        <item>Domain not yet stable — premature service boundaries become costly to re-draw as the model evolves</item>
+        <item>Team lacks experience with distributed systems — eventual consistency, network failures, and distributed tracing require operational maturity</item>
+        <item>Transactions must be ACID across multiple business entities — sagas add significant complexity compared to a monolith with a single DB</item>
+        <item>Tight latency budget — each service hop adds network round-trip time</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="microservice-structure-and-fastapi-skeleton">
+      <p>Per-service folder layout and FastAPI service entrypoint with lifespan, health check, and versioned API router.</p>
+
+      <rule testable="true">
+        <statement>Each service is a completely independent deployment unit: its own repository (or isolated module), its own Dockerfile, its own database, its own CI/CD pipeline.</statement>
+        <rationale>Shared infrastructure creates hidden coupling. A database schema change in a shared DB can break all services that read it, defeating independent deployability.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Every service exposes a /health endpoint. The health check returns 200 only when the service and its critical dependencies (DB, broker) are reachable.</statement>
+        <rationale>Load balancers and orchestrators use health checks to route traffic. A service that responds 200 while its DB is down accepts requests it cannot fulfill.</rationale>
+      </rule>
+
+      <example type="good" title="Service Folder Layout">
+        <code lang="text"><![CDATA[
+user-service/
+├── src/
+│   ├── api/
+│   │   ├── routes.py        # FastAPI routers
+│   │   └── schemas.py       # Request/response Pydantic models
+│   ├── domain/
+│   │   ├── entities.py      # Domain entities
+│   │   ├── services.py      # Domain services
+│   │   └── events.py        # Integration events
+│   ├── infrastructure/
+│   │   ├── database.py      # DB session factory
+│   │   └── message_bus.py   # Broker producer/consumer
+│   └── main.py              # FastAPI app + lifespan
+├── tests/
+├── Dockerfile
+└── requirements.txt
+]]></code>
+      </example>
+
+      <example type="good" title="FastAPI Service Entrypoint">
+        <code lang="python"><![CDATA[
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    await init_message_bus()
+    yield
+    await close_message_bus()
+    await close_db()
+
+app = FastAPI(title="User Service", version="1.0.0", lifespan=lifespan)
+app.include_router(health_router, tags=["health"])
+app.include_router(router, prefix="/api/v1", tags=["users"])
+]]></code>
+        <note>Lifespan replaces @app.on_event deprecated hooks. Startup and shutdown logic are co-located and symmetric.</note>
+      </example>
+    </section>
+
+    <section name="inter-service-communication">
+      <p>Synchronous HTTP client, async message publish/consume with aio_pika, service discovery with load balancing.</p>
+
+      <rule testable="true">
+        <statement>Prefer asynchronous messaging (events) over synchronous HTTP for cross-service state changes. Use synchronous HTTP only for queries where the caller needs an immediate response.</statement>
+        <rationale>Synchronous chains create availability dependencies: if any service in the chain is down, the entire chain fails. Async events allow each service to process when available.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>HTTP clients must set explicit timeouts. Default timeout is 10 seconds maximum — never use no timeout in production.</statement>
+        <rationale>Without timeouts, a slow downstream service holds a thread/connection indefinitely, cascading into resource exhaustion in the caller.</rationale>
+      </rule>
+
+      <example type="good" title="Synchronous HTTP Client">
+        <code lang="python"><![CDATA[
+class OrderServiceClient:
+    def __init__(self, base_url: str):
+        self._client = AsyncClient(base_url=base_url, timeout=10.0)
+
+    async def get_orders_for_user(self, user_id: UUID) -> list:
+        response = await self._client.get("/api/v1/orders", params={"user_id": str(user_id)})
+        response.raise_for_status()
+        return response.json()
+]]></code>
+      </example>
+
+      <example type="good" title="Async Message Publisher">
+        <code lang="python"><![CDATA[
+class MessagePublisher:
+    def __init__(self, channel):
+        self._channel = channel
+
+    async def publish(self, event) -> None:
+        exchange = await self._channel.get_exchange("events")
+        message = aio_pika.Message(
+            body=json.dumps({
+                "type": "user.created",
+                "data": {"user_id": str(event.user_id), "email": event.email},
+                "occurred_at": event.occurred_at.isoformat(),
+            }).encode(),
+            content_type="application/json",
+        )
+        await exchange.publish(message, routing_key="user.created")
+]]></code>
+      </example>
+    </section>
+
+    <section name="circuit-breaker-and-resilience">
+      <p>Circuit breaker implementation with CLOSED/OPEN/HALF_OPEN states and resilient HTTP client wrapper.</p>
+
+      <rule testable="true">
+        <statement>Every HTTP call to another service must go through a circuit breaker. When the failure threshold is exceeded, the breaker opens and fails fast instead of waiting for timeout.</statement>
+        <rationale>Without a circuit breaker, a slow or unavailable downstream service holds connections and threads in the caller, cascading into resource exhaustion across the entire system.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Circuit breaker states: CLOSED (normal), OPEN (fail fast, reset after recovery_timeout), HALF_OPEN (test with limited calls, close if successful).</statement>
+        <rationale>HALF_OPEN prevents the breaker from staying open indefinitely after the downstream service recovers. It allows gradual traffic restoration.</rationale>
+      </rule>
+
+      <example type="good" title="Circuit Breaker">
+        <code lang="python"><![CDATA[
+class CircuitBreaker:
+    def __init__(self, name: str, failure_threshold=5, recovery_timeout_secs=30):
+        self.name = name
+        self._failure_threshold = failure_threshold
+        self._recovery_timeout = timedelta(seconds=recovery_timeout_secs)
+        self._state = CircuitState.CLOSED
+        self._failure_count = 0
+        self._last_failure_time = None
+
+    async def call(self, func, *args, **kwargs):
+        if self._is_open():
+            raise CircuitOpenError(self.name)
+        try:
+            result = await func(*args, **kwargs)
+            self._on_success()
+            return result
+        except Exception:
+            self._on_failure()
+            raise
+
+    def _is_open(self) -> bool:
+        if self._state == CircuitState.OPEN:
+            if datetime.utcnow() - self._last_failure_time > self._recovery_timeout:
+                self._state = CircuitState.HALF_OPEN
+                return False
+            return True
+        return False
+
+    def _on_success(self):
+        self._state = CircuitState.CLOSED
+        self._failure_count = 0
+
+    def _on_failure(self):
+        self._failure_count += 1
+        self._last_failure_time = datetime.utcnow()
+        if self._failure_count >= self._failure_threshold:
+            self._state = CircuitState.OPEN
+]]></code>
+      </example>
+    </section>
+
+    <section name="saga-pattern-for-distributed-transactions">
+      <p>Orchestration-based saga with compensation steps for creating an order across multiple services.</p>
+
+      <rule testable="true">
+        <statement>Every saga step must have a compensating action written before the happy path is merged. Compensation runs in reverse order when any step fails.</statement>
+        <rationale>A saga without compensations is an incomplete transaction. If step 2 fails after step 1 succeeds, step 1's side effect is permanent and cannot be undone.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Prefer orchestration (one central orchestrator) over choreography when more than 3-4 services participate. Choreography with many services creates spaghetti event flows that are impossible to debug.</statement>
+        <rationale>Orchestration centralizes the saga state machine and makes the flow readable as code. Choreography distributes it across services with no single place to observe the overall state.</rationale>
+      </rule>
+
+      <example type="good" title="Orchestration-Based Saga">
+        <code lang="python"><![CDATA[
+class OrderSagaOrchestrator:
+    async def execute(self, saga: CreateOrderSaga) -> None:
+        steps_completed = []
+        try:
+            await self._inventory_service.reserve(saga.order_id, saga.items)
+            steps_completed.append("inventory")
+
+            await self._payment_service.charge(saga.user_id, saga.total)
+            steps_completed.append("payment")
+
+            await self._order_service.create(saga.order_id, saga.items)
+            steps_completed.append("order")
+
+            saga.state = SagaState.COMPLETED
+        except Exception:
+            saga.state = SagaState.COMPENSATING
+            await self._compensate(saga, steps_completed)
+            saga.state = SagaState.FAILED
+            raise
+
+    async def _compensate(self, saga: CreateOrderSaga, steps: list) -> None:
+        for step in reversed(steps):
+            try:
+                if step == "order":
+                    await self._order_service.cancel(saga.order_id)
+                elif step == "payment":
+                    await self._payment_service.refund(saga.user_id)
+                elif step == "inventory":
+                    await self._inventory_service.release(saga.order_id)
+            except Exception:
+                # Log compensation failure; do not re-raise (best-effort compensation)
+                pass
+]]></code>
+        <note>Compensations run in reverse order. Failures in compensation are logged but not re-raised — best-effort rollback with alerting.</note>
+      </example>
+    </section>
+
+    <section name="microservices-antipatterns">
+      <p>Two critical microservices violations: distributed monolith via synchronous chains, and shared database between services.</p>
+
+      <antipattern>
+        <description>Services call each other synchronously for every operation, creating a chain where all services must be up for any request to succeed.</description>
+        <reason>Availability multiplies: if each service is 99% up, a chain of 5 synchronous calls is only 95% available. This defeats the resilience benefit of microservices.</reason>
+      </antipattern>
+
+      <example type="bad" title="Distributed Monolith via Sync Calls">
+        <code lang="python"><![CDATA[
+class OrderService:
+    def create_order(self, data):
+        user = user_service.get_user(data.user_id)          # All services must be up
+        product = product_service.get_product(data.product_id)
+        inventory = inventory_service.check(data.product_id)
+]]></code>
+      </example>
+
+      <example type="good" title="Independent Service via Async Events">
+        <code lang="python"><![CDATA[
+class OrderService:
+    async def create_order(self, data):
+        # Use locally cached/denormalized data — no sync calls
+        user_valid = await self.user_cache.exists(data.user_id)
+        product = await self.product_cache.get(data.product_id)
+        order = Order.create(data)
+        await self.repository.save(order)
+        await self.event_bus.publish(OrderCreated(order))  # Other services react async
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Multiple services query the same database tables directly, sharing schema ownership implicitly.</description>
+        <reason>Schema changes in one service break all other services sharing the table. This creates a hidden coupling that makes independent deployment impossible.</reason>
+      </antipattern>
+
+      <example type="bad" title="Shared Database Coupling">
+        <code lang="python"><![CDATA[
+# user-service and order-service both SELECT from the same 'users' table
+# A column rename in user-service breaks order-service at runtime
+]]></code>
+      </example>
+
+      <example type="good" title="Data Ownership via Events">
+        <code lang="python"><![CDATA[
+# user-service owns 'users' table
+# order-service has 'customer_info' with denormalized user data
+#   populated via events: UserCreated, UserEmailChanged
+# Schema changes in user-service only require order-service to subscribe to new events
+]]></code>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/service-main.py" purpose="FastAPI service entrypoint with lifespan, health router, versioned API"/>
+      <template path="templates/circuit-breaker.py" purpose="CircuitBreaker class ready to wrap any async callable"/>
+      <template path="templates/message-bus.py" purpose="MessagePublisher + MessageConsumer with aio_pika and JSON encoding"/>
+    </templates>
+
+    <see-also>
+      <ref slug="event-driven-architecture"/>
+      <ref slug="cqrs-pattern"/>
+      <link href="https://martinfowler.com/articles/microservices.html"/>
+      <link href="https://www.nginx.com/blog/introduction-to-microservices/"/>
+      <link href="https://docs.dapr.io/"/>
+    </see-also>
+  </content>
+</methodology>

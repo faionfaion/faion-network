@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="event-driven-architecture">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Event-Driven Architecture (EDA) structures inter-service communication as asynchronous events flowing through a broker rather than synchronous HTTP calls, enabling scalability, replay, and loose coupling.</summary>
+    <category>architecture</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>event-driven-architecture</tag>
+      <tag>async-messaging</tag>
+      <tag>kafka</tag>
+      <tag>distributed-systems</tag>
+      <tag>saga-pattern</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Event-Driven Architecture</title>
+
+    <summary>Event-Driven Architecture (EDA) structures inter-service communication as asynchronous events flowing through a broker (Kafka, RabbitMQ, SQS) rather than synchronous HTTP calls. The concrete rules: every consumer must be idempotent (dedup by event_id); every event name is past-tense describing a business outcome (OrderPlaced, not OrderUpdated); every saga step has a compensating action written before the happy path is merged.</summary>
+
+    <why>
+      <p>Synchronous point-to-point calls create a distributed monolith: every service must be up for any request to succeed, and latency stacks multiplicatively. EDA breaks this by making producers unaware of consumers, allowing consumers to scale and fail independently, and enabling event replay to bootstrap new services or recover lost projections. Fan-out (one event → N independent consumers) is free.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Cross-team / cross-bounded-context integration where synchronous coupling causes lockstep deploys or cascading outages</item>
+        <item>Event-replay capability is a real requirement (new service bootstrap, projection recovery, post-hoc analytics)</item>
+        <item>Asymmetric scaling: producer rate is variable, consumer must absorb spikes without falling over</item>
+        <item>Long-running business processes spanning hours/days/weeks (sagas, approvals, workflows)</item>
+        <item>Natural fan-out: one event drives notifications, search index, audit, billing, ML feature store independently</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-team monolith — sync calls are fine; events add operational tax (broker, schemas, DLQs) for no organizational gain</item>
+        <item>Strict latency budget below ~50ms end-to-end — broker hop + serialization eats the budget</item>
+        <item>Team has never operated a broker — Kafka / RabbitMQ / SQS require real on-call experience</item>
+        <item>Cross-aggregate ACID requirements — sagas + outbox + idempotent handlers are a lot of work for eventual consistency</item>
+        <item>Schema is volatile with no schema registry — event consumers will break silently on field renames</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="eda-core-patterns">
+      <p>Pub/Sub, Event Sourcing, CQRS, and Saga patterns — rules, use cases, and trade-offs.</p>
+
+      <rule testable="true">
+        <statement>Publishers emit events to topics without knowledge of subscribers. Subscribers register independently and process at their own pace. The broker decouples the two.</statement>
+        <rationale>Producer-consumer awareness creates coupling. When the producer must know about each consumer, adding a new consumer requires a producer change — defeating the extensibility benefit of EDA.</rationale>
+      </rule>
+
+      <p>Use cases: notifications, fan-out processing (one order-placed event → email, inventory, analytics, billing), event distribution to multiple bounded contexts.</p>
+
+      <rule testable="true">
+        <statement>Events in EDA are integration events (cross-service); events in event sourcing are domain events (within a service). Do not conflate them. A domain event may or may not be published as an integration event.</statement>
+        <rationale>Publishing every internal domain event externally creates tight coupling between a service's internal model and its consumers. Select which domain events become integration contracts.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>In EDA, read models are built by consuming events from the write side. The projection is eventually consistent — design UI and APIs to handle this (pending state, polling, websocket updates).</statement>
+        <rationale>Assuming immediate consistency in an eventually consistent system causes UI bugs where newly submitted data does not appear in the next page load.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Every saga step must have a written compensating action before the saga is deployed. Compensation runs in reverse order when any step fails.</statement>
+        <rationale>A deployed saga without compensations is a data corruption waiting to happen. Step 1 side effects (reservation, charge) become permanent when step 2 fails with no rollback path.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use orchestration-based sagas when more than 3-4 services participate. Choreography with many services creates spaghetti event flows with no central place to observe state.</statement>
+        <rationale>Choreography distributes the saga state machine across services; debugging a failed saga requires tracing events across all participants. Orchestration keeps state in one place.</rationale>
+      </rule>
+    </section>
+
+    <section name="message-broker-comparison">
+      <p>Kafka, Pulsar, RabbitMQ, and AWS SQS/SNS: throughput, latency, strengths, and when to use each.</p>
+
+      <rule testable="true">
+        <statement>Use Kafka when: high-volume event streaming (&gt;100K msg/s), event replay required, strong per-partition ordering needed, or integrating with Spark/Flink pipelines.</statement>
+        <rationale>Kafka is a distributed commit log with configurable retention. Its pull-based model and partitioned topics provide the highest throughput and replay capability. Trade-off: operational complexity (ZooKeeper/KRaft, partition management).</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use RabbitMQ when: complex routing (exchanges, bindings, headers), multiple protocol support (AMQP, MQTT, STOMP), or smaller-scale messaging with very low latency is needed.</statement>
+        <rationale>RabbitMQ's push-based AMQP model provides sub-millisecond latency at small scale and flexible routing. Messages are removed after consumption — replay requires a separate store.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use SQS+SNS when: fully managed is required, workloads are AWS-native, scale is variable (serverless, bursty), and simplicity outweighs flexibility.</statement>
+        <rationale>Zero operational overhead at the cost of limited ordering guarantees (FIFO queues exist but are limited), at-least-once delivery only, and AWS vendor lock-in.</rationale>
+      </rule>
+
+      <example type="good" title="Throughput Comparison">
+        <list>
+          <item>Kafka: 10M+ msg/s — highest throughput, horizontal scaling via partitions</item>
+          <item>Pulsar: 4M+ msg/s — compute-storage separation (BookKeeper), native multi-tenancy</item>
+          <item>RabbitMQ: 1M msg/s — lower throughput but lower latency at small scale</item>
+          <item>AWS SQS: 300K msg/s — managed, auto-scaling, variable cost</item>
+          <item>Redis Streams: very high, sub-ms — ephemeral events, not durable long-term</item>
+        </list>
+      </example>
+    </section>
+
+    <section name="event-schema-design">
+      <p>CloudEvents standard, naming conventions, versioning strategies, and schema evolution rules.</p>
+
+      <rule testable="true">
+        <statement>Name events in past tense describing a completed business outcome: OrderPlaced, PaymentReceived, UserRegistered. Never use imperative names (CreateOrder) or CRUD names (OrderUpdated).</statement>
+        <rationale>Past tense signals immutability and distinguishes events (facts that happened) from commands (intentions). CRUD names like OrderUpdated lose intent — what specifically changed?</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use a reverse-domain type hierarchy: {company}.{bounded-context}.{aggregate}.{event} — e.g., com.example.orders.order.placed.</statement>
+        <rationale>Namespaced types prevent collisions in shared brokers and make event routing rules explicit and grep-able.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use CloudEvents v1.0 format for all integration events. Required attributes: specversion, id, source, type. Add datacontenttype, subject, time as optional attributes.</statement>
+        <rationale>CloudEvents is a CNCF graduated standard supported by all major cloud providers and brokers. Standardized envelopes enable tooling (routers, transformers, monitors) to work across all event types.</rationale>
+      </rule>
+
+      <example type="good" title="CloudEvents v1.0 Example">
+        <code lang="json"><![CDATA[
+{
+  "specversion": "1.0",
+  "id": "A234-1234-1234",
+  "source": "/orders/order-service",
+  "type": "com.example.order.created",
+  "datacontenttype": "application/json",
+  "subject": "order-12345",
+  "time": "2026-01-25T10:30:00Z",
+  "data": {
+    "orderId": "order-12345",
+    "customerId": "cust-789",
+    "total": 99.99
+  }
+}
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Only make additive, backward-compatible changes to existing event schemas: add optional fields, never remove required fields, always provide default values for new fields.</statement>
+        <rationale>Events in the log are immutable but consumers must continue to deserialize old events. Removing a field or making a formerly-optional field required breaks replay of historical events.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Enforce schema compatibility with a schema registry (Confluent Schema Registry, Apicurio, Buf BSR). Fail PRs that introduce non-additive changes.</statement>
+        <rationale>Without automated enforcement, non-additive schema changes slip through review and silently break consumers at runtime. The registry is the contract boundary.</rationale>
+      </rule>
+    </section>
+
+    <section name="delivery-guarantees-and-idempotency">
+      <p>At-most-once, at-least-once, exactly-once semantics; idempotency techniques and dedup table pattern.</p>
+
+      <rule testable="true">
+        <statement>Design all consumers for at-least-once delivery. Exactly-once is expensive and often unavailable. At-most-once is only acceptable for metrics or logs where data loss is tolerable.</statement>
+        <rationale>Most brokers (Kafka, RabbitMQ, SQS) guarantee at-least-once under failure scenarios. Assuming exactly-once without transactional producers + idempotent consumers leads to double-processing bugs in production.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Every consumer must be idempotent: processing the same event_id twice must produce the same result as processing it once. Use a dedup table, upsert semantics, or natural idempotency.</statement>
+        <rationale>Brokers redeliver on consumer failure or network hiccup. Without idempotency, duplicate delivery causes double-charges, double-emails, double-inventory-decrements.</rationale>
+      </rule>
+
+      <example type="good" title="Idempotent Consumer with Dedup Table">
+        <code lang="python"><![CDATA[
+async def handle_order_created(event: dict) -> None:
+    event_id = event.get("id")
+    # Dedup: skip if already processed
+    inserted = await db.execute(
+        "INSERT INTO processed_events(event_id, consumer) VALUES($1,$2) "
+        "ON CONFLICT DO NOTHING RETURNING event_id",
+        event_id, "order-details-projection",
+    )
+    if not inserted:
+        return  # Duplicate — already processed
+
+    await process_order(event["data"])
+]]></code>
+        <note>ON CONFLICT DO NOTHING within a transaction ensures exactly-once semantics for the handler's side effects, assuming the transaction commits atomically.</note>
+      </example>
+
+      <rule testable="true">
+        <statement>Publish events reliably via the outbox pattern: write the event row and the business row in the same DB transaction; a separate worker reads and publishes to the broker.</statement>
+        <rationale>Publishing to the broker inside the business transaction risks a committed event that is never published (broker call fails after DB commit) or an event published for a rolled-back transaction.</rationale>
+      </rule>
+    </section>
+
+    <section name="eda-antipatterns">
+      <p>Critical EDA violations: event as command, oversized events, missing correlation ID, CRUD event names.</p>
+
+      <antipattern>
+        <description>Publisher names an event imperatively (ProcessPayment, SendEmail) and expects only one specific consumer to act on it.</description>
+        <reason>Commands have exactly one intended handler. Using an event channel for a command couples the producer to the consumer's presence, defeating the decoupling purpose of EDA.</reason>
+      </antipattern>
+
+      <example type="bad" title="Event as Command">
+        <code lang="python"><![CDATA[
+# BAD: sending a command disguised as an event
+await bus.publish("ProcessPayment", {"order_id": order_id, "amount": 99.99})
+]]></code>
+      </example>
+
+      <example type="good" title="Fact-Based Event Design">
+        <code lang="python"><![CDATA[
+# GOOD: publish a fact; payment service subscribes to it
+await bus.publish("order.placed", {"order_id": order_id, "total": 99.99})
+# payment-service subscribes to "order.placed" and charges independently
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Event payload contains full embedded objects rather than IDs. Example: OrderPlaced event contains the entire customer profile, full product catalog entries, and complete shipping address history.</description>
+        <reason>Large events bloat the broker, slow consumers, make schema evolution harder, and couple producers to consumer data needs. Consumers that need full objects should fetch them separately via ID.</reason>
+      </antipattern>
+
+      <example type="good" title="Events with References Only">
+        <code lang="python"><![CDATA[
+# GOOD: reference IDs, not full objects
+event = {
+    "type": "com.example.order.placed",
+    "data": {"order_id": "order-123", "customer_id": "cust-456", "total": 99.99}
+    # Consumer fetches customer details if needed via customer service API or local cache
+}
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Events do not carry a correlation_id or trace context. When a flow fails across 5 services and 3 brokers, there is no way to reconstruct the event chain.</description>
+        <reason>Distributed tracing without correlation IDs requires log archaeology. A single missing correlation_id makes debugging a distributed transaction blind and time-consuming.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Events named UserUpdated, OrderModified, ProductChanged — CRUD verbs applied to aggregate state.</description>
+        <reason>CRUD events lose business intent. OrderModified could mean a shipping address change, an item added, or a cancellation — consumers cannot determine what to do without parsing the full payload.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/idempotent-consumer.py" purpose="At-least-once safe consumer with dedup table, DLQ routing, RetryableError handling"/>
+      <template path="templates/cloudevent.json" purpose="CloudEvents v1.0 example with required + optional attributes"/>
+      <template path="templates/eda-prompt.txt" purpose="LLM prompt pattern for event storming and saga generation"/>
+    </templates>
+
+    <see-also>
+      <ref slug="event-sourcing-implementation"/>
+      <ref slug="cqrs-pattern"/>
+      <ref slug="microservices-design"/>
+      <link href="https://www.confluent.io/blog/event-driven-architecture/"/>
+      <link href="https://www.nginx.com/blog/event-driven-architecture/"/>
+      <link href="https://cloudevents.io/"/>
+      <link href="https://kafka.apache.org/"/>
+      <link href="https://www.rabbitmq.com/"/>
+    </see-also>
+  </content>
+</methodology>

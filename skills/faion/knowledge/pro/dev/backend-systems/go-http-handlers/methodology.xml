@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-http-handlers">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Handler pattern for Go: methods on struct, request DTOs, RFC 7807 error mapping, httptest tests. Lock framework per project.</summary>
+    <tags>
+      <tag>go</tag>
+      <tag>http</tag>
+      <tag>handlers</tag>
+      <tag>gin</tag>
+      <tag>echo</tag>
+    </tags>
+    <category>http</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>go</language>
+    </languages>
+    <frameworks>
+      <framework>gin</framework>
+      <framework>echo</framework>
+      <framework>chi</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Go HTTP Handlers (Gin/Echo/Chi/stdlib)</title>
+
+    <summary>HTTP handler pattern for Go: handlers as methods on a dependency-injecting struct, request DTOs with binding/validate tags, typed response structs, RFC 7807 error mapping, and httptest-based table-driven tests. Framework choice (Gin, Echo, Chi, stdlib 1.22 muxer) is locked per project and never mixed mid-file.</summary>
+
+    <why>
+      <p>Go HTTP services accumulate three failure modes without this pattern: package-level globals for dependencies (not testable), raw err.Error() in JSON responses (leaks internals), and handler-level string-building (inconsistent API surface). Structuring handlers as methods on a struct makes dependency injection, testing, and code generation straightforward.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building a JSON REST API with Gin, Echo, Chi, or stdlib net/http 1.22+.</item>
+        <item>Migrating between routers with a consistent handler shape.</item>
+        <item>Wiring middleware (auth, request ID, recovery, CORS, rate limit, tracing) idiomatically.</item>
+        <item>Generating CRUD handlers from a schema (OpenAPI, sqlc) where shape is repetitive.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>gRPC services — use grpc-go and interceptors.</item>
+        <item>WebSocket-first apps — gorilla/websocket or nhooyr.io/websocket.</item>
+        <item>Static asset serving — http.FileServer or a CDN.</item>
+        <item>Streaming/SSE-heavy endpoints — drop to http.ResponseWriter directly for Gin.</item>
+        <item>Stdlib-only constraints on new services (1.22 muxer preferred without a framework dep).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="middleware-order">
+      <p>Router configuration patterns for Gin and Echo, including correct middleware order and subrouter/group patterns. Covers the stdlib 1.22 enhanced muxer as a zero-dependency alternative.</p>
+      <rule testable="true">
+        <statement>Register middleware in this order: Recovery (outermost), RequestID, Logger, Auth (on protected groups). Recovery must be outermost so panics are caught before the logger middleware runs. Logger must be after RequestID so the request ID is available in logs.</statement>
+        <rationale>Recovery placed inside Logger means a panicking handler crashes the Logger middleware before it can write the log line. The recovery response is then written by a dead middleware, producing a garbled or empty body.</rationale>
+      </rule>
+      <example type="good" title="Gin — correct middleware order">
+        <code lang="go"><![CDATA[// Gin — correct middleware order
+r := gin.New()
+r.Use(middleware.Recovery())   // outermost
+r.Use(middleware.RequestID())
+r.Use(middleware.Logger())
+
+// Protected routes with auth
+v1 := r.Group("/api/v1")
+v1.Use(middleware.Auth())
+v1.GET("/users", h.ListUsers)]]></code>
+      </example>
+    </section>
+
+    <section name="stdlib-muxer">
+      <rule testable="true">
+        <statement>For new services without a team-wide framework standard, prefer the stdlib 1.22 muxer (http.NewServeMux with METHOD /path patterns) over adding a framework dependency. Add a framework only when its features (validator, response helpers) justify the dependency.</statement>
+        <rationale>The 1.22 muxer supports method-specific routing (GET /users/{id}) and path parameters (r.PathValue) natively, eliminating the primary reason to reach for Gin/Echo in simple CRUD APIs.</rationale>
+      </rule>
+      <reference path="templates/stdlib_handler.go">stdlib 1.22 App struct with routes(), writeJSON, writeProblem.</reference>
+    </section>
+
+    <section name="handler-struct">
+      <p>Handlers as methods on a dependency-injecting struct, with request DTOs using binding/validate tags, typed response structs, and RFC 7807 error mapping instead of raw err.Error() in JSON.</p>
+      <rule testable="true">
+        <statement>Define handlers as methods on a struct that holds service dependencies (logger, services). Never use package-level globals (var DB *sql.DB) inside handlers. Inject dependencies at construction time.</statement>
+        <rationale>Package-level globals prevent parallel test execution (shared state between test cases) and make dependency substitution impossible without init() hacks.</rationale>
+      </rule>
+      <example type="good" title="Handler struct with dependency injection">
+        <code lang="go"><![CDATA[type UserHandler struct {
+    service UserService
+    logger  *slog.Logger
+}
+
+func NewUserHandler(svc UserService, logger *slog.Logger) *UserHandler {
+    return &UserHandler{service: svc, logger: logger}
+}
+
+func (h *UserHandler) ListUsers(c *gin.Context) {
+    users, err := h.service.List(c.Request.Context())
+    if err != nil {
+        _ = c.Error(err)
+        return
+    }
+    c.JSON(http.StatusOK, users)
+}]]></code>
+      </example>
+    </section>
+
+    <section name="request-binding">
+      <rule testable="true">
+        <statement>Use c.ShouldBindJSON (not c.Bind) on Gin. ShouldBind returns an error without writing a response; c.Bind writes a 400 directly and the handler continues — producing a double-write bug.</statement>
+        <rationale>c.Bind's auto-response behavior is a Gin anti-pattern; handlers that check err after c.Bind may still execute, producing conflicting response writes.</rationale>
+      </rule>
+      <example type="good" title="Request DTO with validation tags">
+        <code lang="go"><![CDATA[type CreateUserRequest struct {
+    Name  string `json:"name"  binding:"required,min=2,max=100"`
+    Email string `json:"email" binding:"required,email"`
+}
+
+func (h *UserHandler) CreateUser(c *gin.Context) {
+    var req CreateUserRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        _ = c.Error(apperror.AsValidation(err.Error()))
+        return
+    }
+    // ...
+}]]></code>
+      </example>
+    </section>
+
+    <section name="context-propagation">
+      <rule testable="true">
+        <statement>Pass r.Context() (or c.Request.Context() in Gin) as the first argument into every service call. Never use context.Background() inside a handler.</statement>
+        <rationale>context.Background() ignores client disconnection. Long-running service calls (DB, HTTP) continue consuming resources after the client has gone away.</rationale>
+      </rule>
+    </section>
+
+    <section name="framework-consistency">
+      <p>Rules preventing the most common Go HTTP handler mistakes: mixed framework signatures, raw err.Error() in responses, missing server timeouts, and test generation gaps.</p>
+      <rule testable="true">
+        <statement>Lock the router choice (Gin, Echo, Chi, stdlib) in the system prompt for any LLM session. Reject any file where Gin and Echo imports coexist. Add a CI lint check for the unwanted import.</statement>
+        <rationale>LLMs mix handler signatures when context windows overflow. func(c *gin.Context) and func(c echo.Context) error are incompatible; mixed files produce confusing compile errors.</rationale>
+      </rule>
+      <antipattern>
+        <description>c.JSON(status, gin.H{"error": err.Error()}) for error responses.</description>
+        <reason>Exposes database DSNs, constraint names, and internal hostnames. Use the RFC 7807 error mapping from error-handling/ and return via c.Error(appErr).</reason>
+      </antipattern>
+    </section>
+
+    <section name="server-timeouts">
+      <rule testable="true">
+        <statement>Set ReadHeaderTimeout, WriteTimeout, and IdleTimeout on http.Server. Frameworks do not set these; a server without timeouts is vulnerable to slowloris attacks and resource exhaustion.</statement>
+        <rationale>A client that never finishes sending headers holds a goroutine and file descriptor indefinitely. ReadHeaderTimeout terminates such connections.</rationale>
+      </rule>
+    </section>
+
+    <section name="testing">
+      <rule testable="true">
+        <statement>Test handlers with httptest.NewRecorder + router.ServeHTTP. Cover both happy-path and unhappy-path (missing required field, invalid type, oversized body). Do not spin a real server for unit tests.</statement>
+        <rationale>httptest tests run in parallel, start instantly, and exercise the full middleware chain. Agents generating only happy-path tests miss the most common field-validation regressions.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>Forgetting defer r.Body.Close() in stdlib handlers.</description>
+        <reason>Without Close(), the underlying TCP connection is not returned to the pool, leaking file descriptors under sustained load.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Creating validator.New() per request instead of once at package level.</description>
+        <reason>validator.New() is expensive (reflection over all struct tags). A per-request instance adds measurable latency under load. Cache at package or handler-struct level.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using path param accessor from the wrong router: c.Param("id") in Chi or r.PathValue("id") in Gin.</description>
+        <reason>Each router has its own path-param API. Wrong accessor returns an empty string, silently breaking 404 logic and tests.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>The agent should (1) read the existing router setup and middleware stack to match style, (2) generate handlers as method-on-struct so dependencies (services, loggers) are injected, (3) emit request DTOs with binding/validate tags and a typed response struct, (4) wire the new route into the router with the same middleware slice, (5) generate table-driven tests with httptest. The single most common error is hard-coding string responses; insist on structured DTOs aligned with the project's error envelope. For a brand-new service, first decide router (Gin vs Echo vs Chi vs stdlib) and lock it in the system prompt — do not let the LLM mix routers.</p>
+      <rule testable="true">
+        <statement>Always pass r.Context() or c.Request.Context() into service calls. Never use context.Background() inside a handler.</statement>
+        <rationale>context.Background() ignores client disconnection. Long-running service calls (DB, HTTP) continue consuming resources after the client has gone away.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <p>Best practices for HTTP handler patterns in Go:</p>
+      <list>
+        <item>Inject dependencies via a Handler struct; never use package-level globals inside handlers.</item>
+        <item>Always pass r.Context() (or c.Request.Context() in Gin) into services — long-running handlers must respect client cancellation.</item>
+        <item>Use one validation library across the codebase (go-playground/validator) and one error envelope (RFC 7807) — agents copy the local style.</item>
+        <item>Bind input DTOs, validate, then convert to a domain type before calling the service. Don't pass DTOs deeper than the handler.</item>
+        <item>Write tests with httptest.NewRecorder + router.ServeHTTP rather than spinning a real server; they're faster and parallel-safe.</item>
+        <item>Cache the validator instance (var v = validator.New()) at package level — recreating it per request is allocation-heavy.</item>
+        <item>Set sensible server timeouts (ReadHeaderTimeout, WriteTimeout, IdleTimeout) at http.Server level — frameworks don't.</item>
+        <item>For 1.22+, prefer the stdlib enhanced muxer for new services unless team-wide tooling already standardized on a framework.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <p>Common CLI tools for HTTP handler development:</p>
+      <list>
+        <item>go test -race: Run handler tests with race detector</item>
+        <item>httpie / curl: Manual smoke test against routes</item>
+        <item>oapi-codegen: Generate Echo/Chi handler stubs from OpenAPI</item>
+        <item>swag: Generate OpenAPI from Gin annotations</item>
+        <item>vegeta / k6: Load test handlers</item>
+        <item>mockery: Mock services for handler tests</item>
+        <item>golangci-lint: Lint with revive/staticcheck</item>
+        <item>air: Live-reload during dev</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/gin_router.go" purpose="Gin router with middleware stack and user CRUD route group."/>
+      <template path="templates/stdlib_handler.go" purpose="stdlib 1.22 muxer pattern: App struct, routes(), writeJSON, writeProblem."/>
+    </templates>
+
+    <see-also>
+      <link href="https://gin-gonic.com/docs/"/>
+      <link href="https://echo.labstack.com/docs"/>
+      <link href="https://github.com/go-chi/chi"/>
+      <link href="https://pkg.go.dev/net/http"/>
+      <link href="https://github.com/go-playground/validator"/>
+      <link href="https://pkg.go.dev/net/http/httptest"/>
+    </see-also>
+  </content>
+</methodology>

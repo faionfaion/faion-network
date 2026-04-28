@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="java-spring-boot-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>Spring Boot enterprise patterns: BaseEntity, JpaSpecificationExecutor, @Transactional defaults, records, MapStruct, ProblemDetail errors, N+1 prevention.</summary>
+    <tags>
+      <tag>java</tag>
+      <tag>spring-boot</tag>
+      <tag>enterprise</tag>
+      <tag>jpa</tag>
+      <tag>patterns</tag>
+    </tags>
+    <category>patterns</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <languages>
+      <language>java</language>
+    </languages>
+    <frameworks>
+      <framework>spring-boot</framework>
+      <framework>spring-data-jpa</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Java Spring Boot Patterns</title>
+
+    <summary>Layered Spring Boot 3.x architecture with BaseEntity providing UUID primary key, auditing via @CreationTimestamp/@UpdateTimestamp, optimistic locking via @Version, and entities extending this superclass. DTOs as Java records. MapStruct mappers for entity conversion. @Transactional(readOnly = true) as class-level default, @Transactional on write methods. @RestControllerAdvice returning ProblemDetail (RFC 7807). Never expose entities directly from controllers. Prevent N+1 queries with JOIN FETCH or @EntityGraph.</summary>
+
+    <why>
+      <p>Spring Boot 3 changed namespaces from javax.* to jakarta.* and LLMs trained on older corpora mix them. The most frequent agent failures are anemic domain models (all logic in services, entities as data bags), N+1 queries from missing JOIN FETCH or @EntityGraph, and @Transactional on private methods or self-invocation (which silently does nothing). ArchUnit and Testcontainers enforce the layering and catch N+1 in CI.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield Spring Boot 3.x service following the layered architecture (controller → service → repository) with JPA/Hibernate.</item>
+        <item>Refactoring a legacy Spring app to use records for DTOs, MapStruct mappers, @Transactional(readOnly = true) defaults, and ProblemDetail exception handling.</item>
+        <item>Adding @RestControllerAdvice global exception handlers and Bean Validation (@Valid, @NotBlank).</item>
+        <item>Wiring Specifications (JpaSpecificationExecutor) for dynamic search endpoints and pageable results.</item>
+        <item>Standing up Actuator, Micrometer, OpenAPI/Swagger, and Spring Security defaults.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Reactive stack (WebFlux) — patterns like blocking JPA repos, @Transactional, and ResponseEntity semantics differ; use a reactive-specific knowledge base.</item>
+        <item>Tiny CLI tools — Spring Boot's startup cost and DI overhead are unjustified.</item>
+        <item>Functions/serverless deployments where cold start matters; prefer Quarkus or Micronaut.</item>
+        <item>Legacy Spring 4.x / Java 8 — record types, sealed types, ProblemDetail, and Jakarta namespace are not available.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="project-structure-and-entities">
+      <p>Spring Boot's layered architecture enforces separation of concerns through distinct packages: controller/, service/, repository/, entity/, dto/, mapper/, and exception/.</p>
+
+      <rule>
+        <statement>Follow the layered package structure: controller/, service/, service/impl/, repository/, entity/, dto/request/, dto/response/, mapper/, exception/. Never place business logic in controllers or entities as data-only bags.</statement>
+        <rationale>Spring Boot's layered architecture enforces separation of concerns. The structure matches the AOP proxy model: @Transactional works correctly only when calls cross Spring bean boundaries.</rationale>
+      </rule>
+
+      <example type="good" title="Standard layered project structure">
+        <code lang="text"><![CDATA[
+src/main/java/com/example/app/
+├── controller/
+│   ├── UserController.java
+│   └── advice/GlobalExceptionHandler.java
+├── service/
+│   ├── UserService.java           (interface)
+│   └── impl/UserServiceImpl.java
+├── repository/
+│   ├── UserRepository.java
+│   └── specification/UserSpecification.java
+├── entity/
+│   ├── BaseEntity.java
+│   └── User.java
+├── dto/
+│   ├── request/CreateUserRequest.java
+│   └── response/UserResponse.java
+├── mapper/UserMapper.java
+└── exception/
+    ├── ResourceNotFoundException.java
+    └── BusinessException.java
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>All persistent entities extend BaseEntity which provides UUID primary key, createdAt, updatedAt via @CreationTimestamp/@UpdateTimestamp, and optimistic locking via @Version.</statement>
+        <rationale>Centralizing audit fields in a superclass avoids repetition. @Version provides optimistic locking without explicit code; concurrent updates fail fast with OptimisticLockException instead of silently overwriting.</rationale>
+      </rule>
+
+      <example type="good" title="BaseEntity with auditing and optimistic locking">
+        <code lang="java"><![CDATA[
+@MappedSuperclass
+@Getter @Setter
+public abstract class BaseEntity {
+    @Id @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    @Version
+    private Long version;
+}
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>Annotate the Spring Boot application class with @EnableJpaAuditing. Without it, @CreationTimestamp and @UpdateTimestamp do not fire and audit fields remain null.</statement>
+        <rationale>JPA auditing is opt-in in Spring Boot 3. Missing @EnableJpaAuditing is a frequent agent error that only surfaces in integration tests when audit fields are asserted.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Entities must contain at least one domain method per non-trivial behavior (e.g., promote(), addPost(), deactivate()). Service classes should orchestrate, not hold every business rule.</statement>
+        <rationale>Purely anemic entities (only getters/setters) push all logic into services, making it impossible to enforce invariants at the entity level. Entity methods can throw IllegalStateException on invalid transitions without a service call.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>@Data on JPA entities — Lombok generates equals/hashCode using all fields.</description>
+        <reason>Entity equality must be based on identity (ID), not value. @Data-generated equals causes incorrect Set behavior for managed entities and can produce infinite loops with bidirectional relationships.</reason>
+      </antipattern>
+    </section>
+
+    <section name="repository-specifications-and-transactional-service">
+      <p>Repositories provide data access with support for dynamic queries via Specifications. Services orchestrate repository calls and enforce transactional boundaries.</p>
+
+      <rule>
+        <statement>Extend JpaSpecificationExecutor for dynamic queries. Use Specification factory methods in a separate specification class. Never build JPQL strings by concatenation.</statement>
+        <rationale>String concatenation in JPQL opens SQL injection vectors and is untyped. Specifications are type-safe, composable, and testable independently.</rationale>
+      </rule>
+
+      <example type="good" title="Repository with Specifications">
+        <code lang="java"><![CDATA[
+@Repository
+public interface UserRepository
+    extends JpaRepository<User, UUID>, JpaSpecificationExecutor<User> {
+
+    Optional<User> findByEmail(String email);
+    boolean existsByEmailAndOrganizationId(String email, UUID orgId);
+
+    @Query("SELECT u FROM User u WHERE u.organization.id = :orgId AND u.active = true")
+    Page<User> findActiveByOrganization(@Param("orgId") UUID orgId, Pageable pageable);
+}
+
+public class UserSpecification {
+    public static Specification<User> inOrganization(UUID orgId) {
+        return (root, q, cb) -> cb.equal(root.get("organization").get("id"), orgId);
+    }
+    public static Specification<User> isActive(boolean active) {
+        return (root, q, cb) -> cb.equal(root.get("active"), active);
+    }
+}
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>Annotate service class with @Transactional(readOnly = true). Override with @Transactional (no readOnly) on individual write methods. Never apply @Transactional to private methods or call them directly on the same bean.</statement>
+        <rationale>@Transactional on private methods is silently ignored — Spring AOP proxies intercept only public method calls from outside the bean. Self-invocation (this.writeMethod()) bypasses the proxy and runs without a transaction.</rationale>
+      </rule>
+
+      <example type="good" title="Service with @Transactional defaults">
+        <code lang="java"><![CDATA[
+@Service
+@RequiredArgsConstructor
+@Slf4j
+@Transactional(readOnly = true)
+public class UserServiceImpl implements UserService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final UserMapper userMapper;
+
+    @Override
+    @Transactional
+    public UserResponse create(CreateUserRequest request, UUID orgId) {
+        if (userRepository.existsByEmailAndOrganizationId(request.email(), orgId)) {
+            throw new BusinessException("Email already exists");
+        }
+        var user = User.builder()
+            .name(request.name())
+            .email(request.email().toLowerCase())
+            .password(passwordEncoder.encode(request.password()))
+            .build();
+        return userMapper.toResponse(userRepository.save(user));
+    }
+
+    @Override
+    public UserResponse getById(UUID id) {
+        return userRepository.findById(id)
+            .map(userMapper::toResponse)
+            .orElseThrow(() -> new ResourceNotFoundException("User", id));
+    }
+
+    @Override
+    public Page<UserResponse> search(UUID orgId, String search, Pageable pageable) {
+        Specification<User> spec = Specification
+            .where(UserSpecification.inOrganization(orgId))
+            .and(UserSpecification.isActive(true));
+        if (search != null && !search.isBlank())
+            spec = spec.and(UserSpecification.searchByNameOrEmail(search));
+        return userRepository.findAll(spec, pageable).map(userMapper::toResponse);
+    }
+}
+        ]]></code>
+      </example>
+
+      <section name="n-plus-one-queries">
+        <antipattern>
+          <description>Iterating over a collection and accessing a lazy-loaded relationship: users.forEach(u -&gt; u.getOrganization().getName()).</description>
+          <reason>Each getOrganization() triggers a separate SELECT. For N users, N+1 queries are issued. Use JOIN FETCH or @EntityGraph to load relationships in one query.</reason>
+        </antipattern>
+
+        <example type="good" title="Preventing N+1 with JOIN FETCH">
+          <code lang="java"><![CDATA[
+@Query("SELECT u FROM User u JOIN FETCH u.organization WHERE u.id IN :ids")
+List<User> findAllWithOrganization(@Param("ids") List<UUID> ids);
+          ]]></code>
+        </example>
+      </section>
+    </section>
+
+    <section name="controller-dto-records-and-mapstruct-mapper">
+      <p>Controllers receive HTTP requests and return responses via DTOs mapped by MapStruct. Controllers must never return JPA entities.</p>
+
+      <rule>
+        <statement>Controllers must never return entities. Always map to a DTO record before returning. Use @Valid on @RequestBody. Prefer @PageableDefault over manual page parameter parsing.</statement>
+        <rationale>Returning entities exposes lazy-loaded proxy objects to Jackson serialization, which can trigger LazyInitializationException after the transaction ends or expose internal fields.</rationale>
+      </rule>
+
+      <example type="good" title="Clean controller with validation">
+        <code lang="java"><![CDATA[
+@RestController
+@RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
+@Tag(name = "Users")
+public class UserController {
+
+    private final UserService userService;
+
+    @GetMapping
+    public Page<UserResponse> search(
+        @AuthenticationPrincipal AuthUser auth,
+        @RequestParam(required = false) String search,
+        @PageableDefault(size = 20, sort = "createdAt") Pageable pageable
+    ) {
+        return userService.search(auth.getOrganizationId(), search, pageable);
+    }
+
+    @PostMapping
+    public ResponseEntity<UserResponse> create(
+        @AuthenticationPrincipal AuthUser auth,
+        @Valid @RequestBody CreateUserRequest request
+    ) {
+        return ResponseEntity.status(201).body(
+            userService.create(request, auth.getOrganizationId()));
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable UUID id) {
+        userService.delete(id);
+    }
+}
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>Use Java 17+ records for DTOs. Records are immutable and compact. Use jakarta.validation constraints on request records.</statement>
+        <rationale>Records eliminate boilerplate (constructors, equals, hashCode, toString). Immutability prevents unintended mutation of request data as it flows through service layers.</rationale>
+      </rule>
+
+      <example type="good" title="DTO records with validation">
+        <code lang="java"><![CDATA[
+public record CreateUserRequest(
+    @NotBlank @Size(min = 2, max = 100) String name,
+    @NotBlank @Email String email,
+    @NotBlank @Size(min = 8) String password,
+    UserRole role
+) {}
+
+public record UserResponse(
+    UUID id, String name, String email,
+    UserRole role, boolean active,
+    Instant createdAt, Instant updatedAt
+) {}
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>Use MapStruct with componentModel = SPRING. Ensure annotation processing is wired in pom.xml or build.gradle — MapStruct does not work without it and fails silently at runtime.</statement>
+        <rationale>Missing annotation processor configuration causes MapStruct to generate no implementation. The bean is missing at startup; agents miss this because the compiler produces no error.</rationale>
+      </rule>
+
+      <example type="good" title="MapStruct mapper with Spring component model">
+        <code lang="java"><![CDATA[
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
+public interface UserMapper {
+    UserResponse toResponse(User user);
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="global-exception-handler-and-jakarta-namespace">
+      <p>Global exception handling returns RFC 7807 ProblemDetail responses. Spring Boot 3 uses jakarta.* exclusively.</p>
+
+      <rule>
+        <statement>Handle all exceptions in a @RestControllerAdvice returning ProblemDetail (RFC 7807). Never return custom JSON shapes for errors — use the standard type/title/status/detail structure.</statement>
+        <rationale>ProblemDetail is Spring Boot 3's built-in RFC 7807 implementation. Using custom error shapes forces clients to maintain two parsers. ProblemDetail is standardized and extensible via setProperty.</rationale>
+      </rule>
+
+      <example type="good" title="GlobalExceptionHandler with ProblemDetail">
+        <code lang="java"><![CDATA[
+@RestControllerAdvice @Slf4j
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ProblemDetail handleNotFound(ResourceNotFoundException ex) {
+        var p = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        p.setProperty("timestamp", Instant.now());
+        return p;
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors()
+            .forEach(e -> errors.put(e.getField(), e.getDefaultMessage()));
+        var p = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed");
+        p.setProperty("errors", errors);
+        p.setProperty("timestamp", Instant.now());
+        return p;
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ProblemDetail handleGeneral(Exception ex) {
+        log.error("Unexpected error", ex);
+        var p = ProblemDetail.forStatusAndDetail(
+            HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
+        p.setProperty("timestamp", Instant.now());
+        return p;
+    }
+}
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>Spring Boot 3 uses jakarta.* exclusively. Never mix javax.* imports. jakarta.persistence.*, jakarta.validation.*, jakarta.servlet.* are the correct packages.</statement>
+        <rationale>LLMs trained on Spring Boot 2.x examples emit javax.* imports. These fail to compile with Spring Boot 3 dependencies. Pin the namespace in the prompt to prevent the mix.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Always use constructor injection (@RequiredArgsConstructor on final fields). Never use field injection (@Autowired on non-final field). Constructor injection makes dependencies visible and testable.</statement>
+        <rationale>Field injection hides dependencies and makes unit testing without a Spring context impossible. @RequiredArgsConstructor + final fields is the idiomatic Spring Boot 3 pattern.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/n-plus-one-assertion.java" purpose="Test helper detecting N+1 via Hibernate Statistics per-method."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.spring.io/spring-boot/docs/current/reference/html/"/>
+      <link href="https://docs.spring.io/spring-data/jpa/reference/"/>
+      <link href="https://www.rfc-editor.org/rfc/rfc7807"/>
+      <link href="https://java.testcontainers.org/"/>
+      <link href="https://www.archunit.org/"/>
+      <link href="https://vladmihalcea.com/books/high-performance-java-persistence/"/>
+      <link href="https://www.baeldung.com/spring-boot"/>
+    </see-also>
+  </content>
+</methodology>

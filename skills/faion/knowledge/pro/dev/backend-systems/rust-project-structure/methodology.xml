@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rust-project-structure">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Directory layout for Rust HTTP services with single AppState struct, main.rs under ~80 lines, migrations folder. Promotes to workspace when second binary is needed.</summary>
+    <tags>
+      <tag>rust</tag>
+      <tag>axum</tag>
+      <tag>actix</tag>
+      <tag>project-structure</tag>
+      <tag>modules</tag>
+    </tags>
+    <category>backend</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <languages>
+      <language>rust</language>
+    </languages>
+    <frameworks>
+      <framework>axum</framework>
+      <framework>actix-web</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Rust Project Structure (Axum/Actix)</title>
+
+    <summary>Directory layout for Rust HTTP services: src/{config,error,routes,handlers,services,models,db,middleware}/ with a single AppState struct holding Arc-wrapped resources, main.rs kept under ~80 lines, and migrations in migrations/. Promotes to a Cargo workspace when a second binary or shared-types crate is needed.</summary>
+
+    <why>
+      <p>Without a consistent module layout, agents mix Axum and Actix imports, create circular mod.rs dependencies, and scatter database logic into handlers. The routes/handlers/services/db split enforces a one-way dependency graph and makes CRUD vertical slices predictable to generate and review.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a new Rust web service with a production layout from day one.</item>
+        <item>Splitting a single-file main.rs into modules once it exceeds ~500 lines.</item>
+        <item>Creating a Cargo workspace for a service that will gain multiple crates.</item>
+        <item>Adding a new feature area and choosing between binary, lib, or workspace member.</item>
+        <item>Standardizing layout across a fleet of Rust services.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-off scripts or proc-macros — keep flat in src/main.rs.</item>
+        <item>Embedded/no_std projects — layout assumes async/Tokio.</item>
+        <item>WASM-only crates — wasm-bindgen dominates the layout.</item>
+        <item>Pure FFI shims — build.rs and bindgen dominate.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="directory-layout">
+      <rule testable="true">
+        <statement>Organize Rust HTTP services under src/ with: config.rs, error.rs, and domain-split directories: routes/, handlers/, services/, models/, db/, middleware/. Keep main.rs under ~80 lines (config load, state build, router compose, serve).</statement>
+        <rationale>A flat src/ with all code in main.rs hits the 500-line wall quickly and causes circular mod.rs imports. The split enforces a one-way dependency: routes use handlers; handlers use services; services use db; models are shared.</rationale>
+      </rule>
+
+      <example type="good" title="Standard Rust HTTP service structure">
+        <code lang="text"><![CDATA[
+project/
+├── Cargo.toml
+├── Cargo.lock        # committed for binaries
+├── src/
+│   ├── main.rs       # ≤80 lines: config, state, router, serve
+│   ├── lib.rs        # library root (re-exports for integration tests)
+│   ├── config.rs     # Config struct, from_env()
+│   ├── error.rs      # AppError enum + IntoResponse
+│   ├── routes/       # Router composition per domain
+│   │   ├── mod.rs
+│   │   └── users.rs
+│   ├── handlers/     # Handler functions
+│   │   ├── mod.rs
+│   │   └── users.rs
+│   ├── services/     # Business logic
+│   │   ├── mod.rs
+│   │   └── users.rs
+│   ├── models/       # Domain structs (no DB or HTTP specifics)
+│   │   ├── mod.rs
+│   │   └── user.rs
+│   ├── db/           # sqlx queries behind a Database struct
+│   │   ├── mod.rs
+│   │   └── users.rs
+│   └── middleware/
+│       ├── mod.rs
+│       └── auth.rs
+├── migrations/
+└── tests/            # integration tests (use lib.rs exports)
+]]></code>
+      </example>
+    </section>
+
+    <section name="appstate-shape">
+      <rule testable="true">
+        <statement>AppState must derive Clone. Wrap all non-trivially-Clone resources (DB pool, HTTP client, Config) in Arc. Never put &amp;str, non-Send types, or borrowed data in AppState.</statement>
+        <rationale>Axum clones AppState per request. Arc wrapping keeps the clone O(1) (atomic increment). Non-Clone or non-Send types cause compile errors that agents diagnose poorly.</rationale>
+      </rule>
+
+      <example type="good" title="AppState with Arc-wrapped resources">
+        <code lang="rust"><![CDATA[
+#[derive(Clone)]
+pub struct AppState {
+    pub db:     Database,          // Database wraps Arc<PgPool> internally
+    pub config: Arc<Config>,
+    pub http:   Arc<reqwest::Client>,
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="router-composition">
+      <rule testable="true">
+        <statement>Define per-domain route functions (e.g. users::routes()) that return Router&lt;AppState&gt; without state. Compose them in a top-level api_routes() function. Attach state and layers only once at the top level in main.rs.</statement>
+        <rationale>Attaching state inside domain route functions makes them order-sensitive and hard to test independently. The top-level composition point is the single place where AppState is bound.</rationale>
+      </rule>
+
+      <reference path="templates/main_rs.rs">Complete main.rs with router composition, TraceLayer, and state.</reference>
+
+      <example type="good" title="Router composition with per-domain functions">
+        <code lang="rust"><![CDATA[
+// src/routes/mod.rs
+pub fn api_routes() -> Router<AppState> {
+    Router::new()
+        .nest("/users", users::routes())
+        .route("/health", get(|| async { "OK" }))
+}
+
+// src/routes/users.rs
+pub fn routes() -> Router<AppState> {
+    Router::new()
+        .route("/",    get(users::list).post(users::create))
+        .route("/:id", get(users::get).put(users::update).delete(users::delete))
+}
+
+// main.rs — state and layers at the top
+let app = Router::new()
+    .nest("/api/v1", routes::api_routes())
+    .layer(TraceLayer::new_for_http())
+    .with_state(state);
+]]></code>
+      </example>
+    </section>
+
+    <section name="workspace-promotion">
+      <rule testable="true">
+        <statement>Promote to a Cargo workspace when: (a) cargo check takes &gt;30s, or (b) a second binary (worker, admin CLI) is needed, or (c) a shared-types crate is required. Single-crate is correct until then.</statement>
+        <rationale>Premature workspace adds build complexity. The concrete signals above are measurable; "might need it" is not.</rationale>
+      </rule>
+    </section>
+
+    <section name="version-pinning">
+      <rule testable="true">
+        <statement>Pin all dependencies to exact minor versions in Cargo.toml. Commit Cargo.lock for binary crates (not for libraries). Agents must read the existing Cargo.toml for versions before adding new deps.</statement>
+        <rationale>Axum 0.6 and 0.7 have breaking router-state changes. An agent picking the "latest" version may generate code incompatible with the rest of the codebase.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Agent adds axum = "0.7" when the project is on axum = "0.6".</description>
+        <reason>Axum 0.7 changed the router State API. Mixed versions cause trait-bound errors that are impossible to diagnose without knowing the version delta.</reason>
+      </antipattern>
+    </section>
+
+    <section name="module-wiring">
+      <rule testable="true">
+        <statement>After creating a new .rs file in src/dir/name.rs, always add pub mod name; to src/dir/mod.rs. Verify by grepping mod.rs before reporting the task complete.</statement>
+        <rationale>A missing pub mod line produces "unresolved module" errors that are non-obvious and confuse agents into adding duplicate files.</rationale>
+      </rule>
+    </section>
+
+    <section name="sqlx-offline-mode">
+      <rule testable="true">
+        <statement>Use SQLX_OFFLINE=true and commit .sqlx/ query cache files when sqlx::query! macros are used. CI must not require a running database to compile.</statement>
+        <rationale>sqlx::query! macros connect to DATABASE_URL at compile time. Without offline mode, CI fails on every PR that lacks database connectivity.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>Using 'a lifetime parameters on service structs: UserService&lt;'a&gt;.</description>
+        <reason>LLMs emit lifetime parameters to borrow-check &amp;Database, but tokio::spawn requires 'static. Use Arc&lt;Database&gt; or owned Database (which wraps Arc&lt;PgPool&gt; internally).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mixing axum and actix-web imports in the same file after context overflow.</description>
+        <reason>Axum and Actix handler signatures are incompatible. Pin the framework in the system prompt and add a CI check for the wrong import.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Forgetting to update default-members and CI paths when promoting to a Cargo workspace.</description>
+        <reason>cargo build --workspace must be proven to pass before the migration commit. Partial workspace migrations leave dead code that confuses subsequent agents.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Hand the agent the empty repo plus the chosen framework (Axum vs Actix), DB driver (sqlx/sea-orm/diesel), and async runtime; the agent (1) runs cargo new, (2) seeds Cargo.toml with pinned versions, (3) generates the directory tree, (4) writes a working health-check route end-to-end, (5) writes one CRUD vertical slice (routes/handlers/services/db) for a sample entity. Stop after the slice runs cargo test green — humans pick the next entity. For migrations to a workspace, the agent should do it as a separate task: move src/ to crates/api/src/, add Cargo.toml workspace table, fix imports.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent — drives the bootstrap as an SDD task; quality gates: cargo fmt --check, cargo clippy -- -D warnings, cargo test, cargo audit. A general implementer (Sonnet) for vertical-slice generation; an architect (Opus) for the workspace-vs-single-crate decision and AppState shape.</p>
+      <p>Prompt pattern: "Bootstrap a new Axum 0.7 service with sqlx-postgres, tracing, tower-http. Use the layout in rust-project-structure/README.md. Implement /health and /api/v1/users CRUD end-to-end (routes/handlers/services/db/models). Pin versions in Cargo.toml. Stop when cargo test is green and curl localhost:3000/health returns OK."</p>
+      <p>For workspace conversion: "Convert this single-crate service into a Cargo workspace with crates: api (binary), domain (lib), infra (lib). Move files, update imports, prove with cargo build --workspace."</p>
+    </section>
+
+    <section name="best-practices">
+      <p>Pin all deps to exact minor versions in Cargo.toml and commit Cargo.lock for binaries (not for libraries).</p>
+      <p>Keep main.rs under ~80 lines: just config load, state build, router compose, serve.</p>
+      <p>Use tower-http::trace::TraceLayer from day one; retrofitting tracing is painful.</p>
+      <p>Put DB queries behind a Database struct, not free functions, so tests can pass a mock or a sqlx::PgPool clone trivially.</p>
+      <p>Promote to a Cargo workspace as soon as you need a second binary (worker, admin CLI) or shared types crate.</p>
+      <p>error.rs should expose one AppError enum with IntoResponse; map all upstream errors via From impls.</p>
+      <p>Feature-gate dev-only deps (#[cfg(feature = "test-utils")]); CI builds with --all-features.</p>
+      <p>Use cargo nextest run --all-features and cargo clippy --all-targets -- -D warnings as merge gates.</p>
+    </section>
+
+    <templates>
+      <template path="templates/main_rs.rs" purpose="Minimal main.rs: config load, state build, router compose, serve."/>
+      <template path="templates/new_module.sh" purpose="Shell scaffolder: creates routes/handlers/services/db/models files for a new entity."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.rs/axum"/>
+      <link href="https://actix.rs/docs/"/>
+      <link href="https://doc.rust-lang.org/book/ch14-03-cargo-workspaces.html"/>
+      <link href="https://doc.rust-lang.org/cargo/"/>
+      <link href="https://www.zero2prod.com/"/>
+      <link href="https://docs.rs/tower-http"/>
+    </see-also>
+  </content>
+</methodology>

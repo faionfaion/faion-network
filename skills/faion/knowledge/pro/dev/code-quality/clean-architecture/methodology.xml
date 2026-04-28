@@ -1,0 +1,433 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="clean-architecture">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>code-quality</domain>
+    <summary>Clean Architecture organizes code into four concentric layers — Entities, Use Cases, Interface Adapters, Frameworks — where dependencies point only inward. The concrete rule: nothing in domain/ may import from infrastructure/, application/, or any framework (SQLAlchemy, FastAPI, Django). Violations make the domain untestable and couple business logic to deployment choices.</summary>
+    <tags>
+      <tag>architecture</tag>
+      <tag>layering</tag>
+      <tag>clean-code</tag>
+      <tag>ddd</tag>
+      <tag>testing</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <languages>
+      <language>python</language>
+      <language>typescript</language>
+      <language>java</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Clean Architecture</title>
+
+    <summary>Clean Architecture organizes code into four concentric layers — Entities, Use Cases, Interface Adapters, Frameworks — where dependencies point only inward. The concrete rule: nothing in domain/ may import from infrastructure/, application/, or any framework (SQLAlchemy, FastAPI, Django). Violations make the domain untestable and couple business logic to deployment choices.</summary>
+
+    <why>
+      <p>When domain entities depend on ORM models or HTTP frameworks, changing the database or web framework forces changes to business logic. Dependency inversion (domain defines the repository interface; infrastructure implements it) keeps business rules stable while infrastructure is swappable. This also enables pure unit tests of business logic without a running database.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Complex business logic that must survive infrastructure changes (DB migration, framework upgrade)</item>
+        <item>Long-lived enterprise system where testability and onboarding speed justify the layer overhead</item>
+        <item>Domain-Driven Design projects — Clean Architecture layers map directly to DDD layers</item>
+        <item>Applications that may need to run in multiple delivery mechanisms (REST API + CLI + event handler)</item>
+        <item>Teams that need to enforce layer boundaries via architecture tests (import-linter, ArchUnit)</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>CRUD apps with trivial logic — four layers for a GET /users endpoint is over-engineering</item>
+        <item>Rapid prototypes where the goal is feature exploration, not stability</item>
+        <item>Teams not willing to enforce the dependency rule via tests — without enforcement it degrades into a layered monolith with import cycles</item>
+        <item>Small scripts or ETL jobs where a single file is appropriate</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="dependency-rule">
+      <rule testable="true">
+        <statement>Source code dependencies must point only inward: Frameworks → Interface Adapters → Use Cases → Entities. Nothing in an inner circle may know anything about an outer circle.</statement>
+        <rationale>Inward-only dependencies mean business rules (Entities, Use Cases) are stable and framework-independent. You can swap the database or web framework without touching business logic.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Enforce the dependency rule with architecture tests (import-linter, ArchUnit). The rule only holds if it is machine-checked — human review alone is insufficient.</statement>
+        <rationale>Developers and LLMs routinely import ORM models into entities or inject HTTP clients into use cases. Without automated enforcement these violations accumulate silently.</rationale>
+      </rule>
+    </section>
+
+    <section name="layer-definitions">
+      <rule testable="true">
+        <statement>Entities (domain/): Enterprise business rules. No framework imports. Python dataclasses or plain classes. Framework-independent, database-independent.</statement>
+        <rationale>If an entity imports SQLAlchemy, the business rules cannot be tested without a database, and migrating the ORM requires touching domain code.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use Cases (application/): Application-specific business rules. Orchestrate entities via repository interfaces. Take Input DTOs, return Output DTOs. No HTTP, no ORM.</statement>
+        <rationale>Use cases define what the application does, not how it does it. Keeping HTTP and ORM out keeps them testable and delivery-mechanism agnostic.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Interface Adapters (presentation/): Controllers, presenters, gateways. Convert between external formats (HTTP request/response) and use case Input/Output DTOs. No business logic here.</statement>
+        <rationale>Business logic in controllers cannot be reused across delivery mechanisms (REST API, CLI, event handler). Controllers should be thin glue.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Frameworks and Drivers (infrastructure/): ORM implementations, external APIs, message brokers. Implement the interfaces defined in inner layers. Never imported from inner layers.</statement>
+        <rationale>Outer layers know inner layer interfaces; inner layers never import outer layers. This is the inversion of control that makes the dependency rule work.</rationale>
+      </rule>
+    </section>
+
+    <section name="folder-layout">
+      <example type="good" title="Clean Architecture folder structure">
+        <code lang="text"><![CDATA[
+src/
+├── domain/             # Entities layer
+│   ├── entities/
+│   ├── value_objects/
+│   ├── events/
+│   ├── exceptions/
+│   └── interfaces/     # Repository + service interfaces
+├── application/        # Use cases layer
+│   ├── use_cases/
+│   ├── interfaces/     # UnitOfWork, EventPublisher
+│   └── dto/
+├── infrastructure/     # Frameworks layer
+│   ├── persistence/    # Repository implementations, ORM models
+│   └── services/       # Email, payment, external APIs
+└── presentation/       # Interface adapters
+    ├── api/            # Controllers, schemas, middleware
+    └── cli/            # CLI commands
+]]></code>
+      </example>
+    </section>
+
+    <section name="domain-entities">
+      <example type="good" title="Entity: User">
+        <code lang="python"><![CDATA[
+@dataclass
+class User:
+    id: UUID = field(default_factory=uuid4)
+    name: str = ""
+    email: Email = None
+    role: str = "member"
+    is_active: bool = True
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    _events: list = field(default_factory=list, repr=False)
+
+    @classmethod
+    def create(cls, name: str, email: str) -> "User":
+        if len(name) < 2:
+            raise DomainError("Name must be at least 2 characters")
+        user = cls(name=name, email=Email(email))
+        user._events.append(UserCreated(user.id, email))
+        return user
+
+    def change_email(self, new_email: str) -> None:
+        old = self.email.value
+        self.email = Email(new_email)
+        self._events.append(UserEmailChanged(self.id, old, new_email))
+
+    def collect_events(self) -> list:
+        events = self._events.copy()
+        self._events.clear()
+        return events
+]]></code>
+        <note>No ORM imports. No FastAPI imports. Testable with plain Python.</note>
+      </example>
+
+      <example type="good" title="Value Object: Email">
+        <code lang="python"><![CDATA[
+@dataclass(frozen=True)
+class Email:
+    value: str
+
+    def __post_init__(self):
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(pattern, self.value):
+            raise DomainError(f"Invalid email: {self.value}")
+        object.__setattr__(self, 'value', self.value.lower())
+]]></code>
+      </example>
+
+      <example type="good" title="Repository Interface">
+        <code lang="python"><![CDATA[
+class UserRepository(ABC):
+    """Defined in domain. Implemented in infrastructure. Domain never imports implementation."""
+
+    @abstractmethod
+    async def find_by_id(self, user_id: UUID) -> Optional[User]: ...
+
+    @abstractmethod
+    async def find_by_email(self, email: str) -> Optional[User]: ...
+
+    @abstractmethod
+    async def save(self, user: User) -> None: ...
+
+    @abstractmethod
+    async def delete(self, user: User) -> None: ...
+]]></code>
+      </example>
+
+      <reference path="templates/repository-interface.py">Abstract repository interface template</reference>
+    </section>
+
+    <section name="application-use-cases">
+      <example type="good" title="Use Case: CreateUser">
+        <code lang="python"><![CDATA[
+@dataclass
+class CreateUserInput:
+    name: str
+    email: str
+
+@dataclass
+class CreateUserOutput:
+    user: "UserDTO"
+
+class CreateUserUseCase:
+    def __init__(self, user_repository: UserRepository, unit_of_work: UnitOfWork,
+                 event_publisher: EventPublisher):
+        self._user_repository = user_repository
+        self._unit_of_work = unit_of_work
+        self._event_publisher = event_publisher
+
+    async def execute(self, input_data: CreateUserInput) -> CreateUserOutput:
+        existing = await self._user_repository.find_by_email(input_data.email)
+        if existing:
+            raise ApplicationError("User with this email already exists")
+
+        user = User.create(name=input_data.name, email=input_data.email)
+
+        async with self._unit_of_work:
+            await self._user_repository.save(user)
+            await self._unit_of_work.commit()
+
+        for event in user.collect_events():
+            await self._event_publisher.publish(event)
+
+        return CreateUserOutput(user=UserDTO.from_entity(user))
+]]></code>
+        <note>No HTTP, no ORM, no framework imports. Accepts repository interface; works with any implementation. Testable with in-memory fakes.</note>
+      </example>
+
+      <example type="good" title="UserDTO">
+        <code lang="python"><![CDATA[
+@dataclass
+class UserDTO:
+    id: UUID
+    name: str
+    email: str
+    role: str
+    is_active: bool
+    created_at: datetime
+
+    @classmethod
+    def from_entity(cls, user: User) -> "UserDTO":
+        return cls(
+            id=user.id, name=user.name, email=user.email.value,
+            role=user.role, is_active=user.is_active, created_at=user.created_at,
+        )
+]]></code>
+      </example>
+
+      <example type="good" title="UnitOfWork Interface">
+        <code lang="python"><![CDATA[
+class UnitOfWork(ABC):
+    @abstractmethod
+    async def __aenter__(self): ...
+
+    @abstractmethod
+    async def __aexit__(self, exc_type, exc_val, exc_tb): ...
+
+    @abstractmethod
+    async def commit(self) -> None: ...
+
+    @abstractmethod
+    async def rollback(self) -> None: ...
+]]></code>
+      </example>
+
+      <reference path="templates/use-case.py">Use case skeleton with Input/Output and dependency injection</reference>
+    </section>
+
+    <section name="infrastructure-implementations">
+      <example type="good" title="Repository Implementation">
+        <code lang="python"><![CDATA[
+class SQLAlchemyUserRepository(UserRepository):
+    """Implements the domain interface. Domain code never imports this class."""
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def find_by_id(self, user_id: UUID) -> Optional[User]:
+        result = await self._session.execute(
+            select(UserModel).where(UserModel.id == user_id)
+        )
+        model = result.scalar_one_or_none()
+        return self._to_entity(model) if model else None
+
+    async def save(self, user: User) -> None:
+        model = self._to_model(user)
+        self._session.add(model)
+
+    def _to_entity(self, model: "UserModel") -> User:
+        return User(
+            id=model.id, name=model.name, email=Email(model.email),
+            role=model.role, is_active=model.is_active, created_at=model.created_at,
+        )
+
+    def _to_model(self, entity: User) -> "UserModel":
+        return UserModel(
+            id=entity.id, name=entity.name, email=entity.email.value,
+            role=entity.role, is_active=entity.is_active, created_at=entity.created_at,
+        )
+]]></code>
+        <note>_to_entity and _to_model perform the translation. The domain entity never imports UserModel. UserModel never enters the domain or application layers.</note>
+      </example>
+
+      <example type="good" title="SQLAlchemy Unit of Work">
+        <code lang="python"><![CDATA[
+class SQLAlchemyUnitOfWork(UnitOfWork):
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            await self.rollback()
+
+    async def commit(self) -> None:
+        await self._session.commit()
+
+    async def rollback(self) -> None:
+        await self._session.rollback()
+]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Domain logic in controller method (email uniqueness check, direct entity construction) instead of delegating to a use case.</description>
+        <reason>Logic in controllers cannot be reused across delivery mechanisms (CLI, event handler, gRPC). Testing requires a running HTTP server. The same rule ends up duplicated in multiple endpoints.</reason>
+      </antipattern>
+
+      <example type="bad" title="Domain logic in controller">
+        <code lang="python"><![CDATA[
+@router.post("/users")
+async def create_user(request: CreateUserRequest, session=Depends(get_session)):
+    if await session.execute(select(User).where(User.email == request.email)).scalar():
+        raise HTTPException(400, "Email exists")
+    user = User(name=request.name, email=request.email)
+    session.add(user)
+    await session.commit()
+    return user
+]]></code>
+      </example>
+
+      <example type="good" title="Use case in controller">
+        <code lang="python"><![CDATA[
+@router.post("/users", response_model=UserResponse, status_code=201)
+async def create_user(
+    request: CreateUserRequest,
+    use_case: CreateUserUseCase = Depends(get_create_user_use_case),
+):
+    try:
+        output = await use_case.execute(CreateUserInput(name=request.name, email=request.email))
+        return UserResponse.from_dto(output.user)
+    except ApplicationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Domain entity inherits from SQLAlchemy declarative base or imports ORM columns directly.</description>
+        <reason>The domain entity becomes tied to a specific ORM. Unit tests require a database. Migrating to a different database or ORM forces changes to business rules.</reason>
+      </antipattern>
+
+      <example type="bad" title="Framework coupling in domain">
+        <code lang="python"><![CDATA[
+from sqlalchemy import Column, String
+from sqlalchemy.orm import declarative_base
+
+Base = declarative_base()
+
+class User(Base):  # Domain entity inheriting from ORM base — violation
+    __tablename__ = "users"
+    email = Column(String, unique=True)
+]]></code>
+      </example>
+
+      <example type="good" title="Pure domain entity">
+        <code lang="python"><![CDATA[
+@dataclass
+class User:  # Pure Python, no framework imports
+    email: Email
+    name: str
+    id: UUID = field(default_factory=uuid4)
+# ORM model lives in infrastructure/persistence/orm/models.py — separate class
+]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <p>Domain has zero third-party imports (besides stdlib and pure value-object helpers). This single rule keeps the architecture honest.</p>
+      <p>Entities have behavior, not just data. If your entity has 0 methods and 8 fields, write the methods or merge it into a use case.</p>
+      <p>Repositories return entities, not rows. No dict, no ORM model leaving infrastructure/. Mappers convert at the boundary.</p>
+      <p>One use case = one user-visible operation. Don't split update_user into 12 single-field setters; group by intent.</p>
+      <p>Unit-of-work, not bare repositories. Multi-entity changes commit through a UoW; this is where transaction boundaries live.</p>
+      <p>Ports are thin. A repository interface defines find_by_id / save / domain-specific finders; not execute_raw_sql.</p>
+      <p>DTOs at the edges. Use cases take/return DTOs; controllers map to/from HTTP shapes; entities never leak across the layer boundary.</p>
+      <p>Make framework swap a real exercise. Once a year, swap one adapter (in-memory ↔ Postgres, REST ↔ gRPC) — if you can't, the architecture is decorative.</p>
+      <p>Test pyramid follows layers. Unit tests for domain entities (no I/O), use-case tests with fake repos, integration tests for adapters, a few e2e tests against real stack.</p>
+      <p>Keep mappers boring and centralized. One _mapping.py per entity; agents will scatter mappers if you don't.</p>
+    </section>
+
+    <section name="limitations">
+      <p>Anemic domain model: Entities become data bags; logic leaks into use cases; "clean" architecture without rich entities = hexagonal CRUD with extra files.</p>
+      <p>Mapper explosion: DTO ↔ entity ↔ ORM model = three shapes of the same thing; agents (and humans) drift them out of sync.</p>
+      <p>Dependency rule violations slip in silently: Someone imports infrastructure.email_client from a use case "just for now"; six months later half the codebase imports inward-out.</p>
+      <p>Framework leakage in entities: SQLAlchemy declarative classes get used as entities; once an entity inherits Base, you've lost the abstraction.</p>
+      <p>Use case sprawl: Every endpoint becomes a single-line use case (get_user, update_user_email, update_user_name). The cost is high; the value is low for trivial operations.</p>
+      <p>Async/sync impedance: Use cases written sync, infra written async (or vice versa); adapter layer becomes thread-pool soup.</p>
+      <p>Repository over-abstraction: Repository interfaces leak query patterns ("find_users_active_in_last_30_days_with_subscription") that are clearly DB-shaped.</p>
+      <p>Test theater: Tests mock the repository, assert the mock was called, and verify nothing about the real DB schema or query plan.</p>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Domain → infra leakage: Agents add from sqlalchemy import Column "just for the model" inside domain/. import-linter blocks it; don't ship without it.</p>
+      <p>Anemic entities: Code-gen agents output dataclasses with public attributes and no methods. Add a "behavior count" check; reject entities with 0 methods.</p>
+      <p>Repository implementing query DSL: Agents add find_users_with_subscription_status_in methods that bake SQL into the interface. Force domain-language method names (active_subscribers) and an explicit query object pattern when filters get complex.</p>
+      <p>DTO drift: Agents change a DTO field name in one layer and forget the mapper. Snapshot-test the mapper or generate it from a single source of truth (Pydantic-on-the-edge, dataclass-in-the-domain).</p>
+      <p>Direct ORM use in use case: Agents call session.execute(...) from application/use_cases/. Banned import list catches the obvious ones; a CI rule for session.execute / session.query catches the rest.</p>
+      <p>Async/sync mixing: Agents mark domain methods async "just in case"; entities should be sync-pure. Async lives in adapters and use cases.</p>
+      <p>One use case per HTTP verb: Agents generate GetUserUseCase, PutUserUseCase, PatchUserUseCase — that's controller logic disguised as use cases. Re-frame: use cases describe intent, not HTTP shape.</p>
+      <p>Repository fakes that lie: Agents write in-memory repos that don't enforce uniqueness or referential integrity, hiding bugs. Make the fake a strict mirror of constraints, or test against a real (containerized) DB for adapters.</p>
+      <p>Mapper logic in entities: Agents add User.from_orm() to the entity. The entity must not know its persistence shape; mapper lives in infrastructure/.</p>
+      <p>Hallucinated framework versions: Agents mix fastapi.Depends patterns from v0.x and v0.110+. Pin the framework and grep generated imports.</p>
+    </section>
+
+    <templates>
+      <template path="templates/use-case.py" purpose="Use case skeleton with Input/Output dataclasses and dependency injection"/>
+      <template path="templates/repository-interface.py" purpose="Abstract repository interface for a domain entity"/>
+      <template path="templates/import-linter.ini" purpose="import-linter contracts enforcing layer dependency rules"/>
+    </templates>
+
+    <see-also>
+      <link href="https://import-linter.readthedocs.io"/>
+      <link href="https://www.archunit.org"/>
+      <link href="https://github.com/gabotechs/dep-tree"/>
+      <link href="https://github.com/pahen/madge"/>
+      <link href="https://github.com/thebjorn/pydeps"/>
+      <link href="https://docs.astral.sh/ruff/"/>
+      <link href="https://github.com/javierbrea/eslint-plugin-boundaries"/>
+    </see-also>
+  </content>
+</methodology>

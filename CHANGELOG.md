@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/dev/backend-systems Rust methodologies → methodology.xml (rust-error-handling, rust-http-handlers, rust-ownership; feature-045 batch)
 - migrate: 3/3 pro/dev/backend-enterprise Java methodologies → methodology.xml (java-junit-testing, java-spring, java-spring-async; feature-045 batch)
 - migrate: 3/3 pro/comms/hr-recruiter methodologies → methodology.xml (recruitment-funnel-optimization, retention-compliance, star-interview-examples; feature-045 batch)
 - migrate: 3/3 pro/ba/ba-core methodologies → methodology.xml (modern-ba-framework, process-mining-automation, requirements-documentation; feature-045 batch)

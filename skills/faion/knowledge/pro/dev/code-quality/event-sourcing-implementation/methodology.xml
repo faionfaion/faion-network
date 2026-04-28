@@ -1,0 +1,384 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="event-sourcing-implementation">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>code-quality</domain>
+    <summary>Implementation-level guide for event sourcing: event store with optimistic concurrency, snapshots to bound replay, projections for read models, and outbox pattern decoupling.</summary>
+    <category>event-sourcing</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>event-sourcing</tag>
+      <tag>postgresql</tag>
+      <tag>concurrency</tag>
+      <tag>cqrs</tag>
+      <tag>snapshots</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Event Sourcing — Implementation</title>
+
+    <summary>Implementation-level guide for event sourcing: event store (PostgreSQL), optimistic concurrency via stream versioning, snapshots to bound replay cost, projections that maintain read models, and an EventBus that routes stored events to projection handlers. The core rule: append events with an expected_version check; reject if the stream moved — never overwrite.</summary>
+
+    <why>
+      <p>Without optimistic concurrency, two concurrent command handlers can each read version N, apply their events, and write, with one silently overwriting the other. The expected_version check makes concurrent writes fail fast and forces a retry, preserving aggregate invariants under load. Snapshots prevent unbounded replay time as streams grow (snapshot every 50 events is a common heuristic).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Implementing event sourcing for a production system (complements event-sourcing-basics)</item>
+        <item>Choosing and configuring a persistence backend for the event store</item>
+        <item>Adding snapshot support when aggregate replay is measurably slow (&gt; 50 events)</item>
+        <item>Wiring projections to keep read models in sync after event append</item>
+        <item>Writing integration tests for event replay and aggregate reconstruction</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Proof-of-concept or prototype — use an in-memory event store; skip PostgreSQL and snapshots until performance demands them</item>
+        <item>Simple read models that can be rebuilt in seconds — snapshots add write overhead for no gain</item>
+        <item>Teams without PostgreSQL expertise — the schema and concurrency logic require understanding of advisory locks and UPSERT semantics</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="event-store-interface-and-postgresql-implementation">
+      <p>Abstract EventStore interface and PostgresEventStore with optimistic concurrency via stream versioning.</p>
+
+      <rule testable="true">
+        <statement>Every append must include an expected_version. If the stream's current version does not match, raise ConcurrencyError and force a retry — never silently overwrite.</statement>
+        <rationale>Without optimistic concurrency, two handlers reading version N both succeed at appending version N+1; one silently overwrites the other, violating aggregate invariants.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Events are stored with: event_id (UUID, unique), stream_id, version (per-stream monotonic), event_type (class name), event_data (JSON), metadata, occurred_at. The (stream_id, version) pair has a UNIQUE constraint.</statement>
+        <rationale>The UNIQUE constraint on (stream_id, version) is the database-level optimistic concurrency enforcement — the INSERT fails if another writer already claimed that version.</rationale>
+      </rule>
+
+      <example type="good" title="Abstract EventStore Interface">
+        <code lang="python"><![CDATA[
+class EventStore(ABC):
+    @abstractmethod
+    async def append(self, stream_id: str, events: List[Event], expected_version: int) -> None:
+        """Append events with optimistic concurrency check."""
+        pass
+
+    @abstractmethod
+    async def read_stream(self, stream_id: str, from_version: int = 0) -> List[Event]:
+        """Read all events from a stream starting at from_version."""
+        pass
+
+    @abstractmethod
+    async def read_all(self, from_position: int = 0, batch_size: int = 100) -> List[Event]:
+        """Read all events across all streams (for projection rebuilding)."""
+        pass
+]]></code>
+      </example>
+
+      <example type="good" title="PostgreSQL append with optimistic concurrency">
+        <code lang="python"><![CDATA[
+async def append(self, stream_id: str, events: List[Event], expected_version: int) -> None:
+    result = await self._session.execute(
+        text("SELECT COALESCE(MAX(version), 0) FROM events WHERE stream_id = :sid"),
+        {"sid": stream_id},
+    )
+    current_version = result.scalar()
+    if current_version != expected_version:
+        raise ConcurrencyError(f"Expected {expected_version}, got {current_version}")
+
+    for i, event in enumerate(events):
+        version = expected_version + i + 1
+        await self._session.execute(
+            text("""
+                INSERT INTO events
+                    (event_id, stream_id, version, event_type, event_data, metadata, occurred_at)
+                VALUES
+                    (:event_id, :sid, :version, :etype, :edata, :meta, :occ)
+            """),
+            {
+                "event_id": str(event.event_id), "sid": stream_id,
+                "version": version, "etype": type(event).__name__,
+                "edata": json.dumps(self._serialize(event)),
+                "meta": json.dumps(event.metadata), "occ": event.occurred_at,
+            },
+        )
+    await self._session.commit()
+]]></code>
+        <note>Current version read before insert. Mismatch raises immediately. UNIQUE constraint on (stream_id, version) provides a second line of defense.</note>
+      </example>
+    </section>
+
+    <section name="event-store-database-schema">
+      <p>PostgreSQL DDL for the events table, snapshots table, and example projection tables.</p>
+
+      <example type="good" title="Events Table">
+        <code lang="sql"><![CDATA[
+CREATE TABLE events (
+    id           BIGSERIAL PRIMARY KEY,
+    event_id     UUID        NOT NULL UNIQUE,
+    stream_id    VARCHAR(255) NOT NULL,
+    version      INTEGER     NOT NULL,
+    event_type   VARCHAR(255) NOT NULL,
+    event_data   JSONB       NOT NULL,
+    metadata     JSONB       NOT NULL DEFAULT '{}',
+    occurred_at  TIMESTAMP   NOT NULL,
+    created_at   TIMESTAMP   NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT events_stream_version_unique UNIQUE (stream_id, version)
+);
+
+CREATE INDEX events_stream_id_idx  ON events(stream_id);
+CREATE INDEX events_event_type_idx ON events(event_type);
+CREATE INDEX events_occurred_at_idx ON events(occurred_at);
+]]></code>
+        <note>UNIQUE (stream_id, version) is the database-level optimistic concurrency guard. event_id UNIQUE prevents duplicate event insertion on replay.</note>
+      </example>
+
+      <example type="good" title="Snapshots Table">
+        <code lang="sql"><![CDATA[
+CREATE TABLE snapshots (
+    stream_id   VARCHAR(255) PRIMARY KEY,
+    version     INTEGER  NOT NULL,
+    state       JSONB    NOT NULL,
+    created_at  TIMESTAMP NOT NULL
+);
+]]></code>
+        <note>One snapshot per stream (UPSERT on stream_id). Stores the aggregate state at a given version to bound replay time.</note>
+      </example>
+
+      <example type="good" title="Projection Tables">
+        <code lang="sql"><![CDATA[
+CREATE TABLE order_details (
+    order_id     UUID PRIMARY KEY,
+    customer_id  UUID        NOT NULL,
+    status       VARCHAR(50) NOT NULL,
+    created_at   TIMESTAMP   NOT NULL,
+    placed_at    TIMESTAMP,
+    shipped_at   TIMESTAMP
+);
+
+CREATE TABLE order_items (
+    id           BIGSERIAL PRIMARY KEY,
+    order_id     UUID        NOT NULL REFERENCES order_details(order_id),
+    product_id   UUID        NOT NULL,
+    product_name VARCHAR(255) NOT NULL,
+    quantity     INTEGER     NOT NULL,
+    unit_price   DECIMAL(10,2) NOT NULL
+);
+]]></code>
+      </example>
+    </section>
+
+    <section name="snapshots-and-repository-with-snapshot-support">
+      <p>SnapshotStore implementation and EventSourcedOrderRepository that loads from snapshot plus trailing events.</p>
+
+      <rule testable="true">
+        <statement>Take a snapshot every N events (50 is a common starting point). Load the latest snapshot, then replay only the events after its version.</statement>
+        <rationale>Without snapshots, replay time grows linearly with the number of events. Long-lived aggregates (thousands of events) cause unacceptably slow command handling.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Snapshots are an optimization, not the source of truth. The event log remains authoritative. If a snapshot is corrupt or missing, fall back to full replay.</statement>
+        <rationale>Relying on snapshots as the primary source of truth defeats the event-sourcing model and loses the audit trail.</rationale>
+      </rule>
+
+      <example type="good" title="SnapshotStore">
+        <code lang="python"><![CDATA[
+class SnapshotStore:
+    def __init__(self, session):
+        self._session = session
+
+    async def save(self, snapshot: Snapshot) -> None:
+        await self._session.execute(
+            text("""
+                INSERT INTO snapshots (stream_id, version, state, created_at)
+                VALUES (:stream_id, :version, :state, :created_at)
+                ON CONFLICT (stream_id) DO UPDATE SET
+                    version = :version, state = :state, created_at = :created_at
+            """),
+            {"stream_id": snapshot.stream_id, "version": snapshot.version,
+             "state": json.dumps(snapshot.state), "created_at": snapshot.created_at},
+        )
+
+    async def get(self, stream_id: str) -> Optional[Snapshot]:
+        result = await self._session.execute(
+            text("SELECT * FROM snapshots WHERE stream_id = :s"), {"s": stream_id}
+        )
+        row = result.fetchone()
+        return Snapshot(row.stream_id, row.version, json.loads(row.state), row.created_at) if row else None
+]]></code>
+      </example>
+
+      <example type="good" title="Repository with snapshot load">
+        <code lang="python"><![CDATA[
+class EventSourcedOrderRepository:
+    SNAPSHOT_FREQUENCY = 50
+
+    async def get(self, order_id: UUID) -> Optional[Order]:
+        stream_id = f"order-{order_id}"
+        snapshot = await self._snapshot_store.get(stream_id)
+
+        if snapshot:
+            events = await self._event_store.read_stream(stream_id, from_version=snapshot.version)
+            order = Order(**snapshot.state)
+            order.version = snapshot.version
+        else:
+            events = await self._event_store.read_stream(stream_id)
+            order = Order(id=order_id)
+
+        for event in events:
+            order._apply(event, is_new=False)
+        return order if order.version > 0 else None
+
+    async def save(self, order: Order) -> None:
+        stream_id = f"order-{order.id}"
+        events = order.collect_pending_events()
+        if not events:
+            return
+        expected_version = order.version - len(events)
+        await self._event_store.append(stream_id, events, expected_version)
+        if order.version % self.SNAPSHOT_FREQUENCY == 0:
+            await self._snapshot_store.save(Snapshot(
+                stream_id=stream_id, version=order.version,
+                state=self._serialize_order(order), created_at=datetime.utcnow(),
+            ))
+]]></code>
+        <note>expected_version = current version minus pending count, because the pending events are not yet in the store. Snapshot taken after save at multiples of SNAPSHOT_FREQUENCY.</note>
+      </example>
+    </section>
+
+    <section name="projections-and-eventbus">
+      <p>OrderDetailsProjection handlers, simple EventBus for routing events to projections, and integration with command handlers.</p>
+
+      <rule testable="true">
+        <statement>Projection handlers must be idempotent — called with the same event twice must produce the same read-model state as called once.</statement>
+        <rationale>At-least-once event delivery guarantees duplicates will occur, especially during replay. Non-idempotent projections create corrupted read models on retry.</rationale>
+      </rule>
+
+      <example type="good" title="OrderDetailsProjection">
+        <code lang="python"><![CDATA[
+class OrderDetailsProjection:
+    def __init__(self, session):
+        self._session = session
+
+    async def handle_order_created(self, event: OrderCreated) -> None:
+        await self._session.execute(
+            text("""
+                INSERT INTO order_details (order_id, customer_id, status, created_at)
+                VALUES (:oid, :cid, 'draft', :occ)
+                ON CONFLICT (order_id) DO NOTHING
+            """),
+            {"oid": str(event.order_id), "cid": str(event.customer_id), "occ": event.occurred_at},
+        )
+
+    async def handle_order_placed(self, event: OrderPlaced) -> None:
+        await self._session.execute(
+            text("UPDATE order_details SET status='placed', placed_at=:occ WHERE order_id=:oid"),
+            {"oid": str(event.order_id), "occ": event.occurred_at},
+        )
+]]></code>
+        <note>ON CONFLICT DO NOTHING makes creation idempotent. UPDATE on status is naturally idempotent (setting the same value twice is harmless).</note>
+      </example>
+
+      <example type="good" title="EventBus">
+        <code lang="python"><![CDATA[
+class EventBus:
+    def __init__(self):
+        self._handlers: Dict[str, List[Callable]] = {}
+
+    def subscribe(self, event_type: str, handler: Callable) -> None:
+        self._handlers.setdefault(event_type, []).append(handler)
+
+    async def publish(self, event) -> None:
+        for handler in self._handlers.get(type(event).__name__, []):
+            await handler(event)
+
+# Wiring
+event_bus = EventBus()
+projection = OrderDetailsProjection(session)
+event_bus.subscribe("OrderCreated", projection.handle_order_created)
+event_bus.subscribe("OrderPlaced",  projection.handle_order_placed)
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-integration-guidance">
+      <p>When to use this methodology: the team has agreed on event sourcing (see event-sourcing-basics) and now needs to ship the infrastructure: event store, snapshots, projections, command handlers, replay tooling. Migrating from a state-store backend to an event-sourced bounded context (greenfield service or new aggregate type). Adding snapshots to an existing event-sourced aggregate where p99 hydration is starting to hurt. Building a new projection (read model) on top of an existing event log. Hardening an existing implementation: optimistic concurrency, idempotent consumers, replay tooling, schema versioning.</p>
+      <p>When NOT to use: you haven't designed the events yet — go back to event-sourcing-basics first. You're prototyping; the implementation in this methodology assumes a real Postgres + production tooling. For a spike, use Marten or in-memory. Single-process, single-writer system that fits in a SQLite + audit table — implementation tax is not justified. Hot-path with sub-1ms latency and greater than 100k writes/s — append + version-check + serialization adds latency; consider Kafka log-as-store with custom ordering instead. The team can't operate Postgres (or chosen backend) — event store ops cost is real (vacuum, partitioning, archival).</p>
+
+      <p>Concurrency-check race: The naive SELECT MAX(version) then INSERT shown in this methodology has a race between two writers; in production use a single INSERT ON CONFLICT (stream_id, version) DO NOTHING with a unique constraint, or wrap in serializable txn — otherwise duplicate-version inserts succeed under load.</p>
+      <p>Projection lag visibility: EventBus.publish after _repository.save ties projections to the command path — a slow projection blocks writes. In production, decouple via outbox + async projector; lag becomes the new SLI.</p>
+      <p>Snapshot frequency = 50 is a guess: The right cadence depends on event size and replay budget. Measure first; some aggregates need 5, some 5000.</p>
+      <p>Serializer drift: The _serializers registry pattern silently breaks when class names change (refactor, renamed, deserialize fails). Use explicit event_type strings, not type(event).__name__.</p>
+      <p>No upcasting: The _deserialize path assumes today's schema fits yesterday's events. Real systems need an upcaster pipeline keyed on (event_type, version).</p>
+      <p>Replay scalability: read_all paginated by 100 won't scale past ~10M events; you need partitioned replay (by stream prefix or time bucket).</p>
+      <p>Snapshot consistency: If a snapshot is written but the events fail (or vice versa), you have torn state. Persist snapshot + events in a single transaction or accept "snapshot is best-effort, ground truth is the event log."</p>
+      <p>Outbox pattern missing: This methodology publishes events to projections from the command path, not from the event store via outbox. That couples write availability to read-model availability.</p>
+
+      <rule testable="true">
+        <statement>Use a unique constraint, not a SELECT-then-INSERT. Optimistic concurrency belongs in the database (UNIQUE(stream_id, version)) — anything else races.</statement>
+        <rationale>Database constraints are atomic and enforce across concurrent writers. Application-level checks are racy under load.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Outbox or bust. Don't publish projections from the command handler; write events + outbox row in one transaction; a separate worker drains the outbox. This decouples write availability from projection availability.</statement>
+        <rationale>Publishing from the command path ties the command's availability SLI to the projection's availability. Outbox pattern breaks this coupling.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Idempotent projections. Every projection upsert must use ON CONFLICT … DO UPDATE keyed on event id, so re-replays don't double-count.</statement>
+        <rationale>Projection rebuilds replay the same events; non-idempotent upserts lead to double-counted aggregates and corrupted read models.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Versioned event types. Store event_type=OrderPlaced.v2; deserialization keys on (type, version). Add an upcaster registry from day one — retrofitting it later is brutal.</statement>
+        <rationale>Schema evolution is inevitable. Explicit versioning from day one avoids the cost of retrofitting upcasters when the first schema change arrives.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Partition events at scale. Use pg_partman by occurred_at once events exceeds ~50M rows; otherwise vacuum and bloat eat you alive.</statement>
+        <rationale>Large event tables without partitioning experience runaway VACUUM costs and bloat that slows queries. Partitioning by time is the standard solution.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Snapshot in a separate transaction. Snapshot is a cache; if it fails, hydration falls back to full replay. Never block command commit on snapshot writes.</statement>
+        <rationale>Snapshots are an optimization, not essential. Blocking the command on snapshot write makes snapshots a availability liability.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Replay must be a CLI. "Just rerun the projector" only works if there's an idempotent CLI with --from, --projection, --shadow flags and structured logs.</statement>
+        <rationale>Ad-hoc replay from notebooks or one-off scripts is error-prone. A robust CLI makes replay a repeatable operation.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Backup is non-negotiable. Events are forever; lose them and you lose the company. Continuous archive (wal-g) + monthly restore tests.</statement>
+        <rationale>Events are the source of truth. Loss is catastrophic. Continuous archival with restore tests is the only acceptable pattern.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Schema registry for cross-service events. If events leave the bounded context, register them — at minimum a JSON Schema in a events-contracts/ repo, ideally Confluent Schema Registry or Buf BSR.</statement>
+        <rationale>Cross-service events are contracts. Registration makes them discoverable and enables breaking-change detection in CI.</rationale>
+      </rule>
+
+      <note><strong>AI-agent gotchas:</strong> Agents replicate the naive SELECT MAX(version) … INSERT pattern verbatim, which races. Always require a unique constraint + ON CONFLICT and a concurrency test. type(event).__name__ is the default; agents won't add an explicit event_type registry. Renaming a class then breaks deserialization silently. Force a class Event: __event_type__ = "OrderPlaced.v1" convention. Agents register a few serializers and use __dict__ fallback for the rest; non-trivial fields (Decimal, datetime, value objects) round-trip wrong. Require explicit serializer per event class. Agents call sync ORM methods inside async def handlers, deadlocking under load. Lint for Session (sync) vs AsyncSession. Generated code commits inside the loop, not after the batch; throughput tanks. Commit once after the whole append. Agents publish to EventBus from the command handler, not from the outbox. Fail review when no outbox table exists. Generated rebuild scripts run handlers on top of dirty data and double-count. Require explicit truncate() or shadow-table swap. Agents store state JSON without a schema_version. When the aggregate shape changes, snapshots crash on load. Hard-require schema_version field. A bad replay can wipe a production read model. Backfills run in a shadow table; promotion is a human-gated atomic rename. Agents mix JSONB (Postgres), JSON (MySQL), and JSON_VALUE (SQL Server) in the same migration. Pin the backend in repo docs and grep generated SQL.</note>
+    </section>
+
+    <templates>
+      <template path="templates/event-store-schema.sql" purpose="Events + snapshots + projections DDL ready to run"/>
+      <template path="templates/postgres-event-store.py" purpose="PostgresEventStore skeleton with append, read_stream, serialize/deserialize"/>
+    </templates>
+
+    <see-also>
+      <ref slug="event-sourcing-basics"/>
+      <ref slug="cqrs-pattern"/>
+      <ref slug="event-driven-architecture"/>
+      <link href="https://leanpub.com/esversioning"/>
+      <link href="https://developers.eventstore.com"/>
+      <link href="https://martendb.io/events/"/>
+      <link href="https://learn.microsoft.com/azure/architecture/patterns/transactional-outbox"/>
+      <link href="https://debezium.io/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/"/>
+    </see-also>
+  </content>
+</methodology>

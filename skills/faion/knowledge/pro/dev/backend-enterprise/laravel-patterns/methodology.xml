@@ -1,0 +1,357 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="laravel-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>Laravel patterns: thin controllers, Form Requests with authorization, API Resources, DTOs, DB::transaction, idempotent queue jobs, eager loading with with() for N+1 prevention.</summary>
+    <tags>
+      <tag>php</tag>
+      <tag>laravel</tag>
+      <tag>enterprise</tag>
+      <tag>eloquent</tag>
+      <tag>patterns</tag>
+    </tags>
+    <category>patterns</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <languages>
+      <language>php</language>
+    </languages>
+    <frameworks>
+      <framework>laravel</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Laravel Patterns</title>
+
+    <summary>Thin controllers that delegate to Action or Service classes; Form Requests for validation and authorization via Policies; API Resources for response shaping; DTOs for type-safe data flow through the service layer. Wrap multi-step writes in DB::transaction(). Make queue jobs idempotent with ShouldBeUnique. Never use $request->all() or $model->fill($request->all()); always call $request->validated(). Always eager-load relationships via with() to prevent N+1 queries. Use Attribute::make() (Laravel 9+) for accessors/mutators.</summary>
+
+    <why>
+      <p>Laravel's Eloquent ORM produces N+1 queries invisibly when relationships are accessed inside loops without prior with() eager loading. $request->all() is a mass-assignment vector. Non-idempotent jobs double-charge or double-send when workers retry. These three failure modes are the most common agent-generated bugs in Laravel codebases and can be caught with Telescope SQL counts, PHPStan, and a DB::listen query budget in tests.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>New Laravel 10/11 application with full-stack web or JSON API requirements.</item>
+        <item>Refactoring fat controllers into Service classes, Action classes (single-purpose __invoke), and Form Requests.</item>
+        <item>Wiring queue-backed jobs (Horizon + Redis), Eloquent scopes, accessors/mutators (Attribute API), and Form Request validation.</item>
+        <item>Standing up Pest/PHPUnit feature tests with RefreshDatabase and factories.</item>
+        <item>Adding API Resources for response shaping and Sanctum/Passport for authentication.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>High-throughput async pipelines with strict tail latency — Laravel's per-request bootstrap is heavy; consider Octane only after profiling.</item>
+        <item>Lambda-style functions where cold start matters; Laravel Vapor mitigates but isn't free.</item>
+        <item>Microservice meshes where you need fine-grained per-service runtime — Symfony or Slim may be a better fit.</item>
+        <item>Pure data-pipeline batch jobs — a CLI in Symfony Console or pure PHP without the framework is leaner.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="eloquent-model-patterns">
+      <p>Eloquent models are the centerpiece of Laravel ORM. They must declare fillable explicitly, use scopes for queries, and apply Attribute accessors/mutators for computed fields.</p>
+
+      <rule>
+        <statement>Always declare $fillable explicitly on models. Never use $guarded = [] (guards nothing). Never pass $request->all() to Model::create() or fill() — always use $request->validated() from a Form Request.</statement>
+        <rationale>Mass assignment via $request->all() sends all user-supplied fields to the model, including fields like is_admin or organization_id that should never be set by arbitrary request data.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use Laravel 9+ Attribute::make(get:, set:) for accessors/mutators. Do not use the legacy getXxxAttribute / setXxxAttribute naming convention in new code.</statement>
+        <rationale>The Attribute API is explicit, testable, and IDE-friendly. Legacy magic methods rely on naming conventions that are error-prone and harder to discover.</rationale>
+      </rule>
+
+      <example type="good" title="Eloquent model with fillable, scopes, and Attribute API">
+        <code lang="php"><![CDATA[
+class User extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = ['name', 'email', 'role', 'organization_id'];
+    protected $hidden   = ['password', 'remember_token'];
+    protected $casts    = ['is_active' => 'boolean', 'settings' => 'array'];
+
+    // Scope: User::active()->role('admin')->get()
+    public function scopeActive($query) { return $query->where('is_active', true); }
+    public function scopeRole($query, string $role) { return $query->where('role', $role); }
+
+    // Attribute API (Laravel 9+)
+    protected function email(): Attribute
+    {
+        return Attribute::make(set: fn (string $v) => strtolower($v));
+    }
+
+    // Relationship
+    public function organization(): BelongsTo { return $this->belongsTo(Organization::class); }
+}
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>Always eager-load relationships at the query layer (User::with(['organization', 'posts'])). Never access a relationship inside a foreach without prior with().</statement>
+        <rationale>Eloquent's lazy loading executes a separate query per relationship access. For N users, N+1 queries are issued. Using with() or packages like Bullet (with raise: true) catches this automatically in tests.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>$users = User::all(); foreach ($users as $u) { echo $u->organization->name; }</description>
+        <reason>N+1: one SELECT per user to load organization. Use User::with('organization')->get() instead.</reason>
+      </antipattern>
+
+      <section name="searchable-trait">
+        <example type="good" title="Reusable Searchable scope trait">
+          <code lang="php"><![CDATA[
+// app/Models/Concerns/Searchable.php
+trait Searchable
+{
+    public function scopeSearch($query, ?string $term)
+    {
+        if (empty($term)) return $query;
+        $columns = $this->searchable ?? ['name'];
+        return $query->where(function ($q) use ($columns, $term) {
+            foreach ($columns as $column) {
+                $q->orWhere($column, 'ILIKE', "%{$term}%");
+            }
+        });
+    }
+}
+          ]]></code>
+        </example>
+      </section>
+    </section>
+
+    <section name="service-layer-repository-pattern-and-dto-flow">
+      <p>Services wrap business logic and database operations. DTOs ensure type safety between layers. Repositories abstract data access and can be swapped for testing.</p>
+
+      <rule>
+        <statement>Wrap multi-step writes in DB::transaction(function () { ... }). Do not rely on save() call ordering. Never perform HTTP calls, queue dispatches, or mailer sends inside a transaction — they run before the commit and cannot be rolled back.</statement>
+        <rationale>Side effects inside transactions execute on a not-yet-committed state. If the transaction rolls back, the email is already sent or the HTTP call already made. Move side effects to after_commit callbacks or chained jobs.</rationale>
+      </rule>
+
+      <example type="good" title="Service with DB::transaction and side effects outside">
+        <code lang="php"><![CDATA[
+class UserService
+{
+    public function __construct(
+        private UserRepository $repository,
+        private NotificationService $notifications,
+    ) {}
+
+    public function create(CreateUserDTO $dto): User
+    {
+        $user = DB::transaction(function () use ($dto) {
+            return $this->repository->create([
+                'name'            => $dto->name,
+                'email'           => $dto->email,
+                'password'        => Hash::make($dto->password),
+                'organization_id' => $dto->organizationId,
+            ]);
+        });
+
+        // Side effects OUTSIDE transaction
+        event(new UserCreated($user));
+        $this->notifications->sendWelcome($user);
+
+        return $user;
+    }
+}
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>Pass typed DTOs between controllers and services. Never pass $request->validated() arrays into the service — arrays lose type information and are unchecked by the IDE or static analyzer.</statement>
+        <rationale>An array is untyped. A DTO is a named, typed value object. PHPStan can check property access on DTOs; it cannot check string keys in associative arrays.</rationale>
+      </rule>
+
+      <example type="good" title="DTO pattern">
+        <code lang="php"><![CDATA[
+// Form Request converts validated input to a DTO
+public function toDTO(): CreateUserDTO
+{
+    return new CreateUserDTO(
+        name:           $this->validated('name'),
+        email:          $this->validated('email'),
+        password:       $this->validated('password'),
+        organizationId: $this->user()->organization_id,
+    );
+}
+        ]]></code>
+      </example>
+
+      <example type="good" title="Repository interface">
+        <code lang="php"><![CDATA[
+interface UserRepositoryInterface
+{
+    public function find(int $id): ?User;
+    public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator;
+    public function create(array $data): User;
+    public function update(User $user, array $data): bool;
+    public function delete(User $user): bool;
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="http-layer-form-requests-api-resources-and-controller">
+      <p>Form Requests validate and authorize incoming requests. API Resources shape responses. Controllers remain thin, delegating to services or actions.</p>
+
+      <rule>
+        <statement>Form Requests must implement authorize() using a Policy. Never rely on controller-level checks alone. Always call $request->validated() — never $request->all() or $request->input().</statement>
+        <rationale>authorize() in Form Requests runs before the controller action. Checking authorization in the controller is too late; validation has already consumed the request body.</rationale>
+      </rule>
+
+      <example type="good" title="Form Request with authorization and toDTO()">
+        <code lang="php"><![CDATA[
+class CreateUserRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()->can('create', User::class);
+    }
+
+    public function rules(): array
+    {
+        return [
+            'name'     => ['required', 'string', 'min:2', 'max:100'],
+            'email'    => ['required', 'email', Rule::unique('users')
+                ->where('organization_id', $this->user()->organization_id)],
+            'password' => ['required', Password::defaults()],
+            'role'     => ['sometimes', Rule::in(['admin', 'moderator', 'member'])],
+        ];
+    }
+
+    public function toDTO(): CreateUserDTO
+    {
+        return new CreateUserDTO(
+            name: $this->validated('name'),
+            email: $this->validated('email'),
+            password: $this->validated('password'),
+            organizationId: $this->user()->organization_id,
+        );
+    }
+}
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>Use $this->whenLoaded() for relationship fields in API Resources. Never call $resource->relationship directly in toArray() — it triggers a lazy load.</statement>
+        <rationale>whenLoaded() returns the relationship only if already eager-loaded. Direct access triggers a lazy query, defeating the purpose of eager loading in the controller.</rationale>
+      </rule>
+
+      <example type="good" title="API Resource with whenLoaded()">
+        <code lang="php"><![CDATA[
+class UserResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        return [
+            'id'           => $this->id,
+            'name'         => $this->name,
+            'email'        => $this->email,
+            'role'         => $this->role,
+            'created_at'   => $this->created_at->toIso8601String(),
+            'organization' => new OrganizationResource($this->whenLoaded('organization')),
+            'settings'     => $this->when($request->user()?->id === $this->id, $this->settings),
+        ];
+    }
+}
+        ]]></code>
+      </example>
+
+      <example type="good" title="Thin controller delegating to service">
+        <code lang="php"><![CDATA[
+class UserController extends Controller
+{
+    public function __construct(private UserService $userService)
+    {
+        $this->authorizeResource(User::class);
+    }
+
+    public function store(CreateUserRequest $request): JsonResponse
+    {
+        $user = $this->userService->create($request->toDTO());
+        return (new UserResource($user))->response()->setStatusCode(201);
+    }
+
+    public function destroy(User $user): JsonResponse
+    {
+        $this->userService->delete($user);
+        return response()->json(null, 204);
+    }
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="pest-tests-idempotent-queue-jobs-and-gotchas">
+      <p>Pest provides expressive testing with RefreshDatabase for isolation. Queue jobs must be idempotent to handle retries safely. Common agent mistakes include N+1, mass assignment, and non-idempotent jobs.</p>
+
+      <example type="good" title="Pest feature test with RefreshDatabase">
+        <code lang="php"><![CDATA[
+uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    $this->organization = Organization::factory()->create();
+    $this->admin = User::factory()->for($this->organization)->create(['role' => 'admin']);
+});
+
+it('can create a user', function () {
+    $response = $this->actingAs($this->admin)->postJson('/api/v1/users', [
+        'name' => 'Jane Doe', 'email' => 'jane@example.com', 'password' => 'SecurePass123!',
+    ]);
+    $response->assertCreated()->assertJsonPath('data.email', 'jane@example.com');
+    $this->assertDatabaseHas('users', ['email' => 'jane@example.com']);
+});
+
+it('validates unique email within organization', function () {
+    User::factory()->for($this->organization)->create(['email' => 'taken@example.com']);
+    $this->actingAs($this->admin)->postJson('/api/v1/users', [
+        'name' => 'Test', 'email' => 'taken@example.com', 'password' => 'SecurePass123!',
+    ])->assertUnprocessable()->assertJsonValidationErrors(['email']);
+});
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>Every queue job must implement ShouldBeUnique (Laravel 8+) or derive a unique key and check before performing the side effect. Jobs must be idempotent: running twice must produce the same result as running once.</statement>
+        <rationale>Queues retry jobs on failure. A non-idempotent job that double-charges a card or double-sends an email on retry causes real harm. ShouldBeUnique prevents duplicate dispatches.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Add $tries, backoff(), and failed() to every job class. Jobs without retry limits run indefinitely on permanent failures.</statement>
+        <rationale>Default Horizon and Laravel queue config may retry a failed job indefinitely. A job with a syntax error or a permanently invalid payload exhausts worker memory.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>$model->fill($request->all()) or Model::create($request->all()).</description>
+        <reason>Mass assignment with all() sends every request field to the model, including non-fillable fields an attacker may inject. Always use $request->validated().</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mail::to($user)->send(new WelcomeMail($user)) inside a DB::transaction block.</description>
+        <reason>Mail sends before the transaction commits. If the transaction rolls back, the user record does not exist but the email is already delivered. Use deliver_later after the transaction.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Resolving services via app(Service::class) instead of constructor injection.</description>
+        <reason>app() bypasses the container's autowiring and breaks testability — the test cannot substitute a mock via the constructor.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/query-budget.php" purpose="DB::listen test helper that fails when query count exceeds budget (N+1 detector)."/>
+    </templates>
+
+    <see-also>
+      <link href="https://laravel.com/docs"/>
+      <link href="https://laravel-news.com/"/>
+      <link href="https://spatie.be/blog"/>
+      <link href="https://laracasts.com"/>
+      <link href="https://github.com/larastan/larastan"/>
+      <link href="https://laravel-beyond-crud.com/"/>
+      <link href="https://pestphp.com"/>
+    </see-also>
+  </content>
+</methodology>

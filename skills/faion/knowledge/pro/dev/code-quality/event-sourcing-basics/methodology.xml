@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="event-sourcing-basics">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>code-quality</domain>
+    <summary>Event Sourcing persists aggregates as immutable event sequences. Current state is derived by replaying from history or snapshots.</summary>
+    <tags>
+      <tag>event-sourcing</tag>
+      <tag>event-store</tag>
+      <tag>events</tag>
+      <tag>immutability</tag>
+      <tag>audit-trail</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-24</created>
+  </metadata>
+
+  <content>
+    <title>Event Sourcing — Basics</title>
+
+    <summary>Event Sourcing persists the state of an aggregate as an ordered, immutable sequence of domain events rather than current state. The current state is derived by replaying events from the beginning (or from a snapshot). The core rule: once an event is written, it is never modified — it is the source of truth; the in-memory state is a cache. Traditional state-based storage loses the history of what happened and why. Event sourcing provides a complete audit trail for free, enables time-travel debugging (rebuild state at any point in the past), supports projections that rebuild read models from history, and integrates naturally with event-driven architectures because the event log is the message bus.</summary>
+
+    <why>
+      <p>Traditional state-based storage loses the history of what happened and why. Event sourcing provides a complete audit trail for free, enables time-travel debugging (rebuild state at any point in the past), supports projections that rebuild read models from history, and integrates naturally with event-driven architectures because the event log is the message bus.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Complete audit trail is required (financial, healthcare, compliance, legal)</item>
+        <item>Complex domain with temporal queries ("what was the state of this order at 3pm yesterday?")</item>
+        <item>Event-driven architecture where downstream services need to consume history</item>
+        <item>Systems requiring state reconstruction after data corruption or logic bug</item>
+        <item>Paired with CQRS to build independent read projections from the event stream</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple CRUD applications — event sourcing adds infrastructure complexity with no benefit when history is irrelevant</item>
+        <item>Strong consistency requirements across aggregates — event replay is inherently eventual</item>
+        <item>Team unfamiliar with the pattern — misunderstanding immutability or apply-order causes subtle correctness bugs</item>
+        <item>High-frequency writes with tiny payloads (telemetry, metrics) — use a time-series DB instead</item>
+        <item>Schema evolution is unplanned — changing an event's fields breaks replay of historical streams</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="event-rules">
+      <rule>
+        <statement>Events must be immutable (frozen=True). Once persisted, an event is never modified — it is the source of truth.</statement>
+        <rationale>Mutable events invalidate the audit log and break replay: if the stored event differs from what actually happened, replayed state diverges from original state.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Events are granular: one event per state change. Never use a catch-all UpdatedEvent with a full-state payload.</statement>
+        <rationale>Granular events make the intent explicit, allow targeted projections to subscribe only to relevant changes, and keep schema evolution manageable.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Name events in past tense describing what happened: OrderCreated, OrderItemAdded, OrderPlaced, OrderShipped, OrderCancelled.</statement>
+        <rationale>Past tense signals immutability and distinguishes events (facts) from commands (intentions).</rationale>
+      </rule>
+    </section>
+
+    <section name="event-definitions">
+      <p>All domain events inherit from a frozen Event base class and carry only the data that changed.</p>
+
+      <example type="good" title="Base Event">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass, field
+from datetime import datetime
+from uuid import UUID, uuid4
+
+@dataclass(frozen=True)
+class Event:
+    """Base class for all domain events."""
+    event_id: UUID = field(default_factory=uuid4)
+    occurred_at: datetime = field(default_factory=datetime.utcnow)
+    metadata: dict = field(default_factory=dict)
+]]></code>
+      </example>
+
+      <example type="good" title="Order Event Hierarchy">
+        <code lang="python"><![CDATA[
+@dataclass(frozen=True)
+class OrderCreated(Event):
+    order_id: UUID
+    customer_id: UUID
+
+@dataclass(frozen=True)
+class OrderItemAdded(Event):
+    order_id: UUID
+    product_id: UUID
+    product_name: str
+    quantity: int
+    unit_price: Decimal
+
+@dataclass(frozen=True)
+class OrderItemRemoved(Event):
+    order_id: UUID
+    product_id: UUID
+
+@dataclass(frozen=True)
+class OrderPlaced(Event):
+    order_id: UUID
+    shipping_address: dict
+    total_amount: Decimal
+
+@dataclass(frozen=True)
+class OrderShipped(Event):
+    order_id: UUID
+    tracking_number: str
+    carrier: str
+
+@dataclass(frozen=True)
+class OrderCancelled(Event):
+    order_id: UUID
+    reason: str
+    cancelled_by: UUID
+]]></code>
+        <note>All events inherit from Event (frozen) and carry only the data that changed. No full-state snapshots in events.</note>
+      </example>
+
+      <antipattern>
+        <description>Mutable event: assigning to event.customer_id after construction.</description>
+        <reason>Breaks immutability guarantee. Any code that cached the event has an inconsistent copy, making replay non-deterministic.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Catch-all event: OrderUpdated with entire_order_data: dict containing all order fields.</description>
+        <reason>Loses intent (what specifically changed?), bloats the event log, and makes schema evolution impossible without breaking all existing consumers.</reason>
+      </antipattern>
+    </section>
+
+    <section name="event-sourced-aggregate">
+      <rule>
+        <statement>State changes happen only through events. The aggregate applies events to itself via _apply(event); it never mutates fields directly in command methods.</statement>
+        <rationale>If command methods mutate state directly, replay from events produces different state than the live object, destroying the event-sourcing guarantee.</rationale>
+      </rule>
+
+      <rule>
+        <statement>New events generated by command methods are added to _pending_events. They are not yet persisted. The repository drains pending events and appends them to the event store.</statement>
+        <rationale>Separating generation from persistence allows the repository to apply optimistic concurrency before appending, preventing lost-update bugs.</rationale>
+      </rule>
+
+      <rule>
+        <statement>from_events(order_id, events) reconstructs the aggregate from stored history by replaying each event with is_new=False. is_new=False means the event is not added to _pending_events.</statement>
+        <rationale>Distinguishing new events from historical events prevents the repository from re-appending already-persisted events on the next save.</rationale>
+      </rule>
+
+      <example type="good" title="Order Aggregate Implementation">
+        <code lang="python"><![CDATA[
+@dataclass
+class Order:
+    id: UUID
+    customer_id: UUID = None
+    status: OrderStatus = OrderStatus.DRAFT
+    items: List[OrderItem] = field(default_factory=list)
+    version: int = 0
+    _pending_events: List[Event] = field(default_factory=list, repr=False)
+
+    @classmethod
+    def create(cls, order_id: UUID, customer_id: UUID) -> "Order":
+        order = cls(id=order_id)
+        order._apply(OrderCreated(order_id=order_id, customer_id=customer_id))
+        return order
+
+    @classmethod
+    def from_events(cls, order_id: UUID, events: List[Event]) -> "Order":
+        order = cls(id=order_id)
+        for event in events:
+            order._apply(event, is_new=False)
+        return order
+
+    def place(self, shipping_address: dict) -> None:
+        if self.status != OrderStatus.DRAFT:
+            raise DomainError("Order already placed")
+        if not self.items:
+            raise DomainError("Cannot place empty order")
+        self._apply(OrderPlaced(
+            order_id=self.id,
+            shipping_address=shipping_address,
+            total_amount=self.total,
+        ))
+
+    def _apply(self, event: Event, is_new: bool = True) -> None:
+        handler_name = f"_on_{_to_snake(type(event).__name__)}"
+        handler = getattr(self, handler_name, None)
+        if handler:
+            handler(event)
+        self.version += 1
+        if is_new:
+            self._pending_events.append(event)
+
+    def _on_order_created(self, event: OrderCreated) -> None:
+        self.customer_id = event.customer_id
+        self.status = OrderStatus.DRAFT
+
+    def _on_order_placed(self, event: OrderPlaced) -> None:
+        self.shipping_address = event.shipping_address
+        self.status = OrderStatus.PLACED
+
+    def collect_pending_events(self) -> List[Event]:
+        events = self._pending_events.copy()
+        self._pending_events.clear()
+        return events
+]]></code>
+        <note>Command methods call _apply which both mutates state and queues events. Replay calls _apply with is_new=False.</note>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Assigning new values to event fields after construction (e.g., event.customer_id = new_id).</description>
+        <reason>Events stored in the event log become inconsistent with in-memory events. Replay produces different state than the original, making the event log unreliable as the source of truth.</reason>
+      </antipattern>
+
+      <example type="bad" title="Mutable Events">
+        <code lang="python"><![CDATA[
+event = OrderCreated(order_id=order_id)
+event.customer_id = new_customer_id  # Modifying after creation — illegal
+]]></code>
+      </example>
+
+      <example type="good" title="Immutable Events">
+        <code lang="python"><![CDATA[
+@dataclass(frozen=True)
+class OrderCreated(Event):
+    order_id: UUID
+    customer_id: UUID
+# frozen=True makes any assignment raise FrozenInstanceError at runtime
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using a single event type like OrderUpdated that carries the entire order state as a dict.</description>
+        <reason>Loses intent (which field actually changed?), makes projections load unnecessary data, and makes schema evolution impossible without breaking all consumers that parse the dict.</reason>
+      </antipattern>
+
+      <example type="bad" title="Catch-All Events">
+        <code lang="python"><![CDATA[
+@dataclass
+class OrderUpdated(Event):
+    entire_order_data: dict  # Full state snapshot — not a change event
+]]></code>
+      </example>
+
+      <example type="good" title="Granular Events">
+        <code lang="python"><![CDATA[
+@dataclass(frozen=True)
+class OrderItemAdded(Event):
+    product_id: UUID
+    quantity: int
+
+@dataclass(frozen=True)
+class ShippingAddressChanged(Event):
+    new_address: dict
+# One event per change — intent is explicit, projection subscribes only to what it needs
+]]></code>
+      </example>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p>Event schema drift: Once written, events live forever. v2 of OrderPlaced must coexist with v1; without an upcaster registry the aggregate's _apply becomes a switch-statement of regret.</p>
+
+      <p>Replay storms: Rebuilding a projection from 100M events on a single consumer can take days; you need parallel partitioned replay or it never finishes.</p>
+
+      <p>Snapshot rot: Snapshots serialize the current shape of state; when state shape changes (renamed field, new value object) old snapshots crash on load. Either version snapshots or invalidate them.</p>
+
+      <p>Hidden coupling via shared events: Events become a public API across services. A "small" rename breaks every downstream consumer silently.</p>
+
+      <p>Aggregate bloat: A long-lived aggregate (a customer with 10 years of events) gets slow even with snapshots; sometimes you need to close-and-reopen streams.</p>
+
+      <p>Cross-aggregate invariants: Event sourcing protects invariants inside one aggregate. Spanning constraints (uniqueness across aggregates) require a process manager or unique-index projection — not free.</p>
+
+      <p>Test cost: "Given these events, when this command, then those events" is great in theory. In practice agents generate test fixtures with subtly wrong event order or missing causation IDs.</p>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive event sourcing as a multi-pass design pipeline: (1) a domain-modeling agent runs an Event Storming session over a feature spec and produces a candidate event list with aggregate boundaries; (2) a code-generation agent emits frozen @dataclass events, an aggregate skeleton, and _on_* handlers from that list; (3) a test-generation agent writes given/when/then aggregate tests covering each command path; (4) a reviewer agent verifies events are immutable (frozen=True), past-tense, named after business outcomes (not CRUD verbs), and that each command produces ≥1 event. Persist the event catalog as domain/events/CATALOG.md and re-run pass (4) on every PR that touches domain/events/**.</p>
+
+      <p>Recommended subagents: faion-sdd-executor-agent — execute event-modeling tasks as SDD items, with quality gates ensuring each command-handler test asserts the expected event sequence. A purpose-built event-storming agent (not yet in repo): given a feature spec, emit events.md with columns Event | Trigger | Aggregate | Invariants | Downstream consumers. A purpose-built schema-evolution reviewer (worth creating): on PRs that modify domain/events/, fail if a field is removed/renamed without a Vn companion class and an upcaster. password-scrubber-agent — events sometimes carry PII (email, address payloads) — scrub before sharing fixtures externally.</p>
+
+      <p>Prompt pattern — Event discovery: Given this feature spec [spec], run Event Storming. Output: 1) timeline of past-tense events (e.g. OrderPlaced, not PlaceOrder) 2) for each event: producer aggregate, payload fields, downstream read models. Reject events that look like CRUD ("UserUpdated" is banned — name the actual change: EmailChanged).</p>
+
+      <p>Aggregate scaffolding: Generate an event-sourced Order aggregate in Python following the README pattern: frozen dataclass events, _apply dispatcher, _on_* handlers, factory create, from_events, collect_pending_events. For each business rule in [spec], add a command method that raises DomainError on invalid state and emits exactly one event.</p>
+    </section>
+
+    <templates>
+      <template path="templates/base-event.py" purpose="Frozen Event dataclass + example domain event skeleton"/>
+      <template path="templates/aggregate-base.py" purpose="Event-sourced aggregate base with _apply, version tracking, pending events"/>
+    </templates>
+
+    <see-also>
+      <link href="https://martinfowler.com/eaaDev/EventSourcing.html"/>
+      <link href="https://developers.eventstore.com/"/>
+      <link href="https://eventsourcing.readthedocs.io"/>
+      <link href="https://martendb.io/"/>
+      <link href="https://temporal.io"/>
+      <ref slug="cqrs-pattern"/>
+      <ref slug="domain-driven-design"/>
+    </see-also>
+  </content>
+</methodology>

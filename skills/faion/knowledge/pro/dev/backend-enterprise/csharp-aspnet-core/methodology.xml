@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="csharp-aspnet-core">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>Layered ASP.NET Core 8/9 APIs: [ApiController] → IXService → IXRepository → EF Core with DI split, AutoMapper DTOs, CancellationToken plumbing, and ProblemDetails responses.</summary>
+    <tags>
+      <tag>aspnet-core</tag>
+      <tag>architecture</tag>
+      <tag>csharp</tag>
+      <tag>api</tag>
+      <tag>di</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tools>
+      <tool>claude-code</tool>
+      <tool>cursor</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>ASP.NET Core Patterns</title>
+
+    <summary>Implement layered architecture in ASP.NET Core 8/9: [ApiController] routes to IXService interfaces, which delegate to repositories, which wrap Entity Framework Core. Thread CancellationToken through every async signature. Use AutoMapper to project entities to DTOs. Return ProblemDetails (RFC 7807) for errors. Organize by feature folders (Features/Users/) not technical layers. Mandatory: AsNoTracking on all read queries, [Authorize] and [ProducesResponseType] on every action, AssertConfigurationIsValid() test for AutoMapper.</summary>
+
+    <why>
+      <p>Without explicit DI-based service interfaces, agents couple controllers directly to DbContext and lose testability. Missing CancellationToken plumbing causes thread-pool starvation under load in ASP.NET Core. AutoMapper runtime errors (unmapped properties) appear only at request time, not at compile time, unless AssertConfigurationIsValid() is added to a unit test.</p>
+      <p>Feature-folder organization (Features/Users/) is recommended over technical-layer folders because agents read and modify one feature at a time, and the colocation of Controller, Service, DTOs, and Mappings in one folder makes the pattern visible.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>New ASP.NET Core 8/9 API with clear controller/service/repository separation.</item>
+        <item>Migrating legacy ASP.NET MVC or WCF services to modern Web API.</item>
+        <item>Multi-tenant or B2B SaaS in .NET where DI scopes and middleware are central.</item>
+        <item>Codebase shared between humans and LLMs — explicit interfaces stabilize completions.</item>
+        <item>Stepping stone before adopting CQRS/MediatR later.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tiny internal tools or webhooks with fewer than 10 endpoints — Minimal APIs are sufficient.</item>
+        <item>Microservices that publish only to a queue — three layers around one method call is overkill.</item>
+        <item>gRPC-only services — service-method-per-RPC layering is more appropriate.</item>
+        <item>Apps on .NET Framework 4.x — Generic Host, async-by-default, and DI container assumptions do not hold.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="controller-service-split">
+      <p>Each layer has a narrow contract: Controller maps HTTP → DTO, Service implements business logic, Repository encapsulates data access. The Controller is not a god object; it never touches DbContext directly.</p>
+
+      <rule testable="true">
+        <statement>Pass CancellationToken as the last parameter on every async controller action and thread it through to the service and repository layers.</statement>
+        <rationale>Without CancellationToken plumbing, client disconnects and request timeouts do not cancel in-flight DB queries, causing thread-pool starvation under load.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use [Authorize] and [ProducesResponseType] on every action; configure RequireAuthenticatedUser() globally in Program.cs and opt out per route.</statement>
+        <rationale>Agents copy public endpoints into private controllers and forget [Authorize]; a default-authenticated policy prevents accidental exposure.</rationale>
+      </rule>
+
+      <example type="good" title="Controller with service injection and CancellationToken">
+        <code lang="csharp"><![CDATA[
+[ApiController]
+[Route("api/v1/[controller]")]
+[Authorize]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+    private readonly ILogger<UsersController> _logger;
+
+    public UsersController(IUserService userService, ILogger<UsersController> logger)
+    {
+        _userService = userService;
+        _logger = logger;
+    }
+
+    [HttpGet]
+    [ProducesResponseType(typeof(PagedResult<UserDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<UserDto>>> GetUsers(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+        => Ok(await _userService.GetAllAsync(page, pageSize, ct));
+
+    [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UserDto>> GetUser(int id, CancellationToken ct = default)
+    {
+        var user = await _userService.GetByIdAsync(id, ct);
+        return user == null ? NotFound() : Ok(user);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
+    public async Task<ActionResult<UserDto>> CreateUser(
+        CreateUserDto dto, CancellationToken ct = default)
+    {
+        var user = await _userService.CreateAsync(dto, ct);
+        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
+    }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="service-interface-and-implementation">
+      <p>Services expose a clean interface that Controllers and tests can depend on. Implementation resolves repositories and transforms data. AutoMapper projects entities to DTOs; configuration is validated at startup.</p>
+
+      <rule testable="true">
+        <statement>Add MapperConfiguration.AssertConfigurationIsValid() to a unit test; AutoMapper mapping errors surface only at request time otherwise.</statement>
+        <rationale>Agents add properties to DTOs without updating AutoMapper profiles; tests pass at compile time but prod 500s on first request.</rationale>
+      </rule>
+
+      <example type="good" title="Service interface and implementation with AutoMapper">
+        <code lang="csharp"><![CDATA[
+public interface IUserService
+{
+    Task<PagedResult<UserDto>> GetAllAsync(int page, int pageSize, CancellationToken ct = default);
+    Task<UserDto?> GetByIdAsync(int id, CancellationToken ct = default);
+    Task<UserDto> CreateAsync(CreateUserDto dto, CancellationToken ct = default);
+    Task<bool> DeleteAsync(int id, CancellationToken ct = default);
+}
+
+public class UserService : IUserService
+{
+    private readonly IUserRepository _repository;
+    private readonly IMapper _mapper;
+    private readonly IPasswordHasher<User> _passwordHasher;
+
+    public UserService(IUserRepository repository, IMapper mapper,
+        IPasswordHasher<User> passwordHasher)
+    {
+        _repository = repository;
+        _mapper = mapper;
+        _passwordHasher = passwordHasher;
+    }
+
+    public async Task<PagedResult<UserDto>> GetAllAsync(int page, int pageSize, CancellationToken ct = default)
+    {
+        var users = await _repository.GetPagedAsync(page, pageSize, ct);
+        return _mapper.Map<PagedResult<UserDto>>(users);
+    }
+
+    public async Task<UserDto?> GetByIdAsync(int id, CancellationToken ct = default)
+    {
+        var user = await _repository.GetByIdAsync(id, ct);
+        return user == null ? null : _mapper.Map<UserDto>(user);
+    }
+
+    public async Task<UserDto> CreateAsync(CreateUserDto dto, CancellationToken ct = default)
+    {
+        var user = _mapper.Map<User>(dto);
+        user.PasswordHash = _passwordHasher.HashPassword(user, dto.Password);
+        await _repository.AddAsync(user, ct);
+        await _repository.SaveChangesAsync(ct);
+        return _mapper.Map<UserDto>(user);
+    }
+
+    public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
+    {
+        var user = await _repository.GetByIdAsync(id, ct);
+        if (user == null) return false;
+        _repository.Remove(user);
+        await _repository.SaveChangesAsync(ct);
+        return true;
+    }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="mandatory-rules">
+      <list>
+        <item>AsNoTracking() on all read queries — doubles read throughput on Postgres/SQL Server.</item>
+        <item>Use ProblemDetails (RFC 7807) for error responses; configure AddProblemDetails() in Program.cs.</item>
+        <item>Source-generated JSON serialization ([JsonSerializable]) for hot endpoints.</item>
+        <item>Feature folders, not technical folders: Features/Users/{Controller,Service,Dtos,Mappings}.</item>
+        <item>Health checks for every external dependency: AddHealthChecks().AddNpgSql(...).AddRedis(...).</item>
+        <item>Use Required keyword on DTOs (.NET 7+) instead of [Required] — surfaces missing fields at compile time.</item>
+      </list>
+    </section>
+
+    <section name="limitations-and-tradeoffs">
+      <p>Anemic services can become passthroughs to repositories, adding indirection without behavior. Agents copy the pattern and never push logic out of the controller. AutoMapper sprawl can result in profiles spreading across folders with ambiguous mappings and runtime-only config errors. Repository over EF is debatable: EF Core's DbContext is already a Unit-of-Work + Repository; wrapping it adds layers without value unless you have multiple data sources. DTO duplication (CreateUserDto, UpdateUserDto, UserDto, UserResponseDto) can occur when agents copy fields and drift between types. Dependency explosion in controllers can happen when a UsersController ends up with six services injected, violating SRP. PagedResult is often re-implemented per project instead of using Microsoft.EntityFrameworkCore extensions or EFCore.PaginatedList. The pattern assumes .NET Core's Generic Host, async-by-default semantics, and DI container behavior; backporting to .NET Framework 4.x is more work than rewriting.</p>
+    </section>
+
+    <section name="agentic-workflow-recommendations">
+      <p>Drive ASP.NET Core work as: (1) a planner subagent reads Program.cs + existing controllers and emits a target endpoint list (route, verb, request DTO, response DTO, auth policy); (2) a code-writer subagent scaffolds Controller + Service interface + Service impl + DTOs + AutoMapper profile + xUnit/NUnit tests in one pass; (3) a build-and-test subagent runs dotnet build + dotnet test and feeds compile errors back; (4) a Roslyn analyzer subagent flags missing CancellationToken, blocking calls, and missing [ProducesResponseType]. Persist generated code split by feature folder (Features/Users/) so agents read one folder per task. Pair generation with a code review subagent (Sonnet or stronger) that checks DI lifetimes, async/await correctness, nullable-reference compliance, and coverage thresholds.</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>async void used for "fire-and-forget" notification callbacks.</description>
+        <reason>One unhandled exception inside async void crashes the host. Use Task-returning methods and background services instead.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>.Result / .Wait() called on async methods.</description>
+        <reason>In .NET Core 6+ this rarely deadlocks but causes thread-pool starvation. Force agents to await all the way through.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Repository methods return IQueryable&lt;T&gt; for caller composition.</description>
+        <reason>By the time the caller materializes the query, the DbContext is disposed. Always ToListAsync / ToArrayAsync inside the repo.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>PagedResult&lt;T&gt; re-invented per project (TotalCount vs Total, PageIndex vs Page).</description>
+        <reason>Agents ship incompatible pagination shapes. Centralize in Common/Models and reference from every handler.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>HttpClient instantiated per request (new HttpClient()).</description>
+        <reason>Socket exhaustion. Always inject IHttpClientFactory; Roslynator rule detects the pattern.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Connection strings or JWT secrets committed in appsettings.json.</description>
+        <reason>Use dotnet user-secrets in dev and env vars + Key Vault in prod. Add a pre-commit secret scanner.</reason>
+      </antipattern>
+    </section>
+
+    <section name="tools-and-cli">
+      <p>dotnet new webapi and dotnet new sln scaffold projects and solutions. dotnet ef migrations add generates EF Core migrations; dotnet watch enables hot reload. dotnet test --collect:"XPlat Code Coverage" emits coverage data via coverlet and ReportGenerator. dotnet format applies Roslyn-based formatting and fixes. dotnet outdated surfaces stale NuGet packages. Roslynator CLI runs extra analyzers and flags Result/Wait and missing CancellationToken. gh CLI automates GitHub Actions and PR workflows. aspnet-codegenerator scaffolds controllers from EF models. swagger-cli validates OpenAPI generated from Swashbuckle. dotnet user-secrets stores dev secrets without committing to git.</p>
+      <command name="dotnet build -warnaserror -p:TreatWarningsAsErrors=true">Compile with warnings-as-errors to enforce analyzer rules.</command>
+      <command name="dotnet test --filter Categories=Integration">Run integration tests only for slow DB-dependent flows.</command>
+      <command name="roslynator analyze Solution.sln --severity-level info">Flag async/await mistakes and missing CancellationToken.</command>
+    </section>
+
+    <section name="ci-and-deployment">
+      <p>Wire the dotnet-gate.sh template into GitHub Actions before merge. It runs dotnet build -warnaserror with TreatWarningsAsErrors=true, collects coverage via XPlat, extracts line-rate from Cobertura XML, and enforces a threshold (default 70%). It also runs Roslynator analysis with Microsoft.CodeAnalysis.NetAnalyzers. Services for deployment include Azure App Service and Container Apps (first-class .NET support), AWS ECS with .NET 8 native AOT (agents need [DynamicallyAccessedMembers] annotations), Application Insights / OpenTelemetry (per-request telemetry surfaces async-deadlock symptoms agents miss), MediatR (common upgrade path from Service Layer, but not free as of v12), FluentValidation (agents handle generators well), AutoMapper (source-generator branch recommended), Serilog (structured logging integrates with App Insights/Seq), EF Core (already UoW + Repository).</p>
+    </section>
+
+    <templates>
+      <template path="templates/dotnet-gate.sh" purpose="CI gate: dotnet build -warnaserror, coverage threshold check, Roslynator analysis."/>
+    </templates>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/aspnet/core/fundamentals"/>
+      <link href="https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios"/>
+      <link href="https://github.com/davidfowl/AspNetCoreDiagnosticScenarios"/>
+      <link href="https://github.com/ardalis/CleanArchitecture"/>
+      <link href="https://learn.microsoft.com/aspnet/core/web-api/handle-errors"/>
+      <link href="https://github.com/dotnet/roslynator"/>
+      <link href="https://docs.automapper.org"/>
+    </see-also>
+  </content>
+</methodology>
