@@ -1,0 +1,454 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="claude-api-integration">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Full Claude API integration patterns: client initialization, sync/async completions, streaming, tool use, vision, Extended Thinking, Prompt Caching, and Batch API.</summary>
+    <tags>
+      <tag>claude</tag>
+      <tag>api</tag>
+      <tag>integration</tag>
+      <tag>tool-use</tag>
+      <tag>streaming</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Claude API Integration</title>
+    <summary>Full Claude API integration patterns with client initialization, sync/async completions, streaming, tool use, vision (URL and base64), Extended Thinking for complex reasoning, Prompt Caching for cost reduction, and the Batch API for offline jobs. The core rule: always check stop_reason — "max_tokens" is silent truncation; "tool_use" means the agent loop must continue; only "end_turn" is normal completion.</summary>
+    <why>
+      <p>Claude's 200K context, first-class system prompt support, and Extended Thinking make it the primary reasoning engine for complex multi-step agents. Without stop_reason handling, agents silently return truncated text or hang waiting for tool results. Prompt Caching requires a byte-identical system prompt prefix — a single extra space invalidates the cache and doubles costs for repetitive pipelines. The service wrapper pattern (ClaudeService + ClaudeConfig) centralizes retry logic, error handling, and cost tracking so subagents do not duplicate boilerplate.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Tasks requiring deep instruction-following across long contexts (up to 200K tokens).</item>
+        <item>Code generation, review, or refactoring where nuance and safety matter.</item>
+        <item>Multi-turn conversation pipelines where system prompt stability is critical.</item>
+        <item>Long document processing (legal, technical, medical) in a single shot.</item>
+        <item>Extended Thinking tasks: multi-step math, architecture decisions, strategic planning.</item>
+        <item>When Anthropic's safety defaults are a feature, not a bug (enterprise, sensitive data).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>High-volume, low-cost inner loops where gpt-4o-mini is sufficient (Claude Haiku excepted).</item>
+        <item>When OpenAI Structured Outputs (beta.parse) schema enforcement is required — Claude lacks this.</item>
+        <item>Tasks needing OpenAI Assistants' persistent thread and file storage model.</item>
+        <item>When Google Search grounding is required — use Gemini instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="Client Initialization and Model Selection">
+      <example type="good">
+        <code lang="python"><![CDATA[from anthropic import Anthropic
+import os
+
+client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    system="You are a senior software architect specializing in Python.",
+    messages=[{"role": "user", "content": "Review this code for security issues."}]
+)
+print(message.content[0].text)]]></code>
+      </example>
+
+      <section name="Model Hierarchy">
+        <list>
+          <item>claude-sonnet-4-20250514: best balance of speed/quality — default choice for most tasks.</item>
+          <item>claude-opus-4-5-20251101: most capable, complex reasoning and architecture decisions — significantly lower rate limits.</item>
+          <item>claude-3-5-haiku-20241022: fastest, most cost-effective — use for triage, classification, high-volume inner loops.</item>
+        </list>
+
+        <rule>
+          <statement>Use Haiku for triage/routing steps, Sonnet for main tasks, Opus only for complex reasoning or architecture — rate limits for Opus are significantly lower than Sonnet.</statement>
+          <rationale>A pipeline that works with Sonnet may 429 immediately with Opus; Opus rate limits are much tighter, making it unsuitable for high-throughput inner loops.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="Sync and Async Completions">
+      <rule>
+        <statement>Always check response.stop_reason after every call — "max_tokens" means output was truncated, "tool_use" means continue the agent loop, only "end_turn" is normal completion.</statement>
+        <rationale>Truncation is silent. An incomplete response treated as complete produces incorrect downstream results. Tool use requires a follow-up call to the same model with tool results.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="python"><![CDATA[import asyncio
+from anthropic import AsyncAnthropic
+
+async_client = AsyncAnthropic()
+
+async def async_claude(prompt: str) -> str:
+    message = await async_client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return message.content[0].text
+
+async def batch_process(prompts: list[str]) -> list[str]:
+    return await asyncio.gather(*[async_claude(p) for p in prompts])]]></code>
+      </example>
+    </section>
+
+    <section name="Streaming Responses">
+      <example type="good">
+        <code lang="python"><![CDATA[def stream_claude(prompt: str, system: str = "") -> str:
+    full_response = ""
+    with client.messages.stream(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        system=system,
+        messages=[{"role": "user", "content": prompt}]
+    ) as stream:
+        for text in stream.text_stream:
+            print(text, end="", flush=True)
+            full_response += text
+    return full_response]]></code>
+      </example>
+
+      <rule>
+        <statement>Do not mix Extended Thinking with streaming unless you can parse thinking SSE deltas — the event format differs from text deltas.</statement>
+        <rationale>Thinking blocks arrive as a distinct delta type. Streaming code that only handles text deltas will lose or garble thinking output.</rationale>
+      </rule>
+    </section>
+
+    <section name="Tool Use Pattern">
+      <p>Single-turn tool dispatch with result routing. The model calls a tool, you execute it, and submit the result in a follow-up call.</p>
+
+      <example type="good">
+        <code lang="python"><![CDATA[tools = [{
+    "name": "get_weather",
+    "description": "Get current weather for a location",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "location": {"type": "string", "description": "City and country, e.g., 'London, UK'"},
+            "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+        },
+        "required": ["location"]
+    }
+}]
+
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    tools=tools,
+    messages=[{"role": "user", "content": "What's the weather in Kyiv?"}]
+)
+
+for block in response.content:
+    if block.type == "tool_use":
+        result = execute_tool(block.name, block.input)
+        follow_up = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            tools=tools,
+            messages=[
+                {"role": "user", "content": "What's the weather in Kyiv?"},
+                {"role": "assistant", "content": response.content},
+                {"role": "user", "content": [{"type": "tool_result",
+                    "tool_use_id": block.id, "content": result}]}
+            ]
+        )]]></code>
+      </example>
+
+      <rule>
+        <statement>After tool execution, always pass the tool_use_id and result back in a follow-up message; the model needs to see both the tool call it made and the result.</statement>
+        <rationale>Without the result, the model cannot reason over what happened. Without the tool_use_id, the model does not know which tool call the result corresponds to.</rationale>
+      </rule>
+    </section>
+
+    <section name="Vision Analysis">
+      <p>Vision supports both URL-based and base64-encoded images. For local files, encode to base64. For remote images, use the URL source type.</p>
+
+      <example type="good">
+        <code lang="python"><![CDATA[import base64
+
+def analyze_local_image(image_path: str, question: str) -> str:
+    with open(image_path, "rb") as f:
+        image_data = base64.standard_b64encode(f.read()).decode("utf-8")
+    media_type = "image/png" if image_path.endswith(".png") else "image/jpeg"
+
+    message = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": [
+            {"type": "image", "source": {
+                "type": "base64", "media_type": media_type, "data": image_data
+            }},
+            {"type": "text", "text": question}
+        ]}]
+    )
+    return message.content[0].text]]></code>
+      </example>
+
+      <rule>
+        <statement>Verify image format before encoding — JPEG and PNG are supported; WebP, GIF, and SVG are not supported by the vision API.</statement>
+        <rationale>Unsupported formats fail silently or produce poor results. Always convert to JPEG or PNG first.</rationale>
+      </rule>
+    </section>
+
+    <section name="Extended Thinking">
+      <rule>
+        <statement>Extended Thinking is incompatible with temperature — setting both raises an API error; disable temperature when enabling thinking.</statement>
+        <rationale>Extended Thinking has its own sampling parameters; temperature is redundant and causes a validation error.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="python"><![CDATA[def complex_reasoning(problem: str) -> dict:
+    response = client.messages.create(
+        model="claude-opus-4-5-20251101",
+        max_tokens=16000,
+        thinking={"type": "enabled", "budget_tokens": 8000},
+        messages=[{"role": "user", "content": problem}]
+        # Note: no temperature parameter when thinking is enabled
+    )
+    return {
+        "thinking": next((b.thinking for b in response.content if b.type == "thinking"), ""),
+        "answer": next((b.text for b in response.content if b.type == "text"), "")
+    }]]></code>
+      </example>
+
+      <rule>
+        <statement>Always set max_tokens to at least budget_tokens + 2048 to avoid truncating the answer block.</statement>
+        <rationale>Thinking tokens count toward max_tokens. If max_tokens equals budget_tokens, the answer block is cut off mid-sentence.</rationale>
+      </rule>
+    </section>
+
+    <section name="Production Service Wrapper">
+      <p>The ClaudeService class encapsulates client initialization, retry logic, error handling, and cost tracking. Use ClaudeConfig to parameterize model selection and max_tokens.</p>
+
+      <example type="good">
+        <code lang="python"><![CDATA[from dataclasses import dataclass
+from typing import Optional, List, Dict, Any
+import logging
+from anthropic import Anthropic
+
+@dataclass
+class ClaudeConfig:
+    model: str = "claude-sonnet-4-20250514"
+    max_tokens: int = 1024
+    system: str = ""
+
+class ClaudeService:
+    def __init__(self, api_key: Optional[str] = None):
+        self.client = Anthropic(api_key=api_key)
+        self.logger = logging.getLogger(__name__)
+
+    def complete(self, messages: List[Dict[str, Any]], config: Optional[ClaudeConfig] = None) -> Dict:
+        config = config or ClaudeConfig()
+        response = self.client.messages.create(
+            model=config.model,
+            max_tokens=config.max_tokens,
+            system=config.system,
+            messages=messages
+        )
+        if response.stop_reason == "max_tokens":
+            raise RuntimeError("Response truncated — increase max_tokens or split task")
+        return {
+            "content": response.content[0].text,
+            "model": response.model,
+            "usage": {"input": response.usage.input_tokens, "output": response.usage.output_tokens},
+            "stop_reason": response.stop_reason
+        }]]></code>
+      </example>
+
+      <rule>
+        <statement>Validate stop_reason in the service layer, not in every subagent — this centralizes the error handling logic.</statement>
+        <rationale>Duplicating stop_reason checks across agents is error-prone. A single validation in the service wrapper ensures consistent behavior.</rationale>
+      </rule>
+    </section>
+
+    <section name="Retry Logic with Tenacity">
+      <example type="good">
+        <code lang="python"><![CDATA[from anthropic import RateLimitError, APIConnectionError, AuthenticationError, APIError
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=60),
+    retry=retry_if_exception_type((RateLimitError, APIConnectionError))
+)
+def robust_claude(messages: list, system: str = "") -> str:
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            system=system,
+            messages=messages,
+            timeout=60.0
+        )
+        return response.content[0].text
+    except AuthenticationError:
+        raise ValueError("Invalid ANTHROPIC_API_KEY")
+    except APIError as e:
+        if e.status_code >= 500:
+            raise APIConnectionError("Server error")
+        raise]]></code>
+      </example>
+
+      <rule>
+        <statement>Retry on RateLimitError (429) and APIConnectionError; do NOT retry on AuthenticationError (401) — fix the key, do not retry.</statement>
+        <rationale>Invalid API keys will never succeed. Retrying 401 wastes quota and delays failure detection.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Set a timeout on the request (60 seconds is reasonable) to avoid indefinite hangs.</statement>
+        <rationale>Network issues can leave connections open indefinitely. A timeout ensures the decorator eventually gives up.</rationale>
+      </rule>
+    </section>
+
+    <section name="Prompt Caching">
+      <rule>
+        <statement>Enable Prompt Caching on any system prompt over 1024 tokens that stays constant across calls — the cached prefix must be byte-identical; a single extra space invalidates the cache.</statement>
+        <rationale>Prompt Caching charges cached tokens at ~10% of normal input cost; for pipelines calling the same assistant hundreds of times per session, this is the single largest cost reduction available.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="python"><![CDATA[response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    system=[{
+        "type": "text",
+        "text": "You are a document analyzer...",  # must be >1024 tokens
+        "cache_control": {"type": "ephemeral"}
+    }],
+    messages=[{"role": "user", "content": query}]
+)
+# Check cache hit in usage
+print(response.usage.cache_read_input_tokens)   # > 0 on cache hit
+print(response.usage.cache_creation_input_tokens)  # > 0 on cache creation]]></code>
+      </example>
+
+      <rule>
+        <statement>Put the most stable content first (system instructions), dynamic content last (user message) — cache uses prefix matching.</statement>
+        <rationale>Any change before the cached block invalidates the entire cache. Stable content at the top maximizes reuse.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Never inject dynamic values (timestamps, request IDs, user names) before the cached block.</statement>
+        <rationale>A single character difference in the prefix causes a cache miss. You pay the write cost on every call with no read benefit.</rationale>
+      </rule>
+
+      <rule>
+        <statement>The minimum cacheable prefix is 1024 tokens; do not mark shorter content as cacheable.</statement>
+        <rationale>Prefixes below 1024 tokens are not eligible for caching. Marking them wastes the ephemeral annotation without any cost reduction.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Monitor cache_read_input_tokens on every cached call. Zero means cache miss — a sign of misconfiguration or prefix drift.</statement>
+        <rationale>Cache misses are silent. The API does not error; it just charges full input token cost. Monitoring the metric is the only way to detect misconfigurations.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Target cache_read_input_tokens / input_tokens ratio above 0.70 for meaningful cost benefit.</statement>
+        <rationale>Cache write tokens cost 25% more than regular input. Below ~70% hit rate the write overhead starts to erode savings.</rationale>
+      </rule>
+    </section>
+
+    <section name="Batch API">
+      <rule>
+        <statement>Use the Batch API only for offline enrichment tasks — it has up to 24-hour processing time and is not suitable for real-time workflows.</statement>
+        <rationale>Batch API provides 50% cost reduction by processing requests when compute is available; latency is unbounded and unsuitable for user-facing responses.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="python"><![CDATA[def create_batch(requests: list[dict]) -> str:
+    batch = client.beta.messages.batches.create(requests=[
+        {"custom_id": r["id"], "params": {
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": r.get("max_tokens", 1024),
+            "messages": r["messages"]
+        }} for r in requests
+    ])
+    return batch.id
+
+def poll_batch(batch_id: str, interval=30) -> list[dict]:
+    import time
+    while True:
+        batch = client.beta.messages.batches.retrieve(batch_id)
+        if batch.processing_status == "ended":
+            return [
+                {"id": r.custom_id, "text": r.result.message.content[0].text}
+                for r in client.beta.messages.batches.results(batch_id)
+                if r.result.type == "succeeded"
+            ]
+        time.sleep(interval)]]></code>
+      </example>
+
+      <rule>
+        <statement>Use custom_id values that map directly to database primary keys or job IDs.</statement>
+        <rationale>Results arrive out of order. Without a custom_id that maps to your data model, matching results back to inputs requires additional joins or lookups.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Poll at intervals of at least 60 seconds; do not use a tight loop.</statement>
+        <rationale>Batch processing takes minutes to hours. Tight polling wastes API quota and adds no speed benefit.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Detect result.result.type == "errored" and resubmit failed items explicitly; Batch API does not retry automatically.</statement>
+        <rationale>Errored requests are included in the results file with type "errored". They are not retried. Your code must detect and resubmit them.</rationale>
+      </rule>
+    </section>
+
+    <section name="Agentic Workflow">
+      <p>Claude is well-suited as the primary reasoning engine in a multi-step agent: a Claude subagent receives a structured task, produces analysis or code, and the result is validated before being passed downstream. For cost efficiency, use Haiku for triage/classification steps and Sonnet for main reasoning. Enable Prompt Caching on the system prompt when the same assistant is called many times per session. Use the Batch API for offline enrichment tasks (content pipelines, nightly analysis).</p>
+
+      <rule>
+        <statement>No native Structured Outputs equivalent — must use prompt engineering + json.loads + retry loop.</statement>
+        <rationale>Unlike OpenAI's beta.parse, Claude does not enforce schema at the API level. Use tool_choice or prompt-engineering to guide JSON output, then validate and retry on parse failure.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Extended Thinking adds significant latency (budget_tokens of thinking = extra wait time).</statement>
+        <rationale>Thinking budget directly adds to response latency. Start with 5000 tokens; increase only if quality is insufficient.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Computer Use (beta) requires a sandboxed VM environment; not safe to run directly on production hosts.</statement>
+        <rationale>Computer Use executes OS-level commands (click, type, key). Without sandboxing, a compromised agent can destroy the host.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Prompt Caching requires minimum 1024 tokens and prefix matching — cache invalidates if system prompt changes at all.</statement>
+        <rationale>Byte-identical matching means any version bump, timestamp, or dynamic value invalidates cache. Plan system prompts to be stable.</rationale>
+      </rule>
+
+      <rule>
+        <statement>temperature is not supported when Extended Thinking is enabled.</statement>
+        <rationale>Extended Thinking has its own sampling parameters. Setting temperature raises an API error.</rationale>
+      </rule>
+
+      <rule>
+        <statement>stop_reason == "max_tokens" is silent — truncated responses must be detected explicitly.</statement>
+        <rationale>The API does not error when output is truncated. Check stop_reason in every response.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Token counting via client.count_tokens() is an extra API call; use sparingly.</statement>
+        <rationale>In hot paths, pre-computing token budgets or handling truncation via stop_reason is faster than pre-call token counting.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/claude-service.py" purpose="ClaudeService class with ClaudeConfig, retry decorator, and token counting"/>
+      <template path="templates/batch-api.py" purpose="create_batch() and poll_batch() helpers for the Anthropic Batch API"/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/the-basic-api"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/tool-use"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/vision"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching"/>
+      <link href="https://docs.anthropic.com/en/api/messages-batches"/>
+      <link href="https://github.com/anthropics/anthropic-sdk-python"/>
+    </see-also>
+  </content>
+</methodology>
