@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cot-basics">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>CoT prompting instructs LLMs to emit reasoning steps before answers. Variants: zero-shot, few-shot, and self-consistency. Claude's extended thinking replaces manual CoT for maximum accuracy.</summary>
+    <category>prompting</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>chain-of-thought</tag>
+      <tag>reasoning</tag>
+      <tag>prompting</tag>
+      <tag>self-consistency</tag>
+      <tag>extended-thinking</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="prompt-basics"/>
+      <ref slug="prompt-techniques"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Chain-of-Thought Basics</title>
+
+    <summary>Chain-of-Thought (CoT) prompting instructs an LLM to emit intermediate reasoning steps before producing a final answer. Three main variants: zero-shot CoT (append "Let's think step by step." to the user turn), few-shot CoT (provide 2–3 worked reasoning examples), and self-consistency (run N=3–7 parallel paths and vote on the majority answer). For Claude, native extended thinking (budget_tokens) replaces manual CoT when maximum accuracy is required.</summary>
+
+    <why>
+      <p>LLMs produce higher accuracy on multi-step reasoning tasks when forced to write out intermediate steps. The reasoning chain acts as a working scratchpad: the model commits to sub-answers before reaching the final answer, which reduces drift on long problems. Self-consistency further improves accuracy by aggregating diverse reasoning paths — the majority vote reduces the impact of any single flawed chain.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Task requires multi-step reasoning: math, logic, code debugging, root cause analysis.</item>
+        <item>Agent must explain reasoning to a downstream consumer or auditor.</item>
+        <item>Accuracy matters more than latency (self-consistency requires N calls).</item>
+        <item>Structured decomposition is needed before calling external tools (plan before act).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple lookup or classification tasks — CoT adds tokens with no accuracy gain.</item>
+        <item>Latency-critical paths where a single-token answer suffices.</item>
+        <item>Tasks whose steps cannot be verified (pure creative generation) — overhead without benefit.</item>
+        <item>High-volume pipelines where cost dominates; use zero-shot direct answering instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="trigger-phrase-rules">
+      <p>CoT trigger placement and answer marker extraction are critical for reliable reasoning capture.</p>
+      <rule testable="true">
+        <statement>Append the CoT trigger phrase ("Let's think step by step.") at the end of the user turn, not in the system prompt.</statement>
+        <rationale>Placing the trigger in the system prompt applies CoT to every message, including simple lookups where it adds tokens without benefit. End-of-user-turn placement activates reasoning only for the specific message that needs it.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Always request an explicit answer marker in the prompt (e.g., "End with: Answer: &lt;value&gt;") to separate reasoning from the final answer.</statement>
+        <rationale>Without a marker, extracting the final answer from free-form CoT text requires fragile string parsing. An explicit marker makes extraction reliable and model-independent.</rationale>
+      </rule>
+    </section>
+
+    <section name="few-shot-rules">
+      <p>Few-shot examples dramatically affect the quality of reasoning chains. Poor example selection propagates errors.</p>
+      <rule testable="true">
+        <statement>Limit few-shot CoT examples to 2–3 high-quality chains. More examples do not always improve accuracy and inflate input tokens.</statement>
+        <rationale>Token cost scales linearly with example count. Beyond 3 examples the marginal accuracy gain diminishes while cost continues to increase.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Never include few-shot examples that contain arithmetic or reasoning errors.</statement>
+        <rationale>Models imitate the style of examples including mistakes. A single incorrect example can propagate the error pattern to all outputs.</rationale>
+      </rule>
+    </section>
+
+    <section name="self-consistency-rules">
+      <p>Self-consistency requires careful temperature tuning and confidence thresholding to be effective.</p>
+      <rule testable="true">
+        <statement>Set temperature ≥ 0.6 when running self-consistency sampling. Temperature=0 collapses all N paths to the same deterministic answer.</statement>
+        <rationale>Self-consistency relies on diversity across N reasoning paths. Without temperature variation, all paths are identical and voting provides no benefit.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>When self-consistency confidence is below 0.6, route to human review rather than propagating the majority answer.</statement>
+        <rationale>Low confidence means the reasoning paths disagree substantially. A majority answer with confidence 0.4 is only marginally better than a random guess in high-stakes contexts.</rationale>
+      </rule>
+    </section>
+
+    <section name="extended-thinking-preference">
+      <p>Claude's native extended thinking mode provides a modern alternative to manual CoT prompting.</p>
+      <rule testable="true">
+        <statement>Prefer Claude extended thinking (budget_tokens) over manual CoT prompting when accuracy is paramount.</statement>
+        <rationale>Extended thinking uses a private scratchpad, avoids the parsing overhead of extracting answers from free-form text, and does not require few-shot examples.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <p>Common failure modes when applying CoT: wrong extraction, temperature collapse, bad examples, overlong chains, and blind trust in reasoning output.</p>
+      <antipattern>
+        <description>Parsing the final answer from free-form CoT text without an answer marker.</description>
+        <reason>Free-form CoT output ends with varying phrases ("Therefore...", "So the answer is...", "In conclusion..."). String parsing against these is brittle and fails as prompt wording changes.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Running self-consistency with temperature=0.</description>
+        <reason>Temperature 0 produces the same deterministic response on every call. All N samples are identical; voting returns the same answer with false confidence of 1.0.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Including few-shot examples that contain errors in intermediate steps.</description>
+        <reason>LLMs imitate the style and reasoning patterns of examples. An example that makes an arithmetic error in step 2 but arrives at the correct answer teaches the wrong reasoning path.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Passing CoT reasoning chains directly to external tools as verified facts.</description>
+        <reason>CoT chains are unverified model-generated text. They may contain confident but incorrect intermediate steps. Downstream tools that act on unvalidated reasoning can compound errors.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Applying CoT to simple classification or lookup tasks.</description>
+        <reason>CoT adds input and output tokens with no accuracy benefit for tasks that require a single-step response. The overhead increases cost and latency without improving quality.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using extended thinking budget_tokens overrun without monitoring cost.</description>
+        <reason>Thinking tokens count toward output tokens and are non-cacheable. A single call with budget_tokens=16000 can cost 5-10x a normal call. Silent budget overruns erode pipeline cost controls.</reason>
+      </antipattern>
+    </section>
+
+    <section name="worked-example">
+      <example type="good" title="Self-consistency with explicit answer marker">
+        <code lang="python"><![CDATA[
+from collections import Counter
+import anthropic
+
+client = anthropic.Anthropic()
+
+def self_consistency(problem: str, n: int = 5) -> tuple[str, float]:
+    answers = []
+    for _ in range(n):
+        msg = client.messages.create(
+            model="claude-opus-4-5-20251101",
+            max_tokens=2048,
+            messages=[{
+                "role": "user",
+                "content": f"{problem}\n\nThink step by step. End with 'Answer: <value>'"
+            }]
+        )
+        text = msg.content[0].text
+        if "Answer:" in text:
+            answers.append(text.split("Answer:")[-1].strip().split()[0])
+    if not answers:
+        return "", 0.0
+    top, count = Counter(answers).most_common(1)[0]
+    return top, count / len(answers)
+        ]]></code>
+        <note>Answer marker "Answer: &lt;value&gt;" enables reliable extraction via split().</note>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>In agent systems, CoT is typically orchestrated via subagent coordination. A reasoner subagent runs the CoT prompt; a judge subagent checks the reasoning; an orchestrator may run self-consistency for high-stakes decisions.</p>
+
+      <rule testable="true">
+        <statement>Decompose a CoT agent system into three roles: reasoner (emits reasoning + answer), judge (checks consistency), extractor (parses final answer reliably).</statement>
+        <rationale>This separation of concerns allows the reasoner to optimize for depth of analysis, the judge to catch errors early, and the extractor to use the explicit answer marker rather than fragile heuristics.</rationale>
+      </rule>
+
+      <p>Recommended subagents:</p>
+      <list>
+        <item>reasoner — Runs the CoT prompt; emits &lt;reasoning&gt; + &lt;answer&gt; XML blocks.</item>
+        <item>consistency-judge — Receives N answers, votes on majority, returns confidence score.</item>
+        <item>answer-extractor — Parses free-form CoT output to extract the final answer reliably.</item>
+      </list>
+
+      <p>System prompt pattern for the reasoner subagent:</p>
+      <code lang="xml"><![CDATA[
+<system>
+You are a reasoning engine. Think step by step before answering.
+Structure output as:
+<reasoning>step-by-step analysis</reasoning>
+<answer>final answer only</answer>
+</system>
+      ]]></code>
+
+      <p>Self-consistency extraction after N calls:</p>
+      <code lang="python"><![CDATA[
+# After N calls, extract answer tokens and vote
+answers = [extract_answer(resp) for resp in responses]
+winner = Counter(answers).most_common(1)[0]
+confidence = winner[1] / len(answers)
+      ]]></code>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Append the CoT trigger ("Let's think step by step.") at the end of the user turn, not in the system prompt — it activates reasoning for that specific message only.</item>
+        <item>Always request an explicit answer marker ("Answer: X") to decouple reasoning from extraction.</item>
+        <item>Cache the system prompt + few-shot examples with cache_control: ephemeral; only the problem varies.</item>
+        <item>For Claude, prefer extended thinking over manual CoT when accuracy is paramount — it uses a private scratchpad and avoids the parsing overhead.</item>
+        <item>Limit few-shot examples to 2–3 high-quality chains; more examples do not always improve accuracy and inflate input tokens.</item>
+        <item>Never embed CoT examples that contain arithmetic errors — models imitate the style including mistakes.</item>
+      </list>
+    </section>
+
+    <section name="gotchas-and-limits">
+      <list>
+        <item>Answer extraction can fail if the model ends with prose instead of the marker — always validate the extracted answer matches the expected format before propagating it downstream.</item>
+        <item>Extended thinking (budget_tokens) consumed cannot be cached; budget overruns increase cost silently — set explicit max_tokens guard above the budget.</item>
+        <item>Self-consistency with temperature=0 collapses to a single deterministic path — set temperature ≥ 0.6 to get meaningful diversity across samples.</item>
+        <item>LLM reasoning chains are not auditable facts; never pass them to external tools as verified inputs without a validation step.</item>
+        <item>Human-in-loop checkpoint: when confidence from self-consistency is below 0.6, route to human review rather than proceeding with the majority answer.</item>
+        <item>CoT improves but does not guarantee correctness; confident wrong reasoning chains still occur.</item>
+        <item>Self-consistency requires N=3–7 LLM calls; cost scales linearly.</item>
+        <item>On very long reasoning chains the model can drift from the original question ("lost in thought").</item>
+      </list>
+    </section>
+
+    <section name="tools-and-services">
+      <p>CLI tools for CoT experimentation and optimization.</p>
+
+      <rule testable="true">
+        <statement>When testing CoT prompts locally, use the `llm` command-line tool (Simon Willison) for quick iteration against Claude, OpenAI, or local models.</statement>
+        <rationale>The `llm` tool eliminates Python boilerplate for one-off CoT experiments, supports streaming, and caches credentials for multiple providers in one config file.</rationale>
+      </rule>
+
+      <p>Available tools:</p>
+      <list>
+        <item>llm (Simon Willison) — Run CoT prompts against any model from CLI. Install: pip install llm. Docs: github.com/simonw/llm</item>
+        <item>guidance — Constrained generation with step delimiters. Install: pip install guidance. Docs: github.com/guidance-ai/guidance</item>
+        <item>dspy — Compile + optimize CoT prompts automatically. Install: pip install dspy-ai. Docs: dspy.ai</item>
+      </list>
+
+      <p>Managed services:</p>
+      <list>
+        <item>Anthropic Messages API (thinking param) — SaaS. Native extended thinking; returns thinking blocks separately.</item>
+        <item>OpenAI o1/o3 series — SaaS. Reasoning done server-side; no explicit CoT in response.</item>
+        <item>DSPy Teleprompter — OSS. Auto-optimizes CoT few-shot examples via labeled data.</item>
+        <item>Weights &amp; Biases Prompts — SaaS (partial). Logs CoT traces for debugging; no agent control plane.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/cot-prompt.txt" purpose="System prompt for reasoner subagent with XML-structured output"/>
+      <template path="templates/self-consistency.py" purpose="Self-consistency loop: N parallel calls, majority vote, confidence score"/>
+    </templates>
+
+    <see-also>
+      <link href="https://arxiv.org/abs/2201.11903">Chain-of-Thought Prompting Elicits Reasoning in Large Language Models</link>
+      <link href="https://arxiv.org/abs/2203.11171">Self-Consistency Improves Chain of Thought Reasoning</link>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking">Claude Extended Thinking</link>
+      <link href="https://dspy.ai">DSPy: automatic prompt optimization including CoT chains</link>
+    </see-also>
+  </content>
+</methodology>

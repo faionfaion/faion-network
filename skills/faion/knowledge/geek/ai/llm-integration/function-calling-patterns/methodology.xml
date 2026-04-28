@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="function-calling-patterns">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Production patterns for LLM tool use: parallel execution, validation, result truncation, safe agentic loops with bounded iteration, and human-in-loop checkpoints for destructive operations.</summary>
+    <category>tool-use</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>tool-use</tag>
+      <tag>function-calling</tag>
+      <tag>agentic-loops</tag>
+      <tag>agent-safety</tag>
+      <tag>structured-output</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="claude-tool-use"/>
+      <ref slug="multi-agent-design-patterns"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Function Calling Patterns</title>
+
+    <summary>Production patterns for LLM tool use: parallel execution of independent tool calls, a tool router that dispatches queries to the correct tool subset, an agentic loop with bounded iteration count, and argument validation before execution. Covers both Anthropic (tool_use / tool_result blocks) and OpenAI (tool_calls in assistant message) formats.</summary>
+
+    <why>
+      <p>LLMs hallucinate tool argument values and can enter infinite loops if no termination condition exists. Parallel tool execution masks ordering constraints for stateful operations. Returning raw large tool results inflates context rapidly. These patterns address each failure mode with concrete, testable implementations: schema validation before dispatch, max_iterations guard, result truncation, and structured error messages that let the model reason about next steps.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Agent must take actions in external systems (APIs, databases, file system).</item>
+        <item>Structured data extraction from unstructured text with guaranteed JSON schema.</item>
+        <item>Orchestrating parallel I/O-bound tool calls to reduce latency.</item>
+        <item>Building multi-step agentic loops where the LLM decides the next action.</item>
+        <item>Replacing prompt-based output parsing with schema-enforced tool use.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple Q&amp;A where no external action is needed — tool use adds tokens and latency.</item>
+        <item>When all tools have side effects and the task is exploratory — use read-only tools first.</item>
+        <item>More than ~20 tools in a single call — model selection accuracy degrades; use routing or subsets.</item>
+        <item>Structured output purely for cosmetic formatting — prefer response_format or prefill.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="execution-strategy">
+      <p>Tool execution can be parallel or sequential depending on the tool's state dependencies and independence.</p>
+
+      <rule testable="true">
+        <statement>Execute independent tool calls from the same LLM response in parallel using ThreadPoolExecutor.</statement>
+        <rationale>When the LLM returns multiple tool calls in one response, they are often independent. Sequential execution wastes wall-clock time proportional to the number of tools called.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Execute tools with shared state or ordering constraints sequentially, not in parallel.</statement>
+        <rationale>Parallel execution of tools that read and write shared state produces race conditions. The LLM cannot express ordering constraints within a single tool_use block.</rationale>
+      </rule>
+    </section>
+
+    <section name="argument-validation">
+      <p>LLMs hallucinate argument values, especially enums, IDs, and dates. Validation before execution prevents data corruption and external API errors.</p>
+
+      <rule testable="true">
+        <statement>Validate tool arguments against the declared schema before calling the implementation. Reject invalid calls with a structured error in the tool_result.</statement>
+        <rationale>LLMs hallucinate argument values, especially enum values, IDs, and dates. Passing hallucinated args to a real implementation can cause data corruption or external API errors.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Return structured errors in tool_result with an "error" key and a "code" key (e.g., {"error": "not found", "code": "NOT_FOUND"}).</statement>
+        <rationale>A structured error format lets the model reason about what went wrong and decide the next action (retry, ask the user, use a different tool) rather than just seeing an opaque string.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use additionalProperties: false in tool schemas to prevent the model from inventing extra fields.</statement>
+        <rationale>Without this constraint, models may add undeclared fields that your schema validator rejects or your implementation ignores silently. Strict schemas catch hallucinated fields early.</rationale>
+      </rule>
+    </section>
+
+    <section name="result-truncation">
+      <p>Large tool results rapidly inflate context and can push conversations past the context limit, especially in multi-turn agentic loops.</p>
+
+      <rule testable="true">
+        <statement>Truncate tool results to at most 2000 tokens before returning them to context. Summarize if needed.</statement>
+        <rationale>Large tool results (full DB rows, API responses) inflate context rapidly. After 5+ tool turns, un-truncated results can push the conversation past the context limit.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>After 5+ tool turns in a multi-turn agent, consider summarizing earlier results to avoid hitting context limits.</statement>
+        <rationale>Without summarization, full tool results accumulate and consume most of the context window, leaving little room for new interactions.</rationale>
+      </rule>
+    </section>
+
+    <section name="parallel-tool-execution">
+      <example type="good" title="Parallel tool execution with timeout and truncation">
+        <code lang="python"><![CDATA[
+import concurrent.futures, json
+
+def run_tools_parallel(tool_calls: list, registry: dict) -> list:
+    results = []
+    with concurrent.futures.ThreadPoolExecutor() as ex:
+        futures = {
+            ex.submit(registry[tc.name], **tc.input): tc
+            for tc in tool_calls if tc.name in registry
+        }
+        for future, tc in futures.items():
+            try:
+                result = future.result(timeout=30)
+            except Exception as e:
+                result = {"error": str(e), "code": "TOOL_ERROR"}
+            results.append({
+                "type": "tool_result",
+                "tool_use_id": tc.id,
+                "content": json.dumps(result)[:8000]  # truncate to ~2000 tokens
+            })
+    return results
+        ]]></code>
+        <note>Results are truncated to 8000 chars (approx 2000 tokens) and errors include a structured code field.</note>
+      </example>
+    </section>
+
+    <section name="termination-rules">
+      <p>Agentic loops require explicit termination conditions to prevent runaway API calls and token consumption.</p>
+
+      <rule testable="true">
+        <statement>Always enforce a max_iterations limit (10 or below in production). Log and alert when it triggers.</statement>
+        <rationale>Without a limit, an agent that repeatedly fails a tool call or cannot find a satisfactory answer loops indefinitely, consuming tokens and potentially causing side effects.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Continue the loop until stop_reason == "end_turn" or "max_tokens". stop_reason == "tool_use" means the task is not complete.</statement>
+        <rationale>Each tool_use stop_reason means the model wants to call a tool and continue. Treating tool_use as task completion returns a partial result and skips the model's intended next step.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>When stop_reason == "max_tokens", raise an exception rather than returning a partial response.</statement>
+        <rationale>max_tokens means the response was truncated and the model may have intended to add more tool calls or text. Returning the incomplete response misleads the user.</rationale>
+      </rule>
+    </section>
+
+    <section name="destructive-tool-safety">
+      <p>Tools that modify data, send messages, or charge money require explicit human approval before execution in agentic pipelines.</p>
+
+      <rule testable="true">
+        <statement>Require explicit human approval before dispatching any tool that sends messages, modifies data, or charges money.</statement>
+        <rationale>Agentic loops can trigger destructive actions without user awareness. A human-in-loop checkpoint before irreversible operations is the only reliable safety gate in automated pipelines.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Implement dry-run mode for all tools with side effects. Always test agentic loops in dry-run before enabling live execution.</statement>
+        <rationale>Without dry-run, verifying loop behavior requires making real external changes. Dry-run allows safe iteration on the loop logic without production risk.</rationale>
+      </rule>
+    </section>
+
+    <section name="error-feedback">
+      <p>The error message returned in tool_result drives the model's next action. Clear, actionable errors enable self-correction.</p>
+
+      <rule testable="true">
+        <statement>When a tool fails, return actionable error text in the tool_result. Avoid terse error messages that the model cannot reason about.</statement>
+        <rationale>The model decides its next action based on the tool_result content. A vague error like "500 Internal Server Error" gives no guidance. "order_id 12345 not found; valid IDs are 6-digit numbers" enables self-correction.</rationale>
+      </rule>
+
+      <p>Example error format: {"error": "order_id not found", "code": "NOT_FOUND", "hint": "valid IDs are 6-digit numbers"}</p>
+    </section>
+
+    <section name="agentic-loop-example">
+      <example type="good" title="Safe agentic loop with termination and error handling">
+        <code lang="python"><![CDATA[
+import json, anthropic
+
+client = anthropic.Anthropic()
+
+def agent_loop(tools: list, registry: dict, messages: list,
+               max_iterations: int = 10) -> str:
+    for i in range(max_iterations):
+        resp = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4096,
+            tools=tools,
+            messages=messages
+        )
+        if resp.stop_reason == "end_turn":
+            return resp.content[0].text
+        if resp.stop_reason == "max_tokens":
+            raise ValueError("Response truncated; increase max_tokens")
+        # Handle tool_use
+        messages.append({"role": "assistant", "content": resp.content})
+        tool_results = []
+        for block in resp.content:
+            if block.type == "tool_use":
+                try:
+                    result = registry[block.name](**block.input)
+                except Exception as e:
+                    result = {"error": str(e), "code": "TOOL_ERROR"}
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": json.dumps(result)
+                })
+        messages.append({"role": "user", "content": tool_results})
+    raise RuntimeError(f"max_iterations={max_iterations} reached")
+        ]]></code>
+        <note>Loop exits on end_turn, raises on max_tokens, and includes structured error format for tool failures.</note>
+      </example>
+
+      <antipattern>
+        <description>Treating stop_reason == "tool_use" as task completion and returning a partial response.</description>
+        <reason>tool_use stop_reason means the model wants to call a tool and has not yet produced a final answer. Returning the incomplete assistant message skips all intended tool actions.</reason>
+      </antipattern>
+    </section>
+
+    <section name="tool-routing">
+      <p>For queries that might use a subset of available tools, a router selects the relevant tools before passing to the LLM, improving selection accuracy.</p>
+
+      <rule testable="true">
+        <statement>When you have more than ~10-15 tools, implement a router that selects the relevant tool subset based on the query before passing to the LLM.</statement>
+        <rationale>Model tool selection accuracy degrades when the tool list is large; a router that pre-filters the tool set reduces the decision space and improves accuracy.</rationale>
+      </rule>
+
+      <p>Write tool descriptions from the model's perspective: "Call when X. Do NOT call when Y." — not just what the tool does.</p>
+
+      <p>Set tool_choice="any" when you need the model to call at least one tool; set tool_choice={"type": "tool", "name": "X"} to force a specific tool.</p>
+    </section>
+
+    <section name="gotchas-and-limits">
+      <list>
+        <item>LLMs hallucinate enum values not in the schema — always validate input against the schema before calling the implementation.</item>
+        <item>Tool calls with side effects (writes, payments, sends) need a human-in-loop or dry-run mode; never execute destructive tools without confirmation in agentic pipelines.</item>
+        <item>stop_reason == "tool_use" does not mean the task is complete — the loop must continue until stop_reason == "end_turn" or "max_tokens".</item>
+        <item>Sending back large tool results inflates the context; after 5+ tool turns, consider summarizing earlier results to avoid hitting context limits.</item>
+        <item>Claude does not retry failed tool calls automatically — if a tool returns an error, the next response may ask the user for clarification rather than retrying with different arguments.</item>
+        <item>Human-in-loop checkpoint: any tool that sends messages, modifies data, or charges money requires explicit approval before the tool_use block is dispatched.</item>
+        <item>Anthropic Claude does not support streaming during tool use turns — plan UI accordingly.</item>
+        <item>Parallel tool execution masks ordering constraints; tools that modify shared state must run sequentially.</item>
+        <item>Infinite agentic loops occur when no termination condition exists — always enforce max_iterations.</item>
+        <item>Models can produce hallucinated tool arguments confidently — always validate before execution.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Write tool descriptions from the model's perspective: "Call when X. Do NOT call when Y." — not just what the tool does.</item>
+        <item>Use additionalProperties: false in tool schemas to prevent the model from inventing extra fields.</item>
+        <item>Return structured errors in tool_result (e.g., {"error": "order_id not found", "code": "NOT_FOUND"}) so the model can reason about next steps.</item>
+        <item>For independent tool calls in the same response, execute in parallel — Claude often batches them intentionally.</item>
+        <item>Set tool_choice="any" when you need the model to call at least one tool; set tool_choice={"type": "tool", "name": "X"} to force a specific tool.</item>
+        <item>Keep max_iterations at 10 or below in production; log and alert when it triggers.</item>
+        <item>Truncate large tool results to ≤2000 tokens before returning to context; summarize if needed.</item>
+        <item>Implement dry-run mode for all tools with side effects.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/parallel-executor.py" purpose="Anthropic-format parallel tool executor with ThreadPoolExecutor and timeout"/>
+      <template path="templates/tool-router.py" purpose="ToolRouter class: register tools, get definitions, dispatch query"/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/tool-use">Anthropic Tool Use Guide</link>
+      <link href="https://platform.openai.com/docs/guides/function-calling">OpenAI Function Calling</link>
+      <link href="https://python.useinstructor.com">Instructor: structured output via function calling</link>
+      <link href="https://python.langchain.com/docs/modules/agents/">LangChain Agent Executor</link>
+    </see-also>
+  </content>
+</methodology>

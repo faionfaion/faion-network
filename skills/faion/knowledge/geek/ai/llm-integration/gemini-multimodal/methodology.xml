@@ -1,0 +1,419 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gemini-multimodal">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Native multimodal support for images, video, audio, PDFs, and Python code execution. Context caching cuts costs 75%. Vertex AI enterprise integration included.</summary>
+    <tags>
+      <tag>gemini</tag>
+      <tag>multimodal</tag>
+      <tag>video</tag>
+      <tag>audio</tag>
+      <tag>context-caching</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <applies-to>agents</applies-to>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+  <content>
+    <title>Gemini Multimodal Integration</title>
+    <summary>Gemini is the only frontier model with native video understanding (no frame extraction), native audio processing (no separate Whisper call), and a 2M-token context window. For multi-document pipelines, context caching cuts costs 75% vs. full-price per call. Without the polling guard and file-expiry handler, agents loop indefinitely or silently re-upload duplicate files.</summary>
+    <why>
+      <p>Gemini is the only frontier model with native video understanding (no frame extraction), native audio processing (no separate Whisper call), and a 2M-token context window. For multi-document pipelines, context caching cuts costs 75% vs. full-price per call. Without the polling guard and file-expiry handler, agents loop indefinitely or silently re-upload duplicate files.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Processing video natively — no frame extraction or separate transcription pipeline needed</item>
+        <item>Audio transcription and analysis without a separate Whisper call</item>
+        <item>Long document pipelines — 2M token context handles books, large codebases, multi-document sets</item>
+        <item>Combined modality tasks: video + PDF slides, image + audio explanation, multiple images compared</item>
+        <item>Code execution tasks where the model must compute and return results</item>
+        <item>Enterprise Google Cloud deployments requiring CMEK, VPC Service Controls, IAM (Vertex AI)</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Simple text-only tasks — adds SDK complexity if already on OpenAI/Anthropic</item>
+        <item>When maximum reasoning depth matters — Claude Opus and o1 outperform Gemini on complex multi-step reasoning</item>
+        <item>Privacy-sensitive content that cannot leave on-premises — Gemini requires upload to Google servers</item>
+        <item>Low-latency real-time voice — Gemini Live API is more complex than OpenAI Realtime API</item>
+        <item>Teams with deep OpenAI or Anthropic expertise — switching SDK adds friction for marginal gains on text tasks</item>
+      </list>
+    </when-not-to-use>
+    <section name="Modalities">
+      <p>Gemini supports five modalities with distinct constraints:</p>
+      <list>
+        <item>Images: JPG, PNG, WEBP, HEIC, HEIF — max 20MB — vision, OCR, analysis</item>
+        <item>Video: MP4, MPEG, MOV, AVI, FLV, MPG, WEBM, WMV, 3GPP — max 2GB — requires async polling</item>
+        <item>Audio: MP3, WAV, AIFF, AAC, OGG, FLAC — max 100MB — transcription, speaker ID, sentiment</item>
+        <item>PDFs: max 100MB — document Q&amp;A, table/multi-column extraction</item>
+        <item>Code execution: Python sandbox only, no internet, ~30s execution limit</item>
+      </list>
+    </section>
+    <section name="Image Analysis">
+      <rule>
+        <statement>Load images via PIL.Image or pass raw bytes; Gemini handles HEIC/HEIF natively.</statement>
+        <rationale>Some image formats require conversion on the client side if you're not using Gemini's native support; using PIL avoids client-side preprocessing.</rationale>
+      </rule>
+      <rule>
+        <statement>Pass multiple images in a single generate_content call to compare or analyze relationships between images.</statement>
+        <rationale>Multiple images in one call are cheaper than N separate calls; Gemini understands relationships without explicit prompting.</rationale>
+      </rule>
+      <example type="good" title="Single and multiple image analysis">
+        <code lang="python"><![CDATA[
+import PIL.Image
+import google.generativeai as genai
+
+genai.configure(api_key="YOUR_API_KEY")
+model = genai.GenerativeModel("gemini-2.0-flash")
+
+# Single image
+image = PIL.Image.open("photo.jpg")
+response = model.generate_content(["Describe this image in detail", image])
+
+# Multiple images for comparison
+img1 = PIL.Image.open("before.jpg")
+img2 = PIL.Image.open("after.jpg")
+response = model.generate_content(["Compare these images and describe differences", img1, img2])
+]]></code>
+      </example>
+    </section>
+    <section name="Audio Processing">
+      <rule>
+        <statement>Always poll until state is ACTIVE or FAILED before passing to the model; poll interval should be 5 seconds.</statement>
+        <rationale>Audio files take time to process; polling too frequently wastes quota, polling too slowly delays the result.</rationale>
+      </rule>
+      <example type="good" title="Audio transcription and analysis">
+        <code lang="python"><![CDATA[
+import time
+audio_file = genai.upload_file("podcast.mp3")
+while audio_file.state.name == "PROCESSING":
+    time.sleep(5)
+    audio_file = genai.get_file(audio_file.name)
+
+model = genai.GenerativeModel("gemini-1.5-pro")
+response = model.generate_content(["Transcribe this audio recording", audio_file])
+# Also useful: speaker identification, sentiment, topic extraction
+]]></code>
+      </example>
+    </section>
+    <section name="PDF Processing">
+      <rule>
+        <statement>Use Gemini for PDF extraction over custom PDF libraries — it handles tables, images, and multi-column layouts natively without client-side parsing.</statement>
+        <rationale>Custom PDF parsers struggle with non-standard layouts; Gemini's vision understanding extracts content more reliably.</rationale>
+      </rule>
+      <example type="good" title="Structured extraction from PDF">
+        <code lang="python"><![CDATA[
+pdf_file = genai.upload_file("document.pdf")
+model = genai.GenerativeModel("gemini-1.5-pro")
+
+# Structured extraction
+response = model.generate_content([
+    """Extract the following in JSON:
+    {"party_names": [...], "contract_value": ..., "key_dates": [...], "payment_terms": "..."}""",
+    pdf_file
+])
+]]></code>
+        <note>Gemini handles tables, images, and multi-column layouts natively — no custom PDF parser needed.</note>
+      </example>
+    </section>
+    <section name="Combined Modalities">
+      <rule>
+        <statement>Store uploaded file names with timestamps; re-upload if older than 48 hours — Gemini files expire after 48 hours.</statement>
+        <rationale>File upload is not idempotent; uploading the same file twice creates two separate file objects, doubling storage cost.</rationale>
+      </rule>
+      <example type="good" title="Video and PDF cross-reference">
+        <code lang="python"><![CDATA[
+# Video + PDF cross-reference
+video_file = genai.upload_file("presentation.mp4")
+pdf_file = genai.upload_file("slides.pdf")
+response = model.generate_content([
+    "Compare the video presentation with the PDF slides. Note any discrepancies.",
+    video_file, pdf_file
+])
+]]></code>
+      </example>
+    </section>
+    <section name="Video Processing State Machine">
+      <rule>
+        <statement>Always add a max-iteration guard to the video processing polling loop — a stuck PROCESSING state loops forever without it.</statement>
+        <rationale>Gemini video processing can hang in PROCESSING indefinitely for corrupted or unsupported files; the guard prevents infinite loops.</rationale>
+      </rule>
+      <rule>
+        <statement>Handle FAILED state explicitly and raise an error — do not treat it as a retry condition.</statement>
+        <rationale>A FAILED state means the file cannot be processed; retrying wastes time and quota.</rationale>
+      </rule>
+      <example type="good" title="Async video analysis with max-iteration guard">
+        <code lang="python"><![CDATA[
+import time
+import google.generativeai as genai
+
+def analyze_video(path: str, query: str, model_name="gemini-1.5-pro") -> str:
+    file = genai.upload_file(path)
+    for _ in range(60):  # 5-minute max wait (60 * 5s)
+        file = genai.get_file(file.name)
+        if file.state.name == "ACTIVE":
+            break
+        if file.state.name == "FAILED":
+            raise RuntimeError(f"Video processing failed: {file.name}")
+        time.sleep(5)
+    else:
+        raise TimeoutError("Video processing timed out after 5 minutes")
+    model = genai.GenerativeModel(model_name)
+    return model.generate_content([query, file]).text
+]]></code>
+      </example>
+      <rule>
+        <statement>Use GCS URIs (`gs://bucket/file.mp4`) instead of SDK uploads for large or frequently-accessed files — faster, no re-upload if the file already exists in GCS.</statement>
+        <rationale>SDK uploads copy the file on every pipeline run; GCS URIs reference existing cloud storage without transfer cost.</rationale>
+      </rule>
+      <example type="good" title="GCS URI pattern with Vertex AI">
+        <code lang="python"><![CDATA[
+from vertexai.generative_models import GenerativeModel, Part
+
+video_part = Part.from_uri(uri="gs://your-bucket/video.mp4", mime_type="video/mp4")
+model = GenerativeModel("gemini-1.5-pro")
+response = model.generate_content(["Summarize this video", video_part])
+]]></code>
+      </example>
+      <example type="good" title="Timestamp queries in video">
+        <code lang="python"><![CDATA[
+# Extract structured info with timestamps
+response = model.generate_content([
+    """Analyze this video and extract:
+    {"topics": [...], "key_timestamps": [{"time": "MM:SS", "event": "..."}],
+     "action_items": [...]}
+    Return only valid JSON.""",
+    video_file
+])
+]]></code>
+        <note>Gemini resolves timestamp references ("what happens at 2:30") natively; no frame extraction needed.</note>
+      </example>
+    </section>
+    <section name="Context Caching">
+      <rule>
+        <statement>Check token count before creating a cache — creating a cache on content below 32K tokens raises an API error.</statement>
+        <rationale>The 32K minimum is a hard API constraint; attempting to cache small documents wastes a round-trip and surfaces an uninformative error.</rationale>
+      </rule>
+      <rule>
+        <statement>Set TTL to match query pattern: 1 hour for interactive sessions, 24 hours for batch jobs. Extend before expiry, not after.</statement>
+        <rationale>Expired caches require re-creation including re-uploading the document; extending TTL is a cheaper operation than re-upload.</rationale>
+      </rule>
+      <example type="good" title="Context cache creation">
+        <code lang="python"><![CDATA[
+from google.generativeai import caching
+import google.generativeai as genai
+
+document = genai.upload_file("large_document.pdf")
+
+cache = caching.CachedContent.create(
+    model="gemini-1.5-pro",
+    display_name="Large document cache",
+    system_instruction="You are an expert document analyzer.",
+    contents=[document],
+    ttl="3600s"  # 1 hour
+)
+print(f"Cache created: {cache.name}, tokens: {cache.usage_metadata.total_token_count}")
+]]></code>
+      </example>
+      <example type="good" title="Using cached content for multi-turn Q&amp;A">
+        <code lang="python"><![CDATA[
+model = genai.GenerativeModel.from_cached_content(cache)
+
+# All queries reuse cached document tokens — 75% cheaper than full-price input
+response = model.generate_content("Summarize the main points")
+response2 = model.generate_content("What are the key dates mentioned?")
+]]></code>
+        <note>Cost: $0.01875/M tokens cached vs $0.075/M tokens uncached (gemini-1.5-pro). Break-even at 2+ queries.</note>
+      </example>
+      <example type="good" title="Cache lifecycle management">
+        <code lang="python"><![CDATA[
+# List all caches
+for c in caching.CachedContent.list():
+    print(f"{c.name}: {c.display_name}")
+
+# Extend TTL
+cache.update(ttl="7200s")
+
+# Delete when done
+cache.delete()
+]]></code>
+      </example>
+    </section>
+    <section name="Code Execution Sandbox">
+      <rule>
+        <statement>Access executable_code and code_execution_result as separate content parts — iterate response.candidates[0].content.parts and check hasattr for each.</statement>
+        <rationale>Code and output are distinct part types; indexing blindly into content returns whichever part happens to be first.</rationale>
+      </rule>
+      <example type="good" title="Code execution setup">
+        <code lang="python"><![CDATA[
+import google.generativeai as genai
+
+model = genai.GenerativeModel(
+    model_name="gemini-2.0-flash",
+    tools=["code_execution"]
+)
+
+response = model.generate_content(
+    "Calculate the first 20 Fibonacci numbers and show the result"
+)
+
+for part in response.candidates[0].content.parts:
+    if hasattr(part, "executable_code"):
+        print("Code:\n", part.executable_code.code)
+    if hasattr(part, "code_execution_result"):
+        print("Output:\n", part.code_execution_result.output)
+]]></code>
+      </example>
+      <example type="good" title="Data analysis with CSV">
+        <code lang="python"><![CDATA[
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-pro",
+    tools=["code_execution"]
+)
+csv_file = genai.upload_file("sales_data.csv")
+
+response = model.generate_content([
+    "Analyze this sales data. Calculate monthly averages, find top performers, summarize trends.",
+    csv_file
+])
+]]></code>
+        <note>Sandbox has no internet access and ~30s execution limit. Results may be truncated for long-running computations.</note>
+      </example>
+    </section>
+    <section name="Vertex AI Enterprise Integration">
+      <rule>
+        <statement>Vertex AI uses Application Default Credentials (gcloud auth application-default login), not GOOGLE_API_KEY — these are not interchangeable.</statement>
+        <rationale>Mixing auth methods causes silent 403 errors; Vertex AI IAM roles are applied to the service account, not to an API key.</rationale>
+      </rule>
+      <rule>
+        <statement>Use Vertex AI when the deployment requires CMEK, VPC isolation, or SOC2/HIPAA compliance — the Gemini Developer API does not provide these guarantees.</statement>
+        <rationale>Enterprise compliance requirements are contractual; the Developer API is designed for prototyping, not regulated data handling.</rationale>
+      </rule>
+      <example type="good" title="Vertex AI setup">
+        <code lang="python"><![CDATA[
+import vertexai
+from vertexai.generative_models import GenerativeModel, Part
+
+vertexai.init(project="your-gcp-project", location="us-central1")
+model = GenerativeModel("gemini-1.5-pro")
+response = model.generate_content("Explain quantum computing")
+]]></code>
+      </example>
+      <example type="good" title="Multimodal with GCS URIs in Vertex AI">
+        <code lang="python"><![CDATA[
+from vertexai.generative_models import Part
+
+video_part = Part.from_uri(uri="gs://your-bucket/video.mp4", mime_type="video/mp4")
+model = GenerativeModel("gemini-1.5-pro")
+response = model.generate_content(["Summarize this video", video_part])
+]]></code>
+      </example>
+      <list>
+        <item>VPC Service Controls: network isolation — prevent data exfiltration</item>
+        <item>CMEK: Customer-Managed Encryption Keys for data at rest</item>
+        <item>Cloud Audit Logs: every API call logged to Cloud Logging</item>
+        <item>IAM: fine-grained access control per model and project</item>
+        <item>Model Tuning: supervised fine-tuning on Vertex AI datasets</item>
+        <item>Evaluation: built-in evaluation metrics for model quality</item>
+      </list>
+    </section>
+    <section name="Agent Integration">
+      <p>A multimodal agent using Gemini separates file management from inference: files are uploaded once (or referenced via GCS URI), and the file reference is passed to multiple inference calls. For high-traffic document Q&amp;A, use context caching: upload the document, create a cache, and instantiate the model from the cache so all questions reuse the cached tokens. For video analysis pipelines, implement a state machine (upload → poll → analyze) rather than blocking on the upload.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-sdd-executor-agent — can invoke Gemini for design document generation from uploaded architecture diagrams</item>
+        <item>A dedicated media-analysis-agent that handles file upload, polling, and extraction, exposing a simple analyze(file_path, query) interface</item>
+      </list>
+      <p>Prompt patterns:</p>
+      <p>Structured extraction from any modality:</p>
+      <code lang="python"><![CDATA[
+response = model.generate_content([
+    """Extract the following in JSON format:
+    {"summary": "...", "key_points": [...], "action_items": [...]}
+    Do not include keys not listed above.""",
+    uploaded_file
+])
+]]></code>
+      <p>Multi-turn document Q&amp;A with context caching:</p>
+      <code lang="python"><![CDATA[
+model = genai.GenerativeModel.from_cached_content(cache)
+chat = model.start_chat()
+# All messages in this chat reuse cached document tokens
+answer = chat.send_message("What are the payment terms?")
+]]></code>
+    </section>
+    <section name="Tools and Dependencies">
+      <list>
+        <item>google-generativeai — Gemini Developer API (non-Vertex). Install: pip install google-generativeai. Docs: https://ai.google.dev</item>
+        <item>vertexai — Google Cloud Vertex AI SDK (enterprise). Install: pip install vertexai. Docs: https://cloud.google.com/vertex-ai/docs</item>
+        <item>google-cloud-aiplatform — Lower-level Vertex AI client. Install: pip install google-cloud-aiplatform</item>
+        <item>Pillow — Image loading for PIL.Image objects. Install: pip install Pillow</item>
+        <item>gcloud (CLI) — GCS upload, IAM, project management. Docs: https://cloud.google.com/sdk/docs/install</item>
+      </list>
+      <list>
+        <item>Gemini Developer API — SaaS, free tier available, genai SDK, agent-friendly</item>
+        <item>Vertex AI (Gemini) — SaaS, enterprise with IAM auth + CMEK + VPC, agent-friendly</item>
+        <item>Google Cloud Storage — SaaS, use GCS URIs instead of uploads for large/persistent files, agent-friendly</item>
+        <item>Firebase App Check — SaaS, mobile-facing, not for server-to-server agent calls, partial agent support</item>
+        <item>Google AI Studio — SaaS, web UI for prototyping, not for production agent calls, partial agent support</item>
+      </list>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Use GCS URIs (gs://bucket/file.mp4) instead of uploading via SDK for large files — faster, no re-upload if file already exists in GCS</item>
+        <item>Set TTL on context caches to match your query pattern — 1 hour for interactive sessions, 24 hours for batch jobs</item>
+        <item>Use gemini-2.0-flash for fast, cheap multimodal tasks; gemini-1.5-pro for long video and complex reasoning</item>
+        <item>Specify output format explicitly in the prompt (JSON, markdown table, bullet list) — Gemini follows format instructions reliably</item>
+        <item>For PDF extraction, prefer Gemini over custom PDF parsers — it handles tables, images, and multi-column layouts natively</item>
+        <item>Handle the 48-hour file expiry: store file.name in a DB with upload timestamp and re-upload if expired</item>
+        <item>For code execution, inspect part.executable_code and part.code_execution_result separately — they are distinct content parts</item>
+      </list>
+    </section>
+    <section name="Common Gotchas">
+      <antipattern>
+        <description>File upload is not idempotent — uploading the same file twice creates two separate file objects; cache file names to avoid duplicate uploads</description>
+        <reason>Re-uploading wastes storage quota and creates orphaned file objects that consume space until expiry.</reason>
+      </antipattern>
+      <antipattern>
+        <description>The polling loop must have a max-iteration guard — a stuck "PROCESSING" state will loop forever without it</description>
+        <reason>Video processing can hang indefinitely for corrupted or unsupported files; without a guard, the agent stalls indefinitely.</reason>
+      </antipattern>
+      <antipattern>
+        <description>model.generate_content() is synchronous; for concurrent agent workers, use asyncio with aiohttp or the async Vertex SDK</description>
+        <reason>Blocking calls prevent parallel processing; async patterns are necessary for high-throughput pipelines.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Context cache requires a minimum of 32K tokens — if your document is smaller, caching raises an error; check token count before creating</description>
+        <reason>Attempting to cache small documents wastes a round-trip and surfaces an API error; check first.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Gemini's 2M context window tempts agents to stuff everything in one call — but cost is linear with tokens; use retrieval for large corpora</description>
+        <reason>Shoving all documents into one call maximizes latency and cost; chunking + retrieval is more efficient.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Code execution results may be truncated for long-running computations; the sandbox has execution time limits (~30s)</description>
+        <reason>Long-running code fails silently with truncated output; break into smaller chunks or use external compute.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Vertex AI auth uses Application Default Credentials (gcloud auth application-default login) — different from GOOGLE_API_KEY used by the Gemini Developer API</description>
+        <reason>Mixing auth methods causes silent 403 errors; keep them separate per environment.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/analyze-video.py" purpose="Async-safe video upload + polling + analysis function with max-iteration guard"/>
+      <template path="templates/context-cache.py" purpose="Context cache create/use/manage pattern for repeated document queries"/>
+    </templates>
+    <see-also>
+      <link href="https://ai.google.dev/docs"/>
+      <link href="https://cloud.google.com/vertex-ai/generative-ai/docs"/>
+      <link href="https://github.com/google-gemini/gemini-api-cookbook"/>
+      <link href="https://ai.google.dev/gemini-api/docs/caching"/>
+      <link href="https://ai.google.dev/gemini-api/docs/code-execution"/>
+    </see-also>
+  </content>
+</methodology>

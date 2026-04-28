@@ -1,0 +1,467 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="agent-patterns">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Implementation patterns for autonomous agents: ReAct (Reason + Act), Plan-and-Execute (plan first then execute), Reflexion (self-critique and retry). Each solves different task types.</summary>
+    <tags>
+      <tag>agents</tag>
+      <tag>patterns</tag>
+      <tag>react</tag>
+      <tag>planning</tag>
+      <tag>reflexion</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>Agent Patterns</title>
+    <summary>Implementation patterns for different types of autonomous agents. ReAct is general-purpose task execution with reasoning and tool calls. Plan-and-Execute creates a plan upfront then executes steps sequentially. Reflexion uses self-critique and retry for tasks requiring iteration and self-correction.</summary>
+    <why>
+      <p>Different agent tasks require different control flow patterns. A general task that needs tool use and reasoning benefits from ReAct (Reason + Act loops). A complex multi-step project benefits from Plan-and-Execute because decomposing the plan upfront prevents the agent from getting stuck mid-task when it discovers new constraints. Learning and iterative refinement tasks benefit from Reflexion because the agent can critique its own output and retry with improved strategy. Choosing the right pattern for the task type is more important than the underlying LLM model — a well-structured ReAct agent on Haiku often outperforms a poorly-structured agent on Opus.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Complex multi-step tasks requiring tool orchestration</item>
+        <item>Research and analysis workflows where the agent may need to recover from dead ends</item>
+        <item>Code generation and execution workflows</item>
+        <item>When tasks require iteration and self-correction</item>
+        <item>Automating knowledge work that would normally require human iteration</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-step lookup or retrieval where overhead is wasteful</item>
+        <item>Latency-sensitive paths where one round-trip must complete in under 2 seconds</item>
+        <item>Tasks with no verifiable success criterion (Reflexion loop has no termination signal)</item>
+        <item>Environments without tool access where ReAct degenerates to plain chain-of-thought</item>
+        <item>Budget-constrained situations where multiple LLM calls are prohibitive</item>
+      </list>
+    </when-not-to-use>
+    <section name="Pattern Comparison">
+      <p>Each agent pattern has distinct characteristics and failure modes. ReAct (Reason + Act) creates a loop where the agent reasons about what to do, calls a tool, observes the result, and repeats until the task is done. This pattern is ideal for general tasks because it naturally handles observation-driven decisions. Plan-and-Execute first generates a structured plan with subtasks and dependencies, then executes each task in order. This pattern is ideal for complex multi-step projects where decomposition upfront saves iterations. Reflexion (Self-Reflection) uses an inner ReAct or planning agent, reflects on the output to check for correctness, and retries if the check fails. This pattern is ideal for code generation, math, and structured data tasks where correctness is objective.</p>
+      <list>
+        <item>ReAct (Reason + Act) — Reason → Act loop for general tasks. Best for: research, investigation, flexible workflows.</item>
+        <item>Plan-and-Execute — Plan first, then execute. Best for: complex projects, multi-step workflows, known subtask types.</item>
+        <item>Reflexion — Self-critique and improve. Best for: learning tasks, code generation, tasks with objective success criteria.</item>
+        <item>AutoGPT-style — Full autonomy with goals and subgoaling. Best for: research automation, open-ended exploration.</item>
+      </list>
+    </section>
+    <section name="ReAct Agent Implementation">
+      <p>The ReAct pattern implements a simple loop: the agent receives a task, calls the LLM with tools, extracts any tool calls from the response, executes those tools, and appends results back to the message history. This continues until the LLM produces a response with no tool calls, at which point the task is complete.</p>
+      <code lang="python"><![CDATA[from openai import OpenAI
+from typing import List, Dict
+import json
+
+client = OpenAI()
+
+class ReActAgent:
+    """Simple ReAct agent implementation."""
+
+    def __init__(
+        self,
+        tools: List[Tool],
+        model: str = "gpt-4o",
+        max_iterations: int = 10,
+        system_prompt: str = None
+    ):
+        self.tools = {t.name: t for t in tools}
+        self.model = model
+        self.max_iterations = max_iterations
+        self.system_prompt = system_prompt or self._default_system_prompt()
+        self.messages = []
+
+    def _default_system_prompt(self) -> str:
+        return """You are a helpful AI assistant with access to tools.
+
+When you need to accomplish a task:
+1. Think about what you need to do
+2. Use available tools when needed
+3. Analyze tool results
+4. Continue until the task is complete
+
+Always explain your reasoning before taking actions."""
+
+    def run(self, task: str) -> str:
+        """Run the agent on a task."""
+        self.messages = [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": task}
+        ]
+
+        for iteration in range(self.max_iterations):
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=self.messages,
+                tools=[t.to_openai_format() for t in self.tools.values()],
+                tool_choice="auto"
+            )
+
+            message = response.choices[0].message
+
+            # No tool calls - task complete
+            if not message.tool_calls:
+                return message.content
+
+            # Process tool calls
+            self.messages.append(message)
+
+            for tool_call in message.tool_calls:
+                tool_name = tool_call.function.name
+                arguments = json.loads(tool_call.function.arguments)
+
+                print(f"[Tool] {tool_name}: {arguments}")
+
+                if tool_name in self.tools:
+                    result = self.tools[tool_name].execute(**arguments)
+                else:
+                    result = f"Unknown tool: {tool_name}"
+
+                self.messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": result
+                })
+
+        return "Max iterations reached without completion."]]></code>
+    </section>
+    <section name="Plan-and-Execute Agent Implementation">
+      <p>The Plan-and-Execute pattern first calls the LLM to decompose the goal into subtasks and dependencies, then executes each task in order. This upfront decomposition allows the agent to reason about the full scope before committing to execution, reducing the chance of getting stuck mid-task.</p>
+      <code lang="python"><![CDATA[from dataclasses import dataclass
+from typing import List, Optional
+
+@dataclass
+class Task:
+    description: str
+    status: str = "pending"  # pending, in_progress, completed, failed
+    result: Optional[str] = None
+    dependencies: List[int] = None
+
+class PlanAndExecuteAgent:
+    """Agent that creates a plan before executing."""
+
+    def __init__(
+        self,
+        tools: List[Tool],
+        model: str = "gpt-4o",
+        planner_model: str = "gpt-4o"
+    ):
+        self.tools = {t.name: t for t in tools}
+        self.model = model
+        self.planner_model = planner_model
+        self.plan: List[Task] = []
+
+    def create_plan(self, goal: str) -> List[Task]:
+        """Create a plan to achieve the goal."""
+        tools_description = "\n".join([
+            f"- {t.name}: {t.description}"
+            for t in self.tools.values()
+        ])
+
+        prompt = f"""Create a step-by-step plan to achieve this goal.
+
+Goal: {goal}
+
+Available tools:
+{tools_description}
+
+Return a JSON array of tasks:
+[{{"description": "task description", "dependencies": [0, 1]}}]
+
+Dependencies are indices of tasks that must complete first.
+Keep the plan focused and minimal."""
+
+        response = client.chat.completions.create(
+            model=self.planner_model,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+
+        tasks_data = json.loads(response.choices[0].message.content)
+
+        self.plan = [
+            Task(
+                description=t["description"],
+                dependencies=t.get("dependencies", [])
+            )
+            for t in tasks_data.get("tasks", tasks_data)
+        ]
+
+        return self.plan
+
+    def execute_task(self, task: Task) -> str:
+        """Execute a single task."""
+        task.status = "in_progress"
+
+        # Get context from completed dependencies
+        context = ""
+        if task.dependencies:
+            context = "Previous task results:\n"
+            for dep_idx in task.dependencies:
+                if dep_idx < len(self.plan):
+                    context += f"- {self.plan[dep_idx].description}: {self.plan[dep_idx].result}\n"
+
+        prompt = f"""{context}
+
+Current task: {task.description}
+
+Complete this task using available tools. Explain your approach."""
+
+        messages = [
+            {"role": "system", "content": "You are an AI assistant executing a plan."},
+            {"role": "user", "content": prompt}
+        ]
+
+        # Execute with tools
+        for _ in range(5):  # Max iterations per task
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                tools=[t.to_openai_format() for t in self.tools.values()],
+                tool_choice="auto"
+            )
+
+            message = response.choices[0].message
+
+            if not message.tool_calls:
+                task.result = message.content
+                task.status = "completed"
+                return message.content
+
+            messages.append(message)
+
+            for tool_call in message.tool_calls:
+                result = self.tools[tool_call.function.name].execute(
+                    **json.loads(tool_call.function.arguments)
+                )
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": result
+                })
+
+        task.status = "failed"
+        return "Task execution timeout"
+
+    def run(self, goal: str) -> str:
+        """Run the full plan-and-execute loop."""
+        # Create plan
+        self.create_plan(goal)
+        print(f"Created plan with {len(self.plan)} tasks")
+
+        # Execute tasks in order (respecting dependencies)
+        results = []
+
+        while any(t.status == "pending" for t in self.plan):
+            for i, task in enumerate(self.plan):
+                if task.status != "pending":
+                    continue
+
+                # Check dependencies
+                deps_complete = all(
+                    self.plan[d].status == "completed"
+                    for d in task.dependencies
+                    if d < len(self.plan)
+                )
+
+                if deps_complete:
+                    print(f"Executing task {i + 1}: {task.description}")
+                    result = self.execute_task(task)
+                    results.append(f"Task {i + 1}: {result}")
+
+        return "\n\n".join(results)]]></code>
+    </section>
+    <section name="Reflexion Agent Implementation">
+      <p>The Reflexion pattern wraps an inner agent (ReAct or Plan-and-Execute) and adds a critique step. After the inner agent produces an output, a reflection function checks if the output is correct. If not, the agent retries with the reflection as additional context. This pattern is particularly effective for code generation where tests provide an objective success criterion.</p>
+      <code lang="python"><![CDATA[from typing import Callable
+
+class ReflexionAgent:
+    """Agent that learns from mistakes through self-reflection."""
+
+    def __init__(
+        self,
+        tools: List[Tool],
+        model: str = "gpt-4o",
+        max_attempts: int = 3
+    ):
+        self.tools = {t.name: t for t in tools}
+        self.model = model
+        self.max_attempts = max_attempts
+        self.reflections: List[str] = []
+
+    def attempt_task(self, task: str, previous_attempts: List[dict] = None) -> dict:
+        """Make one attempt at the task."""
+        context = ""
+        if previous_attempts:
+            context = "Previous attempts and reflections:\n"
+            for attempt in previous_attempts:
+                context += f"\nAttempt: {attempt['action']}\n"
+                context += f"Result: {attempt['result']}\n"
+                context += f"Reflection: {attempt['reflection']}\n"
+
+        messages = [
+            {
+                "role": "system",
+                "content": f"""You are an AI agent that learns from mistakes.
+{context}
+
+Based on previous attempts (if any), improve your approach.
+Explain your reasoning before taking action."""
+            },
+            {"role": "user", "content": task}
+        ]
+
+        # Execute with tools (up to 5 iterations per attempt)
+        action_log = []
+        for _ in range(5):
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                tools=[t.to_openai_format() for t in self.tools.values()]
+            )
+
+            message = response.choices[0].message
+
+            if not message.tool_calls:
+                return {
+                    "action": "\n".join(action_log),
+                    "result": message.content,
+                    "success": True
+                }
+
+            messages.append(message)
+
+            for tool_call in message.tool_calls:
+                action = f"{tool_call.function.name}({tool_call.function.arguments})"
+                action_log.append(action)
+
+                result = self.tools[tool_call.function.name].execute(
+                    **json.loads(tool_call.function.arguments)
+                )
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": result
+                })
+
+        return {
+            "action": "\n".join(action_log),
+            "result": "Max iterations reached",
+            "success": False
+        }
+
+    def reflect(self, task: str, attempt: dict) -> str:
+        """Reflect on an attempt to improve future attempts."""
+        prompt = f"""Reflect on this attempt at the task.
+
+Task: {task}
+
+Actions taken:
+{attempt['action']}
+
+Result:
+{attempt['result']}
+
+Was this successful? What could be improved?
+What should be done differently next time?
+
+Provide a brief, actionable reflection."""
+
+        response = client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        return response.choices[0].message.content
+
+    def run(self, task: str, success_check: Callable = None) -> str:
+        """Run with reflection and retry."""
+        attempts = []
+
+        for attempt_num in range(self.max_attempts):
+            print(f"Attempt {attempt_num + 1}/{self.max_attempts}")
+
+            # Make attempt
+            attempt = self.attempt_task(task, attempts)
+
+            # Check success
+            if success_check:
+                success = success_check(attempt["result"])
+            else:
+                success = attempt["success"]
+
+            if success:
+                return attempt["result"]
+
+            # Reflect on failure
+            reflection = self.reflect(task, attempt)
+            attempt["reflection"] = reflection
+            attempts.append(attempt)
+            self.reflections.append(reflection)
+
+            print(f"Reflection: {reflection}")
+
+        return f"Failed after {self.max_attempts} attempts. Last result: {attempts[-1]['result']}"]]></code>
+    </section>
+    <section name="When Patterns Fail and Limitations">
+      <p>ReAct can get stuck in repetitive tool-call loops when tool results are ambiguous or contradictory. If the agent calls the same tool twice in a row with very similar arguments, that's a sign the previous result was unclear.</p>
+      <p>Plan-and-Execute plans become stale if early steps produce unexpected results; replanning is expensive and agents often don't implement it. If step 3 discovers a new constraint that invalidates the remaining plan, the agent usually proceeds to complete all remaining steps against an invalid intermediate state.</p>
+      <p>Reflexion requires a reliable success_check function. If the check itself has false positives (returns true when the output is actually wrong), the loop exits early with incorrect output. Non-deterministic success checks cause flapping where the agent retries the same thing multiple times.</p>
+      <p>Max-iteration guards are necessary but arbitrary; tasks that genuinely need more steps silently fail when max_iterations is reached.</p>
+      <p>All three patterns accumulate message history that can exceed context limits on long runs. After ~15 ReAct iterations or 10 Plan-and-Execute steps, full history may overflow even GPT-4o's 128k context window.</p>
+      <p>Tool-call JSON parsing errors break the loop mid-task without clean recovery unless caught explicitly. Always validate tool arguments match the tool schema before executing.</p>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Claude subagents map naturally onto each pattern. A ReAct subagent is invoked once per task and loops internally via tool calls. A Plan-and-Execute subagent receives the goal, returns a structured plan, then an executor subagent handles each step. A Reflexion subagent wraps an inner ReAct agent and calls a critic subagent after each attempt. The parent orchestrator decides which pattern to apply based on task complexity and provides the success_check callback if using Reflexion.</p>
+      <p>Recommended subagents include researcher (ReAct pattern with web-search and code-execution tools for open-ended investigation), planner (Plan-and-Execute for project-scoped tasks with known subtask types), and code-fixer (Reflexion for iterative code generation with test-suite as success signal).</p>
+    </section>
+    <section name="Prompt Patterns for Agent Deployment">
+      <p>For ReAct agents, structure the prompt to set expectations about tool use and iteration limits. This makes the agent's behavior predictable and controllable:</p>
+      <code lang="xml"><![CDATA[<task>{{task_description}}</task>
+<pattern>react</pattern>
+<max_iterations>10</max_iterations>
+<tools>{{tool_list_json}}</tools>]]></code>
+      <p>For Reflexion agents with a specific success criterion, specify the objective measure of correctness. The agent will use this criterion to decide whether to retry or accept the output as final:</p>
+      <code lang="xml"><![CDATA[<task>{{goal}}</task>
+<pattern>reflexion</pattern>
+<success_criterion>All unit tests pass with exit code 0</success_criterion>
+<max_attempts>3</max_attempts>]]></code>
+      <p>The prompt structure matters because it tells the agent explicitly which pattern to follow. An agent without a clear pattern directive may default to simple chain-of-thought and miss opportunities for tool use and iteration.</p>
+    </section>
+    <section name="CLI Tools and Observability">
+      <p>Several tools integrate with agent patterns. langchain-cli scaffolds LangChain agent projects. litellm proxies multiple LLM backends behind one API. instructor provides structured output from LLM calls, useful for parsing Plan-and-Execute plans. LangSmith traces every ReAct step and is essential for debugging loops. Weights and Biases Weave logs multi-turn agent runs with cost tracking. Helicone provides per-request cost and latency observability for all patterns. LangGraph Cloud provides hosted execution for LangGraph-based agents.</p>
+      <list>
+        <item>langchain-cli — Scaffold LangChain agent projects. pip install langchain-cli</item>
+        <item>litellm — Proxy multiple LLM backends behind one API. pip install litellm</item>
+        <item>instructor — Structured output from LLM calls; useful for plan parsing. pip install instructor</item>
+      </list>
+    </section>
+    <section name="Best Practices">
+      <p>Always cap max_iterations and max_attempts; never allow unbounded loops in production. Persist message history to a store (Redis, SQLite) so crashed agents can resume rather than restart. In Plan-and-Execute, validate the plan structure (JSON schema) before executing any step to fail fast. Use a cheaper model for the Reflexion critic call; full Opus is rarely needed for self-evaluation. Emit structured logs per iteration (iteration number, tool_name, result_summary) to enable post-hoc debugging. Separate tool-execution errors from logic errors; tool failures should trigger retry with backoff, not full agent restart. For Reflexion, make success_check deterministic — non-deterministic checks cause flapping across attempts.</p>
+    </section>
+    <section name="Common Gotchas">
+      <p>Context growth: Every ReAct iteration appends to messages; after ~15 turns the full history may overflow GPT-4o's 128k window. Truncate or summarize old observations before appending new ones.</p>
+      <p>Tool-call hallucination: Models occasionally fabricate tool names not in the schema. Guard with `if tool_name in self.tools` before executing.</p>
+      <p>Plan staleness: Plan-and-Execute assumes the world is static. If step 3 discovers new constraints, the remaining plan is invalid. Add a re-plan gate after each step that checks if continuation is still valid.</p>
+      <p>Reflexion termination: Without a reliable success_check, agents loop to max_attempts on every run, tripling costs. Always wire in a real verifier (test runner, schema validator, linter).</p>
+      <p>Human-in-the-loop breakpoint: For destructive actions (file writes, API mutations), insert an explicit human approval step before execution, even inside an autonomous Reflexion loop.</p>
+    </section>
+    <section name="Model Selection by Pattern">
+      <list>
+        <item>Generate tool definitions from API — haiku. Mechanical transformation with no reasoning.</item>
+        <item>Review agent reasoning chains — sonnet. Requires logic analysis across multiple steps.</item>
+        <item>Design multi-agent orchestration — opus. Complex coordination patterns and delegation.</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://arxiv.org/abs/2210.03629">ReAct Paper</link>
+      <link href="https://arxiv.org/abs/2303.11366">Reflexion Paper</link>
+      <link href="https://python.langchain.com/docs/modules/agents/">LangChain Agents Docs</link>
+      <link href="https://docs.smith.langchain.com/">LangSmith Agent Tracing</link>
+      <link href="https://platform.openai.com/docs/guides/function-calling">OpenAI Function Calling</link>
+      <link href="https://docs.trychroma.com/">Chroma Vector Store</link>
+    </see-also>
+  </content>
+</methodology>

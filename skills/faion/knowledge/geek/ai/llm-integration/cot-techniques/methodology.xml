@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cot-techniques">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Advanced CoT patterns beyond zero-shot: Tree of Thoughts for branching, Least-to-Most for sequential dependencies, and self-consistency for voting. Start with zero-shot CoT before escalating.</summary>
+    <category>prompting</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>chain-of-thought</tag>
+      <tag>tree-of-thoughts</tag>
+      <tag>least-to-most</tag>
+      <tag>self-consistency</tag>
+      <tag>advanced-prompting</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="cot-basics"/>
+      <ref slug="prompt-techniques"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Chain-of-Thought Advanced Techniques</title>
+
+    <summary>Advanced reasoning patterns beyond zero-shot CoT: Tree of Thoughts (ToT) for branching decisions, Least-to-Most for sequential sub-dependencies, and Self-Consistency for high-stakes answers. Always start with zero-shot CoT ("Think step by step.") — it solves 70–80% of cases. Escalate to advanced techniques only when zero-shot fails.</summary>
+
+    <why>
+      <p>Zero-shot CoT improves model accuracy on multi-step reasoning by 20–40% with zero token overhead beyond the trigger phrase. Advanced techniques (ToT, Least-to-Most) can further improve accuracy for specific problem structures but multiply API call count linearly — they should be used judiciously after zero-shot fails.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Multi-step reasoning where zero-shot CoT still produces wrong answers.</item>
+        <item>Branching solution paths (architecture choices, algorithm selection) — use Tree of Thoughts.</item>
+        <item>Sequential sub-dependencies (build order, migration path) — use Least-to-Most decomposition.</item>
+        <item>Verification pipelines where the model must self-check before returning.</item>
+        <item>Agent planning steps requiring reasoning about which tool to call next.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple factual lookups — CoT inflates token usage without improving accuracy.</item>
+        <item>Classification tasks with 3–5 clear categories — few-shot without CoT is cheaper.</item>
+        <item>High-throughput pipelines where latency matters — each ToT branch is a separate API call.</item>
+        <item>When self-consistency requires 5–10 samples — cost multiplies linearly; benchmark gain vs. cost first.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="tree-of-thoughts">
+      <p>Tree of Thoughts explores multiple reasoning paths in parallel by generating branches, scoring them, and pruning low-value paths. It is effective for problems with multiple solution strategies (e.g., choosing between architectures) but requires careful cost control.</p>
+
+      <rule testable="true">
+        <statement>Set a hard max_depth of 2–3 levels in Tree of Thoughts; with num_branches=3 and max_depth=3 you make up to 9+ API calls per problem — cost explodes without a depth cap.</statement>
+        <rationale>ToT is not bounded by default. A 3-branch, 3-level tree makes at least 9 evaluation calls. In a production agent, this can stall a pipeline for minutes and exhaust rate limits.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use response_format={"type": "json_object"} for thought evaluation in ToT; assign score=0 on JSON parse failure rather than raising an exception.</statement>
+        <rationale>Models occasionally produce malformed JSON under structured reasoning load. A crashed evaluation kills the entire ToT run; score=0 gracefully eliminates the path.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set a wall-clock timeout on ToT runs in agentic pipelines — slow API responses with 9+ branches can stall the pipeline for minutes without a timeout.</statement>
+        <rationale>ToT with slow API responses is unbounded in wall time. An agent pool that blocks on one long ToT run starves other tasks.</rationale>
+      </rule>
+
+      <example type="good" title="ToT evaluation with graceful degradation">
+        <code lang="python"><![CDATA[
+def evaluate_thought(client, problem: str, thought: str, model: str) -> int:
+    """Evaluate a reasoning approach. Returns 0 on parse failure."""
+    prompt = (f"Problem: {problem}\nApproach: {thought}\n"
+              f"Score 1-10 for relevance and soundness. "
+              f'Return JSON: {{"score": N, "reason": "..."}}')
+    resp = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"},
+    )
+    import json
+    try:
+        return json.loads(resp.choices[0].message.content).get("score", 0)
+    except (json.JSONDecodeError, KeyError):
+        return 0  # graceful degradation, not crash
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="least-to-most-decomposition">
+      <p>Least-to-Most breaks complex problems into simpler sub-problems, solves them in order from simplest to hardest, and uses earlier solutions as context for later ones. It is effective for sequential dependency chains (build systems, migrations, multi-stage decision trees).</p>
+
+      <rule testable="true">
+        <statement>Cache the decomposition step output in Least-to-Most — if the LLM already decomposed the problem, do not re-decompose on retry; only retry the failed subproblem solution.</statement>
+        <rationale>Decomposition calls are expensive. If only one subproblem solution fails, re-running decomposition wastes tokens and risks getting a different (possibly worse) decomposition.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Including the full CoT reasoning trace in the next turn's context in a multi-turn agent.</description>
+        <reason>CoT traces bloat the context window rapidly. A 5-turn conversation with full traces can exceed 50K tokens. Strip or summarize traces between turns; the parent agent needs only the final answer.</reason>
+      </antipattern>
+    </section>
+
+    <section name="strategy-selection">
+      <p>Selecting the right CoT strategy depends on problem structure. A heuristic based on keywords and length can guide the initial choice; always benchmark before hardcoding.</p>
+
+      <rule testable="true">
+        <statement>Always try zero-shot CoT ("Think step by step.") first — it solves 70–80% of cases at the cost of only a few extra tokens. Escalate to advanced techniques only after zero-shot fails on your specific problem class.</statement>
+        <rationale>Advanced techniques multiply API calls, cost, and latency. Zero-shot is free in terms of additional API calls. Measure before upgrading strategy.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use o1/o3 (OpenAI) or Claude extended thinking (Anthropic) for problems that natively benefit from deep reasoning — they handle CoT internally and are cheaper than explicit multi-call ToT.</statement>
+        <rationale>Extended thinking tokens are billed but not visible in the response text — they represent internal reasoning the model does natively. Running explicit ToT on top of o1 is redundant and expensive.</rationale>
+      </rule>
+
+      <p>Strategy heuristic: inspect problem keywords for branching signals (choose, compare, which, options, alternative, versus, tradeoff) and sequential signals (step, before, depends, order, first, then, sequence, pipeline, migration). Long problems (&gt;500 chars) default to Least-to-Most.</p>
+    </section>
+
+    <section name="self-consistency">
+      <p>Self-consistency runs N parallel reasoning paths and votes on the majority answer. It improves accuracy when reasoning paths are diverse and independent.</p>
+
+      <rule testable="true">
+        <statement>For self-consistency: sample at temperature=0.7, deduplicate identical outputs before majority vote, and benchmark accuracy gain vs. cost before using more than 5 samples.</statement>
+        <rationale>Low-temperature sampling produces identical outputs that artificially inflate one answer's count. Cost multiplies linearly with sample count — 10 samples = 10x the cost of a single call.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Using self-consistency when all samples share the same systematic bias.</description>
+        <reason>If the model has a consistent bias on a problem type, majority vote amplifies the wrong answer. Self-consistency assumes independent errors; correlated errors defeat it.</reason>
+      </antipattern>
+    </section>
+
+    <section name="limits-and-gotchas">
+      <list>
+        <item>Tree of Thoughts with num_branches=3, max_depth=3 makes up to 9+ API calls per problem — cost explodes for complex trees.</item>
+        <item>Self-consistency relies on majority vote; if all samples share the same bias, the wrong answer wins consistently.</item>
+        <item>Least-to-Most requires the LLM to decompose correctly — if decomposition is wrong, all downstream steps are wrong.</item>
+        <item>Models can produce confident, well-structured reasoning that is factually incorrect ("hallucination with steps").</item>
+        <item>JSON response format is required for thought evaluation; models occasionally produce malformed JSON under the structured reasoning load.</item>
+        <item>An agent running ToT must set a wall-clock timeout — a 9-branch tree with slow API responses can stall the pipeline for minutes.</item>
+        <item>JSON parse failures in thought evaluation are common — always wrap in try/except and assign score=0 on parse failure rather than crashing.</item>
+        <item>Self-consistency samples must be deduplicated before majority vote — identical outputs (low temperature) artificially inflate one answer's count.</item>
+        <item>Extended Thinking (Claude) and o1 reasoning tokens are billed but not visible in the response text — account for them in cost tracking.</item>
+        <item>Do NOT include the full CoT trace in the next turn's context — it bloats the context window rapidly in multi-turn agents; summarize or strip it.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Advanced CoT techniques are best encapsulated inside a reasoning subagent that exposes a single reasoning(problem, strategy) interface. The parent agent passes a problem description and a strategy hint (zero_shot / tree_of_thoughts / least_to_most); the reasoning subagent selects the implementation, runs it, and returns a structured result with the reasoning trace and final answer. The parent agent uses only the final answer, not the trace — this keeps context clean across multi-turn conversations.</p>
+
+      <list>
+        <item>faion-sdd-executor-agent — can invoke a CoT reasoning step as part of design/spec generation.</item>
+        <item>A dedicated reasoning-agent wrapping ChainOfThoughtService for complex decision tasks.</item>
+      </list>
+
+      <p>Prompt patterns:</p>
+      <list>
+        <item>Zero-shot trigger (cheapest, try first): "Think step by step. Show your reasoning before giving the final answer."</item>
+        <item>Tree of Thoughts trigger for branching: "Generate 3 distinct approaches to this problem, evaluate each on relevance and soundness (score 1-10), then choose the best and complete it."</item>
+        <item>Least-to-Most for sequential: "First list the subproblems from simplest to hardest. Then solve each in order, using previous solutions as context."</item>
+        <item>Self-Consistency (sampling loop): "Think step by step and give your final answer." (sample N times at temp=0.7, then take majority vote)</item>
+      </list>
+    </section>
+
+    <section name="tools-and-services">
+      <p>CLI and framework tools for CoT experimentation:</p>
+      <list>
+        <item>openai / anthropic (Python SDK) — LLM calls for CoT steps. Install: pip install openai anthropic</item>
+        <item>tenacity — Retry on JSON parse failure from CoT output. Install: pip install tenacity</item>
+        <item>dspy — Framework for programmatic CoT prompt optimization. Install: pip install dspy-ai. Docs: dspy.ai</item>
+        <item>guidance — Constrained generation for structured CoT. Install: pip install guidance. Docs: github.com/guidance-ai/guidance</item>
+      </list>
+
+      <p>Managed services:</p>
+      <list>
+        <item>OpenAI GPT-4o / o1 — SaaS. o1 has native CoT reasoning built in.</item>
+        <item>Anthropic Claude (extended thinking) — SaaS. Extended thinking = native CoT; see claude-advanced-features.</item>
+        <item>LangSmith — SaaS. Trace and visualize CoT reasoning chains.</item>
+        <item>DSPy — OSS. Programmatically optimize CoT prompts.</item>
+        <item>Weights &amp; Biases — SaaS. Log reasoning traces and evaluate accuracy.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always try zero-shot CoT first ("Think step by step.") — it solves 70–80% of cases at minimal cost.</item>
+        <item>Use response_format={"type": "json_object"} for thought evaluation in ToT to prevent parse failures.</item>
+        <item>Set a hard max_depth on Tree of Thoughts (2–3 levels max) to prevent runaway API call chains.</item>
+        <item>For self-consistency, sample at temperature=0.7 and use the most common answer, not the first.</item>
+        <item>Cache the decomposition step output in Least-to-Most — if the LLM already decomposed the problem, don't re-decompose on retry.</item>
+        <item>Use o1 / o3 models for problems that natively benefit from extended reasoning — they handle CoT internally and are cheaper than explicit multi-call ToT.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/strategy-selector.py" purpose="Keyword-based strategy selection heuristic"/>
+      <template path="templates/cot-prompts.txt" purpose="Zero-shot, ToT, and Least-to-Most trigger phrases"/>
+    </templates>
+
+    <see-also>
+      <ref slug="cot-basics"/>
+      <link href="https://arxiv.org/abs/2201.11903">Chain-of-Thought Prompting (Wei et al.)</link>
+      <link href="https://arxiv.org/abs/2305.10601">Tree of Thoughts (Yao et al.)</link>
+      <link href="https://arxiv.org/abs/2205.10625">Least-to-Most (Zhou et al.)</link>
+      <link href="https://arxiv.org/abs/2203.11171">Self-Consistency (Wang et al.)</link>
+      <link href="https://platform.openai.com/docs/guides/reasoning">o1 Reasoning Guide</link>
+    </see-also>
+  </content>
+</methodology>

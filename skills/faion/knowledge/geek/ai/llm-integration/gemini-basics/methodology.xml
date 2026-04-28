@@ -1,0 +1,503 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gemini-basics">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Core Gemini API setup, model selection, text generation, streaming, and chat conversations for foundational LLM integration tasks.</summary>
+    <tags>
+      <tag>gemini</tag>
+      <tag>llm-api</tag>
+      <tag>text-generation</tag>
+      <tag>chat</tag>
+      <tag>streaming</tag>
+    </tags>
+    <category>gemini</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-28</created>
+    <applies-to>both</applies-to>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+  <content>
+    <title>Gemini API Basics</title>
+
+    <summary>Core concepts, setup, text generation, streaming, and chat conversations. This methodology covers model selection (2.0 Flash vs. 1.5 Pro vs. Thinking), initialization, basic text generation with configuration, streaming responses, multi-turn chat, safety settings, and error handling with retry logic.</summary>
+
+    <why>
+      <p>Gemini 2.0 Flash and Gemini 1.5 models are production-ready with excellent cost-to-capability ratios. Flash is the fastest and cheapest, suitable for most agent pipeline steps; Pro offers 2M token context and better reasoning; Thinking models provide explicit chain-of-thought for complex problems. Understanding these tradeoffs upfront prevents architecture pivots later.</p>
+      <p>The Gemini SDK is simpler than competing APIs for basic use cases: authentication is a single function call, streaming requires one parameter, and chat sessions automatically maintain history. The main pitfall is misunderstanding safety settings and error modes — this methodology establishes the mental model early.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a new project that will use Gemini and needs auth, model selection, and generation config established.</item>
+        <item>Exploring Gemini model capabilities (Flash vs. Pro vs. Thinking) before committing to an architecture.</item>
+        <item>Building a simple text generation or chat pipeline that does not yet need multimodal or function calling.</item>
+        <item>The team needs a working reference implementation of streaming, async, and JSON output modes.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>The task requires function calling or tool use — see gemini-api-integration for that pattern.</item>
+        <item>You need file uploads (audio/video/large docs) — use the Files API from gemini-api-integration.</item>
+        <item>The context window needed exceeds what Flash supports and you have not benchmarked Pro vs. Flash trade-offs yet.</item>
+        <item>You are integrating with Google Cloud enterprise infra — start with Vertex AI patterns, not AI Studio keys.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="model-overview">
+      <p>Gemini offers multiple model variants; select based on task complexity, speed, and cost constraints.</p>
+
+      <rule testable="true">
+        <statement>For new projects, default to Gemini 2.0 Flash unless explicit requirements force a different choice. Use Gemini 1.5 Pro only for complex reasoning or contexts >500K tokens. Use Gemini 2.0 Flash Thinking for math, logic puzzles, and complex multi-step reasoning.</statement>
+        <rationale>Flash is 10x cheaper than Pro and fast enough for most agent pipeline steps. The cost difference justifies the minor quality trade-off for bounded tasks. Pro is necessary only for long-context analysis or open-ended reasoning. Thinking models expose reasoning steps explicitly, beneficial for debugging complex logic but not needed for simple tasks.</rationale>
+      </rule>
+
+      <example type="good" title="Model selection decision tree">
+        <code lang="python"><![CDATA[
+# Pseudocode: decide which model to use
+if task == "fast_classification_or_extraction":
+    model_name = "gemini-2.0-flash"  # 10x cheaper, sub-second latency
+elif task == "reasoning_or_math":
+    model_name = "gemini-2.0-flash-thinking"  # Explicit chain-of-thought
+elif context_tokens > 500000 or task == "long_document_analysis":
+    model_name = "gemini-1.5-pro"  # 2M token context
+elif budget_critical and quality_sufficient:
+    model_name = "gemini-1.5-flash-8b"  # Cheapest option
+else:
+    model_name = "gemini-2.0-flash"  # Default fallback
+]]></code>
+        <note>This pattern minimizes cost while matching model to task. Flash is the right default in ~80% of cases.</note>
+      </example>
+    </section>
+
+    <section name="installation-and-setup">
+      <p>Install the SDK, authenticate, and configure the client.</p>
+
+      <rule testable="true">
+        <statement>Install the official google-generativeai SDK via pip. For authentication, use environment variable GOOGLE_API_KEY when working with Google AI Studio (free tier or development). For production, use Google Cloud and Vertex AI with gcloud application-default login (no API key in code).</statement>
+        <rationale>Environment variables prevent credentials from being checked into git. For production, Vertex AI with workload identity is the secure path; it avoids API keys entirely.</rationale>
+      </rule>
+
+      <example type="good" title="Python SDK installation">
+        <code lang="python"><![CDATA[
+# Install
+import subprocess
+subprocess.run(["pip", "install", "google-generativeai"], check=True)
+
+# Or add to requirements.txt
+# google-generativeai>=0.6.0
+]]></code>
+        <note>Pin a minimum version to avoid breaking changes in minor releases.</note>
+      </example>
+
+      <example type="good" title="API authentication (Google AI Studio)">
+        <code lang="python"><![CDATA[
+import google.generativeai as genai
+import os
+
+# Option 1: Configure explicitly
+genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
+
+# Option 2: Auto-configure from env
+# genai.configure()  # Reads GOOGLE_API_KEY automatically
+]]></code>
+        <note>Never hardcode API keys. Use environment variables or 1Password vaults in production.</note>
+      </example>
+
+      <example type="good" title="Vertex AI authentication (Google Cloud)">
+        <code lang="python"><![CDATA[
+import vertexai
+from vertexai.generative_models import GenerativeModel
+
+# Authenticate via gcloud
+# gcloud auth application-default login
+
+vertexai.init(project="your-project-id", location="us-central1")
+model = GenerativeModel("gemini-1.5-pro")
+]]></code>
+        <note>Vertex AI uses IAM roles; no API key needed. Preferred for production and regulated workloads.</note>
+      </example>
+    </section>
+
+    <section name="basic-text-generation">
+      <p>Generate text from a prompt using various configurations.</p>
+
+      <rule testable="true">
+        <statement>Always set max_output_tokens in generation_config. Omitting it allows the model to generate arbitrarily long responses, multiplying cost unexpectedly. Choose 1024–8192 depending on task.</statement>
+        <rationale>Output token count directly determines cost. Unlimited output has caused budget blowouts in production; it is a common oversight with high consequence.</rationale>
+      </rule>
+
+      <example type="good" title="Simple text generation">
+        <code lang="python"><![CDATA[
+import google.generativeai as genai
+
+genai.configure(api_key="YOUR_API_KEY")
+model = genai.GenerativeModel("gemini-2.0-flash")
+
+response = model.generate_content("Explain quantum computing in simple terms")
+print(response.text)
+]]></code>
+        <note>Minimal setup; suitable for one-off requests or prototyping.</note>
+      </example>
+
+      <example type="good" title="Text generation with config">
+        <code lang="python"><![CDATA[
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-pro",
+    generation_config={
+        "temperature": 0.7,           # Creativity
+        "top_p": 0.95,               # Diversity
+        "top_k": 40,                 # Vocabulary breadth
+        "max_output_tokens": 2048,   # Output length limit
+        "response_mime_type": "text/plain",
+    }
+)
+
+response = model.generate_content("Write a product description for a smartwatch")
+print(response.text)
+]]></code>
+        <note>Full config allows tuning response quality and cost.</note>
+      </example>
+
+      <example type="good" title="JSON output mode">
+        <code lang="python"><![CDATA[
+import json
+
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-pro",
+    generation_config={
+        "response_mime_type": "application/json",
+        "response_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "price": {"type": "number"},
+                "features": {"type": "array", "items": {"type": "string"}}
+            },
+            "required": ["name", "price"]
+        }
+    }
+)
+
+response = model.generate_content("Create a product listing for wireless earbuds")
+product = json.loads(response.text)
+print(f"Name: {product['name']}, Price: {product['price']}")
+]]></code>
+        <note>Structured output with schema ensures consistent, parseable responses.</note>
+      </example>
+    </section>
+
+    <section name="streaming">
+      <p>Stream responses for real-time output or incremental processing.</p>
+
+      <example type="good" title="Text streaming">
+        <code lang="python"><![CDATA[
+model = genai.GenerativeModel("gemini-2.0-flash")
+
+response = model.generate_content(
+    "Write a long story about space exploration",
+    stream=True
+)
+
+for chunk in response:
+    print(chunk.text, end="", flush=True)
+]]></code>
+        <note>Streaming renders responses as they arrive; flush=True ensures real-time display.</note>
+      </example>
+
+      <example type="good" title="Chat streaming">
+        <code lang="python"><![CDATA[
+model = genai.GenerativeModel("gemini-1.5-pro")
+chat = model.start_chat()
+
+response = chat.send_message("Tell me about Mars", stream=True)
+
+for chunk in response:
+    print(chunk.text, end="")
+]]></code>
+        <note>Streaming works with chat; each send_message can return streamed chunks.</note>
+      </example>
+
+      <example type="good" title="Async streaming">
+        <code lang="python"><![CDATA[
+import asyncio
+import google.generativeai as genai
+
+async def stream_response():
+    model = genai.GenerativeModel("gemini-2.0-flash")
+
+    response = await model.generate_content_async(
+        "Explain machine learning",
+        stream=True
+    )
+
+    async for chunk in response:
+        print(chunk.text, end="")
+
+asyncio.run(stream_response())
+]]></code>
+        <note>Async streaming uses a different event loop; do not mix sync and async calls in the same function.</note>
+      </example>
+
+      <antipattern>
+        <description>Mixing sync model.generate_content() and async model.generate_content_async() in the same script.</description>
+        <reason>They use different event loop implementations; this causes RuntimeError: This event loop is already running. Pick one pattern and stick to it.</reason>
+      </antipattern>
+    </section>
+
+    <section name="chat-conversations">
+      <p>Build multi-turn conversations where context is maintained automatically.</p>
+
+      <rule testable="true">
+        <statement>Use model.start_chat() to initialize a session. Persist the chat object across turns; do not create a new chat for each message. The history is automatically maintained by the model.</statement>
+        <rationale>Chat history enables context-aware follow-ups. Creating new chats for each turn loses all prior context, forcing repetition in prompts and wasting tokens.</rationale>
+      </rule>
+
+      <example type="good" title="Basic chat">
+        <code lang="python"><![CDATA[
+model = genai.GenerativeModel("gemini-1.5-pro")
+chat = model.start_chat()
+
+response = chat.send_message("Hello! I'm learning Python.")
+print(response.text)
+
+response = chat.send_message("What should I learn first?")
+print(response.text)
+
+# Access history
+for message in chat.history:
+    print(f"{message.role}: {message.parts[0].text[:100]}...")
+]]></code>
+        <note>Chat automatically includes prior messages in context for each new message.</note>
+      </example>
+
+      <example type="good" title="Chat with system instruction">
+        <code lang="python"><![CDATA[
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-pro",
+    system_instruction="""You are a helpful Python tutor.
+    Always provide code examples.
+    Explain concepts step by step.
+    Use beginner-friendly language."""
+)
+
+chat = model.start_chat()
+response = chat.send_message("What are decorators?")
+print(response.text)
+]]></code>
+        <note>System instructions establish consistent behavior for the entire chat session.</note>
+      </example>
+
+      <antipattern>
+        <description>Rebuilding chat history from scratch for each message instead of persisting the chat object.</description>
+        <reason>Rebuilding discards prior context, forcing you to re-include prior messages in each new prompt. This wastes tokens and breaks natural conversation flow.</reason>
+      </antipattern>
+    </section>
+
+    <section name="safety-settings">
+      <p>Configure safety filters for different content policies.</p>
+
+      <rule testable="true">
+        <statement>Always check response.prompt_feedback.block_reason before accessing response.text. If the prompt is blocked, response.candidates will be empty and indexing response.candidates[0] will raise IndexError. Wrap text access in a helper that returns None on block, then log the block reason for audit.</statement>
+        <rationale>Safety blocks occur on the prompt, not the output; blocked responses have no candidates. Accessing .text on a blocked response raises ValueError. Logging block reasons helps identify if a class of inputs is systematically blocked.</rationale>
+      </rule>
+
+      <example type="good" title="Configuring safety thresholds">
+        <code lang="python"><![CDATA[
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
+
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-pro",
+    safety_settings={
+        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    }
+)
+]]></code>
+        <note>Each category has a threshold; BLOCK_MEDIUM_AND_ABOVE is the default and recommended starting point.</note>
+      </example>
+
+      <example type="good" title="Safe response access">
+        <code lang="python"><![CDATA[
+response = model.generate_content("Your prompt")
+
+# Check block before accessing text
+if response.prompt_feedback.block_reason:
+    print(f"Prompt blocked: {response.prompt_feedback.block_reason}")
+else:
+    print(response.text)
+    for rating in response.candidates[0].safety_ratings:
+        print(f"{rating.category}: {rating.probability}")
+]]></code>
+        <note>Checking block_reason prevents IndexError and ValueError.</note>
+      </example>
+    </section>
+
+    <section name="error-handling">
+      <p>Handle common exceptions and implement retry logic.</p>
+
+      <example type="good" title="Exception handling">
+        <code lang="python"><![CDATA[
+from google.generativeai.types import StopCandidateException, BlockedPromptException
+
+try:
+    response = model.generate_content("Your prompt")
+    print(response.text)
+
+except BlockedPromptException as e:
+    print(f"Prompt blocked: {e}")
+
+except StopCandidateException as e:
+    print(f"Generation stopped: {e}")
+    # Partial response may be available
+    if e.args and e.args[0].content:
+        print(f"Partial: {e.args[0].content.parts[0].text}")
+
+except Exception as e:
+    print(f"Unexpected error: {e}")
+]]></code>
+        <note>BlockedPromptException and StopCandidateException are common and worth handling separately.</note>
+      </example>
+
+      <example type="good" title="Exponential backoff for rate limits">
+        <code lang="python"><![CDATA[
+import time
+from google.api_core.exceptions import ResourceExhausted
+
+def generate_with_retry(prompt, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            return model.generate_content(prompt)
+        except ResourceExhausted:
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt  # 1s, 2s, 4s
+                print(f"Rate limited, waiting {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                raise
+]]></code>
+        <note>Exponential backoff is standard for transient rate limit errors.</note>
+      </example>
+
+      <antipattern>
+        <description>Assuming ResourceExhausted errors on the free tier are transient and will resolve with retries.</description>
+        <reason>Free tier daily quotas are hard limits; once exceeded, no amount of backoff helps. Check when quota resets and wait until then, or upgrade to paid tier.</reason>
+      </antipattern>
+    </section>
+
+    <section name="pricing-and-cost-optimization">
+      <p>Understand Gemini pricing tiers and optimize for cost.</p>
+
+      <rule testable="true">
+        <statement>Use Gemini 2.0 Flash by default for cost optimization; it is 10-40x cheaper than Pro depending on context size. Enable context caching only when the same large prompt prefix (system prompt + document) appears in >5 requests per session; below that, the overhead is not worth it. Set max_output_tokens explicitly to avoid runaway cost.</statement>
+        <rationale>Flash pricing is ~$0.10 per 1M input tokens; Pro is $1.25+. Context caching saves 75% on cached tokens but only amortizes if the same prefix is reused many times. Most sessions are one-off questions; caching helps only in high-volume document analysis scenarios.</rationale>
+      </rule>
+
+      <example type="good" title="Cost-aware generation">
+        <code lang="python"><![CDATA[
+# Cost-optimized: Flash + explicit output limit
+model = genai.GenerativeModel(
+    model_name="gemini-2.0-flash",  # 10x cheaper than Pro
+    generation_config={
+        "max_output_tokens": 1024,   # Explicit limit
+        "temperature": 0.7,
+    }
+)
+
+response = model.generate_content("Classify this customer message")
+]]></code>
+        <note>Flash is the right choice for most tasks; Pro is for long context or complex reasoning.</note>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <rule testable="true">
+        <statement>Use gemini-2.0-flash as the default for agent pipeline steps; only escalate to Pro when context >128K tokens or quality is clearly insufficient for the task.</statement>
+        <rationale>Flash is fast and cheap; reserving it for 80% of tasks keeps costs down while maintaining quality for the 20% that need Pro's reasoning.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Do not mix -latest model aliases (e.g., gemini-1.5-pro-latest) in production. Pin specific model versions (e.g., gemini-1.5-pro-002) so version upgrades are intentional and tested.</statement>
+        <rationale>-latest aliases silently upgrade the model on Google's schedule; production pipelines should control upgrade timing and test before rolling out.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Persist chat.history across turns; validate the last response before appending to history to prevent inconsistency after blocked responses.</statement>
+        <rationale>Chat history is mutable; if you append to it after a blocked response, the history becomes inconsistent and subsequent messages lose context.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Store API keys in environment variables or managed vaults (1Password, Google Cloud Secret Manager); never check them into git. For Vertex AI in production, use workload identity federation instead of service account JSON files.</statement>
+        <rationale>Credentials in git are compromised immediately; service account files are difficult to rotate. Workload identity is the secure production pattern.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-integration">
+      <p>Guidance for using Gemini basics in agentic workflows.</p>
+
+      <rule testable="true">
+        <statement>A subagent setting up Gemini basics should configure API key from env, select the model based on task complexity (Flash for speed, Pro for long context, Thinking for math), set generation_config with explicit max_output_tokens and temperature, and wrap the call with safety check + retry logic.</statement>
+        <rationale>This workflow ensures credentials are secure, cost is bounded, safety is checked, and transient errors are retried.</rationale>
+      </rule>
+
+      <example type="good" title="Agentic prompt: basic setup">
+        <code lang="python"><![CDATA[
+# Recommended subagent workflow pattern
+prompt = """
+Initialize a Gemini 2.0 Flash model with temperature=0.3, max_output_tokens=2048.
+Request JSON output using response_mime_type="application/json" with schema: {schema}.
+Handle BlockedPromptException and ResourceExhausted with exponential backoff (max 3 retries).
+"""
+]]></code>
+        <note>This pattern encapsulates the core setup, configuration, and error handling.</note>
+      </example>
+
+      <example type="good" title="Agentic prompt: chat session">
+        <code lang="python"><![CDATA[
+# Recommended pattern for multi-turn chat
+prompt = """
+Start a Gemini chat session with system_instruction: "{system}".
+Send the following messages in sequence: {messages}.
+After each response, log usage_metadata.prompt_token_count and candidates_token_count.
+Return the final response and total token usage.
+"""
+]]></code>
+        <note>Logging usage per turn enables cost monitoring and optimization.</note>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Install google-generativeai SDK</check>
+      <check>Set GOOGLE_API_KEY environment variable</check>
+      <check>Verify API key has proper permissions</check>
+      <check>Select appropriate Gemini model for task</check>
+      <check>Configure generation parameters with max_output_tokens</check>
+      <check>Test basic text generation</check>
+      <check>Test streaming responses if needed</check>
+      <check>Implement error handling for exceptions</check>
+      <check>Add retry logic for rate limits</check>
+      <check>Check response.prompt_feedback before accessing .text</check>
+      <check>Log usage_metadata for cost monitoring</check>
+      <check>Test chat sessions with system instructions</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://aistudio.google.com/"/>
+      <link href="https://ai.google.dev/docs"/>
+      <link href="https://github.com/google/generative-ai-python"/>
+      <link href="https://ai.google.dev/gemini-api/docs/models/gemini"/>
+      <link href="https://ai.google.dev/gemini-api/docs/caching"/>
+      <ref slug="gemini-api-integration"/>
+      <ref slug="gemini-function-calling"/>
+    </see-also>
+  </content>
+</methodology>
