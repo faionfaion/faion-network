@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cross-tool-migration">
+  <metadata>
+    <tier>pro</tier>
+    <group>pm</group>
+    <domain>project-manager</domain>
+    <summary>Six-phase ETL process for migrating between PM tools: two-pass loading, identity remapping, read-only window, rollback gates, wave-based execution with human gates.</summary>
+    <tags>
+      <tag>migration</tag>
+      <tag>pm-tools</tag>
+      <tag>etl</tag>
+      <tag>data-integrity</tag>
+      <tag>cutover</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Cross-Tool Migration</title>
+
+    <summary>Six-phase ETL process for migrating a project management tool portfolio between Jira, Linear, Asana, ClickUp, GitHub Projects, Azure DevOps, and others. Migration runs in waves: pilot one project first, validate, then full waves. Source goes read-only at T-4h cutover; source stays live in read-only for 30 days after. Auto-cutover is forbidden — a human declares go-live.</summary>
+
+    <why>
+      <p>Migrating PM tools carries high silent failure risk: field mappings degrade gracefully (issues migrate but lose priority, links, assignees), and the migration logs say "success" while data integrity fails. Two-pass loading (create issues, then re-create links using id-map) and wave-based execution with human gates between waves are the primary mechanisms that prevent silent data loss from reaching production.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Migrating a portfolio between PM tools after a tooling decision, acquisition, or consolidation.</item>
+        <item>Cloud relocation within the same vendor (Jira Server/DC to Cloud) — same risk profile.</item>
+        <item>Splitting one tracker into multiple tools (engineering to Linear, marketing to Asana).</item>
+        <item>Pairing with pm-tool-selection (decide first), change-control (cutover gate), communications-management (change comms plan), lessons-learned (post-cutover).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tool unhappiness without root-cause diagnosis — most complaints reduce to bad workflows; fix that first.</item>
+        <item>Active feature freeze, audit window, or year-end close — wait for lower-traffic periods.</item>
+        <item>Solo or very small teams (under 10 users, under 500 issues) — copy by hand, do not build a pipeline.</item>
+        <item>When the source tool has critical custom plugins (Tempo, Insight) with no target equivalents — resolve the gap before migration.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="phases-and-execution">
+      <title>Six Phases and Execution Rules</title>
+
+      <p>Phase 1 Planning (2-4wks): stakeholder alignment, tool selection, scope definition, risk assessment. Phase 2 Preparation (2-3wks): target tool setup, field mapping design, test environment. Phase 3 Pilot (1-2wks): one project under 200 issues, validate, gather feedback, adjust. Phase 4 Full Migration (1-4wks): waves with validate-and-pause between each. Phase 5 Cutover (1wk): source read-only at T-4h, final sync, enable target, support. Phase 6 Stabilization (2-4wks): active support, fix issues, training, log lessons.</p>
+
+      <rule>
+        <statement>Pilot one project (under 200 issues) before any production wave. Pause for a retro between pilot and full migration; adjust the mapping design before proceeding.</statement>
+        <rationale>Pilot failures are cheap; production-wave failures require rollback under pressure. The retro between phases is the quality gate that prevents small mapping errors from becoming bulk data loss.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always run two loading passes: Pass 1 creates all issues and captures the source-ID to target-ID mapping. Pass 2 re-creates links (blocks, relates, parent-child) using the id-map. Single-pass migrations lose all issue relationships.</statement>
+        <rationale>Issue links require both endpoints to exist before the link can be created; any migration that creates links in the same pass as issues will fail silently for any issue created after the linked issue.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Build an explicit user identity map (email-based, not display-name-based) before loading. Get HR sign-off on the map before any load. Deactivated accounts must be resolved to an active substitute before the wave runs.</statement>
+        <rationale>Display-name matching silently assigns issues to the wrong person when names conflict or when accounts share a display name. Email is the only unambiguous identifier across tools.</rationale>
+      </rule>
+    </section>
+
+    <section name="cutover-and-rollback">
+      <title>Read-Only Window, Cutover, and Rollback</title>
+
+      <rule>
+        <statement>Set source to read-only at T-4h before go-live, not T-0. Keep source live in read-only for 30 days minimum after cutover. Decommission only after no team has needed the source for 2 weeks.</statement>
+        <rationale>T-0 read-only means last-minute writes are lost; T-4h provides a clean final-sync window. The 30-day read-only period is the rollback buffer — once decommissioned, data is unrecoverable.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Auto-cutover (agent-declared go-live) is forbidden. The agent prepares and validates the runbook; a human types explicit confirmation before any cutover action executes.</statement>
+        <rationale>Cutover is irreversible once source is set read-only and communications go out; auto-execution removes the final human verification that the system state is correct.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Define rollback triggers with hard thresholds before cutover: data loss detected = immediate rollback; critical integration failure = immediate; team productivity drop over 50 percent = 48-hour review; user adoption under 30 percent at one week = planned rollback. Do not roll back on vibes.</statement>
+        <rationale>Without pre-defined thresholds, rollback decisions are made under pressure with incomplete data; the threshold forces a structured assessment rather than a panic response.</rationale>
+      </rule>
+    </section>
+
+    <section name="field-mapping">
+      <title>Field Mapping Design and Anti-Patterns</title>
+
+      <rule>
+        <statement>Design field mapping from a sample of 100 source issues (random) plus 20 outliers (oldest, largest attachment, deepest subtask tree, most comments). Flag all mappings where two source values collapse to one target value as "lossy: true" requiring human sign-off.</statement>
+        <rationale>The long-tail of custom fields and unusual values is invisible in a clean-data sample; outliers surface the edge cases that break during full migration.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Any field the mapping engine cannot match with confidence above a defined threshold must appear in a low_confidence list requiring human review before the load runs. Never silently drop or merge fields.</statement>
+        <rationale>Silent field collapse is the most common cause of data integrity failures; "In QA" and "In Review" merged to "Review" looks correct but loses status granularity that teams depend on.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Never let an LLM rewrite ticket descriptions during migration. Translate formatting (Jira ADF to Markdown) deterministically using a dedicated converter. Preserve exact wording; humans depend on it for diagnosis.</statement>
+        <rationale>LLM "cleanup" of descriptions changes meaning, removes code blocks, and introduces hallucinated details into issue history — all unrecoverable.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Upload attachments in a separate pass before descriptions and comments. Rewrite inline image URLs in descriptions only after the attachment pass is complete and the new URLs are stable.</statement>
+        <rationale>Descriptions with inline images require the attachment target URL to exist; loading descriptions first produces broken image references that must be manually fixed.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Agent-fabricated field maps for unknown custom fields.</description>
+        <reason>Agents produce plausible-sounding mappings (legacy_id to external_id) that are wrong; unmapped or pattern-matched fields must be reviewed by a human before any load.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Running full API load at maximum rate without backoff.</description>
+        <reason>Vendor APIs throttle at sustained high rate (429 responses); agents misinterpret these as transient and burn token budget retrying. Implement exponential backoff in the engine, not in prompts.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>PII and credentials in migration exports not scrubbed before pushing to target.</description>
+        <reason>Issues frequently contain pasted credentials, customer PII, and internal URLs; bulk migration amplifies one ticket's exposure across the entire corpus. Run a scrubber pass before any load.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Feeding the entire issue export into a single LLM prompt for mapping.</description>
+        <reason>Long-context drift causes the model to lose accuracy on issues processed later in the window; page by 50–200 issues and let the engine hold full state, not the model.</reason>
+      </antipattern>
+    </section>
+
+    <section name="limitations">
+      <title>Known Limitations and Failure Modes</title>
+
+      <p>Field-mapping fidelity is a long tail. Status, priority, and labels migrate cleanly; custom fields, parent links, sprint history, time logs, and audit history almost never do. Attachments, inline images, and rich-text (panels, expanders, code macros) lose formatting; LLM-driven cleanup helps but is imperfect. User identity remapping fails silently — orphaned assignees, deactivated accounts, mismatched emails. The migration says "success" while losing accountability. Issue links (blocks, relates, duplicates, subtask) require a two-pass migration (create issues, then link by ID map). Single-pass migrations lose all links. Permissions and project roles do not translate; target ACLs must be designed from scratch. Automations / webhooks / integrations (Slack notifs, CI hooks, deploy triggers) break at cutover; many are discovered only when they stop firing. Reporting history (velocity charts, dashboards, gadgets) is rarely portable — past performance graphs may need to be recreated as static screenshots.</p>
+    </section>
+
+    <section name="agentic-workflow">
+      <title>Agentic Workflow and Integration</title>
+
+      <p>Treat migration as ETL: a config file (migration.yaml) declares source, target, field/status/priority maps, dry-run flag, and id-mapping output path. A subagent runs Extract to Transform to Validate to Load in waves; every step is idempotent and writes a JSONL audit log to git. Human gates between extract validation, pilot wave, and full waves. Never let the agent run a destructive cutover (read-only on source, decommission) — that is a human decision after a 2-week soak.</p>
+
+      <title>Recommended Subagents</title>
+
+      <p>faion-sdd-executor-agent — owns migration as a feature with TASK_field_map_design, TASK_extract_dry_run, TASK_pilot_wave, TASK_full_wave, TASK_link_pass, TASK_cutover, TASK_decommission. Each task = commit + execution report.</p>
+
+      <p>A custom migration-config-agent (model: opus per README "strategic decision"): designs field/status/priority maps from sample issues; flags low-confidence mappings for human review.</p>
+
+      <p>A custom extract-validator-agent (model: sonnet): runs extract dry-runs, diffs source to target counts, flags lossy fields.</p>
+
+      <p>A custom transform-runner-agent (model: haiku): executes the deterministic transform engine; raises on schema violations, never invents values.</p>
+
+      <p>A custom link-pass-agent (model: haiku): builds blocks/relates/parent-child links using the id-map after the create pass.</p>
+
+      <p>A custom cutover-runbook-agent (model: sonnet): generates the T-24/T-4/T+1/T+24/T+1w runbook from the README cutover checklist, customized to the actual tools.</p>
+
+      <p>password-scrubber-agent — runs over migration logs and exports; tickets often contain credentials, internal URLs, customer PII.</p>
+
+      <title>Prompt Pattern</title>
+
+      <p>Two stages: mapping design to execution.</p>
+
+      <code lang="text"><![CDATA[You are the migration-config agent. Inputs:
+1. Sample of 100 source issues (random + 20 outliers).
+2. Target tool's field schema (custom fields, allowed enums).
+3. README field/status/priority sections.
+
+Emit STRICT YAML matching MigrationConfig:
+field_mapping: { source_field: target_field, ... }
+status_mapping: { source_status: target_state, ... }
+priority_mapping: { ... }
+unmapped_fields: [ ... ]            # explicit, must be reviewed
+low_confidence: [ ... ]             # heuristic; human gate
+notes: { source_field: "rationale" }
+
+Rules: never collapse two source values to one target unless explicit "lossy: true".
+Reject any mapping that drops history fields without rationale.]]></code>
+
+      <p>Extract validator prompt: Compare source export to extract output. Emit JSON: source_count, extract_count, missing_ids, extra_ids, field_drift array. Fail if missing_ids non-empty.</p>
+
+      <title>Best Practices</title>
+
+      <p>Migrate in waves. Pilot one project (under 200 issues) before any production wave; pause for retros. Source goes read-only at T-4h cutover, not T-0 — last-minute writes are lost otherwise. Communicate the read-only window 1+ weeks ahead. Keep source live in read-only for 30 days minimum after cutover; do not decommission until no team has needed it for 2 weeks. Two-pass loading: pass 1 = create issues, pass 2 = re-create links/parents/blocks using the id-map. Single-pass loses references. Username/email reconciliation is a separate workstream — extract identity from both tools, dedupe, build a name-map, get HR sign-off before load. Anchor on outcomes that matter (open work-in-progress, active sprints, current-quarter epics). Archive cold issues to CSV/JSON in cold storage rather than migrate. Disable target-side automations during load (Slack notifs, escalations). Re-enable after final id-map is stable. Validate by sampling: random sample of 50 issues + 10 outliers (oldest, largest attachment, deepest subtask tree, most comments). Diff field-by-field with humans, not LLMs only. Treat the id-map as a permanent artifact. Store with the project and reference it in code/docs that contain old issue IDs. Define rollback triggers in advance with hard thresholds (data loss detected = immediate; productivity drop greater than 50 percent = 48h). Avoid rolling back on vibes. Train support team before cutover; the first week's tickets predict the next quarter's adoption. Update integrations (Slack, deploy hooks, browser extensions) on T-0; expect to find 2–3 hidden ones.</p>
+
+      <title>AI-Agent Gotchas</title>
+
+      <p>Agents fabricate plausible field maps for unknown custom fields ("legacy_id" to "external_id") that are wrong. Force low_confidence reviews on any unmapped or pattern-matched field. Status enum collapse: agents will silently merge "In QA" and "In Review" into "Review" if both partially match. Force explicit one-to-one mapping or lossy: true flag. Bulk loads at full vendor API rate get throttled; agents misinterpret 429s as transient and burn budget. Implement backoff in the engine, not in prompts. Description rewriting / "cleanup": never let an LLM rewrite ticket descriptions during migration. Humans depend on exact wording for diagnosis. Translate formatting (e.g., Jira ADF to markdown) deterministically. Markdown of inline images requires re-uploading attachments first and rewriting URLs. Order matters: attachments to comments to descriptions. Attachment dumps may include credentials, customer PII, GDPR-relevant data. Run password-scrubber-agent and a sampling DLP scan before pushing to target. Identity hallucination: agents will assign issues to user IDs that look right but belong to a different person — disambiguate by email, not display name. Two-tool reporting drift during transition: agents will produce conflicting status from source vs. target. Pick a system-of-record per metric and freeze. Auto-cutover is forbidden. The agent prepares the runbook; a human declares go-live. Long-context drift: do not feed the entire export into a single prompt. Page by 50–200 issues; the engine, not the LLM, holds full state. Decommission is destructive. Require a human-typed token (e.g., the project key) before any "delete source project" call. Human-in-the-loop checkpoints (mandatory): mapping sign-off, pilot acceptance, cutover go/no-go, decommission.</p>
+    </section>
+
+    <templates>
+      <template path="templates/migration-project-plan.md" purpose="Full migration plan with scope, timeline, risk register, success criteria."/>
+      <template path="templates/cutover-checklist.md" purpose="T-24h / T-4h / T-0 / T+1h / T+24h / T+1w cutover runbook."/>
+    </templates>
+
+    <scripts>
+      <script path="scripts/migrate_dry_run.sh" purpose="Extract, transform, count-diff, field-drift audit — gate before each wave."/>
+    </scripts>
+
+    <see-also>
+      <ref slug="pm-tool-selection"/>
+      <ref slug="change-control"/>
+      <ref slug="communications-management"/>
+      <ref slug="lessons-learned"/>
+    </see-also>
+  </content>
+</methodology>
