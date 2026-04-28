@@ -1,0 +1,409 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="llamaindex">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Data framework for LLM applications with custom data sources. Provides indexes, query engines, and event-driven workflows for production RAG and agentic systems when retrieval quality is critical.</summary>
+    <tags>
+      <tag>rag</tag>
+      <tag>retrieval</tag>
+      <tag>workflows</tag>
+      <tag>llamaindex</tag>
+      <tag>agents</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>LlamaIndex</title>
+    <summary>LlamaIndex solves the document retrieval problem that raw LLM APIs do not: loading heterogeneous document sources, chunking them optimally, indexing into a vector store, and synthesizing answers with source citations. Its Workflow abstraction provides async-first, type-safe event pipelines that map directly to agent task queues, enabling pause/resume for human-in-loop checkpoints.</summary>
+    <why>
+      <p>LlamaIndex solves the document retrieval problem that raw LLM APIs do not: loading heterogeneous document sources, chunking them optimally, indexing into a vector store, and synthesizing answers with source citations. Its Workflow abstraction provides async-first, type-safe event pipelines that map directly to agent task queues, enabling pause/resume for human-in-loop checkpoints.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building RAG over private documents: PDFs, Notion, GitHub repos, SQL databases</item>
+        <item>Application is document-centric and retrieval quality is the primary concern</item>
+        <item>Need LlamaParse for complex document parsing (tables, figures, multi-column PDFs)</item>
+        <item>Building multi-step data-aware agents using AgentWorkflow with typed events</item>
+        <item>Enterprise search combining vector search, keyword search, and metadata filtering</item>
+        <item>GraphRAG: entity relationships matter (contracts, knowledge graphs)</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure text orchestration without a retrieval step — LangChain or direct SDK is simpler</item>
+        <item>Complex multi-tool agent with >10 heterogeneous tools — LangGraph offers better state management</item>
+        <item>Real-time data streams where indexing latency is unacceptable</item>
+        <item>Team is already deep in LangChain — migration cost may exceed retrieval quality gain</item>
+        <item>Prototyping a simple chatbot with no private data — direct LLM call is faster</item>
+      </list>
+    </when-not-to-use>
+    <section name="Index Type Selection">
+      <rule>
+        <statement>Use VectorStoreIndex as the default for semantic Q&amp;A over document collections; switch to PropertyGraphIndex only when entity relationships are the primary query target.</statement>
+        <rationale>VectorStoreIndex supports hybrid search, metadata filtering, and reranking. PropertyGraphIndex (GraphRAG) costs 5-10x more at indexing time due to LLM-based entity extraction — reserve it for legal, medical, or research corpora where relationship traversal is required.</rationale>
+      </rule>
+      <rule>
+        <statement>Use KeywordTableIndex for exact-term matching; use SummaryIndex only for small document sets where full-document summarization is the primary task.</statement>
+        <rationale>KeywordTableIndex uses BM25-style lookup — effective for product codes, proper nouns, and technical identifiers that embeddings may not capture well. SummaryIndex loads all documents into context, which is impractical above a few dozen documents.</rationale>
+      </rule>
+      <example type="good" title="VectorStoreIndex setup">
+        <code lang="python"><![CDATA[from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
+
+Settings.llm = OpenAI(model="gpt-4o-mini", temperature=0)
+Settings.embed_model = OpenAIEmbedding(model="text-embedding-3-small")
+Settings.chunk_size = 512
+Settings.chunk_overlap = 50
+
+documents = SimpleDirectoryReader("./data", recursive=True,
+    required_exts=[".pdf", ".docx", ".md"]).load_data()
+index = VectorStoreIndex.from_documents(documents, show_progress=True)]]></code>
+        <note>Always set Settings explicitly — defaults change between LlamaIndex minor versions and can cause unexpected API costs.</note>
+      </example>
+    </section>
+    <section name="Chunking Strategy">
+      <rule>
+        <statement>Select the splitter based on document structure: SentenceSplitter for general text, SemanticSplitter for topic-boundary accuracy (+9% recall), MarkdownNodeParser for structured docs, CodeSplitter for source code.</statement>
+        <rationale>Fixed-size splitting loses cross-sentence context; semantic chunking preserves topic coherence. The NVIDIA benchmark shows page-level chunking at 0.648 accuracy; semantic chunking improves recall by 9% over fixed-size.</rationale>
+      </rule>
+      <rule>
+        <statement>Use HierarchicalNodeParser for long documents that mix high-level context with specific details: embed small child nodes (200 tokens), retrieve parent chunks (1000 tokens) for synthesis via AutoMergingRetriever.</statement>
+        <rationale>Small chunks improve retrieval precision; large chunks provide synthesis context. The parent-child pattern gets both without sacrificing either. Merge ratio threshold of 0.5 (merge when &gt;50% of children are retrieved) is a reliable default.</rationale>
+      </rule>
+      <example type="good" title="Hierarchical chunking with parent-child retrieval">
+        <code lang="python"><![CDATA[from llama_index.core.node_parser import HierarchicalNodeParser, get_leaf_nodes
+from llama_index.core.retrievers import AutoMergingRetriever
+from llama_index.core.storage.docstore import SimpleDocumentStore
+
+parser = HierarchicalNodeParser.from_defaults(chunk_sizes=[2048, 512, 128])
+nodes = parser.get_nodes_from_documents(documents)
+leaf_nodes = get_leaf_nodes(nodes)
+
+docstore = SimpleDocumentStore()
+docstore.add_documents(nodes)
+from llama_index.core import VectorStoreIndex, StorageContext
+storage_context = StorageContext.from_defaults(docstore=docstore)
+index = VectorStoreIndex(leaf_nodes, storage_context=storage_context)
+
+retriever = AutoMergingRetriever(
+    index.as_retriever(similarity_top_k=12),
+    storage_context=storage_context,
+    simple_ratio_thresh=0.5,
+)]]></code>
+      </example>
+      <antipattern>
+        <description>Using chunk_size=512 and top_k=2 (LlamaIndex defaults) in production.</description>
+        <reason>The defaults are too conservative: top_k=2 misses relevant context; 512 tokens is fine for precision but combine with top_k=5-10 for robust retrieval. Always tune aggressively based on eval metrics before launching.</reason>
+      </antipattern>
+    </section>
+    <section name="Vector Store Selection">
+      <rule>
+        <statement>Use Chroma for local development, Qdrant for production self-hosted, and Pinecone for serverless managed deployments. Match embedding dimensions explicitly between the model and the vector store configuration.</statement>
+        <rationale>Mismatched dimensions cause silent ingestion failures. Qdrant provides Rust-level performance, built-in hybrid search, and rich metadata filtering — the best self-hosted option for production. Pinecone auto-scales with no operational burden.</rationale>
+      </rule>
+    </section>
+    <section name="Query Engine Configuration">
+      <rule>
+        <statement>Set similarity_top_k=5-10 and response_mode="refine" for complex questions; use response_mode="compact" for speed-sensitive endpoints. Always use async (aquery, aretrieve) in production.</statement>
+        <rationale>compact uses a single LLM call (fast, lower quality); refine iterates over retrieved chunks (slower, higher quality for multi-chunk synthesis). Sync calls block event loops when deployed with FastAPI or async frameworks.</rationale>
+      </rule>
+      <example type="good" title="Query engine with reranking">
+        <code lang="python"><![CDATA[from llama_index.core.query_engine import RetrieverQueryEngine
+from llama_index.core.postprocessor import SentenceTransformerRerank
+from llama_index.core import get_response_synthesizer
+
+reranker = SentenceTransformerRerank(
+    model="cross-encoder/ms-marco-MiniLM-L-2-v2",
+    top_n=5,
+)
+query_engine = index.as_query_engine(
+    similarity_top_k=20,
+    node_postprocessors=[reranker],
+    response_mode="compact",
+)
+# In async context:
+response = await query_engine.aquery("What is the refund policy?")]]></code>
+        <note>Retrieve top-20, rerank to top-5. Reranking top-5 after reranking beats top-20 without it.</note>
+      </example>
+    </section>
+    <section name="Hybrid Retrieval">
+      <rule>
+        <statement>Combine BM25 and vector search via QueryFusionRetriever with reciprocal_rerank mode as the default retrieval strategy; weight vector at 0.6 and BM25 at 0.4.</statement>
+        <rationale>Pure vector search misses exact-match queries (product codes, names, technical terms). BM25 covers lexical precision; vector covers semantic generalization. Reciprocal rank fusion is stable across query types.</rationale>
+      </rule>
+      <example type="good" title="Hybrid BM25 + vector retrieval">
+        <code lang="python"><![CDATA[from llama_index.retrievers.bm25 import BM25Retriever
+from llama_index.core.retrievers import QueryFusionRetriever
+
+bm25_retriever = BM25Retriever.from_defaults(nodes=nodes, similarity_top_k=10)
+vector_retriever = index.as_retriever(similarity_top_k=10)
+
+hybrid_retriever = QueryFusionRetriever(
+    retrievers=[bm25_retriever, vector_retriever],
+    retriever_weights=[0.4, 0.6],
+    num_queries=1,
+    mode="reciprocal_rerank",
+)
+nodes = await hybrid_retriever.aretrieve("machine learning applications")]]></code>
+      </example>
+    </section>
+    <section name="Query Routing">
+      <rule>
+        <statement>Use RouterQueryEngine with LLMSingleSelector when queries map cleanly to one of several distinct indexes; use SubQuestionQueryEngine to decompose complex multi-part questions that require answers from multiple indexes in parallel.</statement>
+        <rationale>RouterQueryEngine is cheaper (one routing call); SubQuestionQueryEngine parallelizes sub-queries with use_async=True for throughput. Use clear, specific tool descriptions — the LLM router makes selection based solely on the description text.</rationale>
+      </rule>
+      <example type="good" title="Multi-index routing with SubQuestionQueryEngine">
+        <code lang="python"><![CDATA[from llama_index.core.query_engine import SubQuestionQueryEngine
+from llama_index.core.tools import QueryEngineTool, ToolMetadata
+
+tools = [
+    QueryEngineTool(
+        query_engine=tech_index.as_query_engine(),
+        metadata=ToolMetadata(
+            name="technical_docs",
+            description="Technical documentation, API references, and architecture specs",
+        ),
+    ),
+    QueryEngineTool(
+        query_engine=business_index.as_query_engine(),
+        metadata=ToolMetadata(
+            name="business_docs",
+            description="Business reports, financial data, and strategy documents",
+        ),
+    ),
+]
+query_engine = SubQuestionQueryEngine.from_defaults(
+    query_engine_tools=tools, use_async=True, verbose=True,
+)]]></code>
+        <note>SubQuestionQueryEngine runs sub-queries sequentially by default. Always pass use_async=True for parallelism.</note>
+      </example>
+      <antipattern>
+        <description>Vague tool descriptions in RouterQueryEngine ("handles documents about everything").</description>
+        <reason>The LLM router selects based on description match to the query. Vague descriptions cause misrouting. Each description must be specific enough that the router can distinguish which index to use for a given query type.</reason>
+      </antipattern>
+    </section>
+    <section name="Workflow Architecture">
+      <rule>
+        <statement>Define Pydantic Event models for all step inputs and outputs; use typed events — not raw dicts — to enforce the pipeline contract between steps.</statement>
+        <rationale>LlamaIndex Workflow step routing is based on event type matching. A typo in an event class name causes a silent no-op where the step never executes. Type-safe events surface this at definition time, not at runtime.</rationale>
+      </rule>
+      <example type="good" title="Type-safe event-driven RAG workflow">
+        <code lang="python"><![CDATA[from pydantic import Field
+from llama_index.core.workflow import Workflow, StartEvent, StopEvent, step, Event, Context
+
+class RetrievalEvent(Event):
+    query: str = Field(..., description="Original user query")
+    nodes: list = Field(..., description="Retrieved nodes from vector store")
+    retrieval_time_ms: float
+
+class RerankEvent(Event):
+    query: str
+    nodes: list  # Reranked subset
+
+class RAGWorkflow(Workflow):
+    def __init__(self, index, top_k: int = 10, rerank_top_n: int = 5):
+        super().__init__()
+        self.retriever = index.as_retriever(similarity_top_k=top_k)
+        self.reranker = SentenceTransformerRerank(
+            model="cross-encoder/ms-marco-MiniLM-L-2-v2", top_n=rerank_top_n
+        )
+
+    @step
+    async def retrieve(self, ctx: Context, ev: StartEvent) -> RetrievalEvent:
+        import time
+        start = time.time()
+        nodes = await self.retriever.aretrieve(ev.query)
+        await ctx.set("query", ev.query)
+        return RetrievalEvent(query=ev.query, nodes=nodes,
+                              retrieval_time_ms=(time.time()-start)*1000)
+
+    @step
+    async def rerank(self, ctx: Context, ev: RetrievalEvent) -> RerankEvent:
+        reranked = self.reranker.postprocess_nodes(ev.nodes, query_str=ev.query)
+        return RerankEvent(query=ev.query, nodes=reranked)
+
+    @step
+    async def synthesize(self, ctx: Context, ev: RerankEvent) -> StopEvent:
+        from llama_index.core import get_response_synthesizer
+        synth = get_response_synthesizer(response_mode="compact")
+        response = await synth.asynthesize(ev.query, nodes=ev.nodes)
+        return StopEvent(result={"response": str(response)})]]></code>
+      </example>
+      <antipattern>
+        <description>Using string-keyed context dictionaries to pass data between all steps.</description>
+        <reason>ctx.set/get with arbitrary string keys creates implicit coupling and makes step dependencies invisible. Define explicit Event fields for step outputs; use ctx only for values genuinely shared across multiple steps (e.g., original query).</reason>
+      </antipattern>
+    </section>
+    <section name="Parallel Step Processing">
+      <rule>
+        <statement>Use ctx.collect_events() to wait for multiple parallel event types before proceeding; emit multiple events from a single step via self.send_event() to trigger parallel processing.</statement>
+        <rationale>LlamaIndex Workflow does not block on a single step — parallel branches run concurrently. collect_events() provides a typed barrier that waits for all required event types before the combining step executes.</rationale>
+      </rule>
+      <example type="good" title="Collecting multiple parallel events">
+        <code lang="python"><![CDATA[@step
+async def combine(self, ctx: Context,
+                  ev: SearchResultEvent | AnalysisResultEvent) -> StopEvent | None:
+    events = ctx.collect_events(ev, [SearchResultEvent, AnalysisResultEvent])
+    if events is None:
+        return None  # Wait — not all branches have completed yet
+    search_result, analysis_result = events
+    return StopEvent(result=f"Combined: {search_result.results}")]]></code>
+      </example>
+    </section>
+    <section name="Multi-Agent with AgentWorkflow">
+      <rule>
+        <statement>Use AgentWorkflow with FunctionAgent agents for multi-agent patterns; define can_handoff_to explicitly on each agent so the orchestration graph is deterministic.</statement>
+        <rationale>AgentWorkflow pre-configures the event-driven handoff mechanism. Without explicit can_handoff_to, agents may hand off to any other agent including themselves, creating infinite loops. Named handoff targets make the graph auditable.</rationale>
+      </rule>
+      <example type="good" title="Multi-agent handoff with AgentWorkflow">
+        <code lang="python"><![CDATA[from llama_index.core.agent.workflow import AgentWorkflow, FunctionAgent
+
+researcher = FunctionAgent(
+    name="researcher",
+    description="Researches topics and finds relevant information",
+    tools=[search_tool],
+    llm=Settings.llm,
+    system_prompt="You are a research specialist. Find accurate information. Be thorough.",
+    can_handoff_to=["analyst", "writer"],
+)
+workflow = AgentWorkflow(
+    agents=[researcher, analyst, writer],
+    initial_agent="researcher",
+)
+result = await workflow.run(task="Research Q3 performance and write a summary")]]></code>
+      </example>
+    </section>
+    <section name="Index Persistence">
+      <rule>
+        <statement>Always persist indexes to disk with storage_context.persist() and reload with load_index_from_storage() on startup; never rebuild from documents on every process start.</statement>
+        <rationale>Rebuilding an index from scratch calls the embedding API for every document. On 10K+ documents this costs hundreds of dollars and takes minutes. Persisted indexes reload in seconds with no API cost.</rationale>
+      </rule>
+      <example type="good" title="Persistent index loading">
+        <code lang="python"><![CDATA[from llama_index.core import StorageContext, load_index_from_storage
+import os
+
+INDEX_DIR = "./storage"
+
+def get_or_build_index(docs_dir: str):
+    if os.path.exists(INDEX_DIR):
+        storage_context = StorageContext.from_defaults(persist_dir=INDEX_DIR)
+        return load_index_from_storage(storage_context)
+    documents = SimpleDirectoryReader(docs_dir).load_data()
+    index = VectorStoreIndex.from_documents(documents, show_progress=True)
+    index.storage_context.persist(persist_dir=INDEX_DIR)
+    return index]]></code>
+      </example>
+    </section>
+    <section name="Observability">
+      <rule>
+        <statement>Add CallbackManager with LlamaDebugHandler in development and LangfuseCallbackHandler in production to trace all LLM inputs/outputs, token usage, and retrieval events.</statement>
+        <rationale>Without tracing, debugging retrieval failures and hallucinations requires guesswork. Langfuse provides persistent traces with latency breakdown per component, making cost and quality optimization data-driven.</rationale>
+      </rule>
+      <example type="good" title="Langfuse observability integration">
+        <code lang="python"><![CDATA[from llama_index.core.callbacks import CallbackManager
+from llama_index.callbacks.langfuse import LangfuseCallbackHandler
+
+langfuse_handler = LangfuseCallbackHandler(
+    public_key=os.environ["LANGFUSE_PUBLIC_KEY"],
+    secret_key=os.environ["LANGFUSE_SECRET_KEY"],
+)
+Settings.callback_manager = CallbackManager([langfuse_handler])]]></code>
+      </example>
+    </section>
+    <section name="Evaluation">
+      <rule>
+        <statement>Run FaithfulnessEvaluator and RelevancyEvaluator against a labeled QA dataset before deploying; target faithfulness score above 0.9 and relevancy above 0.85.</statement>
+        <rationale>RAG does not eliminate hallucination — the LLM can still confabulate when retrieved context is ambiguous. Automated evaluation with LLM-as-judge provides a quantitative gate before each production release.</rationale>
+      </rule>
+      <example type="good" title="Batch evaluation of RAG quality">
+        <code lang="python"><![CDATA[from llama_index.core.evaluation import (
+    BatchEvalRunner, FaithfulnessEvaluator, RelevancyEvaluator,
+    generate_question_context_pairs,
+)
+
+qa_dataset = generate_question_context_pairs(nodes[:50], llm=Settings.llm, num_questions_per_chunk=2)
+runner = BatchEvalRunner(
+    evaluators={"faithfulness": FaithfulnessEvaluator(llm=Settings.llm),
+                "relevancy": RelevancyEvaluator(llm=Settings.llm)},
+    workers=4,
+)
+eval_results = await runner.aevaluate_queries(query_engine=query_engine,
+                                              queries=list(qa_dataset.queries.values()))]]></code>
+      </example>
+    </section>
+    <section name="Critical Gotchas">
+      <rule>
+        <statement>Always set Settings.embed_model explicitly; never rely on the default, which can change between versions and cause silent re-embedding at different dimensions.</statement>
+        <rationale>Index persistence format and embedding dimensions must match between build and load. A version upgrade that changes the default embedding model causes load failures or silent quality degradation.</rationale>
+      </rule>
+      <antipattern>
+        <description>Calling from_documents() on large corpora synchronously in a request handler.</description>
+        <reason>from_documents() is blocking and slow for large corpora. Embed documents asynchronously at ingestion time using async batch processing; never rebuild on request.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Passing metadata_extractor=None omission when unexpected API costs appear.</description>
+        <reason>Some LlamaIndex configurations call the LLM for metadata extraction by default. Disable with metadata_extractor=None unless title/keyword extraction is explicitly needed.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Workflow Integration">
+      <rule>
+        <statement>Use LlamaIndex as the retrieval backbone within a larger agent. A subagent receives a query, calls query_engine.aquery() asynchronously, and returns retrieved passages with source citations. For multi-step tasks, use AgentWorkflow with typed StartEvent → RetrieveEvent → SynthesizeEvent → StopEvent steps.</statement>
+        <rationale>The event-driven model maps well to agent task queues: each step emits events that the next step consumes, enabling pause/resume for human-in-loop checkpoints. For complex question decomposition, SubQuestionQueryEngine dispatches sub-queries in parallel.</rationale>
+      </rule>
+    </section>
+    <section name="Best Practices">
+      <rule>
+        <statement>Set similarity_top_k=5 to 10 and response_mode="refine" for complex questions; defaults are too conservative. Use HierarchicalNodeParser for long documents: embed small child nodes, retrieve parent context for synthesis.</statement>
+        <rationale>Conservative defaults miss context. Hierarchical parsing balances precision (small nodes) with synthesis context (parent chunks).</rationale>
+      </rule>
+      <rule>
+        <statement>Persist indexes with storage_context.persist() — in-memory indexes are lost on process restart. Async all the way: use aquery(), aretrieve() for all production code; sync calls block event loops.</statement>
+        <rationale>Persistence saves embedding costs. Async prevents event loop blocking in FastAPI and other async frameworks.</rationale>
+      </rule>
+      <rule>
+        <statement>Add metadata at ingestion: Document(text=..., metadata={"source": "contracts/2025/..."}) enables metadata filtering. For hybrid search, use Qdrant or Weaviate with QdrantVectorStore(enable_hybrid=True) — BM25 + vector in one call.</statement>
+        <rationale>Metadata filtering enables precise filtering; hybrid search covers both lexical and semantic matching.</rationale>
+      </rule>
+      <rule>
+        <statement>Track token usage with TokenCountingHandler callback; set cost alerts before deploying expensive PropertyGraphIndex. Use SubQuestionQueryEngine for multi-part user questions; it decomposes and parallelizes sub-queries.</statement>
+        <rationale>Token tracking enables cost control. Question decomposition improves accuracy on complex queries.</rationale>
+      </rule>
+    </section>
+    <section name="AI Agent Gotchas">
+      <rule>
+        <statement>AgentWorkflow event types must match exactly between steps — a typo in the event class name causes a silent no-op. from_documents() calls LLM for metadata extraction by default in some configurations — disable with metadata_extractor=None if unexpected API costs appear.</statement>
+        <rationale>Type mismatches cause silent failures. Metadata extraction is expensive; disable unless explicitly needed.</rationale>
+      </rule>
+      <rule>
+        <statement>LlamaParse rate limits at ~200 pages/minute on free tier; implement retry with exponential backoff for bulk ingestion. Default embedding model is text-davinci-003 in old configs — always set Settings.embed_model explicitly.</statement>
+        <rationale>Rate limiting requires backoff. Explicit configuration prevents version-upgrade surprises.</rationale>
+      </rule>
+      <rule>
+        <statement>Index persistence format changes between LlamaIndex minor versions; re-index if you upgrade across major versions. SimpleDirectoryReader follows symlinks by default — can ingest unintended files; set recursive=False or use explicit file list.</statement>
+        <rationale>Version mismatch breaks index loading. Symlink following causes unintended ingestion.</rationale>
+      </rule>
+      <rule>
+        <statement>SubQuestionQueryEngine runs sub-queries sequentially by default; pass use_async=True to parallelize.</statement>
+        <rationale>Sequential execution is slow; async is the default production pattern.</rationale>
+      </rule>
+    </section>
+    <templates>
+      <template path="templates/config.py" purpose="LlamaIndex Settings config with pydantic-settings"/>
+      <template path="templates/rag_workflow.py" purpose="Production RAG Workflow with retrieve → rerank → synthesize steps"/>
+      <template path="templates/prompt-qa.txt" purpose="Custom QA prompt template for domain-specific answering"/>
+    </templates>
+    <see-also>
+      <link href="https://docs.llamaindex.ai/">LlamaIndex Documentation</link>
+      <link href="https://github.com/run-llama/llama_index">LlamaIndex GitHub</link>
+      <link href="https://llamahub.ai/">LlamaHub Connectors</link>
+      <link href="https://docs.llamaindex.ai/en/stable/llama_cloud/llama_parse/">LlamaParse</link>
+      <link href="https://www.llamaindex.ai/blog/introducing-agentworkflow-a-powerful-system-for-building-ai-agent-systems">AgentWorkflow Blog Post</link>
+      <link href="https://developers.llamaindex.ai/python/framework/optimizing/production_rag/">Building Performant RAG</link>
+      <link href="https://docs.llamaindex.ai/en/stable/module_guides/indexing/lpg_index_guide/">Property Graph Index Guide</link>
+    </see-also>
+  </content>
+</methodology>

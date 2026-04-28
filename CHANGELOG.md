@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (llamaindex, llm-decision-framework, multi-agent-systems; feature-045 batch 264)
 - migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (hybrid-search, image-generation, langchain; feature-045 batch 263)
 - migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (fine-tuning-lora, finetuning, graph-rag; feature-045 batch 262)
 - migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (claude-api, cost-optimization, decision-framework; feature-045 batch 261)
