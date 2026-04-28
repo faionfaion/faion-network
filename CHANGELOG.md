@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ux methodologies → methodology.xml (ai-design-assistant-patterns, ai-enhanced-design-systems, ai-plugin-ecosystem; feature-045 batch 293)
 - migrate: 3/3 geek/ux methodologies → methodology.xml (ai-assisted-accessibility, ai-spatial-computing, adobe-firefly-integration; feature-045 batch 292)
 - migrate: 3/3 geek/sdd + geek/ux methodologies → methodology.xml (ai-assisted-specification-writing, ai-assisted-specification-writing planning, ai-accessibility-automation-2026; feature-045 batch 291)
 - migrate: 3/3 geek/research/researcher methodologies → methodology.xml (market-sizing-with-ai, perplexity-ai-research, synthetic-users; feature-045 batch 290)

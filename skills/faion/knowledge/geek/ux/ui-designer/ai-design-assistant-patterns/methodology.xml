@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ai-design-assistant-patterns">
+  <metadata>
+    <tier>geek</tier>
+    <group>ux</group>
+    <domain>ui-designer</domain>
+    <summary>Four interaction patterns for embedding AI assistance into design tools: sidebar, modal, inline, and review mode. Choose one pattern per tool and use structured JSON output.</summary>
+    <tags>
+      <tag>design-systems</tag>
+      <tag>ai-assisted-design</tag>
+      <tag>figma-plugins</tag>
+      <tag>ux-patterns</tag>
+      <tag>agent-design</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>AI Design Assistant Patterns</title>
+    <summary>Four interaction patterns for embedding AI assistance into design tools: sidebar (always-on contextual suggestions), modal (focused batch generation), inline (micro-corrections on selected elements), and review (audit passes against a structured rubric). Choose one pattern per tool — mixing them creates UX confusion. Review-mode is the most agent-native: the agent receives a design artifact, applies a rubric, and returns structured JSON feedback for a human to act on.</summary>
+    <why>
+      <p>AI assistance without a defined interaction pattern degrades quickly: sidebar assistants give stale suggestions when context changes faster than the context window, modal assistants get abandoned after 2–3 interactions if too many clicks are required, and inline assistants in Figma plugins are sandboxed to selected nodes only. Choosing the right pattern before building prevents these failure modes.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Implementing a contextual AI assistant inside a Figma plugin where the assistant reacts to selected/edited content</item>
+        <item>Building a review-mode assistant that audits a design artifact and returns structured feedback</item>
+        <item>Automating design documentation: converting Figma JSON or component specs into human-readable specs</item>
+        <item>Evaluating which interaction pattern fits a given tool's UX before committing to implementation</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>The design problem is novel or strategic — assistant patterns support execution, not vision-setting</item>
+        <item>The assistant would make irreversible changes autonomously — all AI design actions must be reversible or human-confirmed</item>
+        <item>Context window is insufficient for the full design artifact (Figma file JSON above 200k tokens) — the assistant will hallucinate missing details</item>
+        <item>The user base has low AI literacy — assistant patterns require users to interpret and validate output</item>
+      </list>
+    </when-not-to-use>
+    <section name="Pattern Catalog">
+      <list>
+        <item>Sidebar — always visible, context-aware suggestions, quick actions; best for real-time support during design work</item>
+        <item>Modal — focused generation tasks, complex operations, batch processing; best for one-shot generation requests</item>
+        <item>Inline — in-place suggestions, quick edits, micro-improvements on selected elements; best for property-level corrections</item>
+        <item>Review — audit and structured feedback against a rubric; best for pre-handoff quality gates</item>
+      </list>
+    </section>
+    <section name="Human-AI Division">
+      <list>
+        <item>AI excels at: pattern recognition, variation generation, repetitive tasks, data processing</item>
+        <item>Humans excel at: creative direction, emotional understanding, brand judgment, strategic decisions</item>
+      </list>
+    </section>
+    <section name="Pattern Selection Rule">
+      <rule>
+        <statement>Choose one interaction pattern per tool; never mix patterns in the same UI surface.</statement>
+        <rationale>Mixing sidebar + modal + inline in one plugin creates navigation confusion. Users build mental models per pattern; switching patterns mid-workflow breaks them.</rationale>
+      </rule>
+      <rule>
+        <statement>Always return structured JSON from the assistant, not prose, so the application layer can act on it programmatically.</statement>
+        <rationale>Prose output requires parsing before any programmatic action. Structured JSON with defined schema enables the application to filter, display, and log results without additional processing.</rationale>
+      </rule>
+      <rule>
+        <statement>Cache assistant responses keyed on the design artifact hash to avoid redundant API calls when the design has not changed.</statement>
+        <rationale>Design files are read frequently but change less often. Caching eliminates repeated API calls for unchanged artifacts and reduces cost.</rationale>
+      </rule>
+    </section>
+    <section name="Limitations">
+      <antipattern>
+        <description>Sidebar assistant without context-change detection.</description>
+        <reason>Sidebar assistants degrade when the user's working context changes faster than the context window updates. The assistant gives stale suggestions for the previous selection state.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Review assistant without a confidence threshold filter.</description>
+        <reason>Review assistants produce false positives at scale. Without a confidence threshold, noise overwhelms useful signal and designers stop trusting the tool.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Documentation assistant on files with non-standard layer naming.</description>
+        <reason>Documentation assistants hallucinate component descriptions when design files use non-descriptive layer names (e.g., "Frame 23", "Group 5"). Descriptive naming is a prerequisite for reliable doc generation.</reason>
+      </antipattern>
+    </section>
+    <section name="Review-Mode Agent Workflow">
+      <rule>
+        <statement>Scope design context to under 50k tokens before sending to the model — strip hidden layers, locked frames, and non-visible nodes.</statement>
+        <rationale>Design context from Figma can be arbitrarily large. Uncontrolled context causes high cost and degraded quality. Scoping to relevant visible nodes preserves useful signal.</rationale>
+      </rule>
+      <rule>
+        <statement>Inject project-specific rules (spacing scale, brand palette, component naming) as system prompt context for review assistants.</statement>
+        <rationale>Review assistants trained on generic design principles miss project-specific standards. Without explicit injection, the assistant flags violations against generic rules, not the project's actual requirements.</rationale>
+      </rule>
+      <rule>
+        <statement>Strip markdown code fences from Claude JSON responses before parsing.</statement>
+        <rationale>Structured JSON output from Claude occasionally wraps in markdown code fences (```json). JSON parsers reject this format; always strip fences before parsing.</rationale>
+      </rule>
+    </section>
+    <section name="Services">
+      <list>
+        <item>Claude API (Anthropic SaaS) — primary engine for contextual, review, and doc-gen assistant patterns</item>
+        <item>Figma REST API (SaaS) — source of design context (nodes, styles, components)</item>
+        <item>Figma UXP Plugin SDK (OSS) — build sidebar/inline assistants inside Figma; sandboxed JS environment</item>
+        <item>Storybook (OSS) — component docs parseable and feedable to a review assistant</item>
+        <item>Linear (SaaS REST) — log assistant-generated feedback as issues for designer follow-up</item>
+        <item>jsonschema (Python) — validate structured assistant output before acting on it</item>
+      </list>
+    </section>
+    <section name="Gotchas">
+      <antipattern>
+        <description>Inline assistant that batch-applies node property changes without undo hooks.</description>
+        <reason>Agents that batch-apply Figma changes without going through the undo stack can corrupt files. All AI design actions must be reversible via Figma's undo mechanism.</reason>
+      </antipattern>
+      <antipattern>
+        <description>UXP plugin making direct HTTP calls to Claude API.</description>
+        <reason>UXP plugin sandbox does not allow external HTTP requests by default. Calls to Claude must proxy through a backend service.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Agents implement AI design assistant patterns by selecting the right interaction mode based on task type: contextual for real-time suggestions, modal for batch or complex generation, inline for micro-corrections, review for audit passes. In a Claude subagent pipeline, the most practical pattern is review-mode: the agent receives a design artifact (Figma JSON export, Storybook component list, or spec document), applies a structured rubric, and returns a structured feedback report (JSON or Markdown) that a human designer acts on. For documentation generation, the agent reads the artifact and produces specs in a defined template. Human-in-loop checkpoints are required before any feedback is presented to stakeholders or any change is applied to a live design system.</p>
+    </section>
+    <section name="Recommended Subagents">
+      <list>
+        <item>faion-sdd-executor-agent — executes a design review task: reads spec, applies rubric, writes feedback file</item>
+        <item>Custom design-doc agent — reads Figma export JSON, generates component documentation in a defined Markdown template</item>
+      </list>
+    </section>
+    <section name="Prompt Patterns">
+      <p>Design review assistant prompt:</p>
+      <code lang="text"><![CDATA[You are a design review assistant. Review the following component spec against these criteria:
+1. Accessibility: WCAG AA contrast, keyboard navigation documented, aria roles specified
+2. Consistency: tokens used match design system (no hardcoded hex values)
+3. Edge cases: empty state, loading state, error state defined
+4. Responsiveness: behavior at 320px, 768px, 1440px described
+
+Component spec:
+<spec>
+{component_spec}
+</spec>
+
+Return JSON: {"passed": [], "failed": [{"criterion": "", "detail": "", "suggestion": ""}]}]]></code>
+      <p>Inline suggestion pattern:</p>
+      <code lang="text"><![CDATA[# Inline suggestion pattern
+Selected layer: {layer_name}
+Layer type: {layer_type}
+Current properties: {properties_json}
+
+Suggest 3 specific improvements for this layer. Each suggestion must be:
+- Actionable (specify the exact change)
+- Justified (reference a design principle or token)
+- Non-breaking (no structural changes, only property edits)]]></code>
+    </section>
+    <section name="CLI Tools">
+      <list>
+        <item>figma-api (Node) — Fetch design context (selected nodes, styles) for assistant input; npm i @figma/rest-api-spec</item>
+        <item>anthropic SDK — Drive Claude as the assistant engine; pip install anthropic / npm i @anthropic-ai/sdk</item>
+        <item>jsonschema (Python) — Validate structured assistant output before acting on it; pip install jsonschema</item>
+        <item>diff-so-fancy — Human-readable diff of design spec versions (before/after assistant suggestions); npm i -g diff-so-fancy</item>
+      </list>
+    </section>
+    <section name="Services &amp; Apps">
+      <list>
+        <item>Claude API (Anthropic) — SaaS, agent-friendly; primary engine for contextual, review, and doc-gen assistant patterns</item>
+        <item>Figma REST API — SaaS, agent-friendly; source of design context (nodes, styles, components)</item>
+        <item>Figma UXP Plugin SDK — OSS, agent-friendly (in-browser); build sidebar/inline assistants inside Figma; sandboxed JS environment</item>
+        <item>Storybook — OSS, agent-friendly (Node); component documentation that can be parsed and fed to a review assistant</item>
+        <item>Zeroheight / Supernova — SaaS, partial agent-friendly; design system doc platforms; can receive generated docs via API</item>
+        <item>Linear — SaaS, agent-friendly (REST); log assistant-generated feedback as issues for designer follow-up</item>
+      </list>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Choose the interaction pattern before building: sidebar for always-on suggestions, modal for focused generation, inline for micro-edits, review for batch audit — mixing patterns in one tool creates confusion</item>
+        <item>Always return structured output (JSON) from the assistant, not prose, so the application layer can act on it programmatically</item>
+        <item>Apply a confidence or relevance filter to assistant suggestions before displaying them — showing every suggestion from a large batch buries the useful ones</item>
+        <item>For documentation generation, define the output template first and instruct the assistant to fill it — never ask for freeform docs and then parse them</item>
+        <item>Cache assistant responses keyed on the design artifact hash to avoid redundant API calls when the design hasn't changed</item>
+        <item>Log all assistant interactions (input context, output, user action taken) for future fine-tuning and pattern analysis</item>
+        <item>For in-plugin (UXP) assistants, keep context payloads under 50k tokens — strip hidden layers, locked frames, and non-visible nodes before sending</item>
+      </list>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <list>
+        <item>Design context from Figma can be arbitrarily large; always truncate or scope the input before sending to the model — uncontrolled context → high cost + degraded quality</item>
+        <item>Inline assistant suggestions that modify node properties must go through a reversible operation (Figma undo stack); agents that batch-apply changes without undo hooks can corrupt files</item>
+        <item>The Claude API has a context window but no memory of prior design sessions — assistant continuity must be maintained by the application, not the model</item>
+        <item>Review assistants trained on generic design principles will miss project-specific standards (spacing scale, brand palette, component naming) — inject project-specific rules as system prompt context</item>
+        <item>Structured JSON output from Claude occasionally wraps in markdown code fences; always strip ``` blocks before JSON parsing</item>
+        <item>UXP plugin sandbox does not allow external HTTP requests by default; assistant calls to Claude must proxy through a backend service</item>
+      </list>
+    </section>
+    <section name="Design Review Pipeline Example">
+      <p>Design review pipeline (Python, ~45 lines):</p>
+      <code lang="python"><![CDATA[import os, json
+import anthropic
+
+client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+RUBRIC = """
+Review this component spec for:
+1. Accessibility (WCAG AA contrast, keyboard nav, aria roles)
+2. Token consistency (no hardcoded values)
+3. State completeness (empty, loading, error)
+4. Responsive behavior (320px / 768px / 1440px)
+
+Return JSON: {"passed": [], "failed": [{"criterion": "", "detail": "", "suggestion": ""}]}
+"""
+
+def review_component(spec: str) -> dict:
+    resp = client.messages.create(
+        model="claude-haiku-4-5",
+        max_tokens=1024,
+        messages=[
+            {"role": "user", "content": f"{RUBRIC}\n\nComponent spec:\n{spec}"}
+        ],
+    )
+    text = resp.content[0].text
+    # Extract JSON block
+    start = text.find("{")
+    end = text.rfind("}") + 1
+    return json.loads(text[start:end])
+
+if __name__ == "__main__":
+    import sys
+    spec = open(sys.argv[1]).read()
+    result = review_component(spec)
+    failed = result.get("failed", [])
+    print(f"Issues found: {len(failed)}")
+    for f in failed:
+        print(f"  [{f['criterion']}] {f['detail']} → {f['suggestion']}")]]></code>
+    </section>
+    <templates>
+      <template path="templates/review-rubric-prompt.txt" purpose="Component review prompt against accessibility, tokens, states, responsiveness"/>
+      <template path="templates/inline-suggestion-prompt.txt" purpose="Inline suggestion prompt for a selected Figma layer"/>
+      <template path="templates/design-review.py" purpose="Design review pipeline: spec file → structured JSON feedback"/>
+    </templates>
+    <see-also>
+      <link href="https://www.figma.com/plugin-docs/"/>
+      <link href="https://www.anthropic.com/api"/>
+      <link href="https://www.nngroup.com/articles/ai-design-tools/"/>
+      <link href="https://www.smashingmagazine.com/2025/01/ai-design-assistants/"/>
+      <link href="https://www.interaction-design.org/literature/article/ai-design-assistants"/>
+    </see-also>
+  </content>
+</methodology>
