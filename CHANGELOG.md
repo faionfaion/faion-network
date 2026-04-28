@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (risk-management, risk-register, schedule-development; feature-045 batch 186)
 - migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (pm-tool-selection, predictive-analytics-pm, procurement-management; feature-045 batch 183)
 - migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (project-closure, project-integration, quality-management; feature-045 batch 184)
 - migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (jira-workflow-management, lessons-learned, performance-domains-overview; feature-045 batch 181)
