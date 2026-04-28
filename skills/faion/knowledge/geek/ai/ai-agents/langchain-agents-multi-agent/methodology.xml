@@ -1,0 +1,503 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="langchain-agents-multi-agent">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Multi-agent collaboration patterns and testing strategies using LangChain and LangGraph. Covers supervisor routing, debate-driven consensus, and hierarchical team delegation.</summary>
+    <tags>
+      <tag>langchain</tag>
+      <tag>langgraph</tag>
+      <tag>multi-agent</tag>
+      <tag>agents</tag>
+      <tag>patterns</tag>
+    </tags>
+    <category>agent</category>
+    <difficulty>intermediate</difficulty>
+    <created>2024-04-24</created>
+  </metadata>
+  <content>
+    <title>LangChain Multi-Agent Systems</title>
+    <summary>Multi-agent collaboration patterns and testing strategies using LangChain and LangGraph.</summary>
+    <why>
+      <p>Single-agent systems cannot handle all required specializations — routing to domain-specific agents (researcher, coder, writer) is cleaner than one overloaded agent.</p>
+      <p>Multi-agent patterns enable consensus-driven decision making where multiple agent perspectives improve output quality, and naturally decompose complex organizations into teams where one team does research, another does implementation, with a coordinator routing between them.</p>
+      <p>Multi-agent decomposition makes each agent's responsibility narrow and testable with mocked LLM calls, enabling unit testing of agent logic in isolation.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building multi-agent collaboration systems</item>
+        <item>Implementing agent supervision and routing</item>
+        <item>Creating debate and consensus systems</item>
+        <item>Hierarchical team coordination</item>
+        <item>Testing agent systems</item>
+        <item>A single agent cannot handle all required specializations</item>
+        <item>You need consensus-driven decision making where multiple agent perspectives improve output quality</item>
+        <item>The organization of work maps to teams</item>
+        <item>You want to unit-test agent logic in isolation</item>
+        <item>Supervisor routing allows dynamic task allocation without hard-coded logic in the orchestrator</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>The task is linear with no branching — a single LangGraph workflow or LCEL chain is simpler and cheaper</item>
+        <item>Agents need to share complex state that changes across turns — tight coupling between agents through shared mutable state creates race conditions</item>
+        <item>Latency is critical — each supervisor routing call adds an LLM invocation; for time-sensitive tasks, static routing is faster</item>
+        <item>The team size is small and there's no domain specialization benefit — multi-agent overhead is not justified for homogeneous tasks</item>
+        <item>You need guaranteed execution order — supervisor routing is LLM-driven and non-deterministic</item>
+      </list>
+    </when-not-to-use>
+    <section name="Multi-Agent Patterns">
+      <section name="Pattern 1: Supervisor Architecture">
+        <p>One agent routes to specialized workers.</p>
+        <code lang="python"><![CDATA[from langgraph.graph import StateGraph, END
+from typing import TypedDict, Literal
+
+class TeamState(TypedDict):
+    input: str
+    next_agent: str
+    messages: list
+    final_answer: str
+
+def supervisor(state: TeamState) -> TeamState:
+    """Route to appropriate specialist."""
+    prompt = f"""You are a supervisor. Route this query to the right agent.
+    Options: researcher, coder, writer
+
+    Query: {state['input']}
+
+    Respond with just the agent name."""
+
+    response = model.invoke(prompt)
+    return {"next_agent": response.content.strip().lower()}
+
+def researcher(state: TeamState) -> TeamState:
+    """Research specialist."""
+    response = model.invoke(f"Research this: {state['input']}")
+    return {"messages": [f"Researcher: {response.content}"]}
+
+def coder(state: TeamState) -> TeamState:
+    """Coding specialist."""
+    response = model.invoke(f"Write code for: {state['input']}")
+    return {"messages": [f"Coder: {response.content}"]}
+
+def writer(state: TeamState) -> TeamState:
+    """Writing specialist."""
+    response = model.invoke(f"Write content for: {state['input']}")
+    return {"messages": [f"Writer: {response.content}"]}
+
+def route_to_agent(state: TeamState) -> str:
+    return state["next_agent"]
+
+# Build
+graph = StateGraph(TeamState)
+graph.add_node("supervisor", supervisor)
+graph.add_node("researcher", researcher)
+graph.add_node("coder", coder)
+graph.add_node("writer", writer)
+
+graph.set_entry_point("supervisor")
+graph.add_conditional_edges(
+    "supervisor",
+    route_to_agent,
+    {"researcher": "researcher", "coder": "coder", "writer": "writer"}
+)
+graph.add_edge("researcher", END)
+graph.add_edge("coder", END)
+graph.add_edge("writer", END)
+
+team = graph.compile()]]></code>
+      </section>
+      <section name="Pattern 2: Debate Architecture">
+        <p>Agents debate to reach consensus.</p>
+        <code lang="python"><![CDATA[class DebateState(TypedDict):
+    topic: str
+    positions: list[dict]
+    round: int
+    consensus: str | None
+
+def agent_a(state: DebateState) -> DebateState:
+    """First debater."""
+    context = "\n".join([f"{p['agent']}: {p['argument']}" for p in state["positions"]])
+
+    prompt = f"""You are Agent A in a debate.
+    Topic: {state['topic']}
+    Previous arguments: {context}
+
+    Present your position."""
+
+    response = model.invoke(prompt)
+    return {
+        "positions": [{"agent": "A", "argument": response.content}],
+        "round": state["round"] + 1
+    }
+
+def agent_b(state: DebateState) -> DebateState:
+    """Second debater."""
+    context = "\n".join([f"{p['agent']}: {p['argument']}" for p in state["positions"]])
+
+    prompt = f"""You are Agent B in a debate.
+    Topic: {state['topic']}
+    Previous arguments: {context}
+
+    Present your counterargument."""
+
+    response = model.invoke(prompt)
+    return {"positions": [{"agent": "B", "argument": response.content}]}
+
+def judge(state: DebateState) -> DebateState:
+    """Judge the debate."""
+    context = "\n".join([f"{p['agent']}: {p['argument']}" for p in state["positions"]])
+
+    prompt = f"""You are a judge.
+    Topic: {state['topic']}
+    Arguments: {context}
+
+    Determine if consensus is reached. If yes, summarize it.
+    If no, say "No consensus"."""
+
+    response = model.invoke(prompt)
+    consensus = None if "No consensus" in response.content else response.content
+    return {"consensus": consensus}
+
+def should_continue_debate(state: DebateState) -> str:
+    if state.get("consensus"):
+        return END
+    if state["round"] >= 5:
+        return END
+    return "agent_a"
+
+# Build
+graph = StateGraph(DebateState)
+graph.add_node("agent_a", agent_a)
+graph.add_node("agent_b", agent_b)
+graph.add_node("judge", judge)
+
+graph.set_entry_point("agent_a")
+graph.add_edge("agent_a", "agent_b")
+graph.add_edge("agent_b", "judge")
+graph.add_conditional_edges("judge", should_continue_debate)
+
+debate = graph.compile()]]></code>
+      </section>
+      <section name="Pattern 3: Hierarchical Teams">
+        <p>Teams of teams with delegation.</p>
+        <code lang="python"><![CDATA[class HierarchicalState(TypedDict):
+    task: str
+    team: str
+    subtasks: list[str]
+    results: list[str]
+    final_output: str
+
+# Research team
+def research_lead(state: HierarchicalState) -> HierarchicalState:
+    """Research team lead - delegates to researchers."""
+    return {"subtasks": ["search web", "analyze papers", "summarize"]}
+
+research_team = StateGraph(HierarchicalState)
+research_team.add_node("lead", research_lead)
+research_team.add_node("searcher", searcher_node)
+research_team.add_node("analyzer", analyzer_node)
+# ... build team
+
+# Engineering team
+def eng_lead(state: HierarchicalState) -> HierarchicalState:
+    """Engineering team lead."""
+    return {"subtasks": ["design", "implement", "test"]}
+
+eng_team = StateGraph(HierarchicalState)
+eng_team.add_node("lead", eng_lead)
+# ... build team
+
+# Top-level coordinator
+def coordinator(state: HierarchicalState) -> HierarchicalState:
+    """Coordinate between teams."""
+    prompt = f"Which team should handle: {state['task']}? research or engineering"
+    response = model.invoke(prompt)
+    return {"team": response.content.strip().lower()}
+
+def route_team(state: HierarchicalState) -> str:
+    return state["team"]
+
+main = StateGraph(HierarchicalState)
+main.add_node("coordinator", coordinator)
+main.add_node("research", research_team.compile())
+main.add_node("engineering", eng_team.compile())
+
+main.set_entry_point("coordinator")
+main.add_conditional_edges(
+    "coordinator",
+    route_team,
+    {"research": "research", "engineering": "engineering"}
+)
+
+organization = main.compile()]]></code>
+      </section>
+    </section>
+    <section name="Testing Agents">
+      <code lang="python"><![CDATA[import pytest
+from unittest.mock import Mock, patch
+
+def test_agent_tool_selection():
+    """Test that agent selects correct tool."""
+    with patch("langchain_openai.ChatOpenAI") as mock_llm:
+        mock_llm.return_value.invoke.return_value = Mock(
+            tool_calls=[{"name": "search", "args": {"query": "test"}}]
+        )
+
+        result = agent.invoke({"messages": [("human", "Search for test")]})
+
+        assert "search" in str(result)
+
+def test_chain_output_format():
+    """Test chain returns expected format."""
+    result = chain.invoke({"input": "test"})
+
+    assert isinstance(result, str)
+    assert len(result) > 0
+
+# Integration test with real LLM
+@pytest.mark.integration
+def test_full_workflow():
+    """Test complete workflow end-to-end."""
+    result = workflow.invoke({"input": "Analyze this data"})
+
+    assert result["final_answer"] is not None
+    assert "error" not in result]]></code>
+    </section>
+    <section name="Limitations and Failure Modes">
+      <p>Supervisor routing via natural language is non-deterministic — the same query can route to different agents across runs; not suitable for auditable pipelines.</p>
+      <p>Debate pattern convergence is not guaranteed — the `round >= 5` hard stop may terminate with no consensus, returning empty output.</p>
+      <p>Hierarchical team subgraphs require compatible state schemas — mismatched TypedDict fields between parent and subgraph cause silent state loss.</p>
+      <p>Mock-based unit tests for agents verify logic flow but cannot catch prompt quality issues — integration tests with real LLM calls are required.</p>
+      <p>`supervisor` node calls the model once per routing decision; high-volume systems that route thousands of requests accumulate significant supervisor LLM costs.</p>
+      <p>Debate pattern with `enforce_consistency` in judge evaluation doubles judge LLM calls per round.</p>
+    </section>
+    <section name="Agentic Workflow">
+      <p>The orchestrating agent dispatches tasks to a compiled LangGraph multi-agent system by providing an initial state dict and a thread_id. The supervisor node routes to specialists; specialist nodes run independently and return partial state updates; results accumulate in the shared state.</p>
+      <p>For Claude-based multi-agent systems, each specialist agent can be a separate Claude API call with a specialized system prompt, routed by a lightweight supervisor that uses structured output to return the specialist name. Evaluation of multi-agent output requires checking both individual specialist outputs and the final synthesized result.</p>
+      <section name="Recommended Subagents">
+        <list>
+          <item>`faion-autonomous-agent-builder-agent` — scaffolds LangGraph multi-agent systems from a task description; generates supervisor + specialist nodes</item>
+          <item>General supervisor subagent — routes incoming tasks to registered specialist agents by name; returns routing decision as structured JSON for auditability</item>
+        </list>
+      </section>
+      <section name="Prompt Pattern">
+        <p>Supervisor routing prompt with structured JSON output:</p>
+        <code lang="xml"><![CDATA[<system>
+You are a supervisor agent. Route the following task to exactly one specialist:
+- researcher: information gathering, fact-checking, web search tasks
+- coder: code generation, debugging, refactoring tasks
+- writer: content creation, editing, summarization tasks
+
+Respond with JSON only: {"agent": "<name>", "reason": "<one sentence>"}
+</system>
+<human>Task: {task}</human>]]></code>
+        <p>Debate judge prompt for consensus evaluation:</p>
+        <code lang="xml"><![CDATA[<system>
+You are a debate judge. Evaluate whether consensus has been reached.
+Topic: {topic}
+Arguments so far: {arguments}
+
+If consensus: {"consensus": true, "summary": "<summary>"}
+If no consensus: {"consensus": false, "summary": null}
+</system>]]></code>
+      </section>
+    </section>
+    <section name="CLI Tools and Services">
+      <section name="CLI Tools">
+        <list>
+          <item>`langgraph` — Multi-agent state machine framework | `pip install langgraph`</item>
+          <item>`langgraph-cli` — Local dev server + graph visualization | `pip install langgraph-cli`</item>
+          <item>`langsmith` — Trace per-agent step execution | `pip install langsmith` / https://smith.langchain.com</item>
+          <item>`pytest` — Unit + integration testing for agent logic | `pip install pytest pytest-asyncio`</item>
+        </list>
+      </section>
+      <section name="Services and Apps">
+        <list>
+          <item>LangSmith (SaaS) — Yes, agent-friendly. Per-node traces; shows which specialist handled each turn</item>
+          <item>LangGraph Cloud (SaaS) — Yes, agent-friendly. Managed stateful multi-agent runtime with persistence</item>
+          <item>LangChain Hub (SaaS) — Yes, agent-friendly. Version-controlled specialist prompts pulled at runtime</item>
+          <item>Redis (OSS) — Yes, agent-friendly. Checkpoint backend for multi-agent session state</item>
+          <item>PostgreSQL (OSS) — Yes, agent-friendly. Production-grade checkpoint persistence</item>
+        </list>
+      </section>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Use `with_structured_output(Route)` for supervisor routing — eliminates string parsing errors and makes routing deterministic per model call</item>
+        <item>Log supervisor routing decisions to LangSmith with metadata tags — this creates an audit trail and reveals routing patterns over time</item>
+        <item>Write specialist nodes as pure Python functions testable without LLM — mock the model call and verify state transformation logic</item>
+        <item>In debate patterns, set a hard round limit (5) AND a consensus threshold — debate without both constraints loops or produces low-quality forced consensus</item>
+        <item>For hierarchical teams, compile each team subgraph independently and test it before composing in the parent graph</item>
+        <item>Use `pytest.mark.integration` to separate unit tests (mocked LLM) from integration tests (real LLM) — CI should run only unit tests; integration tests run on-demand</item>
+        <item>Design specialist prompts to return structured output matching the state schema — free-form text from specialists requires an additional parsing step</item>
+      </list>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <list>
+        <item>Supervisor routing via natural language is susceptible to prompt injection — if user input is passed directly into the supervisor prompt, a malicious task description can manipulate routing</item>
+        <item>Hierarchical subgraph state schemas must be a strict superset of parent state — missing fields in subgraph TypedDict cause KeyError at runtime when parent reads subgraph output</item>
+        <item>Debate pattern agents that reference their own previous arguments create self-reinforcing loops — include other agent's argument in context, not own history, to encourage genuine divergence</item>
+        <item>`pytest.mock.patch("langchain_openai.ChatOpenAI")` patches the class import; if the agent uses `langchain_anthropic.ChatAnthropic`, a different patch path is required — verify the import path being mocked</item>
+        <item>Multi-agent systems with shared `MemorySaver` checkpointer and different `thread_id`s are isolated — cross-agent state sharing requires explicit state passing through the graph, not through the checkpointer</item>
+        <item>Adding more specialists does not improve task quality linearly — each specialist adds a routing decision cost and potential misrouting; keep the specialist count to 3-5 with clear, non-overlapping domains</item>
+      </list>
+    </section>
+    <section name="Production Structured Routing Example">
+      <p>Using `with_structured_output(Route)` for deterministic supervisor routing, recommended for auditability:</p>
+      <code lang="python"><![CDATA[from typing import TypedDict, Literal
+from langgraph.graph import StateGraph, END
+from langchain_anthropic import ChatAnthropic
+from pydantic import BaseModel
+
+class Route(BaseModel):
+    agent: Literal["researcher", "coder", "writer"]
+    reason: str
+
+class TeamState(TypedDict):
+    task: str
+    route: dict
+    result: str
+
+model = ChatAnthropic(model="claude-opus-4-5")
+router_model = model.with_structured_output(Route)
+
+def supervisor(state: TeamState) -> TeamState:
+    route = router_model.invoke(
+        f"Route this task: {state['task']}\n"
+        "Options: researcher (facts), coder (code), writer (content)"
+    )
+    return {"route": route.model_dump()}
+
+def researcher(state: TeamState) -> TeamState:
+    resp = model.invoke(f"Research: {state['task']}")
+    return {"result": resp.content}
+
+def coder(state: TeamState) -> TeamState:
+    resp = model.invoke(f"Write code for: {state['task']}")
+    return {"result": resp.content}
+
+def writer(state: TeamState) -> TeamState:
+    resp = model.invoke(f"Write content for: {state['task']}")
+    return {"result": resp.content}
+
+graph = StateGraph(TeamState)
+graph.add_node("supervisor", supervisor)
+for name, fn in [("researcher", researcher), ("coder", coder), ("writer", writer)]:
+    graph.add_node(name, fn)
+    graph.add_edge(name, END)
+
+graph.set_entry_point("supervisor")
+graph.add_conditional_edges(
+    "supervisor",
+    lambda s: s["route"]["agent"],
+    {"researcher": "researcher", "coder": "coder", "writer": "writer"}
+)
+
+team = graph.compile()]]></code>
+    </section>
+    <section name="Inline Supervisor Template">
+      <p>A complete working example with structured routing:</p>
+      <code lang="python"><![CDATA[from typing import TypedDict, Literal
+from langgraph.graph import StateGraph, END
+from langchain_anthropic import ChatAnthropic
+from pydantic import BaseModel
+
+class Route(BaseModel):
+    agent: Literal["researcher", "coder", "writer"]
+    reason: str
+
+class TeamState(TypedDict):
+    task: str
+    route: dict
+    result: str
+
+model = ChatAnthropic(model="claude-opus-4-5")
+router_model = model.with_structured_output(Route)
+
+def supervisor(state: TeamState) -> TeamState:
+    route = router_model.invoke(
+        f"Route this task: {state['task']}\n"
+        "Options: researcher (facts), coder (code), writer (content)"
+    )
+    return {"route": route.model_dump()}
+
+def researcher(state: TeamState) -> TeamState:
+    resp = model.invoke(f"Research: {state['task']}")
+    return {"result": resp.content}
+
+def coder(state: TeamState) -> TeamState:
+    resp = model.invoke(f"Write code for: {state['task']}")
+    return {"result": resp.content}
+
+def writer(state: TeamState) -> TeamState:
+    resp = model.invoke(f"Write content for: {state['task']}")
+    return {"result": resp.content}
+
+graph = StateGraph(TeamState)
+graph.add_node("supervisor", supervisor)
+for name, fn in [("researcher", researcher), ("coder", coder), ("writer", writer)]:
+    graph.add_node(name, fn)
+    graph.add_edge(name, END)
+
+graph.set_entry_point("supervisor")
+graph.add_conditional_edges(
+    "supervisor",
+    lambda s: s["route"]["agent"],
+    {"researcher": "researcher", "coder": "coder", "writer": "writer"}
+)
+
+team = graph.compile()]]></code>
+    </section>
+    <section name="Advanced Patterns">
+      <section name="Multi-Agent Pattern Comparison">
+        <p>LangChain provides three primary patterns for multi-agent systems, each suited to different organizational needs:</p>
+        <list>
+          <item>Supervisor: Route to specialists. Use case: Task delegation where one routing agent determines which specialist should handle a request.</item>
+          <item>Debate: Collaborative reasoning. Use case: Decision making where multiple agents present viewpoints and a judge determines consensus.</item>
+          <item>Hierarchical: Nested teams. Use case: Complex organizations where multiple specialized teams operate independently under a coordinator.</item>
+        </list>
+      </section>
+      <section name="Testing Strategies">
+        <p>Multi-agent systems require comprehensive testing at multiple levels to catch both logic errors and prompt quality issues:</p>
+        <list>
+          <item>Mock LLM calls: Unit test logic by replacing model.invoke() with Mock objects; verifies state transformation without LLM cost.</item>
+          <item>Check output format: Validate structure by verifying returned state dict matches expected schema.</item>
+          <item>Integration tests: End-to-end validation against real LLM calls; catches prompt-quality issues not visible in unit tests.</item>
+          <item>Tool selection tests: Verify correct tool usage by checking that agent selection is deterministic for known inputs.</item>
+        </list>
+      </section>
+    </section>
+    <section name="References">
+      <list>
+        <item>https://langchain-ai.github.io/langgraph/tutorials/multi_agent/multi-agent-collaboration/</item>
+        <item>https://langchain-ai.github.io/langgraph/tutorials/multi_agent/agent_supervisor/</item>
+        <item>https://langchain-ai.github.io/langgraph/tutorials/multi_agent/hierarchical_agent_teams/</item>
+        <item>https://python.langchain.com/docs/how_to/agent_executor/</item>
+        <item>LangGraph multi-agent examples: https://github.com/langchain-ai/langgraph/tree/main/examples/multi_agent</item>
+      </list>
+    </section>
+    <checklist>
+      <check>Review methodology documentation</check>
+      <check>Identify requirements and constraints</check>
+      <check>Define success criteria</check>
+      <check>Set up development environment</check>
+      <check>Implement core functionality</check>
+      <check>Add error handling</check>
+      <check>Write tests</check>
+      <check>Document code</check>
+      <check>Run unit tests</check>
+      <check>Run integration tests</check>
+      <check>Validate against requirements</check>
+      <check>Performance testing (if applicable)</check>
+      <check>Code review</check>
+      <check>Deploy to staging</check>
+      <check>Validate in production-like environment</check>
+      <check>Deploy to production</check>
+      <check>Monitor metrics</check>
+      <check>Document lessons learned</check>
+      <check>Update runbooks</check>
+    </checklist>
+  </content>
+</methodology>
