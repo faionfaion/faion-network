@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: batch-190 pro/pm/project-manager + pro/product/product-manager (work-breakdown-structure, blurred-roles-team-evolution, competitive-positioning)
 - migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (scope-management, seven-performance-domains, six-core-principles; feature-045 batch 187)
 - migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (stakeholder-engagement, stakeholder-engagement-advanced, stakeholder-register; feature-045 batch 188)
 - migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (risk-management, risk-register, schedule-development; feature-045 batch 186)
