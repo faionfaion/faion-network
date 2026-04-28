@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/product methodologies → methodology.xml (ai-powered-pm-tools, agentic-ai-product-development, agents; feature-045 batch 285)
 - migrate: 3/3 geek/marketing methodologies → methodology.xml (claude-code-hooks, ai-content-strategy, ai-marketing-tools-stack-2026; feature-045 batch 283)
 - migrate: 3/3 geek/dev methodologies → methodology.xml (llm-friendly-architecture, claude-md-creation, llm-friendly-architecture; feature-045 batch 282)
 - migrate: 3/3 methodologies → methodology.xml (ai-enabled-business-analysis, ai-assisted-dev, claude-md-creation; feature-045 batch 281)
