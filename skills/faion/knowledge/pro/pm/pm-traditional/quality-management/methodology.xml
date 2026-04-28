@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="quality-management">
+  <metadata>
+    <tier>pro</tier>
+    <group>pm</group>
+    <domain>pm-traditional</domain>
+    <summary>Quality discipline with measurable thresholds, assurance activities, and deterministic gates. Compute RAG from metrics, never opinion.</summary>
+    <tags>
+      <tag>quality-management</tag>
+      <tag>quality-gates</tag>
+      <tag>definition-of-done</tag>
+      <tag>cost-of-quality</tag>
+      <tag>defect-triage</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Quality Management</title>
+
+    <summary>Three-process quality discipline: Plan Quality (define standards and measurable thresholds), Manage Quality / Assurance (ensure processes produce quality), and Control Quality (verify deliverables meet standards via deterministic gates). Quality gates are computed from CI artifacts and threshold files — never from narrative opinion. Every gate decision (release / hold / abort) requires human approval; agents emit recommendations only.</summary>
+
+    <why>
+      <p>Rework consumes 20–40% of project effort on most software programs. Prevention is cheaper than detection: a linter rule that catches a bug in CI is cheaper than an escaped production defect by 1–2 orders of magnitude. The Cost-of-Quality model quantifies this: prevention + appraisal costs must be weighed against internal-failure + external-failure costs. Most teams under-invest in prevention because failure cost is invisible until it happens.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Software programs with external acceptance criteria (UAT sign-off, FDA/EMA submission, ISO 9001 audits)</item>
+        <item>Multi-team programs where Definition of Done drift creates integration defects</item>
+        <item>Regulated domains needing a documented Quality Plan and QC records</item>
+        <item>Programs with SLA/SLO obligations where escape defect rates are contractual</item>
+        <item>Quality gates in CI/CD pipelines that block merges, releases, and deployments</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pre-PMF startups iterating on prototypes — heavy quality plans slow learning; use basic CI checks and code-quality</item>
+        <item>Throwaway spikes or POCs where the deliverable is "demo runs once"</item>
+        <item>One-person side projects — checklist overhead exceeds defect cost</item>
+        <item>When the real bottleneck is requirements clarity — fix scope and requirements first</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="quality-plan">
+      <p>Rules for authoring a quality plan with measurable thresholds, writing a useful Definition of Done, and running effective quality assurance activities.</p>
+
+      <rule testable="true">
+        <statement>Store the quality plan in git as quality-plan.yaml with explicit threshold values: {metric, op (>=|&lt;=), value}. Use CODEOWNERS to gate changes; the quality owner is named per workstream, not "the team".</statement>
+        <rationale>Narrative quality plans are not enforced at gate time. A YAML threshold file is machine-readable by the gate script and human-readable in PR reviews.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Track Cost-of-Quality explicitly: prevention costs (linting, type checking, code review), appraisal costs (testing, audits), internal-failure costs (rework, retests), and external-failure costs (production incidents, churn). CoQ trend reveals the true ROI of prevention investment.</statement>
+        <rationale>Teams under-invest in prevention because failure cost is invisible until it happens. Making it a tracked metric changes the investment decision.</rationale>
+      </rule>
+    </section>
+
+    <section name="definition-of-done">
+      <rule testable="true">
+        <statement>DoD items must be measurable, not narrative. "Code compiles" is measurable; "code is high quality" is not. Every DoD item must have a testable evidence source: CI run URL, coverage report line, scan result file.</statement>
+        <rationale>Narrative DoD items are passed on honour, not on evidence. Gate agents require a concrete evidence source to emit pass/fail; "high quality" cannot be grounded.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Define DoD per artifact type: story, feature, release. A story DoD and a release DoD have different criteria. Do not use one DoD for everything.</statement>
+        <rationale>Applying release-level criteria to every story creates overhead that teams bypass. Applying story-level criteria to releases misses integration and deployment checks.</rationale>
+      </rule>
+    </section>
+
+    <section name="quality-assurance">
+      <rule testable="true">
+        <statement>Prevention beats detection: invest in linters, type checkers, design contracts, and generative testing before adding manual review steps. Every category of bug that can be caught by a tool should be caught by a tool.</statement>
+        <rationale>Manual review catches fewer than 40% of defects in typical software; automated static analysis with well-configured rules catches the majority of structural defects at near-zero marginal cost.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run an escape-defect retrospective for every production defect rated S1 or S2. Output is a quality plan amendment — a new threshold, rule, or gate — not blame assignment.</statement>
+        <rationale>S1/S2 escapes signal a gap in the gate chain. Without a systematic amendment process, the same class of defect escapes again.</rationale>
+      </rule>
+    </section>
+
+    <section name="quality-gate-rules">
+      <p>Rules for deterministic quality gate execution, structured defect triage, and avoiding quality control antipatterns.</p>
+
+      <rule testable="true">
+        <statement>Quality gate decisions (release / hold / abort) require human approval. The gate script computes PASS/FAIL from thresholds; the agent emits a recommendation with evidence; a named human approves the release decision.</statement>
+        <rationale>Automated quality gate execution is appropriate for blocking merges; releasing to production requires human accountability that no automated system can substitute.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Every gate run must produce an immutable artifact with timestamp, inputs (CI run IDs, tool versions, threshold file version), and output (PASS/FAIL per criterion with evidence URLs). Audit evidence must be traceable, not curated post-hoc.</statement>
+        <rationale>Regulated programs (ISO, SOC 2, FDA) require evidence that the gate was run correctly at the time of release. Post-hoc evidence curation creates regulatory liability.</rationale>
+      </rule>
+
+      <reference path="templates/quality-gate.py">Gate script: reads quality-plan.yaml thresholds and CI JSON, exits non-zero on failure</reference>
+    </section>
+
+    <section name="defect-triage">
+      <rule testable="true">
+        <statement>Every defect must be triaged against one severity rubric defined in quality-plan.yaml. Reject severity assignments made without reference to the rubric. Auto-close of duplicates requires human review — the agent recommends, the human merges.</statement>
+        <rationale>Agents inflate severity to be "safe" (everything S2/S3) or deflate to avoid escalation. A calibrated rubric with examples for each severity level is the only reliable anchor.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Defect reports must include steps-to-reproduce grounded on actual logs or traces. Agents must refuse to fabricate reproduction steps from description alone.</statement>
+        <rationale>Invented repro steps cannot be executed, blocking triage and fix verification. Grounding on actual artefacts (logs, traces, screenshots) is a non-negotiable quality gate on the defect report itself.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Process metric becomes a gaming target (Goodhart's Law): teams hit the coverage percentage by testing trivial code paths while leaving critical paths untested.</description>
+        <reason>Rotate which metrics gate vs. which inform; a metric used as a gate for more than two cycles is at risk of being gamed. Supplement coverage percentage with mutation testing or branch coverage.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent writing "evidence" for a DoD item without a traceable artefact source.</description>
+        <reason>Fabricated evidence creates audit liability. Every pass assertion must point to an immutable artefact URL (CI run, report file, scan SARIF). Refuse to pass any criterion without a concrete source.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Defect logs sent to a third-party LLM without PII scrubbing.</description>
+        <reason>Defect logs routinely contain user IDs, email addresses, payment data, and health information. Scrub before sending to any external model.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Conflates Cost-of-Quality (prevention + appraisal + failure) with mere QA budget; teams under-invest in prevention because failure cost is invisible.</description>
+        <reason>Separate the budget lines: prevention (linting, type checking, design review), appraisal (testing, scanning, audits), internal failure (rework, retests), external failure (production incidents, churn). Track CoQ trend to show ROI.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Definition of Done is a checkbox cargo cult unless tied to measurable acceptance criteria and runtime evidence (test coverage, security scan, perf baseline).</description>
+        <reason>Every DoD item must have a testable evidence source. If you cannot automate it or point to a concrete artefact, remove it from DoD and move it to "nice to have".</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>"Quality is everyone's job" → in practice no one owns it; missing named QA owner per workstream is a common failure.</description>
+        <reason>Name a quality owner per workstream and codify in CODEOWNERS. Quality is everyone's job only if someone is explicitly responsible.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Static checklists rot; programs accumulate dozens of checklists that nobody updates.</description>
+        <reason>Version quality-plan.yaml in git with branch protection. Checklist updates are PRs, not email updates.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LLMs grading "code quality" produce confident but inconsistent verdicts; deterministic linters and SAST beat narrative review for pass/fail gates.</description>
+        <reason>Use linters, type checkers, and SAST for pass/fail gates. Use LLMs for recommendations and patterns, but not for gate decisions.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>UAT sign-off cannot substitute for production telemetry; defects escape UAT every release.</description>
+        <reason>UAT is a gate on requirements conformance. Production telemetry (error rate, latency p99, SLOs) is a separate gate. Both are mandatory.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents reading test reports skip the parts they cannot interpret (binary blobs, large logs); always pre-process to structured JSON before prompt.</description>
+        <reason>Binary output is agent-unfriendly. Transform test reports to JSON before feeding to an agent.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Defect triage agents over-merge duplicates because of surface similarity; require >0.85 embedding cosine + matching environment before auto-link.</description>
+        <reason>Over-merging duplicates erases signal from the bug tracker. Require high confidence (multiple signals) before suggesting a duplicate.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Severity inflation: agents rate everything S2/S3 to be "safe"; force a calibration set with examples in the prompt.</description>
+        <reason>A severity rubric with concrete examples (S1: production down, customer impact; S2: feature broken, workaround exists; S3: cosmetic) is the only anchor.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents writing defect reports invent reproduction steps; ground on actual logs/traces and refuse to fabricate steps.</description>
+        <reason>Invented repro steps cannot be executed. Quality gates must reject fabricated evidence.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Privacy: defect logs frequently leak PII (user IDs, emails, payment data); scrub before sending to a third-party model.</description>
+        <reason>PII in defect logs is a data breach risk and audit liability. Scrub before feeding to any external model.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Audit-prep agents producing "evidence" without traceable source create regulatory liability; every evidence claim must point to an immutable artifact.</description>
+        <reason>Fabricated audit evidence is worse than no evidence. Every claim must have a traceable source (CI run, report file, scan SARIF with timestamp).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Auto-closing duplicates without human review erases information; agent recommends, human merges.</description>
+        <reason>Auto-merge of duplicates can hide important signal (different root cause, different severity, different environment). Require human review.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Coverage hallucination: agents claim coverage that exceeds the actual report; always trust the file, not the LLM summary.</description>
+        <reason>Agents invent metrics. Coverage comes from the report file, not from the LLM paraphrase. Cross-check every metric against the source file.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Quality is encoded as a typed quality-plan.yaml in git: standards, metrics, thresholds, gates, owners. CI runs deterministic checks (lint, type, test, coverage, SAST, perf) and emits a machine-readable QA report. A subagent reads that report plus issue tracker data and produces the Quality Dashboard with computed RAG. A second subagent triages new defect reports — extracting steps, environment, severity, and proposing a duplicate match before assigning. Quality gate decisions (release / hold / abort) require human approval; agents emit recommendations only.</p>
+
+      <p>Recommended subagents: faion-sdd-executor-agent — drives quality work as SDD tasks (TASK_define_dod, TASK_quality_plan, TASK_release_gate, TASK_audit_prep). Custom dod-checker-agent (sonnet) — given a PR / story, validates against quality-plan.yaml checklist; outputs structured pass/fail per criterion with evidence link (CI run, test report, coverage report). Custom defect-triage-agent (sonnet) — parses incoming bug reports; normalizes to schema; runs duplicate detection (embedding similarity) against existing tickets; assigns severity by rubric. Custom quality-dashboard-agent (sonnet) — aggregates CI outputs, defect tracker, telemetry; emits Sprint Quality Report with computed metrics, no opinion-based GREEN. Custom audit-prep-agent (opus) — for ISO/SOC2/regulatory audits, walks quality-plan.yaml evidence requirements and produces a gap report. Custom escape-analyzer-agent (opus) — for production defects that escaped pre-release testing, identifies missing gate / weak control; emits proposed prevention update.</p>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Quality Plan in git (quality-plan.yaml): standards, metrics, thresholds, gates, owners; PR-reviewed, versioned, tagged.</item>
+        <item>Definition of Done is per-artifact-type (story, feature, release) with measurable criteria; do not put narrative items in DoD.</item>
+        <item>Prevention > detection — invest in linters, types, contracts, generative testing before adding more manual review.</item>
+        <item>Cost-of-Quality tracking: log prevention, appraisal, internal-failure, external-failure costs; CoQ trend reveals true ROI.</item>
+        <item>Escape-defect retrospective is mandatory for any production defect rated S1/S2; output is a quality plan amendment, not blame.</item>
+        <item>Tie quality metrics to SLO/SLA, not vanity numbers; "test coverage 80%" without integration coverage is misleading.</item>
+        <item>Centralize defect schema; one severity rubric, one priority rubric, one taxonomy across the program.</item>
+        <item>Audit evidence is generated, not curated — every gate run produces an immutable artifact with timestamp, inputs, outputs.</item>
+        <item>Quality owner is named per workstream (not "the team"); CODEOWNERS on quality-plan.yaml.</item>
+        <item>Beware Goodhart: rotate which metrics gate vs. which inform; gating on the same metric for years invites gaming.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>LLMs grade "code quality" inconsistently; never let an agent be the sole gate authority — pair with deterministic tools.</item>
+        <item>Agents reading test reports skip the parts they cannot interpret (binary blobs, large logs); always pre-process to structured JSON before prompt.</item>
+        <item>Defect triage agents over-merge duplicates because of surface similarity; require >0.85 embedding cosine + matching environment before auto-link.</item>
+        <item>Severity inflation: agents rate everything S2/S3 to be "safe"; force a calibration set with examples in the prompt.</item>
+        <item>Agents writing defect reports invent reproduction steps; ground on actual logs/traces and refuse to fabricate steps.</item>
+        <item>Privacy: defect logs frequently leak PII (user IDs, emails, payment data); scrub before sending to a third-party model.</item>
+        <item>Audit-prep agents producing "evidence" without traceable source create regulatory liability; every evidence claim must point to an immutable artifact.</item>
+        <item>Auto-closing duplicates without human review erases information; agent recommends, human merges.</item>
+        <item>Coverage hallucination: agents claim coverage that exceeds the actual report; always trust the file, not the LLM summary.</item>
+        <item>Human-in-the-loop checkpoints (mandatory): release gate decisions, escape-defect classification, severity overrides, audit evidence approval, DoD changes.</item>
+      </list>
+    </section>
+
+    <reference path="templates/quality-gate.py">Pass/fail PR against quality-plan.yaml thresholds from CI JSON artifact</reference>
+
+    <templates>
+      <template path="templates/quality-gate.py" purpose="Pass/fail PR against quality-plan.yaml thresholds from CI JSON artifact"/>
+    </templates>
+
+    <see-also>
+      <ref slug="change-control"/>
+      <ref slug="risk-management"/>
+      <ref slug="lessons-learned"/>
+      <link href="https://www.pmi.org/pmbok-guide">PMI PMBOK 7e — Delivery Performance Domain (Quality).</link>
+      <link href="https://www.iso.org/standard/45481">ISO 9001:2015 — Quality management systems.</link>
+      <link href="https://www.iso.org/standard/44957">ISO/IEC 25010 — Software product quality model.</link>
+    </see-also>
+  </content>
+</methodology>
