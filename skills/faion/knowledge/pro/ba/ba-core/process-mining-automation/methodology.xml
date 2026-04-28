@@ -4,7 +4,7 @@
     <tier>pro</tier>
     <group>ba</group>
     <domain>ba-core</domain>
-    <summary>Process mining fundamentals: discovery algorithms, event-log prerequisites, adoption gate criteria, automation candidate assessment. Use before selecting a tool or vendor to handle go/no-go scoping and algorithm selection.</summary>
+    <summary>Process mining fundamentals: discovery algorithms, event-log requirements, adoption gate criteria. Use before tool or vendor selection for go/no-go scoping and algorithm recommendation.</summary>
     <category>process-mining</category>
     <difficulty>intermediate</difficulty>
     <created>2026-04-28</created>
@@ -213,6 +213,125 @@ Total > 24 of 30: full automation candidate.
         <statement>Evaluate tools on algorithm transparency: does the vendor disclose which algorithm is running, what hyperparameters are used, how variants are filtered? Lack of transparency prevents reproducible analysis.</statement>
         <rationale>Black-box tools hide critical decisions, making it impossible to debug failures or explain results to auditors. Transparency in algorithm choice is non-negotiable for regulated use.</rationale>
       </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>For the fundamentals / adoption path, agents do less than in the operational pipeline. The flow is: (1) explain — an LLM subagent generates a one-pager on what process mining is for the specific stakeholder audience (exec / ops / IT). (2) audit log feasibility — a Python subagent runs a 30-line script against a sample event-log CSV and reports column completeness, case-ID cardinality, timestamp coverage, activity vocabulary size, and estimated variant count, then flags whether the log is mining-ready. (3) recommend algorithm — based on log characteristics (noise level, loop presence, activity count) the agent picks Alpha / Heuristic / Inductive and justifies it. (4) adoption gate — the agent emits a go/no-go memo against six adoption criteria (event-log availability, case volume, stakeholder literacy, regulatory tolerance, tooling budget, automation downstream dependency). Only if go: hand off to the business-analyst variant for the full pipeline.</p>
+
+      <p><term name="recommended-subagents">Recommended subagents:</term></p>
+      <list>
+        <item>faion-sdd-executor-agent (this repo) — Owns the adoption-gate memo as a spec deliverable; routes go/no-go to the SDD lifecycle.</item>
+        <item>password-scrubber-agent (this repo) — Mandatory before any sample log is read by an LLM. Logs leak credentials in URL columns and free-text attrs.</item>
+        <item>General-purpose Task subagent with pandas — Runs the feasibility audit script (below). Returns a single JSON record; cheap, deterministic.</item>
+        <item>faion-ba-agent (declared in business-analyst skill front matter) — Owns the stakeholder-explainer one-pager. Tunes vocabulary per audience.</item>
+        <item>faion-research-agent — Vendor algorithm clarification: when a candidate vendor is named, fetches the product docs and answers "which discovery algorithm with what defaults?".</item>
+      </list>
+
+      <p><term name="prompt-pattern">Adoption-gate prompt:</term></p>
+      <code lang="text"><![CDATA[
+You are scoping a process-mining initiative for <team>.
+Inputs: log feasibility audit JSON (attached), business goal, automation
+intent (yes/no), regulatory context (GDPR/HIPAA/none), tooling budget tier
+(open-source / mid-market / enterprise).
+Score each of 6 adoption criteria on 1-5 with one-line evidence.
+Output: a 200-word go/no-go memo. If no-go, name the single blocker and
+the cheapest experiment to unblock.
+]]></code>
+
+      <p><term name="algorithm-recommendation">Algorithm-recommendation prompt:</term></p>
+      <code lang="text"><![CDATA[
+Given log stats: <activity_count>, <variant_count>, <case_count>,
+<has_loops>, <noise_estimate>, <self_loops_pct>, recommend one of:
+Alpha / Heuristic / Inductive Miner (infrequent variant). State the
+single failure mode if the wrong choice is made on this log.
+]]></code>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p><term name="algorithm-mismatch">Algorithm mismatch.</term> Alpha Miner cannot handle loops or noise; running it on real-world ticketing data produces an unsound Petri net. Heuristic Miner handles noise but loses formal guarantees. Inductive Miner guarantees soundness but trades off fitness against precision. A BA who cannot name these tradeoffs cannot evaluate a vendor demo.</p>
+
+      <p><term name="event-log-is-methodology">Event log is the methodology.</term> Process mining literature is thick with algorithms; in practice 80% of project effort is log preparation: defining the case notion, normalising activity labels, fixing timestamps, dropping "system events" that pollute the trace. Skipping this step is the single biggest cause of failed initiatives.</p>
+
+      <p><term name="three-columns-not-usable">Three columns ≠ usable log.</term> Even with case_id/activity/timestamp, logs fail when: timestamps are date-only (no time), case IDs span multiple business processes (must be split), or activities are free-text comments that need categorisation.</p>
+
+      <p><term name="variant-explosion">Variant explosion.</term> A real ITSM log with 5,000 cases will surface 600+ variants; the discovery graph is unreadable. Without filtering (top-K by frequency, fitness threshold) the output is theatre.</p>
+
+      <p><term name="confusion-with-bi">Confusion with BI.</term> Stakeholders expect Tableau-style dashboards; process mining produces graphs they cannot read. Adoption fails on UX perception, not capability.</p>
+
+      <p><term name="mining-is-descriptive">Mining is descriptive, not causal.</term> It shows that activity B follows A in 70% of cases; it does not explain why. A BA who treats the DFG as causal evidence will recommend the wrong intervention.</p>
+
+      <p><term name="privacy-gdpr">Privacy / GDPR.</term> Event logs frequently leak PII through resource IDs, customer names embedded in activity strings, and free-text attributes. Mining tools persist these.</p>
+
+      <p><term name="vendor-algorithm-opacity">Vendor algorithm opacity.</term> Celonis and UiPath rebrand standard algorithms; the BA must press for "is this Inductive Miner with noise filter or Heuristic Miner?" — vendor sales engineers often do not know.</p>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Name the question first. Discovery / Conformance / Enhancement are three different deliverables — agents that conflate them produce graphs nobody asked for.</item>
+        <item>Audit the log before the algorithm. Run the feasibility script above; if ready: false, do not proceed regardless of vendor pressure.</item>
+        <item>Keep the activity vocabulary under 50. If the log has 200 distinct activities, the BA must define an activity-grouping taxonomy first; this is a manual modelling exercise, not an agent task.</item>
+        <item>Pin top-K variants. Always filter to the top 10 variants by frequency for the first review; surface the long tail only after the main flow is understood.</item>
+        <item>Pair mining with one stakeholder interview. Mining shows what happened; one 30-minute interview explains why. Skipping the interview is the most common failure mode.</item>
+        <item>Disclose the algorithm. Every mining artefact must name the algorithm and parameters; otherwise downstream readers cannot judge the graph's reliability.</item>
+        <item>Strip PII at extraction. Replace user / customer columns with hashes before the log leaves the source system. Do not rely on the mining tool's "anonymise" feature.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Hallucinated event-log columns. LLMs invent plausible column names ("CaseKey", "EventTime") that do not exist.</description>
+        <reason>Always pin the actual column list in the prompt; do not let the agent infer.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Algorithm name confusion. "Inductive Miner" has three variants (basic, infrequent, directly-follows).</description>
+        <reason>Agents will pick whichever appeared more often in training data. Force the variant name.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Soundness vs fitness misreport. LLMs will report "fitness 0.95" and call the model good even when soundness is False.</description>
+        <reason>Both metrics must be returned and the BA must check soundness first.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Spaghetti DFG presented as success. Agents do not "see" graph unreadability; they will deliver a 600-node SVG and call the task done.</description>
+        <reason>Add a node/edge count gate to the workflow (e.g., abort if &gt;40 nodes without explicit override).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Privacy regression. Agents that re-derive activity labels from free-text fields can re-introduce PII that was scrubbed upstream.</description>
+        <reason>Re-scrub after any LLM transformation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Vendor demo overconfidence. Agents primed with vendor marketing copy parrot capability claims.</description>
+        <reason>Force vendor questions to be answered from documentation URLs, not memory.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Conformance against fictional model. Agents happily run conformance against a BPMN drawn from a wishful-thinking SOP.</description>
+        <reason>The reference model must itself be validated by a human SME first.</reason>
+      </antipattern>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>pm4py — Reference Python lib: Alpha, Heuristic, Inductive miners; XES + CSV import; conformance checking; pip install pm4py; https://pm4py.fit.fraunhofer.de/</item>
+        <item>ProM — Academic GUI; widest algorithm coverage including Fuzzy Miner, Genetic Miner; https://promtools.org/</item>
+        <item>Disco (Fluxicon) — Commercial desktop tool, fast for log audit and exploratory mining; https://fluxicon.com/disco/</item>
+        <item>Apromore Core — Open-source web platform; discovery + conformance + comparison; https://apromore.com/</item>
+        <item>bupaR — R ecosystem; strong on event-log preprocessing and visualisation; https://bupar.net/</item>
+        <item>xes-standard validators — Validate XES file structure before mining; bundled with pm4py</item>
+        <item>dfg-visualizer — Render DFG outputs in CI for review; part of pm4py</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>Celonis EMS — SaaS; Partial (REST API + PQL query language); Market leader; algorithm = proprietary variant of Inductive Miner</item>
+        <item>UiPath Process Mining — SaaS; Limited (UI-driven, API in preview); Tight RPA tie-in; biased toward UiPath bots downstream</item>
+        <item>Microsoft Process Mining (in Power Automate) — SaaS; Yes (Dataverse + Graph API); Best when org is M365-native; algorithm undocumented</item>
+        <item>Apromore Enterprise — SaaS / on-prem; Yes (REST API, Python client); Closest to academic rigour; algorithm transparent</item>
+        <item>pm4py (Fraunhofer) — OSS Python lib; Yes (pure scriptable); Reference implementation; embeddable in any agent</item>
+        <item>ProM — OSS desktop; No (GUI only); Use for one-off algorithm experimentation, not pipelines</item>
+        <item>Disco — Commercial desktop; No (GUI only); Fastest for log triage; export CSV for downstream agents</item>
+        <item>IBM Process Mining (myInvenio) — SaaS; Partial (REST); Strong simulation features; expensive</item>
+        <item>QPR ProcessAnalyzer — SaaS; Partial; EU vendor; useful for GDPR-sensitive deployments</item>
+      </list>
     </section>
 
     <templates>
