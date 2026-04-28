@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: agentic-ai-product-development → methodology.xml (feature-045 batch 286)
 - migrate: 3/3 geek/product methodologies → methodology.xml (ai-native-product-development, agentic-ai-product-development, ai-powered-pm-tools; feature-045 batch 286)
 - migrate: 3/3 geek/product methodologies → methodology.xml (ai-powered-pm-tools, agentic-ai-product-development, agents; feature-045 batch 285)
 - migrate: 3/3 geek/marketing methodologies → methodology.xml (claude-code-hooks, ai-content-strategy, ai-marketing-tools-stack-2026; feature-045 batch 283)
