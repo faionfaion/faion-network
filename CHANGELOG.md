@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek methodologies → methodology.xml (structured-output-patterns, tool-use-basics, agentic-rag; feature-045 batch 259)
 - migrate: 3/3 geek/ai/llm-integration methodologies → methodology.xml (prompt-basics, prompt-techniques, structured-output-basics; feature-045 batch 258)
 - migrate: 3/3 geek/ai/llm-integration methodologies → methodology.xml (openai-chat-completions, openai-embeddings, openai-function-calling; feature-045 batch 257)
 - migrate: 3/3 geek/ai/llm-integration methodologies → methodology.xml (local-llm-ollama, openai-api-integration, openai-assistants; feature-045 batch 256)
