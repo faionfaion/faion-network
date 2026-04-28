@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="error-handling-in-vui">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>Three-rung re-prompt ladder for voice interface error recovery. Escalate on rung 3 without looping. Avoid blame language. Every rung-2 example must exist in NLU training data.</summary>
+    <tags>
+      <tag>voice-ui</tag>
+      <tag>error-handling</tag>
+      <tag>asr</tag>
+      <tag>conversational-design</tag>
+      <tag>vui</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>Error Handling in VUI</title>
+    <summary>A three-rung re-prompt ladder for voice interface error recovery: rung 1 — brief re-ask; rung 2 — constructive re-ask with two example phrases; rung 3 — escalation to visual fallback, DTMF, or human agent. Cap at three rungs; escalate on rung 4 input instead of looping. Never use blame language ("you said wrong", "invalid"). Every example phrase on rung 2 must exist in the NLU training data.</summary>
+    <why>
+      <p>Voice recognition errors are inevitable; the user experience of recovery determines abandonment rate. Users who hear the same "I didn't catch that" three times in a row perceive the system as broken, not themselves. The rung-2 example-phrase rule prevents the most common failure: users parroting a phrase that isn't in the recognizer, masking the true no-match cause.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing fallback dialogs for ASR no-input, no-match, and ambiguous-intent failures.</item>
+        <item>Drafting re-prompt copy with example phrases for second/third failure passes.</item>
+        <item>Auditing existing Alexa/Google Action/Dialogflow intents for unhandled utterances.</item>
+        <item>Building help or transfer-to-agent escalation paths for IVR or LLM-backed voice bots.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure speech-to-text quality issues—model retraining or acoustic tuning, not dialog design.</item>
+        <item>Silent or visual-only UIs where confirmation can be shown on screen.</item>
+        <item>One-shot transactional commands with no multi-turn state (no recovery path needed).</item>
+      </list>
+    </when-not-to-use>
+    <section name="Error Taxonomy">
+      <p>Four error types in voice interfaces, each requiring a distinct recovery approach:</p>
+      <list>
+        <item>No-input: user is silent. Cause: user did not understand they should speak, distracted, or endpointing cut off early. Recovery: brief re-ask with response-timing hint.</item>
+        <item>No-match: speech recognized but intent not matched. Cause: out-of-vocabulary utterance, accent mismatch, NLU gap. Recovery: re-ask with example phrases from training data.</item>
+        <item>Ambiguous: multiple valid intent interpretations with similar confidence. Recovery: ask a disambiguating clarifying question—do not guess.</item>
+        <item>System error: technical failure (API timeout, platform error). Recovery: apologize, state the problem briefly, suggest retry or alternative channel.</item>
+      </list>
+    </section>
+    <section name="Three-Rung Ladder">
+      <rule>
+        <statement>Structure every re-prompt sequence as exactly three rungs: rung 1 (brief re-ask), rung 2 (constructive re-ask with two example phrases), rung 3 (escalation to visual fallback, DTMF, or human agent). Cap at three rungs—escalate on the fourth attempt, never loop.</statement>
+        <rationale>Users who hear the same phrase three times in a row perceive the system as broken. Three rungs balance error recovery opportunity against abandonment risk. Looping past rung 3 has near-zero recovery rate and high frustration cost.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[
+Rung 1 (no-match):
+"I didn't catch that. What's the city?"
+
+Rung 2 (constructive):
+"I'm having trouble understanding. Try saying something like 'New York' or 'Chicago'."
+
+Rung 3 (escalation):
+"Let me try a different approach. You can press 1 to continue with our menu, or say 'agent' to speak with someone."
+]]></code>
+        <note>Rung 2 uses exactly two example phrases from NLU training data. Rung 3 offers both DTMF and voice escalation paths.</note>
+      </example>
+      <rule>
+        <statement>Vary the rung-2 example phrases per session. Rotate across 3–5 phrase sets so users who retry the skill do not learn to mimic one phrase, masking the true no-match cause.</statement>
+        <rationale>Users who successfully mimic a single example phrase suppress the signal that the NLU training data is too narrow. Rotating phrases reveals the true no-match surface area.</rationale>
+      </rule>
+    </section>
+    <section name="Copy Rules">
+      <rule>
+        <statement>Never use blame language: ban "you said wrong", "invalid", "didn't work", "I'm sorry" stacking (more than once per session). Voice the system's limitation, not the user's failure.</statement>
+        <rationale>Blame language causes immediate abandonment. Users who feel blamed do not retry—they leave and write negative reviews. "I didn't catch that" attributes the failure to the system; "You said something I couldn't understand" attributes it to the user.</rationale>
+      </rule>
+      <rule>
+        <statement>For telephony channels, always offer DTMF fallback ("press 1 for...") on rung 3. Never escalate to human-agent-only without a self-service option.</statement>
+        <rationale>Telephony channels add 8 kHz codec loss and cross-talk that no copy fix mitigates. DTMF remains reliable when ASR fails. Human-agent-only escalation has queue costs; self-service DTMF is free.</rationale>
+      </rule>
+    </section>
+    <section name="SSML Rules">
+      <rule>
+        <statement>Add SSML pause tags when any pause in the re-prompt exceeds 300 ms. Never rely on punctuation alone for TTS timing.</statement>
+        <rationale>TTS engines interpret punctuation inconsistently. A comma that sounds natural in text may render as no pause in TTS, making instructions rush together and increasing mis-recognition on retry.</rationale>
+      </rule>
+    </section>
+    <section name="Antipatterns">
+      <antipattern>
+        <description>LLM-driven VUI bypasses the fixed re-prompt ladder because the model improvises responses.</description>
+        <reason>Realtime API and Gemini Live models improvise and do not follow rung-by-rung fallback. Use system-prompt rules to enforce escalation triggers; test that the tool call actually fires, not just that the model says "transferring you".</reason>
+      </antipattern>
+      <antipattern>
+        <description>Example phrases on rung 2 that do not exist in the NLU training data.</description>
+        <reason>Every rung-2 example must round-trip through the recognizer. An invented example phrase trains users to say something the NLU cannot recognize, generating a guaranteed no-match on the retry.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Apologetic templates that stack "I'm sorry" across multiple rungs.</description>
+        <reason>Subagents writing re-prompt copy default to apologetic patterns. A single apology on a system error is appropriate; stacking "I'm sorry" across rungs signals the system is broken rather than helping the user recover.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Re-prompts that use identical phrasing across rungs (stuck-loop pattern).</description>
+        <reason>Users interpret repeated identical prompts as a system freeze. Vary phrasing across rungs to signal progression through the recovery sequence.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Drive Claude to enumerate failure types per intent, then generate three-rung re-prompt ladders plus matching SSML/text. A second pass linting agent checks for: blame language, missing example phrases on rung 2, absent escalation on rung 3. Use a separate agent to fuzz the dialog by sampling adversarial transcripts (silence, mumble, code-switch, off-topic).</p>
+      <p>Human-in-loop gate: review rung 3 escalation copy with support and legal before shipping. "Transferring to a human agent", "escalating to support", and refund-adjacent phrasing have compliance impact that agents cannot assess.</p>
+      <p>Log raw ASR hypotheses (not just normalized intent)—reveals systematic mishears that copy changes alone cannot fix. When users repeat verbatim louder or slower and intent still matches, the copy is too narrow—widen the training data, not the prompt.</p>
+      <p>Recommended Subagent Pattern:</p>
+      <code lang="text"><![CDATA[For intent <X>, list NoInput/NoMatch/Ambiguous/SystemError failure modes.
+For each mode, write 3 escalating re-prompts. Rung 2 must include 2 example phrases.
+Rung 3 must offer transfer/visual fallback. No blame. SSML where pause >300ms.]]></code>
+      <p>Recommended Subagents:</p>
+      <list>
+        <item>faion-ux-researcher-agent—synthesize transcript reviews into failure taxonomy.</item>
+        <item>faion-usability-agent—heuristic eval of re-prompt copy (politeness, clarity, escalation).</item>
+        <item>A custom vui-dialog-linter (project-local)—regex check for banned phrases ("invalid", "wrong", "didn't work").</item>
+      </list>
+    </section>
+    <section name="Tools and Services">
+      <p>CLI Tools:</p>
+      <list>
+        <item>ask-cli (Alexa Skills Kit)—lint/test re-prompt sets, simulate utterances. npm i -g ask-cli. developer.amazon.com/alexa/alexa-skills-kit/asksdk</item>
+        <item>gactions (Google Actions)—deploy/test conversational webhooks. github.com/actions-on-google/gactions</item>
+        <item>voiceflow-cli—export Voiceflow flows as JSON for review. github.com/voiceflow/api-sdk</item>
+        <item>rasa—open-source dialog testing, story files. pip install rasa</item>
+        <item>nlpaug—generate adversarial utterances for fuzzing. pip install nlpaug</item>
+      </list>
+      <p>Services and Platforms:</p>
+      <list>
+        <item>Voiceflow—SaaS, dialog manager, exposes flows as JSON for prompt-pattern review.</item>
+        <item>Dialogflow CX—SaaS, built-in event handlers for no-input/no-match per page.</item>
+        <item>Rasa Open Source—OSS, YAML stories testable in CI; supports custom fallback policies.</item>
+        <item>Cognigy.AI—SaaS, fallback flows; transcript export for offline analysis.</item>
+        <item>OpenAI Realtime API—SaaS, LLM-native; no rung concept—use system prompt to enforce escalation.</item>
+        <item>Microsoft Bot Framework—SaaS/OSS, Composer scaffolds re-prompts; LU testing via bf CLI.</item>
+      </list>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Cap rung count at 3; users rarely tolerate a 4th retry—escalate.</item>
+        <item>Rotate rung-2 examples per session so users aren't trained to mimic one phrase.</item>
+        <item>Log raw ASR hypotheses (not just normalized intent)—reveals systematic mishears.</item>
+        <item>Treat "user repeats verbatim louder/slower" as a soft failure even if intent matched—copy is too narrow.</item>
+        <item>Vary "I didn't catch that" phrasing across rungs to signal progression, not a stuck loop.</item>
+        <item>For telephony, always offer DTMF fallback ("press 1 for…") on rung 3.</item>
+      </list>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <list>
+        <item>LLM voice agents may "hallucinate compliance"—say "transferring you" without firing the tool. Force tool call check in evals.</item>
+        <item>Realtime models reset turn-state on long pauses; use server-side endpointing override or you'll silently re-trigger no-input forever.</item>
+        <item>Subagents writing copy will default to apologetic templates—explicitly forbid "I'm sorry" stacking.</item>
+        <item>Human-in-loop checkpoint: review rung 3 escalation copy with support/legal before shipping (refund, escalate-to-human, transfer phrasing has compliance impact).</item>
+        <item>Don't let the agent invent example phrases that aren't in the actual NLU training data—every example must round-trip through the recognizer.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/reprompt-lint.py" purpose="CI lint: flag missing rung 3 escalation, missing rung 2 examples, banned blame phrases"/>
+    </templates>
+    <see-also>
+      <link href="https://designguidelines.withgoogle.com/conversation">Google Conversation Design</link>
+      <link href="https://developer.amazon.com/alexa/alexa-skills-kit/design">Alexa Voice Design Guide</link>
+      <link href="https://cloud.google.com/dialogflow/cx/docs">Dialogflow CX No-Match/No-Input event handlers</link>
+      <ref slug="voice-ui"/>
+      <ref slug="vui-conversation-design"/>
+      <ref slug="vui-market-context"/>
+    </see-also>
+  </content>
+</methodology>
