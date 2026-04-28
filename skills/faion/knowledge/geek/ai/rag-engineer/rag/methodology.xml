@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rag">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>RAG pipeline ingests documents, retrieves chunks, generates answers with citations. Use LlamaIndex, Qdrant, reranking. Key: chunk quality bounds retrieval, hybrid search default, MRR > 0.7.</summary>
+    <category>rag</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>rag</tag>
+      <tag>retrieval</tag>
+      <tag>generation</tag>
+      <tag>vector-search</tag>
+      <tag>llm</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>RAG Pipeline</title>
+
+    <summary>A Retrieval-Augmented Generation pipeline ingests documents (load → chunk → embed → store), retrieves relevant chunks for a query (embed → vector search → rerank), and generates a grounded answer with source citations. Key invariants: chunk quality bounds retrieval quality; hybrid search is the default; reranking is required for production accuracy; evaluate with MRR > 0.7 and faithfulness > 0.9 before launch.</summary>
+
+    <why>
+      <p>LLMs hallucinate on domain-specific or frequently-updated knowledge not in their training data. RAG grounds answers in a retrievable document corpus and surfaces citations, enabling compliance and user trust. A structured pipeline (ingest → retrieve → rerank → generate) separates the concerns that most commonly break: bad chunking, stale indexes, missing metadata, and context overflow.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Agent needs to answer questions grounded in a private or frequently-updated document corpus.</item>
+        <item>Reducing hallucinations on domain-specific topics not in the model's training data.</item>
+        <item>Building a knowledge assistant over PDFs, docs, wikis, or code repositories.</item>
+        <item>Source corpus is too large to fit in a single context window.</item>
+        <item>Citation / source attribution is required for compliance or user trust.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Document set is tiny (less than 50 chunks) and fits in context — just stuff the full context.</item>
+        <item>Questions are purely general knowledge — RAG adds retrieval latency with no accuracy gain.</item>
+        <item>Real-time data (stock prices, live APIs) — RAG retrieves static indexed content; use live tool calls.</item>
+        <item>Query volume is very low and latency is critical — embed + retrieve round-trip adds 200–600ms.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="ingestion">
+      <p>Rules for chunking strategy by document type, required metadata fields, deduplication, and index freshness for RAG pipelines.</p>
+
+      <rule testable="true">
+        <statement>Use chunk_size=512 for Q&amp;A docs, 1024 for technical manuals, and 1500 for research papers. Use 20% overlap between chunks.</statement>
+        <rationale>Chunk size must balance retrieval precision (smaller = more targeted) with context completeness (larger = fewer split concepts). Document type determines the natural unit of meaning.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Test chunk size empirically on a representative sample of queries before committing to production parameters.</statement>
+        <rationale>Optimal chunk size is corpus-dependent. The defaults above are starting points; retrieval quality should be measured on the actual query distribution.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Add metadata at index time: source filename, page number, section heading, and ingestion date. This cannot be added retroactively without re-indexing.</statement>
+        <rationale>Metadata enables filtering, citation generation, and staleness detection. Adding it after indexing requires full re-embedding of all documents, which is expensive and causes downtime.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Remove near-duplicate chunks before indexing (cosine similarity greater than 0.97). Duplicate chunks waste storage and bias retrieval toward repeated content.</statement>
+        <rationale>Duplicate chunks appear multiple times in top-k results, crowding out diverse relevant content and inflating context with redundant text.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Implement incremental indexing: track document hashes, re-index only changed documents.</statement>
+        <rationale>Full re-indexing on every update is expensive at scale. Document hash comparison identifies changed documents in O(n) and limits embedding API cost to the changed subset.</rationale>
+      </rule>
+
+      <example type="good" title="Document ingestion with proper chunking">
+        <code lang="python"><![CDATA[
+from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
+from llama_index.core.node_parser import SentenceSplitter
+
+documents = SimpleDirectoryReader(
+    input_dir="./data",
+    recursive=True,
+    required_exts=[".pdf", ".md", ".txt"],
+    exclude_hidden=True,
+).load_data()
+
+parser = SentenceSplitter(
+    chunk_size=1024,    # technical manuals
+    chunk_overlap=200,  # 20% overlap
+    paragraph_separator="\n\n",
+)
+
+nodes = parser.get_nodes_from_documents(documents)
+        ]]></code>
+        <note>chunk_overlap is 200 (20% of 1024). Adjust chunk_size per document type.</note>
+      </example>
+    </section>
+
+    <section name="retrieval">
+      <p>Rules for retrieval strategy selection, hybrid search as default, reranking requirements, context budget management, and retrieved chunk ordering.</p>
+
+      <rule testable="true">
+        <statement>Use hybrid search (BM25 + vector) by default. Fall back to pure vector only after benchmarking shows no improvement.</statement>
+        <rationale>Pure semantic search misses exact technical terms, product codes, and rare names. Hybrid search adds BM25 coverage with minimal additional latency on most vector databases.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use a cross-encoder reranker for all production retrieval. Retrieve top-20, rerank to top-5.</statement>
+        <rationale>Vector search similarity scores are calibrated for recall, not precision. A cross-encoder reranker scores candidate chunks against the full query, improving precision at the cost of 100–300ms latency.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Ensure top_k * avg_chunk_tokens stays well below the model's context limit after adding system prompt and few-shot examples.</statement>
+        <rationale>Context overflow causes the model to drop earlier chunks. The dropped chunks are typically the less similar ones, but they may contain the answer for complex queries.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Cache frequent queries at the application layer — same query string produces the same retrieval result.</statement>
+        <rationale>Embedding + retrieval adds 200–600ms. For repeated queries in high-traffic applications, caching eliminates this latency entirely.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Put highest-scored chunks first in the prompt context. Models attend better to earlier content.</statement>
+        <rationale>LLMs exhibit "lost in the middle" behavior: facts in the middle of a long context are attended to less than facts at the beginning or end. Highest-relevance chunks should be first.</rationale>
+      </rule>
+
+      <example type="good" title="Retrieval with reranking">
+        <code lang="python"><![CDATA[
+from llama_index.core import StorageContext, load_index_from_storage
+from llama_index.core.postprocessor import SentenceTransformerRerank
+
+storage = StorageContext.from_defaults(persist_dir="./index")
+index = load_index_from_storage(storage)
+
+reranker = SentenceTransformerRerank(
+    model="cross-encoder/ms-marco-MiniLM-L-2-v2",
+    top_n=5  # rerank 20 down to 5
+)
+
+engine = index.as_query_engine(
+    similarity_top_k=20,
+    node_postprocessors=[reranker]
+)
+response = engine.query("your question here")
+        ]]></code>
+        <note>similarity_top_k=20 for broad recall; reranker narrows to top 5 for precision.</note>
+      </example>
+
+      <reference path="templates/rag-query.py">Minimal RAG query with reranking</reference>
+    </section>
+
+    <section name="generation">
+      <p>Rules for the RAG generation prompt structure, faithfulness constraint enforcement, citation format, and post-generation faithfulness verification.</p>
+
+      <rule testable="true">
+        <statement>Instruct the model to answer ONLY from the provided context. Include an explicit fallback instruction: "If the context does not contain the answer, say so."</statement>
+        <rationale>Without this constraint, the model falls back to its training knowledge and produces answers that appear grounded but are not. The fallback instruction prevents confident hallucination.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always request citations in a consistent format: [Source: filename, page N]. Parse and validate them against retrieved chunk metadata post-generation.</statement>
+        <rationale>Citations without validation are unverified assertions. The model may cite a plausible-sounding source that was not actually retrieved. Validation against chunk metadata catches hallucinated citations.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run a faithfulness evaluator on production responses. When faithfulness score is below 0.8, queue for human review rather than surfacing to users.</statement>
+        <rationale>Low faithfulness means the generated answer contains claims not supported by the retrieved context. These are hallucinations that can damage user trust and cause compliance failures.</rationale>
+      </rule>
+
+      <example type="good" title="RAG generation with citation enforcement">
+        <code lang="python"><![CDATA[
+from llama_index.core import PromptTemplate
+
+qa_prompt = PromptTemplate(
+    """You are a knowledge assistant. Answer ONLY from the context below.
+If the context does not contain the answer, say "I don't have that in my knowledge base."
+Always cite sources as [Source: {filename}, page {page}].
+
+Context:
+{context_str}
+
+Question: {query_str}
+
+Answer:"""
+)
+
+query_engine = index.as_query_engine(
+    similarity_top_k=20,
+    node_postprocessors=[reranker],
+    response_mode="compact",
+    text_qa_template=qa_prompt,
+)
+        ]]></code>
+        <note>Citation format is specified explicitly in the prompt; the fallback instruction prevents hallucination when context is insufficient.</note>
+      </example>
+
+      <reference path="templates/rag-prompt.txt">System + context prompt template enforcing "answer only from context"</reference>
+    </section>
+
+    <section name="evaluation">
+      <p>RAGAS metrics (MRR, faithfulness, answer relevance), production readiness thresholds, and agentic RAG escalation rules for complex multi-hop queries.</p>
+
+      <rule testable="true">
+        <statement>Evaluate retrieval quality with MRR greater than 0.7 and faithfulness greater than 0.9 before launching a RAG pipeline to production.</statement>
+        <rationale>MRR below 0.7 means the most relevant document is often not in the top-3 retrieved results — the generated answer is likely wrong or incomplete. Faithfulness below 0.9 means 10%+ of answers contain hallucinated claims.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Track retrieval quality with regular benchmarks on a held-out query set. Re-evaluate after any index, chunking, or embedding model change.</statement>
+        <rationale>Index updates, embedding model upgrades, and chunking parameter changes all affect retrieval quality. Without re-evaluation, quality regressions go undetected until user complaints surface them.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>When a query requires combining facts from more than 3 separate chunks, switch to iterative (agentic) RAG rather than single-shot retrieval.</statement>
+        <rationale>Standard RAG degrades on multi-hop reasoning because a single retrieval step cannot surface all relevant chunks for complex cross-document questions. Iterative RAG fetches additional context based on intermediate answers.</rationale>
+      </rule>
+
+      <example type="good" title="RAG evaluation with faithfulness threshold">
+        <code lang="python"><![CDATA[
+from llama_index.core.evaluation import FaithfulnessEvaluator, RelevancyEvaluator
+
+faithfulness_eval = FaithfulnessEvaluator(llm=llm)
+relevancy_eval = RelevancyEvaluator(llm=llm)
+
+response = query_engine.query("test query")
+
+faith = faithfulness_eval.evaluate_response(query="test query", response=response)
+rel = relevancy_eval.evaluate_response(query="test query", response=response)
+
+print(f"Faithful: {faith.passing} ({faith.score:.2f})")
+print(f"Relevant: {rel.passing} ({rel.score:.2f})")
+
+if faith.score < 0.8:
+    # Queue for human review
+    pass
+        ]]></code>
+        <note>Faithfulness score below 0.8 triggers human review queue rather than surfacing to users.</note>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A retrieval subagent receives the user query, embeds it, and fetches top-k chunks from the vector store. A reranker subagent scores the chunks and selects the top 5 most relevant. A generation subagent synthesizes the answer using the reranked context with a strict "answer only from context" prompt. A citation subagent extracts source references from the generation output and validates them against the retrieved chunk metadata. The orchestrator assembles the final response with citations.</p>
+
+      <rule testable="true">
+        <statement>Recommended subagents: query-embedder (embeds user query and calls vector store API), reranker (scores retrieved chunks with cross-encoder; returns top N), rag-generator (synthesizes answer from reranked context; enforces "only use provided context" constraint), citation-extractor (parses source references and validates against chunk metadata).</statement>
+        <rationale>Separating concerns enables independent testing, error recovery, and reuse of each subagent in different RAG variants.</rationale>
+      </rule>
+
+      <example type="good" title="Agentic RAG prompt pattern">
+        <code lang="xml"><![CDATA[
+<system>
+You are a knowledge assistant. Answer ONLY from the provided context below.
+If the context does not contain enough information, say "I don't have that in my knowledge base."
+Always cite sources as [Source: {filename}, page {page}].
+</system>
+<context>
+{retrieved_chunks}
+</context>
+        ]]></code>
+        <note>Retrieval call (LlamaIndex): query_engine = index.as_query_engine(similarity_top_k=20, node_postprocessors=[reranker], response_mode="compact", text_qa_template=qa_prompt)</note>
+      </example>
+    </section>
+
+    <section name="tools-and-services">
+      <p>CLI tools for RAG pipelines and services for vector storage, embeddings, and evaluation.</p>
+
+      <rule testable="true">
+        <statement>Reference implementations use: llama-index (end-to-end RAG), langchain (RAG chains, retrievers, document loaders), ragas (RAG evaluation: faithfulness, answer relevance, context recall), qdrant-client (Python client for Qdrant), unstructured (parse PDFs, DOCX, HTML to clean text).</statement>
+        <rationale>These tools provide the standard interfaces for building production RAG systems with well-supported APIs.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Vector database selection: Qdrant (recommended production self-hosted), Chroma (dev/prototyping), LlamaCloud (managed parsing + indexing), Pinecone (fully managed; serverless tier), plus reranking services (Cohere Rerank: SaaS best-in-class, OpenAI Embeddings: text-embedding-3-large standard choice, Voyage AI: text-voyage-3 alternative).</statement>
+        <rationale>Qdrant provides the best balance of performance, filtering capabilities, and self-hosting flexibility. Cohere and OpenAI embeddings are the industry standards for quality and availability.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <p>Essential practices for production RAG systems derived from direct experience and research.</p>
+
+      <rule testable="true">
+        <statement>Test chunk size empirically: 512 tokens for Q&amp;A, 1024 for technical docs, 1500 for research papers. Always add metadata (source filename, page, section, date) at index time — it's impossible to add retroactively without re-indexing.</statement>
+        <rationale>Chunk size dramatically affects both retrieval and generation quality. Metadata is the foundation for citations and filtered retrieval.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use hybrid search (BM25 + vector) by default; fall back to pure vector only after benchmarking shows no improvement. Evaluate retrieval quality with RAGAS before launching; aim for MRR greater than 0.7, faithfulness greater than 0.9.</statement>
+        <rationale>Hybrid search catches exact terms that pure semantic search misses. RAGAS metrics provide quantitative gates before production launch.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Cache frequent queries at the application layer — same query string → same retrieval result. Implement incremental indexing: track document hashes, re-index only changed documents. Deduplicate near-identical chunks before indexing (cosine similarity greater than 0.97) to avoid redundant context.</statement>
+        <rationale>Caching eliminates redundant API calls. Incremental indexing scales to large corpora. Deduplication reduces token waste and improves retrieval precision.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common pitfalls when using LLM agents to build or operate RAG systems.</p>
+
+      <rule testable="true">
+        <statement>Retrieved context order matters: put highest-scored chunks first in the prompt (models attend better to earlier content). Agents may silently ignore "answer only from context" constraints — add an explicit faithfulness check as a post-generation step.</statement>
+        <rationale>LLM attention patterns favor earlier content. Post-checks catch hallucination that the system prompt alone cannot prevent.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>If the query requires combining facts from more than 3 separate chunks, standard RAG degrades; switch to agentic RAG with iterative retrieval. Index re-embedding after changing the embedding model requires complete re-indexing — plan for downtime or blue/green index strategy.</statement>
+        <rationale>Multi-hop reasoning needs multiple retrieval steps. Embedding model changes are high-risk operational events requiring careful planning.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Token budget: top_k * avg_chunk_tokens must stay well below the model's context limit after adding system prompt and few-shot examples. Human-in-loop checkpoint: when faithfulness score less than 0.8 on production queries, queue them for human review rather than surfacing the answer to users.</statement>
+        <rationale>Context overflow causes the model to drop earlier chunks. Human review gates catch low-confidence answers before they harm user trust.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/rag-query.py" purpose="Minimal RAG query with reranking using LlamaIndex + SentenceTransformerRerank."/>
+      <template path="templates/rag-prompt.txt" purpose="System + context prompt template enforcing 'answer only from context' with citation format."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.llamaindex.ai/"/>
+      <link href="https://docs.ragas.io/en/latest/"/>
+      <link href="https://qdrant.tech/documentation/"/>
+      <link href="https://arxiv.org/abs/2005.11401"/>
+      <link href="https://python.langchain.com/docs/tutorials/rag/"/>
+    </see-also>
+  </content>
+</methodology>
