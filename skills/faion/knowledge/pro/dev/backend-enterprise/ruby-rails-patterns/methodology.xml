@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ruby-rails-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>Extract multi-step business logic into Service Objects with canonical ServiceResult. Wrap writes in transactions, move side effects outside, prevent N+1 with Bullet.</summary>
+    <tags>
+      <tag>rails</tag>
+      <tag>service-objects</tag>
+      <tag>transactions</tag>
+      <tag>patterns</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Rails Patterns (Service Objects and ServiceResult)</title>
+
+    <summary>Rails 7.x applications extract multi-step business logic into Service Objects that accept params and current_user in initialize and return a single canonical ServiceResult from #call. Wrap multi-step writes in ActiveRecord::Base.transaction. Move mailers, webhooks, and HTTP calls to after_commit callbacks or a transactional outbox — never mid-transaction. One ServiceResult class for the entire codebase.</summary>
+
+    <why>
+      <p>Fat controllers and fat models with callbacks lead to unpredictable execution order and test coupling. ServiceResult gives controllers a uniform success/failure contract without exception sniffing. The most dangerous agent-generated bug is calling .deliver_later or HTTP inside a transaction: a rolled-back insert leaves a sent email or a charged card.</p>
+      <p>Bullet in test mode with raise: true catches N+1 at CI time. A single canonical ServiceResult ensures every service returns the same shape, making controllers predictable and testable.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Rails 7.x app where controllers or ActiveRecord callbacks have grown unwieldy.</item>
+        <item>Multi-step writes that must be transactional plus side effects (mailers, audit logs, webhooks).</item>
+        <item>Defining a uniform success/failure return shape so controllers do not rescue exceptions.</item>
+        <item>Refactoring fat controllers and models toward service-centric architecture.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tiny single-step writes (User.create!(params)) — wrapping in a service is ceremony.</item>
+        <item>Read-only endpoints — services add no value over a query object or scope.</item>
+        <item>Background jobs that already encapsulate one action — nesting Service inside Sidekiq inside Service is over-engineering.</item>
+        <item>Apps using Trailblazer, Interactor, or Dry::Transaction — stick to one paradigm.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="canonical-service-result">
+      <p>Define exactly one ServiceResult at app/services/service_result.rb. All service objects return it from #call. CI must fail if a second definition is found. Use success?/failure? as the only API.</p>
+
+      <rule testable="true">
+        <statement>Define exactly one ServiceResult at app/services/service_result.rb. All service objects return it from #call. CI must fail if a second definition is found. Use success?/failure? as the only API — never ok?, result?, or error?.</statement>
+        <rationale>LLMs invent slightly different ServiceResult shapes per service file (sometimes result.ok?, sometimes result.success?, sometimes result.failure?). A divergent API means every controller must handle multiple shapes. Lock the API in CI with a simple grep.</rationale>
+      </rule>
+
+      <example type="good" title="ServiceResult Class">
+        <code lang="ruby"><![CDATA[
+# app/services/service_result.rb
+class ServiceResult
+  attr_reader :data, :errors
+
+  def initialize(success:, data: nil, errors: [])
+    @success = success
+    @data    = data
+    @errors  = Array(errors)
+  end
+
+  def success? = @success
+  def failure? = !@success
+
+  def self.success(data = nil) = new(success: true, data: data)
+  def self.failure(errors)     = new(success: false, errors: errors)
+end
+        ]]></code>
+      </example>
+
+      <example type="good" title="Controller Usage Pattern">
+        <code lang="ruby"><![CDATA[
+module Api
+  module V1
+    class UsersController < ApplicationController
+      def create
+        result = Users::CreateService.new(
+          params: user_params, current_user: current_user
+        ).call
+
+        if result.success?
+          render json: UserSerializer.new(result.data), status: :created
+        else
+          render json: { errors: result.errors }, status: :unprocessable_entity
+        end
+      end
+
+      private
+
+      def user_params
+        params.require(:user).permit(:name, :email, :password)
+      end
+    end
+  end
+end
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="service-object-structure">
+      <p>Service objects accept params and current_user in initialize. The public API is #call returning ServiceResult. All private helpers are private. Namespace by domain: Users::CreateService.</p>
+
+      <rule testable="true">
+        <statement>Service objects accept params: and current_user: in initialize. The public API is #call returning ServiceResult. All private helpers are private. Namespace by domain: Users::CreateService.</statement>
+        <rationale>A consistent interface means every service is discoverable and can be tested the same way. Namespacing by domain avoids collisions and makes the service directory navigable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Move mailers, webhook HTTP calls, and search index updates to after_commit callbacks, an outbox, or chained Sidekiq jobs. Never call deliver_later or external HTTP inside ActiveRecord::Base.transaction.</statement>
+        <rationale>deliver_later inside a transaction enqueues the job before the transaction commits. If the transaction rolls back, the worker runs against a non-existent record. The race window is small but real under load.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Controllers call params.require(...).permit(...) before passing to the service. Services receive an already-permitted hash. Services must not call params directly.</statement>
+        <rationale>Strong Parameters enforce an allowlist at the HTTP boundary. Services receiving a raw params object bypass the allowlist, enabling mass assignment attacks on any field the service writes.</rationale>
+      </rule>
+
+      <example type="good" title="Service Object with Transaction">
+        <code lang="ruby"><![CDATA[
+# app/services/users/create_service.rb
+module Users
+  class CreateService
+    def initialize(params:, current_user: nil)
+      @params       = params
+      @current_user = current_user
+    end
+
+    def call
+      user = User.new(user_params)
+
+      ActiveRecord::Base.transaction do
+        user.save!
+        create_audit_log(user)
+      end
+
+      # Side effects AFTER commit
+      UserMailer.welcome(user).deliver_later
+      ServiceResult.success(user)
+    rescue ActiveRecord::RecordInvalid => e
+      ServiceResult.failure(e.record.errors.full_messages)
+    end
+
+    private
+
+    def user_params = @params.slice(:name, :email, :password)
+
+    def create_audit_log(user)
+      AuditLog.create!(action: 'user.created', resource: user, actor: @current_user)
+    end
+  end
+end
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns-and-gotchas">
+      <p>Common failure modes in LLM-generated Rails service code: divergent ServiceResult, non-idempotent jobs, N+1 in serializers, and authorization gaps.</p>
+
+      <antipattern>
+        <description>Multiple files defining ServiceResult with different method names (ok?, success?, result?, error?).</description>
+        <reason>Controllers must handle every variant. Add a CI step that greps for class ServiceResult and fails if more than one definition exists. Lock to success?/failure? only.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Sidekiq jobs that accept ActiveRecord objects directly: perform(user) instead of perform(user.id).</description>
+        <reason>ActiveRecord objects serialise as YAML and load a potentially stale record when the worker runs. Pass IDs; load fresh records inside perform.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Sidekiq jobs without idempotency — double-charging, double-sending on retry.</description>
+        <reason>Workers retry on failure. Idempotency requires checking a unique key before performing the side effect. Use a database flag or SidekiqUniqueJobs.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>N+1 queries in ActiveModel::Serializer or Jbuilder templates, not caught by controller specs.</description>
+        <reason>Serialisers run after the controller action. Bullet must be enabled in test mode with raise: true and serialiser specs must be run, not just controller specs.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>ApplicationController must call verify_authorized and verify_policy_scoped (Pundit). Every controller action must call authorize @resource or policy_scope(Resource) explicitly.</statement>
+        <rationale>Pundit does not enforce authorization automatically. Without verify_authorized, an agent adding a new action may forget to call authorize, leaving it unprotected.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Never generate drop_column or change_column migrations without a backfill plan. Require reversible migrations — every change_table block must have a reversible counterpart.</statement>
+        <rationale>Irreversible migrations cannot be rolled back. Agents generate destructive migrations routinely without checking if the column has data or if the rollback is needed during a deploy.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Use SDD: spec → migration → model + factory → service object + RSpec service spec → controller + request spec → serializer. Reviewer agent must enforce one ServiceResult shape across the codebase, ban side effects inside transactions (use after_commit or Outbox.enqueue), and run bundle exec rubocop + bundle exec rspec per task. Bullet should run in test mode and fail tests on N+1.</p>
+    </section>
+
+    <section name="best-practices">
+      <rule testable="true">
+        <statement>One canonical ServiceResult (app/services/service_result.rb); all services return it. CI fails on duplicates.</statement>
+        <rationale>Prevents API divergence across the codebase.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Side effects (mailers, webhooks, search-index updates) live in after_commit callbacks, an outbox, or chained Sidekiq jobs — never mid-transaction.</statement>
+        <rationale>Prevents rolled-back side effects.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Mailers and outbound HTTP calls go through .deliver_later / perform_async so the request thread stays fast.</statement>
+        <rationale>Synchronous external calls block request completion.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use Pundit policies; controllers call authorize @resource on every action and policy_scope on collection endpoints.</statement>
+        <rationale>Explicit authorization prevents agent-generated authorization gaps.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Strong Parameters in controllers; services receive an already-permitted hash.</statement>
+        <rationale>Enforces allowlist at HTTP boundary.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Keep ActiveRecord callbacks for invariants only (before_validation :normalize_email); business logic stays in services.</statement>
+        <rationale>Callbacks are invisible and hard to test when they contain business logic.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run Bullet, Brakeman, and bundler-audit in CI; gate merges on green.</statement>
+        <rationale>Catches N+1, security issues, and CVEs at CI time.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common pitfalls when LLM agents generate Service Object code.</p>
+
+      <antipattern>
+        <description>LLMs invent slightly different ServiceResult shapes per file (sometimes result.ok?, sometimes result.success?, sometimes result.failure?). Lock the API in CI.</description>
+        <reason>Controllers must handle every variant. Add a CI step that greps for class ServiceResult and fails if more than one definition exists.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents put UserMailer.welcome(user).deliver_now between save! and end of transaction — a rolled-back insert leaves a sent email. Always deliver_later after commit.</description>
+        <reason>deliver_now within a transaction runs before commit completes.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>N+1 patterns reappear in serializers (ActiveModel::Serializer/Jbuilder); reviewer must check serializer specs, not just controller specs.</description>
+        <reason>Serializers run after the controller action, outside the spec's SQL spy.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Sidekiq jobs generated by AI often accept ActiveRecord objects directly — pass IDs, not objects, to avoid serialization of stale state.</description>
+        <reason>AR objects serialize as YAML and load stale records when the worker runs.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents skip Pundit::Authorize on new actions; require verify_authorized and verify_policy_scoped in ApplicationController.</description>
+        <reason>Pundit does not enforce authorization automatically without these hooks.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Generated migrations are sometimes destructive (drop_column without backfill). Require reversible migrations and review.</description>
+        <reason>Irreversible migrations cannot be rolled back during deploys.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents may set config.active_job.queue_adapter = :inline for "tests", masking timing bugs in production where Sidekiq is async.</description>
+        <reason>Inline mode hides concurrency issues that emerge with async workers.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <link href="https://guides.rubyonrails.org/"/>
+      <link href="https://sustainable-rails.com/"/>
+      <link href="https://www.toptal.com/ruby-on-rails/rails-service-objects-tutorial"/>
+      <link href="https://github.com/flyerhzm/bullet"/>
+      <link href="https://github.com/varvet/pundit"/>
+      <link href="https://github.com/sidekiq/sidekiq/wiki/Best-Practices"/>
+      <link href="https://microservices.io/patterns/data/transactional-outbox.html"/>
+    </see-also>
+  </content>
+</methodology>
