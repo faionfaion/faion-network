@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="video-gen-basics">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>multimodal-ai</domain>
+    <summary>Generating short video clips from text or image input using Runway, Luma, Replicate, or Pika. Covers service comparison, structured prompt construction, and async generation polling.</summary>
+    <tags>
+      <tag>video-generation</tag>
+      <tag>ai-video</tag>
+      <tag>runway</tag>
+      <tag>async-polling</tag>
+      <tag>ffmpeg</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Video Generation Basics</title>
+    <summary>Generating short video clips from text or image input using Runway, Luma, Replicate, or Pika. Covers service comparison, VideoPromptBuilder for structured prompt construction, ffmpeg utilities for post-processing, and the async generation polling pattern.</summary>
+    <why>
+      <p>AI video generation is inherently async (30-300s per clip) and requires structured prompt construction to control motion, camera movement, style, and lighting. Vague prompts produce random camera movements; explicit fields are the primary quality lever.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Generating short marketing or social media videos from text descriptions</item>
+        <item>Animating static product images into demo clips</item>
+        <item>Prototyping visual content before committing to full production</item>
+        <item>Creating background loops or b-roll for video pipelines</item>
+        <item>Automating video content in content pipelines</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Precise temporal control needed (specific actions at specific timestamps) — current models cannot enforce this</item>
+        <item>Character consistency across multiple shots is mandatory — models drift between generations</item>
+        <item>Videos longer than 10-15 seconds without chaining — extend or concatenate via ffmpeg</item>
+        <item>Real-time generation required — generation takes 30-300s per clip; not user-interactive</item>
+      </list>
+    </when-not-to-use>
+    <section name="Service Comparison">
+      <list>
+        <item>Runway Gen-3 Alpha Turbo: Very High quality, 5-10s clips, 1080p, official Python SDK, API available</item>
+        <item>Luma Dream Machine: High quality, 5s clips, 720p, REST API (no official SDK), URL expires ~1h</item>
+        <item>Pika 2.0: High quality, 4s clips, 1080p, partial API support, strong for image-to-video</item>
+        <item>Replicate (SVD, AnimateDiff, Zeroscope): Good quality, 4-16 frames, open models, cheapest, lowest quality floor</item>
+        <item>OpenAI Sora: Highest quality, 60s clips, 1080p, invite-only as of Q2 2026, no public API</item>
+        <item>Kling: Very High quality, 5s clips, 1080p, REST API, latency varies (Chinese service)</item>
+      </list>
+    </section>
+    <section name="Generation Types">
+      <list>
+        <item>Text-to-Video: text prompt → video clip. Lowest consistency control.</item>
+        <item>Image-to-Video: image + prompt → video animating the image. Use when subject consistency matters.</item>
+        <item>Video-to-Video: existing video + prompt → modified video. Limited availability.</item>
+        <item>Video Extension: final frame of existing clip → new segment. Luma keyframe API supports this natively.</item>
+      </list>
+      <rule>
+        <statement>Use image-to-video instead of text-to-video whenever subject or scene consistency matters across shots.</statement>
+        <rationale>Text-to-video generates subjects from scratch each time — faces, objects, and lighting are inconsistent across separate generations.</rationale>
+      </rule>
+    </section>
+    <section name="Provider Selection Heuristic">
+      <example type="good">
+        <code lang="python"><![CDATA[
+PROVIDER_MAP = {
+    "photorealistic": "luma",       # strong motion, photorealism
+    "cinematic": "runway",          # best structured API, commercial quality
+    "animated": "replicate",        # AnimateDiff for stylized/anime
+    "prototype": "replicate",       # cheapest for testing prompts
+}
+# Always generate 3+ variations per shot — selection is cheaper than re-prompting
+]]></code>
+      </example>
+    </section>
+    <section name="VideoPromptBuilder">
+      <p>VideoPromptBuilder constructs prompts with explicit subject, action, setting, camera, style, and lighting fields. Omitting camera produces random or shaky movements.</p>
+      <rule>
+        <statement>Always specify camera movement explicitly in video prompts. Use the defined vocabulary: static, pan_left, pan_right, dolly_in, dolly_out, tracking, crane, drone, orbit.</statement>
+        <rationale>Omitting camera movement allows the model to choose randomly — output quality and feel become unpredictable.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+prompt = (
+    VideoPromptBuilder()
+    .set_subject("a golden retriever")
+    .set_action("running through a field of sunflowers")
+    .set_setting("sunny countryside")
+    .set_camera("tracking")       # follows subject
+    .set_style("cinematic")       # film quality, 35mm
+    .set_lighting("golden_hour")
+    .add_detail("slow motion")
+    .add_detail("4K quality")
+    .build()
+)
+# → "a golden retriever, running through a field of sunflowers,
+#    in sunny countryside, tracking shot, following subject,
+#    cinematic, film quality, 35mm, golden hour lighting, slow motion, 4K quality"
+]]></code>
+      </example>
+    </section>
+    <section name="VideoProcessor (ffmpeg utilities)">
+      <p>VideoProcessor wraps ffmpeg for frame extraction, clip concatenation, resize, and audio merging. Always run ffprobe on outputs before downstream processing to catch silent failures (0-byte files).</p>
+      <rule>
+        <statement>Run ffprobe validation on every generated video output before passing it to downstream steps. Check file size greater than 0 and valid stream information.</statement>
+        <rationale>APIs can return SUCCEEDED status with empty or corrupt output files. Silent downstream failures are harder to debug than upfront validation errors.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+@staticmethod
+def get_video_info(video_path: str) -> dict:
+    cmd = ["ffprobe", "-v", "quiet", "-print_format", "json",
+           "-show_format", "-show_streams", video_path]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    return json.loads(result.stdout)
+]]></code>
+      </example>
+    </section>
+    <section name="Generation Rules">
+      <rule>
+        <statement>Cache generated video clips by prompt hash with seed values. Store seed alongside each clip for near-identical regeneration.</statement>
+        <rationale>Video generation is expensive ($0.05-$0.50/clip). Re-generating identical prompts wastes significant budget. Seeds enable minor-variation regeneration.</rationale>
+      </rule>
+      <rule>
+        <statement>Keep individual clips under 5s for maximum quality. Chain via ffmpeg concat for longer sequences.</statement>
+        <rationale>Current models produce highest quality in their optimal range (5-10s for Runway, 5s for Luma). Longer clips accumulate motion artifacts.</rationale>
+      </rule>
+      <antipattern>
+        <description>Attempting to read or stream video content inline in an agent response.</description>
+        <reason>Video files are binary and large. Download to disk first; pass the file path to ffprobe/ffmpeg for processing.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic workflow">
+      <p>A Claude subagent receives a content brief and uses VideoPromptBuilder to construct a structured prompt with explicit motion, camera, style, and lighting fields. The subagent calls the video generation API, polls for completion, downloads the clip, then passes it to a post-processing step (ffmpeg) for trimming or concatenation. For multi-clip sequences, an orchestrator agent breaks the brief into shots, dispatches parallel generation calls, then assembles via ffmpeg concat.</p>
+      <section name="Recommended subagents">
+        <list>
+          <item>haiku — API dispatch: submit generation job, poll status, download result</item>
+          <item>sonnet — Prompt engineering: translate brief → structured VideoPromptBuilder call with camera/motion/style choices</item>
+          <item>sonnet — Pipeline design: multi-shot breakdown, clip sequencing, quality review loop</item>
+        </list>
+      </section>
+      <section name="Prompt pattern">
+        <code lang="text"><![CDATA[
+You are a video prompt engineer. Given this brief:
+<brief>{{CONTENT_BRIEF}}</brief>
+
+Build a VideoPromptBuilder call specifying:
+- subject (what/who)
+- action (motion verbs)
+- camera (from: static, pan_left, pan_right, dolly_in, dolly_out, tracking, crane, drone, orbit)
+- style (cinematic/documentary/commercial/realistic)
+- lighting (golden_hour/studio/dramatic/natural)
+- duration: {{SECONDS}}s
+Return Python code only.
+
+Poll task {{TASK_ID}} every 5s. On SUCCEEDED: download video_url to ./output/{{SLUG}}.mp4 and return {"status":"ok","path":"..."}. On FAILED: return {"status":"error","reason":"..."}.
+]]></code>
+      </section>
+    </section>
+    <section name="CLI tools">
+      <p>Tools: ffmpeg (Frame extraction, concat, resize, audio merge; apt install ffmpeg; ffmpeg.org), ffprobe (Video metadata inspection, bundled with ffmpeg), yt-dlp (Download reference videos for img2video input; pip install yt-dlp), imageio (Frame-level video I/O in Python; pip install imageio[ffmpeg]).</p>
+      <p>Inline ffmpeg concat helper (10 lines): #!/bin/bash, concat_clips.sh — concatenate clips listed in clips.txt. clips.txt format: one file path per line. while IFS= read -r f; do echo "file '$f'"; done &lt; clips.txt &gt; /tmp/concat_list.txt. ffmpeg -f concat -safe 0 -i /tmp/concat_list.txt -c copy "${1:-output.mp4}".</p>
+    </section>
+    <section name="Services and APIs">
+      <p>Runway Gen-3 Alpha Turbo SaaS with very high quality, 5-10s clips, 1080p, official Python SDK, API available (pip install runwayml). Luma Dream Machine SaaS with high quality, 5s clips, 720p, REST API (no official SDK), URL expires ~1h. Pika 2.0 SaaS with high quality, 4s clips, 1080p, partial API support, strong for image-to-video. Replicate (SVD, AnimateDiff, Zeroscope) SaaS with good quality, 4-16 frames, open models, cheapest, lowest quality floor. OpenAI Sora SaaS with highest quality, 60s clips, 1080p, invite-only as of Q2 2026, no public API. Kling SaaS with very high quality, 5s clips, 1080p, REST API, latency varies (Chinese service). ComfyUI + SVD OSS with self-hosted support, GPU required (12GB+ VRAM), high latency.</p>
+    </section>
+    <section name="Best practices">
+      <list>
+        <item>Always specify camera movement explicitly — omitting it produces random/shaky camera</item>
+        <item>Use image-to-video instead of text-to-video when subject or scene consistency matters across shots</item>
+        <item>Generate 3+ variations per shot; selection is cheaper than re-prompting after review</item>
+        <item>Keep individual clips under 5s for maximum quality; chain via ffmpeg for longer sequences</item>
+        <item>Cache generated clips by prompt hash; video generation is expensive and deterministic at fixed seed</item>
+        <item>For social: generate at native 9:16 by setting aspect_ratio parameter, not by cropping 16:9</item>
+        <item>Run ffprobe on outputs before downstream processing to catch silent failures (0-byte files)</item>
+        <item>Store seed values with each clip; they enable near-identical regeneration with minor prompt tweaks</item>
+      </list>
+    </section>
+    <section name="AI-agent gotchas">
+      <list>
+        <item>Generation is async — never block on a synchronous call; always poll with timeout and expose status</item>
+        <item>API timeout ≠ failure: Runway tasks can take 3-5 minutes; 30s HTTP timeout will false-fail</item>
+        <item>Video URL expiry: Runway/Luma pre-signed URLs expire in ~1 hour; download immediately after SUCCEEDED</item>
+        <item>Content policy: abstract violence, brand logos, and real faces trigger refusals silently (returns FAILED with no useful error)</item>
+        <item>Seed reproducibility is provider-specific — same seed on Luma vs Runway yields completely different outputs</item>
+        <item>The revised_prompt analog doesn't exist for video APIs; what-you-prompt-is-what-runs, so validate prompts before submitting</item>
+        <item>Agent must not attempt to read/stream video content inline — download to disk first, then pass path to ffprobe/ffmpeg</item>
+        <item>Rate limits are per-minute not per-day on most providers; batch submissions need exponential backoff</item>
+      </list>
+    </section>
+    <section name="Limitations">
+      <list>
+        <item>No semantic consistency across separate generations (different clips, different lighting/faces)</item>
+        <item>Motion physics fails for fluid dynamics, complex cloth, crowds</item>
+        <item>Text rendering in video is unreliable across all current models</item>
+        <item>Hands/fingers deform during motion</item>
+        <item>Generation costs are high ($0.05-$0.50/clip); iteration loops burn budget quickly</item>
+        <item>Long-form continuity: concatenated clips have visible seam artifacts</item>
+        <item>API availability is gated (Sora is invite-only as of Q2 2026; Runway/Luma have rate limits)</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/video-prompt-builder.py" purpose="VideoPromptBuilder with subject/action/camera/style/lighting fields"/>
+      <template path="templates/video-processor.py" purpose="VideoProcessor: extract frames, concat, resize, add audio"/>
+      <template path="templates/concat-clips.sh" purpose="ffmpeg concat bash helper"/>
+    </templates>
+  </content>
+</methodology>
