@@ -1,0 +1,441 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="embedding-applications">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Benchmarking and integration patterns for embeddings. Covers MTEB analysis, custom benchmarking, speed profiling, and safe integration with Qdrant, pgvector, Weaviate, and Chroma databases.</summary>
+    <tags>
+      <tag>embeddings</tag>
+      <tag>benchmarking</tag>
+      <tag>vector-databases</tag>
+      <tag>rag</tag>
+      <tag>retrieval</tag>
+    </tags>
+    <category>embedding</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+
+  <content>
+    <title>Embedding Applications</title>
+
+    <summary>Benchmarking, vector database integration, and production usage patterns for embedding models. Covers MTEB leaderboard analysis, custom benchmarking against labeled retrieval datasets, speed profiling, and safe integration with Qdrant, pgvector, Weaviate, and other vector databases.</summary>
+
+    <why>
+      <p>Embedding model selection is the highest-leverage decision in RAG pipeline design. A 5-10% improvement in retrieval quality (through better embedding model or smarter benchmarking) is worth 100x more engineering effort than optimizing query rewriting or prompt caching. MTEB provides a standard evaluation protocol; custom benchmarking on domain data prevents the common trap of picking a model that ranks well on average but underperforms on your specific vocabulary.</p>
+      <p>Integration with vector databases is a critical choke point. Wrong batch size, missing normalization, or incorrect distance metric turns silent correctness bugs (returning wrong results without error signals). Production embedding applications require careful configuration of model versioning, re-indexing triggers, and dimension tuning to keep the system maintainable at scale.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building or benchmarking a RAG retrieval stage (model selection, quality gates).</item>
+        <item>Choosing between embedding providers (OpenAI, Cohere, open-source) for a new project.</item>
+        <item>Running regression checks after switching embedding models or chunking strategy.</item>
+        <item>Populating or migrating a vector database (Qdrant, pgvector, Chroma, Weaviate).</item>
+        <item>Validating retrieval quality against a labeled dataset before going to production.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>The task is purely generative — no retrieval component needed.</item>
+        <item>Dataset is fewer than 50 query/document pairs; MTEB-style benchmarking yields noise at that scale.</item>
+        <item>Latency budget is so tight that embedding overhead is unacceptable (consider keyword search instead).</item>
+        <item>Team lacks ground-truth relevance labels; benchmark numbers will mislead rather than guide.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="mteb-leaderboard">
+      <p>The Massive Text Embedding Benchmark (MTEB) is the standard for comparing embedding models across 56 tasks. Models are ranked by average score, but domain-specific performance can differ significantly from overall rank.</p>
+
+      <rule testable="true">
+        <statement>MTEB scores MUST be used as a starting point for model selection, not the final decision. Custom benchmarking on domain-specific data (legal, biomedical, code, specialized terminology) MUST be run before production deployment. Retrieval rank on MTEB can differ significantly from overall rank; agents MUST check the retrieval task score specifically, not the aggregate leaderboard position.</statement>
+        <rationale>MTEB aggregates 56 diverse tasks; a model that ranks #1 overall might rank #20 on retrieval if it excels at classification or clustering instead. Domain vocabulary (legal jargon, biomedical terms, code keywords) is often undertrained in general-purpose embeddings. Custom benchmarking with 50-100 labeled domain pairs prevents the costly mistake of optimizing for the wrong metric.</rationale>
+      </rule>
+
+      <example type="good" title="MTEB leaderboard snapshot (recent)">
+        <code lang="text"><![CDATA[
+Model                       Avg  Retrieval  Classification  Clustering
+bge-m3                      68.1%  66.8%      75.2%          48.3%
+text-embedding-3-large      64.6%  63.4%      75.8%          46.1%
+e5-mistral-7b-instruct      66.6%  60.5%      78.4%          51.2%
+bge-large-en-v1.5           63.6%  54.3%      75.1%          46.1%
+text-embedding-3-small      62.3%  51.7%      74.6%          44.9%
+]]></code>
+        <note>Retrieval column is the key metric for RAG. bge-m3 leads overall but e5-mistral ranks lower on retrieval; task-specific scores matter.</note>
+      </example>
+
+      <antipattern>
+        <description>Picking text-embedding-3-small because it ranks in the top 5 on MTEB without checking retrieval-specific score.</description>
+        <reason>text-embedding-3-small ranks 62.3% overall but only 51.7% on retrieval — a 12-15% gap compared to bge-m3's 66.8% retrieval score. In a 1000-document corpus, this can mean 100+ fewer correct results in top-10.</reason>
+      </antipattern>
+    </section>
+
+    <section name="custom-benchmarking">
+      <p>Custom benchmarking runs embedding models against labeled query/document pairs from your domain. Standard metrics are Recall@K, MRR (Mean Reciprocal Rank), and Precision@K.</p>
+
+      <rule testable="true">
+        <statement>Custom benchmarking MUST be run on 50-200 labeled query/document pairs from your domain (not synthetic, not LLM-generated without validation). Recall@10 MUST be the primary metric; MRR and Precision@K are secondary. Speed benchmarking MUST use realistic batch sizes (32-128 texts), not single texts, because per-text latency drops 5-20x with batching. Benchmark results MUST be stored with model name, version, and timestamp so re-indexing is triggered automatically on model updates.</statement>
+        <rationale>Synthetic relevance labels are unreliable; human-labeled data (even 50 examples) is vastly more predictive than algorithm-generated labels. Recall@10 is the metric that matters for RAG (did the agent find the right source?). Single-text latency measurements are misleading; batching is always used in production and changes latency by an order of magnitude. Version tracking prevents silent degradation when embedding models change.</rationale>
+      </rule>
+
+      <example type="good" title="Benchmark retrieval with Recall@K">
+        <code lang="python"><![CDATA[
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+
+def benchmark_retrieval(
+    queries: list[str],
+    documents: list[str],
+    relevance: dict[int, list[int]],  # query_idx -> [relevant_doc_idxs]
+    embed_fn,
+    k: int = 10
+) -> dict[str, float]:
+    """Benchmark retrieval quality."""
+    query_embeddings = embed_fn(queries)
+    doc_embeddings = embed_fn(documents)
+    similarities = cosine_similarity(query_embeddings, doc_embeddings)
+
+    recalls, mrrs, precisions = [], [], []
+
+    for q_idx, relevant_docs in relevance.items():
+        scores = similarities[q_idx]
+        top_k_idxs = np.argsort(scores)[::-1][:k]
+
+        # Recall@K
+        hits = len(set(top_k_idxs) & set(relevant_docs))
+        recalls.append(hits / len(relevant_docs))
+
+        # MRR
+        for rank, doc_idx in enumerate(top_k_idxs, 1):
+            if doc_idx in relevant_docs:
+                mrrs.append(1 / rank)
+                break
+        else:
+            mrrs.append(0)
+
+        # Precision@K
+        precisions.append(hits / k)
+
+    return {
+        "recall@k": np.mean(recalls),
+        "mrr": np.mean(mrrs),
+        "precision@k": np.mean(precisions)
+    }
+]]></code>
+        <note>Computes recall, reciprocal rank, and precision on a labeled dataset. Recall@10 is the primary RAG metric.</note>
+      </example>
+
+      <example type="good" title="Speed benchmarking with realistic batches">
+        <code lang="python"><![CDATA[
+import time
+import statistics
+
+def benchmark_speed(
+    texts: list[str],
+    embed_fn,
+    iterations: int = 5
+) -> dict[str, float]:
+    """Benchmark embedding speed."""
+    times = []
+
+    for _ in range(iterations):
+        start = time.perf_counter()
+        embed_fn(texts)
+        elapsed = time.perf_counter() - start
+        times.append(elapsed)
+
+    return {
+        "mean_time": statistics.mean(times),
+        "std_time": statistics.stdev(times) if len(times) > 1 else 0,
+        "texts_per_second": len(texts) / statistics.mean(times),
+        "ms_per_text": (statistics.mean(times) / len(texts)) * 1000
+    }
+]]></code>
+        <note>Batches texts together (batch size 32-128) and measures throughput in texts/second, not single-text latency.</note>
+      </example>
+
+      <antipattern>
+        <description>Benchmarking single texts one at a time because "that's the real use case".</description>
+        <reason>Single-text latency is 5-20x higher than batched latency due to network/server initialization overhead. Production deployments always batch; single-text numbers are not comparable to real-world performance and will misdirect optimization efforts.</reason>
+      </antipattern>
+    </section>
+
+    <section name="vector-database-integration">
+      <p>Embeddings are inserted into vector databases (Qdrant, pgvector, Weaviate, Chroma) for fast retrieval. Integration requires correct batching, normalization, schema configuration, and metadata handling.</p>
+
+      <rule testable="true">
+        <statement>Vector insertion MUST use batch APIs with realistic batch sizes (100-500 documents per batch). Vectors MUST be normalized if using cosine distance (pgvector &lt;=&gt; operator, Qdrant cosine metric). The embedding model name and version MUST be stored in collection metadata; collection schema MUST NOT be changed after data ingestion (re-creation required). Distance metric and dimension size MUST be set at collection creation time and never changed without re-indexing.</statement>
+        <rationale>Batching amortizes network overhead and server initialization; single inserts are 10-50x slower. Cosine distance assumes normalized vectors; unnormalized vectors give wrong rankings. Model versioning is the only signal for triggering re-indexing when the embedding model changes. Schema changes (dimension, distance metric) after data ingestion produce silent correctness bugs — queries return stale results without error.</rationale>
+      </rule>
+
+      <example type="good" title="Qdrant upsert with batching">
+        <code lang="python"><![CDATA[
+from qdrant_client import QdrantClient
+from qdrant_client.models import PointStruct
+
+client = QdrantClient("localhost", port=6333)
+embeddings = get_embeddings_batch(texts)
+
+points = [
+    PointStruct(id=i, vector=emb, payload={"text": text})
+    for i, (emb, text) in enumerate(zip(embeddings, texts))
+]
+client.upsert("my_collection", points)
+]]></code>
+        <note>Batches all points into one upsert call; Qdrant handles chunking internally if needed.</note>
+      </example>
+
+      <example type="good" title="pgvector insert with normalization">
+        <code lang="python"><![CDATA[
+import psycopg2
+import numpy as np
+
+conn = psycopg2.connect("postgresql://...")
+cur = conn.cursor()
+
+for text, embedding in zip(texts, embeddings):
+    # Normalize for cosine distance
+    normalized = embedding / np.linalg.norm(embedding)
+    cur.execute(
+        "INSERT INTO documents (content, embedding) VALUES (%s, %s)",
+        (text, normalized.tolist())
+    )
+conn.commit()
+]]></code>
+        <note>Normalizes vectors before insert; ensures &lt;=&gt; (cosine) distance operator gives correct rankings.</note>
+      </example>
+
+      <example type="good" title="Qdrant search with query normalization">
+        <code lang="python"><![CDATA[
+import numpy as np
+
+query_embedding = get_embedding(query)
+# Normalize query for cosine distance
+normalized_query = query_embedding / np.linalg.norm(query_embedding)
+
+results = client.search(
+    collection_name="my_collection",
+    query_vector=normalized_query,
+    limit=10
+)
+]]></code>
+        <note>Query vector normalized to match insertion normalization.</note>
+      </example>
+
+      <antipattern>
+        <description>Inserting non-normalized vectors into pgvector and using the &lt;=&gt; (cosine) operator without checking index type.</description>
+        <reason>Unnormalized vectors give wrong rankings with cosine distance. The &lt;=&gt; operator requires a vector_cosine_ops index; creating the default L2 (vector_l2_ops) index silently produces incorrect results. Agents commonly introduce this bug because the error is silent — queries return results with no error message, but the ranking is wrong.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Changing the embedding dimension or distance metric after inserting millions of documents.</description>
+        <reason>Most vector databases do not support schema changes on live collections. Changing dimension or metric requires dropping and re-creating the collection, re-embedding all documents, and re-inserting. Always set these parameters at creation time and validate them before upsert.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Orchestrating embedding applications with agents: model selection, embedding generation, database insertion, benchmarking, and validation gates.</p>
+
+      <rule testable="true">
+        <statement>Agent orchestration MUST separate concerns into subagents: model selection via MTEB + domain benchmarking, embedding generation with batching and rate-limit backoff, vector database insertion with schema validation, and quality validation via benchmark_retrieval on held-out labels. A parent agent MUST gate promotion to production on Recall@10 &gt; threshold. Subagents can parallelize benchmarking across candidate models; parent collects and compares results.</statement>
+        <rationale>Separation enables parallel work and clear success criteria. Model selection cannot be parallelized (sequential decision) but subsequent steps can. Quality gates prevent bad models from reaching production. Batching and backoff are table-stakes for handling rate limits and maintaining SLA uptime during bulk operations.</rationale>
+      </rule>
+
+      <example type="good" title="SDD-driven embedding workflow">
+        <code lang="text"><![CDATA[
+Task: Migrate corpus from text-embedding-3-small to bge-m3
+
+Subagent 1 (benchmark):
+  - Run benchmark_retrieval(bge-m3, domain_dataset)
+  - Compare against text-embedding-3-small baseline
+  - Return JSON: {model, recall_at_10, mrr, ms_per_text}
+
+Subagent 2 (embed + insert):
+  - Generate embeddings for corpus with bge-m3
+  - Batch insert into Qdrant with batch_size=256
+  - Store metadata: {model: "bge-m3", version: "2024-04-28", dimensions: 1024}
+
+Parent agent:
+  - Collect benchmark results from subagent 1
+  - If recall_at_10(bge-m3) > recall_at_10(text-embedding-3-small) + 2%:
+    - Proceed with Subagent 2
+  - After insertion: run benchmark_retrieval against held-out labels
+  - Gate: only mark as ready for production if Recall@10 > 0.75
+]]></code>
+        <note>Parallel benchmarking (subagent 1) decides whether to proceed; sequential insertion (subagent 2) is gated by quality threshold.</note>
+      </example>
+
+      <antipattern>
+        <description>Running benchmarking and insertion in series without quality gates, assuming "newer models are always better".</description>
+        <reason>Newer embedding models often degrade on niche vocabularies. Without benchmarking, you can quietly degrade retrieval quality by 10-20% after a model upgrade. Quality gates prevent silent regressions and force explicit measurement.</reason>
+      </antipattern>
+    </section>
+
+    <section name="provider-and-tools">
+      <p>Embedding providers vary in API design, rate limits, and batch support. Tool selection depends on latency budget, cost constraints, and domain fit.</p>
+
+      <rule testable="true">
+        <statement>OpenAI embeddings MUST use batch_size &lt;= 2048 (API limit) and implement exponential backoff on rate-limit errors (1M tokens/min on tier 1). Cohere embeddings MUST include input_type="search_document" or "search_query" parameter; omitting this degrades retrieval quality measurably. Voyage AI is preferred for code-heavy domains and multilingual queries. Open-source models (via sentence-transformers or HuggingFace Inference API) require GPU for reasonable latency; use only if cost savings outweigh latency budget.</statement>
+        <rationale>OpenAI rate limits are shared across the account; exponential backoff prevents account-wide throttling. Cohere's input_type parameter tunes the embedding for the retrieval stage; omitting it removes valuable signal. Voyage AI specifically trains on code and multilingual data. Open-source models have variable latency; GPU inference is required for sub-second latency at scale.</rationale>
+      </rule>
+
+      <example type="good" title="OpenAI embeddings with batching and backoff">
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+import time
+
+oai = OpenAI()
+
+def embed_with_backoff(texts: list[str], model="text-embedding-3-large"):
+    """Embed with exponential backoff on rate limits."""
+    for attempt in range(5):
+        try:
+            response = oai.embeddings.create(model=model, input=texts)
+            return [e.embedding for e in response.data]
+        except openai.RateLimitError:
+            wait = 2 ** attempt
+            print(f"Rate limited, waiting {wait}s")
+            time.sleep(wait)
+    raise RuntimeError("Embedding failed after 5 retries")
+]]></code>
+        <note>Exponential backoff handles transient rate limits; does not fail on first error.</note>
+      </example>
+
+      <example type="good" title="Cohere embeddings with input_type">
+        <code lang="python"><![CDATA[
+from cohere import Client
+
+co = Client()
+
+# Embed documents for a collection
+doc_embeddings = co.embed(
+    model="embed-english-v3.0",
+    texts=documents,
+    input_type="search_document"
+)
+
+# Embed query at retrieval time
+query_embedding = co.embed(
+    model="embed-english-v3.0",
+    texts=[query],
+    input_type="search_query"
+)
+]]></code>
+        <note>input_type tunes embeddings for document storage vs. query matching; omitting it degrades retrieval quality.</note>
+      </example>
+
+      <antipattern>
+        <description>Embedding documents with input_type="search_query" because "it's all the same function".</description>
+        <reason>Cohere (and Voyage) specifically train dual spaces for documents vs. queries; using the wrong type breaks symmetry and reduces retrieval quality by 5-15%.</reason>
+      </antipattern>
+    </section>
+
+    <section name="gotchas-and-limits">
+      <p>Common pitfalls and silent correctness bugs in embedding applications at scale.</p>
+
+      <rule testable="true">
+        <statement>MTEB leaderboard aggregates 56 tasks; retrieval rank can differ significantly from overall rank — always check task-specific scores. Embedding API rate limits (OpenAI: 1M tokens/min on tier 1) will throttle bulk inserts; agents MUST implement exponential backoff or use Batch API. Vector DB schema changes require full collection recreation — agents MUST check collection config before upsert and fail loudly if mismatch. pgvector &lt;=&gt; (cosine) operator requires vector_cosine_ops index; wrong index type is a silent correctness bug. Embedding model updates (OpenAI silently versions models) may change stored vectors; agents MUST version collections and re-embed on deprecation.</statement>
+        <rationale>Silent correctness bugs (wrong index type, wrong input_type, stale vectors) are the biggest threat to production embedding systems. Rate limits, schema mismatches, and model versioning require explicit checks and fail-fast behavior.</rationale>
+      </rule>
+
+      <example type="good" title="Collection config check before upsert">
+        <code lang="python"><![CDATA[
+# Check collection config before upsert
+collection_config = client.get_collection("my_collection")
+expected_dim = 1024
+
+if collection_config.config.params.vectors.size != expected_dim:
+    raise ValueError(
+        f"Collection dimension {collection_config.config.params.vectors.size} "
+        f"does not match embedding dimension {expected_dim}. "
+        f"Drop and recreate the collection."
+    )
+]]></code>
+        <note>Validates collection schema at upsert time; prevents inserting vectors with wrong dimension.</note>
+      </example>
+
+      <antipattern>
+        <description>Selecting an embedding model solely based on MTEB leaderboard position #1-3 without checking retrieval-specific scores.</description>
+        <reason>MTEB aggregates 56 tasks. A model that ranks #1 overall might rank #15 on retrieval if it excels at classification or clustering instead. Domain vocabulary (legal, biomedical, code) is often undertrained in general-purpose embeddings. Custom benchmarking with 50-100 labeled pairs on your domain prevents the costly mistake.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Assuming embedding API changes are backward-compatible ("it's just embedding").</description>
+        <reason>OpenAI changed text-embedding-3-* models silently multiple times; users relying on consistency had to re-embed million-document corpora unannounced. Always store model name, version, and embedding date in collection metadata and re-embed on model changes.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <p>Production patterns for reliable, maintainable embedding applications at scale.</p>
+
+      <rule testable="true">
+        <statement>Always normalize vectors before inserting into pgvector or other cosine-distance DBs using embedding / np.linalg.norm(embedding). Create 50-100 labeled query/doc pairs from real user queries (not synthetic, not LLM-generated) and benchmark against them before choosing a model. Use input_type="search_document" / "search_query" for Cohere and Voyage models; omitting this degrades retrieval quality. Store model name, version, and timestamp in collection metadata so re-indexing is triggered automatically on model changes. For OpenAI, prefer text-embedding-3-large with dimensions=256 when storage cost matters — Matryoshka embeddings retain most quality at 256 dims vs. 3072. Run benchmark_speed with realistic batch sizes (32-128 texts), not single texts; per-text latency drops 5-20x with batching. Set HNSW index parameters at collection creation time (m=16, ef_construct=200); re-indexing after data ingestion is expensive.</statement>
+        <rationale>Normalization ensures correctness with cosine distance. Domain-specific benchmarking prevents silent regressions. input_type tuning is a free 5-15% quality boost. Model versioning prevents data loss from model deprecations. Matryoshka embeddings (OpenAI's technique) compress high-dim embeddings to low-dim without accuracy loss. Batch size tuning is a 5-20x throughput boost. Index tuning at creation time prevents re-indexing costs.</rationale>
+      </rule>
+
+      <example type="good" title="Production upsert with model versioning">
+        <code lang="python"><![CDATA[
+from qdrant_client import QdrantClient
+from qdrant_client.models import PointStruct
+from openai import OpenAI
+from datetime import datetime
+
+oai = OpenAI()
+qd = QdrantClient(url="http://localhost:6333")
+
+model_name = "text-embedding-3-large"
+timestamp = datetime.utcnow().isoformat()
+
+# Generate embeddings in batches
+embeddings = oai.embeddings.create(model=model_name, input=texts)
+
+# Upsert with model metadata
+points = [
+    PointStruct(
+        id=i,
+        vector=e.embedding,
+        payload={
+            "text": texts[i],
+            "embedding_model": model_name,
+            "embedding_date": timestamp
+        }
+    )
+    for i, e in enumerate(embeddings.data)
+]
+
+qd.upsert("my_collection", points=points)
+]]></code>
+        <note>Stores model name and embedding date in metadata; re-indexing is triggered automatically on model changes.</note>
+      </example>
+
+      <antipattern>
+        <description>Tuning HNSW parameters (m, ef_construct) after inserting millions of documents.</description>
+        <reason>HNSW parameters are set at collection creation time; changing them requires re-indexing the entire collection (hours to days for large corpora). Always set these at creation time based on latency/recall SLAs.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates.md" purpose="Reusable code patterns for setup, configuration, error handling, and common operations."/>
+    </templates>
+
+    <see-also>
+      <ref slug="embedding-generation"/>
+      <ref slug="embedding-models"/>
+      <ref slug="db-qdrant"/>
+      <ref slug="db-weaviate"/>
+      <ref slug="db-chroma"/>
+      <ref slug="hybrid-search-basics"/>
+      <ref slug="rag-evaluation-metrics"/>
+      <link href="https://huggingface.co/spaces/mteb/leaderboard"/>
+      <link href="https://platform.openai.com/docs/guides/embeddings"/>
+      <link href="https://www.sbert.net/"/>
+      <link href="https://arxiv.org/abs/2402.03216"/>
+      <link href="https://arxiv.org/abs/2205.13147"/>
+      <link href="https://docs.qdrant.tech"/>
+      <link href="https://github.com/pgvector/pgvector"/>
+      <link href="https://www.pinecone.io/learn/chunking-strategies/"/>
+    </see-also>
+  </content>
+</methodology>
