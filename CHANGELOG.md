@@ -1,7 +1,7 @@
 # Changelog
 
 ## [Unreleased]
-- migrate: 1/1 geek/ai/claude-code methodology → methodology.xml (hooks; feature-045 batch 249)
+- migrate: 2/2 geek/ai/claude-code methodologies → methodology.xml (hooks, mcp; feature-045 batch 249)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (schema-field-order, semantic-field-naming, stream-json-orchestration; feature-045 batch 246)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (model-context-protocol, multi-agent-basics, multi-agent-design-patterns; feature-045 batch 244)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (plan-execute-vs-react, prompt-cache-prefix-order, reasoning-first-architectures; feature-045 batch 245)
