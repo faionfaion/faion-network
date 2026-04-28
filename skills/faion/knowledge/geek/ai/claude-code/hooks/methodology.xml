@@ -1,0 +1,542 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="hooks">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>claude-code</domain>
+    <summary>Automated scripts that execute at specific Claude Code lifecycle events, enabling auto-approval, validation, formatting, and audit logging.</summary>
+    <tags>
+      <tag>hooks</tag>
+      <tag>automation</tag>
+      <tag>security</tag>
+      <tag>lifecycle-events</tag>
+      <tag>validation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Claude Code Hooks Reference</title>
+    <summary>Hooks are automated scripts that execute at specific lifecycle events (PreToolUse, PostToolUse, SessionStart, Stop, etc.) to enforce security policies, auto-approve safe operations, format code, inject context, and audit commands.</summary>
+    <why>
+      <p>Claude Code hooks reduce friction in automated workflows by eliminating repetitive permission prompts, enforcing consistent code formatting, and blocking dangerous commands before execution. They capture context (git branch, project name) at session start so agents don't have to ask. They audit compliance by logging every command executed.</p>
+      <p>Hooks are the bridge between declarative security policy and agent execution: define once in settings.json, apply everywhere that agent runs, no human intervention needed.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Enforcing security policy: block dangerous commands (rm -rf, DROP TABLE) before they execute.</item>
+        <item>Auto-approval of known-safe operations to reduce permission prompts in automated pipelines.</item>
+        <item>Post-edit formatting: run prettier/ruff/eslint automatically after every Write or Edit.</item>
+        <item>Injecting session context (git branch, project name, env) at session start so agents don't have to ask.</item>
+        <item>Preventing premature agent exit when tasks are still incomplete (Stop hook).</item>
+        <item>Audit logging: record every Bash command for compliance or debugging.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Hook logic is complex enough to warrant a standalone agent — hooks are synchronous, blocking, and have a 60s default timeout.</item>
+        <item>You need to modify the model's response rather than the tool execution — hooks operate on tool calls, not text output.</item>
+        <item>The action should be user-triggered (on demand), not automatic — use a command or agent instead.</item>
+        <item>Hook script has side effects that must be reversible — hooks run before confirmation dialogs.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Hook Events">
+      <p>Claude Code exposes the following lifecycle events that hooks can listen to:</p>
+      <rule>
+        <statement>Each event has specific matchers and use cases. Match support determines whether the hook can filter by tool name, regex, or applies globally.</statement>
+      </rule>
+      <example type="good" title="Event Reference Table">
+        <code lang="text"><![CDATA[Event                Matcher Support    Use Case
+PreToolUse           Yes                Block/allow tools, auto-approve, modify inputs
+PostToolUse          Yes                Auto-format, lint, log, validate results
+PermissionRequest    Yes                Programmatic permission handling
+UserPromptSubmit     No                 Validate prompts, add context, block sensitive
+Stop                 No                 Prevent exit, continue work
+SubagentStop         No                 Control subagent lifecycle
+Notification         No                 Custom alerts
+SessionStart          Yes (startup/resume/clear/compact)  Load context, set env vars
+SessionEnd           No                 Cleanup, logging
+PreCompact           Yes (manual/auto)  Pre-compaction actions]]></code>
+      </example>
+    </section>
+    <section name="Configuration Locations">
+      <p>Hooks are registered in multiple places depending on scope:</p>
+      <rule>
+        <statement>User-level hooks in ~/.claude/ apply globally. Project-level hooks in .claude/ apply to one project. Component-scoped hooks (skills, agents) apply only while that component is active.</statement>
+      </rule>
+      <example type="good" title="Configuration Scope">
+        <code lang="text"><![CDATA[~/.claude/settings.json           # User-level (all projects)
+.claude/settings.json             # Project-level (committed)
+.claude/settings.local.json       # Local project (gitignored)
+Component frontmatter             # Skills, Agents, Commands
+plugins/*/hooks/hooks.json        # Plugin hooks]]></code>
+      </example>
+    </section>
+    <section name="Input Schema">
+      <p>All hooks receive JSON input on stdin with common fields plus tool-specific details.</p>
+      <example type="good" title="Common Input Fields">
+        <code lang="json"><![CDATA[{
+  "session_id": "abc123",
+  "transcript_path": "/path/to/transcript.jsonl",
+  "cwd": "/current/working/directory",
+  "permission_mode": "default|plan|acceptEdits|dontAsk|bypassPermissions",
+  "hook_event_name": "PreToolUse"
+}]]></code>
+      </example>
+      <example type="good" title="Bash Tool Input">
+        <code lang="json"><![CDATA[{
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "npm test",
+    "description": "Run tests",
+    "timeout": 120000,
+    "run_in_background": false
+  }
+}]]></code>
+      </example>
+      <example type="good" title="Write Tool Input">
+        <code lang="json"><![CDATA[{
+  "tool_name": "Write",
+  "tool_input": {
+    "file_path": "/path/to/file.ts",
+    "content": "file content"
+  }
+}]]></code>
+      </example>
+      <example type="good" title="Edit Tool Input">
+        <code lang="json"><![CDATA[{
+  "tool_name": "Edit",
+  "tool_input": {
+    "file_path": "/path/to/file.ts",
+    "old_string": "original",
+    "new_string": "replacement",
+    "replace_all": false
+  }
+}]]></code>
+      </example>
+      <example type="good" title="MCP Tools Input">
+        <code lang="json"><![CDATA[{
+  "tool_name": "mcp__server__tool_name",
+  "tool_input": { /* tool-specific */ }
+}]]></code>
+      </example>
+    </section>
+    <section name="Output Schema">
+      <p>Hook output format varies by event type. Hooks communicate decisions (allow/deny/ask) and optional modifications to the tool input.</p>
+      <example type="good" title="PreToolUse Decision">
+        <code lang="json"><![CDATA[{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "allow|deny|ask",
+    "permissionDecisionReason": "Auto-approved: documentation file",
+    "updatedInput": {
+      "command": "modified command"
+    },
+    "additionalContext": "Context for Claude"
+  },
+  "suppressOutput": true
+}]]></code>
+      </example>
+      <example type="good" title="Stop/SubagentStop Decision">
+        <code lang="json"><![CDATA[{
+  "decision": "block",
+  "reason": "Tests failed - must continue debugging"
+}]]></code>
+      </example>
+      <example type="good" title="UserPromptSubmit Decision">
+        <code lang="json"><![CDATA[{
+  "decision": "block",
+  "reason": "Prompt contains sensitive information"
+}]]></code>
+      </example>
+      <example type="good" title="Common Output Fields">
+        <code lang="json"><![CDATA[{
+  "continue": true,
+  "stopReason": "Message when continue=false",
+  "suppressOutput": false,
+  "systemMessage": "Warning shown to user"
+}]]></code>
+      </example>
+    </section>
+    <section name="Matcher Patterns">
+      <p>Matchers filter which tools or operations a hook applies to. They use exact match or regex syntax.</p>
+      <rule>
+        <statement>Matcher patterns determine scope: "Bash" matches only Bash tool, "Edit.*" uses regex, "*" or "" matches all tools.</statement>
+      </rule>
+      <example type="good" title="Matcher Examples">
+        <code lang="text"><![CDATA["Bash"              Exact match only
+"Edit|Write"        Multiple tools (pipe)
+"Edit.*"            Regex pattern
+"mcp__memory__.*"   MCP tool pattern
+"*" or ""           All tools]]></code>
+      </example>
+    </section>
+    <section name="Basic Hook Structure">
+      <p>Hooks are registered as JSON objects with event name, optional matcher, and list of hook actions.</p>
+      <example type="good" title="Minimal Hook Registration">
+        <code lang="json"><![CDATA[{
+  "hooks": {
+    "EventName": [
+      {
+        "matcher": "ToolPattern",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "your-command-here",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}]]></code>
+      </example>
+    </section>
+    <section name="Exit Codes">
+      <p>Hook scripts communicate success or failure via exit codes. Exit 0 means success; exit 2 means blocking error; other codes indicate non-blocking errors.</p>
+      <rule>
+        <statement>Exit code 0: Success. stdout parsed for JSON or added as context. Exit code 2: Blocking error. stderr shown, tool blocked (PreToolUse). Other: Non-blocking error. stderr shown in verbose mode.</statement>
+      </rule>
+    </section>
+    <section name="Environment Variables">
+      <p>Hooks have access to environment variables that describe the session and project context.</p>
+      <rule>
+        <statement>CLAUDE_PROJECT_DIR provides the project root path. CLAUDE_CODE_REMOTE is "true" for web, empty for CLI. CLAUDE_PLUGIN_ROOT is set for plugins only. CLAUDE_ENV_FILE allows persisting env vars in SessionStart hooks.</statement>
+      </rule>
+    </section>
+    <section name="Python Hook Template">
+      <p>Template for Python-based hooks. Python is recommended because json.load() is safer than shell jq for structured input.</p>
+      <example type="good" title="Basic Python Hook Template">
+        <code lang="python"><![CDATA[#!/usr/bin/env python3
+"""Hook description."""
+
+import json
+import sys
+
+def main():
+    try:
+        data = json.load(sys.stdin)
+    except json.JSONDecodeError:
+        sys.exit(1)
+
+    tool_name = data.get("tool_name", "")
+    tool_input = data.get("tool_input", {})
+
+    # Your logic here
+
+    # Block with error message
+    # print("Error message", file=sys.stderr)
+    # sys.exit(2)
+
+    # Allow with JSON output
+    # output = {"hookSpecificOutput": {...}}
+    # print(json.dumps(output))
+
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()]]></code>
+      </example>
+    </section>
+    <section name="Bash Hook Template">
+      <p>Template for Bash-based hooks using jq to parse JSON input.</p>
+      <example type="good" title="Basic Bash Hook Template">
+        <code lang="bash"><![CDATA[#!/bin/bash
+set -euo pipefail
+
+# Read input
+INPUT=$(cat)
+
+# Parse with jq
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name')
+COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+
+# Your logic here
+
+# Block: print to stderr, exit 2
+# echo "Error message" >&2
+# exit 2
+
+# Allow
+exit 0]]></code>
+      </example>
+    </section>
+    <section name="Component-Scoped Hooks">
+      <p>Hooks can be embedded in skill and agent frontmatter to apply only when that component is active.</p>
+      <example type="good" title="Skill Frontmatter Hooks">
+        <code lang="yaml"><![CDATA[---
+name: my-skill
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "./scripts/validate.sh"
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "./scripts/format.sh"
+  once: true  # Run only once per session
+---]]></code>
+      </example>
+    </section>
+    <section name="Common Patterns">
+      <p>Worked examples of common hook use cases and design patterns.</p>
+      <example type="good" title="Auto-Approve Safe Operations">
+        <code lang="python"><![CDATA[if tool_name == "Read" and file_path.endswith((".md", ".txt", ".json")):
+    output = {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow",
+            "permissionDecisionReason": "Documentation file"
+        }
+    }
+    print(json.dumps(output))]]></code>
+      </example>
+      <example type="good" title="Block Dangerous Commands">
+        <code lang="python"><![CDATA[BLOCKED = ["rm -rf /", "DROP TABLE", "sudo rm"]
+if any(pattern in command for pattern in BLOCKED):
+    print(f"Blocked: {command}", file=sys.stderr)
+    sys.exit(2)]]></code>
+      </example>
+      <example type="good" title="Auto-Format After Edit">
+        <code lang="json"><![CDATA[{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path' | xargs -I {} prettier --write {}"
+          }
+        ]
+      }
+    ]
+  }
+}]]></code>
+      </example>
+      <example type="good" title="Add Context at Session Start">
+        <code lang="bash"><![CDATA[#!/bin/bash
+echo "Project: $(basename \"$CLAUDE_PROJECT_DIR\")"
+echo "Branch: $(git branch --show-current 2>/dev/null || echo 'N/A')"
+echo "Node: $(node -v 2>/dev/null || echo 'N/A')"]]></code>
+      </example>
+      <example type="good" title="Prevent Premature Exit">
+        <code lang="json"><![CDATA[{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Check if all tasks are complete. Respond {\"ok\": true} to stop, {\"ok\": false, \"reason\": \"...\"} to continue."
+          }
+        ]
+      }
+    ]
+  }
+}]]></code>
+      </example>
+      <example type="good" title="Command Logging">
+        <code lang="json"><![CDATA[{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '\"[\\(.hook_event_name)] \\(.tool_input.command)\"' >> ~/.claude/command-log.txt"
+          }
+        ]
+      }
+    ]
+  }
+}]]></code>
+      </example>
+      <example type="good" title="File Protection">
+        <code lang="python"><![CDATA[PROTECTED = [".env", "package-lock.json", ".git/", "secrets/"]
+file_path = tool_input.get("file_path", "")
+if any(p in file_path for p in PROTECTED):
+    print(f"Protected file: {file_path}", file=sys.stderr)
+    sys.exit(2)]]></code>
+      </example>
+    </section>
+    <section name="Production-Ready Security Hook">
+      <p>Complete example of a security hook that blocks dangerous bash patterns before execution.</p>
+      <example type="good" title="PreToolUse Security Guard">
+        <code lang="python"><![CDATA[#!/usr/bin/env python3
+"""PreToolUse security guard — blocks high-risk bash patterns."""
+import json, sys, re
+
+BLOCKED = [
+    r"rm\s+-rf\s+/",
+    r"git\s+push\s+.*--force.*main",
+    r"DROP\s+TABLE",
+    r"truncate\s+/",
+    r"> /dev/sd",
+]
+
+def main():
+    try:
+        data = json.load(sys.stdin)
+    except json.JSONDecodeError:
+        sys.exit(0)  # malformed input — allow and let Claude handle
+
+    if data.get("tool_name") != "Bash":
+        sys.exit(0)
+
+    command = data.get("tool_input", {}).get("command", "")
+    for pattern in BLOCKED:
+        if re.search(pattern, command, re.IGNORECASE):
+            print(f"Blocked: matches dangerous pattern '{pattern}'", file=sys.stderr)
+            sys.exit(2)
+
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()]]></code>
+      </example>
+    </section>
+    <section name="Limitations and Failure Modes">
+      <p>Understanding hook limitations helps design more robust automation pipelines.</p>
+      <antipattern>
+        <description>Exit code 2 blocks the tool — if your hook crashes unexpectedly (Python exception), it exits non-zero and blocks silently.</description>
+        <reason>Always wrap JSON parsing in try/except. Malformed input should default to allowing (exit 0), not blocking. Test hooks manually before deploying.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hooks run synchronously; a slow hook (API call, heavy computation) adds latency to every tool call it matches.</description>
+        <reason>Set aggressive timeouts: "timeout": 10 for simple checks, never leave default 60s. Keep hook logic under 30 lines. Delegate complex logic to agents or background scripts.</reason>
+      </antipattern>
+      <antipattern>
+        <description>suppressOutput: true in the hook JSON response hides the permission prompt — accidentally suppressing all output makes debugging hard.</description>
+        <reason>Use suppressOutput sparingly. When suppressing, always log the decision to a file (~/.claude/hook-audit.log) for visibility.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Regex matchers in matcher field must be valid JavaScript regex; PCRE syntax doesn't work.</description>
+        <reason>Test matcher patterns in JavaScript environment first. Prefer simple exact matches ("Bash") over complex regex when possible.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hooks defined in component frontmatter (skills/agents) run only while that component is active — not globally.</description>
+        <reason>For global hooks, register in ~/.claude/settings.json or .claude/settings.json. Document component-scoped hooks clearly in the skill/agent README.</reason>
+      </antipattern>
+      <antipattern>
+        <description>The CLAUDE_ENV_FILE trick (persist env vars) only works in SessionStart hooks; other hooks cannot persist env between calls.</description>
+        <reason>For persistent state, write to a file or use a shared JSON config. SessionStart is the only hook that can persist environment variables across sessions.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Design hooks as thin guards, not business logic. A PreToolUse hook reads stdin JSON, checks one condition, exits 0 or 2. A PostToolUse hook runs a formatter and exits 0. Keep them under 30 lines.</p>
+      <rule>
+        <statement>An agent can write new hook scripts to the filesystem and update settings.json — but the new hooks only activate after a session restart. For dynamic hook behavior, use a dispatcher hook that delegates to a script selected by env var.</statement>
+      </rule>
+      <note>Recommended subagents for hook workflow: General-purpose implementer (Write, Edit, Bash) — writes hook scripts and updates settings.json. faion-spec-reviewer-agent — validates hook logic against security checklist before deployment. Bash testing agent — runs hook manually against sample inputs: echo '...' | python hook.py.</note>
+      <example type="good" title="Prompt Pattern for Hook Creation">
+        <code lang="text"><![CDATA[Write a PreToolUse hook (Python) that:
+- Blocks any Bash command matching: {pattern_list}
+- Allows all other Bash commands
+- Exits 2 with message "{message}" on block
+- Exits 0 silently on allow
+Install to ~/.claude/scripts/hooks/{name}-hook.py and register in ~/.claude/settings.json.]]></code>
+      </example>
+    </section>
+    <section name="Security Best Practices">
+      <p>Hooks have access to sensitive data. Follow these practices to prevent security incidents.</p>
+      <rule>
+        <statement>Quote all variables: "$VAR" not $VAR. Always validate inputs. Check for empty, null, unexpected types. Block path traversal: Reject paths with ".." Use absolute paths for scripts and files. Skip sensitive files: .env, .git/, credentials. Test manually first before adding to config. Keep hooks fast: &lt; 60s timeout default.</statement>
+      </rule>
+    </section>
+    <section name="Debugging Hooks">
+      <p>Tools and techniques for testing and debugging hook implementations.</p>
+      <example type="good" title="Debugging Commands">
+        <code lang="bash"><![CDATA[# List registered hooks
+claude /hooks
+
+# Run with debug output
+claude --debug
+
+# Test script manually
+echo '{"tool_name":"Bash","tool_input":{"command":"ls"}}' | ./hook.py
+
+# Check hook linter
+.claude/plugins/*/skills/hook-development/scripts/hook-linter.sh ./my-hook.sh]]></code>
+      </example>
+    </section>
+    <section name="Naming Convention">
+      <p>Establish consistent naming for hooks so they are discoverable and self-documenting.</p>
+      <rule>
+        <statement>Global (faion-network) hooks use pattern: faion-{event}-{purpose}-hook.{ext}. Project-specific (gitignored) hooks use pattern: {project}-{event}-{purpose}-hook.{ext}.</statement>
+      </rule>
+      <example type="good" title="Global Hook Examples">
+        <code lang="text"><![CDATA[faion-pre-bash-security-hook.py     PreToolUse on Bash
+faion-post-edit-format-hook.sh      PostToolUse on Edit
+faion-session-start-context-hook.sh SessionStart
+faion-stop-validation-hook.py       Stop event]]></code>
+      </example>
+      <example type="good" title="Project-Specific Hook Examples">
+        <code lang="text"><![CDATA[myapp-pre-bash-lint-hook.sh          Lint before bash in myapp
+shopify-post-edit-sync-hook.py      Sync after edits
+acme-session-start-env-hook.sh      Load ACME env vars]]></code>
+      </example>
+      <rule>
+        <statement>Project-specific hooks should be added to .gitignore at the same level as .claude/ so they don't leak into version control. Add attribution comment at top of project hook: # Created with faion.net framework.</statement>
+      </rule>
+    </section>
+    <section name="CLI Tools and Services">
+      <p>External tools and services that integrate with or support hook development.</p>
+      <rule>
+        <statement>claude /hooks lists all registered hooks in current session. claude --debug shows hook execution output and errors. jq parses hook stdin JSON in bash hooks. python3 is recommended for hook scripts (safer than bash for JSON parsing).</statement>
+      </rule>
+      <rule>
+        <statement>Claude Code hooks system is built-in (OSS), no external service required. GitHub Actions integrates indirectly via PostToolUse hooks running gh CLI calls. Datadog/Grafana integrate via logging hooks pushing metrics with curl. Sentry integrates via error hooks sending failures to Sentry.</statement>
+      </rule>
+    </section>
+    <section name="Agent Selection Guide">
+      <p>Choosing the right agent model for hook-related tasks.</p>
+      <rule>
+        <statement>Use haiku for: Set up hook for pre-commit security (mechanical script configuration). Use sonnet for: Configure MCP server for Claude (implementation with moderate complexity), Write agent system prompt (requires clear communication and nuance), Implement custom slash command (coding with context and interaction). Use opus for: Design agent architecture for complex task (requires reasoning about delegation and isolation).</statement>
+      </rule>
+    </section>
+    <section name="Best Practices Summary">
+      <p>Key takeaways for writing reliable, secure hooks.</p>
+      <rule>
+        <statement>Write hooks in Python, not bash — Python's json.load(sys.stdin) is safer than jq in shell scripts. Always handle json.JSONDecodeError — malformed input should default to allowing (exit 0), not blocking. Use the matcher field to scope hooks narrowly: "Bash" not ".*" unless you need all tools.</statement>
+      </rule>
+      <rule>
+        <statement>Test hooks manually before registering: echo '{"tool_name":"Bash","tool_input":{"command":"ls"}}' | python hook.py. Keep hooks idempotent — PostToolUse formatters should produce the same result if run twice. Log blocked commands to a file (not just stderr) for audit: echo "BLOCKED: $command" >> ~/.claude/hook-audit.log. Set "timeout": 10 for hooks that do I/O — never leave it at the 60s default for simple checks.</statement>
+      </rule>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <p>Specific challenges and anti-patterns when agents interact with hooks.</p>
+      <antipattern>
+        <description>An agent that writes hook scripts and registers them cannot use them in the same session — hooks load at startup only.</description>
+        <reason>Document that agents must restart the session or continue with a new session to use newly-installed hooks. Plan multi-session workflows when hook installation is part of the task.</reason>
+      </antipattern>
+      <antipattern>
+        <description>If a PreToolUse hook blocks a tool the agent considers essential, the agent may enter a retry loop.</description>
+        <reason>Design hooks to provide actionable error messages explaining what alternative to use. Never block without guidance.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hooks with permissionDecision: "allow" bypass the normal permission prompt — this is powerful but means the user has no visibility into what was auto-approved.</description>
+        <reason>Log these approvals to ~/.claude/hook-audit.log so the user can audit what was auto-approved and revoke it if needed.</reason>
+      </antipattern>
+      <antipattern>
+        <description>The updatedInput field in PreToolUse output lets a hook rewrite the command Claude executes — powerful but can cause unexpected behavior if the agent doesn't know the command was modified.</description>
+        <reason>Use updatedInput sparingly. Always log or display what modification was made. Never silently modify input in ways that change semantics.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Stop hooks that return {"decision": "block"} prevent the agent from completing.</description>
+        <reason>Always include a "reason" so the agent knows why it was blocked and what to do next.</reason>
+      </antipattern>
+      <antipattern>
+        <description>UserPromptSubmit hooks run before Claude sees the prompt — a hook that blocks here silently drops the user's message.</description>
+        <reason>Always show a reason in stopReason so the user knows what happened.</reason>
+      </antipattern>
+    </section>
+    <see-also>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/hooks"/>
+    </see-also>
+  </content>
+</methodology>
