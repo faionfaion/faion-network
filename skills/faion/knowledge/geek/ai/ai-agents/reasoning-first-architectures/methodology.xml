@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="reasoning-first-architectures">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Make agents think before acting. Use ReAct, Tree-of-Thought, Reflexion, or Planning Loops to improve quality on complex tasks.</summary>
+    <tags>
+      <tag>agent-reasoning</tag>
+      <tag>think-before-act</tag>
+      <tag>react</tag>
+      <tag>tree-of-thought</tag>
+      <tag>reflexion</tag>
+    </tags>
+    <category>best-practices-2026</category>
+    <difficulty>advanced</difficulty>
+    <created>2024-04-25</created>
+    <see-also>
+      <link href="https://arxiv.org/abs/2210.03629"/>
+      <link href="https://arxiv.org/abs/2305.10601"/>
+      <link href="https://arxiv.org/abs/2303.11366"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking"/>
+      <link href="https://platform.openai.com/docs/guides/reasoning"/>
+    </see-also>
+  </metadata>
+  <content>
+    <title>Reasoning-First Architectures</title>
+    <summary>Agents that act before thinking produce suboptimal outcomes. Use reasoning-first patterns (ReAct, Tree-of-Thought, Reflexion, Planning Loops, Critique-and-Revise) to separate thinking from action. Each pattern trades off latency, cost, and quality differently.</summary>
+    <why>
+      <p>Agents act before thinking, leading to suboptimal outcomes. Reasoning-first architectures enforce an explicit thinking phase before action, making the agent's logic auditable and improvable.</p>
+      <p>Different patterns suit different tasks: ReAct interleaves reasoning and action for adaptive exploration. Tree-of-Thought explores multiple paths and picks the best. Reflexion self-evaluates and improves. Planning Loops decompose the task up front. Critique-and-Revise generates then refines.</p>
+      <p>The tradeoff is latency and cost versus quality. Simple tasks do not need reasoning; quality-critical or ambiguous tasks do.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Tasks where acting without a plan produces low-quality output (complex coding, multi-step math, strategic decisions)</item>
+        <item>Research synthesis where the agent must reconcile conflicting sources before concluding</item>
+        <item>Any agentic pipeline where premature tool calls cause cascading errors (e.g. writing code before understanding the full spec)</item>
+        <item>Quality-critical generation where a Critique-and-Revise loop demonstrably improves output</item>
+        <item>Problems with multiple viable solution paths where Tree-of-Thought search yields better solutions than greedy selection</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Simple factual retrieval where reasoning adds latency with no quality gain</item>
+        <item>Latency-sensitive paths (&lt;500ms budget) — extended thinking and multi-path search are expensive</item>
+        <item>Tasks where the domain is so narrow that chain-of-thought adds no signal (e.g. regex matching, format conversion)</item>
+        <item>Reflexion loops on tasks with no verifiable exit criterion — the loop runs to the cap and exits with no quality guarantee</item>
+        <item>Streaming response use cases where intermediate reasoning steps must not be shown to the user</item>
+      </list>
+    </when-not-to-use>
+    <section name="core-reasoning-patterns">
+      <p>Five core reasoning patterns, each with different tradeoffs:</p>
+      <list>
+        <item>ReAct: Interleaved reasoning and acting. Adaptive — each observation reshapes the next thought. Used for exploratory tasks.</item>
+        <item>Reflexion: Self-evaluation and improvement. Agent generates, then critiques itself, then regenerates. Loop until satisfactory.</item>
+        <item>Tree-of-Thought: Explore multiple reasoning paths. Generate N candidates, evaluate each, expand the best. Exhaustive but expensive.</item>
+        <item>Planning Loops: Plan → Execute → Verify → Adjust. Up-front decomposition; sequential execution; replan on failure.</item>
+        <item>Critique &amp; Revise: Generate → Critique → Improve. Two-phase: first draft then refinement. Works well for writing and code.</item>
+      </list>
+    </section>
+    <section name="react-implementation">
+      <p>ReAct interleaves Thought → Action → Observation in a loop. Each observation feeds the next thought, so surprising tool outputs reshape the trajectory.</p>
+      <code lang="text"><![CDATA[Thought: I need to find the company's Q4 revenue
+Action: search("Company X Q4 2025 revenue report")
+Observation: [search results]
+Thought: Found $4.2B revenue, but need YoY comparison
+Action: search("Company X Q4 2024 revenue")
+Observation: [search results showing $3.8B]
+Thought: Can now calculate growth rate
+Answer: Q4 2025 revenue was $4.2B, representing 10.5% YoY growth]]></code>
+    </section>
+    <section name="tree-of-thought-implementation">
+      <p>Tree-of-Thought explores multiple solution paths and evaluates each against a rubric. Select the best and expand it further.</p>
+      <code lang="text"><![CDATA[Query
+    - Path A: Direct approach
+        - Evaluate: Score 0.6
+        - Continue or prune
+    - Path B: Step-by-step
+        - Evaluate: Score 0.8
+        - Expand further
+    - Path C: Tool-assisted
+        - Evaluate: Score 0.9
+        - Select as best path]]></code>
+    </section>
+    <section name="reflexion-loop">
+      <p>Reflexion is a self-improvement loop: generate → evaluate → identify weaknesses → regenerate → repeat.</p>
+      <code lang="text"><![CDATA[Generate response
+    |
+Self-evaluate quality
+    |
+Identify weaknesses
+    |
+Generate improved response
+    |
+Repeat until satisfactory]]></code>
+    </section>
+    <section name="where-it-fails">
+      <antipattern>
+        <description>ReAct verbose reasoning</description>
+        <reason>Models produce plausible-sounding reasoning steps that are wrong; the reasoning trace is not causally connected to the output.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Tree-of-Thought cost</description>
+        <reason>Exploring N paths &#215; M evaluation steps multiplies LLM calls; even a 3-path ToT with 5 evaluation rounds costs 15 calls per query.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Reflexion without a verifier</description>
+        <reason>Self-evaluation by the same model that generated the output has low recall for the model's own failure modes.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Planning Loops with stale plans</description>
+        <reason>The plan is correct at creation time but becomes invalid after unexpected tool results mid-execution.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Critique-and-Revise anchoring</description>
+        <reason>The generator is anchored to its first output; revisions tend to be surface-level rather than structural.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Extended thinking token cost</description>
+        <reason>Claude's extended thinking mode uses thinking tokens that count against the context window and are billed; naive use on every request is expensive.</reason>
+      </antipattern>
+    </section>
+    <section name="agent-selection">
+      <p>Model selection for different tasks with reasoning-first architectures:</p>
+      <list>
+        <item>Implement reasoning-first-architectures pattern: Haiku (straightforward implementation)</item>
+        <item>Review reasoning-first-architectures implementation: Sonnet (requires code analysis)</item>
+        <item>Optimize reasoning-first-architectures design: Opus (complex trade-offs)</item>
+      </list>
+    </section>
+    <section name="subagent-patterns">
+      <p>Recommended subagent roles and responsibilities for reasoning-first workflows:</p>
+      <list>
+        <item>thinker: ReAct agent with explicit reasoning steps before each tool call; uses extended thinking (Claude) or chain-of-thought prompt; uses Sonnet or Opus</item>
+        <item>tree-explorer: generates 3 candidate approaches for a problem; uses Sonnet</item>
+        <item>path-evaluator: scores each candidate approach against a rubric (0-10); uses Haiku for efficiency</item>
+        <item>reflexion-critic: evaluates output quality and returns structured improvement suggestions; uses Sonnet</item>
+        <item>plan-and-act: produces a full plan before any execution step, then executes sequentially; uses Opus for planning, Sonnet for execution</item>
+      </list>
+    </section>
+    <section name="prompt-patterns">
+      <p>System prompt patterns for different reasoning architectures:</p>
+      <prompt purpose="react-enforced"><![CDATA[Before taking any action, write your reasoning under <thought>.
+Then specify your action under <action>.
+After observing the result, write your next thought.
+Continue until you have enough information to answer.
+
+<thought>...</thought>
+<action>tool_name(args)</action>
+<observation>{{tool_result}}</observation>]]></prompt>
+      <prompt purpose="critique-and-revise"><![CDATA[<role>Critic</role>
+<original_task>{{task}}</original_task>
+<generated_output>{{output}}</generated_output>
+<instruction>
+Identify specific weaknesses. For each weakness, provide:
+1. What is wrong
+2. Why it matters
+3. Concrete suggestion to fix it
+Do not provide a revised version — only the critique.
+</instruction>]]></prompt>
+    </section>
+    <section name="cli-tools">
+      <p>Tools for implementing and orchestrating reasoning-first architectures:</p>
+      <list>
+        <item>langchain: ReAct agent scaffolding via create_react_agent. pip install langchain / python.langchain.com</item>
+        <item>langgraph: State graphs for Reflexion loops and Tree-of-Thought branches. pip install langgraph / langchain-ai.github.io/langgraph</item>
+        <item>litellm: Unified API for extended thinking across model providers. pip install litellm / docs.litellm.ai</item>
+        <item>dspy: Declarative LM programming with automatic prompt optimization. pip install dspy-ai / dspy-docs.readthedocs.io</item>
+      </list>
+    </section>
+    <section name="services-and-apps">
+      <p>SaaS and OSS services that support reasoning-first agent workflows:</p>
+      <list>
+        <item>Anthropic Claude (extended thinking): SaaS. Native thinking parameter for structured pre-action reasoning.</item>
+        <item>OpenAI o1 / o3: SaaS. Built-in chain-of-thought reasoning before output; no explicit Thought step needed.</item>
+        <item>LangSmith: SaaS. Traces Thought/Action/Observation steps; essential for debugging ReAct loops.</item>
+        <item>Weights &amp; Biases Weave: SaaS. Tracks reasoning path length, cost, and quality across Reflexion iterations.</item>
+      </list>
+    </section>
+    <section name="tree-of-thought-selector">
+      <p>Compact Tree-of-Thought implementation (≤25 lines):</p>
+      <code lang="python"><![CDATA[def tree_of_thought(problem: str, generate_fn, score_fn, n_paths=3, max_depth=3):
+    candidates = generate_fn(problem, n=n_paths)
+    for depth in range(max_depth):
+        scored = [(c, score_fn(problem, c)) for c in candidates]
+        best = max(scored, key=lambda x: x[1])
+        if best[1] >= 8:  # threshold: good enough
+            return best[0]
+        # Expand best candidate
+        candidates = generate_fn(f"{problem}\nBest so far:\n{best[0]}", n=n_paths)
+    return max(scored, key=lambda x: x[1])[0]]]></code>
+    </section>
+    <section name="best-practices">
+      <rule>
+        <statement>For ReAct, add a hard max on reasoning steps per turn (e.g. 5 Thought/Action cycles) to prevent over-reasoning before acting.</statement>
+        <rationale>Models can produce multi-paragraph Thought blocks that consume the context window.</rationale>
+      </rule>
+      <rule>
+        <statement>For Reflexion, make the critic prompt list specific failure modes to check rather than asking for general feedback.</statement>
+        <rationale>Specificity catches more issues than open-ended critique.</rationale>
+      </rule>
+      <rule>
+        <statement>For Tree-of-Thought, use Haiku to score candidates and reserve Sonnet/Opus for generating and expanding paths.</statement>
+        <rationale>Cost drops 60-80% with cheaper scorers.</rationale>
+      </rule>
+      <rule>
+        <statement>For Planning Loops, validate the plan against a schema before execution.</statement>
+        <rationale>Catch malformed plans before they cascade into bad tool calls.</rationale>
+      </rule>
+      <rule>
+        <statement>Log the full reasoning trace (all Thought steps) to an audit store.</statement>
+        <rationale>Reasoning steps are the primary debugging tool for agent failures.</rationale>
+      </rule>
+      <rule>
+        <statement>Use extended thinking (Claude) or o1 (OpenAI) for the planning phase; use a cheaper model for each individual execution step.</statement>
+        <rationale>Separate expensive reasoning from cheap execution.</rationale>
+      </rule>
+    </section>
+    <section name="gotchas">
+      <antipattern>
+        <description>Confident wrong reasoning</description>
+        <reason>Models produce syntactically valid Thought steps that are factually wrong. Reasoning text is not ground truth — always verify final outputs against an external check when possible.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Reasoning length explosion</description>
+        <reason>In ReAct, models can produce multi-paragraph Thought blocks that consume most of the context window before taking any action. Cap reasoning length with max_tokens on the thinking portion.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Tree-of-Thought cost spiral</description>
+        <reason>ToT with backtracking can explore exponentially many paths. Set a hard cap on total nodes (e.g. 20) and prune aggressively below the score threshold.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Reflexion critic anchoring</description>
+        <reason>Asking the same model to critique its own output has low recall for its own failure modes. Use a second model or a rule-based verifier as critic when possible.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Human-in-loop at plan step</description>
+        <reason>For Planning Loops that will take irreversible actions (writes, sends, deploys), surface the plan to a human for review before execution begins. The reasoning-first architecture makes this natural — the plan is an artifact that can be inspected before any action.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Extended thinking billing</description>
+        <reason>Claude's thinking tokens are billed at the same rate as output tokens. A naive "think before every step" prompt on a high-traffic agent can double costs. Gate extended thinking to complex subtasks only.</reason>
+      </antipattern>
+    </section>
+    <section name="agentic-workflow">
+      <p>A Claude subagent with reasoning-first architecture separates a planning/thinking phase from an execution phase. For ReAct, the subagent's system prompt enforces explicit Thought → Action → Observation formatting before any tool call. For Reflexion, an outer loop invokes the subagent, passes its output to a critic, and re-invokes with the critique appended. For Tree-of-Thought, a branching subagent generates N candidates, a scoring subagent evaluates each, and a selector picks the best path to expand — all orchestrated by a parent coordinator.</p>
+    </section>
+    <section name="planning-phase">
+      <checklist>
+        <check>Review methodology documentation</check>
+        <check>Identify requirements and constraints</check>
+        <check>Define success criteria</check>
+        <check>Set up development environment</check>
+      </checklist>
+    </section>
+    <section name="implementation-phase">
+      <checklist>
+        <check>Implement core functionality</check>
+        <check>Add error handling</check>
+        <check>Write tests</check>
+        <check>Document code</check>
+      </checklist>
+    </section>
+    <section name="testing-phase">
+      <checklist>
+        <check>Run unit tests</check>
+        <check>Run integration tests</check>
+        <check>Validate against requirements</check>
+        <check>Performance testing (if applicable)</check>
+      </checklist>
+    </section>
+    <section name="deployment-phase">
+      <checklist>
+        <check>Code review</check>
+        <check>Deploy to staging</check>
+        <check>Validate in production-like environment</check>
+        <check>Deploy to production</check>
+      </checklist>
+    </section>
+    <section name="post-deployment">
+      <checklist>
+        <check>Monitor metrics</check>
+        <check>Document lessons learned</check>
+        <check>Update runbooks</check>
+      </checklist>
+    </section>
+    <section name="advanced-implementation-patterns">
+      <p>For ReAct with enforced reasoning, use this pattern to ensure thoughts precede actions:</p>
+      <p>The system prompt must enforce explicit Thought → Action → Observation formatting. This makes the reasoning trace visible and auditable.</p>
+      <p>For Critique-and-Revise workflows, use a two-stage approach: first generate the output, then critique it without providing a revised version. Use the critique as input to a second generation pass.</p>
+      <p>For Tree-of-Thought with cost constraints, use a tiered scoring: generate N=3 paths with an expensive model (Sonnet), score with Haiku, then expand the top-2 paths. This keeps cost reasonable while exploring multiple branches.</p>
+      <p>For Planning Loops, always validate the generated plan against a schema before execution begins. A malformed plan is the source of cascading failures in agentic workflows.</p>
+    </section>
+    <section name="cost-optimization">
+      <p>Reasoning-first architectures are more expensive than direct action because of the extra reasoning steps and repeated evaluations. To optimize costs:</p>
+      <p>For ReAct loops, set a hard max on reasoning steps (typically 5 per turn). Each step invokes the model; more steps = higher cost.</p>
+      <p>For Tree-of-Thought, cap the total number of nodes explored (e.g., 20 nodes maximum). Use Haiku for scoring to reduce evaluation costs. Use only Sonnet or Opus for generation and path expansion.</p>
+      <p>For Reflexion, limit the number of critique-regenerate cycles. Typically 2-3 cycles provide diminishing returns; further iterations rarely improve output significantly.</p>
+      <p>For extended thinking (Claude), gate it to complex subtasks only. Do not enable thinking on every request in high-volume workflows — the billed thinking tokens can double costs.</p>
+    </section>
+    <section name="debugging-reasoning-workflows">
+      <p>When reasoning-first agents produce poor outputs, inspect the reasoning trace first. The trace reveals whether the agent understood the problem, what paths it considered, and where it diverged from the optimal solution.</p>
+      <p>For ReAct loops that get stuck, look for repeated Thought/Action cycles. If the same action repeats 3+ times, the agent is in a local loop. Add a detector that breaks on repetition and escalates.</p>
+      <p>For Tree-of-Thought that explores too many nodes, adjust the evaluation threshold. If the threshold is set too low (e.g., 0.5 on a 0-10 scale), the algorithm expands too many mediocre candidates. Raise the threshold to prune more aggressively.</p>
+      <p>For Reflexion critics that miss obvious issues, add specific failure mode checks to the critic prompt. Instead of "identify weaknesses," ask "check for: off-by-one errors, missing edge cases, unused variables." Specificity improves recall.</p>
+    </section>
+  </content>
+</methodology>
