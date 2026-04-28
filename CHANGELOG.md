@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/ba/ba-core methodologies → methodology.xml (requirements-lifecycle, requirements-prioritization, requirements-traceability; feature-045 batch)
 - migrate: 3/3 pro methodologies → methodology.xml (pro/ba/business-analyst/user-story-mapping, pro/comms/hr-recruiter/30-60-90-day-plan, pro/comms/hr-recruiter/employee-value-proposition; feature-045 batch)
 - migrate: 3/3 pro/ba/ba-modeling methodologies → methodology.xml (acceptance-criteria, business-process-analysis, data-analysis; feature-045 batch)
 - migrate: 3/3 pro/ba/business-analyst methodologies → methodology.xml (business-process-analysis, data-analysis, data-driven-requirements; feature-045 batch)
