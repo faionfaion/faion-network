@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/dev methodologies → methodology.xml (quality-attributes-analysis, api-gateway-patterns, csharp-aspnet-core; feature-045 batch)
 - migrate: 3/3 pro/dev/backend-enterprise Ruby methodologies → methodology.xml (ruby-rails, ruby-rails-patterns, ruby-rspec-testing; feature-045 batch)
 - migrate: 3/3 pro/dev methodologies → methodology.xml (event-sourcing-implementation, microservices-design, event-driven-architecture; feature-045 batch)
 - migrate: 3/3 pro/dev/code-quality methodologies → methodology.xml (cqrs-pattern, domain-driven-design, event-sourcing-basics; feature-045 batch)
