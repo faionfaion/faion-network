@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="speech-to-text-advanced">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>multimodal-ai</domain>
+    <summary>Long audio processing (>25MB), speaker diarization, and production TranscriptionService with provider routing (OpenAI, faster-whisper, local Whisper).</summary>
+    <tags>
+      <tag>speech-to-text</tag>
+      <tag>transcription</tag>
+      <tag>diarization</tag>
+      <tag>long-audio</tag>
+      <tag>whisper</tag>
+      <tag>pyannote</tag>
+    </tags>
+    <category>speech-to-text</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Speech-to-Text Advanced</title>
+    <summary>Long audio processing (>25MB), speaker diarization, and production TranscriptionService with provider routing (OpenAI, faster-whisper, local Whisper). Covers chunked transcription via LongAudioTranscriber, speaker labeling via SpeakerDiarizer (pyannote 3.1), and known bugs that must be patched before production use.</summary>
+    <why>
+      <p>Whisper API rejects files above 25MB and returns no speaker attribution. Chunking with overlap prevents boundary-word loss; diarization adds "who said what" labels required for meeting and interview pipelines. Without pre-caching the pyannote model (~1.5GB) the first diarization request fails mid-run in production.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Audio files larger than 25MB need transcription (Whisper API hard limit)</item>
+        <item>Multi-speaker recordings (meetings, podcasts, interviews) need speaker attribution</item>
+        <item>Long-form transcription (1+ hour files) requiring timestamps and segment structure</item>
+        <item>Building a production STT service with provider fallback (cloud vs. local GPU)</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Audio under 25MB and single speaker — use speech-to-text-basics direct API call; LongAudioTranscriber adds unnecessary overhead</item>
+        <item>Real-time (live) transcription — Whisper is batch-only; use Deepgram or AssemblyAI streaming</item>
+        <item>GPU unavailable and diarization needed — pyannote on CPU is ~10x real-time; impractical</item>
+        <item>Language is non-standard or heavily accented without prior quality validation</item>
+      </list>
+    </when-not-to-use>
+    <section name="Long Audio Chunking">
+      <p>LongAudioTranscriber pattern for files exceeding the 25MB Whisper API limit, with overlap strategy and known bug fix.</p>
+      <rule>
+        <statement>Check file size in MB, not duration, before selecting transcription strategy. A 1-hour 64kbps mp3 is ~28MB and will fail the 25MB API limit even though it is less than an hour.</statement>
+        <rationale>The Whisper API limit is applied to the compressed audio file size, not to duration. A medium-quality mp3 can exceed 25MB well within a single hour of audio.</rationale>
+      </rule>
+      <rule>
+        <statement>Return response.text from _transcribe_chunk, not the raw response object. The merge step expects strings.</statement>
+        <rationale>The original template returns the full response object. _merge_results then concatenates objects instead of strings, silently producing garbage output.</rationale>
+      </rule>
+      <example type="good" title="Correct _transcribe_chunk implementation">
+        <code lang="python"><![CDATA[
+def _transcribe_chunk(self, audio_path: str) -> str:
+    with open(audio_path, "rb") as f:
+        response = self.client.audio.transcriptions.create(
+            model="whisper-1", file=f
+        )
+    return response.text  # NOT: return response
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Set overlap_ms to 2000-5000ms when chunking audio. After merging, run deduplication on the chunk boundary to remove repeated words.</statement>
+        <rationale>Without overlap, words at chunk boundaries are cut off and lost. With overlap, the same words appear twice at every boundary — both halves are wrong without dedup.</rationale>
+      </rule>
+      <rule>
+        <statement>Load audio chunks from disk one at a time, not all at once. A 2-hour WAV at 16kHz 16-bit is ~230MB in RAM; loading all chunks into memory will OOM in constrained environments.</statement>
+        <rationale>pydub loads audio as full PCM in memory. Chunking on disk — writing each chunk to a temp file and discarding after transcription — keeps memory footprint constant.</rationale>
+      </rule>
+      <example type="good" title="Memory-efficient chunk processing">
+        <code lang="python"><![CDATA[
+import tempfile
+from pathlib import Path
+from pydub import AudioSegment
+
+class LongAudioTranscriber:
+    def __init__(self, chunk_duration_ms: int = 300000, overlap_ms: int = 3000):
+        self.chunk_duration = chunk_duration_ms
+        self.overlap = overlap_ms
+
+    def transcribe(self, audio_path: str) -> dict:
+        audio = AudioSegment.from_file(audio_path)
+        if len(audio) <= self.chunk_duration:
+            return {"text": self._transcribe_chunk(audio_path)}
+        return self._merge_results(self._process_chunks(audio))
+
+    def _process_chunks(self, audio: AudioSegment) -> list:
+        results = []
+        start = 0
+        tmpdir = tempfile.mkdtemp()  # unique dir per call — safe for concurrent agents
+        while start < len(audio):
+            end = min(start + self.chunk_duration, len(audio))
+            chunk_path = str(Path(tmpdir) / f"chunk_{start}.mp3")
+            audio[start:end].export(chunk_path, format="mp3")
+            results.append({"start": start, "end": end, "text": self._transcribe_chunk(chunk_path)})
+            Path(chunk_path).unlink()
+            start = end - self.overlap
+        return results
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Preprocess audio to 16kHz mono WAV before transcription to reduce file size and match Whisper's training format.</statement>
+        <rationale>Whisper was trained on 16kHz mono audio. Stereo 44kHz files are twice the size for no quality benefit; preprocessing prevents unnecessary file-size limit violations.</rationale>
+      </rule>
+      <example type="good" title="Audio preprocessing with ffmpeg">
+        <code lang="bash"><![CDATA[
+ffmpeg -i input.mp4 -ar 16000 -ac 1 -c:a pcm_s16le output.wav
+        ]]></code>
+      </example>
+    </section>
+    <section name="Speaker Diarization">
+      <p>SpeakerDiarizer using pyannote 3.1: HuggingFace token setup, GPU requirement, alignment with transcript segments, and production gotchas.</p>
+      <rule>
+        <statement>Pre-cache the pyannote speaker-diarization-3.1 model (~1.5GB) during container build, not on the first transcription request.</statement>
+        <rationale>Downloading 1.5GB mid-request causes request timeouts in production. The model must be present before any diarization call runs.</rationale>
+      </rule>
+      <rule>
+        <statement>Do not use pyannote diarization on CPU for production workloads. CPU inference is ~10x real-time, making a 1-hour file take 10 hours to process.</statement>
+        <rationale>pyannote requires GPU (CUDA) for acceptable performance. Without it, diarization is functionally unusable for anything beyond short clips.</rationale>
+      </rule>
+      <example type="good" title="Proper pyannote initialization with GPU detection">
+        <code lang="python"><![CDATA[
+import torch
+from pyannote.audio import Pipeline
+
+pipeline = Pipeline.from_pretrained(
+    "pyannote/speaker-diarization-3.1",
+    use_auth_token=hf_token  # requires model license accepted at hf.co
+)
+if torch.cuda.is_available():
+    pipeline.to(torch.device("cuda"))
+else:
+    raise RuntimeError("GPU required for production diarization")
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Run diarization separately from transcription; align by timestamp midpoint. Do not interleave diarization into the transcription loop.</statement>
+        <rationale>Interleaving creates coupling between the two models, complicates error handling, and prevents independent retries of either step.</rationale>
+      </rule>
+      <rule>
+        <statement>Add a boundary check when using segment midpoint for alignment: if (start + end) / 2 falls outside the speaker segment due to float rounding for sub-100ms segments, fall back to UNKNOWN rather than misassigning.</statement>
+        <rationale>Very short segments (speech artifacts) can produce midpoints that fall outside their own boundaries after floating-point arithmetic. Silent misassignment corrupts speaker labels for nearby segments.</rationale>
+      </rule>
+      <rule>
+        <statement>Pass the actual number of speakers in the audio to pyannote (num_speakers parameter) rather than relying on auto-detection. Auto-detection over-segments mixed recordings.</statement>
+        <rationale>pyannote auto-detection creates spurious speaker IDs for background noise, laughter, or breathing in close-mic recordings. Known speaker count produces cleaner separation.</rationale>
+      </rule>
+    </section>
+    <section name="Production TranscriptionService">
+      <p>TranscriptionService provider routing rules, strategy selection logic, caching, and critical agent gotchas.</p>
+      <rule>
+        <statement>Route transcription requests by file size: under 5MB → direct API call; 5-25MB → standard TranscriptionService; over 25MB → LongAudioTranscriber chunking.</statement>
+        <rationale>Direct API calls avoid service initialization overhead for small files. Chunking is required above 25MB (Whisper API limit); standard service handles the middle range.</rationale>
+      </rule>
+      <example type="good" title="Provider routing by file size">
+        <code lang="python"><![CDATA[
+from pathlib import Path
+
+def route_transcription(path: str) -> str:
+    size_mb = Path(path).stat().st_size / (1024 * 1024)
+    if size_mb > 25:
+        return "chunked"
+    elif size_mb > 5:
+        return "standard"
+    return "direct"
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Cache transcription results keyed on a SHA-256 of the audio file bytes (not the filename). Re-transcribing identical audio wastes money.</statement>
+        <rationale>Filenames are reused across pipeline runs. Content hashing ensures the cache key is stable even when files are re-uploaded with the same name.</rationale>
+      </rule>
+      <rule>
+        <statement>TranscriptionService._transcribe_local delegates to FasterWhisperTranscriber and LocalWhisper which are not defined in the base template — implement these before using the LOCAL and FASTER_WHISPER providers.</statement>
+        <rationale>The template references these classes but does not define them. Calling the service with these providers will raise NameError at runtime without custom implementations.</rationale>
+      </rule>
+      <rule>
+        <statement>word_timestamps=True requires response_format="verbose_json". The template sets this correctly, but response.words uses getattr with None default — validate that word timestamps are present before using them downstream.</statement>
+        <rationale>getattr with None default means missing word timestamps fail silently. Downstream subtitle or search-index generation will break without an explicit presence check.</rationale>
+      </rule>
+      <rule>
+        <statement>The default supported_formats list does not include .ogg. Add it or convert .ogg to .mp3 before calling TranscriptionService.</statement>
+        <rationale>.ogg is common in web recording APIs (MediaRecorder default). Without explicit support, the service raises ValueError and the audio is lost.</rationale>
+      </rule>
+    </section>
+    <section name="Agentic Workflow">
+      <p>An orchestrator agent receives an audio file path and determines processing strategy: if file is less than 25MB and single-speaker, call OpenAI Whisper directly; if large, route to LongAudioTranscriber; if multi-speaker, add SpeakerDiarizer after transcription. Results are assembled into a structured transcript with timestamps and optional speaker labels. A review agent validates transcript completeness (non-empty, duration matches) before passing downstream.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>haiku — Execute transcription: load file, select strategy, call TranscriptionService.transcribe(), return structured result</item>
+        <item>sonnet — Diarization + alignment: call SpeakerDiarizer.align_with_transcript(), format speaker-labeled output</item>
+        <item>sonnet — Transcript quality check: scan for repeated segments (chunking artifact), flag unusually short transcripts relative to audio duration</item>
+      </list>
+      <p>Prompt pattern:</p>
+      <code lang="xml"><![CDATA[
+<task>
+Transcribe audio file.
+Path: {{AUDIO_PATH}}
+File size: {{SIZE_MB}}MB
+Speakers: {{NUM_SPEAKERS}}  (1 = single, 2+ = diarization needed)
+Language: {{LANGUAGE_CODE}}  (null = auto-detect)
+Word timestamps: {{BOOL}}
+
+Strategy:
+- If size > 25MB: use LongAudioTranscriber
+- If speakers > 1: add SpeakerDiarizer after transcription
+- Provider: openai (fallback: faster_whisper if local GPU available)
+
+Return: {"text": "...", "segments": [...], "speakers": [...] or null}
+</task>
+      ]]></code>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Preprocess audio to 16kHz mono WAV before transcription — reduces file size and matches Whisper's training format</item>
+        <item>For diarization: run pyannote separately from transcription, then align by timestamp midpoint; do not interleave diarization into transcription loop</item>
+        <item>Use faster-whisper locally for development and high-volume batch; use OpenAI API for production when GPU is unavailable</item>
+        <item>Store word-level timestamps if downstream use requires searchable transcripts or subtitle generation</item>
+        <item>For meetings: cap num_speakers at actual participant count in pyannote for better separation</item>
+        <item>Validate chunk overlap logic: overlapping chunks will produce duplicate content; implement text deduplication on merge</item>
+        <item>Cache transcription results by audio file hash (not filename) — re-transcribing identical audio costs real money</item>
+        <item>Use language parameter when language is known — auto-detect adds ~1s latency and occasionally misidentifies short clips</item>
+      </list>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <list>
+        <item>Whisper API 25MB limit applies to the compressed audio file, not the duration — a 1-hour 64kbps mp3 is ~28MB and will fail; convert to lower bitrate or chunk before calling</item>
+        <item>pyannote model download on first use (~1.5GB) can fail mid-request in production — pre-cache during container build, not at request time</item>
+        <item>SpeakerDiarizer.align_with_transcript uses segment_mid = (start + end) / 2 — if a speaker segment is very short (less than 100ms), the midpoint may fall outside the speaker segment due to float rounding; add boundary check</item>
+        <item>Whisper output is not punctuated on some audio types — downstream agents processing raw transcript text must not assume sentence structure</item>
+        <item>TranscriptionService raises ValueError on unsupported format, but supported_formats defaults to [".mp3", ".wav", ".m4a", ".flac", ".webm", ".mp4"] — .ogg is a common format not in the list; agents must convert before calling</item>
+        <item>Large audio files loaded via pydub hold full PCM in memory — a 2-hour WAV at 16kHz 16-bit is ~230MB in RAM; chunk on disk, not in memory</item>
+        <item>Groq Whisper uses the same API format as OpenAI but has stricter file size limits (check current limits); test before routing production traffic</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/transcription_service.py" purpose="TranscriptionService, LongAudioTranscriber, SpeakerDiarizer with bug fixes applied"/>
+      <template path="templates/prompt-transcribe.txt" purpose="Agent task prompt for transcription subagent with strategy routing"/>
+    </templates>
+    <section name="Services and Tools">
+      <p>CLI tools for local development and deployment:</p>
+      <list>
+        <item>openai (Python SDK) — Whisper API (whisper-1); install with pip install openai</item>
+        <item>faster-whisper — Local Whisper with CTranslate2 (faster); install with pip install faster-whisper</item>
+        <item>pyannote-audio — Speaker diarization; install with pip install pyannote.audio</item>
+        <item>pydub — Audio chunking and format conversion; install with pip install pydub</item>
+        <item>torch — GPU inference for pyannote; install with pip install torch</item>
+        <item>ffmpeg — Audio preprocessing (mono, resample to 16kHz); install with apt install ffmpeg</item>
+      </list>
+      <p>Third-party services and their agent-friendliness:</p>
+      <list>
+        <item>OpenAI Whisper API (SaaS) — Yes, Python SDK available. 25MB limit; word timestamps; $0.006/min; no real-time</item>
+        <item>Deepgram (SaaS) — Yes, REST API. Real-time streaming; speaker diarization; best for live audio</item>
+        <item>AssemblyAI (SaaS) — Yes, Python SDK. Speaker diarization; async long audio; PII redaction</item>
+        <item>Groq Whisper (SaaS) — Yes, OpenAI-compatible API. 10x faster than OpenAI Whisper; same model; cheap</item>
+        <item>faster-whisper (OSS) — Yes, local Python. CTranslate2 backend; 4x faster than openai-whisper on GPU</item>
+        <item>openai-whisper (OSS) — Yes, local Python. Reference implementation; slowest; most portable</item>
+        <item>pyannote-audio 3.1 (OSS) — Yes, local Python. Best open diarization; requires GPU for reasonable speed</item>
+        <item>WhisperX (OSS) — Yes, local Python. Whisper + diarization combined; word-level timestamps</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://platform.openai.com/docs/guides/speech-to-text"/>
+      <link href="https://platform.openai.com/docs/api-reference/audio/createTranscription"/>
+      <link href="https://github.com/pyannote/pyannote-audio"/>
+      <link href="https://github.com/SYSTRAN/faster-whisper"/>
+      <link href="https://github.com/m-bain/whisperX"/>
+      <link href="https://developers.deepgram.com/docs"/>
+      <link href="https://www.assemblyai.com/docs"/>
+      <link href="https://groq.com/docs/speech"/>
+    </see-also>
+  </content>
+</methodology>
