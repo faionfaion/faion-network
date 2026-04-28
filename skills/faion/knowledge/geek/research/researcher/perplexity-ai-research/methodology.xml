@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="perplexity-ai-research">
+  <metadata>
+    <tier>geek</tier>
+    <group>research</group>
+    <domain>researcher</domain>
+    <summary>Perplexity Pro Search workflow for cited multi-source research synthesis, with atomic sub-query decomposition and confidence ratings per claim.</summary>
+    <category>research-tools</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>perplexity</tag>
+      <tag>research</tag>
+      <tag>web-search</tag>
+      <tag>citations</tag>
+      <tag>synthesis</tag>
+    </tags>
+    <applies-to>both</applies-to>
+  </metadata>
+
+  <content>
+    <title>Perplexity AI for Research</title>
+
+    <summary>A workflow for using Perplexity Pro Search to synthesize cited multi-source research answers. Sonnet decomposes a research question into atomic sub-queries; Haiku executes each Pro Search call; Sonnet synthesizes results and flags conflicting or low-confidence claims. Human reviews flagged items before findings enter any downstream pipeline.</summary>
+
+    <why>
+      <p>Claude alone lacks live web data; Perplexity returns citations alongside synthesis. Decomposing compound questions into atomic sub-queries (one fact per query) produces higher-quality answers than asking everything at once. Requiring confidence ratings (H/M/L) based on source count forces honest calibration.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Fast synthesis of a research question requiring 5+ web sources simultaneously.</item>
+        <item>Market sizing, competitive landscape, or trend research where citations matter.</item>
+        <item>Fact-checking a specific claim with primary source validation.</item>
+        <item>Generating a research brief or background document as a starting point for deeper analysis.</item>
+        <item>When the question requires live web data (post-knowledge-cutoff events, current pricing, recent funding).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>When primary source documents (PDFs, internal databases) are required — Perplexity only searches the public web.</item>
+        <item>For confidential competitive research — queries leak strategic intent via Perplexity's servers.</item>
+        <item>When a single authoritative source is available directly — fetch it with a targeted HTTP call.</item>
+        <item>For strategy or product decisions requiring reasoned tradeoffs — Perplexity retrieves, does not reason.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="perplexity-capabilities">
+      <p>Perplexity Pro Search retrieves and synthesizes results from multiple live web sources simultaneously, returning citations alongside the synthesized answer. Addresses Claude's knowledge cutoff limitation for market data, funding rounds, and recent events.</p>
+
+      <rule testable="false">
+        <statement>Perplexity Pro Search usage: 45M active users (mid-2025); 780M search queries per month (May 2025). sonar-pro model recommended for research; sonar model for high-volume fact checks.</statement>
+        <rationale>Understanding the scale and model variants helps choose the right tool and pricing tier for research workflows.</rationale>
+      </rule>
+
+      <rule testable="false">
+        <statement>Perplexity market position: 6.4% of AI search market; 15% of Fortune 100 companies use for internal research.</statement>
+        <rationale>Market adoption indicates robustness and enterprise readiness.</rationale>
+      </rule>
+    </section>
+
+    <section name="query-strategies">
+      <p>Optimal query formulation by research type to maximize synthesis quality and citation relevance.</p>
+
+      <rule testable="true">
+        <statement>Use search_recency_filter: "year" in API calls to avoid stale data; Perplexity defaults to broader time windows that include outdated figures.</statement>
+        <rationale>Market data from 2022 presented as current can be off by a factor of 2-3x. Recency filtering is not the default; it must be set explicitly.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Formulate one atomic fact per query; compound queries ("market size AND competitors AND trends") produce diluted answers across all three sub-questions.</statement>
+        <rationale>Pro Search distributes its retrieval budget across all parts of a compound query. Atomic queries get the full retrieval budget for one fact.</rationale>
+      </rule>
+
+      <example type="good" title="Atomic market sizing query">
+        <code lang="text"><![CDATA[
+TAM for AI research tools market 2025 with sources
+        ]]></code>
+        <note>Forces recency and citation; single fact per query.</note>
+      </example>
+
+      <example type="good" title="Competitor research query">
+        <code lang="text"><![CDATA[
+Perplexity AI revenue and growth 2025
+        ]]></code>
+        <note>Specific company, metric, and year; one fact.</note>
+      </example>
+
+      <example type="bad" title="Compound query (dilutes results)">
+        <code lang="text"><![CDATA[
+What is the market size for AI research tools, who are the competitors, and what are the recent trends?
+        ]]></code>
+        <note>Three facts in one query; Perplexity's budget spreads thin across all three.</note>
+      </example>
+    </section>
+
+    <section name="method-limitations">
+      <p>Known failure modes and constraints when using Perplexity for research.</p>
+
+      <rule testable="true">
+        <statement>Citations are URL-level, not page-level; a cited source may support only part of the synthesized claim.</statement>
+        <rationale>Perplexity's citation granularity is coarse; claiming full source support requires manual spot-check.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Perplexity's synthesis can merge facts from different time periods without flagging the temporal mismatch.</statement>
+        <rationale>Temporal misalignment can lead to incorrect conclusions; agent must enforce explicit year statements.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Paywalled sources appear in citation lists but Perplexity cannot read behind the paywall — summary reflects only the abstract or preview.</statement>
+        <rationale>Paywalled sources in a citation list create false credibility; the agent cannot verify full-article support.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For rapidly changing data (live stats, breaking news), Perplexity's index lags real-time by hours to days.</statement>
+        <rationale>Real-time precision is impossible; Perplexity is suitable for strategic research, not live monitoring.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Only searches the public web; cannot access PDFs, internal databases, or proprietary data.</statement>
+        <rationale>Scope is limited to publicly accessible content.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Cross-validate high-stakes numbers (TAM, funding rounds, revenue) against at least one additional independent source (AlphaSense, Crunchbase, official press releases).</statement>
+        <rationale>Perplexity's synthesis sounds authoritative even when it cites a single low-quality source. Citation count and source quality must be checked, not just the answer text.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-workflow-pipeline">
+      <p>Atomic sub-query decomposition pipeline: Sonnet decomposes, Haiku executes, Sonnet synthesizes with conflict resolution and confidence ratings.</p>
+
+      <rule testable="true">
+        <statement>Decompose a research question into 3-5 atomic sub-queries before executing any Pro Search; each sub-query retrieves one fact with one expected source type.</statement>
+        <rationale>Single-query compound research dilutes retrieval across all sub-questions. Atomic decomposition maximizes depth on each individual fact and makes citation validation tractable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always export citations and store them alongside the synthesized finding; the source is as important as the fact for downstream validation.</statement>
+        <rationale>Without stored citations, findings cannot be audited, attributed, or updated when the source changes.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Assign confidence levels per synthesized claim: H = multiple independent sources agree; M = single credible source or partial agreement; L = single source or paywalled.</statement>
+        <rationale>Confidence ratings force honest calibration and surface which claims need additional validation before external presentation.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Human review required for any Perplexity-sourced figure that will be presented externally; hallucination risk is lower than pure LLM but not zero.</statement>
+        <rationale>Perplexity synthesizes from real sources but can misattribute, merge temporally distinct facts, or cite a source that supports only part of the synthesized claim.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common failure modes when executing Perplexity research pipelines with AI agents.</p>
+
+      <rule testable="true">
+        <statement>Flag paywalled citations as unverified; the agent cannot confirm whether the full article supports the claim.</statement>
+        <rationale>A paywalled citation in the result list gives the appearance of source support without actual access to the source content.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Add exponential backoff and retry logic to any batch Perplexity API pipeline; rate limits on the Pro API are strict at lower tiers.</statement>
+        <rationale>Batch research pipelines without retry logic fail silently on rate-limit errors and return incomplete results that appear complete.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Perplexity's synthesis sounds authoritative even when it cites a single low-quality source; always check citation count and source quality, not just the answer text.</statement>
+        <rationale>Confidence in answer text is not confidence in source quality.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>The API returns citations as URLs, not structured metadata; agents must parse and validate each URL independently if source quality assessment is required.</statement>
+        <rationale>Automated source quality checking requires programmatic inspection; URL-only citations are insufficient.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <p>Practical patterns for high-quality research with Perplexity.</p>
+
+      <rule testable="true">
+        <statement>Use Perplexity Spaces to organize a research project's queries and findings across sessions; prevents duplication and enables audit trails.</statement>
+        <rationale>Spaces provide project organization and session continuity.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Cross-validate high-stakes numbers (TAM, funding rounds, revenue) against at least one additional independent source (AlphaSense, Crunchbase, official press releases).</statement>
+        <rationale>Second sourcing increases confidence in mission-critical data.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Formulate one atomic fact per query; compound queries dilute answer quality across all sub-questions.</statement>
+        <rationale>Atomic queries maximize retrieval depth per fact.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always export citations and store them alongside the synthesized finding — the source is as important as the fact for downstream validation.</statement>
+        <rationale>Source preservation enables auditing and updates.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/perplexity-research.py" purpose="Python batch Pro Search via REST API with citation extraction."/>
+      <template path="templates/query-decompose-prompt.txt" purpose="Prompt for decomposing a research question into atomic Perplexity sub-queries."/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.perplexity.ai/"/>
+      <link href="https://docs.perplexity.ai/reference/post_chat_completions"/>
+      <link href="https://seoprofy.com/blog/perplexity-ai-statistics/"/>
+      <link href="https://exa.ai/"/>
+      <link href="https://tavily.com/"/>
+    </see-also>
+  </content>
+</methodology>
