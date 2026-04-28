@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/pm/pm-traditional methodologies → methodology.xml (pm-certification-alignment-2026, pm-certification-changes-2026, procurement-management; feature-045 batch 172)
 - migrate: 3/3 pro/pm/pm-agile methodologies → methodology.xml (tool-migration-basics, tool-migration-process, value-stream-management; feature-045 batch 169)
 - migrate: 3/3 pro/dev/software-developer methodologies → methodology.xml (php-phpunit-testing, ruby-activerecord, ruby-rails; feature-045 batch 166)
 
