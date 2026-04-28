@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/product/product-manager methodologies → methodology.xml (mlp-planning, portfolio-strategy, product-analytics; feature-045 batch 193)
 - migrate: batch-190 pro/pm/project-manager + pro/product/product-manager (work-breakdown-structure, blurred-roles-team-evolution, competitive-positioning)
 - migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (team-development, value-stream-management, wbs-creation; feature-045 batch 189)
 - migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (scope-management, seven-performance-domains, six-core-principles; feature-045 batch 187)
