@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rag-implementation">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Complete production RAG pipeline: document loading, chunking, embedding, Chroma storage, retrieval, query enhancement, generation with context-only constraints and RAGPipeline class.</summary>
+    <category>rag</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>rag</tag>
+      <tag>implementation</tag>
+      <tag>pipeline</tag>
+      <tag>chunking</tag>
+      <tag>production</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>RAG Implementation</title>
+
+    <summary>Complete production RAG pipeline: document loading (txt/md/pdf/directory), chunking (fixed-size, sentence, paragraph, semantic, Markdown-header), embedding, Chroma-backed vector storage, retrieval, query enhancement (expansion, HyDE, rewrite), and LLM generation with strict "answer only from context" system prompt. Implemented as single RAGPipeline class with separate ingest and query paths.</summary>
+
+    <why>
+      <p>A well-structured RAG pipeline decouples ingestion from retrieval so each stage can be debugged independently. The retrieval recall gate (top-K chunks must contain the answer) is the most common failure mode; chunking strategy, chunk size, and top-K are the three primary levers. Grounding generation with a strict system prompt that forbids off-context answers is the minimum required guard against hallucination.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building a question-answering system over proprietary documents (PDFs, Markdown, text).</item>
+        <item>LLM needs to answer questions about data post-dating its training cutoff.</item>
+        <item>Reducing hallucinations by grounding generation in retrieved facts.</item>
+        <item>Products requiring citations or source attribution alongside answers.</item>
+        <item>Knowledge-base chatbots where answers must come only from a controlled corpus.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Corpus changes faster than re-ingestion can keep up — design a streaming update strategy first.</item>
+        <item>Purely conversational queries with no factual grounding need — RAG adds latency and cost with no benefit.</item>
+        <item>Entire knowledge base fits in context window — just include it directly.</item>
+        <item>Structured data questions (revenue figures, counts) — SQL + function-calling beats RAG for tabular data.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pipeline-structure">
+      <p>RAGPipeline design: separate ingest and query contract with key rules for retrieval and generation.</p>
+
+      <rule testable="true">
+        <statement>Ingest stage: load documents → chunk → embed → upsert to vector store. Query stage: embed question → retrieve top-K → filter by score threshold → generate with context.</statement>
+        <rationale>Separating ingestion and query enables independent scaling. Chunking decisions affect retrieval quality at index time; filtering at query time prevents low-confidence chunks from corrupting context.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Include explicit system prompt instruction: "Answer ONLY from the provided context. If the context does not contain the answer, say so."</statement>
+        <rationale>Without this constraint, the LLM falls back to parametric knowledge and hallucinates. The rule must be stated even when context is present.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set top_k conservatively (3-7) and measure token usage; top-K chunks must fit in the context window alongside the answer.</statement>
+        <rationale>Over-fetching fills the context, leaving no room for the LLM to generate a quality response. Token budget = context_limit - question - system_prompt - answer_budget.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Filter retrieved chunks below a minimum similarity threshold (e.g., 0.6) before passing to generation.</statement>
+        <rationale>Low-scoring chunks add noise without contributing relevant information and can cause the model to contradict itself.</rationale>
+      </rule>
+
+      <reference path="templates/rag_pipeline.py">Full RAGPipeline implementation with Document/Chunk/RetrievalResult types and DocumentLoader</reference>
+    </section>
+
+    <section name="failure-modes">
+      <p>Common pitfalls and their solutions during RAG implementation.</p>
+
+      <antipattern>
+        <description>Fixed-size chunking splits mid-sentence, producing semantically incomplete chunks.</description>
+        <reason>An incomplete chunk embeds the partial thought, not the full concept. Retrieval scores are lower and the retrieved text is harder for the LLM to use.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using pypdf to load scanned PDFs or complex multi-column layouts.</description>
+        <reason>pypdf text extraction fails on scanned images (needs OCR) and produces garbled text on complex layouts. Use a dedicated OCR pipeline or AWS Textract for such sources.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Re-ingesting updated documents without deleting stale chunks first.</description>
+        <reason>Without a delete+re-insert strategy, old chunk versions accumulate. The LLM may retrieve outdated information and produce contradictory answers.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using HyDE (hypothetical document embedding) without accounting for 2x embedding cost per query.</description>
+        <reason>HyDE generates a hypothetical answer then embeds it. This doubles embedding API cost and adds LLM latency on every query. Budget it explicitly.</reason>
+      </antipattern>
+    </section>
+
+    <section name="chunking-implementation">
+      <p>Five chunking strategies with selection criteria and code examples.</p>
+
+      <rule testable="true">
+        <statement>Strategy selection: fixed-size (500 chars, 50 overlap) for fast, predictable chunking of most prose corpora; sentence-based for factual Q&amp;A where answers align with sentence boundaries; paragraph-based to preserve logical units in blog posts and documentation; semantic (embedding-based splits) for highest quality on complex multi-topic docs (highest cost); Markdown-header for technical docs where headers preserve section context.</statement>
+        <rationale>Each strategy has optimal domains. Test empirically on representative queries before committing to production.</rationale>
+      </rule>
+
+      <example type="good" title="Fixed-size chunking">
+        <code lang="python"><![CDATA[
+def fixed_size(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]:
+    chunks, start = [], 0
+    while start < len(text):
+        chunks.append(text[start : start + chunk_size])
+        start += chunk_size - overlap
+    return chunks
+        ]]></code>
+        <note>Fast and predictable. May split context at arbitrary boundaries.</note>
+      </example>
+
+      <example type="good" title="Sentence-based chunking">
+        <code lang="python"><![CDATA[
+import nltk
+nltk.download("punkt", quiet=True)
+
+def sentence_based(text: str, max_size: int = 500, min_size: int = 100) -> list[str]:
+    sentences = nltk.sent_tokenize(text)
+    chunks, current = [], ""
+    for s in sentences:
+        if len(current) + len(s) <= max_size:
+            current += s + " "
+        else:
+            if len(current) >= min_size:
+                chunks.append(current.strip())
+            current = s + " "
+    if current.strip():
+        chunks.append(current.strip())
+    return chunks
+        ]]></code>
+        <note>Respects sentence boundaries. Size varies; may accumulate into large chunks.</note>
+      </example>
+
+      <example type="good" title="Markdown-header chunking">
+        <code lang="python"><![CDATA[
+import re
+
+def markdown_header(text: str) -> list[str]:
+    sections = re.split(r"(^#{1,6}\s+.+$)", text, flags=re.MULTILINE)
+    chunks, header, content = [], "", ""
+    for part in sections:
+        part = part.strip()
+        if not part:
+            continue
+        if re.match(r"^#{1,6}\s+", part):
+            if content:
+                chunks.append(f"{header}\n\n{content}".strip())
+            header, content = part, ""
+        else:
+            content += part + "\n"
+    if content:
+        chunks.append(f"{header}\n\n{content}".strip())
+    return chunks
+        ]]></code>
+        <note>Preserves Markdown structure. Header context included in each chunk.</note>
+      </example>
+    </section>
+
+    <section name="query-enhancement">
+      <p>Techniques to improve retrieval recall: query expansion, HyDE, and query rewriting.</p>
+
+      <rule testable="true">
+        <statement>Query expansion: generate 3 alternative phrasings when the original query may not match corpus vocabulary; include the original query in the search set.</statement>
+        <rationale>User queries often use different vocabulary than documents. Multi-phrasing retrieval averages over vocabulary gap and increases recall.</rationale>
+      </rule>
+
+      <example type="good" title="Query expansion">
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+client = OpenAI()
+
+def expand_query(query: str) -> list[str]:
+    resp = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "Generate 3 alternative phrasings of the question. Return only the questions, one per line."},
+            {"role": "user", "content": query},
+        ],
+        temperature=0.7,
+    )
+    variations = resp.choices[0].message.content.strip().split("\n")
+    return [query] + [v.strip() for v in variations if v.strip()]
+        ]]></code>
+        <note>Retrieval over 4 query variants (original + 3 expansions) increases recall by ~15% on Q&amp;A benchmarks.</note>
+      </example>
+
+      <rule testable="true">
+        <statement>HyDE (Hypothetical Document Embedding): account for 2x embedding cost per query when enabling; disable for cost-sensitive or low-QPS production workloads.</statement>
+        <rationale>HyDE generates hypothetical answer first, then embeds it. This doubles embedding API calls per request and adds LLM latency.</rationale>
+      </rule>
+
+      <example type="good" title="HyDE implementation">
+        <code lang="python"><![CDATA[
+def generate_hypothetical_answer(query: str) -> str:
+    """HyDE: embed the hypothetical answer instead of the raw query."""
+    resp = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "Answer the question as if you had access to relevant documents. Be specific."},
+            {"role": "user", "content": query},
+        ],
+        temperature=0.5,
+    )
+    return resp.choices[0].message.content
+        ]]></code>
+        <note>Hypothetical answers tend to match corpus vocabulary better than raw questions. Trade: 2x embedding cost.</note>
+      </example>
+
+      <example type="good" title="Query rewriting">
+        <code lang="python"><![CDATA[
+def rewrite_query(query: str, context: str = "") -> str:
+    prompt = f"Rewrite this query to be more specific and searchable:\n\nQuery: {query}"
+    if context:
+        prompt += f"\n\nContext: {context}"
+    resp = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+    )
+    return resp.choices[0].message.content
+        ]]></code>
+        <note>Useful when initial query is vague or ambiguous. Rewrite is deterministic (low temperature).</note>
+      </example>
+    </section>
+
+    <section name="document-loading">
+      <p>Strategies for loading documents from various file formats.</p>
+
+      <rule testable="true">
+        <statement>Load supported formats: .txt (plain text), .md (Markdown), .pdf (PDF text extraction), directory traversal for batch loading. Use appropriate loader per format.</statement>
+        <rationale>Each format has extraction quirks. pypdf fails on scanned PDFs; markdown-loader respects headers.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For PDFs: detect if scanned (text layer missing) and use OCR fallback (e.g., pytesseract, AWS Textract) rather than silently returning empty text.</statement>
+        <rationale>Silent failures (empty extraction) are dangerous; they may cause zero chunks to be indexed without error.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Add metadata during loading: source filename, page number (for PDFs), section heading (for Markdown), ingestion timestamp, unique source_id for deduplication.</statement>
+        <rationale>Metadata is essential for filtering, citations, and change detection during incremental updates.</rationale>
+      </rule>
+    </section>
+
+    <section name="embedding-and-storage">
+      <p>Embedding selection and vector store configuration for Chroma.</p>
+
+      <rule testable="true">
+        <statement>Use OpenAI text-embedding-3-small (1536-dim) for cost efficiency or text-embedding-3-large (3072-dim) for maximum quality. Batch embeds in groups of 50 to respect rate limits.</statement>
+        <rationale>Small is 25% cheaper and sufficient for most Q&amp;A; large is industry standard for high-precision retrieval.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Store chunks in Chroma with metadata: {"source": filepath, "chunk_index": N, "page": P, "ingestion_date": ISO8601, "source_id": hash}. Use persistent directory storage (not in-memory) for production.</statement>
+        <rationale>Metadata enables filtering and citations. Persistent storage survives restarts.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For production with frequent updates: implement soft-delete (mark is_deleted=true) rather than physical deletion to enable rollback. Periodically compact the index by physically deleting old soft-deleted entries.</statement>
+        <rationale>Soft-delete enables recovery from accidental deletions. Periodic compaction prevents index bloat.</rationale>
+      </rule>
+    </section>
+
+    <section name="retrieval-and-filtering">
+      <p>Query-time retrieval with score-based filtering and context budget management.</p>
+
+      <rule testable="true">
+        <statement>Retrieve top_k * 2 (e.g., 10 if targeting top_k=5), apply similarity score threshold (e.g., 0.65), then trim to top_k. This ensures diverse, confident results.</statement>
+        <rationale>Over-fetching and filtering prevents accidentally dropping the best result due to arbitrary top_k cutoff. Threshold filters out low-confidence noise.</rationale>
+      </rule>
+
+      <example type="good" title="Score-filtered retrieval">
+        <code lang="python"><![CDATA[
+def retrieve_with_threshold(collection, query_embedding, top_k=10, min_score=0.65):
+    results = collection.query(query_embeddings=[query_embedding], n_results=top_k*2,
+                               include=["documents", "metadatas", "distances"])
+    filtered = [
+        (results["documents"][0][i], 1 - results["distances"][0][i],
+         results["metadatas"][0][i])
+        for i in range(len(results["ids"][0]))
+        if 1 - results["distances"][0][i] >= min_score
+    ][:top_k]
+    return filtered  # Empty list → agent should say "insufficient context"
+        ]]></code>
+        <note>Cosine distance is converted to similarity (1 - distance). Empty list signals insufficient context; caller should return fallback message.</note>
+      </example>
+    </section>
+
+    <section name="generation-and-grounding">
+      <p>Generation with strict context-only constraints and citation extraction.</p>
+
+      <rule testable="true">
+        <statement>System prompt must explicitly state: "Answer ONLY from the provided context. If the context does not contain enough information, say 'I don't have enough information.'" Do not ask the model to infer beyond context.</statement>
+        <rationale>Explicit constraints + fallback messaging prevent hallucination better than implicit trust in system prompt alone.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Request citations in a parseable format: "Always cite sources as [Source: filename, page N]" or "[1]" for numbered references. Parse citations post-generation and validate against retrieved chunk metadata.</statement>
+        <rationale>Validation catches hallucinated citations (plausible-sounding but unretrieved sources). Post-check is cheaper than trying to enforce formatting in prompt.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Temperature must be low (≤ 0.3) for RAG generation. Higher temps cause model drift off context even with explicit constraints.</statement>
+        <rationale>Higher temperature increases variance and creativity; RAG requires deterministic, context-grounded output.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set a max_tokens constraint on generation to leave headroom in context window. Default 500 tokens for Q&amp;A, 1000 for summarization.</statement>
+        <rationale>Prevents token overflow and ensures model doesn't fill context with its own output, losing context for next turn.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <p>Essential practices for production RAG systems.</p>
+
+      <rule testable="true">
+        <statement>Default to sentence-boundary chunking over fixed-size; it preserves semantic units and improves retrieval precision. Always include chunk_index and source_id in metadata — they enable parent-document reconstruction and citation.</statement>
+        <rationale>Semantic boundaries are stronger units than arbitrary fixed sizes. Complete metadata enables recovery and audit.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use 10-20% overlap (not 0) between chunks to avoid losing context at boundaries. Set score_threshold explicitly and tune per corpus; default 0.7 is often too aggressive for domain-specific text.</statement>
+        <rationale>Overlap preserves cross-chunk context. Threshold is corpus-dependent; domain-specific text may score lower than general text.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>HyDE improves recall 10-20% for factual Q&amp;A — worth the extra API call if budget permits. Cache query embeddings for repeated queries using Redis keyed by hash(model + query).</statement>
+        <rationale>HyDE is a proven recall boost. Embedding cache eliminates redundant calls on repeated queries.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Separate ingestion and query pipelines — different scaling profiles and failure modes. Test chunking strategy and top_k empirically on representative queries before committing to production.</statement>
+        <rationale>Separation enables independent scaling and debugging. Empirical tuning is required; no defaults work universally.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common pitfalls when agents implement or operate RAG systems.</p>
+
+      <rule testable="true">
+        <statement>PDF loaders return empty strings for scanned pages silently — agents must validate chunk content length (greater than 50 chars) before embedding. Avoid indexing empty chunks.</statement>
+        <rationale>Silent empty chunks waste embedding cost and can bias retrieval. Validation catches this early.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>response.data[0].embedding is a list, not a numpy array — agents storing to numpy must convert explicitly. Chroma expects list; numpy conversion adds type conversion overhead.</statement>
+        <rationale>Type inconsistency is a common bug in agent-written code. Explicit conversion prevents silent failures.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Chunking strategy mismatches query type: fixed-size chunks split mid-sentence, causing poor retrieval for factual look-ups; semantic chunking is slower to build. Context window stuffing: top-K chunks can fill LLM context, leaving no room for answer.</statement>
+        <rationale>These are high-impact failures. Agents should iterate on chunking strategy and top_k based on test queries.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Retrieval recall failures: if relevant chunk not in top-K, LLM cannot answer correctly regardless of generation quality. Document loader accuracy: pypdf fails on scanned PDFs, complex layouts — needs OCR fallback.</statement>
+        <rationale>Retrieval is the bottleneck. Load accuracy is critical; silent failures are dangerous.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Re-ingestion on document updates requires delete+re-insert; without soft-delete tracking, stale chunks accumulate. Answer generation may hallucinate even with correct context if system prompt doesn't explicitly enforce "answer only from context".</statement>
+        <rationale>Stale data and hallucination are silent failures. Both require explicit safeguards.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/rag_pipeline.py" purpose="Full RAGPipeline class with Document/Chunk/RetrievalResult dataclasses and DocumentLoader for production use."/>
+    </templates>
+
+    <see-also>
+      <link href="https://python.langchain.com/"/>
+      <link href="https://docs.llamaindex.ai/"/>
+      <link href="https://www.trychroma.com/"/>
+      <link href="https://docs.ragas.io/"/>
+    </see-also>
+  </content>
+</methodology>
