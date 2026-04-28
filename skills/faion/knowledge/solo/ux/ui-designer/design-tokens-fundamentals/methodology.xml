@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="design-tokens-fundamentals">
+  <metadata>
+    <tier>solo</tier>
+    <group>ux</group>
+    <domain>ui-designer</domain>
+    <summary>Design tokens are named, platform-agnostic values organized in a three-tier hierarchy that enable consistent theming, dark mode, and single-source-of-truth updates across platforms.</summary>
+    <tags>
+      <tag>design-tokens</tag>
+      <tag>design-systems</tag>
+      <tag>theming</tag>
+      <tag>dark-mode</tag>
+      <tag>css-variables</tag>
+    </tags>
+    <category>design-systems</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Design Tokens Fundamentals</title>
+
+    <summary>Design tokens are named, platform-agnostic values (colors, spacing, typography) organized in a three-tier hierarchy — global (raw values) → semantic (intent aliases) → component (scoped) — that enable consistent theming, dark mode, and single-source-of-truth updates across platforms. A governed token layer ensures that renaming a primary color propagates everywhere and that Figma and code stay synchronized.</summary>
+
+    <why>
+      <p>Hardcoded color and spacing values scatter design decisions across a codebase, making theming, dark mode, and brand updates expensive. Each time the brand color changes, every hardcoded hex value must be found and updated manually. Dark mode requires duplicating the entire color palette with different values. White-label support requires maintaining separate files for each customer color scheme.</p>
+      <p>A governed token layer — where semantic tokens always alias global tokens, never raw values — ensures that renaming color.primary propagates everywhere and that Figma and code stay synchronized. This is the foundation of scalable design systems.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up a new design system from scratch (tokens are the foundation before any component library)</item>
+        <item>Adding dark mode, theme switching, or white-label support to an existing codebase</item>
+        <item>Auditing a codebase for hardcoded color/spacing/font values that should be tokenized</item>
+        <item>Migrating from inline Tailwind classes or CSS magic numbers to a governed token layer</item>
+        <item>Generating token documentation from a Figma Variables export or Style Dictionary config</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-component quick fixes — token infrastructure has setup cost not worth it for one-off styling</item>
+        <item>Projects with a single theme and no planned theming requirements</item>
+        <item>When the design tool (Figma) and codebase are not synchronized — tokens create false confidence if sources diverge</item>
+        <item>Legacy jQuery / server-rendered projects without a CSS variable pipeline</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="three-tier-hierarchy">
+      <p>The three-tier token hierarchy is the single most important discipline for token systems. It ensures that when a design value changes, all its uses change in concert.</p>
+
+      <rule testable="true">
+        <statement>Establish three tiers before generating any tokens: global (raw primitive values) → semantic (intent aliases) → component (scoped overrides).</statement>
+        <rationale>Without the hierarchy, semantic tokens hold raw values and component tokens reference semantics directly — both patterns defeat the "update once, apply everywhere" guarantee.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Semantic tokens must never hold raw values; they must always alias a global token using {global.token.path} reference syntax.</statement>
+        <rationale>A semantic token holding a raw hex value must be updated in two places when the brand color changes — defeating the entire purpose of the token layer.</rationale>
+      </rule>
+
+      <example type="good" title="Correct three-tier hierarchy">
+        <code lang="json"><![CDATA[{
+  "color": {
+    "blue": { "value": "#3B82F6", "type": "color" },
+    "red": { "value": "#EF4444", "type": "color" },
+    "primary": { "value": "{color.blue}", "type": "color", "description": "Primary brand color" },
+    "feedback": {
+      "error": { "value": "{color.red}", "type": "color" }
+    }
+  },
+  "spacing": {
+    "xs": { "value": "4px" },
+    "sm": { "value": "8px" },
+    "md": { "value": "16px" }
+  }
+}]]></code>
+        <note>Global tokens hold raw values; semantic tokens reference globals by name; naming uses intent, not value. When color.blue changes from #3B82F6 to #2563EB, all references to color.primary update automatically.</note>
+      </example>
+
+      <antipattern>
+        <description>Semantic token holding a raw hex value: "color.primary": { "value": "#3B82F6" }</description>
+        <reason>When the brand color changes, every semantic token holding the raw value must be updated individually. Alias resolution breaks the single-source-of-truth guarantee.</reason>
+      </antipattern>
+    </section>
+
+    <section name="naming-conventions">
+      <p>Token naming is the hardest part and the most important. Good names remain valid across rebrands; bad names force updates when business requirements change.</p>
+
+      <rule testable="true">
+        <statement>Name semantic tokens by intent, not by value: use color.feedback.error, not color.red; use spacing.md, not spacing.16.</statement>
+        <rationale>The value may change; the intent should not. Intent-based names remain valid across rebrands and theme changes.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use a single naming convention across all tokens in a project — kebab-case is the W3C DTCG default; enforce it in CI via Style Dictionary transforms.</statement>
+        <rationale>Mixed conventions (camelCase in some tokens, kebab in others) produce incorrect generated output and make token references unreliable across platforms.</rationale>
+      </rule>
+
+      <example type="good" title="Intent-based naming">
+        <note>color.feedback.error not color.red | color.feedback.success not color.green | spacing.sm not spacing.8 | spacing.lg not spacing.32</note>
+      </example>
+
+      <example type="bad" title="Value-based naming">
+        <note>color.red | color.green | color.blue | spacing.8 | spacing.16 | spacing.32. When the error color changes from red to orange, the name becomes misleading.</note>
+      </example>
+    </section>
+
+    <section name="governance">
+      <p>Without governance, tokens diverge between design and code within weeks. Enforce these disciplines as rules in CI.</p>
+
+      <rule testable="true">
+        <statement>Use a single source of truth: either Figma Variables or a tokens JSON file in the repo — never maintain both independently.</statement>
+        <rationale>Without a single source, Figma and code diverge within weeks; token-based theming becomes unreliable and designers stop trusting the system.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Treat breaking token renames (not additions) as a major version bump; communicate them ahead of time to all consuming teams.</statement>
+        <rationale>Token renames silently break components in all consuming packages; versioning disciplines prevent surprise failures in downstream design systems.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Enforce semantic-references-global rule in CI: run Style Dictionary build as a validation step and fail the pipeline if any semantic token contains a raw value.</statement>
+        <rationale>Manual review of token files does not scale; automated enforcement is the only reliable governance mechanism.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Commit the generated CSS/JS token outputs to the repo so consumers do not need build-time Style Dictionary access.</statement>
+        <rationale>Consumers building against the token package should not need to install build tools; pre-built outputs ensure consistency.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Add a token changelog discipline: breaking token renames (not additions) require a major version bump and release notes.</statement>
+        <rationale>Breaking changes must be communicated; without clear messaging, teams miss breaking changes and their builds fail silently.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>How subagents can generate and validate design token systems.</p>
+
+      <rule>
+        <statement>An agent receives a color palette, type scale, and spacing scale (from a design brief or Figma export) and generates a W3C-compliant design token JSON file with global, semantic, and component tiers.</statement>
+        <rationale>Token generation from a defined schema is mechanical pattern application suitable for automation.</rationale>
+      </rule>
+
+      <rule>
+        <statement>A second agent reviews for naming consistency (camelCase vs. kebab-case, tier prefixes), alias correctness (semantic tokens referencing global tokens, not raw values), and coverage of required token categories.</statement>
+        <rationale>Validation catches pattern violations before deployment.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Token naming and taxonomy decisions require human consensus across design and engineering — agents can generate options but cannot decide the taxonomy.</statement>
+        <rationale>Token taxonomy is an architecture decision that shapes the entire design system; agent suggestions are input, not final decisions.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-integration-limitations">
+      <p>Common failure modes when agents generate or validate token systems.</p>
+
+      <antipattern>
+        <description>Agents default to two-tier (global + component) token structures; the semantic tier must be explicitly requested.</description>
+        <reason>Without explicit constraints in the prompt, agents collapse the semantic tier and put intent-based token names in the component tier, breaking the hierarchy.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Generated token names often mix conventions (camelCase in some, kebab in others) within a single file.</description>
+        <reason>Agents follow patterns from training data without enforcing a single convention; specify convention explicitly in the prompt.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents frequently produce semantic tokens that reference raw hex values instead of global token paths.</description>
+        <reason>Without schema validation in the prompt, agents copy values instead of creating aliases; validate with jq or Style Dictionary build.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Token generation without a design reference produces arbitrary spacing and color scales.</description>
+        <reason>Agents cannot invent design values; always provide the actual design values as input.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Token sprawl: agents generate excessively granular tokens (one per component state) that defeat the scalability benefit.</description>
+        <reason>Without explicit constraints, agents over-tokenize. Specify maximum number of tokens and minimum reuse count in the prompt.</reason>
+      </antipattern>
+    </section>
+
+    <section name="tools-and-cli">
+      <p>Tools for token transformation, validation, and governance.</p>
+
+      <rule>
+        <statement>Use Style Dictionary to transform token JSON to CSS variables, JS/TS exports, Android, and iOS automatically.</statement>
+        <rationale>Style Dictionary is the de facto standard for token transformation and eliminates manual code generation.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use token-transformer to convert Figma Tokens plugin export to Style Dictionary format automatically.</statement>
+        <rationale>Figma export is not W3C-compliant; token-transformer bridges the gap.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use design-tokens-cli from the W3C DTCG to validate tokens.json against the W3C specification.</statement>
+        <rationale>W3C validation ensures portability and prevents vendor lock-in to Figma or Style Dictionary.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use jq to inspect and diff token files in CI to catch breaking changes.</statement>
+        <rationale>jq enables programmatic token validation before deployment.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <rule>
+        <statement>Establish the three-tier hierarchy before generating any tokens: global (primitives) → semantic (intent) → component (scoped).</statement>
+        <rationale>The hierarchy is the foundation; without it, all downstream decisions fail.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Semantic tokens must never hold raw values; they must always alias a global token — enforce this in CI via Style Dictionary transforms.</statement>
+        <rationale>This is the single most important rule; automation is the only reliable enforcement mechanism.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use Figma Variables as the single source of truth for new design systems starting in 2026.</statement>
+        <rationale>Figma Variables is now the default; JSON token files are legacy or for non-Figma workflows.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Name semantic tokens by intent, not by value: color.feedback.error not color.red.</statement>
+        <rationale>Intent-based names outlive rebrands; value-based names require updates.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Add a token changelog discipline: breaking token renames (not additions) require a major version bump.</statement>
+        <rationale>Breaking changes must be versioned and communicated; silent breaking changes break downstream teams.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/tokens.json" purpose="W3C-compliant design token JSON example with global, semantic, and component tiers for color and spacing"/>
+      <template path="templates/sd.config.js" purpose="Style Dictionary build config generating CSS variables and JS/TS exports from token JSON"/>
+    </templates>
+
+    <see-also>
+      <link href="https://design-tokens.github.io/community-group/"/>
+      <link href="https://amzn.github.io/style-dictionary/"/>
+      <link href="https://www.figma.com/blog/introducing-variables/"/>
+      <link href="https://css-tricks.com/what-are-design-tokens/"/>
+      <link href="https://www.designsystems.com/design-tokens/"/>
+    </see-also>
+  </content>
+</methodology>
