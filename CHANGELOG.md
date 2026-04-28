@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 methodologies → methodology.xml (ai-enabled-business-analysis, ai-assisted-dev, claude-md-creation; feature-045 batch 281)
 - migrate: 3/3 geek/ai/rag-engineer methodologies → methodology.xml (rag, rag-architecture, rag-implementation; feature-045 batch 279)
 - migrate: 3/3 geek/ai/rag-engineer methodologies → methodology.xml (db-weaviate, embedding-applications, embedding-generation; feature-045 batch 277)
 - migrate: 3/3 geek/ai/rag-engineer methodologies → methodology.xml (embedding-models, hybrid-search-basics, hybrid-search-implementation; feature-045 batch 278)
