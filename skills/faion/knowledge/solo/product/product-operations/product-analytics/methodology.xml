@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="product-analytics">
+  <metadata>
+    <tier>solo</tier>
+    <group>product</group>
+    <domain>product-operations</domain>
+    <summary>Define questions before tracking. Design minimal tracking plans, implement dashboards per audience, establish review rituals. Connect behavior to decisions without tracking everything.</summary>
+    <tags>
+      <tag>product-analytics</tag>
+      <tag>metrics</tag>
+      <tag>tracking-plan</tag>
+      <tag>dashboards</tag>
+      <tag>instrumentation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Product Analytics</title>
+
+    <summary>Framework for measuring user behavior to drive product decisions. Defines the questions analytics must answer before any tracking call, designs minimal tracking plans with max 12 events per feature using Object-Action naming, implements dashboards per audience, and establishes review rituals. Connects raw event data to actionable insights without tracking everything.</summary>
+
+    <why>
+      <p>Teams that instrument first and ask questions later produce dashboards nobody looks at and analysis paralysis. The root failure is no connection between metrics and decisions. Defining key questions before writing a single tracking call forces discipline: every event answers a question, every dashboard serves a decision-maker, and every analysis has a "so what". The five-category AARRR lens (Acquisition/Activation/Engagement/Retention/Revenue) provides a minimal but complete coverage model.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Designing tracking plan for a new product or feature pre-launch.</item>
+        <item>Auditing existing event taxonomy: detect duplicates, naming inconsistencies, undocumented properties.</item>
+        <item>Generating SQL/cohort queries from natural-language questions.</item>
+        <item>Weekly anomaly summaries from PostHog/Amplitude/Mixpanel exports.</item>
+        <item>Stitching multiple analytics sources into one cohort view.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Real-time alerting/SLO monitoring — use Prometheus/Grafana, not LLMs.</item>
+        <item>Compliance-bound metrics (HIPAA, GDPR-deletion, SOX revenue) — agent-generated SQL needs lawyer-grade audit trail.</item>
+        <item>High-volume operational dashboards — LLM-in-loop adds latency, breaks "glance" rituals.</item>
+        <item>No user analytics instrumented yet — install before agentizing.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="analytics-maturity-levels">
+      <rule testable="true">
+        <statement>Start at Level 2 minimum (user segmentation) before adding instrumentation. Level 1 (page views only) produces no actionable product insights.</statement>
+        <rationale>Without user identity, you cannot correlate behavior to outcomes. Retention, activation, and funnel analysis all require persistent user identification.</rationale>
+      </rule>
+      <list>
+        <item>Level 1 — What happened: page views, signups</item>
+        <item>Level 2 — Who did what: user segmentation, events per user</item>
+        <item>Level 3 — Why and what if: funnels, cohort retention, A/B experiments</item>
+        <item>Level 4 — What will happen: ML models, forecasting</item>
+      </list>
+    </section>
+
+    <section name="aarrr-metric-categories">
+      <list>
+        <item>Acquisition — visitors, signups, sources, conversion rates, cost per acquisition</item>
+        <item>Activation — onboarding completion, time to first key action, activation rate</item>
+        <item>Engagement — DAU/WAU/MAU, session frequency, feature usage rates</item>
+        <item>Retention — D1/D7/D30 retention, cohort curves, churn rate</item>
+        <item>Revenue — MRR, ARPU, LTV, upgrade/downgrade rates, revenue per cohort</item>
+      </list>
+    </section>
+
+    <section name="implementation-process">
+      <rule testable="true">
+        <statement>Define the questions analytics must answer before writing a single tracking call. Maximum 12 events per feature; reject any event without a question it answers.</statement>
+        <rationale>Tracking everything produces data lakes nobody queries. 12-event cap forces prioritization. Agents produce 30+ events without this constraint.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use Object-Action naming convention for events, snake_case for property names. Example: "Account Created", "Feature Used", "Upgrade Started".</statement>
+        <rationale>Consistency matters more than cleverness. Inconsistent naming creates duplicate queries and breaks cohort joins across feature boundaries.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use server-side instrumentation for revenue, authentication, and upgrade events. Client-side is lossy — 5-15% of conversions leak.</statement>
+        <rationale>Client-side events depend on browser execution completing; network errors, ad blockers, and tab closes lose them. Critical business events need server authority.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Cohort by signup week, not signup date. Never mix monthly and quarterly cohort denominators in the same analysis.</statement>
+        <rationale>Date cohorts conflate growth effects with retention; week cohorts isolate them. Mixed denominators inflate some segments 3-4x.</rationale>
+      </rule>
+    </section>
+
+    <section name="review-cadence">
+      <list>
+        <item>Daily — glance at key metrics for anomalies</item>
+        <item>Weekly — review dashboard, note anomalies, document observations</item>
+        <item>Monthly — deep dive analysis with findings and recommendations</item>
+        <item>Quarterly — goal vs actual comparison and planning</item>
+      </list>
+    </section>
+
+    <section name="worked-examples">
+      <example type="good" title="Onboarding funnel analysis revealing a specific drop-off point">
+        <code lang="text"><![CDATA[
+Question: Why is activation low?
+
+Findings (funnel):
+  60% start onboarding
+  40% complete step 1
+  25% complete step 2
+  15% complete step 3  ← 62% drop here
+  10% fully activate
+
+Root cause: Step 3 = connect data source. Integration takes too long, users give up.
+
+Action: Add "try with sample data" option to skip integration entirely.
+Result: Activation rose from 10% to 28% in first cohort after change.
+]]></code>
+      </example>
+      <example type="good" title="Feature usage versus 30-day retention — low-usage features drive high retention">
+        <code lang="text"><![CDATA[
+Feature         Usage  30d Retention
+Dashboard        90%       45%
+Reports          30%       75%
+Integrations     20%       80%
+
+Insight: Low-usage features correlate with high retention.
+Action: Promote Reports and Integrations in onboarding flow.
+Note: correlation only; experiment required to confirm causation.
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>LLM-generated SQL referencing columns that don't exist in the schema.</description>
+        <reason>LLMs hallucinate column names that "should" exist. Use sqlglot + schema validation to reject unknown columns before execution.</reason>
+      </antipattern>
+      <antipattern>
+        <description>DAU definition drift between queries — any-event, core-action, and session-started all produce different numbers.</description>
+        <reason>Agents pick whichever definition fits the narrative. Pin one DAU definition in the prompt and add it to the schema as a named metric.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Declaring "Reports drives retention" from N=12 without p-value or sample-size threshold.</description>
+        <reason>Agent-generated insights from small samples mirror common SaaS narratives. Force n_users in every output row and wire minimum-sample gates into summarizer prompts.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Sending raw event rows containing email addresses or account IDs to the LLM provider.</description>
+        <reason>Raw PII in LLM calls may violate GDPR DPA. Aggregate first or hash identifiers before analysis.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Declaring funnel drop causal without an experiment.</description>
+        <reason>Step-3 dropoff is correlation; the fix might help for a different reason. Force "this is correlation; run experiment to confirm" in all insight outputs.</reason>
+      </antipattern>
+    </section>
+
+    <section name="human-in-loop-checkpoints">
+      <rule testable="true">
+        <statement>Any agent-generated dashboard narrative published to leadership must pass human PM review before publication.</statement>
+        <rationale>Agent summaries optimize for coherence and miss nuance that a PM catches. Leadership decisions on fabricated insights have real consequences.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Three roles: (1) tracking-plan-author agent designs event taxonomy from feature spec + audience-questions; outputs Tracking Plan markdown + JSON schema. (2) query-builder agent translates analyst questions to validated SQL/PostHog HogQL; runs read-only against warehouse. (3) insight-summarizer agent runs weekly on raw query outputs, produces narrative report with explicit "limitations" section. Critical guardrail: agent never writes events or modifies dashboards; output is PR/changeset for human review.</p>
+      <list>
+        <item>tracking-plan-author — sonnet, decomposes feature → events; enforces Object Action naming.</item>
+        <item>sql-builder — sonnet, schema-aware SQL gen; rejects queries on unknown columns.</item>
+        <item>dashboard-spec-writer — sonnet, produces dashboard JSON for PostHog/Amplitude templates.</item>
+        <item>weekly-summarizer — haiku, runs from precomputed metrics file, no live querying.</item>
+        <item>funnel-debugger — opus when investigating step-by-step dropoff (multi-hypothesis reasoning).</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Tracking plan first, instrumentation second: write the questions you'll ask, then the events. Agents that go from "track everything" produce useless data lakes.</item>
+        <item>Object Action naming, snake_case properties — consistency matters more than cleverness.</item>
+        <item>Server-side for revenue/auth events: client-side is lossy; agents that recommend "fire on button click" leak 5-15% of conversions.</item>
+        <item>Cap at 12 events per feature: agents will produce 30+; force minimum-viable taxonomy.</item>
+        <item>Cohort by signup week, not date: agents default to date cohorts which conflate growth + retention.</item>
+        <item>Document who for every event: ownership matters when events break.</item>
+        <item>Store schema-as-code in repo: agent edits go through PR review.</item>
+        <item>Sample data ≠ insight: agents must cite N before drawing conclusions; force n_users in every output row.</item>
+      </list>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p>Agents fabricate event names that "should" exist when querying — verify against schema before SQL execution. "Insights" generated from sample data are pattern-matched to common SaaS narratives ("activation drop at step 3"); always cross-check with raw counts. Cohort math is subtle — agents miscount returning users, double-count cross-platform sessions, mix DAU definitions (any-event vs. core-action). Specify in prompt explicitly.</p>
+      <p>Privacy: shipping raw events to LLM provider may violate DPA. Use aggregates or anonymize PII first. Statistical significance often skipped — agent declares "Reports drives retention" off N=12 with no p-value. Wire up minimum sample-size + p-value gates in summarizer prompts.</p>
+      <p>LLM hallucinated columns are the number one SQL bug. Use sqlglot + schema check before execute. DAU definition drift: "Daily Active Users" can mean any-event-fired, core-action-completed, or session-started. Agents pick whichever matches narrative; pin one in prompt. Time-zone bugs: agents mix UTC and user-local. Force _utc suffix on timestamp columns.</p>
+      <p>Cost trap: agent-driven warehouse queries can run away fast. Set query timeout + scan limit. Human-in-loop checkpoint: dashboard published to leadership = human-reviewed. Agent-generated narrative goes through PM signoff. "Funnel drop" narratives are seductive — agent may declare causation from correlation. Force "this is correlation; experiment to confirm". Cohort retention curves require 7+ data points or are noise; agents draw conclusions from W1-W2 alone.</p>
+    </section>
+
+    <templates>
+      <template path="templates/tracking-plan.md" purpose="User properties table + events by stage (onboarding/core/conversion) with trigger and properties columns."/>
+      <template path="templates/dashboard-spec.md" purpose="Audience-specific dashboard: metrics table, chart list, segment breakdown, refresh cadence."/>
+      <template path="templates/analysis-report.md" purpose="Structured report: question, methodology, findings with insights and implications, recommendations, limitations."/>
+    </templates>
+
+    <scripts>
+      <script path="scripts/query-safe.py" purpose="sqlglot-based SQL validator: rejects LLM-generated queries referencing unknown columns before execution."/>
+    </scripts>
+
+    <see-also>
+      <link href="https://posthog.com/docs/hogql"/>
+      <link href="https://amplitude.com/"/>
+      <link href="https://mixpanel.com/"/>
+    </see-also>
+  </content>
+</methodology>
