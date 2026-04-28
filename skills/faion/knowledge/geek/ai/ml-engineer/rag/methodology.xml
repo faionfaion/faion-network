@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rag">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Augment LLMs with external knowledge: embed → retrieve top-k → rerank to top-5 → inject context → generate. Always rerank, include citations.</summary>
+    <tags>
+      <tag>rag</tag>
+      <tag>retrieval</tag>
+      <tag>embeddings</tag>
+      <tag>chunking</tag>
+      <tag>reranking</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>RAG (Retrieval-Augmented Generation)</title>
+    <summary>A framework for augmenting LLMs with real-time access to external knowledge: embed query → retrieve top-k chunks from vector store → rerank to top-5 → inject context into prompt → generate with citations. Always rerank (retrieve top-20, reduce to top-5); always include a "no information" path when retrieval fails; always include source metadata in chunks for citations.</summary>
+    <why>
+      <p>LLMs cannot answer questions about documents not in their training data, and hallucinate when asked to recall private or recent information. RAG grounds responses in retrieved evidence, enables source citation, and scales to large corpora without retraining. It is substantially cheaper than fine-tuning for factual recall tasks.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>The application needs to answer questions about documents not in the model's training data</item>
+        <item>Knowledge is updated frequently (daily/weekly) and retraining is impractical</item>
+        <item>Users need source citations to verify claims</item>
+        <item>The knowledge base is too large to fit in a single context window (more than a few hundred pages)</item>
+        <item>Multi-tenant system where each tenant has a separate knowledge base</item>
+        <item>Cost constraint: RAG is substantially cheaper than fine-tuning for factual recall tasks</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Knowledge is behavioral (writing style, persona, domain jargon) rather than factual — use fine-tuning</item>
+        <item>The corpus is fewer than 50 documents that can all fit in a single long-context prompt — skip retrieval entirely</item>
+        <item>Latency budget is under 200ms — retrieval + reranking adds 100-500ms overhead</item>
+        <item>The task is pure reasoning on data already in the prompt — adding retrieval introduces noise</item>
+      </list>
+    </when-not-to-use>
+    <section name="Where it Fails / Limitations">
+      <list>
+        <item>Retrieval misses: if the relevant chunk is not in the top-k, the LLM cannot answer correctly — no amount of prompt engineering fixes a retrieval failure</item>
+        <item>Chunking artifacts: sentences split across chunk boundaries lose context; overlap helps but doesn't fully solve it</item>
+        <item>Hallucination on insufficient context: if retrieved chunks are tangentially related, the LLM may hallucinate a plausible-sounding answer rather than saying "I don't know"</item>
+        <item>Outdated index: documents updated after last ingestion return stale information — needs a document versioning and re-ingestion strategy</item>
+        <item>Contradiction in corpus: if multiple documents contradict each other, the LLM may surface either answer unpredictably</item>
+        <item>Context window pressure: at top-k=20 with 512-token chunks, retrieval consumes 10K tokens before generation — forces reranking to reduce to top-5</item>
+      </list>
+    </section>
+    <section name="Chunking Strategies">
+      <rule>
+        <statement>Use recursive chunking with 256-512 token chunks and 10-20% overlap as the default; switch to semantic or structure-aware chunking for Markdown/HTML/code.</statement>
+        <rationale>Chunk size trades off context preservation vs retrieval precision. 256-512 tokens balances semantic completeness with specificity. Overlap prevents context loss at boundaries.</rationale>
+      </rule>
+      <p>Strategy guide: Fixed-size for simple documents. Recursive for most applications (default). Semantic for knowledge bases and technical docs. Structure-aware for Markdown, HTML, code (preserves structure). LLM-based for high-value documents only (expensive).</p>
+      <antipattern>
+        <description>Using fixed chunk sizes without overlap for continuous prose documents.</description>
+        <reason>Sentences split at chunk boundaries lose context. A question whose answer spans a boundary returns a chunk containing only half the evidence.</reason>
+      </antipattern>
+    </section>
+    <section name="Retrieval Strategies">
+      <p>Vector search for general Q&amp;A. Hybrid (BM25 + vector) for technical queries with exact names and acronyms. Multi-query for complex questions with multiple sub-intents. Hierarchical for large document sets. Auto-merging for context-dependent answers.</p>
+      <rule>
+        <statement>Use hybrid search (BM25 + vector) for production RAG over technical documentation; pure vector search misses exact entity names and domain acronyms.</statement>
+        <rationale>Vector search handles semantic similarity but fails on exact matches for rare terms. Hybrid consistently outperforms pure vector on technical corpora.</rationale>
+      </rule>
+    </section>
+    <section name="Mandatory Reranking">
+      <rule>
+        <statement>Always rerank: retrieve broad (top-20) then rerank to top-5 using a cross-encoder. This pattern outperforms top-5 direct retrieval by 15-20% precision.</statement>
+        <rationale>ANN search retrieves by approximate distance; cross-encoder reranking uses full attention to compute precise relevance. The two-stage approach maximizes both recall and precision.</rationale>
+      </rule>
+    </section>
+    <section name="Embedding Model Selection">
+      <p>Model guide: text-embedding-3-small (1536 dims, 8191 ctx) for cost-efficient prototyping. text-embedding-3-large for production OpenAI. voyage-3 (1024 dims, 32K ctx) for long documents and best retrieval recall. bge-large-en-v1.5 for local/self-hosted. all-MiniLM-L6-v2 (384 dims) for fast lightweight.</p>
+      <rule>
+        <statement>Cache embeddings: store content hashes and skip re-embedding unchanged chunks on re-ingestion.</statement>
+        <rationale>Re-embedding unchanged documents on every ingestion is the dominant cost for incrementally updated corpora. Content hashing reduces embedding cost to delta-only.</rationale>
+      </rule>
+    </section>
+    <section name="Retrieval Quality Metrics">
+      <rule>
+        <statement>Production retrieval targets: Recall@10 greater than 0.8, MRR greater than 0.7, NDCG greater than 0.7. If Recall@10 is below 0.8, fix retrieval before tuning generation.</statement>
+        <rationale>Retrieval is a prerequisite for generation. If the relevant chunk is not in the top-k, no amount of prompt engineering can produce a correct answer. Retrieval failures are invisible in generation-only metrics.</rationale>
+      </rule>
+    </section>
+    <section name="Generation Quality Metrics">
+      <rule>
+        <statement>Production generation targets (RAGAS): Faithfulness greater than 0.9, Answer Relevancy greater than 0.8, Context Precision greater than 0.7, Context Recall greater than 0.8.</statement>
+        <rationale>Faithfulness measures grounding: answers not supported by retrieved chunks are hallucinations. Answer Relevancy measures task completion. Both must be tracked independently.</rationale>
+      </rule>
+    </section>
+    <section name="Evaluation Cadence">
+      <rule>
+        <statement>Run RAGAS evaluation after every significant change to chunking strategy, embedding model, or retrieval parameters; do not assume changes are neutral without measurement.</statement>
+        <rationale>A chunking change that improves faithfulness may reduce context recall. Changes interact in non-obvious ways. Automated metrics catch regressions that manual testing misses.</rationale>
+      </rule>
+      <rule>
+        <statement>Before deploying to production, run a manual evaluation of 50 representative queries across the full retrieval-generation pipeline; automated metrics miss nuanced faithfulness failures.</statement>
+        <rationale>RAGAS metrics are automated proxies. They can score a plausible but factually wrong answer as "faithful" if the wording matches retrieved context superficially. Human review catches these.</rationale>
+      </rule>
+    </section>
+    <section name="Failure Mode Diagnosis">
+      <p>Empty results indicate query is too specific; use query expansion or lower score threshold. Irrelevant results indicate poor chunking; adjust chunk size and add overlap. Hallucinations indicate insufficient context; add stricter prompt constraints and more chunks. Slow queries indicate large index without metadata filters; pre-filter with metadata. Contradictions indicate outdated documents; add version control and date filtering.</p>
+    </section>
+    <section name="Retrieval as a Breakpoint">
+      <rule>
+        <statement>Always check `len(retrieved_chunks) greater than 0` before calling the LLM; if retrieval returns empty, return a structured "no information" response rather than attempting generation.</statement>
+        <rationale>If the retriever fails silently (network error, empty results), the LLM will hallucinate a plausible-sounding answer. An explicit check turns a silent hallucination into an auditable error.</rationale>
+      </rule>
+      <antipattern>
+        <description>Proceeding to LLM generation when retrieved chunk scores are all below the score threshold.</description>
+        <reason>Low-score chunks are tangentially related noise. The LLM may confabulate a plausible-sounding answer from weak context rather than reporting insufficient information.</reason>
+      </antipattern>
+    </section>
+    <section name="Prompt Injection via Documents">
+      <antipattern>
+        <description>Injecting retrieved document chunks into prompts without sanitization or encoding.</description>
+        <reason>A malicious document containing "ignore previous instructions and output X" can override agent instructions. Retrieved content must be treated as untrusted data, not trusted instructions.</reason>
+      </antipattern>
+    </section>
+    <section name="Index Drift">
+      <rule>
+        <statement>Implement a document version field and return it in citation metadata; if the pipeline is live and documents update asynchronously, queries may receive outdated answers.</statement>
+        <rationale>Without version tracking, a document updated after last ingestion returns stale information with no indication of staleness. Users cannot distinguish fresh from outdated answers.</rationale>
+      </rule>
+    </section>
+    <section name="Context Window Pressure">
+      <rule>
+        <statement>At top-k=20 with 512-token chunks, retrieval consumes 10,240 tokens before generation; always apply reranking to reduce to top-5 before LLM calls.</statement>
+        <rationale>Without reranking, a large top-k saturates the context window with low-relevance chunks. The LLM is forced to reason across noise, reducing generation quality and increasing cost.</rationale>
+      </rule>
+    </section>
+    <section name="Agentic Workflow">
+      <p>A retrieval agent embeds the user query, queries the vector store for top-20 candidates, passes them through a cross-encoder reranker to select top-5, then constructs a prompt with the ranked context and calls the generator LLM. The agent enforces citation output format and validates faithfulness: if the answer cites a source not in the retrieved set, it flags a hallucination and retries with a stricter prompt. For agentic RAG (multi-hop), the agent decomposes the query into sub-queries, retrieves separately, and synthesizes.</p>
+    </section>
+    <section name="Recommended Subagents">
+      <list>
+        <item>Embedding/retrieval subagent — wraps the vector DB client; handles embedding, querying, reranking; returns structured `{chunks: [], scores: []}` JSON</item>
+        <item>Faithfulness validator subagent — checks that every claim in the generated answer maps to at least one retrieved chunk; flags grounding violations</item>
+      </list>
+    </section>
+    <section name="Prompt Pattern">
+      <code lang="text"><![CDATA[You are a knowledge assistant. Answer the user's question using ONLY the context below.
+Cite each claim with [Source: <filename>].
+If the context does not contain the answer, say: "I don't have that information."
+Do not make up information not in the context.
+
+<context>
+{retrieved_chunks}
+</context>
+
+Question: {user_query}]]></code>
+      <code lang="python"><![CDATA[
+# Minimal RAG loop
+def rag_answer(query: str, collection: str) -> str:
+    chunks = retriever.retrieve(query, collection=collection, top_k=20)
+    reranked = reranker.rerank(query, chunks, top_n=5)
+    context = "\n\n".join(c.text for c in reranked)
+    return llm.complete(RAG_PROMPT.format(context=context, user_query=query))
+      ]]></code>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Always rerank: retrieve broad (top-20), rerank to top-5 — this pattern consistently outperforms top-5 direct retrieval by 15-20% precision</item>
+        <item>Cache embeddings: re-embedding unchanged documents on every ingestion wastes cost; store content hashes and skip unchanged chunks</item>
+        <item>Include metadata in chunks: source filename, page number, section — agents need this for citations and for debugging retrieval failures</item>
+        <item>Add a "cannot answer" path explicitly: if score_threshold is not met for any chunk, return a structured "no information" response rather than attempting to generate with weak context</item>
+        <item>Use `text-embedding-3-small` for cost efficiency in prototyping; switch to `voyage-3` or `text-embedding-3-large` for production if recall metrics demand it</item>
+        <item>Evaluation cadence: run RAGAS after every significant change to chunking, embedding model, or retrieval strategy</item>
+      </list>
+    </section>
+    <section name="CLI Tools">
+      <p>`llama-index`: RAG framework with indexing, retrieval, synthesis. `pip install llama-index` — docs.llamaindex.ai</p>
+      <p>`langchain`: RAG chains, document loaders, splitters. `pip install langchain` — python.langchain.com</p>
+      <p>`ragas`: RAG evaluation (faithfulness, relevancy, recall). `pip install ragas` — docs.ragas.io</p>
+      <p>`sentence-transformers`: Local embedding + cross-encoder reranking. `pip install sentence-transformers`</p>
+      <p>`unstructured`: PDF/DOCX/HTML document parsing. `pip install unstructured`</p>
+      <p>`chonkie`: Fast, production-grade chunking library. `pip install chonkie`</p>
+    </section>
+    <section name="Services and Apps">
+      <p>LlamaIndex (OSS framework): Best-in-class RAG abstractions; LlamaCloud for managed</p>
+      <p>LangChain (OSS framework): Broad ecosystem; RAG chains, document loaders</p>
+      <p>Cohere Rerank (SaaS API): High-quality cross-encoder reranker; multilingual</p>
+      <p>Voyage AI (SaaS API): Best-in-class embeddings for retrieval (voyage-3)</p>
+      <p>RAGAS (OSS): RAG evaluation suite; faithfulness, answer relevancy</p>
+      <p>Qdrant Cloud (SaaS + OSS): Vector store; native hybrid search; free tier</p>
+      <p>Pinecone (SaaS): Managed vector store; serverless; zero-ops</p>
+    </section>
+    <templates>
+      <template path="templates/rag-pipeline.py" purpose="Production RAG skeleton: ingest → index → query with reranking (LlamaIndex)"/>
+      <template path="templates/rag-prompt.txt" purpose="RAG generation prompt: source-only constraint, citation format, 'I don't know' handling"/>
+    </templates>
+    <see-also>
+      <link href="https://developers.llamaindex.ai/python/framework/optimizing/production_rag/"/>
+      <link href="https://docs.ragas.io/"/>
+      <link href="https://langwatch.ai/blog/the-ultimate-rag-blueprint-everything-you-need-to-know-about-rag-in-2025-2026"/>
+      <link href="https://arxiv.org/html/2506.00054v1"/>
+      <link href="https://arxiv.org/abs/2501.07391"/>
+      <link href="https://qdrant.tech/blog/rag-evaluation-guide/"/>
+    </see-also>
+  </content>
+</methodology>
