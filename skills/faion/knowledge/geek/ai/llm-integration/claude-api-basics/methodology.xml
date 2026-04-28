@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="claude-api-basics">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Authentication, model selection, rate-limit handling with exponential backoff, token counting, and cost tracking for the Anthropic Python/TypeScript SDK.</summary>
+    <tags>
+      <tag>claude</tag>
+      <tag>api</tag>
+      <tag>authentication</tag>
+      <tag>rate-limiting</tag>
+      <tag>cost-tracking</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Claude API Basics</title>
+    <summary>The single most important rule: pin model IDs with full date strings (e.g., claude-sonnet-4-20250514) to prevent silent behavior changes on alias updates. Claude API has non-obvious failure modes: 529 overloaded_error requires retry logic (not a client error), rate limits are per-tier and hit fast in concurrent agent workflows, cost tracking requires exact model ID strings (aliases break lookups), and token counting adds a round-trip that degrades hot-path latency.</summary>
+    <why>
+      <p>The Anthropic SDK is straightforward for simple sequential calls but requires careful handling in production. Rate limits are per-tier and hit immediately in concurrent agent workflows. The 529 overloaded_error is transient but requires explicit retry logic — applications that ignore it fail unnecessarily. Cost tracking is error-prone: aliases silently resolve to different models over time, breaking cost lookups. Token counting adds API round-trips that hurt hot-path latency. The solution is a shared client instance, centralized retry logic, response-field-based cost tracking, and judicious use of caching.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Bootstrapping any Anthropic SDK integration from scratch.</item>
+        <item>Selecting the right Claude model for a cost vs. capability trade-off.</item>
+        <item>Implementing retry/backoff for production LLM calls.</item>
+        <item>Tracking token usage and API costs per request or session.</item>
+        <item>Debugging authentication and rate-limit failures.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Working client setup already exists — don't re-implement auth/retry per-call.</item>
+        <item>Batch-processing non-time-sensitive workloads — use the Batch API (50% cheaper) instead.</item>
+        <item>Streaming output needed — see claude-messages-api methodology.</item>
+        <item>Task requires tool use or structured JSON output — see claude-tool-use methodology.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="Authentication and API Key Management">
+      <rule>
+        <statement>Store ANTHROPIC_API_KEY in the environment only — never in source code, agent prompts, or log files. Log the x-request-id response header for every call for support debugging.</statement>
+        <rationale>API keys in source code are exposed via version control. x-request-id is required by Anthropic support to trace specific requests — without it, debugging production failures is impossible.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[# Required headers for direct curl calls
+curl https://api.anthropic.com/v1/messages \
+  -H "x-api-key: $ANTHROPIC_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "content-type: application/json" \
+  -d '{"model": "claude-sonnet-4-20250514", "max_tokens": 1024,
+       "messages": [{"role": "user", "content": "Hello!"}]}']]></code>
+      </example>
+
+      <example type="bad">
+        <code lang="python"><![CDATA[# NEVER do this
+api_key = "sk-ant-..."
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    system=f"Use this key: {api_key}",  # KEY EXPOSED
+    messages=[...]
+)]]></code>
+        <note>Hardcoding API keys exposes them in logs, version control, and agent prompts. Always use environment variables.</note>
+      </example>
+    </section>
+
+    <section name="Model Selection and Pinning">
+      <rule>
+        <statement>Pin model IDs with full date strings (e.g., claude-sonnet-4-20250514) in all production calls; never use alias strings that resolve to different models over time.</statement>
+        <rationale>Alias updates silently change model behavior and break cost tracking lookups that match on model ID. Full-date pinning is the only way to ensure reproducible behavior.</rationale>
+      </rule>
+
+      <p>Current models (2025–2026) and recommended tasks:</p>
+      <list>
+        <item>claude-opus-4-5-20251101 — complex reasoning, research, extended thinking; $15/$75 per 1M tokens</item>
+        <item>claude-sonnet-4-20250514 — balanced, recommended default, code; $3/$15 per 1M tokens</item>
+        <item>claude-3-5-haiku-20241022 — fast classification, cheap, high-throughput; $0.80/$4 per 1M tokens</item>
+      </list>
+
+      <rule>
+        <statement>Check response.stop_reason after every call — "max_tokens" means output was truncated, not complete; increase max_tokens or decompose the task.</statement>
+        <rationale>max_tokens is a hard ceiling. A truncated response with stop_reason="max_tokens" silently produces incomplete output that downstream processing treats as complete.</rationale>
+      </rule>
+    </section>
+
+    <section name="Rate Limiting and Retry Logic">
+      <rule>
+        <statement>Implement exponential backoff with tenacity for both RateLimitError (429) and overloaded_error (529) — 529 is not a client error; it is a transient server condition requiring retry.</statement>
+        <rationale>529 overloaded_error is frequent during peak hours. Applications that do not retry it fail unnecessarily. Applications that do not back off amplify the overload.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="python"><![CDATA[from tenacity import (retry, stop_after_attempt,
+                      wait_exponential, retry_if_exception_type)
+from anthropic import RateLimitError, APIStatusError
+
+@retry(
+    retry=retry_if_exception_type((RateLimitError, APIStatusError)),
+    wait=wait_exponential(multiplier=1, min=1, max=60),
+    stop=stop_after_attempt(5),
+)
+def make_request(client, model, messages, max_tokens=1024):
+    return client.messages.create(
+        model=model, max_tokens=max_tokens, messages=messages)]]></code>
+        <note>APIStatusError with status_code >= 500 covers both 529 and other transient server errors.</note>
+      </example>
+
+      <rule>
+        <statement>For concurrent agent workloads: parallel subagents sharing one API key share rate limits — budget requests/min per subagent thread and monitor x-ratelimit-remaining-requests headers.</statement>
+        <rationale>Tier 1 limits (50 req/min) are hit immediately by even 3 concurrent subagents making rapid calls. Header-based throttling prevents cascading 429 failures.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Tier 1 rate limits (50 req/min, 40K tokens/min) break quickly in concurrent agent workflows.</statement>
+        <rationale>Even 3 concurrent threads making 20 req/min each hits the 50 req/min limit. Concurrent agents must share rate budget or upgrade to higher tiers.</rationale>
+      </rule>
+
+      <rule>
+        <statement>overloaded_error (529) is transient but frequent during peak hours — retry logic is mandatory.</statement>
+        <rationale>Peak periods (business hours, weekends) see significant 529 rates. Retry with exponential backoff is the standard resilience pattern.</rationale>
+      </rule>
+    </section>
+
+    <section name="Cost Tracking and Optimization">
+      <rule>
+        <statement>Use the response.model field (not the requested model) for cost lookup — Anthropic aliases may resolve to a different model ID than requested.</statement>
+        <rationale>Cost tracking that uses the requested model string will misattribute costs when aliases resolve to different model IDs. The response field is authoritative.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Enable prompt caching (anthropic-beta: prompt-caching-2024-07-31) for repeated system prompts; cache reads are 90% cheaper than regular input tokens.</statement>
+        <rationale>Cache write is 25% more expensive, but cache read is 90% cheaper. For agents with large repeated system prompts across many calls, caching typically yields 60–80% cost reduction.</rationale>
+      </rule>
+
+      <p>Cost tracking can be done inline or via a dedicated class. The key metrics are input_tokens, output_tokens, cache_creation_input_tokens, and cache_read_input_tokens. Pricing is per-model and changes over time; keep a PRICES dict with the latest rates.</p>
+
+      <example type="good">
+        <code lang="python"><![CDATA[class CostTracker:
+    PRICES = {
+        "claude-opus-4-5-20251101":   {"in": 15.00, "out": 75.00, "cw": 18.75, "cr": 1.50},
+        "claude-sonnet-4-20250514":   {"in":  3.00, "out": 15.00, "cw":  3.75, "cr": 0.30},
+        "claude-3-5-haiku-20241022":  {"in":  0.80, "out":  4.00, "cw":  1.00, "cr": 0.08},
+    }
+    def __init__(self): self.total = 0.0; self.calls = 0
+    def track(self, model, usage):
+        p = self.PRICES.get(model, {"in":0,"out":0,"cw":0,"cr":0})
+        cost = (
+            usage.input_tokens * p["in"] +
+            usage.output_tokens * p["out"] +
+            getattr(usage,"cache_creation_input_tokens",0) * p["cw"] +
+            getattr(usage,"cache_read_input_tokens",0) * p["cr"]
+        ) / 1_000_000
+        self.total += cost; self.calls += 1; return cost]]></code>
+        <note>Tracks cache pricing separately: cache_creation is 25% more, cache_read is 90% cheaper.</note>
+      </example>
+    </section>
+
+    <section name="Token Counting">
+      <rule>
+        <statement>Token counting via the count_tokens endpoint adds a round trip; avoid in hot paths.</statement>
+        <rationale>Each call_count_tokens() call adds latency. In high-throughput agent loops, pre-computing token budgets or using post-response token counts is faster.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Response model field may differ from requested model if Anthropic aliases resolve differently — always use the response field for cost tracking.</statement>
+        <rationale>Aliases can silently map to different models. The response tells you what you actually got.</rationale>
+      </rule>
+    </section>
+
+    <section name="Agentic Workflow">
+      <p>An agent bootstraps the Anthropic client once, injects it via dependency injection or a shared context object, and passes it to all subagent modules. Rate-limit and retry logic should live in a shared utility, not duplicated per-subagent. Cost tracking wraps each API call transparently and writes aggregated usage to a session log. Model selection is driven by a task-routing table, not hardcoded per-call.</p>
+
+      <rule>
+        <statement>Agents must handle 529 overloaded_error with exponential backoff — this is not a client error.</statement>
+        <rationale>Unlike 4xx errors (client errors), 529 is a transient server condition. Not retrying 529 causes avoidable failures.</rationale>
+      </rule>
+
+      <rule>
+        <statement>max_tokens is a hard ceiling, not a target; if output is routinely hitting it, the task decomposition needs fixing.</statement>
+        <rationale>A truncated response with stop_reason="max_tokens" is incomplete but may be silently treated as complete. If truncation is common, the task is too large for a single call.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Parallel subagents sharing one API key share rate limits — budget requests/min per subagent thread.</statement>
+        <rationale>Tier 1 limits are tight. Concurrent agents require rate budgeting or tier upgrades.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Do NOT cache API key in module-level globals across forked processes (multiprocessing) — each worker needs its own client instance.</statement>
+        <rationale>Multiprocessing does not share memory between processes. A global client in the parent process is not accessible in worker processes; each must create its own.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Token counting before a call adds latency; only use it when budget enforcement is strict.</statement>
+        <rationale>In hot paths, token counting via API call is slower than setting max_tokens conservatively and handling truncation via stop_reason.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Store ANTHROPIC_API_KEY in environment — never in source code or agent prompts.</statement>
+        <rationale>Keys in source code leak via version control. Keys in prompts leak via logs and API monitoring.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use tenacity @retry decorator with wait_exponential rather than custom sleep loops.</statement>
+        <rationale>tenacity handles jitter and exponential backoff correctly. Custom loops often get backoff wrong, leading to synchronized retries and cascading failures.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Log x-request-id response header for every call; essential for Anthropic support debugging.</statement>
+        <rationale>Anthropic support needs x-request-id to trace specific requests in their logs. Without it, debugging production issues is impossible.</rationale>
+      </rule>
+
+      <rule>
+        <statement>For high-throughput agents, track remaining tokens via rate-limit headers and throttle before hitting the limit.</statement>
+        <rationale>Waiting until you hit the limit causes 429 errors and retry cascades. Proactive throttling based on headers prevents cascades.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/cost-tracker.py" purpose="CostTracker class for per-call and session cost tracking"/>
+      <template path="templates/retry-wrapper.py" purpose="tenacity-based retry decorator for rate limit and server errors"/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.anthropic.com/en/api/getting-started"/>
+      <link href="https://docs.anthropic.com/en/docs/about-claude/models"/>
+      <link href="https://docs.anthropic.com/en/api/errors"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching"/>
+      <link href="https://github.com/anthropics/anthropic-sdk-python"/>
+      <link href="https://github.com/anthropics/anthropic-sdk-typescript"/>
+    </see-also>
+  </content>
+</methodology>
