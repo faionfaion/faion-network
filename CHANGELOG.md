@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/product/product-manager methodologies → methodology.xml (product-explainability, product-led-growth, product-lifecycle; feature-045 batch 194)
 - migrate: 3/3 pro/product methodologies → methodology.xml (technical-debt-management, workflows, blurred-roles-team-evolution; feature-045 batch 196)
 - migrate: 3/3 pro/product/product-manager methodologies → methodology.xml (learning-speed-competitive-moat, methodologies-summary, minimum-product-frameworks; feature-045 batch 192)
 - migrate: batch-190 pro/pm/project-manager + pro/product/product-manager (work-breakdown-structure, blurred-roles-team-evolution, competitive-positioning)
