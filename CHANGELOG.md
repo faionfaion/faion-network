@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/marketing/ppc-manager Google Ads methodologies → methodology.xml (ads-google-creative, ads-google-keywords, ads-google-reporting; feature-045 batch)
 - migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (ads-budget-optimization, ads-conversion-tracking, ads-google-campaign-setup; feature-045 batch)
 - migrate: 2/2 pro/marketing/growth-marketer methodologies → methodology.xml (growth-referral-programs, growth-viral-loops; feature-045 batch)
 - migrate: 3/3 pro/marketing/growth-marketer methodologies → methodology.xml (retention-metrics, retention-strategies, statistics-application; feature-045 batch)
