@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="file-reference-passing">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Pass file paths and references between steps instead of content. Saves context, enables lazy loading, improves recoverability. Boundary = pointers, not content.</summary>
+    <tags>
+      <tag>pipeline</tag>
+      <tag>context-economy</tag>
+      <tag>references</tag>
+      <tag>lazy-loading</tag>
+      <tag>multi-stage</tag>
+    </tags>
+    <category>pipeline</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>File-Reference Passing Between Pipeline Steps</title>
+    <summary>When agent step N analyzes a corpus, return only references (file paths, IDs, URLs, doc-keys) — not the content itself. Step N+1 loads from those references on demand. The corollary: the boundary between agent steps is a list of POINTERS, not a payload of CONTENT.</summary>
+    <why>
+      <p>Three independent benefits compound when you pass references instead of content.</p>
+      <p>First, context economy: content carried across steps consumes the prompt budget of every step it touches. A 5K-token summary passed from stage 1 to stage 2 consumes 5K tokens in each stage, plus recompaction overhead. References are tiny — usually under 100 tokens per list.</p>
+      <p>Second, lazy loading: step N+1 (or its tools) decides what to actually load. Often only 30% of the corpus is needed. If you pass all content in stage 1, you've paid for the whole corpus in the stage-1 LLM call, even for content that never gets used.</p>
+      <p>Third, recoverability: references are stable; content can change. A pipeline that resumes after a crash re-reads from refs and gets fresh state. This pattern is why Claude Code's subagents emit summaries with file paths rather than dumping file contents back to the parent — the parent re-reads what it needs.</p>
+      <p>Fourth, audit and debugging: references are cheap to log and replay. Content is heavy and often redacted. You can trace a pipeline's decisions by looking at the refs it chose at each stage.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Multi-stage pipelines where each stage operates on a corpus</item>
+        <item>Map-reduce patterns over documents</item>
+        <item>Agents with subagents (subagent returns a slim summary + refs; parent re-fetches if needed)</item>
+        <item>Long documents where only some passages matter to downstream</item>
+        <item>Any time you find yourself ferrying &gt; 2K tokens of "context" between steps</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-shot agents (no downstream step exists)</item>
+        <item>When the content is small enough that lazy-loading adds more overhead than it saves</item>
+        <item>When refs are unstable (URLs that expire, IDs that get reassigned) — use snapshotted refs</item>
+        <item>When the downstream model lacks tools to load by ref (no file-read tool, no DB-fetch tool)</item>
+      </list>
+    </when-not-to-use>
+    <section name="Pattern Shapes">
+      <p>There are four common shapes for file-reference passing. Choose based on your pipeline's control flow and corpus structure.</p>
+      <p><term name="A. Stage-output is refs">The scanner produces a list of references; the processor loads each on demand.</term></p>
+      <code lang="text"><![CDATA[Stage 1: scan(corpus) -> list[FileRef]
+Stage 2: each_ref -> load(ref) -> process]]></code>
+      <p><term name="B. Subagent returns refs + summary">Subagents are natural isolation boundaries. Keep the summary small and let the parent re-fetch.</term></p>
+      <code lang="text"><![CDATA[parent -> spawn(subagent, big_task)
+subagent -> analyze; return {summary: "...", interesting_refs: [...]}
+parent -> if needs more, load(ref) directly]]></code>
+      <p><term name="C. Manifest-then-fetch">Constrain the LLM's picks to a known manifest. This prevents hallucinated refs.</term></p>
+      <code lang="text"><![CDATA[LLM sees a MANIFEST (id + 1-line description per item)
+LLM picks K items by id
+Code fetches the K items and feeds them to the next LLM call]]></code>
+      <p><term name="D. Recursive descent">Use for navigating large tree-shaped corpora (repos, archives, folder hierarchies).</term></p>
+      <code lang="text"><![CDATA[LLM sees list of dirs -> picks dir
+LLM sees list of files in dir -> picks file
+LLM reads file -> answers
+
+Each level: refs in, refs out. Content never crosses more than one boundary.]]></code>
+    </section>
+    <section name="Concrete Example">
+      <p>Consider the neromedia news pipeline. Stage 1 (analyzer) receives a manifest of 200 cached RSS items (id + title only). Its output is a schema: `{rationale: str, relevant_ids: list[int]}`. The output is about 300 tokens.</p>
+      <p>Stage 2 (writer) receives the `relevant_ids`, opens the 10 selected items from cache via `Path.read_text()`, and passes them to Sonnet. It never sees content that the analyzer flagged as irrelevant.</p>
+      <p>The 200 bodies (≈80K tokens) never touch the LLM in stage 1 and never re-enter the prompt in stage 2 (only the 10 selected do). This is the power of reference passing: you save 80K tokens by making one simple architectural choice.</p>
+    </section>
+    <section name="Anti-Patterns">
+      <p>File-reference passing is a simple idea, but there are common ways to break it. Watch for these patterns and correct them before they reach production.</p>
+      <antipattern>
+        <description>Stage 1 returns "summary + content of relevant items"</description>
+        <reason>Content is duplicated across stages, consuming tokens in both stage 1's output and stage 2's input. The summary itself becomes context-debt. Return refs only; stage 2 re-fetches on demand.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Subagent returns the entire file it analyzed</description>
+        <reason>Parent context blows up, especially if the subagent returns many files. The parent must parse and summarize-again. Instead, subagent should return a summary + list of paths, and parent re-reads what it needs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Refs are LLM-generated paths that don't exist</description>
+        <reason>Hallucinated refs break loading and waste downstream compute. Constrain refs to a manifest (enum or regex) that the LLM was explicitly given, or validate refs post-hoc and retry with a correction prompt.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Refs are remote URLs that expire</description>
+        <reason>A rerun days later fails because the URL no longer resolves. Snapshot the resource at the time of reference and reference the snapshot instead. Use timestamped URLs or immutable refs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Pipeline persists raw content between steps</description>
+        <reason>Disk and memory both bloat as the corpus grows. State files become large and slow to load. Instead, persist only refs (tiny) and resolve at use time. This also allows the corpus to refresh without invalidating the pipeline state.</reason>
+      </antipattern>
+    </section>
+    <example type="good" title="Two-stage scan + load">
+      <code lang="python"><![CDATA[from pathlib import Path
+from pydantic import BaseModel
+
+class ScanResult(BaseModel):
+    rationale: str
+    relevant_paths: list[str]    # paths into a fixed manifest
+
+def scan(manifest: list[Path], goal: str) -> ScanResult:
+    # cheap LLM call: see only the manifest, not the contents
+    listing = "\n".join(f"- {p}" for p in manifest)
+    return haiku.parse(goal=goal, manifest=listing)
+
+def load_and_reason(scan: ScanResult, goal: str) -> str:
+    # validate
+    valid = [Path(p) for p in scan.relevant_paths if Path(p).exists()]
+    contents = {p: p.read_text() for p in valid}
+    # strong LLM call: now sees only what was selected
+    return sonnet.process(goal=goal, files=contents)]]></code>
+    </example>
+    <example type="good" title="Subagent returns refs + summary">
+      <code lang="python"><![CDATA[class SubagentReport(BaseModel):
+    summary: str                    # 3-5 sentences for parent context
+    interesting_refs: list[str]     # paths/URLs the parent might want
+    follow_up_questions: list[str]  # if any
+
+# The parent context never grows by more than ~500 tokens
+# regardless of how much the subagent read]]></code>
+    </example>
+    <example type="good" title="Manifest-then-pick">
+      <code lang="python"><![CDATA[class Pick(BaseModel):
+    rationale: str
+    chosen_id: int     # must be from the manifest
+
+manifest = [{"id": 1, "title": "..."}, {"id": 2, "title": "..."}]
+pick = llm.pick(manifest=manifest)
+chosen = next(m for m in manifest if m["id"] == pick.chosen_id)
+result = llm.use(chosen)   # now full content is loaded]]></code>
+    </example>
+    <example type="good" title="Recursive descent">
+      <code lang="python"><![CDATA[def descend(path: Path, goal: str) -> Path:
+    if path.is_file():
+        return path
+    children = list(path.iterdir())
+    pick = llm.pick_dir(children=children, goal=goal)   # ref-only
+    return descend(pick, goal)
+
+target = descend(repo_root, goal)
+content = target.read_text()
+answer = llm.answer(content=content, goal=goal)]]></code>
+    </example>
+    <example type="bad" title="Content-passing (what NOT to do)">
+      <code lang="python"><![CDATA[# Stage 1
+analysis = haiku.run(big_corpus)
+# analysis.text is 5K tokens, much of it just regurgitating the corpus
+
+# Stage 2
+result = sonnet.run(analysis.text)
+# we paid Haiku to summarize, then Sonnet to re-process the summary
+# total tokens: corpus + 5K summary; saved nothing]]></code>
+      <note>Fix: stage 1 returns refs; stage 2 loads from refs directly. The summary-as-content anti-pattern is the most common form of this mistake.</note>
+    </example>
+    <section name="Implementation Notes">
+      <list>
+        <item>Use short, stable ref formats: `path:relative/file.md`, `db:items/1234`, `gh:owner/repo@sha:path`</item>
+        <item>Validate refs after the LLM call and before passing to next step (catch hallucinations early)</item>
+        <item>Log the ref list at every stage boundary — best debug breadcrumb you'll ever have</item>
+        <item>Cache the manifest the LLM was given (it shouldn't pick refs from outside the manifest)</item>
+      </list>
+    </section>
+    <section name="Composition with Other Tricks">
+      <list>
+        <item>+ schema-field-order: schema = `[rationale, refs]` so the model justifies the picks before listing them</item>
+        <item>+ weak-model-preselection: cheap model produces refs; strong model loads and reasons</item>
+        <item>+ subagent isolation: subagent has its own context; the only thing crossing the boundary is refs + summary</item>
+      </list>
+    </section>
+    <checklist>
+      <check>Identify the stage boundaries — where does one LLM call end and another begin?</check>
+      <check>At every boundary, ask: am I passing CONTENT or REFS?</check>
+      <check>If content &gt; 1K tokens crosses a boundary, replace it with refs</check>
+      <check>Define a stable ref format (path-style, URI-style, or domain-prefixed)</check>
+      <check>Decide who validates refs — usually a small code step between LLM calls</check>
+      <check>Stage-output schema has a `refs: list[str]` field — never `content: str`</check>
+      <check>Schema includes a brief `rationale` BEFORE the refs (schema-field-order)</check>
+      <check>Schema constrains refs to a known manifest if possible (enum or regex)</check>
+      <check>After each LLM call, check every ref exists / resolves</check>
+      <check>On hallucinated ref, retry the call with the failed ref called out — don't silently drop</check>
+      <check>Log refs and resolution outcomes per stage</check>
+      <check>Cheap model picks refs (weak-model-preselection)</check>
+      <check>Strong model uses refs to load and reason</check>
+      <check>Subagents return refs + summary, never raw content</check>
+      <check>Pipeline persistence stores refs, not content</check>
+      <check>Tested with downstream stage missing — does the pipeline gracefully fail at the load step?</check>
+      <check>Tested with stale refs — does the load step refresh or error usefully?</check>
+      <check>Measured token reduction vs content-passing baseline (typically 50-90%)</check>
+      <check>No stage returns "summary AND content" — that's content-passing in disguise</check>
+      <check>No ref string contains content (no "the relevant passage starts with...")</check>
+      <check>No ref points outside the manifest given to the LLM</check>
+    </checklist>
+    <prompt purpose="Scanner">
+You will be given a MANIFEST of {n} items, each with id, path, and one-line description. Your job is to select at most {k} ids most relevant to: {goal}.
+
+Return STRICT JSON:
+{
+  "rationale": "one sentence",
+  "relevant_ids": [int, ...]
+}
+
+Do NOT return content from the items. Only ids.
+
+MANIFEST:
+{manifest}
+    </prompt>
+    <prompt purpose="Subagent reporter">
+After completing your investigation, return STRICT JSON:
+{
+  "summary": "3-5 sentences. What you found, what matters.",
+  "interesting_refs": ["path-or-url", ...],
+  "follow_up_questions": ["question", ...]   // optional, only if relevant
+}
+
+The PARENT agent will re-read any path you list. Do NOT paste file contents into your summary — paths are enough.
+    </prompt>
+    <prompt purpose="Tree-descender">
+You are at directory: {path}
+Children: {children_listing}
+
+Goal: {goal}
+
+Pick the ONE child most likely to contain what we need. Return:
+{
+  "rationale": "one sentence",
+  "next": "&lt;child name&gt;"
+}
+    </prompt>
+    <prompt purpose="Ref-validator wrapper">
+After the LLM emits refs, run this code-side prompt back to a small model only if validation fails:
+
+The previous response listed refs that don't exist:
+{bad_refs}
+
+Available refs are:
+{valid_refs}
+
+Pick the closest matches from the valid list, or say "no match" if none apply. Return STRICT JSON:
+{ "corrected": [str, ...], "rejected": [str, ...] }
+    </prompt>
+    <prompt purpose="Don't-quote rule">
+Add to system prompt of any reference-emitting agent:
+
+You will analyze content. When reporting findings:
+- Quote NO MORE than 10 words verbatim from any source
+- Identify sources by their REF (path/URL/id) so the orchestrator can re-read them
+- Your output should be at most 500 words; refs do the heavy lifting
+    </prompt>
+    <templates>
+      <template path="templates/scan-and-load.py" purpose="Two-stage scan + load pattern"/>
+      <template path="templates/subagent-report.py" purpose="Subagent returns refs + summary"/>
+      <template path="templates/manifest-pick.py" purpose="Manifest-then-pick pattern"/>
+      <template path="templates/recursive-descent.py" purpose="Recursive descent for tree navigation"/>
+      <template path="templates/constrained-refs.py" purpose="Python schema with constrained refs"/>
+      <template path="templates/tool-call-shape.json" purpose="Tool-call shape for LLM-emitted refs"/>
+    </templates>
+    <see-also>
+      <ref slug="schema-field-order"/>
+      <ref slug="weak-model-preselection"/>
+      <ref slug="subagent-as-context-firewall"/>
+    </see-also>
+  </content>
+</methodology>
