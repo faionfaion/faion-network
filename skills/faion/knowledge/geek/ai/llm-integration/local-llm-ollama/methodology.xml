@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="local-llm-ollama">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Run LLMs locally via Ollama's HTTP API (port 11434). Primary use: privacy-sensitive workloads, offline environments, and cost elimination for high-volume low-stakes tasks.</summary>
+    <category>llm</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>ollama</tag>
+      <tag>local-llm</tag>
+      <tag>privacy</tag>
+      <tag>cost-optimization</tag>
+      <tag>inference</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Local LLM with Ollama</title>
+
+    <summary>Run LLMs locally via Ollama's HTTP API (port 11434). Primary use: privacy-sensitive workloads, offline environments, and cost elimination for high-volume low-stakes tasks. The OpenAI-compatible `/v1` endpoint allows swapping between local and cloud APIs by changing only `base_url` and `api_key`, enabling local development + cloud production without code changes.</summary>
+
+    <why>
+      <p>Cloud APIs send content to external servers and have per-token costs and rate limits. Local inference eliminates both at the cost of hardware. For classifying/summarizing large volumes of internal documents, local models can be 100x cheaper. The OpenAI-compatible API means zero code changes to switch local vs. cloud for testing.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Data privacy requirements prohibiting external API calls</item>
+        <item>High-volume, low-stakes tasks where cloud API costs are prohibitive</item>
+        <item>Offline or air-gapped environments</item>
+        <item>Development/testing — no API costs, no rate limits, instant iteration</item>
+        <item>Deploying a custom fine-tuned model not hosted externally</item>
+        <item>Latency-sensitive applications where local inference beats network round-trip</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tasks requiring frontier-level reasoning (complex code, multi-step math) — local 7B/13B models underperform Opus/GPT-4o</item>
+        <item>Machine has &lt;8GB RAM — models will page to disk and be unusably slow</item>
+        <item>Production services with unpredictable load spikes — local GPU is not elastically scalable</item>
+        <item>Latest model capabilities needed — local model libraries lag cloud providers by months</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="setup-usage">
+      <p>Installation, RAM-based model selection, health check pattern, and OpenAI-compatible endpoint for local/cloud switching.</p>
+
+      <rule>
+        <statement>Keep Ollama running as a systemd service on Linux; check server availability via /api/tags at agent startup and fail fast with a clear error if Ollama is not running.</statement>
+        <rationale>Agents that assume Ollama is running will produce cryptic connection errors. A health check at startup with a descriptive error message saves debug time.</rationale>
+      </rule>
+
+      <example type="good" title="Installation and server startup">
+        <code lang="bash"><![CDATA[
+# Install (Linux)
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Start server (keep as systemd service in production)
+ollama serve
+
+# Pull a model (blocking — handle in agent as a blocking operation)
+ollama pull llama3.1:8b
+
+# List available models
+ollama list
+]]></code>
+      </example>
+
+      <example type="good" title="Health check and model call pattern">
+        <code lang="python"><![CDATA[
+import requests
+
+def ollama_ready(base_url="http://localhost:11434") -> bool:
+    """Health check — call at agent startup before any model call."""
+    try:
+        return requests.get(f"{base_url}/api/tags", timeout=2).status_code == 200
+    except Exception:
+        return False
+
+def check_and_generate(prompt: str, model="llama3.1:8b") -> str:
+    OLLAMA = "http://localhost:11434"
+    if not ollama_ready(OLLAMA):
+        raise RuntimeError("Ollama not running. Start with: ollama serve")
+    models = [m["name"] for m in
+              requests.get(f"{OLLAMA}/api/tags").json()["models"]]
+    if model not in models:
+        raise RuntimeError(f"Model {model!r} not pulled. Run: ollama pull {model}")
+    r = requests.post(f"{OLLAMA}/api/generate",
+                      json={"model": model, "prompt": prompt, "stream": False},
+                      timeout=120)
+    return r.json()["response"]
+]]></code>
+      </example>
+    </section>
+
+    <section name="openai-compatible-endpoint">
+      <p>Use the OpenAI-compatible /v1 endpoint for all agent code to enable local/cloud switching by changing only base_url and api_key, with zero code changes.</p>
+
+      <rule>
+        <statement>Use the OpenAI-compatible /v1 endpoint for all agent code — it enables local/cloud switching by changing only base_url and api_key, with zero code changes.</statement>
+        <rationale>Maintaining two code paths (Ollama API + OpenAI API) doubles testing surface. The /v1 compatibility layer makes Ollama a drop-in replacement for development.</rationale>
+      </rule>
+
+      <example type="good" title="OpenAI client with local/cloud switching">
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+
+# Local Ollama — identical API surface as cloud
+local_client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+
+# Cloud — only base_url and api_key change
+cloud_client = OpenAI()  # uses OPENAI_API_KEY from env
+
+def get_client(use_local: bool = False):
+    if use_local:
+        return OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+    return OpenAI()
+]]></code>
+      </example>
+    </section>
+
+    <section name="model-selection-by-ram">
+      <p>Choose model size based on available VRAM. Quantized variants reduce memory by 50-60% with minimal quality loss.</p>
+
+      <list>
+        <item>phi3:mini (2.3GB) — 4GB RAM, lightweight tasks</item>
+        <item>llama3.1:8b (4.7GB) — 8GB RAM, general purpose, supports tool use</item>
+        <item>mistral:7b (4.1GB) — 8GB RAM, fast, efficient</item>
+        <item>codellama:13b (7.4GB) — 16GB RAM, code generation</item>
+        <item>mixtral:8x7b (26GB) — 32GB RAM, mixture of experts</item>
+        <item>llama3.1:70b (40GB) — 48GB RAM, complex reasoning</item>
+      </list>
+
+      <rule>
+        <statement>Use quantized variants (Q4_K_M, Q5_K_M) — they cut VRAM by 50–60% with 2–5% quality loss; log eval_count and total_duration to detect GPU fallback to CPU (10–50x slower).</statement>
+        <rationale>Unquantized models that exceed VRAM fall back to CPU inference, which is 10–50x slower. eval_count/total_duration expose this without needing nvidia-smi in the agent.</rationale>
+      </rule>
+    </section>
+
+    <section name="modelfiles-and-production">
+      <p>Bake system prompts and parameters into Modelfiles, deploy with Docker GPU passthrough, and understand critical concurrency and tool-use limitations.</p>
+
+      <rule>
+        <statement>Use Modelfiles to bake system prompts and parameters into a named model (ollama create task-agent -f Modelfile); this avoids re-sending system prompts on every call and sets context size explicitly.</statement>
+        <rationale>Default context window (num_ctx) is model-dependent and often too small for production. Sending large system prompts on every call wastes tokens. Modelfiles bake both into the model artifact.</rationale>
+      </rule>
+
+      <example type="good" title="Modelfile for a code assistant">
+        <code lang="dockerfile"><![CDATA[
+# Modelfile for a code assistant
+FROM codellama:13b
+PARAMETER temperature 0.2
+PARAMETER num_ctx 8192
+SYSTEM """You are an expert Python programmer.
+Write clean, documented code with error handling."""
+]]></code>
+        <note>Build with: ollama create python-coder -f Modelfile</note>
+      </example>
+
+      <rule>
+        <statement>Ollama does not support parallel request processing by default — design agents to expect serialized local inference, not parallelized; never send concurrent requests expecting parallel execution.</statement>
+        <rationale>An agent pool sending concurrent requests will serialize them, not parallelize. Designing for parallelism leads to unexpected queueing and latency spikes in production.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use /api/chat (not /api/generate) for tool use / function calling; only llama3.1 and mistral-nemo support it — check model compatibility before designing tool-calling agents.</statement>
+        <rationale>The /api/generate endpoint does not support tool use. Older Mistral models do not implement function calling. Tool-calling agents must verify model support at startup.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Hardcoding the model name in agent code (e.g., always using "llama3.1:8b").</description>
+        <reason>Different machines have different VRAM. A hardcoded model that exceeds available VRAM will fail or run on CPU. Model name must be configurable via environment or config file.</reason>
+      </antipattern>
+
+      <example type="good" title="Docker Compose with GPU passthrough">
+        <code lang="yaml"><![CDATA[
+# docker-compose.yml for Ollama with GPU passthrough
+services:
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+volumes:
+  ollama_data:
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-integration-gotchas">
+      <p>Critical limitations and best practices for agentic workflows using Ollama.</p>
+
+      <list>
+        <item>RAM ceiling is hard: a 13B model requires ~16GB RAM; exceeding it causes OOM or extreme slowdown</item>
+        <item>GPU detection can fail silently — Ollama may fall back to CPU without warning; always check inference speed</item>
+        <item>Context window of local models is typically 4K–8K tokens by default (configured via `num_ctx` in Modelfile); cloud models offer 128K–2M</item>
+        <item>Ollama server must be running before the agent starts — no auto-start by default on Linux</item>
+        <item>Model pull during first use adds a blocking delay of minutes; agents must handle this gracefully</item>
+        <item>Tool use / function calling support varies by model family — llama3.1 supports it; older mistral does not</item>
+        <item>Ollama does not support parallel request processing by default — an agent pool sending concurrent requests will serialize, not parallelize</item>
+        <item>`eval_count` and `total_duration` in the response let you compute tokens/second; log these to detect GPU fallback (CPU is 10–50x slower)</item>
+        <item>Model names must match exactly including the tag (e.g., `llama3.1:8b` not `llama3.1`) — wrong name returns 404 with no helpful message</item>
+        <item>Agents that pull models on first use must handle the pull as a blocking operation with streaming status — the pull JSONL stream ends with `"status": "success"`</item>
+        <item>Local model context windows are small — an agent that passes a long conversation history will silently truncate it; monitor `eval_count` for signs of truncation</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow-pattern">
+      <p>An agent using Ollama should check server availability via `/api/tags` at startup and fail fast with a clear error if Ollama is not running. Model selection should be configurable (not hardcoded) so the agent works on different hardware. The OpenAI-compatible endpoint (`/v1`) lets agents swap between Ollama and cloud APIs by changing only `base_url` and `api_key`, making local/cloud switching seamless for testing vs. production.</p>
+
+      <note>Recommended subagent: `faion-sdd-executor-agent` — can be configured to use Ollama for local SDD task drafts before sending to cloud for review.</note>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Match model size to available VRAM: 7B/8B needs 6–8GB, 13B needs 12–16GB, 70B needs 40GB+</item>
+        <item>Use quantized variants (Q4_K_M, Q5_K_M) — they cut VRAM by 50–60% with 2–5% quality loss</item>
+        <item>Set `num_ctx` in Modelfile explicitly — default is model-dependent and often too small for production</item>
+        <item>Keep Ollama running as a systemd service on Linux so agents don't need to start it</item>
+        <item>Use Modelfiles to bake system prompts into a named model (`ollama create task-agent -f Modelfile`) — avoids re-sending system prompts per call</item>
+        <item>Set `timeout=120` or higher for large models; default HTTP timeouts will fail on first token generation</item>
+        <item>For concurrent agent requests, Ollama queues them — design agents to expect serialized local inference</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/ollama-service.py" purpose="Production-ready OllamaService class with health check, generate, and pull methods."/>
+    </templates>
+
+    <see-also>
+      <link href="https://ollama.com/"/>
+      <link href="https://github.com/ollama/ollama"/>
+      <link href="https://ollama.com/library"/>
+      <link href="https://github.com/ollama/ollama-python"/>
+      <link href="https://github.com/ollama/ollama/blob/main/docs/modelfile.md"/>
+    </see-also>
+  </content>
+</methodology>
