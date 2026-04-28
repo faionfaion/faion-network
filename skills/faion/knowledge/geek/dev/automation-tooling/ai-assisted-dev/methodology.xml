@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ai-assisted-dev">
+  <metadata>
+    <tier>geek</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Patterns for using AI coding assistants effectively by matching tools to tasks, using structured prompts, and maintaining strict review discipline for all generated code.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>ai-coding</tag>
+      <tag>claude-code</tag>
+      <tag>cursor</tag>
+      <tag>copilot</tag>
+      <tag>code-review</tag>
+    </tags>
+  </metadata>
+  <content>
+    <title>AI-Assisted Development</title>
+
+    <summary>Patterns for using AI coding assistants (Claude Code, Cursor, Copilot) effectively: match tool to task type, use structured prompts, always review AI output before accepting, and never auto-accept security-critical code. AI increases defect rate 4x when used without review discipline.</summary>
+
+    <why>
+      <p>AI tools have different strengths: Claude Code for long-context planning and refactors, Cursor for flow-state implementation, Copilot for inline boilerplate. Mismatching tool to task produces inferior output. Structured prompts (context / task / requirements / output format) reduce vagueness that causes generic or incorrect code. Human review remains mandatory — AI-generated tests can certify their own incorrect output as passing.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up a project workflow where Claude Code, Cursor, or Copilot will be primary development tools.</item>
+        <item>Deciding which AI tool to assign to which task type (planning vs. implementation vs. autocomplete).</item>
+        <item>Building a CI step that uses AI for automated test generation or code review commentary.</item>
+        <item>Onboarding a developer to AI coding tools — establishing safe review habits from the start.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Security-critical auth or payment logic where AI-suggested code must never be accepted without line-by-line human review.</item>
+        <item>Compliance-sensitive environments (healthcare, finance) where AI tool output has not been approved by legal/compliance.</item>
+        <item>Teams lacking the experience to review AI output critically — premature AI adoption creates hidden defect accumulation.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="ai-coding-tool-selection-and-combination">
+      <p>Match AI coding tools to task type: Claude Code for long-context planning and refactors, Cursor for flow-state implementation, Copilot for inline boilerplate. Combination use produces better output than any single tool.</p>
+
+      <rule>
+        <statement>Select the AI coding tool based on the task type, not personal preference. Mismatching tool to task produces inferior output.</statement>
+        <rationale>Each tool optimizes for a different workflow: Claude Code has no IDE dependency and handles long context; Cursor provides real-time feedback during coding; Copilot is optimized for inline speed. Forcing one tool to do another's job wastes its strengths.</rationale>
+      </rule>
+
+      <list>
+        <item>Claude Code: documentation, test suites, large refactors, complex reasoning, terminal-based tasks, agentic pipelines.</item>
+        <item>Cursor: exploratory feature implementation, flow-state coding, multi-file edits with real-time feedback, quick changes with visual context.</item>
+        <item>Copilot: daily coding acceleration, boilerplate generation, inline completion, repetitive patterns.</item>
+      </list>
+
+      <rule>
+        <statement>Use tools sequentially for a single feature: Claude Code for research and planning, Cursor for implementation, Copilot for inline completion during implementation.</statement>
+        <rationale>Context fragmentation occurs when multiple tools operate on the same feature simultaneously — each tool sees different history. Sequential use maintains context coherence at each stage.</rationale>
+      </rule>
+
+      <example type="good" title="Sequential multi-tool workflow for a feature">
+        <note>Sequential multi-tool workflow for a feature.</note>
+        <code lang="text"><![CDATA[
+Research/Planning → Claude Code (long context, no IDE)
+Implementation    → Cursor (real-time feedback, multi-file)
+Inline completion → Copilot (speed, boilerplate)
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>Always review AI-generated code before accepting. Never auto-accept security-critical code (auth, payment, data access, business logic).</statement>
+        <rationale>AI coding tools increase defect rate 4x when used without review discipline (per 2025 research). AI tools trained on public data reproduce patterns from outdated library versions. Static analysis (ruff, Semgrep, Bandit) must run in CI regardless of AI involvement.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Provide structured context in every AI prompt: tech stack, constraints, expected output format. Vague prompts produce vague code.</statement>
+        <rationale>AI tools without architecture context infer project structure from limited file access. Vague prompts produce generic patterns that require significant rework to fit the actual codebase.</rationale>
+      </rule>
+    </section>
+
+    <section name="prompt-engineering-for-code">
+      <p>Structured prompts with explicit context, task, requirements, and output format produce consistent, high-quality code from AI assistants. Iteration and specificity are more valuable than prompt length.</p>
+
+      <rule>
+        <statement>Every code generation prompt must include four components: Context (project type, tech stack, constraints), Task (specific action), Requirements (must-haves, edge cases), Output (expected format, file locations).</statement>
+        <rationale>AI tools without explicit context produce generic patterns. Explicit output format specification prevents the common failure of getting explanation prose when code was needed, or a partial file when a complete file was expected.</rationale>
+      </rule>
+
+      <example type="good" title="Structured prompt with all four components">
+        <note>Structured prompt with all four components.</note>
+        <code lang="text"><![CDATA[
+Context: Django REST API, Python 3.11, pytest, existing UserService class in src/services/user.py.
+Task: Generate pytest tests for UserService.create_user().
+Requirements: cover validation error, duplicate email, successful creation, missing required field. Use pytest fixtures and parametrize where applicable. Follow AAA pattern.
+Output: Complete Python file at tests/test_user_service.py. No explanatory prose.
+        ]]></code>
+      </example>
+
+      <example type="bad">
+        <code lang="text"><![CDATA[
+Write tests for UserService. Make them comprehensive.
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>Treat first AI output as a draft. Refine the prompt and regenerate rather than manually patching AI output unless the change is trivial.</statement>
+        <rationale>Manual patching of AI output accumulates technical debt — the prompt remains vague, producing the same low-quality starting point next time. Refining the prompt builds a reusable asset.</rationale>
+      </rule>
+
+      <list>
+        <item>Draft: run the initial structured prompt.</item>
+        <item>Review: identify what is wrong or missing.</item>
+        <item>Refine: add missing constraints or context to the prompt.</item>
+        <item>Regenerate: produce a new complete output.</item>
+        <item>Final review: verify against requirements before committing.</item>
+      </list>
+
+      <rule>
+        <statement>For auth, payment, data access, and business logic: require a second human reviewer even after AI code passes automated review.</statement>
+        <rationale>AI-generated code may pass tests and static analysis but violate security constraints (e.g., logging sensitive fields, insufficient input validation). Automated tools cannot fully substitute human security review for high-risk code paths.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-test-generation-patterns">
+      <p>AI generates test stubs efficiently but requires human review of assertions for correctness — AI-generated tests can pass trivially without verifying actual behavior. Self-healing test tools reduce maintenance overhead but introduce non-determinism.</p>
+
+      <rule>
+        <statement>Use AI to generate the first draft of tests; require human review of assertion logic before accepting. A test that calls assert result is not None proves nothing.</statement>
+        <rationale>An agent generating tests and running them can certify its own incorrect output as passing. Green CI from AI-generated tests is not the same as meaningful test coverage. Human must spot-check a random subset for logical correctness.</rationale>
+      </rule>
+
+      <list>
+        <item>Requirements: identify happy path, edge cases, error handling, integration boundaries.</item>
+        <item>AI generates: test stubs with parametrize, fixtures, AAA structure.</item>
+        <item>Human reviews: assertion logic is meaningful, mocks test behavior not implementation.</item>
+        <item>Refinement: add missing scenarios identified during review.</item>
+        <item>Execution: tests must pass in CI before commit.</item>
+      </list>
+
+      <rule>
+        <statement>After running coverage reports, prompt the AI with uncovered branches and complex conditions to generate targeted gap-filling tests.</statement>
+        <rationale>AI generates tests from visible code structure, often missing branches that are only visible in coverage reports. Feeding the coverage gap back into the prompt produces higher-value tests than a generic "generate more tests" prompt.</rationale>
+      </rule>
+
+      <example type="good" title="Coverage-driven gap fill prompt">
+        <note>Coverage-driven gap fill prompt.</note>
+        <code lang="text"><![CDATA[
+Context: pytest, coverage report shows UserService.create_user() missing branch at line 47 (duplicate email path) and line 62 (missing required field).
+Task: Generate two parametrized pytest tests covering these exact branches.
+Output: pytest code only, no prose.
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>Self-healing test tools (Virtuoso, mabl) that adapt to UI changes automatically require periodic human review to verify tests have not silently changed meaning.</statement>
+        <rationale>Self-healing reduces maintenance overhead but introduces non-determinism: a test that previously verified button X behavior may silently adapt to verify button Y after a UI change. The intent of the test is lost.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflows-and-ci-integration">
+      <p>Use Claude Code as the planning and large-refactor agent (long context, no IDE dependency), Cursor for flow-state implementation in the editor, and Copilot inline for boilerplate. An agentic CI pipeline can use Claude Code's `--print` mode to review PRs, generate test stubs from diff, and post structured review comments. For test generation, a subagent reads source files and generates pytest/jest test suites in a parallel worktree.</p>
+
+      <note>Recommended subagents: faion-sdd-executor-agent — executes structured development tasks with quality gates; wraps AI-generated code in a review step before commit.</note>
+
+      <p>Example prompt pattern for code generation:</p>
+
+      <code lang="text"><![CDATA[
+Context: Django REST API, Python 3.11, pytest. Task: Generate tests for UserService.create_user(). Requirements: cover validation error, duplicate email, successful creation, missing required field. Use pytest fixtures, parametrize where applicable, follow AAA pattern.
+      ]]></code>
+
+      <p>Example prompt pattern for PR review:</p>
+
+      <code lang="text"><![CDATA[
+Review the following diff for security issues, missing error handling, and test coverage gaps. Output structured JSON: {"security_issues": [], "missing_error_handling": [], "coverage_gaps": []}.
+      ]]></code>
+    </section>
+
+    <section name="cli-tools-and-services">
+      <p>Multiple tools and services support AI-assisted development workflows.</p>
+
+      <p>CLI tools: claude — Claude Code CLI — agentic tasks, large refactors, file generation (https://docs.anthropic.com/en/docs/claude-code). ruff — Python linter/formatter; run after AI-generated code to catch style violations (https://docs.astral.sh/ruff). pytest — Test runner; AI-generated tests need a green run to be accepted (https://docs.pytest.org). jest / vitest — JS test runners for AI-generated test suites (https://vitest.dev). gh (GitHub CLI) — Post AI review comments to PRs, create issues from AI analysis (https://cli.github.com).</p>
+
+      <p>Services and apps: GitHub Copilot (SaaS, partial agent-friendly) — IDE extension; Copilot Workspace has agentic features. Cursor (SaaS/Electron, no public API) — Best for human-in-loop; not automatable by other agents. Claude Code (OSS CLI, yes agent-friendly) — Full CLI automation, worktree isolation, subagent dispatch. Katalon (SaaS, yes agent-friendly) — AI test generation pipeline; REST-triggerable. mabl (SaaS, yes agent-friendly) — AI-driven e2e test creation; CI-integrated. Sourcegraph Cody (SaaS/OSS, partial) — Code search + AI; REST API for enterprise. GitHub Actions (SaaS, yes agent-friendly) — Host AI review/generation workflows.</p>
+    </section>
+
+    <section name="best-practices">
+      <p>Proven practices for AI-assisted development workflows.</p>
+
+      <note>Match tool to task: Claude Code for documentation and refactors (needs long context); Cursor for feature implementation (needs real-time feedback); Copilot for autocomplete (needs inline speed).</note>
+
+      <note>Provide structured context in every AI prompt: tech stack, constraints, expected output format. Vague prompts produce vague code.</note>
+
+      <note>AI-generated tests must be reviewed for meaningful assertions — a test that calls `assert result is not None` proves nothing.</note>
+
+      <note>Establish a team-wide "AI review checklist" so all members apply the same scrutiny to AI output before merging.</note>
+
+      <note>For security-sensitive areas (auth, payment, data access), require a second human reviewer even if AI already reviewed the PR.</note>
+
+      <note>Track defects introduced by AI code vs. human code separately in your bug tracker for 3 months; use the data to calibrate how much review AI outputs need.</note>
+
+      <note>Run `ruff check --fix` and type checkers immediately after AI code generation; AI frequently produces type errors and unused imports.</note>
+    </section>
+
+    <section name="limitations-and-failure-modes">
+      <p>Critical limitations and gotchas when using AI for code generation.</p>
+
+      <antipattern>
+        <description>"Prompt and publish" pattern: accepting AI output without review.</description>
+        <reason>Leads to 4x higher defect rate (per 2025 research cited in README).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>AI test generation that produces tests passing trivially.</description>
+        <reason>Human must verify test assertions are meaningful; tests may be checking mocks, not behavior.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Adopting self-healing test tools without governance.</description>
+        <reason>Self-healing test tools (Virtuoso, mabl) introduce non-determinism: tests may silently change meaning when UI changes are detected.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Providing vague prompts without architecture context.</description>
+        <reason>AI tools don't have access to internal architecture context unless explicitly provided via CLAUDE.md / system prompts; vague prompts produce generic code.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Multi-tool workflows creating context fragmentation.</description>
+        <reason>When Claude Code + Cursor + Copilot operate simultaneously, each tool sees different history and produces conflicting outputs.</reason>
+      </antipattern>
+
+      <note>An agent generating tests that it also runs can certify its own incorrect output as passing. Human must spot-check a random subset of AI tests for logical correctness, not just green CI.</note>
+
+      <note>AI coding tools trained on public data reproduce patterns from outdated library versions. Always pin versions in requirements and verify AI-generated API calls against current docs.</note>
+
+      <note>When Claude Code operates in an automated pipeline (no human in loop), it may accept ambiguous instructions and make architectural decisions. Use `--print` mode and diff review before any automated commit.</note>
+
+      <note>Multi-turn AI sessions accumulate context errors: an early incorrect assumption propagates through subsequent responses. For long coding sessions, reset context and re-state requirements periodically.</note>
+
+      <note>AI-generated code may pass tests but violate security constraints (e.g., logging sensitive fields). Static analysis tools (Semgrep, Bandit) must run in CI regardless of AI involvement.</note>
+    </section>
+
+    <templates>
+      <template path="templates/gen-tests.sh" purpose="Bash script: calls Claude Code in --print mode to generate pytest test stubs for a source file."/>
+      <template path="templates/prompt-code.txt" purpose="Structured code-generation prompt template (context / task / requirements / output)."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.anthropic.com/en/docs/claude-code"/>
+      <link href="https://testguild.com/7-innovative-ai-test-automation-tools-future-third-wave/"/>
+      <link href="https://wavespeed.ai/blog/posts/cursor-vs-claude-code-comparison-2026/"/>
+      <link href="https://medium.com/@saad.minhas.codes/ai-coding-assistants-in-2026-github-copilot-vs-cursor-vs-claude-which-one-actually-saves-you-4283c117bf6b"/>
+      <link href="https://semgrep.dev"/>
+    </see-also>
+  </content>
+</methodology>
