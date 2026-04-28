@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="strategy-analysis">
+  <metadata>
+    <tier>pro</tier>
+    <group>ba</group>
+    <domain>ba-core</domain>
+    <summary>Four KA-6 tasks with strict input/output contracts. Future-state goals require metric, baseline, target, target date. Change strategy includes do-nothing option.</summary>
+    <category>strategy</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>babok</tag>
+      <tag>strategy</tag>
+      <tag>ka6</tag>
+      <tag>business-analysis</tag>
+      <tag>change-strategy</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Strategy Analysis — BABOK Knowledge Area 6</title>
+
+    <summary>Four sequential KA-6 tasks — analyze current state, define future state, assess risks, define change strategy — each with a strict input/output contract. Initiatives that start without a validated current-state analysis and a measurable future state produce change strategies disconnected from real gaps. A KA-6 router that checks artifact presence and freshness (no artifact older than 90 days) prevents silently stale strategy work from driving budget decisions.</summary>
+
+    <why>
+      <p>BABOK Knowledge Area 6 provides the canonical four-task framework for organizational strategy work. Without validated current-state analysis, measurable future-state goals, explicit risk registers, and defensible change strategies, initiatives drift from business needs to vendor preferences. The framework enforces artifact-based governance: every task produces a JSON-conforming output that can be validated, traced, and handed off to downstream agents for implementation planning.</p>
+      <p>A KA-6 router agent that inspects which artifacts exist for an initiative and refuses to advance past a missing or stale task prevents the common failure mode of silently reusing 14-month-old current-state analysis with a 6-month-old future state, which produces gap analysis against a baseline that no longer exists.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Onboarding a BA agent to BABOK KA-6 layout — canonical map a routing agent uses to pick a sub-task</item>
+        <item>Audit or gap-check of strategy artifacts: cross-checking that all four KA-6 tasks were performed</item>
+        <item>Generating BABOK-aligned task scaffolding before deeper requirements work begins</item>
+        <item>Mapping legacy strategy documents into BABOK terminology for Jama, Polarion, or Modern Requirements ingestion</item>
+        <item>Training prompt grounding when a custom agent must reason in BABOK terms</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>A non-BABOK strategy framework is already in force (Wardley mapping, OKR-only, JTBD-driven) — do not retrofit KA-6 on top</item>
+        <item>Single-team backlog refinement — KA-6 is heavyweight; a one-page problem statement is enough</item>
+        <item>Pure product-discovery experiments before any commitment — use lean-canvas / opportunity-solution-trees first</item>
+        <item>Engineering-only refactors with no business-state change — KA-6 business-need framing produces noise</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="ka6-router-pattern">
+      <p>Treat KA-6 as four agent sub-routines, each with a strict input/output contract. A ka6-router-agent (sonnet) inspects which artifacts already exist for an initiative and dispatches to whichever sub-routine is missing or stale. Each sub-routine emits JSON conforming to the schemas; the router validates schemas before storing artifacts in .aidocs/{initiative}/strategy/.</p>
+
+      <rule>
+        <statement>A ka6-router-agent (sonnet) inspects which artifacts exist for an initiative and dispatches to the first missing or stale task. It refuses to advance to a later task if an earlier one is missing. It also refuses to reuse any artifact with last_validated_at older than 90 days.</statement>
+        <rationale>Skipping tasks silently or using stale artifacts are the two most common causes of strategy work that drives the wrong decisions.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="text"><![CDATA[
+You are a BABOK KA-6 router. Inputs:
+  - initiative_id
+  - .aidocs/<initiative>/strategy/ directory listing with last_validated_at per artifact
+
+Decide which of {current_state, future_state, risk, change_strategy}
+is missing or has last_validated_at > 90 days ago.
+Emit JSON:
+{ next_task, reason, required_inputs[], blocking_gaps[] }
+Refuse to advance to a later task if an earlier one is missing.
+Refuse to reuse any artifact older than 90 days; require re-validation first.
+]]></code>
+        <note>KA-6 router prompt — strict JSON, sequential task enforcement, freshness gate.</note>
+      </example>
+    </section>
+
+    <section name="task-1-current-state">
+      <p>The first KA-6 task produces a current-state artifact covering six areas: business processes, organization structure, technology landscape, people and skills, data and information, external factors. Each area row must carry evidence_url and interviewed[] — no area may be populated from assumptions alone.</p>
+
+      <rule>
+        <statement>Produce a current-state artifact covering six areas: business processes, organization structure, technology landscape, people and skills, data and information, external factors. Each area row must carry evidence_url and interviewed[] — no area may be populated from assumptions alone.</statement>
+        <rationale>Agents that take the README's linear arrow at face value skip the iteration loop; current-state is not a one-sitting output but a validated artifact that may require multiple elicitation rounds.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Choose techniques explicitly and record the choice: SWOT (engagement cadence tool), PESTLE (macro-environment), capability mapping (what the org can do), value-chain analysis (where value is created), business model canvas (how value is captured). Justify the choice against the question being answered.</statement>
+        <rationale>Agents default to SWOT and PESTLE without justification; naming better-fitting techniques (capability mapping, value-chain) produces richer current-state evidence.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Solution-shaped business need: "we need a CRM" presented as the business need.</description>
+        <reason>The framer must reject anything not outcome-shaped; require the stakeholder to state the problem the CRM solves before accepting the request.</reason>
+      </antipattern>
+    </section>
+
+    <section name="task-2-future-state">
+      <p>The future-state task defines the desired state in measurable terms. Every goal in the future state must carry all six fields: metric, baseline, baseline_date, target, target_date, owner. Reject any goal missing a field or where baseline equals target.</p>
+
+      <rule>
+        <statement>Every goal in the future state must carry all six fields: metric, baseline, baseline_date, target, target_date, owner. Reject any goal missing a field or where baseline equals target. No "TBD" values — flag and re-elicit.</statement>
+        <rationale>Goals with missing baselines cannot generate a gap analysis; goals where baseline equals target are hallucinated progress.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Future state must be signed off by the exec sponsor before risk assessment and strategy work begin.</statement>
+        <rationale>Risk assessment and strategy options are meaningless without a locked future state; proceeding without sign-off wastes subsequent work when the target changes.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Goal hallucination — future-state agent invents measurable-looking goals ("reduce cost 30%") with no source quote.</description>
+        <reason>Require source_quote + source_doc per goal; reject any goal without a cited evidence span from an elicitation artifact.</reason>
+      </antipattern>
+    </section>
+
+    <section name="task-3-assess-risks">
+      <p>Risk assessment produces two registers: risks of making the change AND risks of not making the change. Both are required by BABOK KA-6; an artifact with only one register is incomplete.</p>
+
+      <rule>
+        <statement>Produce two risk registers: risks of making the change AND risks of not making the change. Both are required by BABOK KA-6; an artifact with only one register is incomplete.</statement>
+        <rationale>The "do nothing" risk register provides the baseline against which the change strategy is justified; omitting it makes the recommendation unconditional.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Risk register monoculture — only "change risks" listed, no "do-nothing risks".</description>
+        <reason>Encode both registers as required in the JSON schema; a validator rejects any risk output with only one register.</reason>
+      </antipattern>
+    </section>
+
+    <section name="task-4-define-change-strategy">
+      <p>The change strategy task produces a memo with multiple solution options, each with cost-band, time-band, risk-rating, and capability-fit. The status-quo / do-nothing option is mandatory — it provides the leadership baseline.</p>
+
+      <rule>
+        <statement>Present at least three options (build, buy, partner, modify existing, status-quo / do nothing), each with cost-band, time-band, risk-rating, and capability-fit. Never omit the status-quo option — it is the leadership baseline.</statement>
+        <rationale>Agents skip the status-quo option because it "feels weak"; without it the recommendation looks unconditional and cannot be challenged fairly.</rationale>
+      </rule>
+
+      <rule>
+        <statement>A change strategy produces a strategy memo, not a plan. A memo has options, a recommendation, and a rationale. Gantt charts and sprint plans are downstream artifacts that belong in implementation-plan.md, not in the strategy.</statement>
+        <rationale>Agents confuse strategy with plan; a 30-page implementation roadmap where a 3-page strategy memo was needed delays decisions by burying the recommendation.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Vendor-biased options — when the change-strategy-agent has access to vendor docs, options drift toward those vendors.</description>
+        <reason>Force faion-brainstorm divergence first; options must include build and status-quo before any vendor option is considered.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>The four sub-routines:</p>
+
+      <list>
+        <item>current-state-agent (opus) — input: business need + organisational context. Output: current-state JSON across six areas (process, org, tech, people, data, external) plus a stakeholder coverage matrix. Techniques applied: SWOT, PESTLE, capability mapping, value-chain analysis, business model canvas. Each area row carries evidence_url + interviewed[].</item>
+        <item>future-state-agent (opus) — input: business need + current-state JSON + corporate strategy doc. Output: future-state JSON with vision (≤25 words), goals (each with metric + baseline + target + target_date), capability map deltas, process / tech / data target descriptions. A paired future-state-validator (sonnet) rejects any goal lacking measurability.</item>
+        <item>risk-agent (sonnet) — input: current + future state. Output: risk register JSON (id, description, likelihood 1-5, impact 1-5, exposure, mitigation, owner). BABOK lists risks of the change and risks of not changing; the agent must produce both registers.</item>
+        <item>change-strategy-agent (opus) — input: current + future + risks + gap analysis. Output: change strategy memo with N≥3 options (build / buy / partner / modify / status-quo) each with cost-band, time-band, risk-rating, capability-fit; recommended option; transition states if multi-phase. Hands off to decision-analysis (sibling methodology) for the weighted matrix.</item>
+      </list>
+
+      <p>Human-in-the-loop checkpoints: (a) sponsor signs the business need before current-state starts; (b) exec sponsor locks the future state before risk + strategy work; (c) decision-maker signs the change strategy; (d) BA + faion-improver revisit predicted vs. actual gap closure 6-12 months post-decision.</p>
+
+      <example type="good">
+        <code lang="text"><![CDATA[
+You are a future-state schema validator.
+For each goal in input JSON verify presence of:
+  {metric, baseline, baseline_date, target, target_date, owner}
+Reject (status: "rejected", missing[]) if any field absent
+  or if baseline == target.
+No prose output, only JSON. No exceptions.
+]]></code>
+        <note>Future-state schema validator — gate that rejects unmeasurable goals.</note>
+      </example>
+    </section>
+
+    <section name="ka6-limitations">
+      <p>BABOK basics describe what must be produced, not how to drive it. Agents that stop at "produce the four artifacts" deliver paperwork without judgment. Pair with the operational sibling for orchestration.</p>
+
+      <antipattern>
+        <description>Stale current-state artifact used without freshness check.</description>
+        <reason>An agent should check last_validated_at and refuse to proceed if the artifact is older than 90 days; stale context produces gap analysis against a changed baseline.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Trace decay: requirements created after KA-6 have no traces_to the originating goal.</description>
+        <reason>Pre-commit hook rejects orphan requirements; every requirement must carry a traces_to: GOAL-XX frontmatter entry.</reason>
+      </antipattern>
+
+      <p>Risk assessment in BABOK is generic; for regulated domains use risk-management / iso-31000 techniques on top. BABOK does not prescribe metrics — gaps written without measurable baseline + target are common; the agent must enforce measurability. Techniques list in BABOK is large (50+); naive agents pick the famous ones (SWOT, PESTLE) and ignore better-fitting ones (capability mapping, value-chain analysis, scenario modeling).</p>
+    </section>
+
+    <section name="recommended-subagents">
+      <list>
+        <item>faion-brainstorm — divergence pass before change-strategy-agent writes options. Without it, the option set collapses to whatever vendor decks were on the desk.</item>
+        <item>faion-sdd-executor-agent — once the change strategy is signed, scaffolds .aidocs/backlog/initiative/ with constitution → spec → design → implementation-plan stubs that carry strategy_id traces back to the gap.</item>
+        <item>faion-feature-executor — executes individual change-strategy tasks; each task references the originating gap + business need.</item>
+        <item>faion-improver — quarterly meta-loop: rereads strategy artifacts older than 6 months, compares predictions vs. observed metrics, updates .aidocs/memory/patterns.md and mistakes.md.</item>
+        <item>password-scrubber-agent — runs over every artifact before commit; strategy memos commonly leak vendor pricing, NDA-bound roadmaps, or named individuals.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Treat the four KA-6 outputs as first-class artifacts with a versioned filename + change log, not as wiki pages that drift silently.</item>
+        <item>Every goal in the future state carries {metric, baseline, baseline_date, target, target_date, owner}. No exceptions, no "TBD" — flag and re-elicit instead.</item>
+        <item>Enforce a status-quo / "do nothing" option in every change strategy; agents skip it because it feels weak, but it is the leadership baseline.</item>
+        <item>Rerun KA-6 quarterly before the next budget cycle; stale strategy artifacts cause budget-vs-reality drift.</item>
+        <item>Keep the BABOK technique choice (SWOT vs. PESTLE vs. capability map) explicit in the artifact metadata so reviewers can challenge the choice, not just the output.</item>
+        <item>Separate KA-6 artifacts (.aidocs/*/strategy/) from KA-3 artifacts (.aidocs/*/requirements/); blending them collapses traceability.</item>
+        <item>Trace each requirement / story to a KA-6 goal id (traces_to: GOAL-XX); without this trace the requirement is orphaned and should not enter the backlog.</item>
+        <item>Use small, fast subagents (haiku) for trace + schema validation; reserve opus for current-state and change-strategy where judgment dominates.</item>
+        <item>Persist the agent's chain-of-decisions (not full thinking) into .aidocs/initiative/strategy/decision-log.md so 6-month review can audit reasoning.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/business-need-statement.md" purpose="Business need statement with strategic alignment and success metrics"/>
+      <template path="templates/gap-analysis.md" purpose="Gap analysis table across process, technology, people, and data"/>
+      <template path="templates/validate-ka6.sh" purpose="Bash gate that validates all four KA-6 JSON artifacts against schemas before commit"/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.iiba.org/standards-and-learning/babok-guide/"/>
+      <ref slug="strategy-basics"/>
+      <ref slug="strategy-methods"/>
+    </see-also>
+  </content>
+</methodology>

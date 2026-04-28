@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="interface-analysis">
+  <metadata>
+    <tier>pro</tier>
+    <group>ba</group>
+    <domain>ba-modeling</domain>
+    <summary>Identifies, documents, and validates all connection points between a solution and external systems using stable IF-XXX identifiers with contract-driven testing to prevent integration failures.</summary>
+    <tags>
+      <tag>interface-requirements</tag>
+      <tag>system-integration</tag>
+      <tag>api-contracts</tag>
+      <tag>openapi</tag>
+      <tag>interface-testing</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Interface Analysis</title>
+
+    <summary>Identifies, documents, and validates all connection points between a solution and external systems, users, hardware, or communication channels. Each interface gets a stable ID (IF-XXX) referenced from requirements.md, design.md, and test-plan.md. Specs are generated from or synced to OpenAPI / AsyncAPI / Protobuf — never hand-typed as the primary source of truth. Breaking changes detected via `oasdiff` in CI.</summary>
+
+    <why>
+      <p>Integration failures and late surprises happen when interface requirements are discovered during development rather than before design. A stable IF-XXX catalog with mandatory error-handling and auth fields prevents the most common integration failures: mismatched timeouts, undefined retry semantics, hallucinated error codes, and auth-rotation blind spots. Consumer-driven contract tests (Pact) close the loop between spec and live system.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>A new feature in SDD `design.md` introduces system-to-system data flow and the spec lacks payload schemas, error codes, auth, or SLA fields.</item>
+        <item>Onboarding a third-party SaaS (Stripe, SendGrid, Twilio) before writing client code.</item>
+        <item>Migrating between providers where direction, format, and protocol diff must be documented.</item>
+        <item>Decomposing a monolith into services: each split point needs a contract before the team commits.</item>
+        <item>Drafting acceptance criteria for `test-plan.md` tasks that test integration boundaries (contract tests, mocks, error scenarios).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pure-internal refactor where caller and callee live in the same process and module boundary — an ADR is enough.</item>
+        <item>Throwaway scripts and one-off data migrations.</item>
+        <item>Greenfield prototype before product-market fit — defer formal specs until the contract starts changing under multiple consumers.</item>
+        <item>UI-only changes that do not alter the data envelope.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="interface-types">
+      <rule>
+        <statement>Classify every interface as one of: user (human interaction — screens, forms, reports), system (system-to-system — APIs, file transfers, databases), hardware (physical device — scanners, printers, sensors), or communication (protocol layer — HTTP, SFTP, message queues). Assign a stable ID: IF-XXX.</statement>
+        <rationale>Type determines the applicable attribute set, the relevant testing approach, and the contract format (OpenAPI for REST, AsyncAPI for event streams, data dictionary for file transfers). Misclassification produces the wrong contract.</rationale>
+      </rule>
+      <rule>
+        <statement>Reference every IF-XXX ID from requirements.md, design.md, and test-plan.md. Assign IDs before writing any spec text. Traceability collapses without stable IDs.</statement>
+        <rationale>Unnamed interfaces accumulate informally and become undocumented implicit contracts. IF-IDs make every interface reviewable, testable, and auditable across its full lifecycle.</rationale>
+      </rule>
+    </section>
+
+    <section name="required-attributes-per-interface">
+      <rule>
+        <statement>Every interface spec must capture: name, type, direction (inbound/outbound/bidirectional), source/target systems, data exchanged, format, protocol, frequency, volume estimate (mark "tbd" until load test data exists), security (auth type, encryption), and error-handling (condition, response, retry Y/N, notification).</statement>
+        <rationale>Volume and SLA fields are guessed pre-launch. Mark them "tbd" — not with confident fictions. Agents will otherwise emit confident numbers that produce wrong capacity planning.</rationale>
+      </rule>
+      <rule>
+        <statement>For every error code documented, specify what the consumer must do (retry with backoff, surface to user, alert on-call). Error codes without consumer behaviour are decoration.</statement>
+        <rationale>Developers reading a spec without consumer behaviour must guess the expected reaction. Wrong reactions (retry on 404, suppress a 503) create production failure patterns that are hard to trace back to the spec.</rationale>
+      </rule>
+      <rule>
+        <statement>Define idempotency keys and dedup window for any non-GET / non-query interface. Specify whether retries are safe. For async interfaces, document ordering guarantees (per-key, none, total) and consumer-group semantics.</statement>
+        <rationale>Mismatched retry budgets between caller and callee are a top-3 production failure pattern. Ordering assumptions without documentation become silent bugs when queue consumers are added.</rationale>
+      </rule>
+    </section>
+
+    <section name="source-of-truth-rule">
+      <rule>
+        <statement>OpenAPI / AsyncAPI / Protobuf is the source of truth. The IF-XXX Markdown spec is generated from or synced to the machine-readable spec — never hand-typed as the primary artifact. Breaking changes detected via oasdiff in CI.</statement>
+        <rationale>Hand-typed Markdown specs drift from the implementation the moment code ships. Machine-readable specs (OpenAPI/AsyncAPI) are executable by mocking tools, contract-test frameworks, and SDK generators, providing continuous verification.</rationale>
+      </rule>
+      <rule>
+        <statement>Version the interface, not the system. /v1/customers survives independently of the service's semver. Consumer expectations are pinned to the interface version, not the deployment version.</statement>
+        <rationale>Coupling interface versioning to service versioning creates unnecessary consumer migrations for changes that do not affect the interface contract.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <rule>
+        <statement>Pass 1 (Research agent): crawls upstream system docs (OpenAPI URL, vendor PDF, sample responses) and emits the raw interface catalog as JSON with one entry per endpoint/event/file format. Error codes must come from the source; never from the agent's priors.</statement>
+        <rationale>LLMs hallucinate plausible-looking error codes (422 where the API returns 400). Constraining the research agent to document-cited codes with source URLs prevents this class of spec error.</rationale>
+      </rule>
+      <rule>
+        <statement>Pass 2 (BA/spec agent): fills the IF-XXX spec template from the raw catalog, links each field to a requirement ID, and produces contract-test scaffolding (curl examples, schema fragments). Anchors the perspective consistently: "our system" is always the subject — never flip to the other side's perspective mid-spec.</statement>
+        <rationale>Direction labels flip easily ("we provide" vs "we consume"). Anchoring the perspective prevents the most common interface spec bug: a field listed as inbound that is actually outbound.</rationale>
+      </rule>
+      <rule>
+        <statement>Pass 3 (Reviewer agent): diffs the committed spec against actual HTTP captures (curl/httpie/mitmproxy export) or live OpenAPI URL. Reports drift as a unified diff. If breaking changes are detected, opens an SDD task under todo/ automatically.</statement>
+        <rationale>Drift between spec and live system is the primary failure mode of interface analysis. Automated drift detection converts continuous spec maintenance from a manual discipline to a CI gate.</rationale>
+      </rule>
+    </section>
+
+    <section name="human-checkpoints">
+      <rule>
+        <statement>Three mandatory human checkpoints: (1) sign-off of every new IF-XXX before client code starts, (2) review of any breaking-change diff from oasdiff before deploy, (3) manual confirmation of auth and secret rotation steps.</statement>
+        <rationale>Auth fields (OAuth scopes, API key locations) are routinely wrong in agent-generated specs. Manual confirmation of auth before coding starts prevents an entire class of authentication bugs from reaching production.</rationale>
+      </rule>
+    </section>
+
+    <section name="async-interface-rule">
+      <rule>
+        <statement>Event-driven interfaces (Kafka, NATS, webhooks) must use AsyncAPI 3.0 as the spec format, not the REST interface template. Run a separate AsyncAPI pass for each async interface — never reuse the REST template.</statement>
+        <rationale>Async interfaces have different semantics: direction is fan-out, retries are consumer-side, ordering is a topic property, not a message property. The REST template cannot represent these constraints correctly.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations-and-failure-modes">
+      <p>Static spec drift: hand-written Markdown specs decay the moment code ships unless generated from OpenAPI/Protobuf source of truth.</p>
+      <p>Volume/SLA fields are guessed pre-launch; real numbers only arrive post-load test, so the doc lies for months.</p>
+      <p>Async/event flows (Kafka, NATS, webhooks) do not map cleanly to the request/response template — direction is "fan-out", retries are consumer-side, and ordering is a property of the topic, not the message.</p>
+      <p>Cross-team interfaces fail at the human boundary: spec is correct, but the other team owns auth rotation and breaks it on Friday.</p>
+      <p>LLM-generated specs hallucinate plausible-looking error codes (e.g., 422 where the API returns 400) — every code must be verified against live response.</p>
+    </section>
+
+    <section name="agentic-workflow-extended">
+      <p>Drive interface analysis as a three-pass loop with subagents. Pass 1: a research subagent crawls the upstream system's docs (OpenAPI, vendor PDF, sample responses) and emits the raw interface catalog. Pass 2: an SDD/BA subagent fills the spec template, links each field to a requirement ID, and produces contract-test scaffolding. Pass 3: a reviewer subagent diffs the spec against actual HTTP captures (curl/httpie/Postman export) and flags drift. The orchestrator commits the catalog into .product/feature/interfaces/ and references it from design.md.</p>
+
+      <rule>
+        <statement>Recommended subagents: faion-sdd-executor-agent runs the BA/spec authoring task with quality gates; ensures interface-spec.md exists before design.md is marked done. faion-brainstorm (diverge/converge) for "what could go wrong on this interface" failure-mode generation when no live system exists yet. faion-improver for periodic audit pass: re-fetch live OpenAPI, diff against committed catalog, open SDD task on drift. A custom interface-analyst Task agent (spawn ad-hoc with Task tool) reads vendor docs + sample payloads, returns filled spec template only.</statement>
+        <rationale>Specialized agents ensure consistent spec quality and continuous validation.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Treat OpenAPI/AsyncAPI/Protobuf as the source of truth; the IF-XXX Markdown is generated or synced, not hand-typed.</item>
+        <item>Assign every interface a stable ID (IF-001) and reference it from requirements.md, design.md, and test-plan.md — traceability matrix collapses without it.</item>
+        <item>Capture at least one real payload per direction with mitmproxy or curl and paste it into the spec; example beats prose for downstream consumers.</item>
+        <item>For each error code, document what the consumer must do (retry, surface to user, alert) — codes without behaviour are decoration.</item>
+        <item>Version the interface, not the system: /v1/customers survives independently of the service's semver.</item>
+        <item>Define idempotency keys and dedup window for any non-GET; specify whether retries are safe.</item>
+        <item>Capture timeout + retry budget on both sides; mismatched budgets are a top-3 production failure pattern.</item>
+        <item>For async interfaces, write down ordering guarantees (per-key, none, total) and consumer-group semantics.</item>
+        <item>Keep payload examples literal — no placeholder tokens. Tools and agents copy-paste them into tests.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Agents hallucinate field types when the source is ambiguous.</description>
+        <reason>Force a "field types must come from sample payload or OpenAPI, otherwise mark as `unknown`" rule in the prompt.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Error code tables get auto-completed with the standard HTTP set even when the API only returns three of them.</description>
+        <reason>Validate against captured traffic. Every code must be verified against live response.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Direction labels flip easily ("we provide" vs "we consume").</description>
+        <reason>Anchor the prompt to a fixed perspective (always our system as subject).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Async semantics confuse single-shot prompts.</description>
+        <reason>Split event-driven interfaces into a separate AsyncAPI pass, do not reuse the REST template.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Auth fields (OAuth scopes, API key locations) are routinely wrong.</description>
+        <reason>Require the agent to cite the line in vendor docs that defines them.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Volume/SLA numbers must be marked `tbd` until load test data exists.</description>
+        <reason>Agents will otherwise emit confident fictions that produce wrong capacity planning.</reason>
+      </antipattern>
+      <antipattern>
+        <description>When generating contract tests from a spec, tests pass against mock but fail on live system.</description>
+        <reason>Run tests against both the live system and the mock; a green mock + red live = spec drift, not test bug.</reason>
+      </antipattern>
+    </section>
+
+    <antipattern>
+      <description>Static spec drift: hand-written Markdown interface specs decay the moment code ships because they are disconnected from the implementation.</description>
+      <reason>Generate specs from OpenAPI/AsyncAPI/Protobuf source of truth or sync via oasdiff in CI. Hand-typed specs as primary artifacts guarantee drift within days of the first deploy.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Volume and SLA fields filled with confident estimates pre-launch: "expected: 10,000 requests/day".</description>
+      <reason>Pre-launch volume estimates are guesses with order-of-magnitude error. Mark fields "tbd" until load-test data exists. Confident fictions produce wrong capacity planning decisions.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Async event flows (Kafka, webhooks, NATS) documented using the REST interface template.</description>
+      <reason>REST templates cannot represent fan-out direction, consumer-side retry semantics, or per-key ordering guarantees. Use AsyncAPI 3.0 for all event-driven interfaces.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Error codes auto-completed with the standard HTTP set even when the API returns only 3 of them.</description>
+      <reason>Hallucinated error codes mislead client developers who write error-handling for codes that never fire. Validate against captured traffic; document only codes that the API actually emits.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Auth fields (OAuth scopes, API key header location) generated from the agent's priors without citing the vendor docs.</description>
+      <reason>Auth fields are the highest-risk spec fields: wrong scopes produce authorization failures; wrong header names produce 401 errors that look like network issues. Require source-cited auth fields; reject auth rows without evidence URLs.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Payload examples containing placeholder tokens: "field1": "[value]".</description>
+      <reason>Tools and agents copy-paste payload examples into tests. Placeholders in examples produce tests that assert against literal "[value]" strings instead of real data. Examples must be literal.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Cross-team interfaces failing at the human boundary: the spec is correct but the other team owns auth rotation and breaks it without notice.</description>
+      <reason>Technical specs cannot solve organizational coordination. Pair IF-XXX specs with named contacts and a change-notification protocol. oasdiff in CI catches changes automatically; human contacts catch intentional breaking changes before they deploy.</reason>
+    </antipattern>
+
+    <templates>
+      <template path="templates/interface-spec.md" purpose="Per-interface specification: IF-XXX, type, direction, data fields, technical spec, operational spec, error handling, security."/>
+      <template path="templates/interface-catalog.md" purpose="Summary table of all interfaces with IF-IDs, types, directions, and external systems."/>
+      <template path="templates/interface-drift-check.sh" purpose="CI script: lints committed OpenAPI spec and live API URL with oasdiff; exits non-zero on breaking changes."/>
+      <template path="templates/prompt-interface-analyst.txt" purpose="LLM prompt for filling the IF-XXX spec from OpenAPI or vendor docs; error-code verification rule."/>
+    </templates>
+
+    <see-also>
+      <ref slug="use-case-modeling"/>
+      <ref slug="decision-analysis"/>
+    </see-also>
+  </content>
+</methodology>

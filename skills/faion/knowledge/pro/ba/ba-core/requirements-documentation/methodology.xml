@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="requirements-documentation">
+  <metadata>
+    <tier>pro</tier>
+    <group>ba</group>
+    <domain>ba-core</domain>
+    <summary>Produce sign-off-ready requirements sets (BRD + URS + SRS/FRD) aligned to a single locked standard (IEEE 830-1998 or ISO/IEC/IEEE 29148:2018). Write functional requirements in EARS patterns. Validate structure via a YAML conformance schema before any document is rendered to PDF. Source is Markdown with frontmatter; the PDF is a generated artifact via pandoc.</summary>
+    <category>requirements</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>requirements</tag>
+      <tag>documentation</tag>
+      <tag>brd</tag>
+      <tag>srs</tag>
+      <tag>ears</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Requirements Documentation</title>
+
+    <summary>Produce sign-off-ready requirements sets (BRD + URS + SRS/FRD) aligned to a single locked standard (IEEE 830-1998 or ISO/IEC/IEEE 29148:2018). Write functional requirements in EARS patterns (Ubiquitous, Event-driven, State-driven, Optional, Unwanted-behaviour, Complex). Validate structure via a YAML conformance schema before any document is rendered to PDF. Source is Markdown with frontmatter; the PDF is a generated artifact via pandoc.</summary>
+
+    <why>
+      <p>Unstructured requirements documents with ambiguous phrasing ("should be fast", "easy to use"), no acceptance criteria, and no version control produce test gaps and failed audits. EARS patterns map cleanly to test scaffolds, a conformance schema catches missing sections before review, and pandoc-from-Markdown gives a diffable source that generates a deterministic PDF.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Producing a classical, sign-off-ready requirements set for regulated work (IEC 62304, ISO 26262, DO-178C, BCBS 239, SOC2 audits)</item>
+        <item>A vendor or client contract names a specific standard (IEEE 830, ISO 29148, IREB CPRE) and the deliverable list is fixed</item>
+        <item>Hand-off across organizations where the document is the contract artifact</item>
+        <item>Re-baselining: a previously approved pack must be re-issued at v2.0 with a redline, changelog, and fresh sign-off</item>
+        <item>Auditors will physically read a PDF expecting: cover page, version table, approval block, glossary, traceability matrix, requirement IDs</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Solo or agile project where spec.md + acceptance tests already cover the audit surface</item>
+        <item>Team has no document custodian — without a named owner the formal apparatus rots within two sprints</item>
+        <item>Discovery work where requirements are still volatile — formal docs imply a baseline; baselining in flux is theatre</item>
+        <item>Internal tooling for one team — lightweight user stories are sufficient</item>
+        <item>The reviewer pool will not actually sign — unsigned formal docs are worse than informal ones</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="requirements-hierarchy">
+      <rule>
+        <statement>Maintain BRD (BR- prefix), URS (UR- prefix), and SRS/FRD (FR-/NFR- prefix) as separate files with distinct ID namespaces. One requirement per file remains the source-of-truth. Never blend BRD and FRD content into a single document.</statement>
+        <rationale>BRD = why (business); URS = what users need (operational); SRS/FRD = what the system shall do (functional + NFR). Teams that produce overlapping content lose traceability between levels.</rationale>
+      </rule>
+
+      <list>
+        <item>Business Requirements (BR-) — why are we doing this? example: "Increase revenue by 20%"</item>
+        <item>Stakeholder/User Requirements (UR-/SR-) — what do users need? example: "Sales reps need to create quotes faster"</item>
+        <item>Functional Requirements (FR-) — what shall the system do? example: "The system shall calculate quote total"</item>
+        <item>Non-Functional Requirements (NFR-) — how shall the system perform? example: "Pages shall load in less than 2 seconds"</item>
+      </list>
+    </section>
+
+    <section name="standard-selection-rule">
+      <rule>
+        <statement>Pick one standard per project — IEEE 830-1998 or ISO/IEC/IEEE 29148:2018 — and freeze it in constitution.md before any requirement is written. Mixing standards produces section-name skew and audit ambiguity.</statement>
+        <rationale>IEEE 830 is more prescriptive on document structure; ISO 29148 is more process-oriented and better for systems engineering. Mixing them silently creates incompatible section numbering.</rationale>
+      </rule>
+    </section>
+
+    <section name="smart-requirement-attributes">
+      <rule>
+        <statement>Every requirement must be: Specific (only one interpretation), Measurable (testable against acceptance criteria), Achievable (technically feasible), Relevant (traces to a business need), and free of subjective terms (fast, user-friendly, easy, robust, intuitive, seamless).</statement>
+        <rationale>Subjective terms cannot be tested; a requirement containing them is a deferred conflict with QA.</rationale>
+      </rule>
+    </section>
+
+    <section name="ears-patterns-for-functional-requirements">
+      <rule>
+        <statement>Write all functional requirements in one of the six EARS patterns. Default to Ubiquitous only when no trigger or state condition applies; always ask whether the requirement is actually event-driven or state-driven first.</statement>
+        <rationale>Agents and teams default every FR to Ubiquitous ("The system shall..."), producing unconditional requirements that under-specify state machines and generate ambiguous test conditions.</rationale>
+      </rule>
+
+      <list>
+        <item>Ubiquitous: "The system shall {response}." — unconditional</item>
+        <item>Event-driven: "When {trigger}, the system shall {response}." — maps to test: given-when-then</item>
+        <item>State-driven: "While {state}, the system shall {response}." — maps to test: given-setup-when-then</item>
+        <item>Optional: "Where {feature included}, the system shall {response}." — feature-flag gated</item>
+        <item>Unwanted-behaviour: "If {trigger}, then the system shall {response}." — error/exception handling</item>
+        <item>Complex: combine two patterns; one per sentence</item>
+      </list>
+
+      <antipattern>
+        <description>Using "should", "may", or "might" in an SRS that mandates "shall".</description>
+        <reason>RFC 2119 and IEEE 830 conventions differ; an agent trained on RFC documents writes MAY/SHOULD in a "shall"-only SRS. Lint with the conformance schema; reject modal-verb drift.</reason>
+      </antipattern>
+    </section>
+
+    <section name="document-versioning-rule">
+      <rule>
+        <statement>Version the document, not just the requirements: patch for typos, minor for added requirements, major for scope or baseline changes requiring re-sign-off. Approval block must name role + individual + date + Git tag (e.g., approved-2026-04-15-srs-v1.0). Never edit an Approved document in place; any change must bump version and reset status to Draft.</statement>
+        <rationale>Agents editing Approved docs in place silently destroy the audit chain; CI-checked status invariants prevent this.</rationale>
+      </rule>
+    </section>
+
+    <section name="four-role-pipeline">
+      <list>
+        <item>ba-doc-scaffolder (haiku) — emits empty document outline given {doc_type, standard, scale}; includes cover, version table, approval block (stub only), glossary reference</item>
+        <item>ba-doc-populator (sonnet) — fills sections from elicitation transcripts and shared glossary.md; applies SMART attributes and EARS patterns per requirement</item>
+        <item>ba-doc-conformance (sonnet) — validates against YAML schema: mandatory sections present, all FRs have ID + source + priority + AC, no forbidden words, no non-shall modals</item>
+        <item>ba-doc-renderer — pandoc from Markdown source to DOCX/PDF with deterministic cover page; binary artifact stored in Git LFS; never edited directly</item>
+      </list>
+
+      <rule>
+        <statement>faion-feature-executor must not move a feature out of todo/ until the conformance checker passes. The SDD spec.md becomes the FRD section; a separate BRD.md is rendered for sponsors.</statement>
+        <rationale>This enforces the conformance gate without requiring a separate CI pipeline step for every team.</rationale>
+      </rule>
+    </section>
+
+    <section name="scaffolder-prompt-pattern">
+      <example type="good" title="BA standards scaffolder">
+        <code lang="xml"><![CDATA[
+<role>BA standards scaffolder. Emit empty document outline only.</role>
+<inputs>
+  <doc_type>BRD|URS|SRS|FRD|Glossary</doc_type>
+  <standard>IEEE-830-1998|ISO-29148-2018|IREB-CPRE</standard>
+  <scale>minimal|standard|regulated</scale>
+</inputs>
+<rules>
+  Emit Markdown headings only; no example content.
+  Include cover page, version history table, approval block (stub), glossary reference.
+  For SRS/FRD: include Functional, Non-Functional (Performance, Security, Usability,
+    Reliability, Compatibility, Maintainability, Portability), Interfaces, Constraints,
+    Assumptions, Traceability Matrix (Appendix A).
+  Mark optional sections as: <!-- optional: scale=minimal -->
+</rules>
+]]></code>
+      </example>
+    </section>
+
+    <section name="ears-formatter-prompt-pattern">
+      <example type="good" title="EARS formatter — one requirement per call">
+        <code lang="xml"><![CDATA[
+<task>Rewrite requirement {req_id} into the correct EARS pattern.</task>
+<patterns>
+  Ubiquitous:   "The {system} shall {response}."
+  Event-driven: "When {trigger}, the {system} shall {response}."
+  State-driven: "While {state}, the {system} shall {response}."
+  Optional:     "Where {feature included}, the {system} shall {response}."
+  Unwanted:     "If {trigger}, then the {system} shall {response}."
+  Complex:      Combine above; one pattern per sentence.
+</patterns>
+<output>JSON: {req_id, original, ears_pattern, rewritten, rationale,
+               fallback_if_unchanged}</output>
+]]></code>
+      </example>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Standard hallucination — agent produces "IEEE 830-2025" sections that do not exist.</description>
+        <reason>Pin the standard in the prompt and reject any structural claim not present in the schema file; use the srs-conformance.yaml as ground truth.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>EARS pattern collapse — agent defaults all FRs to Ubiquitous.</description>
+        <reason>Force a per-requirement EARS classification call before phrasing; require the agent to name the pattern before writing the sentence.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Approval block fabricated — agent populates approval table with names and dates.</description>
+        <reason>Approval table must be a stub the human fills; an agent-populated approval block is a forged audit record.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Section-completeness theatre — agent fills every section with "N/A".</description>
+        <reason>Force "drop or fill" — emit nothing if no content applies; track section coverage as a metric, not section presence.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Glossary forks — agent redefines a term inline rather than reading the shared glossary.md.</description>
+        <reason>Provide glossary.md in context for every populate call; forbid in-doc definitions that conflict with the glossary.</reason>
+      </antipattern>
+    </section>
+
+    <section name="mandatory-human-checkpoints">
+      <list>
+        <item>Approval block — names, roles, dates are human-only; agent produces the stub</item>
+        <item>Status transition from Draft to InReview to Approved — requires human action in the source file</item>
+        <item>Any v2.0 re-baseline requiring sponsor re-sign-off</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/brd-template.md" purpose="Business Requirements Document with cover, version, approval, and BR table sections"/>
+      <template path="templates/user-story-template.md" purpose="Agile user story with Gherkin acceptance criteria"/>
+      <template path="templates/srs-conformance.yaml" purpose="IEEE 830-aligned conformance schema for CI validation"/>
+      <template path="templates/srs_conform.py" purpose="Python validator that fails CI when mandatory sections or phrasing rules are violated"/>
+    </templates>
+
+    <see-also>
+      <link href="https://standards.ieee.org/standard/830-1998.html"/>
+      <link href="https://standards.ieee.org/standard/29148-2018.html"/>
+      <link href="https://www.ireb.org/en/downloads"/>
+      <link href="https://pandoc.org/"/>
+    </see-also>
+  </content>
+</methodology>

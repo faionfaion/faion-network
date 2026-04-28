@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="process-mining-automation">
+  <metadata>
+    <tier>pro</tier>
+    <group>ba</group>
+    <domain>ba-core</domain>
+    <summary>Process mining fundamentals: discovery algorithms, event-log prerequisites, adoption gate criteria, automation candidate assessment. Use before selecting a tool or vendor to handle go/no-go scoping and algorithm selection.</summary>
+    <category>process-mining</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>process-mining</tag>
+      <tag>automation</tag>
+      <tag>rpa</tag>
+      <tag>discovery</tag>
+      <tag>analysis</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Process Mining and Intelligent Automation Analysis</title>
+
+    <summary>Covers the fundamentals of process mining: discovery algorithms, event-log prerequisites, adoption gate criteria, and automation candidate assessment. Use before selecting a tool or vendor. Distinct from the operational four-stage pipeline in the business-analyst variant — this layer handles the go/no-go scoping decision and algorithm selection.</summary>
+
+    <why>
+      <p>Process documentation relies on subjective input; actual execution differs from documented processes. RPA initiatives fail at high rates (58% of enterprises will use AI-enabled RPA by 2026) when automation targets are chosen from assumptions rather than event-log data. Three discovery algorithms — Alpha, Heuristic, Inductive — have distinct failure modes; picking by guess wastes months of debugging.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Scoping a process-mining initiative for the first time and briefing a steering committee before tool selection</item>
+        <item>Pre-RFP phase comparing Celonis / UiPath Process Mining / Apromore / pm4py (vendors hide algorithm details behind UX)</item>
+        <item>Validating that a candidate event log meets three minimum columns (case ID, activity, timestamp) before procurement</item>
+        <item>Choosing a discovery algorithm: Alpha/Heuristic/Inductive Miner each have different failure modes on real logs</item>
+        <item>Distinguishing conformance vs discovery vs enhancement — naming the mining question type before the artefact is produced</item>
+        <item>Diagnosing why an existing deployment produced a spaghetti Directly-Follows Graph</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>The team already has process-mining tooling and a working event log — go to the business-analyst variant for the full pipeline</item>
+        <item>The question is "what should the process be?" (to-be design) — that is BPMN modelling, not mining</item>
+        <item>Single-system audit log with fewer than 200 cases — use SQL and a pivot table instead</item>
+        <item>Task-level desktop work (clicks, copy-paste between apps) — this is task mining, a different discipline</item>
+        <item>Knowledge work without a discrete activity vocabulary (writing, negotiation, R&amp;D)</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="mining-question-taxonomy">
+      <rule>
+        <statement>Name the mining question type (discovery, conformance, or enhancement) before selecting an algorithm; each produces a different artefact.</statement>
+        <rationale>Agents that conflate discovery and conformance produce graphs nobody asked for; naming the question type prevents wasted analysis cycles and clarifies deliverable expectations.</rationale>
+      </rule>
+
+      <list>
+        <item>Discovery: reconstruct the actual process model from event data — produces a Petri net or Directly-Follows Graph (DFG)</item>
+        <item>Conformance: compare the discovered model against a normative BPMN/Petri net — produces a fitness/precision score and deviation log</item>
+        <item>Enhancement: enrich an existing model with performance data (cycle time, waiting time, resource load) — produces an annotated model with performance metrics</item>
+      </list>
+    </section>
+
+    <section name="event-log-minimum-requirements">
+      <rule>
+        <statement>Audit the event log for three minimum columns (case_id, activity, timestamp) and additional quality checks before selecting any tool or algorithm.</statement>
+        <rationale>80% of process mining project effort is log preparation; running an algorithm on an unprepared log produces an unsound or unreadable result regardless of tool quality. Log quality directly determines output quality.</rationale>
+      </rule>
+
+      <list>
+        <item>Required columns: case_id (unique per process instance), activity (discrete label), timestamp (datetime, not date-only)</item>
+        <item>Minimum scale: &gt;= 200 cases; &lt; 3 activities or &gt; 200 activities — taxonomy problem, not a mining problem</item>
+        <item>Bad timestamp rate: reject if more than 2% of rows have unparseable timestamps</item>
+        <item>Case cardinality: if one case_id spans multiple business processes, split first</item>
+        <item>Activity vocabulary: if free-text comments, define a grouping taxonomy before mining</item>
+      </list>
+
+      <antipattern>
+        <description>Proceeding to algorithm selection with only case_id/activity/timestamp columns validated, skipping timestamp format, case-ID consistency, and vocabulary size checks.</description>
+        <reason>Even a structurally valid log fails when timestamps are date-only (no ordering within a day), case IDs cross process boundaries, or activity labels are free-text — each produces a spaghetti DFG or unsound Petri net that wastes the entire mining effort.</reason>
+      </antipattern>
+
+      <reference path="templates/pm-feasibility-audit.py">Python script auditing a CSV log for mining readiness and recommending an algorithm</reference>
+    </section>
+
+    <section name="discovery-algorithm-selection">
+      <rule>
+        <statement>Select a single named algorithm variant with explicit rationale; reject "use whichever the tool defaults to."</statement>
+        <rationale>Alpha Miner cannot handle loops or noise; Heuristic Miner handles noise but loses formal guarantees; Inductive Miner guarantees soundness but trades fitness for precision. The wrong choice on a real-world log wastes a month of debugging and produces unusable output.</rationale>
+      </rule>
+
+      <example type="good" title="Algorithm selection based on log characteristics">
+        <code lang="text"><![CDATA[
+Activity count < 15 and variant count < 30: Alpha Miner.
+Variant count > 100 or significant noise: Inductive Miner (infrequent variant).
+Moderate noise, loop presence: Heuristic Miner.
+]]></code>
+      </example>
+
+      <example type="bad" title="Poor algorithm selection and outcome">
+        <code lang="text"><![CDATA[
+Running Alpha Miner on a real-world ITSM log with 5,000 cases and 600+ variants.
+Alpha cannot handle loops or noise, producing an unsound Petri net that is unreadable and invalid.
+The entire analysis fails and no usable model is produced.
+]]></code>
+      </example>
+
+      <rule>
+        <statement>Disclose the algorithm name and parameters on every mining artefact; downstream readers cannot judge the graph's reliability without them.</statement>
+        <rationale>Vendors rebrand standard algorithms and hide hyperparameters behind UI controls. The BA must press for the specific algorithm and its defaults, then record them on the deliverable for auditability and reproducibility.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Understand the three core algorithms: Alpha Miner (straightforward for small, clean logs; fails on loops), Heuristic Miner (handles noise by frequency-weighting; preserves loops but loses some precision), Inductive Miner (guarantees soundness; best for complex real-world logs with noise; slower).</statement>
+        <rationale>Each algorithm is optimal for different log characteristics. Without explicit knowledge of trade-offs, agents pick by default or random, producing unreliable outputs.</rationale>
+      </rule>
+    </section>
+
+    <section name="variant-filtering">
+      <rule>
+        <statement>Filter to top-10 variants by frequency for first review; surface the long tail only after the main flow is understood.</statement>
+        <rationale>A real ITSM log with 5,000 cases surfaces 600+ variants; the unfiltered discovery graph is unreadable, creating the "spaghetti DFG presented as success" failure mode. Progressive disclosure prevents analysis paralysis.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Add a node/edge count gate (e.g., abort if more than 40 nodes without explicit override) to prevent unreadable outputs being delivered as complete work.</statement>
+        <rationale>Agents do not perceive graph unreadability; they deliver a 600-node SVG and call the task done without a structural quality gate. Explicit limits force readability as a requirement.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Document filtering decisions on the mining artefact: which variant threshold was used, how many variants were filtered, what percentage of case volume they represent.</statement>
+        <rationale>Without this documentation, downstream readers cannot judge whether the model represents the full process or only a subset.</rationale>
+      </rule>
+    </section>
+
+    <section name="automation-candidate-scoring">
+      <rule>
+        <statement>Score automation candidates on six criteria before selecting a technology; do not target automation based on stakeholder enthusiasm.</statement>
+        <rationale>RPA initiatives that skip structured scoring fail at high rates — most failures trace to poor process understanding and incorrect assumption that the process is rule-based. Structured scoring surfaces viability early.</rationale>
+      </rule>
+
+      <list>
+        <item>Volume (high weight): target &gt;= 100 transactions/day</item>
+        <item>Standardization (high weight): rule-based with low exception rate</item>
+        <item>Stability (medium weight): process unchanged for &gt;= 6 months</item>
+        <item>Digital Input (medium weight): structured data available, not image/PDF only</item>
+        <item>Error Rate (medium weight): high manual error frequency indicates automation value</item>
+        <item>ROI Potential (high weight): high labor cost, quick payback period</item>
+      </list>
+
+      <example type="good" title="Automation scoring grid and thresholds">
+        <code lang="text"><![CDATA[
+Score each criterion 1-5.
+Total > 24 of 30: full automation candidate.
+18-24: partial automation or process improvement first.
+12-18: process improvement first, then re-assess.
+< 12: not suitable for automation at this time.
+]]></code>
+      </example>
+
+      <reference path="templates/automation-assessment.md">Automation readiness scoring template with ROI estimate skeleton</reference>
+    </section>
+
+    <section name="rpa-vs-intelligent-automation">
+      <rule>
+        <statement>Distinguish RPA (rule-based, repetitive, structured data only) from Intelligent Automation (AI-driven decisions, structured and unstructured data, continuous improvement) before tool selection.</statement>
+        <rationale>Selecting RPA for variable/complex processes leads to high exception rates and human-in-the-loop bottlenecks that negate automation benefits. Wrong tool choice leads to failed initiatives.</rationale>
+      </rule>
+
+      <list>
+        <item>RPA: task type = rule-based and repetitive; decision making = predefined rules; data = structured only; exceptions = human escalation; learning = none</item>
+        <item>Intelligent Automation: task type = complex and variable; decision making = AI-driven; data = structured + unstructured; exceptions = autonomous handling; learning = continuous improvement</item>
+      </list>
+
+      <rule>
+        <statement>Map discovered process characteristics to automation type: highly structured processes with few exceptions → RPA; variable/decision-heavy processes with unstructured data → Intelligent Automation. Avoid RPA for variable processes.</statement>
+        <rationale>RPA's rigid rule engine produces high exception rates on variable processes. Intelligent Automation's ML-based decision layer handles variability but costs more and requires different testing approaches.</rationale>
+      </rule>
+    </section>
+
+    <section name="adoption-gate">
+      <rule>
+        <statement>Run six adoption criteria before committing to a process-mining initiative; if any criterion produces a no-go, name the single blocker and the cheapest experiment to unblock it.</statement>
+        <rationale>Tool procurement and initiative launch on a no-go log or an illiterate stakeholder group wastes budget with no recoverable output. Early gates prevent sunk costs.</rationale>
+      </rule>
+
+      <list>
+        <item>Event-log availability: can the source system export a log with case_id, activity, timestamp?</item>
+        <item>Case volume: &gt;= 200 cases minimum; &lt; 200 use SQL</item>
+        <item>Stakeholder literacy: does at least one BA or process owner understand DFG/Petri net outputs?</item>
+        <item>Regulatory tolerance: does GDPR/HIPAA/other regulation permit event-log extraction and storage?</item>
+        <item>Tooling budget: open-source (pm4py) / mid-market (Apromore) / enterprise (Celonis) — align with ROI estimate</item>
+        <item>Automation downstream dependency: is there an actual automation or redesign plan, or is mining a curiosity exercise?</item>
+      </list>
+
+      <antipattern>
+        <description>Conflating process mining (reconstructing flows from system logs) with task mining (desktop click recording) or with BPM (modeling desired processes).</description>
+        <reason>Incorrect categorization leads to wrong tool purchase: Celonis for task-mining needs, or UiPath Task Mining for a conformance-checking goal. Budget is wasted and the initiative fails on deliverable mismatch.</reason>
+      </antipattern>
+
+      <rule>
+        <statement>If any gate criterion fails, document the blocker clearly and estimate the cost of unblocking it. Re-run the gate on a fixed timeline (e.g., 90 days) before shelving the initiative.</statement>
+        <rationale>Some blockers are temporary (waiting for system access, stakeholder availability); others are fundamental. Explicit tracking prevents zombie initiatives that consume budget without progress.</rationale>
+      </rule>
+    </section>
+
+    <section name="tool-selection-guidance">
+      <rule>
+        <statement>Tool selection depends on use case, budget, and team skill level. Open-source pm4py is free but requires Python expertise. Apromore is mid-market with friendly UI but less scalable. Celonis is enterprise with advanced features but high cost.</statement>
+        <rationale>Tool selection must match ROI estimate, team capacity, and governance model. Low-ROI initiatives should start with open-source; high-value regulated work justifies enterprise licensing.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Evaluate tools on algorithm transparency: does the vendor disclose which algorithm is running, what hyperparameters are used, how variants are filtered? Lack of transparency prevents reproducible analysis.</statement>
+        <rationale>Black-box tools hide critical decisions, making it impossible to debug failures or explain results to auditors. Transparency in algorithm choice is non-negotiable for regulated use.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/pm-feasibility-audit.py" purpose="Python script that audits a CSV event log for mining readiness and recommends an algorithm"/>
+      <template path="templates/automation-assessment.md" purpose="Automation readiness scoring template with ROI estimate skeleton"/>
+    </templates>
+
+    <see-also>
+      <link href="https://pm4py.fit.fraunhofer.de/"/>
+      <link href="https://www.celonis.com/"/>
+      <link href="https://apromore.org/"/>
+      <link href="https://www.uipath.com/"/>
+    </see-also>
+  </content>
+</methodology>

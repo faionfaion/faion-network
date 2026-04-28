@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="acceptance-criteria">
+  <metadata>
+    <tier>pro</tier>
+    <group>ba</group>
+    <domain>ba-modeling</domain>
+    <summary>Define exact conditions a requirement must satisfy to be accepted as complete, using stable IDs that cross-reference spec, test plan, and release artifacts.</summary>
+    <category>modeling</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>acceptance-criteria</tag>
+      <tag>spec</tag>
+      <tag>testing</tag>
+      <tag>bdd</tag>
+      <tag>gherkin</tag>
+    </tags>
+    <applies-to>both</applies-to>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="specification-writing"/>
+      <ref slug="test-planning"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Acceptance Criteria</title>
+
+    <summary>Acceptance criteria (AC) define the exact conditions a requirement must satisfy to be accepted as complete. Each criterion is testable, behaviour-level, and carries a stable ID (AC-FEATURE-NN) that cross-references spec.md, test-plan.md, PR description, CI report, and changelog. Two formats: Given/When/Then (Gherkin/BDD) for user-facing behaviour, and rule-based checklists for system constraints.</summary>
+
+    <why>
+      <p>Without AC, "done" means different things to developers, testers, and stakeholders; acceptance meetings become scope debates rather than verification checkpoints. Stable IDs create traceability from requirement to test to release. The Gherkin format produces living documentation executable in CI, closing the loop between spec and running behaviour.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Authoring AC for SDD spec.md files before a coding subagent picks up the task.</item>
+        <item>Translating a freeform user story or stakeholder note into testable criteria.</item>
+        <item>Generating regression scenarios from a bug report so the fix has a definition-of-done gate before merge.</item>
+        <item>Splitting an oversized story: when AC count exceeds 7 per story, that is the slicing signal.</item>
+        <item>Wiring AC to executable specs (Gherkin to Cucumber / Behave / Playwright) so BA review and CI share one artifact.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pure spike / research tasks where the outcome is a learning, not a behaviour.</item>
+        <item>Throwaway prototypes or demos with a lifespan under one sprint.</item>
+        <item>UX-only changes where verification is subjective (visual polish, brand tone).</item>
+        <item>Operational runbook changes (server tweaks, cron edits) — use smoke checks instead.</item>
+        <item>Negotiation-heavy external contracts where AC ossify before scope is stable.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="stable-id-convention">
+      <rule>
+        <statement>Assign every acceptance criterion a stable ID in the format AC-FEATURE-NN (e.g., AC-LOGIN-01) before writing the criterion text. IDs are the spine joining spec.md, test-plan.md, PR description, CI report, and changelog.</statement>
+        <rationale>Without stable IDs, cross-referencing AC across spec, test plan, and CI is manual and brittle. IDs enable automated coverage verification via ac-coverage.sh.</rationale>
+      </rule>
+      <rule>
+        <statement>Continue IDs from the existing set in the feature; never reset to 01 when adding criteria to an existing story. Pass existing_ac_ids to the authoring agent to prevent collisions.</statement>
+        <rationale>Duplicate or reset IDs break the traceability chain. The authoring prompt receives the current max ID and increments from there.</rationale>
+      </rule>
+    </section>
+
+    <section name="gwt-format">
+      <rule>
+        <statement>Use GWT format for user-facing behaviour: Given [precondition], When [action], Then [observable outcome]. One Then assertion per scenario unless the assertions are truly inseparable observations of the same state change.</statement>
+        <rationale>Multiple unrelated Then assertions in one scenario hide which assertion failed and make the test harder to name. Split when assertions diverge.</rationale>
+      </rule>
+      <rule>
+        <statement>Avoid And chains longer than 3 items in Given. Long preconditions hint that the scenario should be a higher-level test or that the state setup belongs in a Background block.</statement>
+        <rationale>Long Given chains couple the test to setup details that change independently of the behaviour being tested, making AC brittle.</rationale>
+      </rule>
+    </section>
+
+    <section name="rule-based-format">
+      <rule>
+        <statement>Use rule-based checklists for system constraints: "The system must [behaviour]", "The system must not [behaviour]", "When [condition], system must [behaviour]". Every item must be independently testable.</statement>
+        <rationale>Rule-based format is clearer for constraint-heavy stories (validation, security, performance) where the scenario structure adds boilerplate without clarity.</rationale>
+      </rule>
+    </section>
+
+    <section name="coverage-categories">
+      <rule>
+        <statement>Every story must have at least one criterion per applicable category: happy (what happens when everything works), error (what happens when things go wrong), boundary (limits and edge cases). Security and performance criteria are required when applicable.</statement>
+        <rationale>Agents overfit to the happy path. A ratio of error/boundary/security AC to happy-path AC below 1:2 is a smell. Explicitly requiring coverage categories prevents this.</rationale>
+      </rule>
+      <rule>
+        <statement>Negative cases must represent at least 30% of total AC for any story. If the count falls below this, the authoring agent must generate additional error and boundary criteria before finalizing.</statement>
+        <rationale>Real systems fail in more ways than they succeed. Under-coverage of failure modes is the most common cause of regression post-deploy.</rationale>
+      </rule>
+    </section>
+
+    <section name="behaviour-level-enforcement">
+      <rule>
+        <statement>Keep all criteria at behaviour level. Reject any criterion containing: database table names, ORM model names, framework route paths, class names, or function names.</statement>
+        <rationale>Implementation-coupled AC break whenever the implementation changes, even when the behaviour does not. The BA-agent must post-process with a regex denylist and reject violators before writing.</rationale>
+      </rule>
+      <rule>
+        <statement>Performance and security NFRs written in AC must be paired with a named verification tool or periodic gate in the test plan (k6, Artillery, Lighthouse CI). Write "performance: verifiable via [tool]" or remove the criterion.</statement>
+        <rationale>Unverifiable NFRs (response under 200ms with no test) are theatre that wastes stakeholder review time and creates false confidence.</rationale>
+      </rule>
+    </section>
+
+    <section name="examples">
+      <example type="good" title="Login Feature (GWT)">
+        <code lang="gherkin"><![CDATA[
+# AC-LOGIN-01 — Happy path
+Given I am on the login page
+And I have a valid account
+When I enter my email and correct password and click Login
+Then I am redirected to the dashboard
+And I see a welcome message containing my name
+
+# AC-LOGIN-02 — Invalid credentials
+Given I am on the login page
+When I enter an incorrect email or password and click Login
+Then I see the error "Invalid email or password"
+And I remain on the login page
+And the password field is cleared
+
+# AC-LOGIN-03 — Account lockout
+Given I have failed login 5 consecutive times
+When I attempt to login again
+Then I see "Account locked. Please try again in 30 minutes"
+And login is disabled for my account for 30 minutes
+
+# AC-LOGIN-04 — Non-functional (performance)
+# verifiable via: k6 load test, threshold p95 < 2000ms
+Given I submit valid credentials
+Then the login response must complete within 2 seconds at p95
+]]></code>
+        <note>GWT format, stable IDs, four coverage categories: happy, error, boundary (lockout), performance. No implementation terms.</note>
+      </example>
+
+      <example type="good" title="Shopping Cart (Rule-Based)">
+        <code lang="markdown"><![CDATA[
+# AC-CART-01  System must allow adding a product from the product page
+# AC-CART-02  System must allow adding a product from search results
+# AC-CART-03  Cart icon must display the current item count
+# AC-CART-04  Adding the same product must increase quantity, not create a duplicate line
+# AC-CART-05  Maximum quantity per product line is 99; attempting 100 must show an error
+# AC-CART-06  User must see a confirmation message when an item is added
+# AC-CART-07  Cart must persist for 30 days for authenticated users
+# AC-CART-08  Cart must persist for session duration for guest users
+]]></code>
+        <note>Rule-based, 8 criteria across happy/boundary/error/persistence. Each is independently testable.</note>
+      </example>
+
+      <example type="good" title="Bug Fix AC Pattern">
+        <code lang="gherkin"><![CDATA[
+# AC-FIX-01 — Reproduce the bug (regression test)
+Given a user with subscription status "expired"
+When they attempt to access a premium feature
+Then they are redirected to the upgrade page
+And they are NOT shown the feature content
+
+# AC-FIX-02 — Verify the fix does not regress the happy path
+Given a user with subscription status "active"
+When they access the same premium feature
+Then they see the feature content without redirection
+]]></code>
+        <note>Bug fix AC always includes: one criterion that reproduces the bug (regression gate) and one that verifies the happy path is not broken by the fix.</note>
+      </example>
+
+      <antipattern>
+        <description>AC written as: "User can log in." No preconditions, no failure paths, no observable outcome.</description>
+        <reason>Untestable. Every QA engineer will have a different understanding of what this means. GWT forces specificity at every axis.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>AC containing: "Then the row is inserted into the users table with status='active'."</description>
+        <reason>Couples the AC to the schema. When the table is renamed or split, the AC breaks even though the behaviour is unchanged. Test at API/UI level: "Then the user can log in successfully."</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>50 criteria for one story.</description>
+        <reason>Story is too large. When AC count exceeds 7, use the criteria as the slicing signal: split the story at natural boundaries (happy path → story A, error handling → story B).</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <rule>
+        <statement>Stage 1 (Research): a read-only subagent loads spec.md, design.md, and the data model. It identifies entities, their states, valid transitions, and applicable personas. This output grounds Stage 2 and prevents hallucinated preconditions.</statement>
+        <rationale>AC authoring without grounding invents fields and subscription tiers not present in the codebase. The research stage constrains the authoring agent to verifiable reality.</rationale>
+      </rule>
+      <rule>
+        <statement>Stage 2 (Authoring): the authoring agent produces Gherkin or rule-based AC in JSON format ({id, title, given[], when[], then[], category}), continuing from the existing ID set. No implementation terms, no And chains longer than 3 in Given, negative cases at least 30% of total.</statement>
+        <rationale>Structured JSON output enables downstream tools (ac-coverage.sh, test generators) to parse and process AC without natural-language parsing.</rationale>
+      </rule>
+      <rule>
+        <statement>Stage 3 (Verification): the verification agent maps each AC-ID in spec.md to a test reference in test-plan.md and returns {ac_id, has_test, test_ref|null, gap_reason|null}. If any has_test=false, halt and return FAIL. No task moves from in-progress to done with uncovered AC.</statement>
+        <rationale>The SDD lifecycle requires test coverage for every AC before a task is considered done. Automated verification prevents the common pattern of shipping with uncovered criteria.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Stakeholder sign-off on AC must happen BEFORE coding starts. Never let the executor agent autonomously generate and execute AC in one chain. Separate: agent drafts → human reviews → agent executes.</statement>
+        <rationale>AC are the contract between business and engineering. Auto-executing against unreviewed AC means the wrong contract is implemented — often undiscovered until acceptance testing fails.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Generate AC documentation from .feature files and publish to the SDD done/ snapshot on merge. AC in the done/ snapshot must match production behaviour or CI fails on next run.</statement>
+        <rationale>AC that drift from production behaviour after code changes produce false confidence in the test suite. Living docs generated from source prevent divergence.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations-and-failure-modes">
+      <antipattern>
+        <description>Ambiguous wording survives review: "Fast", "user-friendly", "intuitive" pass through Gherkin syntax but are still untestable.</description>
+        <reason>Linters help but do not catch semantics. Use explicit metrics or measurable outcomes.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Scenario explosion: Cartesian-product AC (every role × every state × every error) bloats test-plan.md and slows CI.</description>
+        <reason>Cap with risk-based prioritisation.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Implementation leakage: "Then the row is inserted into users table" couples AC to schema.</description>
+        <reason>Keep at behaviour level — verify via API, not DB.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Drift: AC written once and never updated diverge from production behaviour.</description>
+        <reason>Anchor to living tests; fail CI when AC and test labels mismatch.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LLM hallucinated preconditions: Models invent Given conditions even when no such concept exists in the codebase.</description>
+        <reason>Always ground in spec/design/code search. Pre-load ERD or schema into the prompt as ground truth.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Performance/security NFRs: Easy to write ("response &lt; 200ms") but expensive to verify continuously.</description>
+        <reason>Pair with k6/Artillery in CI or mark as periodic gate, or remove the AC entirely.</reason>
+      </antipattern>
+    </section>
+
+    <section name="recommended-subagents-and-tools">
+      <p>Recommended subagents for AC workflows:</p>
+      <list>
+        <item>faion-sdd-executor-agent — reads spec.md → executes against AC, blocks "done" if any AC unverified.</item>
+        <item>faion-feature-executor — sequential task runner with quality gates; gate AC coverage before moving task todo/ → in-progress/ → done/.</item>
+        <item>faion-brainstorm — diverge phase: brainstorm edge cases (security, boundary, error, concurrency) before AC authoring; converge phase: dedupe, prioritise.</item>
+        <item>faion-improver — audits existing AC sets against the "INVEST + testable" rubric; emits patches.</item>
+      </list>
+
+      <p>CLI tools for Gherkin execution and linting:</p>
+      <list>
+        <item>gherkin-lint — Lint .feature files: enforce style, no duplicate scenarios, required tags. (npm i -g gherkin-lint)</item>
+        <item>cucumber — Execute Gherkin AC as tests; reports map scenario → AC ID via tags. (JS/Ruby/JVM versions available)</item>
+        <item>behave — Python BDD runner for Gherkin. Pairs well with Django/FastAPI services. (pip install behave)</item>
+        <item>pytest-bdd — Gherkin AC executed via pytest fixtures; reuses existing pytest infra. (pip install pytest-bdd)</item>
+        <item>Playwright test.step() — Map AC steps directly to UI assertions; AC ID in step name.</item>
+        <item>Reqnroll / SpecFlow — .NET BDD runner; Reqnroll is the maintained fork (post-SpecFlow EOL 2024).</item>
+        <item>Karate — API-focused Gherkin; one tool for AC-driven contract tests.</item>
+        <item>Gauge — ThoughtWorks Markdown-based AC executor (alternative to Gherkin syntax).</item>
+      </list>
+
+      <p>Services and platforms for AC management:</p>
+      <list>
+        <item>Jira + Xray / Zephyr — Store AC on story; Xray links AC ↔ test case ↔ execution. Agents POST AC via REST API.</item>
+        <item>Linear — AC live in issue description; bots read/update via API key. Lightweight, convention-driven.</item>
+        <item>Azure DevOps — Native "Acceptance Criteria" field on Work Items; Reqnroll integrates AC ↔ test runs.</item>
+        <item>GitHub Issues + sub-issues — AC as task list checkboxes; PRs auto-close on merge. Best for OSS/solo flows.</item>
+        <item>Cucumber Studio — Collaborative Gherkin editor; sync to git.</item>
+        <item>Testomat.io — AC-as-tests management with auto-import from feature files.</item>
+        <item>Allure TestOps — Run results back-link to AC IDs in reports.</item>
+        <item>Notion / Confluence — AC tables work for early-stage drafting; no test linkage.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <rule>
+        <statement>Stable IDs first: Assign AC-FEATURE-NN before content. IDs become the spine joining spec.md, test-plan.md, PR description, CI report, and changelog.</statement>
+      </rule>
+      <rule>
+        <statement>One observable behaviour per scenario: Multiple Then lines OK only if same observation (state + side-effect). Split when assertions diverge.</statement>
+      </rule>
+      <rule>
+        <statement>Negative cases ≥ 30%: Ratio of error/boundary/security AC to happy-path AC under 1:2 is a smell — agents tend to overfit happy path.</statement>
+      </rule>
+      <rule>
+        <statement>Avoid And chains &gt; 3 in Given: Long preconditions hint that the scenario should be a higher-level test or that state setup belongs in a Background.</statement>
+      </rule>
+      <rule>
+        <statement>Behaviour level only: No database, Redis, kafka, class, function, route paths in AC. Verify those via design.md / code review, not AC.</statement>
+      </rule>
+      <rule>
+        <statement>Tag taxonomy: Use @happy, @error, @boundary, @security, @perf, @a11y, @i18n. Drives CI matrix and risk-based selection.</statement>
+      </rule>
+      <rule>
+        <statement>Living docs: Generate AC docs from .feature files and publish to the SDD done/ snapshot; AC must match production behaviour or CI fails.</statement>
+      </rule>
+      <rule>
+        <statement>AC are the contract, not the implementation plan: If stakeholder edits change AC, that is a scope change — not a coding fix.</statement>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Hallucinated entities: LLMs invent fields not in the model.</description>
+        <reason>Mitigation: pre-load data-analysis.md ERD or design.md schema into the prompt as ground truth.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Implementation creep: Agents leak DB/ORM/route names into Gherkin.</description>
+        <reason>Mitigation: post-process with a regex denylist (SELECT|INSERT|UPDATE|/api/|class |def) and reject violators before write.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Symmetric coverage bias: Models pad with happy-path duplicates rather than thinking adversarially.</description>
+        <reason>Mitigation: explicit prompt slot "list 3 ways this can fail before writing AC".</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Test-plan drift: Coding agent updates code → AC stays stale.</description>
+        <reason>Always require the same PR to update spec.md AC + test-plan.md test ref + code; pre-commit gate via ac-coverage.sh.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Token-cost trap on huge specs: Loading full spec.md every iteration wastes context.</description>
+        <reason>Pass only the AC IDs being edited + their direct neighbours.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Locale and i18n erasure: Agents default to English/USD examples; AC silently exclude UA/EU contexts.</description>
+        <reason>Add explicit locale matrix per project.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Human-in-the-loop checkpoint ignored: Stakeholder sign-off skipped, AC auto-executed.</description>
+        <reason>Do not let automation autonomously generate + execute AC in one chain — split: agent drafts → human reviews → agent executes.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Performance NFR theatre: "&lt;200ms" written but never measured.</description>
+        <reason>Either wire to a real benchmark gate (k6, locust, Lighthouse CI) or remove the AC.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/ac-bdd.md" purpose="Given/When/Then AC template with scenario structure and non-functional sections."/>
+      <template path="templates/ac-rule-based.md" purpose="Rule-based AC template covering functional, validation, error, performance, and security criteria."/>
+      <template path="templates/ac-coverage.sh" purpose="Shell script that verifies every AC-ID in spec.md has a matching test reference in test-plan.md."/>
+      <template path="templates/prompt-authoring.xml" purpose="Structured XML prompt for Stage 2 authoring with grounding constraints and category requirements."/>
+      <template path="templates/prompt-verification.xml" purpose="Structured XML prompt for Stage 3 coverage gate: maps AC-IDs to test references, halts on gaps."/>
+    </templates>
+
+    <see-also>
+      <link href="https://cucumber.io/docs/gherkin/"/>
+      <link href="https://en.wikipedia.org/wiki/Acceptance_test-driven_development"/>
+      <ref slug="specification-writing"/>
+      <ref slug="test-planning"/>
+      <ref slug="behavior-driven-development"/>
+    </see-also>
+  </content>
+</methodology>

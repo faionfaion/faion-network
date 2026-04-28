@@ -1,0 +1,404 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="requirements-lifecycle">
+  <metadata>
+    <tier>pro</tier>
+    <group>ba</group>
+    <domain>ba-core</domain>
+    <summary>Track requirements through six lifecycle stages (Identify, Analyze, Specify, Validate, Verify, Manage) with explicit state transitions, version control, and audit trails for change requests.</summary>
+    <tags>
+      <tag>requirements</tag>
+      <tag>lifecycle</tag>
+      <tag>babok</tag>
+      <tag>business-analysis</tag>
+      <tag>change-control</tag>
+    </tags>
+    <category>lifecycle</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Requirements Lifecycle Management</title>
+
+    <summary>Requirements exist in multiple versions with unclear ownership, approved requirements change without process, and implementations diverge from documentation. The Requirements Lifecycle Management framework provides six deterministic stages (Identify, Analyze, Specify, Validate, Verify, Manage) with explicit state transitions, version history tracking, change control via impact analysis, and audit trails. Each requirement has a frozen baseline, versioning rules (material scope/AC/NFR changes bump version; wording-only edits do not), and a state machine that tracks Draft → Proposed → Approved → Implemented → Verified with deferred and rejected branches.</summary>
+
+    <why>
+      <p>Version confusion destroys accountability. When Approved v1.0 differs from Implemented, the blame shifts between BA, dev, and QA — nobody owns the gap. Uncontrolled changes break the contract; if stakeholders modify requirements ad-hoc without impact analysis, the team commits to unknowns and test coverage rots. Implementation mismatches happen when requirements are too loose (e.g. "improve performance" with no acceptance criteria), and once implemented the requirement is forgotten and cannot be reconstructed for the next release. An audit trail is survival for regulated work; without it, a regulator can reject the entire delivery and demand a redo.</p>
+      <p>The lifecycle framework locks these problems through formality: every requirement gets a unique ID, a frozen baseline at Approved, a versioning discipline tied to material change, and a state machine that enforces transitions. Draft → Proposed requires stakeholder review. Proposed → Approved requires sign-off with a named decision-maker and timestamp. Approved → Implemented requires dev to confirm that the code matches the requirement text. Implemented → Verified requires QA to link test evidence. This forces artifacts to be written clearly enough that others can sign off on them, makes change costs visible, and creates an audit trail that survives organizational turnover.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>The team adopts BABOK Knowledge Area 5 as a working contract and needs formal definitions of stages, states, attributes, and transitions.</item>
+        <item>Onboarding junior BAs or agents who must understand state semantics before touching tools.</item>
+        <item>Any regulated or audited work where the team must prove that requirements followed a formal process.</item>
+        <item>Projects with ≥30 requirements where multiple people are editing; version confusion becomes a bottleneck.</item>
+        <item>Establishing the canonical state model that downstream tools (Jira, StrictDoc, Polarion) must conform to.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>The team rejects BABOK and runs pure Scrum without formal requirements; use agile-ba-frameworks instead.</item>
+        <item>Pre-PMF discovery where the thing under change is the problem statement, not a requirement; use continuous-discovery instead.</item>
+        <item>Single-author throwaway work where git log is sufficient version history; lifecycle formality is overhead.</item>
+        <item>High-churn research or experimental environments where a 200-change-per-sprint workflow makes formal baselining fiction.</item>
+        <item>Small squads (1-2 people) where Proposed → Approved adds ceremony with no value.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="requirements-lifecycle-stages">
+      <p>The six-stage model mirrors the BABOK Knowledge Area 5 structure. Each stage has a primary input and a gated output; progression is not automatic — a requirement may cycle (e.g. Proposed → Approved → back to Proposed if feedback arrives) or jump (e.g. Draft → Rejected if stakeholders decide not to pursue).</p>
+
+      <rule testable="true">
+        <statement>Requirements MUST flow through these stages in order (with allowed backward loops): Identify → Analyze → Specify → Validate → Verify → Manage. A requirement cannot reach Implemented until it is Approved; it cannot reach Verified until Implemented. Deferred requirements may return to Proposed in a later iteration.</statement>
+        <rationale>The stage order enforces that requirements are understood before they are built; skipping Analyze or Validate leads to building the wrong thing or discovering defects too late to fix.</rationale>
+      </rule>
+
+      <example type="good" title="Valid Stage Progression">
+        <code lang="text"><![CDATA[
+REQ-045: Password Reset
+  Jan 5    Stage: Identify → raw requirement from user feedback
+  Jan 8    Stage: Analyze → structured, categorized, relation-mapped
+  Jan 10   Stage: Specify → documented in template, assigned ID, attributes complete
+  Jan 12   Stage: Validate → stakeholder review walkthrough passed
+  Jan 25   Stage: Verify → design review confirms implementability
+  Feb 1    Stage: Manage → code complete, test evidence linked
+        ]]></code>
+        <note>Each stage gateway is tracked; timestamps are recorded.</note>
+      </example>
+
+      <example type="bad" title="Skip-Validation Pattern">
+        <code lang="text"><![CDATA[
+REQ-050: New Report Format
+  Jan 5    Stage: Identify
+  Jan 6    Stage: Implement (skipped Analyze, Specify, Validate)
+  Jan 20   Stage: Build complete, but stakeholders reject output — "not what we asked for"
+        ]]></code>
+        <note>Skipping Validate meant the requirement was never reviewed with stakeholders; rework is now mandatory.</note>
+      </example>
+    </section>
+
+    <section name="requirements-states">
+      <p>Eight states capture the full lifecycle; not all states are used in every organization (some skip Rejected and go straight to Deferred, others merge Verified back into a status-quo state). The state set here is IIBA-canonical; your organization may add or modify.</p>
+
+      <rule testable="true">
+        <statement>Pin a canonical state set in a single file (e.g. `requirements/_states.yaml`) and reference it from every prompt and pre-commit hook. Do not rely on LLMs or humans retaining the state list; embed it in validation code.</statement>
+        <rationale>State drift is silent; an agent assumes a state that is not in the canonical set and proposes an impossible transition. Making the list a data file eliminates the assumption.</rationale>
+      </rule>
+
+      <example type="good" title="Eight-State Flow">
+        <code lang="text"><![CDATA[
+Draft
+  ↓ (ready for stakeholder review)
+Proposed
+  ↓ (approved by decision-maker)
+Approved
+  ↓ (code complete)
+Implemented
+  ↓ (test evidence linked)
+Verified
+  ↓ (archived or deprecated)
+Deferred / Rejected / Deleted
+
+Backward loops allowed:
+- Proposed → Draft (feedback for refinement)
+- Approved → Proposed (new feedback before dev starts)
+- Implemented → Approved (QA found defect; rework needed)
+
+Deferred and Rejected are terminal for the current cycle but may re-enter as Proposed in a future cycle.
+        ]]></code>
+        <note>The loops prevent the strict linear assumption that leads to lost requirements.</note>
+      </example>
+
+      <antipattern>
+        <description>Only three states: To Do, In Progress, Done. Requirements get conflated with task tickets.</description>
+        <reason>Task workflow ≠ requirement lifecycle. To Do might mean Draft, Proposed, or Approved — ambiguity breaks auditability.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Approved state never reached. Proposed requirements sit for months without explicit approval or rejection.</description>
+        <reason>Time-bound Proposed; require approval within 2-4 weeks or escalate. A requirement with no approval date is not tracked.</reason>
+      </antipattern>
+    </section>
+
+    <section name="requirements-attributes">
+      <p>Each requirement carries metadata that enables state transitions, change control, and audit trails. The BABOK attribute set is the baseline; add domain-specific attributes as needed but keep the core set consistent.</p>
+
+      <rule testable="true">
+        <statement>Every requirement MUST have these attributes: ID (REQ-XXX format), Name (short title), Description (full text), Status (one of the canonical states), Priority (MoSCoW or numeric), Source (stakeholder/document/discovery method), Owner (person responsible), Version (semver or X.Y), Created (date), Modified (date), Author (who wrote it). Missing attributes block the transition, not warn.</statement>
+        <rationale>Incomplete metadata destroys traceability. A requirement with no Owner means nobody answers when QA asks "is this still true?"; one with no Source means audit cannot trace it back to a stakeholder decision.</rationale>
+      </rule>
+
+      <example type="good" title="Complete Requirement Attributes">
+        <code lang="yaml"><![CDATA[
+id: REQ-045
+name: Password Reset Functionality
+description: |
+  Users shall be able to reset a forgotten password by providing their email address,
+  receiving a time-limited reset link (valid 24 hours), and setting a new password
+  with strength rules (≥8 chars, 1 uppercase, 1 digit, 1 special char).
+status: Verified
+priority: Must
+source: Stakeholder interview, Jan 5, transcript link
+owner: Alice (Product Manager)
+version: 1.2
+created: 2026-01-05
+modified: 2026-02-01
+author: Bob (BA)
+        ]]></code>
+        <note>Version 1.2 means one minor change from 1.0 (e.g. AC wording); if acceptance criteria or scope changed, it would be 2.0.</note>
+      </example>
+    </section>
+
+    <section name="versioning-discipline">
+      <p>Version numbers serve two purposes: they distinguish requirement text (so developers know which version they are implementing) and they mark what changed (so impact analysis knows whether to retest). Wording-only edits should not bump version; scope/AC/NFR changes must.</p>
+
+      <rule testable="true">
+        <statement>Use semantic versioning (X.Y.Z): Z for wording-only edits (no behavioral change), Y for AC/NFR changes (test cases must be updated), X for scope changes (may trigger re-approval). A requirement at 2.0 is materially different from 1.x — treat it as a new requirement at approval boundaries.</statement>
+        <rationale>Wording-only bumps pollute version history with noise; scope bumps trigger retesting and re-approval. Conflating the two means developers implement the wrong version and QA skips retesting because "only grammar changed".</rationale>
+      </rule>
+
+      <example type="good" title="Version History with Material-Change Rule">
+        <code lang="text"><![CDATA[
+REQ-045: Password Reset
+
+v1.0 (Jan 10) — Initial capture
+  "Users can reset password by email"
+  Status: Approved
+
+v1.1 (Jan 15) — Wording clarification only
+  "Users can reset password by providing their email address"
+  Status: Approved
+  Reason: Grammar; no AC change
+
+v2.0 (Jan 20) — AC change: password strength rules added
+  "Users can reset password [...] with strength rules (≥8 chars, 1 uppercase, 1 digit, 1 special char)"
+  Status: Proposed (awaiting re-approval)
+  Reason: New acceptance criteria; QA must update test cases
+
+v2.1 (Jan 25) — Wording of AC clarified
+  "...with strength rules (8+ characters, at least 1 uppercase letter, 1 digit, 1 special character)..."
+  Status: Approved
+  Reason: Rephrased for clarity; no test-case change
+        ]]></code>
+        <note>Transitions from 1.1 → 2.0 required re-approval because AC changed; 2.0 → 2.1 did not because only wording changed.</note>
+      </example>
+    </section>
+
+    <section name="change-request-workflow">
+      <p>Requirements change after approval. A Change Request (CR) captures what changed, why, and what breaks downstream. The CR is the artifact that makes impact analysis auditable; without it, changes are silent and rework is unbudgeted.</p>
+
+      <rule testable="true">
+        <statement>Every change to an Approved requirement MUST originate as a Change Request (CR-XXX), not as a direct edit. The CR MUST include: current requirement text, proposed text, reason for change, and an impact analysis identifying all downstream artifacts (design, code, test cases) that must change. A CR is approved, rejected, or deferred by the same stakeholders who approved the original requirement; the approval gates a version bump.</statement>
+        <rationale>Without a CR, changes are invisible to QA and design; developers implement the new requirement but testing is against the old version. A CR makes the cost and scope visible; approvers are forced to decide if the change is worth the rework.</rationale>
+      </rule>
+
+      <example type="good" title="Change Request with Impact Analysis">
+        <code lang="text"><![CDATA[
+CR-012: Modify Password Reset Timeout
+
+Current Requirement:
+  REQ-045 v2.1: Reset link valid 24 hours
+
+Proposed Change:
+  Reset link valid 1 hour (requested by Security team due to compromise risk)
+
+Reason for Change:
+  Security policy update: unverified reset links now considered a phishing vector if valid >1 hour
+
+Impact Analysis:
+  Artifacts affected:
+    - REQ-045 → version bump 2.1 → 2.2 (AC changed)
+    - DESIGN-012 (Session management) → review needed (no design change expected)
+    - TC-50, TC-51 (Reset timing tests) → must update time values
+    - IMPL-045a (Email template) → message text may need update ("valid 1 hour" instead of "24 hours")
+
+  Effort estimate: 4 person-hours (test case update + regression)
+
+Stakeholder Decision:
+  Approved by Carol (Security Lead) on Jan 28
+  Approved by Alice (Product) on Jan 28
+
+Final Status: REQ-045 bumped to v2.2; design review scheduled; TC update in progress
+        ]]></code>
+        <note>The CR makes the change atomic and auditable; without it, the 1-hour timeout is a surprise that breaks tests.</note>
+      </example>
+    </section>
+
+    <section name="validation-vs-verification">
+      <p>These terms are often conflated. Validation answers "are we building the right thing?" (requirements are correct and complete). Verification answers "are we building it right?" (implementation matches requirements). The distinction matters for audit: validation is BA work, verification is QA work, and they use different evidence.</p>
+
+      <rule testable="true">
+        <statement>Validation occurs during the Specify and Validate stages, before code starts. Activities: stakeholder walkthrough (do the written requirements make sense?), prototype review (does the visual match the requirement?), acceptance-criteria testability review (can QA write a test?). Verification occurs during Implemented → Verified, after code is ready. Activities: design review (does the design satisfy the requirement?), code inspection (does the code do what the design says?), testing (does the test pass the AC?). Do not mix the activities; validation questions asked after code is live are rework.</statement>
+        <rationale>Validation-at-build-time (asking QA to validate) means you are asking QA to reject code that is already built. Validation must happen before Approved is reached.</rationale>
+      </rule>
+
+      <example type="good" title="Validation: Requirements Walkthrough">
+        <code lang="text"><![CDATA[
+REQ-045 (Draft) — Password Reset Functionality
+
+BA walks through requirement with stakeholders:
+  "Users reset password by providing email address."
+    Stakeholder: "Which email address — the account email or the personal email?"
+    BA: Refines AC: "the email address registered on their account".
+
+  "Reset link valid 24 hours."
+    Stakeholder: "What if a user clicks the link at 23:59? Do they have 1 minute or a full 24 hours?"
+    BA: Refines AC: "reset link issued at time T is valid until T + 24 hours."
+
+  "Password strength rules: ≥8 chars, 1 uppercase, 1 digit, 1 special."
+    Stakeholder: "Does this apply to existing users changing password too?"
+    BA: Adds new AC: "applies to all password changes, including resets and admin password updates."
+
+Result: REQ-045 (Proposed) — now clearer, stakeholder signoff pending.
+        ]]></code>
+        <note>The walkthrough surfaces ambiguities before dev; the refined ACs are testable.</note>
+      </example>
+
+      <example type="good" title="Verification: Test Evidence Linking">
+        <code lang="text"><![CDATA[
+REQ-045 v2.1 (Implemented) — QA links test evidence
+
+TC-50: Reset link expires after 24 hours
+  Steps: 1. Request reset, 2. Check timestamp, 3. Wait 24:01, 4. Click link
+  Expected: Link rejected
+  Evidence: Test passed 2026-02-01 09:30 UTC
+
+TC-51: Password strength rules enforced
+  Steps: 1. Reset, 2. Enter 7-char password, 3. Submit
+  Expected: Rejected, reason "≥8 chars"
+  Evidence: Test passed; screenshot shows error message
+
+REQ-045 status: Verified (all acceptance criteria have linked test evidence)
+        ]]></code>
+        <note>Verification is the act of linking requirement to test proof, not a second opinion on the requirement text.</note>
+      </example>
+
+      <antipattern>
+        <description>Validation (the question "right thing?") asked at code review or QA stage.</description>
+        <reason>If the question arises at code review, the code is already built; validation-based changes are rework. Ask during requirements walkthrough instead.</reason>
+      </antipattern>
+    </section>
+
+    <section name="status-log-and-audit-trail">
+      <p>The status log is the organization's memory of requirement progress. It is generated periodically (weekly, sprint-end) from requirement frontmatter and serves as the single source of truth for governance and audit.</p>
+
+      <rule testable="true">
+        <statement>Generate a Requirements Status Log at least once per sprint (or on audit request). The log MUST include: requirement ID, name, current status, priority, owner, version, last modified date. Separately track the counts of each status as a burndown check. Include a detailed section listing orphans (no parent or no child) and a changelog of status transitions since the last log.</statement>
+        <rationale>A status log is proof that requirements are being managed; without it, an auditor cannot verify progress or see which requirements have stalled in Proposed.</rationale>
+      </rule>
+
+      <example type="good" title="Requirements Status Log Template">
+        <code lang="text"><![CDATA[
+# Requirements Status Log: Project Aurora v1.0
+
+**Version:** 2.1
+**Date:** 2026-02-10
+**BA:** Bob Smith
+
+## Status Summary
+
+| Status     | Count | % of Total | Trend    |
+|------------|-------|------------|----------|
+| Draft      | 0     | 0%         | -2       |
+| Proposed   | 3     | 5%         | stable   |
+| Approved   | 25    | 42%        | +1       |
+| Implemented| 18    | 30%        | +3       |
+| Verified   | 14    | 23%        | +4       |
+| Deferred   | 0     | 0%         | stable   |
+| Rejected   | 0     | 0%         | stable   |
+| **Total**  | **60**| **100%**   |          |
+
+## Status Transitions This Sprint
+
+| Req ID | Name                    | From       | To         | Date       | Reason            |
+|--------|-------------------------|------------|------------|------------|-------------------|
+| REQ-042| Login Rate Limiting     | Approved   | Implemented| 2026-02-04 | Sprint 5 dev done |
+| REQ-045| Password Reset          | Proposed   | Approved   | 2026-02-03 | Stakeholder OK    |
+| REQ-055| 2FA Support             | Draft      | Proposed   | 2026-02-05 | Ready for review  |
+
+## Orphans & Gaps
+
+None.
+
+## Notes
+
+REQ-055 (2FA) has been in Draft for 3 weeks; stakeholder availability needed for review.
+        ]]></code>
+        <note>The log is a snapshot; trends over sprints show burn rate and blocking items.</note>
+      </example>
+    </section>
+
+    <section name="requirement-attributes-and-traceability">
+      <p>BABOK Knowledge Area 5 assumes that requirements are traced forward (to design, code, test) and backward (to source/stakeholder). Attributes enable this tracing: the Source tells where the requirement came from; the Owner tells who signed it; the Version tells what was tested.</p>
+
+      <rule testable="true">
+        <statement>Every requirement attribute MUST be machine-readable (YAML frontmatter, JSON, or database fields, never free text). Use consistent key names across the organization. Version must be semver. Priority must be one of a closed set (MoSCoW, 1-5 scale, etc.). Status must be one of the canonical states. Tooling (git, pre-commit, CI) must validate frontmatter schema; reject non-compliant requirements at commit time.</statement>
+        <rationale>Free-text attributes lead to silent errors: "priority: high" vs "priority: HIGH" vs "priority: P1" are all assumed equivalent but tooling cannot parse them. Machine-readable attributes catch these silently.</rationale>
+      </rule>
+
+      <example type="good" title="Frontmatter-Based Requirement File">
+        <code lang="yaml"><![CDATA[
+---
+id: REQ-045
+name: Password Reset
+status: Verified
+priority: Must
+source: Stakeholder interview (alice@example.com, 2026-01-05)
+owner: alice-pm
+version: 2.1
+created: 2026-01-05
+modified: 2026-02-01
+author: bob-ba
+traces-to:
+  - implements: DESIGN-012 (Session Recovery)
+  - verifies: TC-50 (Reset Timeout)
+  - verifies: TC-51 (Strength Rules)
+---
+
+# Password Reset
+
+Users shall be able to reset a forgotten password by:
+1. Providing the email address registered on their account
+2. Receiving a password reset link via email (valid 24 hours)
+3. Accessing a form that enforces password strength rules (≥8 chars, 1 upper, 1 digit, 1 special)
+4. Setting a new password
+
+## Acceptance Criteria
+- AC1: Reset link valid for exactly 24 hours after issue
+- AC2: After 24 hours, link returns 404
+- AC3: Password strength validation matches rules above
+- AC4: On success, user is logged out of all sessions
+        ]]></code>
+        <note>The frontmatter is parsed by CI validators; the Markdown body is read by humans. Traces-to links back to design and tests.</note>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/requirements-status-log.md" purpose="Requirements Status Log with summary, transitions, and orphan tracking."/>
+      <template path="templates/requirement-change-request.md" purpose="Change Request form with impact analysis sections."/>
+      <template path="templates/requirement-version-history.md" purpose="Version History table for a single requirement."/>
+    </templates>
+
+    <checklist>
+      <check>Canonical state set defined and pinned in version control</check>
+      <check>Every requirement has ID (REQ-XXX), Owner, Version, Status, Source</check>
+      <check>Validation activities (walkthrough, prototype review) completed before Approved gate</check>
+      <check>Change requests (CR-XXX) created for scope/AC/NFR changes; impact analysis included</check>
+      <check>Status log generated at sprint-end or audit request</check>
+      <check>Verification activities (design review, test evidence) completed before Verified gate</check>
+      <check>Pre-commit hook validates requirement frontmatter and state transitions</check>
+      <check>Deferred requirements time-bound with revisit date; re-proposed or deleted on timeout</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="requirements-traceability"/>
+      <ref slug="requirements-prioritization"/>
+      <ref slug="requirements-validation"/>
+      <ref slug="requirements-documentation"/>
+      <link href="https://www.iiba.org/standards-and-resources/babok/"/>
+      <link href="https://www.iso.org/standard/72089.html"/>
+    </see-also>
+  </content>
+</methodology>

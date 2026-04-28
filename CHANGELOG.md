@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/ba/ba-core methodologies → methodology.xml (ba-trends-summary, data-driven-requirements, elicitation-techniques; feature-045 batch)
+- migrate: 3/3 pro/ba/ba-modeling methodologies → methodology.xml (decision-analysis, interface-analysis, use-case-modeling; feature-045 batch)
 - migrate: 3/3 pro/ba/business-analyst methodologies → methodology.xml (knowledge-areas-detail, knowledge-areas-overview, methodologies-detail; feature-045 batch)
 - migrate: 3/3 pro/ba/ba-core methodologies → methodology.xml (ba-planning, ba-requirements-mgmt, ba-strategic-partnership; feature-045 batch)
 - migrate: 3/3 solo/ux/ux-researcher methodologies → methodology.xml (ia-framework, ia-templates, journey-mapping)

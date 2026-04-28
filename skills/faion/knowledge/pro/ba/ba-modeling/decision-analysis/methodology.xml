@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="decision-analysis">
+  <metadata>
+    <tier>pro</tier>
+    <group>ba</group>
+    <domain>ba-modeling</domain>
+    <summary>Structured 6-step process for evaluating options against weighted criteria with sensitivity analysis to distinguish robust winners from statistical noise.</summary>
+    <tags>
+      <tag>decision-making</tag>
+      <tag>option-evaluation</tag>
+      <tag>sensitivity-analysis</tag>
+      <tag>monte-carlo</tag>
+      <tag>decision-matrix</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Decision Analysis</title>
+
+    <summary>Structured 6-step process for evaluating options against weighted criteria: define decision → identify options → define and lock criteria with weights → score options with evidence URLs per cell → sensitivity analysis (±20% weight Monte Carlo) → document rationale. Weights are locked before scoring; sensitivity analysis determines whether the recommendation is robust or fragile (top option wins less than 70% of Monte Carlo trials → escalate to human).</summary>
+
+    <why>
+      <p>Decisions made by gut feel cannot be audited, re-examined, or calibrated over time. Making criteria weights explicit collapses argument-by-anecdote into argument-by-number. The sensitivity analysis surface is the key step that the README omits: a 3.85 vs 3.70 weighted total is well within rater noise — without Monte Carlo you cannot distinguish a real winner from statistical noise. The decision artifact in `.aidocs/` lets future teams audit and improve calibration.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Reversible-but-expensive choice with three or more candidate options where the team is sliding toward gut feel (CRM selection, build-vs-buy, LLM provider choice).</item>
+        <item>Stakeholders disagree because they secretly weight criteria differently — making weights explicit collapses the argument.</item>
+        <item>Decision will be re-litigated later (board review, audit, post-mortem) and a written rationale is needed.</item>
+        <item>Comparing N options against a current baseline (Pugh matrix mode).</item>
+        <item>A decision has long-tail risk that only surfaces when tabulated (vendor lock-in, regulatory exposure).</item>
+        <item>Sequential / conditional decisions with probabilities — switch to decision tree with expected value.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Two-option, low-cost, easily reversible decisions — use a 5-minute pros/cons list.</item>
+        <item>Decision is actually about strategy, not selection — run a brainstorm session first.</item>
+        <item>Analysis is retrofitted to justify a decision already made (the #1 failure mode).</item>
+        <item>Pure financial trade-offs with quantifiable cash flows — use NPV / discounted cash flow directly.</item>
+        <item>Decisions under deep uncertainty where numbers have more than one order-of-magnitude error.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="criteria-lock-rule">
+      <rule>
+        <statement>Lock criteria and weights before scoring any option. Record the weight-setter name and timestamp. No weight changes after scoring begins.</statement>
+        <rationale>Stakeholders who want a specific option will lobby to raise weights for criteria where it wins. Weights locked before scoring with a named author prevent post-hoc manipulation and make manipulation visible to reviewers.</rationale>
+      </rule>
+      <rule>
+        <statement>Cap the criteria list at 7 items. More than 7 and stakeholders cannot hold them in working memory; weights become arbitrary.</statement>
+        <rationale>Cognitive load above 7 criteria produces weight assignments that do not reflect real priorities. The cap forces the BA to consolidate collinear criteria (cost + TCO + subscription price → total cost).</rationale>
+      </rule>
+      <rule>
+        <statement>Check for collinear criteria before weights are set. If two criteria have correlation above 0.6 (e.g., "cost" and "TCO"), merge them. Collinearity secretly inflates one axis to 2× or 3× its stated weight.</statement>
+        <rationale>Collinearity is the most common invisible error in decision matrices. "Cost (25%) + TCO (20%) + subscription price (15%)" is really "cost 60%" in a matrix labelled as "cost 25%".</rationale>
+      </rule>
+    </section>
+
+    <section name="evidence-requirement">
+      <rule>
+        <statement>Every cell in the evaluation matrix must cite at least one evidence URL (vendor docs, pricing page, GitHub repo, measured uptime data). A score without a source is a vote, not data. Reject cells without evidence.</statement>
+        <rationale>LLMs hallucinate vendor capabilities and pricing confidently. Evidence URLs make claims falsifiable and enable post-decision calibration reviews.</rationale>
+      </rule>
+      <rule>
+        <statement>Score evidence must be dated. Evidence older than 90 days must be re-fetched before use. Vendor pricing and uptime data stale quickly.</statement>
+        <rationale>A CRM priced at $50/seat in January may be $80/seat in September. Stale evidence produces wrong scores that compound into wrong recommendations.</rationale>
+      </rule>
+      <rule>
+        <statement>Score one criterion across all options before moving to the next criterion. Never score one option fully then the next. Scoring per-criterion prevents anchoring on the first option scored.</statement>
+        <rationale>When one option is scored fully first, later options drift toward 3 (regression to median) because the first option becomes the implicit anchor. Per-criterion scoring breaks the anchor.</rationale>
+      </rule>
+    </section>
+
+    <section name="scoring-direction-normalization">
+      <rule>
+        <statement>Define direction for every criterion: higher_better or lower_better. Score 5 = best for this criterion in every row. Never mix directions within a matrix. Include this field in the criteria definition.</statement>
+        <rationale>Mixing directions silently breaks the math: "cost: 5 = expensive" in one row and "cost: 5 = cheap" in another produces a nonsensical total. The criterion definition must encode direction before any scoring begins.</rationale>
+      </rule>
+    </section>
+
+    <section name="sensitivity-analysis-trigger">
+      <rule>
+        <statement>After scoring, run Monte Carlo sensitivity analysis with ±20% weight perturbation over 2000 trials. If the top option wins fewer than 70% of trials, the recommendation is fragile — escalate to human or gather more evidence before committing.</statement>
+        <rationale>A 3.85 vs 3.70 weighted total is well within rater noise (±0.5 on a 1-5 scale). Without sensitivity analysis, the "winner" may be statistical noise. The 70% threshold converts this judgment into a concrete go/no-go criterion.</rationale>
+      </rule>
+      <rule>
+        <statement>Always include a "do nothing / status quo" option, even when it feels unnecessary. It calibrates the rest of the matrix and forces the team to state what they lose by stalling.</statement>
+        <rationale>Without a status-quo option, the matrix proves that one of the presented options is better than the others — but not that any of them is better than doing nothing.</rationale>
+      </rule>
+    </section>
+
+    <section name="crm-selection-example">
+      <example type="good" title="CRM Selection Worked Example">
+        <code lang="markdown"><![CDATA[
+# Criteria (locked 2026-04-26, weight-setter: CEO)
+| Criterion       | Weight | Direction       |
+|-----------------|--------|-----------------|
+| Feature fit     | 25%    | higher_better   |
+| Total cost 3yr  | 25%    | lower_better    |
+| Ease of use     | 20%    | higher_better   |
+| Integration     | 15%    | higher_better   |
+| Support SLA     | 15%    | higher_better   |
+
+# Evidence per cell (sampled)
+Salesforce / Feature fit: score=5 / source: https://salesforce.com/features (fetched 2026-04-26)
+HubSpot / Total cost: score=4 / source: https://hubspot.com/pricing (fetched 2026-04-26)
+
+# Weighted totals
+Salesforce: 3.55, HubSpot: 4.00, Pipedrive: 3.85
+
+# Sensitivity analysis output (sensitivity.py)
+Robustness under ±20% weight noise:
+  HubSpot:   81.4%  mean=3.99  sd=0.18   ← winner, robust (>70%)
+  Pipedrive: 11.3%  mean=3.83  sd=0.20
+  Salesforce: 7.3%  mean=3.53  sd=0.21
+
+# Recommendation: HubSpot
+Rationale: Best feature/cost balance; wins 81% of sensitivity trials.
+Risk: Limited Salesforce-CRM migration support. Mitigation: pilot import with 500 contacts first.
+        ]]></code>
+        <note>Decision: Select CRM platform for a 12-person sales team with a $30k/year budget cap. Evidence URLs required for all cells.</note>
+      </example>
+    </section>
+
+    <section name="build-vs-buy-example">
+      <example type="good" title="Build vs Buy Example">
+        <code lang="markdown"><![CDATA[
+# Criteria (locked 2026-03-15, weight-setter: CTO)
+| Criterion          | Weight | Direction      |
+|--------------------|--------|----------------|
+| Time to market     | 30%    | lower_better   |
+| Total cost 3yr     | 25%    | lower_better   |
+| Customization need | 25%    | higher_better  |
+| Operational risk   | 20%    | lower_better   |
+
+# Scoring (evidence URLs required)
+| Criterion     | Wt | Build | Buy (SQS) | Buy (CloudAMQP) |
+|---------------|----|-------|-----------|-----------------|
+| Time to mkt   | 30%| 2     | 5         | 5               |
+| Cost 3yr      | 25%| 3     | 4         | 4               |
+| Customization | 25%| 5     | 2         | 3               |
+| Op risk       | 20%| 2     | 5         | 4               |
+| Weighted      |    | 3.00  | 4.05      | 4.05            |
+
+# Sensitivity: SQS and CloudAMQP tied (>70% each under ±20% weight noise)
+# Escalate to human: choose by operational preference (existing AWS stack → SQS)
+        ]]></code>
+        <note>Decision: Build custom queue service or buy a managed queue. Criteria lock before scoring.</note>
+      </example>
+    </section>
+
+    <antipattern>
+      <description>Analysis performed to justify a decision already made: options are scored after the winner is known, and weights are set to produce the predetermined result.</description>
+      <reason>Reviewers detect post-hoc rationalization from weight patterns that perfectly match the chosen option. Trust drops and the decision process loses legitimacy for future decisions.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Pure financial trade-off scored on a 1-5 scale instead of using NPV or discounted cash flow.</description>
+      <reason>A "cost" score of 3 vs 4 throws away precision that financial analysis preserves. For purely financial decisions, use NPV directly; reserve 1-5 scoring for non-quantifiable criteria.</reason>
+    </antipattern>
+
+    <section name="agentic-workflow">
+      <rule>
+        <statement>Pass 1 (Frame pass, sonnet): reads decision context and emits the structured frame {decision_statement, objectives[], constraints[], decision_maker, criteria[]}. Weights are NOT assigned in this pass. Output JSON only.</statement>
+        <rationale>Separating frame from scoring prevents the most common failure: weights assigned by the same agent that generates options, which causes unconscious steering toward a preferred outcome.</rationale>
+      </rule>
+      <rule>
+        <statement>Pass 2 (Score pass): for each option × criterion cell, a separate agent retrieves evidence (vendor docs, pricing pages, GitHub metrics) and emits {option, criterion, evidence_urls[], normalized_score_1_5, confidence, caveats[]}. Use multiple agents in parallel — one per criterion or one per option — to reduce single-agent bias. If evidence cannot be found, return confidence=low with empty evidence_urls; never hallucinate a score.</statement>
+        <rationale>A single agent scoring the entire matrix inherits its own biases across all cells. Parallel scoring agents with independent evidence retrieval produce more calibrated and disagreement-surfacing results.</rationale>
+      </rule>
+      <rule>
+        <statement>Pass 3 (Sensitivity/dissent pass, opus): runs Monte Carlo over weights (±20%) and confidence intervals on cells, emits recommendation with robustness score and lists which cells, if flipped, would change the answer. If gap between #1 and #2 is less than 0.3, recommendation must be "tied — escalate to human".</statement>
+        <rationale>The dissent pass is the only pass that can override the apparent matrix winner. Its output is the actual decision recommendation; the matrix is supporting evidence, not the decision.</rationale>
+      </rule>
+    </section>
+
+    <section name="human-checkpoints">
+      <rule>
+        <statement>Three mandatory human-in-the-loop checkpoints: (1) weights before scoring starts, (2) final recommendation before commitment, (3) post-implementation calibration review (compare predicted scores to actual outcomes, 6-12 months later).</statement>
+        <rationale>Agents produce the matrix; humans own the decision and the calibration review. Without the calibration review, the team never learns whether its scoring rubrics were accurate, so quality never improves.</rationale>
+      </rule>
+      <rule>
+        <statement>Archive the final matrix and rationale in .aidocs/ alongside the project's other artifacts. Future teams must be able to audit the decision and improve calibration from historical data.</statement>
+        <rationale>Decision quality improves when previous decisions are reviewed against outcomes. An unarchived decision cannot be audited, calibrated, or defended in a post-mortem.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations-and-failure-modes">
+      <p>False precision: a 3.85 vs 3.70 weighted total looks like a winner but is well within rater noise (typically ±0.5 on a 1-5 scale). Without sensitivity analysis the "winner" is often statistical noise.</p>
+      <p>Criteria collinearity: "cost" and "TCO" and "subscription price" are often the same axis triple-counted, secretly inflating financial weight to 60%+ while the table shows 25%.</p>
+      <p>Inverse scaling errors: cost is "lower is better" but features is "higher is better". Mixing direction silently breaks the math. Always normalize to "5 = best for this criterion".</p>
+      <p>Anchoring on first option: the option scored first becomes the reference; later options drift toward 3 (regression to mean). Score one criterion across all options before moving to the next.</p>
+      <p>Missing options: the matrix evaluates the options you brought; it cannot tell you the option you forgot. Pair with explicit divergence (brainstorm) before convergence (matrix).</p>
+      <p>Weight gaming: stakeholders who want option B will lobby to raise the weight of criteria where B wins. Lock weights *before* scoring; record who set them and when.</p>
+      <p>No-uncertainty assumption: the matrix treats each cell as a point estimate. Real options have wide ranges (cost ±50%, time ±100%); use Monte Carlo or ranges if stakes are high.</p>
+    </section>
+
+    <section name="agentic-workflow-extended">
+      <p>Drive this with a three-pass structured pipeline. (1) **Frame pass** — a sonnet agent reads the decision context and emits the structured frame {decision_statement, objectives[], constraints[], decision_maker, criteria[]}; weights are NOT yet assigned. (2) **Score pass** — for each option × criterion cell, an agent retrieves evidence (vendor docs, pricing pages, GitHub issue counts, last-12-month uptime data) and emits {option, criterion, raw_evidence_url[], normalized_score_1_5, confidence}. Multiple agents in parallel reduce single-agent bias. (3) **Sensitivity / dissent pass** — an opus agent runs Monte Carlo over weights (±20%) and confidence intervals on cells, emits a recommendation with a "robustness score" and lists which cells, if flipped, would change the answer. Only the final memo is prose; everything else is JSON. The decision itself stays human — agents produce the matrix, the human signs.</p>
+
+      <rule>
+        <statement>Recommended subagents: faion-brainstorm to diverge/converge/review and expand the option set before the matrix is locked. faion-sdd-executor-agent to generate the implementation SDD task tree once the recommended option is signed off. faion-feature-executor to execute discrete tasks that fall out of the decision (vendor onboarding, contract signing, migration plan). faion-improver to run quarterly: read decisions made 6-12 months ago, compare predicted scores to actual outcomes, log calibration errors as a recurring pattern. A custom decision-evidence-gatherer: input = {option, criterion}, output = {evidence_urls[], extracted_facts[], normalized_score, confidence}. Reuse across decisions; it caches vendor research. A custom criteria-deduplicator: input = criteria list, output = clusters of collinear criteria with merge recommendation. Catches the "cost / TCO / pricing" triple-count failure.</statement>
+        <rationale>Specialized agents reduce rework and improve calibration over time.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Lock weights *before* scoring options; record the weight-setter and timestamp. Otherwise weights drift to support a preferred answer.</item>
+        <item>Score one criterion across all options at once, not one option fully then the next — kills anchoring bias on the first option scored.</item>
+        <item>Always include a "do nothing" / status-quo option, even when it feels silly. It calibrates the rest of the matrix.</item>
+        <item>Force evidence URLs on every cell. A score with no source is a vote, not data.</item>
+        <item>Publish raters' individual scores before averaging — disagreement is signal; collapsing it into a mean hides it.</item>
+        <item>Run sensitivity analysis (±20% on weights, ±1 on scores) automatically. If the top changes, the decision is fragile, not robust.</item>
+        <item>Keep the matrix to ≤ 7 criteria. More than 7 and stakeholders cannot hold them in working memory; weights become arbitrary.</item>
+        <item>Pre-mortem the recommended option ("assume in 12 months this was the wrong call — why?"). The output goes into the Risks section, not as an afterthought.</item>
+        <item>Archive the final matrix + rationale in the project's `.aidocs/` (or equivalent) so the next team can audit and learn calibration.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Agents will hallucinate vendor capabilities and pricing.</description>
+        <reason>Force evidence URLs on every cell and reject cells without primary sources (vendor docs, pricing pages, GitHub repos), not blog posts.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LLMs cluster in the middle of 1-5 scales (regression to median).</description>
+        <reason>Calibrate by asking for percentile rank instead, or by anchoring with two extreme reference options.</reason>
+      </antipattern>
+      <antipattern>
+        <description>A single agent doing all scoring inherits its own biases across the whole matrix.</description>
+        <reason>Use parallel scoring agents (one per criterion or one per option) and compare; large disagreement = low confidence cells.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents will silently mix scoring directions ("cost: 5 = expensive" in one row, "5 = cheap" in another).</description>
+        <reason>Fix at the schema level: every criterion has an explicit `direction: "higher_better"|"lower_better"`.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Date drift: pricing and uptime data goes stale fast.</description>
+        <reason>Stamp `retrieved_at` on every fact; agents must refuse to reuse evidence > 90 days old without re-fetching.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LLMs love to recommend the option you mentioned first or last.</description>
+        <reason>Randomize option order in the prompt before the score pass.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent-only decisions are an anti-pattern.</description>
+        <reason>The matrix is decision *support*, not decision *making*. Human-in-the-loop checkpoints: weights (before scoring), final rec (before commitment), post-implementation calibration review.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Watch for prompt-injected criteria: if option descriptions come from vendor websites, vendors can plant criteria favoring themselves.</description>
+        <reason>Strip suspicious instructions; never let vendor copy define weights.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/decision-analysis.md" purpose="Full Decision Analysis Document: context, options, criteria/weights, evaluation matrix, sensitivity, recommendation, approval."/>
+      <template path="templates/decision-matrix-simple.md" purpose="Lightweight matrix template for lower-stakes decisions."/>
+      <template path="templates/sensitivity.py" purpose="Monte Carlo over ±20% weight perturbations; prints robustness % per option. Recommends escalation if winner is below 70%."/>
+      <template path="templates/prompt-score-pass.txt" purpose="LLM prompt for evidence-backed cell scoring: evidence URLs required, confidence field, no-marketing-copy rule."/>
+    </templates>
+
+    <see-also>
+      <ref slug="use-case-modeling"/>
+      <ref slug="interface-analysis"/>
+    </see-also>
+  </content>
+</methodology>
