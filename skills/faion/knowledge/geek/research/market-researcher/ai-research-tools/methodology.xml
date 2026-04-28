@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ai-research-tools">
+  <metadata>
+    <tier>geek</tier>
+    <group>research</group>
+    <domain>market-researcher</domain>
+    <summary>Build AI research pipelines with a two-layer orchestrator: select the right tool for each stage, dispatch queries, normalize outputs, and validate coverage before synthesis.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>research</tag>
+      <tag>pipeline</tag>
+      <tag>ai-tools</tag>
+      <tag>orchestration</tag>
+      <tag>multi-stage</tag>
+    </tags>
+  </metadata>
+  <content>
+    <title>AI Research Tools</title>
+    <summary>A two-layer agent structure for AI-driven market research pipelines: an orchestrator (Sonnet) selects the right tool for each research stage based on task type and available credentials, then dispatches sub-queries to stage-specific tools. The orchestrator merges outputs, flags gaps where no tool produced coverage, and signals a human checkpoint before synthesis. Each stage gets exactly one primary tool.</summary>
+    <why>
+      <p>No single AI tool covers all market research stages. Assigning the same tool to multiple stages hides coverage gaps and produces biased, citation-poor results. Agents default to Claude or ChatGPT for all stages when not given explicit tool assignments. Tool outputs also have different schemas (Perplexity returns citation URLs; SerpAPI returns structured JSON; Google Trends returns DataFrames); the orchestrator must normalize before merging.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building or auditing the tool stack for a market research pipeline</item>
+        <item>Deciding which AI tool handles which stage of a multi-step project</item>
+        <item>Replacing manual research workflows with agent-driven equivalents</item>
+        <item>Onboarding a new agent to an existing research pipeline</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>When a single tool already covers the full research scope</item>
+        <item>Proprietary or regulated research contexts requiring auditable, non-AI sources</item>
+        <item>When the research team lacks API credentials for candidate tools</item>
+        <item>One-off ad hoc queries where tool overhead exceeds research value</item>
+      </list>
+    </when-not-to-use>
+    <section name="two-layer-architecture">
+      <rule>
+        <statement>Use a two-layer agent structure: a Sonnet orchestrator that selects tools and generates stage queries, plus stage-specific tool calls (Perplexity, SerpAPI, Google Trends, Dovetail export). Never have the orchestrator make tool calls directly.</statement>
+        <rationale>Mixing selection logic and tool dispatch in one agent creates a monolithic prompt that is hard to debug when one stage fails. Separation allows stage-level retry without re-running the entire pipeline.</rationale>
+      </rule>
+      <rule>
+        <statement>Assign exactly one primary tool per research stage. Do not allow the same tool to cover multiple stages.</statement>
+        <rationale>Using one tool for multiple stages hides coverage gaps. If Perplexity is used for both exploration and competitor intel, the competitor result will be citation-shallow because Perplexity is not optimized for tracking product and pricing changes.</rationale>
+      </rule>
+      <section name="default-stage-to-tool-map">
+        <list>
+          <item>exploration → Perplexity</item>
+          <item>competitor-intel → SerpAPI</item>
+          <item>trend → Google Trends (pytrends)</item>
+          <item>interview-analysis → Dovetail (export)</item>
+          <item>synthesis → Claude Sonnet</item>
+        </list>
+      </section>
+    </section>
+    <section name="normalization-rule">
+      <rule>
+        <statement>Before merging stage outputs in the synthesis step, normalize schemas: Perplexity returns citation URLs, SerpAPI returns structured JSON, Google Trends returns DataFrames. The orchestrator must convert all outputs to a common format before synthesis.</statement>
+        <rationale>Without normalization, the synthesis agent receives heterogeneous schemas and either truncates the unusual formats or produces inconsistent citations, breaking the source registry.</rationale>
+      </rule>
+      <rule>
+        <statement>Verify tool credentials and rate limits at the start of each pipeline run. Failed tool calls silently missing from results is a common failure mode.</statement>
+        <rationale>A stage that fails due to an expired API key produces no output. Without explicit verification, the orchestrator treats missing output as "no data found" and continues, producing a synthesis with invisible gaps.</rationale>
+      </rule>
+    </section>
+    <section name="best-practices">
+      <rule>
+        <statement>Run the tool stack on a known-answer test case before live research to validate API reliability.</statement>
+        <rationale>Validate tool behavior against a question with a known, stable answer (e.g., "What is the Anthropic API base URL?") before committing to a multi-stage research run. This catches misconfiguration before it contaminates real research.</rationale>
+      </rule>
+    </section>
+    <section name="limitations">
+      <antipattern>
+        <description>No single AI tool covers all stages; agents that try to use one tool for everything produce shallow, biased results.</description>
+        <reason>Assign explicit tools per stage; do not let agents default to Claude or ChatGPT for all stages.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Tool quality for market research degrades sharply outside English-language content.</description>
+        <reason>Perplexity, SerpAPI, and Google Trends optimize for English signals; non-English research requires specialized regional tools.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Competitor analysis tools (Crayon, Klue) require 2-4 weeks of initial setup before producing useful signals; agents cannot bootstrap this.</description>
+        <reason>These tools require human configuration of competitor entities. Agents cannot invent the competitor list.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Interview analysis tools (Looppanel, Dovetail) only operate on pre-uploaded transcripts — agents cannot conduct interviews.</description>
+        <reason>These are transcript processors, not interview conductors. Transcripts must exist before the tool can be called.</reason>
+      </antipattern>
+      <antipattern>
+        <description>AI tools reflect the training cutoff or crawl date of their underlying data; freshness of results must be explicitly verified.</description>
+        <reason>Perplexity crawls 2026 web data; older AI LLMs have 2024 cutoffs. Do not use tools without knowing their data freshness date.</reason>
+      </antipattern>
+    </section>
+    <section name="cli-reference">
+      <list>
+        <item>pytrends — Google Trends trend signal (pip install pytrends)</item>
+        <item>serpapi — Structured search results (pip install google-search-results)</item>
+        <item>anthropic SDK — Orchestration and synthesis (pip install anthropic)</item>
+        <item>httpx — Async API calls to Perplexity, Contify (pip install httpx)</item>
+        <item>pandas — Tabulate and merge multi-tool outputs (pip install pandas)</item>
+      </list>
+    </section>
+    <section name="saas-reference">
+      <list>
+        <item>Perplexity Pro — REST API, exploration and cited synthesis</item>
+        <item>ChatGPT API — REST API, general synthesis; weaker citations than Perplexity</item>
+        <item>Claude API — REST API, best for structured output and multi-step reasoning</item>
+        <item>Crayon — partial webhooks, competitor intel; manual setup required</item>
+        <item>Klue — partial, competitor intel; better NLP querying than Crayon</item>
+        <item>Contify — partial REST, competitor + market news</item>
+        <item>Brandwatch — partial REST, social sentiment; complex setup</item>
+        <item>Sprout Social — partial REST, social sentiment; more accessible API</item>
+        <item>Statista AI — export only, market data reports</item>
+        <item>CB Insights — partial export, company and funding data</item>
+        <item>Exploding Topics — REST API, emerging trend signals</item>
+        <item>Looppanel — partial export, interview analysis</item>
+        <item>Dovetail — partial export, interview and UX research synthesis</item>
+      </list>
+    </section>
+    <section name="prompt-pattern">
+      <example type="good" title="Multi-stage research pipeline prompt">
+        <code lang="xml"><![CDATA[
+<research_pipeline>
+  <topic>AI research tools market, 2026</topic>
+  <stages>
+    <stage name="exploration" tool="perplexity">Broad landscape: who are the players, what are the use cases?</stage>
+    <stage name="competitor-intel" tool="serpapi">Recent news, funding, product launches for top 5 players</stage>
+    <stage name="trend" tool="google-trends">Search volume trends for key terms over 12 months</stage>
+    <stage name="synthesis" tool="claude-sonnet">Merge stage outputs into a structured report with source registry</stage>
+  </stages>
+  <output>Markdown report, source registry, coverage gaps list</output>
+</research_pipeline>
+        ]]></code>
+        <note>Each stage declares its tool explicitly. Synthesis is a separate stage, not embedded in any tool call.</note>
+      </example>
+    </section>
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>Agents default to Claude or ChatGPT for all stages when not given explicit tool assignments.</description>
+        <reason>General-purpose LLMs produce citation-poor results for competitive and market data stages. Stage-to-tool assignments must be explicit in the orchestrator prompt, not inferred.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Rate limit errors from one tool propagate silently unless the orchestrator handles exceptions per tool.</description>
+        <reason>Without per-tool exception handling, a rate-limited stage produces empty output that looks like "no data", corrupting the synthesis and producing gaps invisible to the human reviewer.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Tool outputs have different schemas; the synthesis step receives inconsistent data unless normalized.</description>
+        <reason>Perplexity → citations as URLs; SerpAPI → structured JSON; Google Trends → DataFrames. The orchestrator must normalize before the synthesis call, not after.</reason>
+      </antipattern>
+      <antipattern>
+        <description>"AI tool" in 2026 means both AI-native tools (Perplexity, Elicit) and legacy tools with AI features bolted on (Statista AI, SurveyMonkey AI); their reliability for agent pipelines differs significantly.</description>
+        <reason>Always include the API reference in the agent's context for each tool. Agents will hallucinate capabilities for unfamiliar tools if given only the tool name.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/stage-dispatcher.py" purpose="Orchestrator that selects tool per stage and generates stage queries"/>
+      <template path="templates/research-pipeline-prompt.txt" purpose="XML prompt for multi-stage market research pipeline"/>
+    </templates>
+    <see-also>
+      <link href="https://docs.perplexity.ai/">Perplexity API</link>
+      <link href="https://serpapi.com/search-api">SerpAPI Docs</link>
+      <link href="https://explodingtopics.com/api">Exploding Topics API</link>
+      <link href="https://www.cbinsights.com/">CB Insights Platform</link>
+      <link href="https://www.nngroup.com/articles/research-with-ai/">NN/g AI Research Tools</link>
+      <link href="https://dovetail.com/">Dovetail Platform</link>
+    </see-also>
+  </content>
+</methodology>
