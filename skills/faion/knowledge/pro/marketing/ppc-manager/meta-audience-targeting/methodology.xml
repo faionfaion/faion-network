@@ -1,0 +1,452 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="meta-audience-targeting">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>ppc-manager</domain>
+    <summary>Meta audience construction: demographics, interests, custom audiences (pixel/CRM/engagement), lookalikes, exclusions, reach estimation. Core rule: exclude recent purchasers from prospecting.</summary>
+    <tags>
+      <tag>meta-audiences</tag>
+      <tag>targeting-api</tag>
+      <tag>custom-audiences</tag>
+      <tag>lookalike-audiences</tag>
+      <tag>audience-exclusion</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Meta Audience Targeting: Demographics, Interests, Custom Audiences, and Lookalikes</title>
+
+    <summary>Meta audience construction: demographics, interests, custom audiences (pixel/CRM/engagement), lookalikes, exclusions, reach estimation. Core rule: exclude recent purchasers from prospecting.</summary>
+
+    <why>
+      <p>Meta's auction system allocates impressions based on audience overlap, bid, and relevance. Using the wrong audience type — or forgetting exclusions — inflates CPAs and triggers audience fatigue. Custom audiences built from pixel events or hashed CRM data consistently outperform broad interest targeting for retargeting. Lookalikes built from high-value source audiences (purchasers, not all visitors) produce 2-5x better ROAS than interest-only cold targeting.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building or auditing any Meta ad set audience via the Marketing API</item>
+        <item>Creating custom audiences from pixel events, customer lists, or engagement sources</item>
+        <item>Generating lookalike audiences from a qualified source audience</item>
+        <item>Constructing full-funnel audience stacks (cold → warm → hot)</item>
+        <item>Estimating reach before launching using the `reachestimate` endpoint</item>
+        <item>Setting up Special Ad Category campaigns (housing, credit, employment) with restricted targeting</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Campaign or ad set creation structure — use `ads-meta-campaign-setup` for the full three-tier setup</item>
+        <item>Budget allocation across audiences — use `ads-budget-optimization`</item>
+        <item>Instagram-specific placement targeting — use `instagram-ads` for placement-level API details</item>
+        <item>Audience analysis or reporting post-launch — this covers construction only</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="demographic-targeting">
+      <title>Meta Demographic Targeting</title>
+
+      <p>Geographic, age/gender, language, and device targeting parameters for Meta ad set targeting JSON.</p>
+
+      <title>Geographic Targeting</title>
+
+      <rule>
+        <statement>Always specify at least one geo_locations entry; Meta requires a location to serve any ad.</statement>
+        <rationale>Without a location constraint, ad sets enter review indefinitely and fail to deliver.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="json"><![CDATA[
+{
+  "targeting": {
+    "geo_locations": {
+      "countries": ["US", "CA", "GB"],
+      "regions": [{"key": "4081"}],
+      "cities": [{"key": "2421836", "radius": 25, "distance_unit": "mile"}],
+      "zips": [{"key": "US:90210"}]
+    }
+  }
+}
+        ]]></code>
+        <note>Countries use ISO 2-letter codes. City keys are Meta place IDs from the search API.</note>
+      </example>
+
+      <title>Age and Gender</title>
+
+      <rule>
+        <statement>Set age_min to 18 at minimum; Meta does not allow targeting under 18.</statement>
+        <rationale>Under-18 targeting triggers policy rejection and account flags regardless of product type.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="json"><![CDATA[
+{
+  "targeting": {
+    "age_min": 25,
+    "age_max": 54,
+    "genders": [1, 2]
+  }
+}
+        ]]></code>
+        <note>Gender codes: 1 = Male, 2 = Female. Omit genders array to target all genders.</note>
+      </example>
+
+      <title>Language Targeting</title>
+
+      <example type="good">
+        <code lang="json"><![CDATA[
+{
+  "targeting": {
+    "locales": [6, 24]
+  }
+}
+        ]]></code>
+        <note>Common locale IDs: 6=English(US), 24=English(UK), 28=Spanish(Spain), 46=French(France).</note>
+      </example>
+
+      <title>Device Targeting</title>
+
+      <example type="good">
+        <code lang="json"><![CDATA[
+{
+  "targeting": {
+    "user_os": ["iOS", "Android"],
+    "user_device": ["iPhone", "Samsung Galaxy S"],
+    "wireless_carrier": ["Verizon", "AT&T"]
+  }
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="interests-behaviors">
+      <title>Interest and Behavior Targeting</title>
+
+      <p>Interest lookup API, behavior targeting, and flexible/layered logic operators for Meta ad sets.</p>
+
+      <title>Interest Search API</title>
+
+      <rule>
+        <statement>Look up interest IDs via the search API before hardcoding them — interest IDs do not change but names and audience sizes do.</statement>
+        <rationale>Using stale interest data from documentation produces silent mismatches; the search API returns current size bounds needed for audience sizing decisions.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+curl -X GET "https://graph.facebook.com/v20.0/search?\
+type=adinterest&q=entrepreneurship&limit=100&\
+access_token={token}"
+        ]]></code>
+        <note>Response includes audience_size_lower_bound and upper_bound — use these to verify size is in the 500K-5M target range.</note>
+      </example>
+
+      <title>Layered Targeting (AND Logic)</title>
+
+      <p>All conditions in the root targeting object use AND logic — users must match all criteria.</p>
+
+      <example type="good">
+        <code lang="json"><![CDATA[
+{
+  "targeting": {
+    "geo_locations": {"countries": ["US"]},
+    "age_min": 25,
+    "age_max": 45,
+    "interests": [{"id": "6003139266461", "name": "Entrepreneurship"}],
+    "behaviors": [{"id": "6002714895372", "name": "Engaged Shoppers"}]
+  }
+}
+        ]]></code>
+        <note>Result: US users aged 25-45 who are interested in Entrepreneurship AND are Engaged Shoppers.</note>
+      </example>
+
+      <title>Flexible Targeting (OR Logic)</title>
+
+      <p>Use flexible_spec to apply OR logic within the interest/behavior layer.</p>
+
+      <example type="good">
+        <code lang="json"><![CDATA[
+{
+  "targeting": {
+    "flexible_spec": [
+      {
+        "interests": [
+          {"id": "6003139266461", "name": "Entrepreneurship"},
+          {"id": "6003107902433", "name": "Small business"}
+        ]
+      }
+    ]
+  }
+}
+        ]]></code>
+        <note>Result: users who match ANY of the listed interests.</note>
+      </example>
+
+      <title>Narrow Targeting (AND within OR)</title>
+
+      <example type="good">
+        <code lang="json"><![CDATA[
+{
+  "targeting": {
+    "flexible_spec": [
+      {"interests": [{"id": "6003139266461"}]},
+      {
+        "interests": [{"id": "6003107902433"}],
+        "behaviors": [{"id": "6002714895372"}]
+      }
+    ]
+  }
+}
+        ]]></code>
+        <note>Result: (Interest A) OR (Interest B AND Behavior C) — useful for narrowing broad interests with behavioral signals.</note>
+      </example>
+    </section>
+
+    <section name="custom-audiences">
+      <title>Custom Audience Creation</title>
+
+      <p>API calls for website pixel audiences, CRM customer list uploads, engagement audiences, and app activity audiences.</p>
+
+      <title>Website Custom Audiences</title>
+
+      <rule>
+        <statement>Build website custom audiences (WCA) from pixel events, not just from all-page-visitors — event-based audiences produce 3-5x better retargeting conversion rates.</statement>
+        <rationale>All-visitor audiences include low-intent traffic (bots, accidental clicks). Event-based audiences (product viewers, cart abandoners) signal actual purchase intent.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+curl -X POST "https://graph.facebook.com/v20.0/act_{ad-account-id}/customaudiences" \
+  -H "Authorization: Bearer {access-token}" \
+  -d '{
+    "name": "Product Viewers 30 Days",
+    "subtype": "WEBSITE",
+    "rule": {
+      "inclusions": {
+        "operator": "or",
+        "rules": [{
+          "event_sources": [{"id": "{pixel-id}", "type": "pixel"}],
+          "retention_seconds": 2592000,
+          "filter": {
+            "operator": "and",
+            "filters": [
+              {"field": "url", "operator": "i_contains", "value": "/products"}
+            ]
+          }
+        }]
+      }
+    }
+  }'
+        ]]></code>
+      </example>
+
+      <title>CRM Customer List Upload</title>
+
+      <rule>
+        <statement>Hash all PII fields (email, phone, name) with SHA256 before uploading — never send plaintext PII to the API.</statement>
+        <rationale>Meta's API requires hashed data; plaintext PII in transit violates GDPR/CCPA and Meta's data policy, risking account suspension.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+curl -X POST "https://graph.facebook.com/v20.0/{audience-id}/users" \
+  -H "Authorization: Bearer {access-token}" \
+  -d '{
+    "payload": {
+      "schema": ["EMAIL", "FN", "LN", "PHONE", "CT", "ST", "ZIP", "COUNTRY"],
+      "data": [["sha256(email)", "sha256(firstname)", "sha256(lastname)",
+                "sha256(phone)", "sha256(city)", "sha256(state)",
+                "sha256(zip)", "sha256(country)"]]
+    }
+  }'
+        ]]></code>
+        <note>More schema fields = higher match rate (target 50-80%). Minimum 100 matched users to activate.</note>
+      </example>
+
+      <title>Engagement Audiences</title>
+
+      <p>Create audiences from Facebook Page engagers, Instagram Business Profile engagers, video viewers (by watch percentage), and lead form openers.</p>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+curl -X POST "https://graph.facebook.com/v20.0/act_{ad-account-id}/customaudiences" \
+  -H "Authorization: Bearer {access-token}" \
+  -d '{
+    "name": "FB Page Engagers 365 Days",
+    "subtype": "ENGAGEMENT",
+    "rule": {
+      "inclusions": {
+        "operator": "or",
+        "rules": [{
+          "event_sources": [{"id": "{page-id}", "type": "page"}],
+          "retention_seconds": 31536000,
+          "filter": {
+            "operator": "or",
+            "filters": [{"operator": "engaged"}, {"operator": "visited"}]
+          }
+        }]
+      }
+    }
+  }'
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="lookalike-audiences">
+      <title>Lookalike Audiences</title>
+
+      <p>Lookalike audience creation, sizing guidelines, multi-country specs, and source quality rules.</p>
+
+      <rule>
+        <statement>Use purchasers (not all website visitors) as the lookalike source — purchaser-based lookalikes consistently outperform visitor-based ones by 2-4x ROAS.</statement>
+        <rationale>Lookalike quality depends entirely on source signal quality. Visitor audiences include high bounce rates; purchaser audiences encode the intent pattern you actually want to replicate.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+curl -X POST "https://graph.facebook.com/v20.0/act_{ad-account-id}/customaudiences" \
+  -H "Authorization: Bearer {access-token}" \
+  -d '{
+    "name": "LAL US 1% Purchasers",
+    "subtype": "LOOKALIKE",
+    "origin_audience_id": "{purchasers-audience-id}",
+    "lookalike_spec": {
+      "type": "similarity",
+      "country": "US",
+      "ratio": 0.01
+    }
+  }'
+        ]]></code>
+      </example>
+
+      <title>Sizing Guidelines</title>
+
+      <list>
+        <item>1% — smallest reach, highest similarity, use for testing and high-value products</item>
+        <item>2-3% — medium reach, good quality, use for scaling proven campaigns</item>
+        <item>5-10% — largest reach, lower similarity, use for mass market awareness only</item>
+      </list>
+
+      <rule>
+        <statement>Test 1%, 3%, and 5% lookalikes simultaneously with equal budgets for 7 days before committing to a single size.</statement>
+        <rationale>Optimal lookalike size varies by product price point and audience depth; testing is cheaper than assuming the 1% is always best.</rationale>
+      </rule>
+
+      <title>Multi-Country Lookalikes</title>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+curl -X POST "https://graph.facebook.com/v20.0/act_{ad-account-id}/customaudiences" \
+  -H "Authorization: Bearer {access-token}" \
+  -d '{
+    "name": "LAL 1% US+CA+GB Purchasers",
+    "subtype": "LOOKALIKE",
+    "origin_audience_id": "{source-audience-id}",
+    "lookalike_spec": [
+      {"type": "similarity", "country": "US", "ratio": 0.01},
+      {"type": "similarity", "country": "CA", "ratio": 0.01},
+      {"type": "similarity", "country": "GB", "ratio": 0.01}
+    ]
+  }'
+        ]]></code>
+        <note>Multi-country lookalike creates separate similarity models per country using the same source.</note>
+      </example>
+    </section>
+
+    <section name="exclusions-reach">
+      <title>Exclusions, Reach Estimation, and Special Categories</title>
+
+      <p>Exclusion targeting JSON, reach estimation API, audience size guidelines, and Special Ad Category restrictions.</p>
+
+      <title>Exclusion Targeting</title>
+
+      <rule>
+        <statement>Exclude recent purchasers (last 180 days) from all prospecting ad sets — this is a mandatory exclusion, not optional.</statement>
+        <rationale>Serving prospecting ads to existing customers wastes budget, increases frequency for people who have already converted, and distorts CPA reporting.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="json"><![CDATA[
+{
+  "targeting": {
+    "custom_audiences": [{"id": "{website-visitors-id}"}],
+    "exclusions": {
+      "custom_audiences": [
+        {"id": "{purchasers-audience-id}"},
+        {"id": "{existing-customers-id}"}
+      ]
+    }
+  }
+}
+        ]]></code>
+      </example>
+
+      <title>Reach Estimation API</title>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+curl -X GET "https://graph.facebook.com/v20.0/act_{ad-account-id}/reachestimate?\
+targeting_spec={targeting-json}&\
+optimization_goal=OFFSITE_CONVERSIONS&\
+access_token={token}"
+        ]]></code>
+        <note>Response: users_lower_bound, users_upper_bound, estimate_dau. Target 500K-5M for interest targeting.</note>
+      </example>
+
+      <list>
+        <item>Under 1K — limited delivery, audience too narrow</item>
+        <item>1K-10K — acceptable for niche/B2B targeting</item>
+        <item>10K-500K — optimal for most campaigns</item>
+        <item>500K-5M — broad interest targeting range</item>
+        <item>Over 10M — consider narrowing with behaviors</item>
+      </list>
+
+      <title>Special Ad Categories</title>
+
+      <rule>
+        <statement>Declare special_ad_categories at campaign creation for housing, employment, or credit ads — adding it retroactively requires campaign recreation.</statement>
+        <rationale>Meta enforces Special Ad Category restrictions at the campaign level; campaigns created without the flag cannot be retroactively converted and must be rebuilt.</rationale>
+      </rule>
+
+      <list>
+        <item>No age targeting (auto-set to 18-65+)</item>
+        <item>No gender targeting</item>
+        <item>Location radius minimum 15 miles</item>
+        <item>No exclusions based on demographics</item>
+        <item>Custom and lookalike audiences based on demographics are disallowed</item>
+      </list>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <title>Limitations and Agent Gotchas</title>
+
+      <title>Core Limitations</title>
+      <list>
+        <item>Detailed-targeting deprecation: Meta has removed thousands of interest/behavior categories (2022-2024); agents using interest IDs from old playbooks find them invalid.</item>
+        <item>Custom Audience match rates: 50-80% typical; below this, pixel/CRM hashing or PII coverage is broken.</item>
+        <item>Lookalike sizing: 1% audiences in small countries (e.g., Estonia) are too small to deliver; minimum source 100 users; ideal 1000-50,000.</item>
+        <item>Special Ad Categories: housing/credit/employment campaigns lose age, gender, ZIP-radius, and lookalike creation — entire audience playbooks invalidated.</item>
+        <item>Audience overlap: Meta now auto-merges overlapping audiences within a campaign — manual A/B tests may not isolate variables.</item>
+        <item>Customer File source attribute (USER_PROVIDED_ONLY vs BOTH_USER_AND_PARTNER_PROVIDED) affects compliance; misclassification triggers takedowns.</item>
+        <item>Engagement audiences (video viewers, page engagers) only retain up to 365 days, with 180 days being the practical limit.</item>
+      </list>
+
+      <title>Agentic Workflow Considerations</title>
+      <p>A subagent owns the audience lifecycle: classify CRM segments, hash PII, upload via Customer File API, wait for size estimate, build lookalikes, set up exclusion logic across campaigns. Daily: refresh dynamic seed audiences (purchasers last 90d), check size estimates, monitor lookalike-source freshness. Human-in-loop: PII consent verification, exclusion-list approval (don't accidentally exclude prospects), Special Ad Category sign-off. Hashing must be done client-side BEFORE upload — never send raw PII to Meta.</p>
+
+      <title>Agent-Specific Gotchas</title>
+      <list>
+        <item>PII hashing in shell pipelines: openssl dgst -sha256 output varies by case sensitivity; agents must normalize to lowercase before hashing.</item>
+        <item>Audience size estimates are ranges, not exact; APIs return lower_bound and upper_bound; agents should use lower_bound for conservative planning.</item>
+        <item>Lookalike source freshness matters: a purchaser lookalike built from Q1 data stales by Q3; agents should refresh lookalike sources every 60-90 days.</item>
+        <item>Exclusions are not transitive: if you exclude audience A from audience B and audience B from audience C, audience A is not automatically excluded from C.</item>
+        <item>Custom audience payload validation happens asynchronously; API returns success immediately, but matching errors surface in the UI 12-24 hours later.</item>
+        <item>Broad audiences (10M+) trigger system-level delivery quality penalties; agents should narrow to 500K-5M whenever possible.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/audience-naming.txt" purpose="Naming convention for audiences: type, source, timeframe, size"/>
+    </templates>
+  </content>
+</methodology>
