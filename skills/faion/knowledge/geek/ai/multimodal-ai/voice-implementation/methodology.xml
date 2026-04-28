@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="voice-implementation">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>multimodal-ai</domain>
+    <summary>Production implementation of voice agents with RealtimeVoiceAgent (VAD+threading), ProductionVoiceAgent (state machine, async), and FastAPI WebSocket endpoint for real-time voice interaction.</summary>
+    <tags>
+      <tag>voice</tag>
+      <tag>production</tag>
+      <tag>websocket</tag>
+      <tag>fastapi</tag>
+      <tag>realtime</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>Voice Agents - Implementation</title>
+    <summary>Production implementation of voice agents: RealtimeVoiceAgent with energy-based VAD and threading, ProductionVoiceAgent with state machine (IDLE/LISTENING/PROCESSING/SPEAKING) and async tool calling, and a FastAPI WebSocket endpoint for browser/mobile clients.</summary>
+    <why>
+      <p>The basic STT to LLM to TTS loop must be wrapped in explicit state management to prevent concurrent turn processing, and conversation history must be capped to avoid context overflow. Energy-based VAD is a prototype approximation - production deployments require Silero VAD or WebRTC VAD for reliable speech detection in real environments.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building a conversational voice agent with full STT to LLM to TTS loop</item>
+        <item>Exposing a voice agent over WebSocket (browser, mobile, embedded)</item>
+        <item>Implementing multi-turn voice conversation with tool use (function calling)</item>
+        <item>Adding voice I/O to an existing text-based agent pipeline</item>
+        <item>Real-time voice interaction where response latency must be under 3 seconds</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Batch audio processing - use speech-to-text-basics + tts-implementation; the VAD loop is unnecessary overhead</item>
+        <item>Single-turn transcription without conversation - direct Whisper call is simpler</item>
+        <item>Phone/PSTN integration - requires a SIP/RTP bridge (Twilio, Vonage) not covered here</item>
+        <item>Environments without microphone access (CI, headless servers)</item>
+      </list>
+    </when-not-to-use>
+    <section name="realtime-agent-architecture">
+      <reference path="templates/realtime-agent.py">RealtimeVoiceAgent with threaded capture and VAD processing</reference>
+      <p>RealtimeVoiceAgent uses two threads: one captures audio from the microphone into a queue; the second processes chunks with energy-based VAD, accumulates speech, and dispatches complete utterances to the STT-LLM-TTS handler.</p>
+      <example type="good" title="RealtimeVoiceAgent architecture">
+        <code lang="python"><![CDATA[
+@dataclass
+class VADConfig:
+    threshold: float = 0.02           # energy threshold for speech detection
+    min_speech_duration: float = 0.5  # seconds
+    silence_duration: float = 0.8     # seconds of silence to end utterance
+
+class RealtimeVoiceAgent:
+    def start(self):
+        self.is_listening = True
+        capture_thread = threading.Thread(target=self._capture_audio)
+        process_thread = threading.Thread(target=self._process_audio)
+        capture_thread.start()
+        process_thread.start()
+        return capture_thread, process_thread
+        ]]></code>
+      </example>
+    </section>
+    <section name="energy-based-vad">
+      <p>Energy-based VAD computes RMS of audio chunks and compares to a threshold. This is a prototype approximation - it fails in noisy environments, with background music, or HVAC noise. Replace with Silero VAD or WebRTC VAD for production.</p>
+      <example type="good" title="Energy-based VAD processing loop">
+        <code lang="python"><![CDATA[
+def _process_audio(self):
+    audio_buffer, speech_detected, silence_frames = [], False, 0
+    while self.is_listening:
+        try:
+            audio_chunk = self.audio_queue.get(timeout=0.1)
+        except queue.Empty:
+            continue
+        # Energy-based VAD - prototype only
+        energy = np.sqrt(np.mean(audio_chunk ** 2))
+        if energy > self.vad_config.threshold:
+            speech_detected = True
+            silence_frames = 0
+            audio_buffer.append(audio_chunk)
+        elif speech_detected:
+            silence_frames += 1
+            audio_buffer.append(audio_chunk)
+            if silence_frames > self.vad_config.silence_duration * 10:
+                if len(audio_buffer) > self.vad_config.min_speech_duration * 10:
+                    audio_data = np.concatenate(audio_buffer)
+                    self._handle_utterance(audio_data)
+                audio_buffer, speech_detected, silence_frames = [], False, 0
+        ]]></code>
+      </example>
+      <note>silence_duration of 0.8s is aggressive for non-native speakers - users with longer thinking pauses are cut off mid-thought. Increase to 1.2-1.5s for diverse audiences.</note>
+      <rule testable="true">
+        <statement>Replace energy-based VAD with Silero VAD or WebRTC VAD before any production deployment in non-silent environments.</statement>
+        <rationale>Energy-based VAD triggers on HVAC noise, keyboard clicks, and background music. Silero VAD and WebRTC VAD use learned speech models and work reliably in real environments.</rationale>
+      </rule>
+    </section>
+    <section name="tts-streaming">
+      <p>Stream TTS audio directly to pyaudio output as chunks arrive. Buffering the full response before playback adds 100-500ms latency proportional to response length.</p>
+      <example type="good" title="TTS streaming to speaker">
+        <code lang="python"><![CDATA[
+def _speak(self, text: str):
+    p = pyaudio.PyAudio()
+    stream = p.open(format=pyaudio.paInt16, channels=1, rate=24000, output=True)
+    with self.client.audio.speech.with_streaming_response.create(
+        model="tts-1", voice=self.voice, input=text, response_format="pcm"
+    ) as response:
+        for chunk in response.iter_bytes(chunk_size=1024):
+            stream.write(chunk)
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
+        ]]></code>
+      </example>
+    </section>
+    <section name="state-machine">
+      <reference path="templates/production-agent.py">ProductionVoiceAgent with state machine, tool support, session management</reference>
+      <p>ProductionVoiceAgent uses an AgentState enum (IDLE, LISTENING, PROCESSING, SPEAKING) to prevent concurrent turn processing. The state is not protected by a lock - in multi-threaded contexts, wrap state transitions with threading.Lock or asyncio.Lock.</p>
+      <example type="good" title="AgentState enum and VoiceAgentConfig">
+        <code lang="python"><![CDATA[
+class AgentState(Enum):
+    IDLE = "idle"
+    LISTENING = "listening"
+    PROCESSING = "processing"
+    SPEAKING = "speaking"
+
+@dataclass
+class VoiceAgentConfig:
+    system_prompt: str
+    voice: str = "nova"
+    stt_model: str = "whisper-1"
+    llm_model: str = "gpt-4o"
+    tts_model: str = "tts-1"
+    max_response_tokens: int = 200
+    vad_threshold: float = 0.02
+    silence_timeout: float = 1.0
+    max_turns: int = 50
+
+async def handle_audio(self, audio_data: bytes) -> Optional[bytes]:
+    if self.state == AgentState.SPEAKING:
+        return None  # barge-in prevention
+    if self.turn_count >= self.config.max_turns:
+        return await self._speak("I need to end our conversation now.")
+        ]]></code>
+      </example>
+      <note>handle_audio ignoring audio when state == SPEAKING is correct barge-in prevention, but the client receives no feedback. Add a visual or audio indicator in the client UI.</note>
+    </section>
+    <section name="tool-calling">
+      <p>The default _generate_response makes a second LLM call unconditionally - it should only call LLM again after tool execution.</p>
+      <example type="good" title="Tool calling with conditional second LLM call">
+        <code lang="python"><![CDATA[
+# Only call LLM a second time if there were tool calls
+if message.tool_calls:
+    self.conversation_history.append(message)
+    for tool_call in message.tool_calls:
+        func_name = tool_call.function.name
+        args = json.loads(tool_call.function.arguments)
+        if func_name in self.tool_functions:
+            result = self.tool_functions[func_name](**args)
+        else:
+            result = {"error": f"Unknown function: {func_name}"}
+        self.conversation_history.append({
+            "role": "tool", "tool_call_id": tool_call.id,
+            "content": json.dumps(result)
+        })
+    # Second LLM call ONLY here - not unconditionally
+    final = self.client.chat.completions.create(
+        model=self.config.llm_model,
+        messages=self.conversation_history,
+        max_tokens=self.config.max_response_tokens
+    )
+    message = final.choices[0].message
+        ]]></code>
+      </example>
+      <antipattern>
+        <description>Registering async def tool functions in the tool_functions dict.</description>
+        <reason>ProductionVoiceAgent calls tool functions synchronously. Async functions return coroutine objects, not results. Use sync implementations or wrap with asyncio.run().</reason>
+      </antipattern>
+    </section>
+    <section name="websocket-server">
+      <reference path="templates/websocket-server.py">FastAPI WebSocket endpoint wiring ProductionVoiceAgent</reference>
+      <p>The FastAPI WebSocket endpoint receives audio bytes, passes them to agent.handle_audio(), and sends back response audio bytes. Use WebSocketDisconnect specifically in except clause - not bare Exception.</p>
+    </section>
+    <section name="vad-and-audio-rules">
+      <rule testable="true">
+        <statement>Replace energy-based VAD with Silero VAD or WebRTC VAD for any production deployment outside of silent environments.</statement>
+        <rationale>Energy-based VAD (RMS threshold) triggers on HVAC noise, keyboard sounds, and background music. Silero and WebRTC VAD use speech-specific models that work reliably in real-world environments.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Run tool functions in a thread executor to avoid blocking the async event loop during voice turns.</statement>
+        <rationale>Synchronous tool functions that call external APIs block asyncio's event loop - no audio can be received or sent during the blocking call.</rationale>
+      </rule>
+    </section>
+    <section name="response-quality-rules">
+      <rule testable="true">
+        <statement>Strip markdown from all LLM responses before TTS synthesis: re.sub(r'[*_`#>]', '', text).</statement>
+        <rationale>TTS reads markdown symbols literally - "**bold**" becomes "asterisk asterisk bold asterisk asterisk". Markdown must be removed before the text reaches TTS.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Cap max_response_tokens at 150-200. Implement sliding window on conversation_history: keep system prompt + last N turns + tool results.</statement>
+        <rationale>max_response_tokens=200 is too low for complex tool responses but correct for voice output length. Context overflow at 50 turns causes silent truncation. Sliding window prevents both problems.</rationale>
+      </rule>
+      <example type="good" title="Markdown stripping and history truncation">
+        <code lang="python"><![CDATA[
+import re
+
+def strip_markdown(text: str) -> str:
+    """Strip markdown before TTS - asterisks and hashes are read literally."""
+    return re.sub(r'[*_`#>]', '', text).strip()
+
+def truncate_history(history: list, max_turns: int = 10) -> list:
+    """Keep system prompt + last max_turns user/assistant pairs."""
+    system = [m for m in history if m["role"] == "system"]
+    turns = [m for m in history if m["role"] != "system"]
+    return system + turns[-(max_turns * 2):]
+        ]]></code>
+      </example>
+    </section>
+    <section name="latency-optimization">
+      <rule testable="true">
+        <statement>Use OpenAI Realtime API for deployments requiring under 300ms end-to-end latency. Use Groq Whisper for STT-only latency reduction (10x faster than OpenAI, approximately 80ms vs approximately 800ms).</statement>
+        <rationale>The standard STT+LLM+TTS chain has a 650-1900ms minimum. The Realtime API bypasses this with a native WebSocket protocol, delivering approximately 200ms end-to-end.</rationale>
+      </rule>
+    </section>
+    <section name="session-management">
+      <rule testable="true">
+        <statement>Log each turn with: input_transcript, llm_response, tool_calls, audio_duration, and turn_latency.</statement>
+        <rationale>Without per-turn logs, debugging voice quality issues (truncation, tool failures, state machine errors) requires reproducing the exact conversation - expensive and often impossible.</rationale>
+      </rule>
+      <antipattern>
+        <description>Using bare except Exception in the WebSocket endpoint.</description>
+        <reason>WebSocketDisconnect must be handled separately from actual errors - they require different logging and response behavior. Catch WebSocketDisconnect first, then generic exceptions.</reason>
+      </antipattern>
+    </section>
+    <section name="agent-integration">
+      <p>An orchestrator sets up ProductionVoiceAgent with a system prompt and tool definitions. Incoming audio (bytes) arrives via WebSocket, is passed to agent.handle_audio(), which returns response audio bytes. The agent manages state (IDLE/LISTENING/PROCESSING/SPEAKING) to prevent concurrent turn processing. Tool functions are registered as a dict of callables - agents can call external APIs, look up data, or trigger actions during the voice turn. Session ends when max_turns is reached or client disconnects.</p>
+      <p>Recommended subagents: haiku - Audio bytes routing: receive WebSocket bytes, pass to agent, return response audio bytes. sonnet - Tool function implementation: write the tool callables registered in tool_functions dict. sonnet - System prompt design: craft the voice agent persona, response style constraints (short sentences, no markdown), tool descriptions. opus - Conversation quality review: analyze conversation logs for truncation, tool-call failures, state machine errors.</p>
+    </section>
+    <section name="cli-tools">
+      <p>sounddevice: Microphone/speaker I/O via PortAudio with pip install sounddevice (requires apt install portaudio19-dev). pyaudio: Alternative audio I/O with pip install pyaudio. numpy: Audio signal processing, VAD energy calc with pip install numpy. openai (Python SDK): Whisper STT + GPT-4o LLM + TTS with pip install openai. fastapi + websockets: WebSocket server for browser/mobile clients with pip install fastapi websockets uvicorn. silero-vad: Production-quality VAD (replaces energy-based) with pip install silero-vad. webrtcvad: Google WebRTC VAD (fast, lightweight) with pip install webrtcvad.</p>
+    </section>
+    <section name="services">
+      <p>OpenAI Realtime API (SaaS, agent-friendly via WebSocket API): Native real-time voice with sub-300ms latency, replaces STT+LLM+TTS chain. Groq Whisper (SaaS, agent-friendly via OpenAI-compatible): 10x faster STT than OpenAI, reduces STT latency from 800ms to approximately 80ms. Deepgram (SaaS, agent-friendly via WebSocket streaming): Real-time STT best for live microphone input. ElevenLabs (SaaS, agent-friendly via Python SDK): Best TTS quality for final-quality voice, not real-time prototype. Twilio Voice (SaaS, agent-friendly via REST + WebSocket): Phone call integration with SIP bridge for PSTN calls. Daily.co (SaaS, agent-friendly via Python SDK): WebRTC media transport better than raw WebSocket for audio. LiveKit (OSS/SaaS, agent-friendly via Python SDK): WebRTC server supporting voice agent integration, self-hostable.</p>
+    </section>
+    <templates>
+      <template path="templates/realtime-agent.py" purpose="RealtimeVoiceAgent with threaded capture and VAD processing"/>
+      <template path="templates/production-agent.py" purpose="ProductionVoiceAgent with state machine, tool support, session management"/>
+      <template path="templates/websocket-server.py" purpose="FastAPI WebSocket endpoint wiring ProductionVoiceAgent"/>
+      <template path="templates/system-prompt.txt" purpose="Voice agent system prompt: 2-sentence rule, no markdown, tool explanation pattern"/>
+    </templates>
+    <see-also>
+      <link href="https://platform.openai.com/docs/guides/realtime"/>
+      <link href="https://platform.openai.com/docs/api-reference/audio"/>
+      <link href="https://platform.openai.com/docs/guides/speech-to-text"/>
+      <link href="https://cookbook.openai.com/examples/how_to_build_a_real_time_voice_agent"/>
+      <link href="https://github.com/snakers4/silero-vad"/>
+      <link href="https://livekit.io/blog/voice-ai-agents"/>
+      <link href="https://daily.co/docs"/>
+    </see-also>
+  </content>
+</methodology>
