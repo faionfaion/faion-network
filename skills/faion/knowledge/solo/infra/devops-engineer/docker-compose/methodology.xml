@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="docker-compose">
+  <metadata>
+    <tier>solo</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Declaratively define multi-container applications with healthchecks on all depends_on targets, named volumes for persistent data, port binding to 127.0.0.1, and no legacy version field.</summary>
+    <tags>
+      <tag>docker</tag>
+      <tag>compose</tag>
+      <tag>containers</tag>
+      <tag>orchestration</tag>
+      <tag>devops</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Docker Compose</title>
+
+    <summary>Docker Compose V2 (`docker compose`) declaratively defines multi-container applications in YAML. Every service that is a `depends_on` target must define a `healthcheck`; without it the condition `service_healthy` provides no runtime ordering guarantee. Use named volumes for persistent data, bind port `127.0.0.1:PORT:PORT` to avoid Docker bypassing UFW, and omit the legacy `version:` field.</summary>
+
+    <why>
+      <p>Default `docker run` scripts are imperative and fragile — they do not capture dependencies, restart policy, or resource limits. Compose gives a single declarative file that an agent can validate (`docker compose config`), version in git, and replay identically. The `service_healthy` condition on `depends_on` eliminates race conditions on startup; without it, containers start immediately regardless of database readiness.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Local development stacks with multiple services (db + cache + broker)</item>
+        <item>Integration testing against real service dependencies</item>
+        <item>Single-host staging or small production deployments (up to ~10 services)</item>
+        <item>Running infrastructure services (PostgreSQL, Redis, RabbitMQ) alongside systemd application services</item>
+        <item>Prototyping microservice topology before committing to Kubernetes</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Multi-host production at scale — use Kubernetes or Docker Swarm</item>
+        <item>Rolling-update zero-downtime deployments — Compose restarts containers, it does not roll them</item>
+        <item>When the team already has Helm/K8s manifests — adding Compose creates dual maintenance burden</item>
+        <item>Enterprise secrets management — Compose secrets are limited to files; use Vault or AWS Secrets Manager</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-rules">
+      <p>Concrete rules for writing production-safe Compose files: healthchecks, network isolation, volumes, resource limits, and log rotation.</p>
+
+      <rule testable="true">
+        <statement>Omit the top-level `version:` field. Modern Compose V2 ignores it; it causes version-mismatch rejections with older tooling.</statement>
+        <rationale>The Compose spec no longer requires a version field. Including it creates confusion and can block valid files in some older CI tools.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set `container_name` explicitly on every service so log queries and exec commands use a stable name.</statement>
+        <rationale>Without a fixed name, Compose generates names from project + service + index, which changes across recreations.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set `restart: unless-stopped` (staging) or `restart: always` (production) on every long-running service.</statement>
+        <rationale>Without a restart policy, a crashed container stays down until manually restarted.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Define a `healthcheck` on every service that is referenced by another service's `depends_on` with `condition: service_healthy`. If healthcheck is absent, the condition is silently ignored and the dependent starts immediately.</statement>
+        <rationale>Race conditions on startup (app tries to connect to DB before it is ready) are the leading cause of intermittent Compose failures.</rationale>
+      </rule>
+
+      <example type="good" title="Healthcheck and dependency ordering">
+        <code lang="yaml"><![CDATA[
+services:
+  db:
+    image: postgres:16-alpine
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  app:
+    depends_on:
+      db:
+        condition: service_healthy
+]]></code>
+        <note>The app waits until pg_isready returns 0 before starting.</note>
+      </example>
+
+      <antipattern>
+        <description>Using `depends_on: [db]` without a condition or healthcheck.</description>
+        <reason>This only controls start order, not readiness. The app starts the moment the db container process is launched, not when Postgres is accepting connections.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Bind exposed ports to `127.0.0.1:HOST_PORT:CONTAINER_PORT` for services that must not be publicly reachable. Docker rewrites iptables directly and bypasses UFW.</statement>
+        <rationale>A port bound to `0.0.0.0` is reachable from the internet regardless of UFW rules, because Docker inserts ACCEPT rules before UFW's DROP rules.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Mark backend networks as `internal: true` so containers on that network cannot reach the internet directly.</statement>
+        <rationale>Limits blast radius of a compromised container — it cannot exfiltrate data or download payloads.</rationale>
+      </rule>
+
+      <example type="good" title="Network isolation with frontend/backend split">
+        <code lang="yaml"><![CDATA[
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true
+
+services:
+  db:
+    networks: [backend]
+    ports:
+      - "127.0.0.1:5432:5432"
+  app:
+    networks: [frontend, backend]
+    ports:
+      - "80:8000"
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use named volumes for all persistent data in production. Bind mounts are only for config files (`:ro`) or development source sync.</statement>
+        <rationale>Named volumes are managed by Docker, survive container recreation, and have better performance on Linux than bind mounts on macOS/Windows.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Using a bind mount for database data: `- ./pgdata:/var/lib/postgresql/data`</description>
+        <reason>Bind mounts expose the host filesystem to the container, have permission issues (container UID vs host UID mismatch), and perform poorly on non-Linux hosts.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Set `deploy.resources.limits.memory` and `.cpus` on every service. Without limits a runaway container can OOM-kill the host.</statement>
+        <rationale>Docker on Linux applies cgroup limits only when they are declared; no limit means unbounded resource use.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Configure log rotation on every service: `driver: json-file` with `max-size: "10m"` and `max-file: "3"`. Without rotation, container logs fill the disk indefinitely.</statement>
+        <rationale>The default json-file driver writes unbounded logs to `/var/lib/docker/containers/`.</rationale>
+      </rule>
+
+      <example type="good" title="Resource limits and log rotation">
+        <code lang="yaml"><![CDATA[
+services:
+  app:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Store all secrets in `.env` (gitignored). Commit only `.env.example` with placeholder values. Never put plaintext secrets in the compose file's `environment:` block.</statement>
+        <rationale>`docker compose config` and `docker inspect` expose `environment:` values in plain text.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use profiles (`profiles: [dev]`) for optional services (adminer, mailhog, monitoring) so `docker compose up -d` starts only the production set.</statement>
+        <rationale>Eliminates the need for separate compose files for dev vs prod optional services.</rationale>
+      </rule>
+    </section>
+
+    <section name="examples-and-patterns">
+      <p>Full-stack compose example with dev/prod override pattern, watch live-reload block, and common antipatterns.</p>
+
+      <example type="good" title="Full-stack web application (production-ready)">
+        <code lang="yaml"><![CDATA[
+services:
+  app:
+    build:
+      context: .
+      target: production
+    image: myapp:${VERSION:-latest}
+    container_name: ${PROJECT_NAME}-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://app:${DB_PASSWORD}@db:5432/appdb
+      REDIS_URL: redis://redis:6379/0
+    env_file: [.env]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits: {memory: 512M, cpus: "1.0"}
+        reservations: {memory: 128M}
+    networks: [frontend, backend]
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+  db:
+    image: postgres:16-alpine
+    container_name: ${PROJECT_NAME}-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: appdb
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [backend]
+    deploy:
+      resources:
+        limits: {memory: 256M, cpus: "0.5"}
+
+  redis:
+    image: redis:7-alpine
+    container_name: ${PROJECT_NAME}-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory ${REDIS_MAXMEM:-100mb} --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [backend]
+    deploy:
+      resources:
+        limits: {memory: 128M, cpus: "0.25"}
+
+  nginx:
+    image: nginx:alpine
+    container_name: ${PROJECT_NAME}-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+    depends_on: [app]
+    networks: [frontend]
+
+  worker:
+    build: {context: ., target: production}
+    image: myapp:${VERSION:-latest}
+    container_name: ${PROJECT_NAME}-worker
+    restart: unless-stopped
+    command: celery -A app worker --loglevel=info
+    env_file: [.env]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [backend]
+    deploy:
+      resources:
+        limits: {memory: 256M, cpus: "0.5"}
+    profiles: [worker]
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true
+
+volumes:
+  postgres-data:
+  redis-data:
+]]></code>
+        <note>Worker is profile-gated; starts only with `docker compose --profile worker up -d`.</note>
+      </example>
+
+      <example type="good" title="Dev override file (auto-loaded)">
+        <code lang="yaml"><![CDATA[
+# docker-compose.override.yml (dev, auto-loaded)
+services:
+  app:
+    build:
+      target: development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      DEBUG: "true"
+    ports:
+      - "9229:9229"   # debug port
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"   # expose for local tools
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"
+]]></code>
+      </example>
+
+      <example type="good" title="Prod override file (explicit merge)">
+        <code lang="yaml"><![CDATA[
+# docker-compose.prod.yml (explicit: -f docker-compose.yml -f docker-compose.prod.yml)
+services:
+  app:
+    image: registry.example.com/myapp:${VERSION}
+    build: null    # never build in production
+    restart: always
+    deploy:
+      mode: replicated
+      replicas: 2
+      resources:
+        limits: {memory: 1G, cpus: "2.0"}
+]]></code>
+      </example>
+
+      <example type="good" title="Live reload with docker compose watch (v2.22+)">
+        <code lang="yaml"><![CDATA[
+services:
+  app:
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+          ignore: [node_modules/, __pycache__/]
+        - action: rebuild
+          path: package.json
+        - action: sync+restart
+          path: ./config
+          target: /app/config
+]]></code>
+        <note>Run with `docker compose watch` (not `up`). Sync does not restart; rebuild recreates the image; sync+restart syncs then gracefully restarts the container.</note>
+      </example>
+
+      <antipattern>
+        <description>Hard-coding secrets: `environment: POSTGRES_PASSWORD: mysecret`</description>
+        <reason>`docker compose config` and `docker inspect` reveal these values to anyone with Docker socket access.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using `depends_on: [db]` without a healthcheck on `db`.</description>
+        <reason>Provides only startup ordering, not readiness. The dependent service starts before the database is accepting connections.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Building images in production compose files.</description>
+        <reason>Build context includes dev files (.git, test data). Use pre-built images from a registry in production.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Binding ports as `"5432:5432"` (no interface binding).</description>
+        <reason>Docker inserts an ACCEPT iptables rule before UFW rules, exposing the port to the internet regardless of firewall settings.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/base-service.yml" purpose="Generic service block with healthcheck, resource limits, logging"/>
+      <template path="templates/postgres.yml" purpose="PostgreSQL service with health check and named volume"/>
+      <template path="templates/redis.yml" purpose="Redis service with persistence and health check"/>
+      <template path="templates/env.example" purpose=".env.example with all common variable stubs"/>
+      <template path="templates/watch-block.yml" purpose="develop.watch block for live reload (Compose v2.22+)"/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.docker.com/compose/"/>
+      <link href="https://docs.docker.com/compose/compose-file/"/>
+      <link href="https://docs.docker.com/compose/how-tos/production/"/>
+      <link href="https://docs.docker.com/compose/how-tos/file-watch/"/>
+      <link href="https://github.com/compose-spec/compose-spec/blob/master/spec.md"/>
+    </see-also>
+  </content>
+</methodology>

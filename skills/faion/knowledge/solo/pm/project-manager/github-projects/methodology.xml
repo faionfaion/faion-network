@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="github-projects">
+  <metadata>
+    <tier>solo</tier>
+    <group>pm</group>
+    <domain>project-manager</domain>
+    <summary>GitHub Projects v2 native project management: custom fields, views, workflows for status transitions, and GitHub Actions automation. Primary agent interface: gh project CLI and GraphQL mutations.</summary>
+    <tags>
+      <tag>github</tag>
+      <tag>projects</tag>
+      <tag>issue-tracking</tag>
+      <tag>automation</tag>
+      <tag>graphql</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>GitHub Projects v2 for Code-Task Traceability</title>
+    <summary>For teams already on GitHub, GitHub Projects provides native code-task traceability: "Fixes #123" in a PR automatically transitions the linked issue to Done when merged. Organization-level projects span multiple repositories. Custom fields (Status, Priority, Sprint iteration, Team) are configured in the GitHub UI before agent automation begins. The GitHub CLI (gh project) is the simplest agent interface — no GraphQL boilerplate needed for most operations.</summary>
+    <why>
+      <p>For teams already on GitHub, adding a separate PM tool creates context-switching overhead. GitHub Projects provides native code-task traceability: "Fixes #123" in a PR automatically transitions the linked issue to Done when merged. Organization-level projects span multiple repositories.</p>
+      <p>The GitHub CLI (gh project) is the simplest agent interface — no GraphQL boilerplate needed for most operations. GraphQL mutations are the primary interface for Projects v2; REST is limited for Projects v2.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Codebase is on GitHub and code-task traceability ("Fixes #123") is a priority.</item>
+        <item>Team already manages Issues and PRs on GitHub.</item>
+        <item>Open-source project needs a public-facing project board for community contributors.</item>
+        <item>Cross-repository work under one GitHub organization.</item>
+        <item>GitHub Actions already in use — extending to project automation is a natural fit.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Team is not on GitHub (GitLab, Bitbucket) — tool is GitHub-native only.</item>
+        <item>Complex portfolio management across many products — GitHub Projects lacks portfolio hierarchy.</item>
+        <item>OKR or goal tracking required — GitHub has no goals layer; use Linear or ClickUp.</item>
+        <item>Non-technical stakeholders need to update tasks — GitHub UI has a learning curve.</item>
+        <item>Built-in velocity charts, burndown, or capacity planning required — needs custom Actions.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="project-setup">
+      <p>GitHub Projects v2 requires upfront configuration: custom fields cannot be created via API, so the GitHub UI setup is mandatory before agent automation begins.</p>
+      <rule>
+        <statement>Create organization-level projects for cross-repo work. Repo-level projects are limited to one repository and cannot be used for portfolio tracking.</statement>
+        <rationale>Organization-level projects support items from any repo under the org and can be set to public for open-source visibility.</rationale>
+      </rule>
+      <rule>
+        <statement>Define standard custom fields at project creation: Status (single_select: Backlog/Todo/In Progress/In Review/Done), Priority (single_select: P0/P1/P2/P3), Estimate (number), Sprint (iteration, 2-week duration), Team (single_select). These cannot be created via API — configure in the GitHub UI before agent automation begins.</statement>
+        <rationale>Iteration fields (sprints) and their options cannot be created via the GitHub Projects GraphQL API as of 2025. Pre-creating them in the UI is mandatory for agent sprint planning to work.</rationale>
+      </rule>
+      <rule>
+        <statement>Create three standard views: Table (all issues, sortable by priority), Board (grouped by Status, filtered to current sprint), Roadmap (grouped by Release, zoom level month). Each view serves a distinct audience — do not create redundant views.</statement>
+        <rationale>Redundant views become stale. Three views covers planning (Table), execution (Board), and stakeholder communication (Roadmap).</rationale>
+      </rule>
+      <rule>
+        <statement>Enable these four built-in workflows in project settings: Item added → Status=Backlog, Item reopened → Status=Todo, Item closed → Status=Done, Pull request merged → Status=Done. Do not build GitHub Actions equivalents for these — the built-in workflows are more reliable.</statement>
+        <rationale>Built-in workflows run as project-level automation without requiring GitHub Actions tokens or YAML maintenance.</rationale>
+      </rule>
+      <rule>
+        <statement>Enable "Auto-add items" workflow for the primary repo with label filters. This eliminates manual issue-to-project linking for standard issue types.</statement>
+        <rationale>Manual linking is the most common workflow gap — developers forget to add issues to the project, creating invisible work.</rationale>
+      </rule>
+      <rule>
+        <statement>Create YAML-form issue templates in .github/ISSUE_TEMPLATE/ for feature requests and bugs. Templates must include a dropdown for Priority (P0/P1/P2/P3) and auto-assign the issue to the project via the projects key. This gives agents consistently structured issues to parse.</statement>
+        <rationale>Free-text issue bodies have no schema. YAML form templates enforce structure that agents can reliably parse for triage and field assignment.</rationale>
+      </rule>
+    </section>
+
+    <section name="api-and-agent-gotchas">
+      <p>The GitHub GraphQL API is the primary interface for Projects v2. REST is limited. Custom field writes require the project item's node_id, which must be fetched first.</p>
+      <rule>
+        <statement>Store project_id (PVT_kwDO...), field_ids for Status/Priority/Sprint, and option_ids for field values in .aidocs/memory/ or constitution.md after the first fetch. GraphQL mutations require these IDs on every call — re-fetching them each session wastes API quota and rate limits.</statement>
+        <rationale>GraphQL mutations need node_ids (not human names). A project with 50 items consumes 50-100 GraphQL points per query; at 5000 points/hour limit, repeated ID lookups exhaust the quota.</rationale>
+      </rule>
+      <rule>
+        <statement>Use gh project subcommands as the primary agent interface for standard operations: item-list, item-add, item-edit. Fall back to raw GraphQL only for operations not covered by the CLI (e.g., custom field creation).</statement>
+        <rationale>gh CLI abstracts GraphQL complexity and handles authentication transparently. Direct GraphQL mutations require explicit token management.</rationale>
+      </rule>
+      <rule>
+        <statement>Use PROJECT_TOKEN (classic token with project scope) for GitHub Actions workflows that write to Projects. The default GITHUB_TOKEN does not have project scope — Actions using it will fail silently on project field updates.</statement>
+        <rationale>Missing project scope on GITHUB_TOKEN is the most common cause of silent project automation failures in CI.</rationale>
+      </rule>
+      <rule>
+        <statement>Rate limit: 5000 GraphQL points per hour per token. Complex project queries consume 50-100 points each. Monitor usage for boards with more than 200 items; consider caching project state locally between queries.</statement>
+        <rationale>Large open-source projects with many items can exhaust the hourly GraphQL quota in a single automated triage pass.</rationale>
+      </rule>
+      <rule>
+        <statement>Use milestones for release targets in addition to project iteration fields. Milestones are fully accessible via gh milestone CLI and REST API, and provide a release-scoped view that project boards cannot replicate.</statement>
+        <rationale>Project iteration fields show sprint scope; milestones show release scope. Both are needed: sprint for team execution, milestone for stakeholder communication.</rationale>
+      </rule>
+
+      <example type="good" title="gh CLI for listing and moving items">
+        <code lang="bash"><![CDATA[
+# List current sprint items
+gh project item-list 1 --owner myorg --format json \
+  | jq '.items[] | select(.fieldValues[] | .name == "In Progress")'
+
+# Move item to In Review
+gh project item-edit --id PVTI_xxx --project-id PVT_xxx \
+  --field-id PVTF_xxx --single-select-option-id PVTO_xxx
+        ]]></code>
+      </example>
+
+      <antipattern>
+        <description>Agent fetches project_id and field_ids at the start of every operation without caching.</description>
+        <reason>Each GraphQL query consumes 50-100 of the 5000 points/hour rate limit. Caching IDs reduces overhead to zero for subsequent sessions.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <p>Workflows, automations, and agent patterns for sustainable project management.</p>
+      <rule>
+        <statement>Store project_number, field_ids (Status, Priority, Sprint), and option_ids in .aidocs/memory/ or constitution.md — GraphQL mutations need them every time.</statement>
+        <rationale>Human-readable field names are not available in the API; node_ids are required.</rationale>
+      </rule>
+      <rule>
+        <statement>Use organization-level projects for cross-repo work; repo-level projects are limited to one repository.</statement>
+        <rationale>Repo-level projects cannot reference issues from other repositories.</rationale>
+      </rule>
+      <rule>
+        <statement>Enable "Auto-add items" workflow in project settings for the main repo — reduces manual issue-to-project linking.</statement>
+        <rationale>Manual linking is forgotten by developers under deadline pressure.</rationale>
+      </rule>
+      <rule>
+        <statement>Use issue templates (.github/ISSUE_TEMPLATE/) to enforce consistent structure that agents can reliably parse.</statement>
+        <rationale>Free-form issues are unpredictable; templates enable structured triage.</rationale>
+      </rule>
+      <rule>
+        <statement>Link PRs to issues with "Fixes #NNN" — GitHub automatically transitions Status to Done on merge when "Item closed" workflow is active.</statement>
+        <rationale>Automatic state transitions reduce manual project maintenance.</rationale>
+      </rule>
+      <rule>
+        <statement>Set iteration (sprint) field duration at project creation; cannot be changed via API later.</statement>
+        <rationale>Iteration settings are immutable after creation in the GraphQL API.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/issue-feature.yml" purpose="GitHub issue template for feature requests (YAML form)."/>
+      <template path="templates/workflow-project-automation.yml" purpose="GitHub Actions workflow for adding issues to project and setting fields."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.github.com/en/issues/planning-and-tracking-with-projects"/>
+      <link href="https://cli.github.com/manual/gh_project"/>
+      <link href="https://docs.github.com/en/graphql"/>
+      <link href="https://docs.github.com/en/actions"/>
+      <link href="https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests"/>
+    </see-also>
+  </content>
+</methodology>

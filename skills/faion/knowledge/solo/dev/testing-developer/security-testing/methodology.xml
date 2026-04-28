@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="security-testing">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>testing-developer</domain>
+    <summary>Layered security testing using SAST, DAST, SCA, and secret detection at every CI/CD stage. SAST and secrets on every PR, DAST nightly on staging, container scan on image build.</summary>
+    <tags>
+      <tag>security</tag>
+      <tag>sast</tag>
+      <tag>dast</tag>
+      <tag>sca</tag>
+      <tag>testing</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Security Testing</title>
+
+    <summary>Layered security testing using SAST (static code analysis), DAST (dynamic attack simulation), SCA (dependency vulnerability scanning), and secret detection — integrated at every stage of the CI/CD pipeline. Every PR must pass SAST and secrets checks; DAST runs nightly on staging; container scans run on image build.</summary>
+
+    <why>
+      <p>Attackers exploit known vulnerability patterns (OWASP Top 10, API Security Top 10) that automated tools can detect before deployment. Shift-left integration (SAST on every commit, secrets pre-commit) reduces fix cost by orders of magnitude compared to post-production discovery. Tools do not replace threat modeling or manual penetration testing — they triage known patterns so humans focus on logic flaws.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Every change to auth, authorization, input handling, file upload, deserialization, crypto, or session code</item>
+        <item>Pre-launch on new services before internet exposure</item>
+        <item>Continuous: SAST + secret scanning on every PR, SCA on every build, DAST nightly on staging</item>
+        <item>New dependency adoption (SCA before merge)</item>
+        <item>Incident response to confirm scope and regression-test the fix</item>
+        <item>Compliance audits (SOC 2, ISO 27001, PCI)</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>As a substitute for threat modeling — tools find known patterns; design flaws hide from scanners</item>
+        <item>DAST against any environment with real user data, real billing, or real downstream effects</item>
+        <item>Replacing manual review for critical-path code (auth, crypto, payment)</item>
+        <item>Auto-merging security patches without human review</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pipeline-and-rules">
+      <p>Defines where each security testing category integrates in the CI/CD pipeline and the gate criteria that block or warn.</p>
+
+      <rule testable="true">
+        <statement>Run SAST (Semgrep, Bandit) and secret scanning (TruffleHog, Gitleaks) on every commit and every PR — these are fast (&lt;2 min) and catch the majority of static vulnerabilities.</statement>
+        <rationale>Every commit is an attack surface change. Fast gates keep feedback immediate; deferred scanning gives vulnerabilities days to propagate.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run SCA (Snyk, pip-audit, npm audit) on every build. Block on Critical CVEs or CVEs known to be exploited in the wild; warn on High CVEs with no fix available.</statement>
+        <rationale>Dependencies change on their own schedule. Every build is a new dependency risk surface. Critical exploitable CVEs are production emergencies.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run DAST (OWASP ZAP, Nuclei) nightly on staging only — never against production or any environment with real user data or billing.</statement>
+        <rationale>DAST simulates attacks; running against production data causes real side effects. Staging must be isolated.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run container scanning (Trivy) on every image build. Block on CRITICAL/HIGH severity unfixed vulnerabilities in the image.</statement>
+        <rationale>Container base images accumulate CVEs silently. Scanning at build time catches regressions before they reach the registry.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Define a baseline for pre-existing findings. Only new findings (relative to the baseline) block PRs. Pre-existing findings receive a triage decision once and move to an allowlist or backlog.</statement>
+        <rationale>Inheriting thousands of existing findings creates alert fatigue. New findings deserve immediate attention; legacy findings get tracked separately.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Any secret detected by TruffleHog or Gitleaks must block the PR with no exceptions. The secret must be revoked and rotated immediately — removal from git does not expire a leaked secret.</statement>
+        <rationale>Secrets pushed to git history are compromised forever. Rotation is the only mitigation; history scrubbing is secondary cleanup.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Add pre-commit hooks for Gitleaks and detect-secrets in every project. Developers should not be able to commit secrets accidentally.</statement>
+        <rationale>Pre-commit hooks catch the mistake before the git object exists, before the secret is ever visible in the remote.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run threat modeling on new features before any tool touches them. Tools find known patterns; design flaws hide from scanners.</statement>
+        <rationale>BOLA, IDOR, and business logic abuse are the top API risk categories and are invisible to automated scanning.</rationale>
+      </rule>
+    </section>
+
+    <section name="tool-categories">
+      <p>SAST, DAST, SCA, and secret-detection tools with their intended use context and key CLI commands.</p>
+
+      <rule testable="true">
+        <statement>SAST tools (Semgrep, Bandit, CodeQL, Snyk Code) analyze source code without executing the application. Run on every commit and PR.</statement>
+        <rationale>Static analysis is fast and catches the broadest range of code-level vulnerabilities. Multi-language tools like Semgrep enable polyglot coverage.</rationale>
+      </rule>
+
+      <example type="good" title="SAST tools and CLI">
+        <list>
+          <item>Semgrep — multi-language, custom rules, fast CI integration; semgrep --config p/owasp-top-ten .</item>
+          <item>Bandit — Python-specific security patterns; bandit -r src/ -f json -o bandit-report.json</item>
+          <item>CodeQL — deep dataflow analysis, GitHub-native; gh extension install github/gh-codeql</item>
+          <item>Snyk Code — developer-friendly, PR feedback, reachability analysis</item>
+        </list>
+      </example>
+
+      <rule testable="true">
+        <statement>DAST tools (OWASP ZAP, Nuclei, Burp Suite, StackHawk) test running applications by simulating attacks. Use on staging environments only — never against production or any environment with real user data or billing.</statement>
+        <rationale>Dynamic testing finds runtime vulnerabilities and configuration issues that static analysis misses. Staging isolation prevents accidental data mutation.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Provide DAST tools with an authenticated session via a custom auth script — unauthenticated DAST misses 80% of the attack surface.</statement>
+        <rationale>Most application logic sits behind authentication. Unauthenticated scans find only public endpoints and misconfiguration.</rationale>
+      </rule>
+
+      <example type="good" title="DAST tools and staging-only usage">
+        <list>
+          <item>OWASP ZAP — open source, scriptable, CI-friendly; docker run zaproxy/zap-stable zap-baseline.py -t https://staging.example.com</item>
+          <item>Nuclei — template-based scanning; nuclei -u https://staging.example.com -t cves/</item>
+          <item>Burp Suite — manual penetration testing, deep analysis</item>
+          <item>StackHawk — DAST in CI with hawk CLI and IaC support</item>
+        </list>
+      </example>
+
+      <rule testable="true">
+        <statement>SCA tools (Snyk, Trivy, pip-audit, npm audit, osv-scanner) scan dependencies for known CVEs and license issues. Run on every build.</statement>
+        <rationale>Third-party dependencies are attack vectors. Every build introduces new vulnerabilities from upstream releases.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use reachability analysis (Snyk Code, Semgrep Pro) to distinguish exploitable CVEs from unreachable transitive dependencies. CVSS score alone is a poor triage signal.</statement>
+        <rationale>SCA generates high noise from transitive deps. A CVSS-10 in unreachable code is lower priority than a CVSS-6 in a public endpoint.</rationale>
+      </rule>
+
+      <example type="good" title="SCA tools with reachability">
+        <list>
+          <item>Snyk — continuous monitoring, auto-fix PRs, reachability; npm i -g snyk</item>
+          <item>Trivy — containers, IaC, SBOM; brew install trivy</item>
+          <item>pip-audit / safety — Python packages; pip install pip-audit</item>
+          <item>npm audit — Node.js packages, bundled with npm</item>
+          <item>osv-scanner — Google OSV vulnerability database; brew install osv-scanner</item>
+        </list>
+      </example>
+
+      <rule testable="true">
+        <statement>Secret detection tools (TruffleHog, Gitleaks, detect-secrets, GitHub Secret Scanning) find hardcoded credentials, API keys, and tokens in source code and git history. Run on every commit with pre-commit hooks.</statement>
+        <rationale>Secrets in git are compromised forever. Pre-commit detection prevents them from entering the repository in the first place.</rationale>
+      </rule>
+
+      <example type="good" title="Secret detection with verified mode">
+        <list>
+          <item>TruffleHog — entropy + patterns, 700+ detectors, verified mode; trufflehog git file://. --only-verified</item>
+          <item>Gitleaks — regex patterns, fast, pre-commit hook; gitleaks detect --source . --verbose</item>
+          <item>detect-secrets — baseline methodology, low false positives; pip install detect-secrets</item>
+          <item>GitHub Secret Scanning — native to GitHub, free for public repos</item>
+        </list>
+      </example>
+    </section>
+
+    <section name="owasp-top-10-and-api-security">
+      <p>Current OWASP Web and API risk rankings with test approaches for auth and authorization vulnerabilities.</p>
+
+      <rule testable="true">
+        <statement>For every authenticated endpoint, test: correct credentials (200), missing Authorization header (401), expired token (401), insufficient role (403), and another user's resource ID (403 or 404 — must not be 200).</statement>
+        <rationale>Horizontal privilege escalation (user A accessing user B's data) is the #1 API bug class and requires explicit per-endpoint testing.</rationale>
+      </rule>
+
+      <example type="good" title="OWASP Top 10 2025 key entries">
+        <list>
+          <item>A01 Broken Access Control — #1 risk; includes SSRF consolidated from 2021. Test authorization at every function level.</item>
+          <item>A02 Security Misconfiguration — moved up from #5; debug modes, default credentials, unnecessary features enabled.</item>
+          <item>A03 Software Supply Chain Failures — NEW; extends beyond dependencies to build systems and distribution infrastructure.</item>
+          <item>A05 Injection — SQL, NoSQL, OS command, LDAP, XSS. Use parameterized queries; never concatenate user input.</item>
+          <item>A07 Authentication Failures — weak passwords, session management, credential stuffing.</item>
+          <item>A10 Mishandling Exceptional Conditions — NEW; improper error handling, failing open, logical errors.</item>
+        </list>
+      </example>
+
+      <example type="good" title="OWASP API Security Top 10 2023">
+        <list>
+          <item>API1 Broken Object Level Authorization (BOLA) — access other users' objects by changing IDs in requests.</item>
+          <item>API2 Broken Authentication — token manipulation, session attacks.</item>
+          <item>API3 Broken Object Property Level Authorization (BOPLA) — access restricted properties via mass assignment.</item>
+          <item>API4 Unrestricted Resource Consumption — rate limiting, payload size limits.</item>
+          <item>API5 Broken Function Level Authorization — admin endpoint access, privilege escalation.</item>
+          <item>API7 Server Side Request Forgery — internal network access via API parameters.</item>
+          <item>API9 Improper Inventory Management — shadow APIs, undocumented endpoints.</item>
+        </list>
+      </example>
+
+      <rule testable="true">
+        <statement>BOLA (API1) and BOPLA (API3) require human review — scanners cannot detect them because the vulnerability is in business logic, not code patterns.</statement>
+        <rationale>Automated tools look for code signatures. BOLA exploits are valid HTTP requests using different IDs — indistinguishable from legitimate traffic to a scanner.</rationale>
+      </rule>
+
+      <example type="good" title="Injection test matrix — minimum payloads">
+        <code lang="text"><![CDATA[
+SQL:     ' OR '1'='1    ;DROP TABLE users--
+NoSQL:   {"$gt": ""}    {"$ne": null}
+Command: ; ls           | cat /etc/passwd
+XSS:     <script>alert(1)</script>
+Path:    ../../../etc/passwd
+XXE:     <!DOCTYPE x [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>
+]]></code>
+      </example>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Critical failure modes when AI agents interact with security tooling, and best practices for secure-by-default pipeline operation.</p>
+
+      <antipattern>
+        <description>Agent widens allowlists or suppresses SAST rules to make findings go away</description>
+        <reason>Suppression hides real vulnerabilities. Lock .semgrepignore and .snyk behind a separate review path; require a one-line rationale and review-by date on every suppression.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent writes LLM-generated regex for input validation</description>
+        <reason>LLM-generated regex is famously bypassable. Use battle-tested libraries (bleach, defusedxml, validators, email-validator) and pin versions.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent auto-merges Dependabot/Snyk PRs without integration tests</description>
+        <reason>Dependency updates break prod weekly without a green build + integration test gate on the changed dependency.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent hallucinates CVE IDs and remediation steps from training data</description>
+        <reason>Always cross-check findings against NVD (nvd.nist.gov) or osv.dev before acting.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent generates crypto primitives ("here's a custom AES-GCM wrapper")</description>
+        <reason>Custom crypto is the most dangerous code class. Force cryptography.fernet, libsodium, or KMS-managed keys. Reject ad-hoc primitives.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent runs DAST automation against production URLs</description>
+        <reason>DAST scripts that mutate prod data cause real side effects. Restrict to non-prod URLs in CI policy and by ACL.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent suppresses CodeQL/Semgrep with `// nosec` without a rationale</description>
+        <reason>CI must lint commits for naked suppressions. Every suppression requires a one-line reason.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Secret rotation requires only one of three coordinated changes (key in vault, app config, dependent services)</description>
+        <reason>An agent doing only one of three creates an outage. Stage rotation in a runbook the agent follows step-by-step.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Define a triage process before connecting any scanner to CI. Pre-existing findings get one triage decision; only new findings block PRs.</statement>
+        <rationale>High false-positive rates from DAST and SCA erode trust in the pipeline. A triage process prevents "turn it off" reactions.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Sign artifacts (cosign/sigstore), pin base images by digest, generate SBOM (syft), and scan the SBOM (grype) as part of every container build.</statement>
+        <rationale>Supply chain attacks (OWASP A03 2025) target build artifacts and base images. Signing + SBOM provides provenance verification.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Human-in-loop on every Critical finding. Agents may auto-open PRs for Low/Medium findings with regression tests; Critical findings require human review before merge.</statement>
+        <rationale>The business and legal consequences of Critical vulnerabilities require human judgment about risk acceptance, timing, and disclosure.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run penetration testing annually and after major architectural changes. Automated scanners do not replace pentesters for logic flaws and novel attack chains.</statement>
+        <rationale>Scanners find what they were programmed to find. Pentesters find what attackers find — including combinations of low-severity findings that chain into critical exploits.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/security-pipeline.yml" purpose="GitHub Actions security workflow (SAST + secrets + SCA + container)"/>
+      <template path="templates/prompt-triage-findings.txt" purpose="Agent prompt: triage scanner JSON by reachability, open fix PR"/>
+      <template path="templates/prompt-api-audit.txt" purpose="Agent prompt: audit routes for OWASP API Top 10 issues"/>
+    </templates>
+
+    <see-also>
+      <link href="https://owasp.org/Top10/2025/"/>
+      <link href="https://owasp.org/API-Security/"/>
+      <link href="https://owasp.org/www-project-web-security-testing-guide/"/>
+      <link href="https://owasp.org/www-project-application-security-verification-standard/"/>
+      <link href="https://cheatsheetseries.owasp.org/"/>
+      <link href="https://semgrep.dev/explore"/>
+      <link href="https://docs.snyk.io/"/>
+      <link href="https://www.zaproxy.org/docs/"/>
+      <link href="https://github.com/trufflesecurity/trufflehog"/>
+      <link href="https://www.first.org/cvss/v3-1/specification-document"/>
+      <link href="https://slsa.dev/"/>
+      <link href="https://www.sigstore.dev/"/>
+      <link href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog"/>
+      <link href="https://www.nist.gov/cyberframework"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="notion-pm">
+  <metadata>
+    <tier>solo</tier>
+    <group>pm</group>
+    <domain>project-manager</domain>
+    <summary>Notion PM: relational databases (Projects ↔ Tasks ↔ Sprints), views, rollup formulas for progress tracking, templates, and REST API for agent-driven task management.</summary>
+    <tags>
+      <tag>notion</tag>
+      <tag>databases</tag>
+      <tag>relational</tag>
+      <tag>task-management</tag>
+      <tag>rollups</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Notion for Integrated Docs and Task Management</title>
+    <summary>Notion's relational databases let teams connect tasks, projects, docs, and meeting notes in one tool. Relations and rollups replace spreadsheet-based status tracking: task count per project, total story points, completion percentage — all computed automatically. The REST API uses the same database_id and property names as the UI, making it the most straightforward PM tool API for agent integration. Limit database properties to 15-20 per database — complex formulas and too many relations degrade performance.</summary>
+    <why>
+      <p>Notion's relational databases let teams connect tasks, projects, docs, and meeting notes in one tool. Relations and rollups replace spreadsheet-based status tracking: task count per project, total story points, completion percentage — all computed automatically.</p>
+      <p>The REST API uses the same database_id and property names as the UI, making it the most straightforward PM tool API for agent integration. Rich documentation alongside tasks is essential for teams tracking RFCs, specs, and meeting notes alongside task execution.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Team wants to combine documentation and task tracking in one workspace.</item>
+        <item>Flexible, evolving process that would outgrow a more opinionated tool quickly.</item>
+        <item>Rich documentation alongside tasks is essential (RFCs, specs, meeting notes all interlinked).</item>
+        <item>Cross-functional teams with diverse workflow needs in one shared workspace.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Team needs code-task traceability ("Fixes #123") — GitHub Projects is a better fit.</item>
+        <item>Engineering team needs keyboard-first, high-velocity issue tracking — Linear is faster.</item>
+        <item>Simple kanban with no documentation needs — Trello is faster to set up and maintain.</item>
+        <item>Performance-critical at scale: Notion databases with 500+ items and complex formulas load slowly.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="database-architecture">
+      <p>Relational database design in Notion requires careful planning to avoid performance issues and data duplication.</p>
+      <rule>
+        <statement>Create three core databases: Projects (one row per initiative), Tasks (one row per work item), Sprints (one row per iteration). Connect them bidirectionally: Tasks relation to Projects (and back), Tasks relation to Sprints (and back). This schema supports rollups for completion tracking without duplicating data.</statement>
+        <rationale>Flat databases require manual status tracking. Relations + rollups compute project progress, sprint velocity, and workload automatically from task data.</rationale>
+      </rule>
+      <rule>
+        <statement>Limit database properties to 15-20 maximum per database. Archive properties that are not used in views, rollups, or automations.</statement>
+        <rationale>Notion databases with many properties load slowly. Complex formulas referencing many relations are the primary performance bottleneck.</rationale>
+      </rule>
+    </section>
+
+    <section name="property-types">
+      <p>Notion's property types have specific performance and semantic characteristics.</p>
+      <rule>
+        <statement>Use Status property type (not Select) for task workflow states. Status groups Not Started / In Progress / Complete and renders progress rings in relation views — Select does not.</statement>
+        <rationale>The Status type is purpose-built for workflow tracking and enables native progress visualization that Select cannot replicate.</rationale>
+      </rule>
+      <rule>
+        <statement>Use Relation + Rollup for computed metrics (task count per project, total story points, completion %). Never compute these manually in a formula that re-reads source database rows — rollups are cached; formulas that iterate rows are not.</statement>
+        <rationale>Formulas that aggregate related rows query the source database on every page load. Rollups are pre-computed and significantly faster on large databases.</rationale>
+      </rule>
+    </section>
+
+    <section name="rollup-patterns">
+      <p>Rollups are the mechanism for computing aggregates in Notion without formula iteration.</p>
+      <example type="good" title="Project completion metrics via rollups">
+        <note>Project "Completed Tasks": Rollup → relation: Tasks → property: Status → calculation: Count values filtered to "Done". Project "Progress %": Formula → round(prop("Completed Tasks") / prop("Total Tasks") * 100). Project "Total Points": Rollup → relation: Tasks → property: Estimate → calculation: Sum.</note>
+      </example>
+      <antipattern>
+        <description>Formula that uses prop("Tasks") to iterate task relations and check each task's status manually.</description>
+        <reason>Formula iteration over relations is not supported in Notion formulas. Use a Rollup with a filter instead.</reason>
+      </antipattern>
+    </section>
+
+    <section name="performance">
+      <p>Performance degrades rapidly with scale in Notion; archiving old data is essential.</p>
+      <rule>
+        <statement>Archive completed sprints and done tasks older than 90 days to an Archive database. Use linked databases (not duplicated databases) to show archived data in context when needed.</statement>
+        <rationale>Notion databases with 500+ active rows and complex formula properties load in 3-8 seconds. Archiving old data keeps the primary database fast.</rationale>
+      </rule>
+    </section>
+
+    <section name="view-configuration">
+      <p>Views in Notion should be purpose-specific to avoid cognitive overload.</p>
+      <rule>
+        <statement>Create purpose-specific views: Board (sprint execution, grouped by Status, filtered to current sprint), Table (all tasks, sortable), Timeline (roadmap, grouped by Project, date field = Date Range), Calendar (deadlines, filtered to not-Done). Never create a catch-all view showing everything — it loads slowly and has no clear use case.</statement>
+        <rationale>Each view should answer one specific question. Views that show all data for all purposes become the default view and reduce the value of purpose-specific filters.</rationale>
+      </rule>
+      <rule>
+        <statement>Use linked databases (not duplicated databases) to show the same data in multiple pages. Linked databases point to the same source — changes propagate automatically. Duplicating databases creates two separate sources of truth.</statement>
+        <rationale>Duplicated databases require manual sync. Linked databases always reflect the source state without manual updates.</rationale>
+      </rule>
+    </section>
+
+    <section name="notion-rest-api">
+      <p>The Notion REST API is agent-friendly but has specific conventions that differ from the UI.</p>
+      <rule>
+        <statement>Use database_id (UUID format) for all API operations. Property names in API calls must match exactly the display names in the Notion UI — including case and spacing. Store database_ids in .aidocs/memory/ or constitution.md.</statement>
+        <rationale>Property name mismatches cause silent failures (the API returns 200 but does not update the property). Case sensitivity is a frequent source of agent errors.</rationale>
+      </rule>
+      <rule>
+        <statement>Use databases.query endpoint with filter and sort parameters rather than pages.retrieve for finding tasks. The query endpoint supports AND/OR filter trees and pagination — pages.retrieve only works when you already know the page_id.</statement>
+        <rationale>Agents that scan all database pages via pages.retrieve are making N API calls for N tasks. databases.query returns all matching items in one call with server-side filtering.</rationale>
+      </rule>
+      <example type="good" title="Querying tasks in current sprint">
+        <code lang="javascript"><![CDATA[
+// Query tasks in current sprint assigned to specific user
+const response = await notion.databases.query({
+  database_id: "tasks-db-id",
+  filter: {
+    and: [
+      { property: "Sprint", relation: { contains: "current-sprint-page-id" } },
+      { property: "Assignee", people: { contains: "user-id" } },
+      { property: "Status", status: { does_not_equal: "Done" } }
+    ]
+  },
+  sorts: [{ property: "Priority", direction: "ascending" }]
+});
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="automations">
+      <p>Notion automations and cross-tool integrations handle state changes and notifications.</p>
+      <rule>
+        <statement>Use Notion's native automations for simple property-change triggers (set Completion Date when Status = Done, notify on Urgent priority). Use Zapier or Make (n8n) for cross-tool workflows (Notion task created → Slack notification, GitHub PR merged → Notion task status update).</statement>
+        <rationale>Notion native automations run within Notion and are simpler to configure. Cross-tool workflows require an external automation platform because Notion cannot call external APIs natively in automation actions.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common pitfalls when agents interact with Notion at scale.</p>
+      <rule>
+        <statement>Notion's eventual consistency means a page created in one API call may not appear in a database query for 1–2 seconds. Add a short retry/poll loop after create-then-query patterns.</statement>
+        <rationale>Timing matters when sequencing API calls; built-in retry logic prevents race conditions.</rationale>
+      </rule>
+      <rule>
+        <statement>The API returns relation property values as arrays of {id} objects, not human-readable names — agents must do a follow-up pages.retrieve call to resolve titles.</statement>
+        <rationale>Relation properties are references; resolving them requires a second API call to fetch the related page's title.</rationale>
+      </rule>
+      <rule>
+        <statement>Formula properties are read-only via API. Agents cannot set them directly and must update the underlying source properties instead.</statement>
+        <rationale>Formulas are computed; they cannot be written to.</rationale>
+      </rule>
+      <rule>
+        <statement>Rate limits: 3 req/sec per integration token. Bulk operations must be batched with backoff. Agents should not batch-update more than 3 pages/sec or they will hit rate limits silently.</statement>
+        <rationale>Silent rate limiting (200 response but queued) leads to stale state; explicit backoff prevents this.</rationale>
+      </rule>
+      <rule>
+        <statement>Require human checkpoint before bulk status changes (e.g., marking 50 tasks as Done from a script) — Notion has no native undo for bulk API writes.</statement>
+        <rationale>Bulk mutations are irreversible; human review prevents cascading errors.</rationale>
+      </rule>
+      <rule>
+        <statement>The notion-client Python SDK does not raise exceptions on 429 rate limit responses by default. Wrap calls with explicit status code checks.</statement>
+        <rationale>Silent rate limit failures lead to incomplete state; explicit error handling is necessary.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <p>Patterns for sustainable Notion PM workflows.</p>
+      <rule>
+        <statement>Use a single canonical Tasks database with linked views on sprint/project pages instead of creating separate databases per sprint — rollups stay accurate and archiving is simpler.</statement>
+        <rationale>Multiple task databases fragment the source of truth and complicate rollup computation.</rationale>
+      </rule>
+      <rule>
+        <statement>Store the database_id and integration_token in environment variables or a secrets manager. Never hardcode in agent prompts.</statement>
+        <rationale>Secrets management prevents credential leakage in logs and version control.</rationale>
+      </rule>
+      <rule>
+        <statement>Always set a Status property to "Cancelled" instead of deleting pages. Deletion silently breaks rollups pointing to the deleted page.</statement>
+        <rationale>Deletion is destructive; setting Status preserves referential integrity.</rationale>
+      </rule>
+      <rule>
+        <statement>When writing via API, include all required select/status properties to avoid Notion creating orphan "Unknown" option values in your schema.</statement>
+        <rationale>Missing required properties cause Notion to auto-create invalid options.</rationale>
+      </rule>
+      <rule>
+        <statement>Use archived: true on the page update endpoint to soft-delete instead of the delete endpoint — it preserves page history and relations.</statement>
+        <rationale>Soft deletion preserves history and maintains referential integrity.</rationale>
+      </rule>
+      <rule>
+        <statement>Paginate query results with start_cursor — Notion returns max 100 items per request regardless of page_size.</statement>
+        <rationale>Pagination is mandatory for large datasets; Notion enforces a hard limit per request.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/task-template.md" purpose="Task page template with description, context, AC, technical notes, sub-tasks."/>
+      <template path="templates/sprint-template.md" purpose="Sprint page template with goal, metrics table, backlog relation, retrospective."/>
+    </templates>
+
+    <see-also>
+      <link href="https://developers.notion.com/reference"/>
+      <link href="https://www.notion.so/help/automations"/>
+      <link href="https://github.com/ramnes/notion-sdk-py"/>
+      <link href="https://www.notioneverything.com/notion-api-limits"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="plausible-analytics">
+  <metadata>
+    <tier>solo</tier>
+    <group>marketing</group>
+    <domain>growth-marketer</domain>
+    <summary>Privacy-first, cookie-free web analytics for Gatsby, React, and static sites without GDPR consent overhead. Deploy the Nginx proxy before launch to ensure 20-40% of adblocker users remain visible.</summary>
+    <tags>
+      <tag>analytics</tag>
+      <tag>privacy</tag>
+      <tag>plausible</tag>
+      <tag>tracking</tag>
+      <tag>gdpr</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Plausible Analytics</title>
+
+    <summary>Privacy-first, cookie-free web analytics for Gatsby, React, and static sites. Covers script installation, Nginx proxy setup for adblocker bypass, custom event tracking, and the Stats API for programmatic data access. The core rule: deploy the Nginx proxy before launch — without it, adblocker users (20-40% of technical audiences) are invisible.</summary>
+
+    <why>
+      <p>Google Analytics requires GDPR cookie consent, adds ~45KB to page weight, and sends user data to Google. Plausible is GDPR-compliant by design (no cookies, no personal data), lightweight (less than 1KB script), and exposes a REST Stats API that agents can query programmatically for reports, dashboards, and automated alerts.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up privacy-first analytics on a Gatsby, React, or static site without consent banners</item>
+        <item>Replacing Google Analytics where cookie consent overhead is undesirable</item>
+        <item>Querying site metrics programmatically to feed reports or agent decisions</item>
+        <item>Tracking custom conversion events (signups, purchases, CTA clicks) via Stats API</item>
+        <item>Self-hosting analytics for full data ownership</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>You need user-level session replay or heatmaps — Plausible is aggregate-only; use PostHog</item>
+        <item>You need funnel analysis across authenticated user sessions — use Mixpanel or PostHog</item>
+        <item>You require advanced cohort analysis or A/B test results — Plausible lacks these</item>
+        <item>You need advertising attribution with click IDs (gclid, fbclid) mapped to conversions</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="script-variants">
+      <p>Plausible's script is less than 1KB in its base form. The all-extensions variant adds file-downloads, outbound-links, and tagged-events tracking, increasing size and complexity. Choose the script variant based on the features required and do not use the all-extensions variant by default — include only what is needed to keep the script minimal.</p>
+
+      <list>
+        <item>Basic: script.js — pageview tracking only</item>
+        <item>With custom events: script.tagged-events.js</item>
+        <item>With file downloads: script.file-downloads.js</item>
+        <item>All extensions: script.tagged-events.file-downloads.outbound-links.js</item>
+      </list>
+
+      <example type="good" title="Basic pageview tracking">
+        <code lang="html"><![CDATA[<!-- Basic pageview tracking -->
+<script defer data-domain="yourdomain.com" src="https://plausible.io/js/script.js"></script>
+
+<!-- With custom events (use this for conversion tracking) -->
+<script defer data-domain="yourdomain.com" src="https://plausible.io/js/script.tagged-events.js"></script>]]></code>
+      </example>
+    </section>
+
+    <section name="nginx-proxy-adblocker-bypass">
+      <p>Plausible's default script URL (plausible.io) is blocked by most adblockers. A proxied script via the site's own domain bypasses these blocks, restoring data accuracy for privacy-conscious technical users. Deploy the Nginx proxy before launch on any site targeting a technical audience. Without it, 20-40% of users running adblockers are invisible.</p>
+
+      <rule testable="true">
+        <statement>Deploy the Nginx proxy before launch on any site targeting a technical audience. Without it, 20-40% of users running adblockers are invisible.</statement>
+        <rationale>Plausible's default script URL (plausible.io) is blocked by most adblockers. A proxied script via the site's own domain bypasses these blocks, restoring data accuracy for privacy-conscious technical users.</rationale>
+      </rule>
+
+      <example type="good" title="Using proxied script after Nginx proxy setup">
+        <code lang="html"><![CDATA[<!-- Use proxied script after Nginx proxy setup -->
+<script defer data-domain="yourdomain.com" data-api="/api/event" src="/js/script.js"></script>]]></code>
+      </example>
+
+      <templates>
+        <template path="templates/nginx-proxy.conf" purpose="Nginx proxy configuration for adblocker bypass"/>
+      </templates>
+    </section>
+
+    <section name="framework-integrations">
+      <p>In Next.js and Gatsby, guard plausible() calls with typeof window !== 'undefined' to prevent SSR errors. Plausible's JavaScript function runs in the browser only. SSR environments do not have a window object. Calling plausible() during server-side rendering throws a ReferenceError.</p>
+
+      <rule testable="true">
+        <statement>In Next.js and Gatsby, guard plausible() calls with typeof window !== 'undefined' to prevent SSR errors.</statement>
+        <rationale>Plausible's JavaScript function runs in the browser only. SSR environments do not have a window object. Calling plausible() during server-side rendering throws a ReferenceError.</rationale>
+      </rule>
+
+      <templates>
+        <template path="templates/gatsby-config.js" purpose="gatsby-plugin-plausible configuration snippet"/>
+      </templates>
+    </section>
+
+    <section name="development-exclusion">
+      <p>Development visits that appear in analytics data distort traffic numbers. The localStorage flag is persistent across sessions and survives page reloads.</p>
+
+      <rule testable="true">
+        <statement>Exclude own visits during development by setting localStorage.setItem('plausible_ignore', 'true') in the browser console.</statement>
+        <rationale>Development visits that appear in analytics data distort traffic numbers. The localStorage flag is persistent across sessions and survives page reloads.</rationale>
+      </rule>
+    </section>
+
+    <section name="custom-events-and-goal-tracking">
+      <p>Plausible requires goals to be pre-registered in the dashboard settings. Firing events without corresponding goal definitions produces no data in the dashboard.</p>
+
+      <rule testable="true">
+        <statement>Define goals in the Plausible dashboard before firing events from code — events that do not match a defined goal are silently ignored.</statement>
+        <rationale>Plausible requires goals to be pre-registered in the dashboard settings. Firing events without corresponding goal definitions produces no data in the dashboard.</rationale>
+      </rule>
+
+      <example type="good" title="Basic conversion event with custom properties">
+        <code lang="javascript"><![CDATA[// Basic conversion event
+plausible('signup');
+
+// Event with custom properties
+plausible('signup', {
+  props: {
+    plan: 'premium',
+    source: 'landing_page'
+  }
+});
+
+// Revenue tracking (hosted Business plan only)
+plausible('purchase', {
+  revenue: { currency: 'USD', amount: 99.99 },
+  props: { plan: 'Pro', billing: 'annual' }
+});]]></code>
+      </example>
+    </section>
+
+    <section name="css-class-tagged-events-no-code-tracking">
+      <p>Tagged events reduce deployment friction: a designer can add a tracking class in HTML without touching JavaScript. This is also more resilient to JS bundle changes.</p>
+
+      <rule testable="true">
+        <statement>Use CSS class tagged events for CTA click tracking when possible — no JavaScript code changes needed when adding new buttons.</statement>
+        <rationale>Tagged events reduce deployment friction: a designer can add a tracking class in HTML without touching JavaScript. This is also more resilient to JS bundle changes.</rationale>
+      </rule>
+
+      <example type="good" title="CSS class tagged events for CTA tracking">
+        <code lang="html"><![CDATA[<!-- Track clicks on any element via CSS class -->
+<a href="/pricing" class="plausible-event-name=Pricing+View">View Pricing</a>
+
+<!-- With custom properties -->
+<button class="plausible-event-name=CTA+Click plausible-event-position=header">
+  Get Started
+</button>]]></code>
+      </example>
+    </section>
+
+    <section name="revenue-tracking-note">
+      <p>Revenue tracking silently fails on plans that do not support it. Verifying the plan before implementation avoids lost revenue data without error messages.</p>
+
+      <rule testable="true">
+        <statement>Verify the Plausible plan supports revenue tracking before implementing — this feature is only available in the hosted Business plan, not in Community Edition (CE).</statement>
+        <rationale>Revenue tracking silently fails on plans that do not support it. Verifying the plan before implementation avoids lost revenue data without error messages.</rationale>
+      </rule>
+    </section>
+
+    <section name="api-endpoints-and-stats-api">
+      <p>API endpoints provide programmatic access to analytics data. Agents can extract metrics, build reports, and trigger automated actions based on analytics trends.</p>
+
+      <list>
+        <item>Aggregate: /api/v1/stats/aggregate — overall metrics for a period</item>
+        <item>Timeseries: /api/v1/stats/timeseries — daily breakdown for a period</item>
+        <item>Breakdown: /api/v1/stats/breakdown — grouped by property (page, source, device)</item>
+        <item>Realtime: /api/v1/stats/realtime/visitors — current visitors (last 5 min)</item>
+      </list>
+
+      <example type="good" title="Aggregate stats API query">
+        <code lang="bash"><![CDATA[# Aggregate stats — last 30 days
+curl "https://plausible.io/api/v1/stats/aggregate?site_id=yourdomain.com&period=30d&metrics=visitors,pageviews,bounce_rate" \
+  -H "Authorization: Bearer $PLAUSIBLE_API_KEY"
+
+# Top pages breakdown
+curl "https://plausible.io/api/v1/stats/breakdown?site_id=yourdomain.com&period=30d&property=event:page&metrics=visitors,pageviews" \
+  -H "Authorization: Bearer $PLAUSIBLE_API_KEY"]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use exact period parameter values: day, 7d, 30d, month, 6mo, 12mo, or YYYY-MM-DD,YYYY-MM-DD. Non-standard formats return errors.</statement>
+        <rationale>Agents frequently use incorrect period formats (e.g., "last_30_days", "30_days", "1m") that are not valid for the Plausible API and produce 400 errors.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use exact property values in breakdown queries. Valid examples: event:page, visit:source, visit:device, visit:country.</statement>
+        <rationale>Agents hallucinate property names based on what "seems right" (e.g., "page:url", "traffic:source"). Only properties in the official API documentation work.</rationale>
+      </rule>
+    </section>
+
+    <section name="python-client">
+      <p>The Stats API is fully headless and agent-compatible — no browser interaction required. Use it from server-side scripts and agent pipelines directly. Unlike most analytics tools, Plausible's Stats API does not require OAuth or browser sessions. A simple Bearer token is sufficient for all read operations.</p>
+
+      <rule testable="true">
+        <statement>The Stats API is fully headless and agent-compatible — no browser interaction required. Use it from server-side scripts and agent pipelines directly.</statement>
+        <rationale>Unlike most analytics tools, Plausible's Stats API does not require OAuth or browser sessions. A simple Bearer token is sufficient for all read operations.</rationale>
+      </rule>
+
+      <templates>
+        <template path="templates/plausible-client.py" purpose="Python client with aggregate(), timeseries(), breakdown(), realtime_visitors() methods"/>
+      </templates>
+    </section>
+
+    <section name="api-limitations">
+      <list>
+        <item>No user-level or session-level queries — aggregate only by design</item>
+        <item>Custom properties limited on free/self-hosted plan</item>
+        <item>Revenue tracking requires hosted Business plan</item>
+        <item>Raw event export (Data Export API) requires Business/Enterprise plan</item>
+        <item>Rate limits apply — paginate for large breakdowns</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/prompt-weekly-report.txt" purpose="LLM prompt to generate a weekly stats summary from API data"/>
+      <template path="templates/prompt-event-tracking.txt" purpose="LLM prompt to generate custom event tracking code for a site"/>
+    </templates>
+
+    <see-also>
+      <link href="https://plausible.io/docs"/>
+      <link href="https://plausible.io/docs/stats-api"/>
+      <link href="https://plausible.io/docs/custom-event-goals"/>
+      <link href="https://plausible.io/docs/proxy/guides/nginx"/>
+      <link href="https://github.com/plausible/analytics"/>
+    </see-also>
+  </content>
+</methodology>
