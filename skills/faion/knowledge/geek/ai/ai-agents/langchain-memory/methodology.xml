@@ -1,0 +1,568 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="langchain-memory">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Memory management in conversational AI and LangGraph workflow orchestration using buffer, summary, vector, and entity memory patterns.</summary>
+    <tags>
+      <tag>langchain</tag>
+      <tag>memory</tag>
+      <tag>langgraph</tag>
+      <tag>conversational-ai</tag>
+      <tag>state-management</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-01-25</created>
+  </metadata>
+
+  <content>
+    <title>LangChain Memory &amp; Workflows</title>
+
+    <summary>Memory management in conversational AI and LangGraph workflow orchestration. Covers conversation buffer, summary, vector, and entity memory patterns. Includes LangGraph state machines, human-in-the-loop workflows, and subgraph composition.</summary>
+
+    <why>
+      <p>Tooling (changelog generators, semantic-release, AI release-note writers) needs deterministic formatting of conversation memory. Free-form or implicit memory patterns force humans to manually craft context; agents cannot infer the correct memory backend or state shape. Explicit patterns (buffer for short convos, summary for token-constrained long ones, vector for semantic retrieval, entity for structured knowledge) enable agents to pick the right shape upfront and scale memory as conversations grow. LangGraph adds the state machine layer — stateful workflows where each node reads/writes shared state, interrupt-before checkpointing for human approval, and subgraph composition for modularity.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building conversational AI where users reference earlier turns ("as I mentioned before…")</item>
+        <item>Long-running multi-session assistants that must recall user preferences, entities, or prior decisions</item>
+        <item>Stateful LangGraph workflows where each node must read and update shared state</item>
+        <item>Human-in-the-loop approval workflows that must persist state across a pause-and-resume cycle</item>
+        <item>Content pipelines where upstream node output must be accessible to downstream nodes without full re-processing</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-turn, stateless question-answering — memory adds latency and cost with no benefit</item>
+        <item>Tasks where conversation history is irrelevant or where fresh context is preferred each turn</item>
+        <item>Extremely long sessions (thousands of turns) where even vector memory retrieval becomes a bottleneck</item>
+        <item>High-security contexts where persisting conversation history creates unacceptable data retention risk</item>
+        <item>Serverless functions with no persistent storage — buffer and summary memory require a store backend</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="memory-types">
+      <p>LangChain supports four primary memory types, each optimizing for different conversation shapes and token budgets.</p>
+
+      <rule testable="true">
+        <statement>Conversation Buffer Memory stores the full history and is the simplest memory abstraction. Use for conversations expected to stay under 20 turns and under 8k tokens.</statement>
+        <rationale>Buffer memory provides perfect recall at zero computational cost; the tradeoff is token bloat.</rationale>
+      </rule>
+
+      <example type="good" title="Conversation Buffer Memory">
+        <code lang="python"><![CDATA[from langchain_core.chat_history import InMemoryChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
+
+# Create store
+store = {}
+
+def get_session_history(session_id: str):
+    if session_id not in store:
+        store[session_id] = InMemoryChatMessageHistory()
+    return store[session_id]
+
+# Wrap chain with memory
+chain_with_memory = RunnableWithMessageHistory(
+    chain,
+    get_session_history,
+    input_messages_key="input",
+    history_messages_key="history"
+)
+
+# Use with session
+result = chain_with_memory.invoke(
+    {"input": "My name is Alice"},
+    config={"configurable": {"session_id": "user-123"}}
+)
+
+# Later in same session
+result = chain_with_memory.invoke(
+    {"input": "What's my name?"},
+    config={"configurable": {"session_id": "user-123"}}
+)
+# Returns: "Your name is Alice"]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Conversation Summary Memory compresses old messages into a running summary and keeps only recent messages in the prompt. Use for conversations 20-100 turns where progressive summarization is acceptable.</statement>
+        <rationale>Summary memory breaks the linear growth of buffer memory; the cost is that summarization is lossy and irreversible.</rationale>
+      </rule>
+
+      <example type="good" title="Conversation Summary Memory">
+        <code lang="python"><![CDATA[from langchain.memory import ConversationSummaryMemory
+from langchain_openai import ChatOpenAI
+
+summary_llm = ChatOpenAI(model="gpt-4o-mini")
+
+class SummaryMemory:
+    def __init__(self, llm, max_messages: int = 10):
+        self.llm = llm
+        self.max_messages = max_messages
+        self.messages = []
+        self.summary = ""
+
+    def add_message(self, role: str, content: str):
+        self.messages.append({"role": role, "content": content})
+
+        if len(self.messages) > self.max_messages:
+            self._summarize()
+
+    def _summarize(self):
+        # Summarize oldest half
+        to_summarize = self.messages[:len(self.messages)//2]
+        remaining = self.messages[len(self.messages)//2:]
+
+        messages_text = "\n".join(
+            f"{m['role']}: {m['content']}" for m in to_summarize
+        )
+
+        prompt = f"""Summarize this conversation:
+        Previous summary: {self.summary}
+
+        New messages:
+        {messages_text}
+        """
+
+        response = self.llm.invoke(prompt)
+        self.summary = response.content
+        self.messages = remaining
+
+    def get_context(self) -> str:
+        recent = "\n".join(
+            f"{m['role']}: {m['content']}" for m in self.messages
+        )
+        return f"Summary: {self.summary}\n\nRecent:\n{recent}"]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Vector Store Memory embeds all past interactions and retrieves top-K semantically similar ones on each turn. Use for conversations 50+ turns where semantic retrieval (not recency) matters most.</statement>
+        <rationale>Vector memory decouples retrieval from token budget; retrieve only relevant snippets rather than all history. The cost is that similarity-based retrieval can surface unrelated turns if the query is ambiguous.</rationale>
+      </rule>
+
+      <example type="good" title="Vector Store Memory">
+        <code lang="python"><![CDATA[from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import Chroma
+
+class VectorMemory:
+    def __init__(self, collection_name: str = "memory"):
+        self.embeddings = OpenAIEmbeddings()
+        self.vectorstore = Chroma(
+            collection_name=collection_name,
+            embedding_function=self.embeddings
+        )
+
+    def add_interaction(self, human: str, assistant: str, metadata: dict = None):
+        """Store a conversation turn."""
+        text = f"Human: {human}\nAssistant: {assistant}"
+        self.vectorstore.add_texts(
+            texts=[text],
+            metadatas=[metadata or {}]
+        )
+
+    def get_relevant(self, query: str, k: int = 3) -> list[str]:
+        """Retrieve relevant past interactions."""
+        docs = self.vectorstore.similarity_search(query, k=k)
+        return [doc.page_content for doc in docs]
+
+    def get_context(self, current_query: str) -> str:
+        """Get memory context for prompt."""
+        relevant = self.get_relevant(current_query)
+        if not relevant:
+            return ""
+        return "Relevant past interactions:\n" + "\n---\n".join(relevant)
+
+# Usage
+memory = VectorMemory()
+memory.add_interaction(
+    "What's the capital of France?",
+    "The capital of France is Paris."
+)
+
+# Later
+context = memory.get_context("Tell me about French cities")
+# Returns relevant past interaction about Paris]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Entity Memory extracts named entities and attributes from each message and maintains a structured entity store. Use when the conversation is entity-centric (e.g., "user preferences," "project parameters," "person details") rather than narrative.</statement>
+        <rationale>Entity memory structures knowledge for precise recall and merging; the cost is that LLM-based entity extraction is noisy for rare or ambiguous names.</rationale>
+      </rule>
+
+      <example type="good" title="Entity Memory">
+        <code lang="python"><![CDATA[from langchain_openai import ChatOpenAI
+
+class EntityMemory:
+    def __init__(self, llm):
+        self.llm = llm
+        self.entities = {}
+
+    def extract_entities(self, text: str) -> dict:
+        """Extract entities from text."""
+        prompt = f"""Extract named entities from this text.
+        Return as JSON: {{"entity_name": "entity_info"}}
+
+        Text: {text}
+        """
+        response = self.llm.invoke(prompt)
+        return parse_json(response.content)
+
+    def update(self, text: str):
+        """Update entity store with new information."""
+        new_entities = self.extract_entities(text)
+        for name, info in new_entities.items():
+            if name in self.entities:
+                # Merge information
+                self.entities[name] = self._merge(self.entities[name], info)
+            else:
+                self.entities[name] = info
+
+    def get_context(self, entities: list[str]) -> str:
+        """Get context for specific entities."""
+        relevant = {k: v for k, v in self.entities.items() if k in entities}
+        return f"Known entities: {relevant}"]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Memory type selection follows conversation length: buffer for &lt;10 turns, entity for entity-focused dialogs, vector for &gt;50 turns with semantic search, and summary for 10-50 turns with sequential context.</statement>
+        <rationale>Each memory type has different token costs and retrieval patterns; matching the type to the conversation shape prevents unnecessary latency and cost. Buffer Memory grows linearly; a 200-turn conversation can easily exceed a 128k context window. Summary Memory compresses and may lose details that were not salient to the summarizer but matter later; irreversible loss. Vector Memory embedding a query and retrieving top-K returns semantically similar, not necessarily causally relevant, past interactions; can surface unrelated turns. Entity Memory: LLM extraction of entities is imperfect; rare or ambiguous entity names are merged or lost.</rationale>
+      </rule>
+
+      <example type="good" title="Memory Type Selection">
+        <code lang="python"><![CDATA[def select_memory_type(conversation_length: int, focus: str) -> str:
+    """Select appropriate memory type."""
+
+    # Short conversation
+    if conversation_length < 10:
+        return "buffer"
+
+    # Entity-focused
+    if focus == "entities":
+        return "entity"
+
+    # Long conversation, semantic search needed
+    if conversation_length > 50:
+        return "vector"
+
+    # Long conversation, sequential
+    return "summary"]]></code>
+      </example>
+    </section>
+
+    <section name="langgraph-workflows">
+      <p>LangGraph provides state machines for complex, multi-step workflows. Each workflow is a directed graph where nodes are async functions and edges define flow control.</p>
+
+      <rule testable="true">
+        <statement>Define workflow state as a flat TypedDict with simple fields and Annotated accumulating fields. Avoid deeply nested dicts.</statement>
+        <rationale>Flat state schemas reduce checkpoint size and improve debuggability. Accumulating fields (e.g., messages: Annotated[List[str], operator.add]) append rather than replace, making it easy to collect outputs across steps.</rationale>
+      </rule>
+
+      <example type="good" title="LangGraph State Definition">
+        <code lang="python"><![CDATA[from typing import TypedDict, Annotated, List
+import operator
+
+class WorkflowState(TypedDict):
+    # Simple fields
+    input: str
+    output: str
+
+    # Accumulating field (appends instead of replaces)
+    messages: Annotated[List[str], operator.add]
+
+    # Optional field
+    error: str | None
+
+# Usage: {"messages": ["new"]} adds to existing messages]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Each node function receives state, processes it, and returns a partial state dict. Return only the fields the node updates.</statement>
+        <rationale>Partial updates keep nodes decoupled; each node specifies only what it modifies.</rationale>
+      </rule>
+
+      <example type="good" title="LangGraph Node Functions">
+        <code lang="python"><![CDATA[from langgraph.graph import StateGraph, END
+
+def process_node(state: WorkflowState) -> WorkflowState:
+    """Process the input."""
+    result = f"Processed: {state['input']}"
+    return {
+        "output": result,
+        "messages": [f"Processed input: {state['input']}"]
+    }
+
+def validate_node(state: WorkflowState) -> WorkflowState:
+    """Validate the output."""
+    if "error" in state["output"].lower():
+        return {"error": "Validation failed"}
+    return {"messages": ["Validation passed"]}
+
+def finalize_node(state: WorkflowState) -> WorkflowState:
+    """Finalize the workflow."""
+    return {"messages": ["Workflow complete"]}]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use conditional_edges to route based on state. Return the name of the next node or END.</statement>
+        <rationale>Conditional routing keeps the graph data-driven; the routing decision is separate from node logic.</rationale>
+      </rule>
+
+      <example type="good" title="LangGraph Conditional Routing">
+        <code lang="python"><![CDATA[def should_continue(state: WorkflowState) -> str:
+    """Determine next node based on state."""
+    if state.get("error"):
+        return "error_handler"
+    if len(state.get("messages", [])) > 10:
+        return END
+    return "process"
+
+# Build graph
+graph = StateGraph(WorkflowState)
+
+graph.add_node("process", process_node)
+graph.add_node("validate", validate_node)
+graph.add_node("finalize", finalize_node)
+graph.add_node("error_handler", error_handler)
+
+graph.set_entry_point("process")
+graph.add_edge("process", "validate")
+graph.add_conditional_edges(
+    "validate",
+    should_continue,
+    {
+        "process": "process",
+        "error_handler": "error_handler",
+        END: END
+    }
+)
+graph.add_edge("finalize", END)
+graph.add_edge("error_handler", END)
+
+workflow = graph.compile()]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use interrupt_before to pause a workflow before destructive nodes. Resume with workflow.invoke(None, config) after human approval.</statement>
+        <rationale>Interrupts provide atomic pause-and-resume semantics backed by a checkpointer. This is the correct pattern for human approval; in-graph checks cannot guarantee atomicity across distributed systems.</rationale>
+      </rule>
+
+      <example type="good" title="LangGraph Human-in-the-Loop">
+        <code lang="python"><![CDATA[from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import StateGraph, END
+
+# Create checkpointer for persistence
+memory = MemorySaver()
+
+def get_approval(state: WorkflowState) -> WorkflowState:
+    """Node that requires human approval."""
+    return {"messages": ["Waiting for approval..."]}
+
+def execute_action(state: WorkflowState) -> WorkflowState:
+    """Execute after approval."""
+    return {"output": "Action executed", "messages": ["Done"]}
+
+# Build graph with interrupt
+graph = StateGraph(WorkflowState)
+graph.add_node("get_approval", get_approval)
+graph.add_node("execute", execute_action)
+
+graph.set_entry_point("get_approval")
+graph.add_edge("get_approval", "execute")
+graph.add_edge("execute", END)
+
+# Compile with interrupt before execute
+workflow = graph.compile(
+    checkpointer=memory,
+    interrupt_before=["execute"]
+)
+
+# First run - stops at interrupt
+config = {"configurable": {"thread_id": "1"}}
+result = workflow.invoke({"input": "Do something"}, config)
+
+# Resume after approval
+result = workflow.invoke(None, config)  # Continues from checkpoint]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Compose workflows via subgraphs. A node can call another graph (compiled subgraph) as if it were a function.</statement>
+        <rationale>Subgraphs enable modularity and code reuse; large workflows stay readable.</rationale>
+      </rule>
+
+      <example type="good" title="LangGraph Subgraphs">
+        <code lang="python"><![CDATA[from langgraph.graph import StateGraph
+
+# Define subgraph
+def create_research_subgraph():
+    graph = StateGraph(WorkflowState)
+    graph.add_node("search", search_node)
+    graph.add_node("analyze", analyze_node)
+    graph.set_entry_point("search")
+    graph.add_edge("search", "analyze")
+    return graph.compile()
+
+research_subgraph = create_research_subgraph()
+
+# Use in main graph
+main = StateGraph(WorkflowState)
+main.add_node("research", research_subgraph)
+main.add_node("synthesize", synthesize_node)
+
+main.set_entry_point("research")
+main.add_edge("research", "synthesize")
+main.add_edge("synthesize", END)
+
+main_workflow = main.compile()]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Wrap risky operations in try-except and route based on error state. Never let exceptions kill the workflow.</statement>
+        <rationale>Explicit error handling makes recovery logic visible and testable.</rationale>
+      </rule>
+
+      <example type="good" title="LangGraph Exception Handling">
+        <code lang="python"><![CDATA[from langgraph.graph import StateGraph, END
+
+class SafeState(TypedDict):
+    input: str
+    output: str
+    error: str | None
+
+def safe_node(state: SafeState) -> SafeState:
+    try:
+        result = risky_operation(state["input"])
+        return {"output": result}
+    except Exception as e:
+        return {"error": str(e)}
+
+def error_handler(state: SafeState) -> SafeState:
+    """Handle errors gracefully."""
+    return {"output": f"Error occurred: {state['error']}"}
+
+def route_on_error(state: SafeState) -> str:
+    if state.get("error"):
+        return "error_handler"
+    return "next_node"
+
+graph = StateGraph(SafeState)
+graph.add_node("risky", safe_node)
+graph.add_node("error_handler", error_handler)
+graph.add_node("next_node", next_node)
+
+graph.add_conditional_edges("risky", route_on_error)]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Stream outputs using workflow.stream(). Use stream_mode="values" to get full state snapshots, stream_mode="updates" for partial deltas.</statement>
+        <rationale>Streaming enables real-time agent feedback and progress visualization.</rationale>
+      </rule>
+
+      <example type="good" title="LangGraph Streaming">
+        <code lang="python"><![CDATA[from langgraph.graph import StateGraph
+
+# Stream node outputs
+for state in workflow.stream({"input": "Hello"}):
+    print(f"Node: {list(state.keys())[0]}")
+    print(f"Output: {list(state.values())[0]}")
+
+# Stream with mode
+for chunk in workflow.stream(
+    {"input": "Hello"},
+    stream_mode="values"  # or "updates", "debug"
+):
+    print(chunk)]]></code>
+      </example>
+    </section>
+
+    <section name="agent-integration">
+      <p>Building conversational agents and multi-step workflows. Integration guidance, best practices, and security rules.</p>
+
+      <rule testable="true">
+        <statement>Always use user-scoped session IDs — never a shared or static string. Session ID collisions leak conversation history between users; this is a critical security failure.</statement>
+        <rationale>Session IDs must be unique per user to prevent cross-user data leakage. Predictable IDs (e.g., user email) allow attackers to retrieve another user's history. Use UUIDs instead.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set TTL on all session history stores. Conversation data should not persist indefinitely by default.</statement>
+        <rationale>Data retention policies require explicit expiration. TTL prevents accidental indefinite storage of sensitive conversation history.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For conversations &gt;10 turns, switch from buffer to summary memory to cap token cost. For conversations &gt;50 turns or where semantic retrieval matters, switch to vector memory.</statement>
+        <rationale>Buffer memory grows linearly with conversation length; summary and vector memory provide better scalability for longer conversations.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>In LangGraph workflows, keep WorkflowState schemas flat — deeply nested dicts are hard to checkpoint and debug. Accumulating fields (messages: Annotated[List[str], operator.add]) should be compacted every N messages to prevent checkpoint bloat.</statement>
+        <rationale>Flat state schemas reduce checkpoint size and improve debuggability. Checkpoint size grows with accumulating fields; compaction prevents unbounded growth.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use interrupt_before at destructive LangGraph nodes; never rely on in-graph checks to substitute for human approval of irreversible actions.</statement>
+        <rationale>LangGraph interrupts provide atomic pause-and-resume semantics; in-graph approval checks are insufficient for irreversible operations.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Log memory reads and writes with session ID, timestamp, and token count. Memory is the most common source of cost surprises in production conversational agents.</statement>
+        <rationale>Memory operations drive token consumption; explicit logging prevents unexpected costs and aids debugging.</rationale>
+      </rule>
+
+      <example type="good" title="Session-Safe Redis Memory">
+        <code lang="python"><![CDATA[from langchain_community.chat_message_histories import RedisChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
+
+def get_session_history(session_id: str):
+    # Use unique session_id per user — never share across users
+    return RedisChatMessageHistory(
+        session_id=session_id,
+        url="redis://localhost:6379",
+        ttl=3600  # expire after 1 hour of inactivity
+    )
+
+chain_with_memory = RunnableWithMessageHistory(
+    chain,
+    get_session_history,
+    input_messages_key="input",
+    history_messages_key="history"
+)]]></code>
+      </example>
+
+      <note>Recommended subagents and patterns. Conversational-agent: uses RunnableWithMessageHistory + buffer or summary memory for ongoing user conversations; uses Sonnet for reasoning. Entity-tracker: extracts and maintains entity knowledge from conversation turns; uses Haiku for extraction, Sonnet for reasoning and merging. Workflow-node: individual LangGraph node that reads/writes typed WorkflowState; uses appropriate model for its task (Haiku for lightweight, Sonnet for complex). HITL-approver: LangGraph node that pauses at interrupt_before and waits for human input before resuming; uses Sonnet for safety-critical decisions. Prompt pattern for conversational agent with memory: include history_messages template, current_message, and instruction to respond using prior context where relevant. Entity-aware responses: include known_entities JSON and instruction to personalize response and update entities if new information provided.</note>
+
+      <note>Critical gotchas. Session ID leakage: if session IDs are predictable (e.g. user's email), an attacker can retrieve another user's history. Use UUIDs, not user-readable identifiers. InMemoryChatMessageHistory in production: works in dev, loses all sessions on process restart. Replace with Redis or PostgreSQL before deploying for durability. Summary Memory irreversibility: once old messages are summarized, the original text is gone. If an agent needs to re-examine a specific past message, it cannot. Archive raw history to a separate log if auditability matters. LangGraph state size growth: Annotated[List[str], operator.add] fields accumulate forever. Add a compaction step every N messages to prevent checkpoint bloat. Human-in-loop resume: after an interrupt_before pause, resuming with workflow.invoke(None, config) re-reads from checkpoint. Ensure the checkpoint store is durable; if it fails, the workflow cannot resume. Context contamination: vector memory retrieves past interactions across sessions if you use a shared collection without filtering by session ID. Always filter retrievals by session_id metadata to prevent cross-session leakage.</note>
+    </section>
+
+    <checklist>
+      <check>Review methodology documentation</check>
+      <check>Identify requirements and constraints</check>
+      <check>Define success criteria</check>
+      <check>Set up development environment</check>
+      <check>Implement core functionality</check>
+      <check>Add error handling</check>
+      <check>Write tests</check>
+      <check>Document code</check>
+      <check>Run unit tests</check>
+      <check>Run integration tests</check>
+      <check>Validate against requirements</check>
+      <check>Performance testing (if applicable)</check>
+      <check>Code review</check>
+      <check>Deploy to staging</check>
+      <check>Validate in production-like environment</check>
+      <check>Deploy to production</check>
+      <check>Monitor metrics</check>
+      <check>Document lessons learned</check>
+      <check>Update runbooks</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://python.langchain.com/docs/modules/memory/"/>
+      <link href="https://langchain-ai.github.io/langgraph/concepts/"/>
+      <link href="https://langchain-ai.github.io/langgraph/how-tos/human_in_the_loop/"/>
+      <link href="https://python.langchain.com/docs/integrations/memory/redis_chat_message_history/"/>
+      <link href="https://python.langchain.com/docs/versions/v0_3/"/>
+    </see-also>
+  </content>
+</methodology>
