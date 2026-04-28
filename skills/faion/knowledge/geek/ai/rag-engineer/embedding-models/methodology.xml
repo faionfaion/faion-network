@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="embedding-models">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Reference for selecting and calling API and local embedding models: OpenAI, Mistral, Cohere, and sentence-transformers, with production patterns for async batch, retry, and full pipeline.</summary>
+    <category>embeddings</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>embeddings</tag>
+      <tag>models</tag>
+      <tag>batch-processing</tag>
+      <tag>api</tag>
+      <tag>rag</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="chunking-basics"/>
+      <ref slug="hybrid-search-basics"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Embedding Models</title>
+
+    <summary>Different models trade off quality, cost, context length, and language coverage. text-embedding-3-large leads MTEB benchmarks for English but costs 6x more than text-embedding-3-small and stores 2x more per vector. Local models (BGE-M3) are free and support multilingual + sparse output for hybrid search, but require GPU for production throughput. Cohere v3's input_type asymmetry (search_document vs search_query) improves retrieval NDCG by 5-10% over generic mode. Model selection is a load-bearing decision: a model change invalidates the entire index.</summary>
+
+    <why>
+      <p>Different embedding models serve different use cases and have distinct trade-offs. text-embedding-3-large is the highest quality for English general-purpose text, achieving the best scores on MTEB benchmarks, but it costs 6x more per token than text-embedding-3-small and stores 3,072 dimensions per vector (vs 1,536 for small). Local models like BGE-M3 eliminate API costs entirely and support multilingual retrieval plus sparse output for hybrid search, but they require GPU hardware for production throughput — CPU inference is slow for batches beyond 1,000 documents. Cohere's embed-v3 models introduce asymmetric embeddings: using input_type=search_document at index time and input_type=search_query at query time improves retrieval NDCG by 5-10% compared to the generic input_type mode, which Cohere uses as a silent default.</p>
+      <p>Model selection happens once at the start of RAG ingestion and affects every downstream component. Switching models after indexing requires re-embedding the entire corpus, making this a critical architectural decision that must be made with full understanding of the trade-offs.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Selecting an embedding model at the start of a RAG project (pin model before indexing)</item>
+        <item>Benchmarking multiple providers to find the best price/quality ratio for a specific corpus</item>
+        <item>Migrating an index from one model to another (e.g., ada-002 → text-embedding-3-large)</item>
+        <item>Building code-search RAG where general-purpose models underperform (use voyage-code-3 or BGE-M3)</item>
+        <item>Processing multilingual corpora where English-only models degrade retrieval quality</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Corpus is already indexed and migration cost outweighs quality gain — benchmark first</item>
+        <item>Latency budget is &lt;20ms — API models add network RTT; local models add model-load overhead</item>
+        <item>Fully offline/air-gapped deployment with no GPU — local models on CPU are slow for batches &gt;1k</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="embedding-providers">
+      <p>Major providers offer different trade-offs on cost, latency, language support, and output dimensions. Comparison at scale: OpenAI text-embedding-3-small at $0.02 per million tokens vs text-embedding-3-large at $0.13 per million tokens. For 1 billion tokens per month, that is a $110k vs $1.3M annual difference — dimension reduction (native to text-embedding-3 models) can lower costs while preserving quality.</p>
+
+      <rule testable="true">
+        <statement>Sort batch response by item.index before mapping back to inputs; the OpenAI API may return embeddings out of order.</statement>
+        <rationale>Skipping the sort step produces misaligned embeddings for shuffled input batches, a silent correctness bug.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>The dimensions parameter is only valid for text-embedding-3 models; applying it to ada-002 raises an error.</statement>
+        <rationale>ada-002 does not support Matryoshka dimension reduction; the parameter is silently rejected in some SDK versions and raises in others.</rationale>
+      </rule>
+
+      <example type="good" title="OpenAI text-embedding-3 with dimension reduction">
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+client = OpenAI()
+
+def get_embedding(text: str, model: str = "text-embedding-3-large") -> list[float]:
+    return client.embeddings.create(input=text, model=model).data[0].embedding
+
+def get_embeddings_batch(
+    texts: list[str],
+    model: str = "text-embedding-3-large",
+    batch_size: int = 2048,
+) -> list[list[float]]:
+    all_embeddings: list[list[float]] = []
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i : i + batch_size]
+        response = client.embeddings.create(input=batch, model=model)
+        sorted_data = sorted(response.data, key=lambda x: x.index)
+        all_embeddings.extend([e.embedding for e in sorted_data])
+    return all_embeddings
+
+def get_embedding_reduced(text: str, dimensions: int = 256) -> list[float]:
+    """Matryoshka reduction — text-embedding-3 models only."""
+    return client.embeddings.create(
+        input=text, model="text-embedding-3-large", dimensions=dimensions
+    ).data[0].embedding
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Mistral embed has a 512-token context limit on some versions; longer texts are silently truncated.</statement>
+        <rationale>Truncation without error means the embedding represents only the first 512 tokens. Pre-chunk long texts.</rationale>
+      </rule>
+
+      <example type="good" title="Mistral embeddings">
+        <code lang="python"><![CDATA[
+from mistralai import Mistral
+client = Mistral(api_key="YOUR_API_KEY")
+
+def get_mistral_embedding(text: str) -> list[float]:
+    return client.embeddings.create(model="mistral-embed", inputs=[text]).data[0].embedding
+
+def get_mistral_embeddings_batch(texts: list[str]) -> list[list[float]]:
+    return [e.embedding for e in client.embeddings.create(model="mistral-embed", inputs=texts).data]
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Always pass input_type to Cohere embed-v3; omitting it defaults to generic mode and degrades retrieval NDCG by ~5-10%.</statement>
+        <rationale>Cohere v3 models are trained with asymmetric input types. The generic default underperforms the asymmetric search_document/search_query split.</rationale>
+      </rule>
+
+      <example type="good" title="Cohere with asymmetric embeddings">
+        <code lang="python"><![CDATA[
+import cohere
+co = cohere.Client("YOUR_API_KEY")
+
+def get_cohere_embeddings(
+    texts: list[str],
+    input_type: str = "search_document",  # or "search_query"
+) -> list[list[float]]:
+    return co.embed(
+        texts=texts,
+        model="embed-english-v3.0",
+        input_type=input_type,
+        truncate="END",
+    ).embeddings
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Instantiate SentenceTransformer once per process; do not create multiple instances on the same GPU.</statement>
+        <rationale>Each instance loads the full model into GPU RAM. Two bge-large-en-v1.5 instances on a 16 GB GPU will OOM.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>BGE-M3 sparse embeddings are dict[token → weight], not dense arrays; adapt before storing in vector DBs that expect dense float arrays.</statement>
+        <rationale>Most vector DB clients (Qdrant, Chroma) expect float lists for dense vectors. The sparse dict format requires special sparse-vector handling.</rationale>
+      </rule>
+
+      <example type="good" title="Local embeddings with sentence-transformers and BGE-M3">
+        <code lang="python"><![CDATA[
+import torch
+from sentence_transformers import SentenceTransformer
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model = SentenceTransformer("BAAI/bge-large-en-v1.5", device=device)
+
+def get_local_embeddings(texts: list[str], batch_size: int = 32):
+    return model.encode(
+        texts, batch_size=batch_size, normalize_embeddings=True, convert_to_numpy=True
+    )
+
+# BGE-M3: dense + sparse for hybrid search
+from FlagEmbedding import BGEM3FlagModel
+bgem3 = BGEM3FlagModel("BAAI/bge-m3", use_fp16=True)
+
+def get_bgem3(texts: list[str]) -> dict:
+    return bgem3.encode(texts, return_dense=True, return_sparse=True)
+# result["dense_vecs"] → np.ndarray
+# result["lexical_weights"] → list[dict[str, float]]
+]]></code>
+      </example>
+    </section>
+
+    <section name="production-patterns">
+      <p>Production embedding workloads require async batch processing, exponential backoff retry logic, and caching to avoid re-computing embeddings for the same chunks across multiple ingest runs. The full pipeline stages chunks, checks cache, batches uncached chunks, and calls the embedding API with concurrent request limits.</p>
+
+      <example type="good" title="Async batch processing">
+        <code lang="python"><![CDATA[
+import asyncio
+from openai import AsyncOpenAI
+
+async_client = AsyncOpenAI()
+
+async def get_embeddings_async(
+    texts: list[str],
+    model: str = "text-embedding-3-large",
+    batch_size: int = 100,
+    max_concurrent: int = 5,
+) -> list[list[float]]:
+    semaphore = asyncio.Semaphore(max_concurrent)
+
+    async def process_batch(batch: list[str]) -> list[list[float]]:
+        async with semaphore:
+            r = await async_client.embeddings.create(input=batch, model=model)
+            return [e.embedding for e in sorted(r.data, key=lambda x: x.index)]
+
+    batches = [texts[i : i + batch_size] for i in range(0, len(texts), batch_size)]
+    results = await asyncio.gather(*[process_batch(b) for b in batches])
+    return [emb for batch in results for emb in batch]
+]]></code>
+      </example>
+
+      <example type="good" title="Retry with exponential backoff">
+        <code lang="python"><![CDATA[
+import time
+import random
+from openai import RateLimitError, APIError
+
+def get_embedding_with_retry(
+    text: str,
+    model: str = "text-embedding-3-large",
+    max_retries: int = 5,
+) -> list[float]:
+    for attempt in range(max_retries):
+        try:
+            return get_embedding(text, model)
+        except RateLimitError:
+            wait = (2 ** attempt) + random.random()
+            time.sleep(wait)
+        except APIError:
+            if attempt == max_retries - 1:
+                raise
+            time.sleep(1 + random.random())
+    raise RuntimeError("Max retries exceeded")
+]]></code>
+      </example>
+
+      <section name="dimension-quality-tradeoff">
+        <p>For text-embedding-3-large with native dimension reduction, MTEB scores approximate:</p>
+        <list>
+          <item>3072 dims: MTEB ~64.6% — maximum quality</item>
+          <item>1536 dims: MTEB ~64.2% — balanced</item>
+          <item>1024 dims: MTEB ~63.8% — good for most RAG</item>
+          <item>512 dims: MTEB ~62.5% — cost-sensitive</item>
+          <item>256 dims: MTEB ~60.1% — high-volume basic similarity</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="best-practices">
+      <p>Embedding model selection and usage follow proven patterns from production RAG systems.</p>
+
+      <rule testable="true">
+        <statement>Pin the exact model name (including version suffix if the provider uses them) in config — providers silently update model weights.</statement>
+        <rationale>Pinning guarantees reproducible results across ingestion runs. Unpinned models silently pick up provider updates, invalidating cached embeddings.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run MTEB benchmark scores for your specific task type (retrieval vs. clustering vs. classification) — aggregate MTEB rank ≠ RAG retrieval rank.</statement>
+        <rationale>MTEB leaderboard aggregates results across 56 tasks. Your specific task (e.g., legal document retrieval) may have different winner than the overall leaderboard.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For OpenAI text-embedding-3 models, start with dimensions=512; benchmark vs. full 1536/3072 before paying for extra storage.</statement>
+        <rationale>Dimension reduction via Matryoshka is trained and lossless up to a point. 512 dims captures ~98% of semantic quality while reducing storage by 6.7x vs 3072 dims.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always use Cohere input_type="search_document" at index time and input_type="search_query" at query time — asymmetric embedding is a significant quality lever.</statement>
+        <rationale>Asymmetric embeddings align the embedding space to the retrieval task, improving NDCG by 5-10% vs generic embedding.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Pre-normalize all embeddings to unit length before storing; dot product then equals cosine similarity and is faster in most vector DBs.</statement>
+        <rationale>Normalized vectors allow dot-product similarity to equal cosine similarity, which is faster to compute. Many vector DBs optimize for unit-normalized vectors.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Track the model name as metadata on every vector — if you ever need to migrate, you can identify which vectors need re-embedding.</statement>
+        <rationale>Multi-model indexes allow gradual migration and A/B testing. Single-model metadata on storage makes full-corpus re-embedding the only option.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common pitfalls for agents building or using embedding pipelines.</p>
+
+      <antipattern>
+        <description>OpenAI batch API returns embeddings in a list that may not be in input order; agents that skip the sort step get misaligned embeddings for shuffled batches.</description>
+        <reason>The API does not guarantee order preservation. Always sort by response.data[i].index before pairing with input texts.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>BGE-M3 lexical_weights output is a sparse dict per document, not a dense array — agents expecting list[float] will crash; handle both dense and sparse paths.</description>
+        <reason>BGE-M3 supports hybrid search with sparse weights. Agents must check the output type and handle sparse dict format differently from dense arrays.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>SentenceTransformer model download at first use can take 30s-5min; agents in time-bounded tasks must pre-download models or use a local model cache.</description>
+        <reason>First call to model.encode() triggers a multi-gigabyte download from HuggingFace. Agents should pre-download during setup, not during the inference loop.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>When using Matryoshka dimension reduction (dimensions param), the truncated vector is NOT simply the first N values of the full vector — it is separately trained; do not slice full-dim embeddings manually.</description>
+        <reason>Matryoshka is a training technique that produces independent models at each dimension. Slicing full-dim embeddings produces garbage.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Voyage AI and Cohere have per-request token limits (varies by plan); agents must chunk texts before calling embed for texts &gt;model context limit.</description>
+        <reason>API documentation specifies limits but does not enforce them with clear errors. Oversized requests silently truncate or fail with cryptic errors.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Sentence-transformers GPU inference requires matching CUDA/torch versions; a CUDA version mismatch silently falls back to CPU without an error.</description>
+        <reason>CUDA mismatch is detected at runtime but silently downgraded to CPU. Agent will see 10x slower inference and assume the model is just slow.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/embedding_pipeline.py" purpose="EmbeddingConfig + EmbeddingPipeline: chunk → cache check → batch embed"/>
+    </templates>
+
+    <see-also>
+      <link href="https://platform.openai.com/docs/guides/embeddings"/>
+      <link href="https://docs.mistral.ai/capabilities/embeddings/"/>
+      <link href="https://docs.cohere.com/docs/cohere-embed"/>
+      <link href="https://huggingface.co/BAAI/bge-m3"/>
+      <link href="https://www.sbert.net/"/>
+      <link href="https://huggingface.co/spaces/mteb/leaderboard"/>
+      <link href="https://docs.voyageai.com/docs/embeddings"/>
+      <ref slug="chunking-basics"/>
+      <ref slug="hybrid-search-basics"/>
+    </see-also>
+  </content>
+</methodology>
