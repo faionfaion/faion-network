@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="jira-workflow-management">
+  <metadata>
+    <tier>pro</tier>
+    <group>pm</group>
+    <domain>pm-agile</domain>
+    <summary>Design Jira workflows with 5-7 statuses max, one shared per issue type. Standardize automation rules and JQL queries to prevent scheme sprawl and maintain cross-project queryability.</summary>
+    <category>tools</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>jira</tag>
+      <tag>workflow</tag>
+      <tag>automation</tag>
+      <tag>issue-tracking</tag>
+      <tag>jql</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Jira Workflow Management</title>
+
+    <summary>Jira workflow management covers project setup, issue-type scheme design, workflow state machines, automation rules, and JQL queries for Scrum and Kanban teams. Keep workflows to 5-7 statuses maximum and maintain one shared workflow per issue type across all projects to prevent scheme sprawl that breaks cross-project queries and slows performance.</summary>
+
+    <why>
+      <p>Unconstrained Jira configuration accumulates custom fields (200-field cap), project-specific workflows, and automation rules that conflict with each other. Standardization enables org-wide JQL, shared dashboards, and automation that fires across projects. Jira's automation library has execution rate limits per Cloud tier; poorly-scoped rules burn the budget without delivering value.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a new Jira project for Scrum, Kanban, or Jira Service Management teams.</item>
+        <item>Standardizing 3+ inconsistent project workflows after acquisition or reorg.</item>
+        <item>Replacing manual triage and assignment with automation rules.</item>
+        <item>Wiring Jira into CI/CD pipelines (auto-transition on deploy, link branches/PRs to issues).</item>
+        <item>Migrating from Jira Server/Data Center to Cloud (workflow and scheme rebuild).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Team smaller than 5 with Trello-grade needs — Jira's configuration tax inverts ROI.</item>
+        <item>Throwaway 2-week prototype — workflow overhead exceeds value.</item>
+        <item>Goal is "make Jira look like Linear" — replace Jira rather than fight it.</item>
+        <item>Pure documentation projects — use Confluence, not Jira.</item>
+        <item>Compliance forbids Atlassian Cloud and budget does not cover Data Center.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="project-type-selection">
+      <p>The choice of project type determines available features, board layouts, and default workflows.</p>
+      <list>
+        <item>Scrum: sprints, backlogs, velocity charts — for teams with predictable feature work in timeboxes.</item>
+        <item>Kanban: continuous flow, WIP limits, cumulative flow diagram — for support, ops, or platform teams.</item>
+        <item>Bug Tracking: simplified workflow — for pure defect-tracking projects.</item>
+        <item>Jira Service Management: ITIL-flavored request portal — for customer-facing support queues.</item>
+      </list>
+    </section>
+
+    <section name="workflow-design">
+      <p>Workflow design directly impacts how teams move work through the system and how automation interacts with the pipeline.</p>
+
+      <rule testable="true">
+        <statement>Limit workflows to 5-7 statuses maximum; use one shared workflow per issue type across projects rather than bespoke per-project workflows.</statement>
+        <rationale>Per-project workflow proliferation creates scheme sprawl, breaks cross-project JQL queries, and slows the entire Jira instance through scheme-lookup overhead.</rationale>
+      </rule>
+
+      <example type="good" title="Standard development workflow">
+        <code lang="yaml"><![CDATA[statuses:
+  - name: "To Do"
+    category: "To Do"
+  - name: "In Progress"
+    category: "In Progress"
+  - name: "Code Review"
+    category: "In Progress"
+  - name: "QA Testing"
+    category: "In Progress"
+  - name: "Done"
+    category: "Done"
+
+transitions:
+  - from: "To Do"
+    to: "In Progress"
+    trigger: "Start Work"
+  - from: "In Progress"
+    to: "Code Review"
+    trigger: "Submit for Review"
+    condition: "Branch linked"
+  - from: "Code Review"
+    to: "QA Testing"
+    trigger: "Approve"
+  - from: "QA Testing"
+    to: "Done"
+    trigger: "Pass QA"]]></code>
+        <note>Five status workflow with clear progression; minimal transitions keep the state machine testable.</note>
+      </example>
+
+      <rule testable="true">
+        <statement>Place required field validators on transitions, not on issue creation; this reduces friction for bulk imports and agent-driven flows without sacrificing data quality at the stage where it matters.</statement>
+        <rationale>Creation-time required fields block bulk migrations and bot-driven flows unless service accounts are explicitly exempted.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Adding global transitions to "Done" from any state.</description>
+        <reason>Global-to-Done transitions let issues skip QA and review stages, producing false "Done" counts and audit trail gaps.</reason>
+      </antipattern>
+    </section>
+
+    <section name="issue-type-hierarchy">
+      <p>Standard issue types provide a common vocabulary for agile work breakdown across projects.</p>
+      <list>
+        <item>Epic: large feature grouping with Start/End Date for roadmap visibility.</item>
+        <item>Story: user-facing functionality with Story Points and Acceptance Criteria.</item>
+        <item>Task: technical work items with Estimate and Component fields.</item>
+        <item>Bug: defects with Severity and Steps to Reproduce; can exist at any hierarchy level.</item>
+        <item>Sub-task: breakdown of parent issue, linked to parent.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Resist creating new issue types for every workflow nuance; add a custom field or label instead.</statement>
+        <rationale>New issue types require scheme updates, affect all projects using the shared scheme, and multiply configuration complexity without proportional value.</rationale>
+      </rule>
+    </section>
+
+    <section name="custom-fields">
+      <p>Custom fields provide project-specific data capture but add database load and configuration complexity.</p>
+
+      <rule testable="true">
+        <statement>Limit custom fields aggressively; share them via Global context rather than project-scoped context; Jira has a 200-field issue-view cap and performance degrades well before it.</statement>
+        <rationale>Custom field sprawl is the most common cause of Jira performance degradation in large instances. Each field adds a database column that is loaded even when not displayed.</rationale>
+      </rule>
+
+      <example type="good" title="Minimal custom field set">
+        <code lang="yaml"><![CDATA[custom_fields:
+  - name: "Story Points"
+    type: number
+    screen: "Edit Issue"
+    context: "Global"
+  - name: "Acceptance Criteria"
+    type: text_area
+    screen: "Create/Edit Issue"
+    context: "Global"
+  - name: "Code Reviewer"
+    type: user_picker
+    screen: "Edit Issue"
+    context: "Global"]]></code>
+        <note>Three custom fields shared globally; each tied to a specific purpose and screen.</note>
+      </example>
+    </section>
+
+    <section name="automation-rules">
+      <p>Jira Automation rules encode common workflow transitions and notifications that would otherwise require manual action.</p>
+
+      <rule testable="true">
+        <statement>Test automation rules in a sandbox project with a copy of production schemes before promoting; tag every automation-created issue with an "automation" label for audit.</statement>
+        <rationale>Automation rules that fire in production before testing can transition thousands of issues incorrectly in seconds. Sandbox validation catches logic errors safely.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Add cycle guards to all automation rules; a rule that triggers rule B that triggers rule A creates infinite loops that burn the monthly automation budget instantly.</statement>
+        <rationale>Jira Cloud enforces per-tier monthly automation execution limits. Loops exhaust the budget within minutes, silencing all automations for the rest of the month.</rationale>
+      </rule>
+
+      <example type="good" title="Safe automation patterns">
+        <code lang="yaml"><![CDATA[# Auto-close subtasks when parent done
+rule: close_subtasks
+trigger: parent_issue_done
+condition: all_subtasks_not_closed
+action: transition_subtasks_to_done
+
+# Slack notification on blocker
+rule: notify_on_blocker
+trigger: priority_changed_to_blocker
+action: send_slack_message(channel="#dev-alerts")]]></code>
+        <note>Each rule has a clear trigger and action; the second rule has no reciprocal trigger that could loop back.</note>
+      </example>
+
+      <antipattern>
+        <description>Creating automation rules that fire on issue creation without a label filter.</description>
+        <reason>Broad creation triggers fire on every issue in the project, including bulk imports, dramatically inflating execution counts and frequently producing incorrect results on migrated issues.</reason>
+      </antipattern>
+    </section>
+
+    <section name="jql-queries">
+      <p>JQL (Jira Query Language) powers dashboards, automation rule conditions, and bulk operations across projects.</p>
+
+      <rule testable="true">
+        <statement>Validate JQL queries with "validateQuery=strict" in the REST API before storing or executing them; never assume a JQL string from an LLM is valid.</statement>
+        <rationale>LLMs frequently hallucinate Jira field names. The strict validator returns field-level errors that allow targeted correction before silent failures in production.</rationale>
+      </rule>
+
+      <example type="good" title="Common JQL patterns">
+        <code lang="sql"><![CDATA[-- My open issues
+assignee = currentUser() AND resolution = Unresolved
+
+-- Current sprint backlog
+project = PROJ AND sprint in openSprints()
+
+-- Bugs created this week
+project = PROJ AND type = Bug AND created >= -7d
+
+-- Blocked items
+status = "In Progress" AND flagged = "Impediment"
+
+-- Overdue issues
+duedate < now() AND resolution = Unresolved
+
+-- Features without linked stories
+issuetype = Feature AND issueFunction not in subtasksOf("issuetype = Story")]]></code>
+      </example>
+    </section>
+
+    <section name="cicd-integration">
+      <p>Linking code repositories to Jira issues provides traceability and enables automation across the development pipeline.</p>
+
+      <rule testable="true">
+        <statement>Use "smart commits" to link branches via "PROJ-123" in commit messages; do not rely on humans to manually link PRs to issues after the fact.</statement>
+        <rationale>Manual PR-to-issue linking has near-zero compliance on active teams. Smart commits wire the link at source without workflow friction.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Convert agent-generated Markdown to ADF (Atlassian Document Format) before writing to Jira description or comment fields; Markdown written directly produces empty or malformed fields.</statement>
+        <rationale>Jira's description field accepts HTML/ADF, not Markdown. Agents writing raw Markdown silently produce fields with visible Markdown syntax or empty content.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflows">
+      <p>Agent-driven workflows can automate workflow authoring, JQL translation, automation rule writing, and bulk operations with human validation.</p>
+
+      <list>
+        <item>workflow-author (sonnet) — generates workflow JSON from process description; statuses, transitions, validators, post-functions.</item>
+        <item>automation-author (sonnet) — writes Jira Automation rules in YAML from natural-language intent.</item>
+        <item>jql-builder (haiku) — translates user questions into JQL with validateQuery=strict validation.</item>
+        <item>migration-mapper (sonnet) — maps source-tool fields and states to Jira target schema.</item>
+        <item>scheme-doctor (sonnet) — audits issue type, workflow, screen, and permission schemes for drift.</item>
+        <item>bulk-transition-runner (haiku) — drives bulk JQL-plus-transition with rate-limit safety at max 5 req/s.</item>
+      </list>
+
+      <example type="good" title="Workflow authoring prompt">
+        <code lang="text"><![CDATA[You are workflow-author. Given process {dod_yaml} for issue type {type},
+emit Jira Cloud workflow JSON with statuses, transitions, validators
+(required fields per transition), and post-functions. Constraints:
+- Maximum 7 statuses
+- Every transition must have a screen
+- No global transitions to "Done"
+Return JSON only.]]></code>
+      </example>
+
+      <example type="good" title="JQL builder prompt">
+        <code lang="text"><![CDATA[You are jql-builder. Translate "{question}" into JQL using fields {schema}.
+Validate via Jira REST /search?validateQuery=strict. If invalid, propose fix.
+Return { "jql": "...", "explanation": "...", "sample_count": N }.
+Never invent field names not in {schema}.]]></code>
+      </example>
+
+      <antipattern>
+        <description>Agents writing field names from training knowledge rather than the live Jira field schema.</description>
+        <reason>Jira custom field IDs differ per instance. Cache /rest/api/3/field and provide the schema in the system prompt; reject any output containing field names not in the schema.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Bulk transitions without rate-limit handling on Jira Cloud.</description>
+        <reason>Jira Cloud enforces approximately 50 req/s per site. Unthrottled bulk transitions hit 429s immediately; exponential backoff with Retry-After header is required.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Applying workflows designed for Jira Cloud to a Data Center or Server instance.</description>
+        <reason>Cloud and DC/Server have different automation engines, API surfaces, and permission models. Code working on one frequently fails on the other.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Human-in-the-loop checkpoints are mandatory at: workflow promotion to production, automation rule promotion, schema changes, and bulk transitions affecting more than 100 issues.</statement>
+        <rationale>These operations affect all team members simultaneously and are expensive or impossible to reverse.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>One workflow per issue type at first; resist bespoke per-project workflows.</item>
+        <item>Required fields on transitions, not on creation — lowers friction for bulk imports.</item>
+        <item>Automation rules: test in a sandbox project with a copy of prod schemes before promoting.</item>
+        <item>Tag every automation-created issue with a label (automation) for audit.</item>
+        <item>Limit custom fields aggressively; share via Global context, not project-scoped.</item>
+        <item>Lock workflows after first month; further edits via PR-style proposal in Confluence.</item>
+        <item>Smart commits: link branches via PROJ-123 #fix-version.</item>
+        <item>Migrations: dry-import on a clone site first; never iterate on prod.</item>
+        <item>Statuses ≤ 7; every transition has a screen with relevant required fields.</item>
+        <item>Use scoped issue types (Epic, Story, Task, Bug, Sub-task) — resist creating new ones for every workflow nuance.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/workflow-states.yaml" purpose="Standard development workflow statuses and transitions with validators."/>
+      <template path="templates/bulk-transition.py" purpose="Bulk JQL-driven issue transition with rate-limit safety and Retry-After handling."/>
+    </templates>
+
+    <see-also>
+      <link href="https://developer.atlassian.com/cloud/jira/platform/rest/v3/"/>
+      <link href="https://support.atlassian.com/jira-software-cloud/docs/jql-fields/"/>
+      <link href="https://www.atlassian.com/software/jira/guides/automation"/>
+      <link href="https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/"/>
+      <link href="https://developer.atlassian.com/platform/forge/"/>
+      <ref slug="scrum-ceremonies"/>
+      <ref slug="kanban-scaled-agile-ceremonies"/>
+    </see-also>
+  </content>
+</methodology>
