@@ -1,0 +1,359 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="plan-execute-vs-react">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Picking the right agent loop: Plan-Execute for predictable tasks with auditability, ReAct for exploratory goals. Hybrid combines both strengths.</summary>
+    <tags>
+      <tag>agent-loops</tag>
+      <tag>control-flow</tag>
+      <tag>planning</tag>
+      <tag>reasoning</tag>
+      <tag>exploration</tag>
+    </tags>
+    <category>lp</category>
+    <difficulty>intermediate</difficulty>
+    <created>2024-04-25</created>
+    <related>
+      <ref slug="subagent-as-context-firewall"/>
+      <ref slug="stream-json-orchestration"/>
+      <ref slug="schema-field-order"/>
+    </related>
+    <see-also>
+      <link href="https://langchain-ai.github.io/langgraph/tutorials/plan-and-execute/plan-and-execute/"/>
+      <link href="https://arxiv.org/abs/2210.03629"/>
+      <link href="https://arxiv.org/abs/2303.11366"/>
+      <link href="https://www.anthropic.com/research/built-multi-agent-research-system"/>
+    </see-also>
+  </metadata>
+  <content>
+    <title>Plan-Execute vs ReAct — Picking the Right Loop</title>
+    <summary>For tasks where the steps are predictable from the goal, use Plan-Execute: one big planning call produces a structured plan, then deterministic code executes it. For tasks where the next step depends on what you just learned, use ReAct: interleave Thought → Action → Observation in a loop. Mixing modes for the wrong job is the #1 cause of agent runs that meander or lock in early.</summary>
+    <why>
+      <p>Plan-Execute front-loads reasoning. The plan is auditable BEFORE work starts; execution can be parallel; failures are localized to one step. But it cannot adapt — if reality differs from the plan's assumptions, the agent presses on regardless.</p>
+      <p>ReAct adapts step-by-step. Each Action's Observation feeds the next Thought, so surprising tool outputs reshape the trajectory. But there's no plan to audit; loops can wander, retry, or hit max-turns.</p>
+      <p>The tradeoff is adaptability vs auditability. Pick by how much you can predict before starting.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Goal decomposes into known sub-steps → Plan-Execute</item>
+        <item>Sub-steps are independent (parallelizable) → Plan-Execute</item>
+        <item>User wants to review the plan before run → Plan-Execute</item>
+        <item>Each step's input depends on previous output → ReAct</item>
+        <item>Tool results often surprise (search, web, codebases) → ReAct</item>
+        <item>Cost-bounded but exploratory → ReAct (with max_turns)</item>
+        <item>Compliance/audit requirement on intermediate work → Plan-Execute</item>
+        <item>Long horizon, &gt; 10 steps → Hybrid: plan top-level, ReAct each step</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure ReAct on a 30-step goal — loop wanders; no human can review trajectory</item>
+        <item>Pure Plan-Execute on exploration — plan is invented blind; first step's reality breaks the rest</item>
+        <item>ReAct without max_turns — infinite loops on bad tool output</item>
+        <item>Plan-Execute that "plans inside execution" — confusing trace; plan changes mid-run</item>
+        <item>Replan every step — same as ReAct but more expensive</item>
+      </list>
+    </when-not-to-use>
+    <section name="decision-rule">
+      <p>Use this table to pick the right mode:</p>
+      <rule>
+        <statement>If your task decomposes into 3-10 known sub-steps with fixed order, use Plan-Execute.</statement>
+        <rationale>Parallelizability and auditability justify the up-front planning cost.</rationale>
+      </rule>
+      <rule>
+        <statement>If each step's success depends on surprising observations from previous steps, use ReAct.</statement>
+        <rationale>Adaptability beats auditability; the trajectory emerges from real-time learning.</rationale>
+      </rule>
+      <rule>
+        <statement>If your horizon is long (&gt; 10 steps) and mixed predictable/exploratory, use Hybrid.</statement>
+        <rationale>Top-level plan is auditable; per-step loops bound exploration.</rationale>
+      </rule>
+    </section>
+    <section name="hybrid-pattern">
+      <p>The strongest production pattern is plan + ReAct-per-step:</p>
+      <list>
+        <item>Big-model Plan call: produce N structured sub-tasks</item>
+        <item>For each sub-task, spawn a small ReAct loop (max 5 turns) constrained to that sub-task</item>
+        <item>Each loop reports a slim result; aggregator updates a state document</item>
+        <item>Optional Replan call if a sub-task fails or surfaces a contradiction</item>
+      </list>
+      <p>This is what Claude Code, LangGraph supervisor+workers, and the deep-agents pattern all converge on.</p>
+    </section>
+    <section name="anti-patterns">
+      <antipattern>
+        <description>Pure ReAct on a 30-step goal</description>
+        <reason>Loop wanders; no human can review trajectory. Add a planning step up front.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Pure Plan-Execute on exploration</description>
+        <reason>Plan is invented blind; first step's reality breaks the rest. Use ReAct or hybrid replan.</reason>
+      </antipattern>
+      <antipattern>
+        <description>ReAct without max_turns</description>
+        <reason>Infinite loops on bad tool output. Always cap turns; surface "stuck" as a result.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Plan-Execute that "plans inside execution"</description>
+        <reason>Confusing trace; plan changes mid-run. Separate the calls: plan first, execute second.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Replan every step</description>
+        <reason>Same as ReAct but more expensive. Replan ONLY on failure or contradiction.</reason>
+      </antipattern>
+    </section>
+    <section name="decide-which-mode">
+      <checklist>
+        <check>Listed 5-10 representative tasks the agent will face</check>
+        <check>For each, marked predictable-vs-exploratory</check>
+        <check>Counted: &gt; 70% predictable → Plan-Execute baseline</check>
+        <check>&gt; 70% exploratory → ReAct baseline</check>
+        <check>Mixed → Hybrid (plan top-level, ReAct per step)</check>
+      </checklist>
+    </section>
+    <section name="plan-execute-setup">
+      <checklist>
+        <check>Planning prompt produces a STRUCTURED plan (not free text)</check>
+        <check>Plan schema has goal_restate before plan_steps (reasoning-before-answer)</check>
+        <check>Each plan step is independently runnable</check>
+        <check>Plan validation step (sanity check) before any execution</check>
+        <check>Replan trigger defined (e.g., on step failure)</check>
+      </checklist>
+    </section>
+    <section name="react-setup">
+      <checklist>
+        <check>Always set max_turns (typical: 5-15)</check>
+        <check>Always set max_total_tokens budget</check>
+        <check>Tool descriptions written for ReAct context (use-when/NOT-use-when)</check>
+        <check>Loop emits structured Thought/Action/Observation events for tracing</check>
+        <check>"Stuck" detection: same action 3x → break with diagnostic</check>
+      </checklist>
+    </section>
+    <section name="hybrid-setup">
+      <checklist>
+        <check>Top-level plan is auditable BEFORE execution starts</check>
+        <check>Per-step ReAct loops have small max_turns (3-5)</check>
+        <check>Aggregator builds state document from per-step results</check>
+        <check>Replan path is explicit (not implicit retry)</check>
+      </checklist>
+    </section>
+    <section name="verify">
+      <checklist>
+        <check>On 50 tasks, measured: success rate, avg turns, max turns</check>
+        <check>No silent infinite loops</check>
+        <check>Replan firing rate &lt; 10% (otherwise the plan model is too weak)</check>
+        <check>Auditability: can a human review the plan or trajectory after a failure?</check>
+      </checklist>
+    </section>
+    <section name="examples">
+      <example type="good" title="Plan-Execute fits — code review pipeline">
+        <description>Goal: review PR #123. Sub-steps known: fetch diff → analyze each file → summarize → post comment.</description>
+        <p>Plan-Execute is right: each step is independent, parallelizable, the order is fixed, and the human reviewer can audit the plan before it runs.</p>
+      </example>
+      <example type="good" title="ReAct fits — debugging a flaky test">
+        <description>Goal: figure out why test X flakes.</description>
+        <p>ReAct is right: the next action depends on what stack trace appears. Search → read file → grep → run test → check log. Each tool's output reshapes the next thought.</p>
+      </example>
+      <example type="good" title="Hybrid fits — implement a feature from a spec">
+        <description>Plan: parse spec → for each requirement (1-N) → write code → write test → run tests → fix on failure → open PR.</description>
+        <p>Per-step ReAct: each sub-task has its own loop bounded to 5 turns; if a step's loop maxes out, a replan call decides whether to relax the requirement or escalate. This is the Claude Code default for big tasks.</p>
+      </example>
+      <example type="bad" title="Pure ReAct on a 30-step refactor">
+        <description>A 30-step framework migration done in raw ReAct goes off the rails:</description>
+        <list>
+          <item>Loops on the same import 4 times before realizing the dependency renamed</item>
+          <item>Forgets earlier decisions due to context compaction</item>
+          <item>No human can review the trajectory because there's no plan to compare against</item>
+        </list>
+        <p>Fix: add a Plan call up front producing the migration steps; ReAct each step bounded.</p>
+      </example>
+      <example type="bad" title="Plan-Execute for web search">
+        <description>A research agent given "what is the current Anthropic pricing?" with a strict plan ["search → click first link → extract"] often fails: first link is wrong; extraction returns nothing.</description>
+        <p>The right approach is ReAct, which adapts after each search.</p>
+      </example>
+      <example type="good" title="Replan trigger">
+        <code lang="text"><![CDATA[plan: [step1, step2, step3]
+
+step1 succeeds
+step2 fails with "schema mismatch"
+
+→ trigger replan with state {"step1_done": True, "step2_error": "schema mismatch"}
+→ new plan: [migrate_schema, retry_step2, step3]]]></code>
+        <p>Replan converts a stuck Plan-Execute into Plan-Execute-Plan. Don't replan on every step (that's just ReAct in costume).</p>
+      </example>
+      <example type="good" title="faion-cli hybrid">
+        <description>Top-level: Plan (one Sonnet call) → 4 SDD tasks. Per-task: ReAct (each task has its own subagent with 8-turn budget). Aggregator: gathers results into state.json. Replan trigger: a failed task's subagent reports confidence: low → orchestrator triggers replan with the failure context.</description>
+      </example>
+      <example type="good" title="Audit trail">
+        <description>Plan-Execute's auditability is its biggest selling point.</description>
+        <p>The plan document is immutable input to execution; it can be reviewed, signed off, and replayed. For regulated work (legal, finance, healthcare), this matters more than adaptability.</p>
+      </example>
+    </section>
+    <section name="llm-prompts">
+      <p>Prompt templates for different decision points in the Plan-Execute vs ReAct workflow:</p>
+      <prompt purpose="mode-selection"><![CDATA[Given this task description, decide whether to use Plan-Execute, ReAct, or Hybrid.
+
+Output STRICT JSON:
+{
+  "rationale": "...",
+  "predictability_score_0_to_5": 0-5,
+  "exploration_score_0_to_5": 0-5,
+  "audit_required": bool,
+  "recommended_mode": "plan_execute" | "react" | "hybrid",
+  "max_turns_if_react": int
+}
+
+Task:
+{task description}]]></prompt>
+      <prompt purpose="planning"><![CDATA[You are a planner. Produce a STRUCTURED plan for the task below.
+
+Schema:
+{
+  "goal_restate": "1 sentence",
+  "constraints": ["list"],
+  "plan_steps": [
+    {"step_id": 1, "action": "...", "args": {...}, "depends_on": []}
+  ]
+}
+
+Rules:
+- Each step is independently runnable
+- depends_on enables DAG order
+- Max 10 steps; if more needed, say so in goal_restate
+- Tool names limited to: {available_tools}
+
+Task:
+{task}]]></prompt>
+      <prompt purpose="react-loop"><![CDATA[You operate in a Thought → Action → Observation loop.
+
+After each tool call, observe the result and reflect:
+- Did this match expectations?
+- Has the goal been reached?
+- What's the next concrete step?
+
+If you find yourself repeating the same action with no progress, output `<stuck>` and explain.
+
+You have at most {max_turns} turns. Use them sparingly.]]></prompt>
+      <prompt purpose="replan-decision"><![CDATA[A Plan-Execute run hit a failure. Decide whether to retry, replan, or escalate.
+
+State:
+{state}
+
+Failed step:
+{step}
+
+Error:
+{error}
+
+Output:
+{
+  "decision": "retry" | "replan" | "escalate",
+  "rationale": "...",
+  "new_plan_if_replan": [...]   // only if decision == "replan"
+}]]></prompt>
+      <prompt purpose="trajectory-analysis"><![CDATA[Review this trajectory. For each step, mark:
+- on_path | exploring | wandering | stuck
+
+Then summarize: was this trajectory efficient? Could a Plan-Execute version have been better?
+
+Trajectory:
+{thoughts/actions/observations}]]></prompt>
+    </section>
+    <section name="templates">
+      <p>Reusable code templates for implementing Plan-Execute, ReAct, and Hybrid patterns:</p>
+      <code lang="python"><![CDATA[from pydantic import BaseModel
+from typing import Literal
+
+class PlanStep(BaseModel):
+    step_id: int
+    action: Literal["search", "read_file", "write_file", "run_tests", "open_pr"]
+    args: dict
+    depends_on: list[int]   # for DAG ordering
+
+class Plan(BaseModel):
+    goal_restate: str
+    constraints: list[str]
+    plan_steps: list[PlanStep]
+
+def plan_execute(goal: str) -> Result:
+    # 1. Plan
+    plan = sonnet_call(goal, response_schema=Plan)
+
+    # 2. Validate
+    if not validate_plan(plan):
+        raise PlanInvalid(plan)
+
+    # 3. Execute (DAG order)
+    state = {}
+    for step in topological_sort(plan.plan_steps):
+        state[step.step_id] = run_step(step, state)
+
+    return summarize(state)]]></code>
+      <code lang="python"><![CDATA[def react_loop(goal: str, tools: list[Tool], max_turns: int = 10):
+    messages = [{"role": "user", "content": goal}]
+    for turn in range(max_turns):
+        resp = client.messages.create(
+            model="claude-sonnet-...",
+            tools=tools,
+            messages=messages,
+        )
+        if resp.stop_reason == "end_turn":
+            return resp.content
+        for block in resp.content:
+            if block.type == "tool_use":
+                result = call_tool(block.name, block.input)
+                messages.append({"role": "assistant", "content": resp.content})
+                messages.append({"role": "user", "content": [
+                    {"type": "tool_result", "tool_use_id": block.id, "content": str(result)}
+                ]})
+    raise MaxTurnsExceeded()]]></code>
+      <code lang="python"><![CDATA[def hybrid(goal: str):
+    plan = plan_call(goal)
+    state = {"goal": goal, "results": {}}
+
+    for step in plan.plan_steps:
+        try:
+            result = react_loop(
+                goal=step.action_description,
+                tools=tools_for(step.action),
+                max_turns=5,
+            )
+            state["results"][step.step_id] = result
+        except (MaxTurnsExceeded, StepFailed):
+            new_plan = replan_call(state, failed_step=step)
+            state["results"][step.step_id] = react_loop(
+                goal=new_plan.recovery_action,
+                tools=tools,
+                max_turns=5,
+            )
+    return state]]></code>
+      <code lang="python"><![CDATA[def detect_stuck(history: list[dict]) -> bool:
+    last_three_actions = [
+        msg["content"][0]["name"] + str(msg["content"][0]["input"])
+        for msg in history[-3:]
+        if msg["role"] == "assistant" and msg["content"][0]["type"] == "tool_use"
+    ]
+    return len(set(last_three_actions)) == 1   # all three identical]]></code>
+      <code lang="python"><![CDATA[from typing import Annotated
+from pydantic import BaseModel
+
+class Step(BaseModel):
+    description: str
+    tool: str
+    expected_output: str
+
+class Plan(BaseModel):
+    rationale: str
+    steps: Annotated[list[Step], "minimum 1, maximum 10"]]]></code>
+    </section>
+    <section name="composition">
+      <p>This methodology ties together:</p>
+      <list>
+        <item>subagent-as-context-firewall: each sub-task = subagent with isolated context</item>
+        <item>stream-json-orchestration: orchestrator watches stream events to decide replans</item>
+        <item>schema-field-order: planning-output schema = [goal_restate, constraints, plan_steps] (reasoning before answer)</item>
+      </list>
+    </section>
+  </content>
+</methodology>

@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (plan-execute-vs-react, prompt-cache-prefix-order, reasoning-first-architectures; feature-045 batch 245)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (langchain-memory, langchain-workflows, llamaindex-agents-eval; feature-045 batch 242)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (llamaindex-basics, llamaindex-indexes-queries, mcp-resource-vs-tool-vs-prompt; feature-045 batch 243)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (langchain-agents-multi-agent, langchain-basics, langchain-chains; feature-045 batch 241)
