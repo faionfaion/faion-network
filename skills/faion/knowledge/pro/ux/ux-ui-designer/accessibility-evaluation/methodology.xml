@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="accessibility-evaluation">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>Five-stage audit for WCAG 2.1/2.2 AA: scan → triage → keyboard → screen reader → report. Automated tools catch 30-40%; human testing stages 3-4 mandatory.</summary>
+    <tags>
+      <tag>wcag</tag>
+      <tag>accessibility</tag>
+      <tag>a11y</tag>
+      <tag>audit</tag>
+      <tag>testing</tag>
+    </tags>
+    <category>accessibility</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Accessibility Evaluation</title>
+
+    <summary>A five-stage audit process for WCAG 2.1/2.2 AA conformance: automated scan (axe, Pa11y, Lighthouse) → triage → scripted keyboard testing (Playwright) → screen reader verification (NVDA/JAWS/VoiceOver) → structured report. Automated tools catch 30-40% of issues; stages 3-4 are mandatory to reach meaningful coverage. Screen reader verification requires a human — no LLM can reproduce AT speech buffers.</summary>
+
+    <why>
+      <p>"axe-clean = compliant" is the most common audit failure. Automated tools are blind to ARIA misuse, focus-order problems in modals, live-region behavior, and cognitive accessibility. Legal risk (ADA Title II, EAA, procurement VPAT requirements) requires structured evidence: per-criterion findings, remediation recommendations citing W3C techniques, and POUR-grouped tables — not just tool output.</p>
+      <p>MegaLinter (oxsecurity, fork of GitHub Super-Linter) is the only one-call surface that covers 69 languages, 23 formats and 21 tooling formats in one shot. The parallel Python multiprocessing engine is meaningfully faster than Super-Linter's sequential bash and produces SARIF that drops directly into GitHub Code Scanning's UI.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Pre-release WCAG 2.1/2.2 AA audit before launch.</item>
+        <item>Regression check after design system upgrades or major refactors.</item>
+        <item>Procurement / RFP responses requiring VPAT or ACR documentation.</item>
+        <item>Post-incident remediation when a complaint or lawsuit names specific WCAG criteria.</item>
+        <item>CI gating on PRs touching shared library components.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Early lo-fi wireframe stage — use accessibility-first-design heuristics, not a full audit.</item>
+        <item>Pure ATAG or UAAG compliance — different rule sets; this methodology covers WCAG content/UI scope only.</item>
+        <item>Native iOS/Android — use Accessibility Inspector (Xcode) and Accessibility Scanner (Android).</item>
+        <item>PDF or document accessibility — use PAC 2024 or Adobe Acrobat Pro checker.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="accessibility-evaluation-five-stage-process">
+      <p>Structured five-stage audit process for WCAG 2.1/2.2 AA: automated scan, triage, keyboard testing, screen reader verification, and structured report — with tool pairings and issue priority tiers.</p>
+
+      <rule testable="true">
+        <statement>Run automated scanning (axe-core, Pa11y, Lighthouse) as stage 1, but never claim compliance based on automated results alone — tools catch 30-40% of issues.</statement>
+        <rationale>Deque and WebAIM data (2024) confirm automated tools miss the majority of issues: ARIA misuse, focus order in modals, live-region behavior, cognitive accessibility, and text-over-image contrast are invisible to headless scanners.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Pin the axe-core version per repo; rule additions in minor versions create phantom regressions that derail review cycles.</statement>
+        <rationale>axe-core releases new rules in minor versions. An "axe-clean" baseline at v4.8 may produce violations at v4.9 for the same unmodified code, causing false regression alerts.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Test all of: Tab navigation reaching every interactive element, visible focus at all times, logical tab order matching visual flow, skip links, no keyboard traps, and documented shortcuts not conflicting with AT shortcuts.</statement>
+        <rationale>WCAG 2.2 SC 2.1.1, 2.4.3, 2.4.7, and 2.4.11 cover these criteria. Each requires separate verification; automated tools cover none of them reliably.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For SPA frameworks, audit after route transitions and after async state changes; focus management at route change is the #1 SPA accessibility failure.</statement>
+        <rationale>Single-page apps frequently drop focus to the document body after navigation, forcing screen reader users to start re-reading from the top of the page.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use established AT pairings for screen reader testing: NVDA + Firefox, JAWS + Chrome, VoiceOver + Safari on Mac, VoiceOver + Safari on iOS, TalkBack + Chrome on Android.</statement>
+        <rationale>AT behavior differs by browser pairing. A finding present in NVDA+Firefox may not reproduce in JAWS+Chrome — and vice versa. Pairings are the industry-standard evidence baseline for VPAT/ACR documentation.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Never accept a screen reader finding from an agent that does not include an audio recording or verbatim speech transcript as evidence; fabricated AT transcripts are undetectable and create false compliance records.</statement>
+        <rationale>LLMs cannot reproduce NVDA/JAWS/VoiceOver speech buffers. Agent-invented transcripts appear plausible but are not evidence of conformance.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Classify every finding into Critical (blocks access completely, fix immediately), High (major barrier with difficult workaround, this sprint), Medium (creates difficulty, next sprint), or Low (enhancement, backlog).</statement>
+        <rationale>Consistent priority classification lets stakeholders make resource decisions and produces comparable metrics across audit cycles. Unclassified findings stall remediation planning.</rationale>
+      </rule>
+
+      <example type="good" title="Issue Priority Example">
+        <note>Missing form label (SC 1.3.1) → Critical: screen reader users cannot identify the field; no workaround. Missing skip link (SC 2.4.1) → High: keyboard users must tab through full navigation on every page.</note>
+      </example>
+    </section>
+
+    <section name="agent-pipeline-roles-and-gotchas">
+      <p>Stage 1 (scan) and Stage 5 (report) are fully agent-owned. Stage 3 (keyboard) is scripted via Playwright. Stage 4 (screen reader) is human-in-the-loop — no LLM can replicate NVDA/JAWS/VoiceOver speech buffers. The orchestrator fans out to: a scanner subagent (axe + Pa11y JSON output), a triage subagent (dedup + WCAG mapping), and a writer subagent (markdown report).</p>
+
+      <rule testable="true">
+        <statement>Treat each WCAG criterion as a separate test case with a stable ID so re-runs produce diffs, not full rewrites.</statement>
+        <rationale>Without stable IDs, every re-run generates a new report that cannot be compared to the previous one. Diffs are the only way to track remediation progress and detect regressions.</rationale>
+      </rule>
+
+      <example type="good" title="Triage Prompt Pattern">
+        <note>Triage: "Given axe-core JSON (violations[]), produce ## Detailed Findings. For each violation: WCAG SC, priority (Critical/High/Medium/Low), location (selector + page URL), recommendation (cite W3C technique G/H/F number), and minimal HTML before/after. Group by Perceivable/Operable/Understandable/Robust."</note>
+      </example>
+
+      <example type="good" title="Keyboard Trace Prompt Pattern">
+        <note>Keyboard trace: "Given Playwright keyboard-only trace, emit a row in the keyboard-testing table for: Tab navigation, Focus visible, Logical order, Skip links, Traps, Shortcuts. Pass = boolean + evidence (frame index)."</note>
+      </example>
+
+      <antipattern>
+        <description>Agent generating alt="Description" placeholders that pass automated checks but fail SC 1.1.1 for decorative or context-specific images.</description>
+        <reason>Placeholder alt text passes the "attribute present" check but fails the "alternative text conveys equivalent information" criterion. Require the agent to cite the source content the alt is derived from.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent fixing contrast by editing CSS variables without checking dark-mode token consistency.</description>
+        <reason>Token-layer edits propagate to all modes. A contrast fix in light mode can create a new violation in dark mode. Require diffs with both modes regenerated.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent mass-adding aria-label to elements that already have visible text labels.</description>
+        <reason>Adding aria-label to an element with visible text creates a SC 2.5.3 (Label in Name) violation if the label text differs. Lint for accessible-name vs visible-text mismatch before applying.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent closing findings as "won't fix" without a human accessibility lead sign-off with documented rationale.</description>
+        <reason>Suppressed findings without rationale create phantom compliance. Legal and procurement reviewers will ask for documented risk acceptance; agents cannot provide it.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Scanning logged-out fallback pages instead of authenticated application states.</description>
+        <reason>Authenticated pages have additional dynamic content, modals, and forms not visible to unauthenticated scans. Clean reports from unauthenticated pages are false negatives.</reason>
+      </antipattern>
+    </section>
+
+    <section name="tools-and-services">
+      <p>CLI tools for accessibility scanning and testing:</p>
+      <list>
+        <item>axe-core CLI: Headless WCAG scan, JSON output. Install: npm i -g @axe-core/cli (https://github.com/dequelabs/axe-core-npm)</item>
+        <item>Pa11y / Pa11y-CI: Batch URL audits, sitemap-driven. Install: npm i -g pa11y pa11y-ci (https://github.com/pa11y/pa11y)</item>
+        <item>Lighthouse CI: Accessibility category in CI. Install: npm i -g @lhci/cli (https://github.com/GoogleChrome/lighthouse-ci)</item>
+        <item>WAVE API: Page-level scan with screenshots (paid). https://wave.webaim.org/api/</item>
+        <item>IBM Equal Access Checker: Cross-platform CLI + browser (https://github.com/IBMa/equal-access)</item>
+        <item>Playwright + @axe-core/playwright: Scripted scans tied to user flows. Install: npm i -D @axe-core/playwright</item>
+        <item>color-contrast-checker: Token / palette validation in CI. Install: npm i color-contrast-checker</item>
+        <item>html-validate: Catches role/aria errors statically (https://html-validate.org)</item>
+        <item>accessibility-checker (npm): Wrapper for IBM ruleset. Install: npm i accessibility-checker</item>
+      </list>
+
+      <p>SaaS services and platforms:</p>
+      <list>
+        <item>Deque axe DevTools Pro: Best false-positive rate; agent-friendly REST API + axe-core OSS. "Intelligent Guided Tests" require human.</item>
+        <item>Siteimprove: Strong for large sites; partial agent-friendly REST API; expensive.</item>
+        <item>Tenon.io: Lightweight scans, JSON only, agent-friendly REST API.</item>
+        <item>Stark: SaaS / Figma plug-in for design-time contrast and vision sim; limited agent support.</item>
+        <item>TPGi ARC Toolkit: Manual + automated, agent-friendly Selenium hooks, VPAT-friendly.</item>
+        <item>BrowserStack Accessibility Testing: Cross-browser real-device scans, CI integration.</item>
+        <item>AssistivLabs: Remote NVDA/JAWS/VoiceOver — still human-driven, partial agent support.</item>
+        <item>AccessiBe / UserWay: SaaS overlay — anti-pattern. Avoid; widely litigated, does not produce conformance.</item>
+        <item>Evinced: Component-level dynamic analysis, agent-friendly CLI + CI.</item>
+        <item>Microsoft Accessibility Insights: Free OSS desktop + Web, AI-assistant-readable HTML reports, FastPass automatable.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Run scans on the rendered DOM of representative states (modal open, error, empty, loaded), not just the initial route — single-snapshot scans miss the majority of dynamic-content issues.</item>
+        <item>Pin axe-core version per repo; rule additions between minor versions cause "phantom regressions" that derail review cycles.</item>
+        <item>Map every finding to a WCAG SC and a remediation technique (G/H/F numbers from W3C); reviewers reject reports that just cite axe rule ids.</item>
+        <item>Maintain a shared "known-issues" allowlist with expiry dates, not infinite suppressions; review quarterly.</item>
+        <item>Combine NVDA + Firefox, JAWS + Chrome, VoiceOver + Safari in AT testing — pairings change announcement behaviour materially.</item>
+        <item>Re-test the fix in the same flow that exposed it, not in isolation; refactors often re-break neighbouring components.</item>
+        <item>For SPA frameworks, audit after route transitions and after async state changes — focus management is the #1 SPA failure.</item>
+        <item>VPAT/ACR drafts: preserve evidence (screenshots, DOM snapshots, AT transcripts) so claims can be defended in procurement.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/audit-report.md" purpose="Accessibility audit report: executive summary, methodology, POUR findings tables, per-issue template"/>
+      <template path="templates/scan.mjs" purpose="Playwright + axe-core scanner: emits per-page JSON consumed by triage agent"/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.w3.org/TR/WCAG22/"/>
+      <link href="https://www.w3.org/WAI/ARIA/apg/"/>
+      <link href="https://www.deque.com/blog/automated-testing-best-practices/"/>
+      <link href="https://webaim.org/projects/million/"/>
+      <link href="https://www.w3.org/WAI/test-evaluate/preliminary/"/>
+      <link href="https://www.itic.org/policy/accessibility/vpat"/>
+      <ref slug="accessibility-first-design"/>
+      <ref slug="ada-title-ii-compliance-2026"/>
+    </see-also>
+  </content>
+</methodology>
