@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="speech-to-text-basics">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>multimodal-ai</domain>
+    <summary>Transcribing audio to text using OpenAI Whisper API, local Whisper, or faster-whisper (CTranslate2) with API parameters for timestamps and translation.</summary>
+    <tags>
+      <tag>speech-to-text</tag>
+      <tag>transcription</tag>
+      <tag>whisper</tag>
+      <tag>audio</tag>
+      <tag>multilingual</tag>
+    </tags>
+    <category>speech-to-text</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Speech-to-Text Basics</title>
+    <summary>Transcribing audio to text using OpenAI Whisper API, local Whisper, or faster-whisper (CTranslate2). Covers API parameters for timestamps and translation, local model selection by hardware, and the 25MB file-size limit that forces pre-splitting.</summary>
+    <why>
+      <p>Whisper is the de-facto standard for multilingual transcription, but the API is batch-only (no streaming) and has a 25MB file limit. Specifying the language code explicitly saves ~200ms and prevents misidentification between similar languages (Ukrainian/Russian, Serbian/Croatian).</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Transcribing recorded audio: interviews, meetings, podcasts, call recordings</item>
+        <item>Building voice input pipelines where microphone audio is the primary channel</item>
+        <item>Generating searchable transcripts with timestamps for media libraries</item>
+        <item>Multilingual transcription or audio-to-English translation</item>
+        <item>Pre-processing audio before LLM analysis (summarize, extract, classify)</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Real-time streaming requirements below 300ms — use Deepgram or AssemblyAI WebSocket streaming instead</item>
+        <item>Audio files exceeding 25MB per file — must split first with pydub</item>
+        <item>Extremely noisy audio (SNR below 5dB) — accuracy degrades to unusable</item>
+        <item>High-volume production (>10k hours/month) — local faster-whisper on GPU is significantly cheaper</item>
+      </list>
+    </when-not-to-use>
+    <section name="OpenAI Whisper API">
+      <p>The Whisper API accepts MP3, MP4, MPEG, MPGA, M4A, WAV, WEBM — not FLAC or OGG. Files must be under 25MB. Use verbose_json with timestamp_granularities for production work.</p>
+      <example type="good" title="Whisper transcription with timestamps">
+        <code lang="python"><![CDATA[
+def transcribe_with_timestamps(audio_path: str) -> dict:
+    with open(audio_path, "rb") as audio_file:
+        response = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=audio_file,
+            response_format="verbose_json",
+            timestamp_granularities=["word", "segment"]
+        )
+    return {
+        "text": response.text,
+        "segments": response.segments,
+        "words": response.words,
+        "duration": response.duration
+    }
+        ]]></code>
+        <note>response.words is a list of Word objects, not dicts. json.dumps() on raw response objects raises TypeError.</note>
+      </example>
+      <antipattern>
+        <description>Using response_format other than "verbose_json" when requesting timestamp_granularities=["word"]</description>
+        <reason>Non-verbose formats silently drop word timestamps — no error is raised, the timestamps are simply absent from the response.</reason>
+      </antipattern>
+    </section>
+    <section name="Local Whisper">
+      <p>Local Whisper avoids API costs and the 25MB limit. Model sizing: tiny/base for real-time on CPU; small/medium for quality; large-v3 requires ~10GB RAM and GPU for production throughput.</p>
+      <example type="good" title="LocalWhisper class with device detection">
+        <code lang="python"><![CDATA[
+class LocalWhisper:
+    def __init__(self, model_size: str = "base", device: str = None):
+        if device is None:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model = whisper.load_model(model_size, device=device)
+
+    def transcribe(self, audio_path: str, language: str = None,
+                   task: str = "transcribe", word_timestamps: bool = False) -> dict:
+        result = self.model.transcribe(audio_path, language=language,
+                                       task=task, word_timestamps=word_timestamps)
+        return {"text": result["text"], "segments": result["segments"],
+                "language": result["language"]}
+        ]]></code>
+      </example>
+    </section>
+    <section name="Faster Whisper">
+      <p>faster-whisper uses CTranslate2 for 4x speed improvement over original Whisper at the same model size. vad_filter=True removes silence and reduces processing time 20-40% on long files.</p>
+      <example type="good" title="FasterWhisperTranscriber with VAD">
+        <code lang="python"><![CDATA[
+class FasterWhisperTranscriber:
+    def transcribe(self, audio_path: str, language: str = None,
+                   beam_size: int = 5, vad_filter: bool = True) -> dict:
+        segments, info = self.model.transcribe(
+            audio_path, language=language, beam_size=beam_size,
+            word_timestamps=True, vad_filter=vad_filter
+        )
+        full_text = ""
+        all_segments = []
+        for segment in segments:
+            all_segments.append({
+                "start": segment.start, "end": segment.end, "text": segment.text
+            })
+            full_text += segment.text
+        return {"text": full_text.strip(), "segments": all_segments,
+                "language": info.language, "duration": info.duration}
+        ]]></code>
+        <note>vad_filter=True can silently drop speech segments under 0.5s — disable for audio with single words or short interjections.</note>
+      </example>
+    </section>
+    <section name="API Usage Rules">
+      <rule>
+        <statement>Always specify the language parameter explicitly in Whisper calls. Never rely on auto-detection in production.</statement>
+        <rationale>Auto-detection adds ~200ms latency and occasionally misidentifies similar languages (Ukrainian/Russian, Serbian/Croatian). Explicit language="uk" eliminates both problems.</rationale>
+      </rule>
+      <rule>
+        <statement>Split audio files into chunks under 24MB before uploading to the Whisper API. Use pydub with 10-minute chunks exported as MP3 at 64kbps.</statement>
+        <rationale>Whisper API rejects files over 25MB. A 90-minute meeting WAV typically exceeds this. Chunking at 10 minutes leaves margin for encoding overhead.</rationale>
+      </rule>
+      <example type="good" title="Audio file splitting with pydub">
+        <code lang="python"><![CDATA[
+from pydub import AudioSegment
+import math, os
+
+def split_audio(path: str, chunk_min: int = 10, out_dir: str = "/tmp") -> list[str]:
+    audio = AudioSegment.from_file(path)
+    chunk_ms = chunk_min * 60 * 1000
+    n = math.ceil(len(audio) / chunk_ms)
+    paths = []
+    for i in range(n):
+        chunk = audio[i * chunk_ms:(i + 1) * chunk_ms]
+        p = os.path.join(out_dir, f"chunk_{i:03d}.mp3")
+        chunk.export(p, format="mp3", bitrate="64k")
+        paths.append(p)
+    return paths
+        ]]></code>
+      </example>
+    </section>
+    <section name="Quality and Performance Rules">
+      <rule>
+        <statement>Pre-process audio before transcription: convert to 16kHz mono WAV, normalize amplitude, apply noise reduction. Improves accuracy 5-15%.</statement>
+        <rationale>Whisper was trained on varied audio but performs best on clean 16kHz mono. Format conversion with ffmpeg before API upload is a low-cost accuracy improvement.</rationale>
+      </rule>
+      <rule>
+        <statement>Cache transcriptions by SHA-256 hash of the audio file bytes. Never re-transcribe the same file.</statement>
+        <rationale>Re-transcribing the same file wastes API cost and time. Content-based hashing catches identical files with different names.</rationale>
+      </rule>
+      <rule>
+        <statement>Use the Whisper prompt parameter to include domain-specific terms, speaker names, and expected vocabulary — keep it under 100 tokens.</statement>
+        <rationale>The prompt parameter is prepended to model context (not searched against audio), reducing substitution errors for domain terms. Over 100 tokens dilutes the effect.</rationale>
+      </rule>
+      <rule>
+        <statement>Use vad_filter=True in faster-whisper for long files with silence — reduces processing time by 20-40%.</statement>
+        <rationale>Voice Activity Detection removes silence segments before processing, saving computation. However, it can drop short speech segments under 0.5s.</rationale>
+      </rule>
+    </section>
+    <section name="Provider Selection">
+      <rule>
+        <statement>Use Deepgram or AssemblyAI WebSocket streaming for real-time requirements below 300ms. Use faster-whisper locally for high-volume (over 10k hours/month).</statement>
+        <rationale>Whisper API is batch-only — it requires a complete file upload. Streaming STT providers process audio frames as they arrive. Local faster-whisper is significantly cheaper at scale.</rationale>
+      </rule>
+      <antipattern>
+        <description>Polling AssemblyAI or AWS Transcribe with a synchronous await</description>
+        <reason>Long audio transcription jobs via cloud services are async — agent must poll a status URL. Synchronous waiting blocks the event loop for minutes.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Workflow">
+      <p>STT fits into agent pipelines as a preprocessing node: agent receives an audio file path or URL, calls the transcription function, and passes the text to downstream LLM processing (summarization, extraction, classification). Claude subagents can orchestrate the full pipeline: split long audio → transcribe chunks → merge transcripts → analyze. The STT step itself is a single tool call with no LLM reasoning required — use it as a primitive in tool definitions.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>Custom audio pipeline agent — given a media file, split by silence, transcribe each chunk, merge with timestamps, return full transcript</item>
+        <item>faion-sdd-execution — scaffold a transcript processing pipeline (meeting → action items, podcast → summary)</item>
+      </list>
+      <p>Prompt patterns for transcript processing:</p>
+      <code lang="text"><![CDATA[
+Transcription complete. Full transcript:
+---
+{transcript}
+---
+Task: {task_description}
+Extract the following structured information: {output_schema}
+Return JSON only.
+
+You have a transcript in segments with timestamps. Language: {language}.
+Clean the transcript: fix obvious STT errors, normalize punctuation, remove filler words (um, uh, like).
+Keep timestamps. Return corrected transcript in the same segment format.
+Input: {segments_json}
+      ]]></code>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <list>
+        <item>Whisper API accepts MP3, MP4, MPEG, MPGA, M4A, WAV, WEBM — not FLAC or OGG; convert before upload</item>
+        <item>The prompt parameter is prepended to the model context, not searched against the audio — keep it under 100 tokens</item>
+        <item>response.words from timestamp_granularities=["word"] is a list of Word objects, not dicts — agents using json.dumps() on raw response objects will get TypeError</item>
+        <item>Local Whisper on CPU with large-v3 model requires ~10GB RAM; agents running on memory-constrained hosts should use base or small</item>
+        <item>Transcription of code-switching audio (mixed languages per sentence) requires language=None + post-processing — explicit language setting forces a single language</item>
+        <item>Long transcription jobs via AssemblyAI/AWS are async — agent must poll status URL, not await synchronously</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/whisper-api.py" purpose="transcribe_audio, transcribe_with_timestamps, translate_audio functions"/>
+      <template path="templates/faster-whisper.py" purpose="FasterWhisperTranscriber with VAD filter and streaming"/>
+      <template path="templates/split-audio.py" purpose="pydub helper to split audio into chunks under 24MB"/>
+    </templates>
+    <section name="Services and Tools">
+      <p>CLI tools for local development and deployment:</p>
+      <list>
+        <item>openai — Whisper API: transcription + translation; install with pip install openai</item>
+        <item>openai-whisper — Local Whisper model (original); install with pip install openai-whisper</item>
+        <item>faster-whisper — CTranslate2-optimized local Whisper; 4x faster; install with pip install faster-whisper</item>
+        <item>whisperx — faster-whisper + forced alignment + diarization; install with pip install whisperx</item>
+        <item>pydub — Audio splitting, format conversion, silence detection; install with pip install pydub</item>
+        <item>ffmpeg — Audio decoding, resampling, format conversion; system install: apt install ffmpeg</item>
+        <item>deepgram-sdk — Real-time streaming STT + diarization; install with pip install deepgram-sdk</item>
+      </list>
+      <p>Third-party services and their agent-friendliness:</p>
+      <list>
+        <item>OpenAI Whisper API (SaaS) — Yes, SDK available. $0.006/min; 25MB limit; no streaming; 99 languages</item>
+        <item>Deepgram Nova-2 (SaaS) — Yes, WebSocket/REST. Real-time + batch; speaker diarization; $0.0043/min</item>
+        <item>AssemblyAI (SaaS) — Yes, SDK. Async batch + streaming; LeMUR for LLM-on-transcript</item>
+        <item>AWS Transcribe (SaaS) — Yes, Boto3. Batch + streaming; custom vocabulary; PII redaction</item>
+        <item>Google Speech-to-Text (SaaS) — Yes, Python client. Real-time streaming; 125 languages; telephony model</item>
+        <item>Azure Speech (SaaS) — Yes, SDK. Real-time + batch; speaker diarization; custom models</item>
+        <item>faster-whisper (OSS) — Yes, Python. Self-hosted; best cost/quality for high volume</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://platform.openai.com/docs/guides/speech-to-text"/>
+      <link href="https://github.com/openai/whisper"/>
+      <link href="https://github.com/guillaumekln/faster-whisper"/>
+      <link href="https://github.com/m-bain/whisperX"/>
+      <link href="https://developers.deepgram.com/docs/getting-started"/>
+      <link href="https://www.assemblyai.com/docs"/>
+    </see-also>
+  </content>
+</methodology>
