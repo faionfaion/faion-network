@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="embedded-scratchpad-field">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Embed a scratchpad, reasoning, or plan_steps field BEFORE the answer in structured output schemas. Improves accuracy by 60% on benchmarks by letting models externalize working before committing.</summary>
+    <tags>
+      <tag>structured-output</tag>
+      <tag>chain-of-thought</tag>
+      <tag>schema-design</tag>
+      <tag>reasoning</tag>
+      <tag>tab-cot</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Embedded Scratchpad Field</title>
+    <summary>Before any non-trivial answer field, embed a scratchpad, plan_steps, or reasoning field IN the schema. The model writes its working notes there before generating the answer. This is structured-output's equivalent of thinking tags but works even in strict JSON mode where free-form preambles aren't allowed.</summary>
+    <why>
+      <p>In strict JSON mode the model can ONLY emit valid JSON — there's no room for "let me think out loud first." Without a scratchpad field, the model has to commit to the answer immediately. With one, you give it permission to reason where it would otherwise have to skip reasoning.</p>
+      <p>AWS Bedrock guidance reports a +60% accuracy improvement on GSM8k math benchmark from adding a single reasoning field before answer. Tab-CoT (Tabular Chain-of-Thought) papers show similar gains on multi-criteria decisions.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Strict JSON mode (no free-form preamble allowed)</item>
+        <item>Decisions that benefit from CoT but where you also need structured output</item>
+        <item>Tasks with greater than 1 reasoning step</item>
+        <item>Anywhere "the model commits before thinking" is a known failure mode</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure transformation tasks where reasoning adds latency without accuracy</item>
+        <item>When the upstream model is already a reasoning model (o-series, Opus thinking) — paying twice</item>
+        <item>For trivial fields where the schema is already forcing the model through an enum</item>
+      </list>
+    </when-not-to-use>
+    <section name="Variants">
+      <p>Field names by use case:</p>
+      <list>
+        <item>reasoning — One-shot decisions; ambiguous extraction</item>
+        <item>plan_steps: list[str] — Multi-step tasks; complex transformations</item>
+        <item>evidence: list[str] — Verdict / classification — quotations grounding the call</item>
+        <item>scratchpad: str — Free-form thinking before structured fields</item>
+        <item>tab_cot: list[Step] where Step has step: str, intermediate_result: str — Math, derivation, calculation chains</item>
+      </list>
+    </section>
+    <section name="Anti-Patterns">
+      <antipattern>
+        <description>scratchpad placed AFTER the answer</description>
+        <reason>Reverse order — scratchpad must come BEFORE the answer to act as CoT</reason>
+      </antipattern>
+      <antipattern>
+        <description>reasoning field with vague description</description>
+        <reason>Description should say "Step-by-step analysis of evidence" — concrete</reason>
+      </antipattern>
+      <antipattern>
+        <description>Multiple scratchpad fields competing</description>
+        <reason>Pick one (or one per phase); stacking confuses</reason>
+      </antipattern>
+      <antipattern>
+        <description>Scratchpad that just echoes the input</description>
+        <reason>Description must demand actual analysis, not paraphrase</reason>
+      </antipattern>
+      <antipattern>
+        <description>Scratchpad max_tokens cap too small</description>
+        <reason>Let it breathe; ~200-500 tokens for non-trivial reasoning</reason>
+      </antipattern>
+    </section>
+    <section name="Examples">
+      <example type="good" title="GSM8k +60% with one field">
+        <p>A team running GSM8k benchmark on Sonnet measured 31% accuracy on a schema like {answer: int}. Adding reasoning: str BEFORE answer raised accuracy to 49%. AWS reported similar gains across math benchmarks. The model had been forced to compute mentally; the scratchpad let it externalize.</p>
+      </example>
+      <example type="good" title="Code review with evidence first">
+        <code lang="python"><![CDATA[class Review(BaseModel):
+    evidence: list[str] = Field(description="Code snippets being commented on (max 5).")
+    issues_found: list[str]
+    severity_high_to_low: list[str] = Field(description="ordered severity tags")
+    summary: str
+    verdict: Literal["approve", "request_changes"]]]></code>
+        <p>Before evidence-first ordering, "verdict" often didn't match "issues_found" because the model decided early. Evidence-first locks the model into citing specific code BEFORE deciding.</p>
+      </example>
+      <example type="good" title="Triage classification">
+        <code lang="python"><![CDATA[class Triage(BaseModel):
+    rationale: str = Field(description="Why this category fits.")
+    category: Literal["billing", "auth", "performance", "feature_request", "other"]
+    priority: Literal["low", "medium", "high", "critical"]]]></code>
+        <p>Without rationale, "other" was the model's escape hatch (~25% of items). With rationale, "other" dropped below 5% — having to justify the choice forced more specific classification.</p>
+      </example>
+      <example type="bad" title="Anti-example">
+        <code lang="python"><![CDATA[# BAD
+class Bad(BaseModel):
+    answer: str
+    reasoning: str   # placed after — CANNOT be CoT]]></code>
+        <p>The reasoning field is now post-hoc rationalization. Token-spent but no quality benefit. Fix: swap the order.</p>
+      </example>
+      <example type="good" title="Multi-stage pipeline">
+        <p>Stage 1 (planner):</p>
+        <code lang="python"><![CDATA[class Plan(BaseModel):
+    plan_steps: list[str]
+    next_action: str]]></code>
+        <p>Stage 2 (executor):</p>
+        <code lang="python"><![CDATA[class Step(BaseModel):
+    interpretation: str = Field(description="How you interpret the next_action from the plan.")
+    tool_to_call: Literal["search", "read", "edit", "run_tests"]
+    tool_args: dict]]></code>
+        <p>Each stage has its own scratchpad, scoped to that stage's responsibility.</p>
+      </example>
+      <example type="good" title="faion-cli SDD task execution">
+        <code lang="python"><![CDATA[class TaskExecution(BaseModel):
+    plan_in_my_words: str   # scratchpad — re-states the task
+    files_to_change: list[str]
+    test_strategy: str
+    final_diff_summary: str]]></code>
+        <p>plan_in_my_words re-grounds the model on the task spec; files_to_change is the agent's commitment; the rest follow.</p>
+      </example>
+      <example type="good" title="Length-pegged scratchpad">
+        <code lang="python"><![CDATA[class Output(BaseModel):
+    quick_thoughts_under_50_words: str
+    answer: str]]></code>
+        <p>Useful when you DON'T want the model to over-think — bounding scratchpad to 50 words keeps the call cheap while still benefiting from CoT.</p>
+      </example>
+      <example type="good" title="Tab-CoT for math">
+        <code lang="python"><![CDATA[class Step(BaseModel):
+    operation: str
+    intermediate: str
+
+class Solution(BaseModel):
+    steps: list[Step]
+    final_answer: str]]></code>
+        <p>Each step has its own structured pair — operation + intermediate result. Forces the model to show its work in a parseable way that you can verify post-hoc.</p>
+      </example>
+    </section>
+    <checklist>
+      <check>Identified which schemas have non-trivial decisions</check>
+      <check>Each such schema has a scratchpad / reasoning / plan_steps / evidence field</check>
+      <check>Scratchpad field comes BEFORE the answer field</check>
+      <check>Field name matches the type of thinking required (reasoning vs evidence vs plan)</check>
+      <check>Scratchpad description tells the model WHAT to think about (not just "think")</check>
+      <check>Description references the input (or the goal) so the model re-grounds</check>
+      <check>Description sets a length expectation if the answer benefits from a specific depth</check>
+      <check>Compared output quality with vs without scratchpad on 20+ tasks</check>
+      <check>Scratchpad isn't just paraphrase of input — measure originality</check>
+      <check>Scratchpad output is being USED in production (not just generated and ignored)</check>
+      <check>No regression in latency that outweighs the quality gain</check>
+      <check>No scratchpad placed after the answer</check>
+      <check>No multiple competing scratchpads in one schema</check>
+      <check>No scratchpad on schemas where the answer is forced by enum (already constrained enough)</check>
+      <check>No scratchpad on simple transformation tasks (waste of tokens)</check>
+      <check>Field order: scratchpad → intermediate fields → answer</check>
+      <check>Descriptions reinforce the dependency (later fields explicitly reference earlier ones)</check>
+      <check>If using extended thinking + scratchpad: pick one; doubling adds cost without gain</check>
+    </checklist>
+    <section name="Implementation Templates">
+      <p>Template: Reasoning before verdict</p>
+      <code lang="python"><![CDATA[from pydantic import BaseModel, Field
+from typing import Literal
+
+class Verdict(BaseModel):
+    reasoning: str = Field(description="Step-by-step analysis of the evidence below.")
+    confidence: Literal["low", "medium", "high"]
+    decision: Literal["approve", "reject"]]]></code>
+      <p>Template: Plan steps before execution</p>
+      <code lang="python"><![CDATA[class Plan(BaseModel):
+    plan_steps: list[str] = Field(description="Numbered steps to accomplish the goal. 3-7 items.")
+    estimated_minutes: int
+    final_action: str = Field(description="The single action to take next, derived from plan_steps[0].")]]></code>
+      <p>Template: Evidence before classification</p>
+      <code lang="python"><![CDATA[class Classification(BaseModel):
+    evidence: list[str] = Field(description="Quotations from the input that support each category. Up to 5.")
+    category: Literal["bug", "feature_request", "question", "spam"]]]></code>
+      <p>Template: Tab-CoT (math/derivation)</p>
+      <code lang="python"><![CDATA[class Step(BaseModel):
+    step: str = Field(description="What this step computes.")
+    intermediate_result: str
+
+class Solution(BaseModel):
+    steps: list[Step] = Field(description="Each step builds on the previous. 2-10 items.")
+    final_answer: str]]></code>
+      <p>Template: Two-phase: scratchpad then structured fields</p>
+      <code lang="python"><![CDATA[class Output(BaseModel):
+    scratchpad: str = Field(description="Free-form working notes. Brainstorm, list options, weigh tradeoffs.")
+    summary: str = Field(description="Crisp summary of the scratchpad above.")
+    next_action: str = Field(description="Concrete next step derived from summary.")]]></code>
+      <p>Template: OpenAI structured output (JSON Schema)</p>
+      <code lang="python"><![CDATA[schema = {
+    "type": "object",
+    "properties": {
+        "reasoning": {
+            "type": "string",
+            "description": "Step-by-step analysis. Required before answer."
+        },
+        "answer": {"type": "string"}
+    },
+    "required": ["reasoning", "answer"],
+    "additionalProperties": False
+}]]></code>
+      <p>In strict mode, BOTH must be required for the schema to validate.</p>
+      <p>Template: Anthropic tool input schema</p>
+      <code lang="json"><![CDATA[{
+  "name": "decide",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "reasoning": {"type": "string", "description": "Analysis of options."},
+      "decision": {"type": "string", "enum": ["yes", "no"]}
+    },
+    "required": ["reasoning", "decision"]
+  }
+}]]></code>
+      <p>Template: Length-managed scratchpad</p>
+      <code lang="python"><![CDATA[class Output(BaseModel):
+    scratchpad_under_300_words: str = Field(
+        description=(
+            "Working notes. Cap at 300 words. "
+            "Cover: assumptions, options considered, tradeoffs, chosen path."
+        )
+    )
+    answer: str]]></code>
+      <p>The length cap in the field NAME is part of the prompt — surprisingly effective.</p>
+      <p>Anti-template (don't do this):</p>
+      <code lang="python"><![CDATA[# BAD: scratchpad after answer
+class Bad(BaseModel):
+    answer: str
+    reasoning: str   # post-hoc rationalization, not CoT]]></code>
+    </section>
+    <templates>
+      <template path="templates/reasoning-before-verdict.py" purpose="Pydantic schema with reasoning field before confidence and decision"/>
+      <template path="templates/plan-steps-before-execution.py" purpose="Plan with steps before final action"/>
+      <template path="templates/evidence-before-classification.py" purpose="Evidence quotations before category/classification"/>
+      <template path="templates/tab-cot-math.py" purpose="Structured Tab-CoT with operation/intermediate steps for math"/>
+      <template path="templates/two-phase-scratchpad.py" purpose="Scratchpad then summary then action"/>
+      <template path="templates/openai-structured-output.py" purpose="OpenAI JSON Schema with reasoning and answer required"/>
+      <template path="templates/anthropic-tool-schema.py" purpose="Anthropic tool input schema with reasoning before decision"/>
+      <template path="templates/length-managed-scratchpad.py" purpose="Scratchpad with word count bound in field name"/>
+    </templates>
+    <prompt purpose="add-scratchpad-to-schema-template">
+        <![CDATA[Take this schema and add ONE scratchpad field BEFORE the answer-y fields.
+
+Pick the right name based on the task:
+- "reasoning" for analysis/decision
+- "evidence" for classification with quotation
+- "plan_steps" for multi-step
+- "scratchpad" for free-form thinking
+
+Write a precise description that says what to think about.
+
+Schema:
+{paste here}]]>
+      </prompt>
+      <prompt purpose="audit-for-misplaced-scratchpads">
+        <![CDATA[Review every schema in this codebase. Flag any:
+- Scratchpad/reasoning field placed AFTER the answer (anti-pattern)
+- Multiple competing scratchpad fields in one schema
+- Scratchpad description that's empty or vague
+- Schemas with non-trivial answers but NO scratchpad
+
+Output: list of issues with proposed fixes.
+
+Schemas:
+{paste}]]>
+      </prompt>
+      <prompt purpose="pick-scratchpad-variant">
+        <![CDATA[Given this task, pick the best scratchpad variant:
+- reasoning: str
+- plan_steps: list[str]
+- evidence: list[str]
+- scratchpad: str
+- tab_cot: list[Step]
+
+Output: chosen variant + 1-sentence rationale.
+
+Task:
+{description}]]>
+      </prompt>
+      <prompt purpose="write-scratchpad-description">
+        <![CDATA[You're adding a scratchpad field to a schema. The downstream answer field is: {answer_field}.
+
+Write a 1-2 sentence description that:
+- Tells the model WHAT to think about
+- References {answer_field} so the dependency is clear
+- Sets a length expectation if needed
+
+Output: just the description string.]]>
+    </prompt>
+    <see-also>
+      <ref slug="schema-field-order"/>
+      <ref slug="field-descriptions-as-prompts"/>
+      <ref slug="plan-execute-vs-react"/>
+      <link href="https://explore.n1n.ai/blog/aws-bedrock-json-schema-structured-output-guide-2026-02-16">AWS Bedrock JSON Schema Structured Output Guide (Feb 2026)</link>
+      <link href="https://arxiv.org/abs/2305.17812">Tab-CoT: Tabular Chain-of-Thought (paper)</link>
+      <link href="https://platform.openai.com/docs/guides/structured-outputs">OpenAI structured outputs guide</link>
+    </see-also>
+  </content>
+</methodology>
