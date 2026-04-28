@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 solo/ux/user-researcher methodologies → methodology.xml (use-case-mapping, user-interviews, user-interviews-methods)
 - migrate: 3/3 solo/ux methodologies → methodology.xml (user-interviews, ab-testing, aesthetic-minimalist)
 - migrate: 3/3 solo/ux methodologies → methodology.xml (wireframing, feature-discovery, jobs-to-be-done)
 - migrate: 3/3 solo/ux/ui-designer methodologies → methodology.xml (spatial-ux-fundamentals, tailwind-design-tokens, voice-ui-basics)
