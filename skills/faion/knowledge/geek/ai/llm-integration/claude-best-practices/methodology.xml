@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="claude-best-practices">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Production patterns for Claude API: model selection, prompt caching, Batch API, token counting, backoff, and cost monitoring in multi-agent pipelines.</summary>
+    <tags>
+      <tag>claude</tag>
+      <tag>anthropic</tag>
+      <tag>api-integration</tag>
+      <tag>cost-optimization</tag>
+      <tag>production-patterns</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Claude Best Practices</title>
+    <summary>A set of production patterns for calling the Anthropic Messages API reliably and cost-efficiently: model tier selection (Haiku/Sonnet/Opus by task), prompt caching for repeated large contexts, Batch API for offline workloads, token counting for pre-flight validation, exponential backoff for rate limits, and a monitored client wrapper for cost attribution per subagent role.</summary>
+    <why>
+      <p>The Anthropic API has several non-obvious behaviors that silently degrade production systems: max_tokens defaults are low and truncate structured output mid-JSON; prompt cache requires byte-identical prefixes (any dynamic injection before the cached block busts the cache); model aliases update without notice; rate limit errors include a retry-after header that should be parsed rather than guessed. Applying these patterns prevents silent failures in multi-agent pipelines.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building any production system that calls the Anthropic Messages API.</item>
+        <item>Optimizing cost/quality tradeoff across multi-agent pipelines.</item>
+        <item>When system prompts are large and repeated across many requests (prompt caching).</item>
+        <item>Implementing retry logic, fallback models, or monitoring for Claude API calls.</item>
+        <item>Selecting the right Claude model tier for a given agent role.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Quick scripted one-off calls with no cost or reliability concerns.</item>
+        <item>Provider-neutral code that must abstract over multiple LLM providers — use an abstraction layer instead.</item>
+        <item>Token counting pre-flight adds latency; skip for simple short prompts.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="model-tier-selection">
+      <p>Model capability and cost scale together. Using the wrong tier either wastes budget or produces degraded output.</p>
+      <rule testable="true">
+        <statement>Use Haiku for formatting, routing, classification, and simple extraction tasks. Use Sonnet for generation, code, and analysis. Use Opus for complex reasoning, architecture, and strategy tasks.</statement>
+        <rationale>Using Opus for a simple routing decision wastes ~10x the budget. Using Haiku for complex reasoning produces lower-quality output that may require re-work.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Pin exact model IDs in production configs (e.g., "claude-sonnet-4-20250514") rather than aliases ("claude-sonnet-4").</statement>
+        <rationale>Aliases can update to a newer model version without notice. A silent model upgrade can change output format or behavior, breaking downstream parsing.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Log the model actually used in every response, not just the model requested. Log this when implementing fallback logic.</statement>
+        <rationale>Fallback to a cheaper model is invisible to the orchestrator unless explicitly logged. Downstream agents may produce worse outputs without knowing the model was downgraded.</rationale>
+      </rule>
+      <example type="good" title="Model tier selection with explicit logging">
+        <code lang="python"><![CDATA[
+import anthropic
+
+MODELS = {
+    "router": "claude-3-5-haiku-20241022",
+    "generator": "claude-sonnet-4-20250514",
+    "reasoner": "claude-opus-4-5-20251101",
+}
+
+client = anthropic.Anthropic()
+
+def call(role: str, messages: list, max_tokens: int = 2048) -> str:
+    model = MODELS[role]
+    r = client.messages.create(
+        model=model,
+        max_tokens=max_tokens,
+        messages=messages
+    )
+    if r.stop_reason == "max_tokens":
+        raise ValueError(f"Response truncated for role={role}. Retry with higher max_tokens.")
+    return r.content[0].text
+        ]]></code>
+        <note>max_tokens is explicit and stop_reason is checked before returning the response.</note>
+      </example>
+    </section>
+
+    <section name="token-configuration">
+      <p>Explicit token management prevents silent truncation of structured output.</p>
+      <rule testable="true">
+        <statement>Always set max_tokens explicitly on every Messages API call.</statement>
+        <rationale>The default max_tokens is low and silently truncates structured output mid-JSON, producing invalid payloads that are hard to debug because the API returns HTTP 200.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>When stop_reason == "max_tokens" on a structured output call, the JSON is truncated and invalid. Retry with higher max_tokens; do not parse the response.</statement>
+        <rationale>A truncated JSON response from a structured output call will raise a parse error downstream. The correct action is to retry with more headroom, not to handle the parse error.</rationale>
+      </rule>
+    </section>
+
+    <section name="prompt-caching-structure">
+      <p>Prompt caching reduces cost by 90% on cache hits but requires careful prefix management.</p>
+      <rule testable="true">
+        <statement>Place the most stable content at the top of the system prompt with cache_control: ephemeral. Put dynamic instructions last.</statement>
+        <rationale>Cache uses prefix matching. Dynamic content at the top busts the cache on every call. Stable content at the top maximizes the proportion of input tokens that are cached.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Never inject timestamps, request IDs, or user-specific values before the cached block.</statement>
+        <rationale>Even a single character difference in the prefix causes a cache miss. You pay the write cost (25% above regular) with no read benefit.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Measure cache_read_input_tokens / input_tokens ratio per pipeline run. Target above 0.70.</statement>
+        <rationale>Below 70% cache hit rate, write overhead starts eroding the 90% read savings. Low hit rate indicates the cached prefix is being modified per call.</rationale>
+      </rule>
+      <example type="good" title="Cached system prompt structure">
+        <code lang="python"><![CDATA[
+import anthropic
+
+client = anthropic.Anthropic()
+
+# Cached system prompt structure
+STATIC_DOCS = "... large stable documentation (10k+ tokens) ..."
+
+system = [
+    {
+        "type": "text",
+        "text": STATIC_DOCS,
+        "cache_control": {"type": "ephemeral"}  # cached prefix
+    },
+    {
+        "type": "text",
+        "text": dynamic_instructions  # not cached; appended per-run
+    }
+]
+
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=4096,
+    system=system,
+    messages=[{"role": "user", "content": user_task}]
+)
+
+# Monitor cache effectiveness
+u = response.usage
+hit_rate = u.cache_read_input_tokens / max(u.input_tokens, 1)
+        ]]></code>
+        <note>Static docs are marked cached; dynamic instructions appended without cache_control.</note>
+      </example>
+    </section>
+
+    <section name="batch-api">
+      <p>The Batch API provides 50% cost savings for workloads that tolerate latency.</p>
+      <rule testable="true">
+        <statement>Use Batch API for workloads that tolerate up to 24-hour latency to receive 50% cost reduction.</statement>
+        <rationale>Batch API cuts cost in half with no other code changes. The only requirement is that the workload is not real-time: offline enrichment, nightly analysis, evaluation suites.</rationale>
+      </rule>
+    </section>
+
+    <section name="token-counting">
+      <p>Pre-flight token counting prevents costly failures on large inputs.</p>
+      <rule testable="true">
+        <statement>Use client.messages.count_tokens() for pre-flight checks before paying for large-input calls.</statement>
+        <rationale>Token counting is cheap (no generation cost) and prevents paying full generation cost for inputs that exceed the context limit, which fail with an API error.</rationale>
+      </rule>
+    </section>
+
+    <section name="retry-and-rate-limits">
+      <p>Intelligent retry logic maximizes throughput without overwhelming the API.</p>
+      <rule testable="true">
+        <statement>Parse the retry-after header from RateLimitError instead of guessing the backoff interval.</statement>
+        <rationale>The Anthropic API includes a retry-after header with the exact wait time. Guessing with exponential backoff may wait too long or too short, degrading throughput unnecessarily.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Implement exponential backoff with jitter for 5xx server errors; retry up to 3 times before raising.</statement>
+        <rationale>5xx errors are transient. A single retry captures most transient failures. More than 3 retries risks cascading delays in multi-step pipelines.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>In multi-worker orchestrators, use a shared rate-limit token bucket rather than per-process backoff.</statement>
+        <rationale>Per-process backoff does not account for other workers consuming quota simultaneously. A shared bucket prevents all workers from hammering the API at the same time after a backoff period.</rationale>
+      </rule>
+    </section>
+
+    <section name="model-fallback">
+      <p>Silent fallback creates difficult-to-debug quality variations.</p>
+      <rule testable="true">
+        <statement>When falling back from Sonnet to Haiku on rate limiting, log the actual model used in the response.</statement>
+        <rationale>The orchestrator needs to know which model produced a given output. Silent fallback produces unexpected quality variations that are impossible to audit without this log.</rationale>
+      </rule>
+    </section>
+
+    <section name="async-processing">
+      <p>Asynchronous concurrency is the correct pattern for parallel API calls.</p>
+      <rule testable="true">
+        <statement>Use AsyncAnthropic with asyncio.gather for concurrent batch calls. Do not spawn threads; the SDK is async-native.</statement>
+        <rationale>The Anthropic Python SDK is built on httpx with native async support. Using threads adds overhead and can introduce race conditions. asyncio.gather is the correct concurrency primitive.</rationale>
+      </rule>
+      <example type="good" title="Monitored client with async support">
+        <code lang="python"><![CDATA[
+import anthropic
+import logging
+import time
+
+log = logging.getLogger(__name__)
+client = anthropic.Anthropic()
+
+def call(model: str, system: list, messages: list, max_tokens: int = 2048):
+    t0 = time.monotonic()
+    r = client.messages.create(
+        model=model, max_tokens=max_tokens,
+        system=system, messages=messages
+    )
+    elapsed = time.monotonic() - t0
+    total_tok = r.usage.input_tokens + r.usage.output_tokens
+    log.info("model=%s tokens=%d elapsed=%.2fs", model, total_tok, elapsed)
+    return r
+        ]]></code>
+        <note>Actual model ID is logged (not the requested alias), enabling post-hoc audit of fallback behavior.</note>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>The orchestrator constructs a reusable system prompt containing static context (docs, instructions) and marks it cache_control: ephemeral. Each subagent call reuses this cached prefix, appending only the per-turn user message. Costs for repeated large-context calls drop ~90% on cache hits. A thin monitoring wrapper tracks token usage and cost per subagent role; the orchestrator uses this to select the cheapest model capable of the task (Haiku for formatting/routing, Sonnet for generation, Opus for complex reasoning).</p>
+      <note>Recommended subagents: claude-router (selects model tier based on task complexity signal), cost-monitor (aggregates token usage per pipeline run; alerts when cost per run exceeds threshold), retry-wrapper (implements exponential backoff for RateLimitError and 5xx; falls back to Haiku on sustained Sonnet rate limiting).</note>
+    </section>
+
+    <section name="tool-definition-best-practice">
+      <p>Tool descriptions must answer "when should I call this?" rather than "what does it do?"</p>
+      <example type="good" title="When-to-call tool description">
+        <code lang="python"><![CDATA[
+# Description must answer "when should I call this?" — not "what does it do?"
+tool = {
+    "name": "search_docs",
+    "description": "Search internal knowledge base. Call when user asks about product features, APIs, or configuration. Do NOT call for general knowledge questions.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "2-5 keyword search query"},
+            "category": {"type": "string", "enum": ["api", "config", "features"]}
+        },
+        "required": ["query"]
+    }
+}
+        ]]></code>
+        <note>The description answers the LLM's question "should I call this tool?" with actionable guidance.</note>
+      </example>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common failure modes when integrating Claude into production agent systems.</p>
+      <antipattern>
+        <description>Cache hit requires identical prefix — any runtime injection (timestamps, request IDs) placed before the cached block breaks the cache silently.</description>
+        <reason>The cache mechanism uses byte-for-byte prefix matching. Any character difference, even whitespace, causes a cache miss. Dynamic content must always come after the cached block.</reason>
+      </antipattern>
+      <antipattern>
+        <description>RateLimitError from Anthropic includes a retry-after header, but guessing the backoff interval instead of parsing it.</description>
+        <reason>The API provides the exact wait time. Guessing may be too conservative (wasting throughput) or too aggressive (getting rate-limited again).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Fallback to Haiku on rate limiting is invisible to the orchestrator; downstream agents may produce worse outputs without knowing why.</description>
+        <reason>The orchestrator cannot adjust for quality degradation if it doesn't know which model actually ran. Always log the model used.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Tool schemas with additionalProperties: false reject unexpected keys; LLMs sometimes add extra fields — strip unknown keys before passing tool results back.</description>
+        <reason>The API validates against the schema. Invalid keys cause tool use to fail. Strip them before returning the result to the model.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Extended thinking (thinking param) blocks count toward output tokens but are non-cacheable; large think budgets can 5-10x the cost of a single call.</description>
+        <reason>Thinking tokens bypass the cache and are expensive. Budget them carefully for truly complex reasoning tasks only.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Human-in-loop checkpoint: when stop_reason == "max_tokens" on a structured output call, the JSON is truncated and invalid — do not parse it; retry with higher max_tokens.</description>
+        <reason>Truncated JSON will fail parsing. The correct action is to retry with more headroom, not to handle the parse error.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/cached-system-prompt.py" purpose="System prompt with static cached prefix and dynamic tail."/>
+      <template path="templates/monitored-client.py" purpose="Minimal Claude client with token usage and latency logging."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.anthropic.com/en/api"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/batch"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/tool-use"/>
+      <link href="https://www.anthropic.com/pricing"/>
+    </see-also>
+  </content>
+</methodology>
