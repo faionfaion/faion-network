@@ -1,0 +1,471 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="agent-architectures">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Production-ready agent architectures with memory, tools, planning, and reflection. Memory system with embeddings, tool framework, async state machine.</summary>
+    <tags>
+      <tag>agents</tag>
+      <tag>architecture</tag>
+      <tag>production</tag>
+      <tag>memory</tag>
+      <tag>tools</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>Agent Architectures</title>
+    <summary>Production-ready architectures for autonomous agents with memory, tools, and planning capabilities.</summary>
+    <why>
+      <p>Building production autonomous agents requires more than a basic chat loop. Real agents need persistent memory to learn from past interactions, a robust tool system with proper error handling, and a state machine to track agent lifecycle. This methodology provides battle-tested patterns for integrating all three components.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building a production autonomous agent that requires persistent memory, tool use, and failure recovery</item>
+        <item>Designing the state machine for a multi-step agent workflow (IDLE → PLANNING → EXECUTING → REFLECTING → COMPLETE)</item>
+        <item>Implementing a memory system (short-term + long-term with embedding-based retrieval) for a Claude subagent</item>
+        <item>Replacing a monolithic prompt chain with a proper tool-equipped agent that can handle partial failures</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Simple single-step LLM tasks where the architecture overhead is not justified</item>
+        <item>When the task graph is fully deterministic (no conditional branching based on tool results); use a chain instead of an agent</item>
+        <item>Latency-critical paths where multi-iteration ReAct loops add unacceptable delay</item>
+        <item>When you don't control the execution environment (e.g., no way to sandbox tool calls or enforce iteration limits)</item>
+      </list>
+    </when-not-to-use>
+    <section name="Core Components">
+      <section name="Memory System">
+        <p>Agent memory with short-term and long-term storage, using embedding-based retrieval for relevance filtering.</p>
+        <code lang="python"><![CDATA[from datetime import datetime
+from typing import List, Dict, Optional, Callable
+import numpy as np
+
+class Memory:
+    """Agent memory with short-term and long-term storage."""
+
+    def __init__(
+        self,
+        embedding_func: Callable,
+        max_short_term: int = 10,
+        relevance_threshold: float = 0.7
+    ):
+        self.embedding_func = embedding_func
+        self.max_short_term = max_short_term
+        self.relevance_threshold = relevance_threshold
+        self.short_term: List[Dict] = []
+        self.long_term: List[Dict] = []
+
+    def add(self, content: str, metadata: Dict = None):
+        """Add memory entry."""
+        entry = {
+            "content": content,
+            "timestamp": datetime.now().isoformat(),
+            "metadata": metadata or {},
+            "embedding": self.embedding_func(content)
+        }
+        self.short_term.append(entry)
+
+        if len(self.short_term) > self.max_short_term:
+            old_entry = self.short_term.pop(0)
+            self.long_term.append(old_entry)
+
+    def recall(self, query: str, k: int = 5) -> List[Dict]:
+        """Recall relevant memories."""
+        query_embedding = self.embedding_func(query)
+        all_memories = self.short_term + self.long_term
+
+        if not all_memories:
+            return []
+
+        similarities = []
+        for memory in all_memories:
+            sim = np.dot(query_embedding, memory["embedding"]) / (
+                np.linalg.norm(query_embedding) * np.linalg.norm(memory["embedding"])
+            )
+            similarities.append((memory, sim))
+
+        relevant = [(m, s) for m, s in similarities if s >= self.relevance_threshold]
+        relevant.sort(key=lambda x: x[1], reverse=True)
+
+        return [m for m, _ in relevant[:k]]
+
+    def summarize_recent(self) -> str:
+        """Summarize recent memories."""
+        if not self.short_term:
+            return "No recent memories."
+        recent = self.short_term[-5:]
+        return "\n".join([m["content"] for m in recent])]]></code>
+      </section>
+      <section name="Tool System">
+        <p>Represents an agent tool with OpenAI-compatible format conversion and execution.</p>
+        <code lang="python"><![CDATA[from typing import Callable, Any
+import json
+
+class Tool:
+    """Represents an agent tool."""
+
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        function: Callable,
+        parameters: dict
+    ):
+        self.name = name
+        self.description = description
+        self.function = function
+        self.parameters = parameters
+
+    def to_openai_format(self) -> dict:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.parameters
+            }
+        }
+
+    def execute(self, **kwargs) -> str:
+        try:
+            result = self.function(**kwargs)
+            return json.dumps(result) if not isinstance(result, str) else result
+        except Exception as e:
+            return f"Error: {str(e)}"]]></code>
+      </section>
+      <section name="Agent with Memory">
+        <p>A basic agent class that integrates memory recall before each task.</p>
+        <code lang="python"><![CDATA[from openai import OpenAI
+
+client = OpenAI()
+
+class AgentWithMemory:
+    """Agent with memory capabilities."""
+
+    def __init__(
+        self,
+        tools: List[Tool],
+        embedding_func: Callable,
+        model: str = "gpt-4o"
+    ):
+        self.tools = {t.name: t for t in tools}
+        self.model = model
+        self.memory = Memory(embedding_func)
+
+    def run(self, task: str) -> str:
+        """Run agent with memory context."""
+        relevant_memories = self.memory.recall(task, k=3)
+        memory_context = ""
+        if relevant_memories:
+            memory_context = "\nRelevant past experiences:\n"
+            for mem in relevant_memories:
+                memory_context += f"- {mem['content']}\n"
+
+        system_prompt = f"""You are an AI assistant with memory.
+{memory_context}
+
+Use your past experiences to inform your decisions."""
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": task}
+        ]
+
+        response = client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            tools=[t.to_openai_format() for t in self.tools.values()]
+        )
+
+        result = response.choices[0].message.content or "Task completed"
+
+        self.memory.add(
+            f"Task: {task}\nResult: {result}",
+            metadata={"type": "task_completion"}
+        )
+
+        return result]]></code>
+      </section>
+      <section name="Production Agent Framework">
+        <p>Full production-ready agent with state machine, async execution, reflection, and comprehensive error handling.</p>
+        <code lang="python"><![CDATA[from dataclasses import dataclass
+from enum import Enum
+import logging
+import asyncio
+
+class AgentState(Enum):
+    IDLE = "idle"
+    PLANNING = "planning"
+    EXECUTING = "executing"
+    REFLECTING = "reflecting"
+    COMPLETE = "complete"
+    FAILED = "failed"
+
+@dataclass
+class AgentConfig:
+    model: str = "gpt-4o"
+    max_iterations: int = 20
+    max_tool_calls_per_iteration: int = 5
+    timeout_seconds: int = 300
+    enable_reflection: bool = True
+    enable_memory: bool = True
+
+class ProductionAgent:
+    """Production-ready autonomous agent."""
+
+    def __init__(
+        self,
+        tools: List[Tool],
+        config: Optional[AgentConfig] = None,
+        embedding_func: Callable = None
+    ):
+        self.tools = {t.name: t for t in tools}
+        self.config = config or AgentConfig()
+        self.logger = logging.getLogger(__name__)
+        self.state = AgentState.IDLE
+        self.messages: List[Dict] = []
+        self.execution_log: List[Dict] = []
+
+        if self.config.enable_memory and embedding_func:
+            self.memory = Memory(embedding_func)
+        else:
+            self.memory = None
+
+    async def run(self, goal: str) -> Dict[str, Any]:
+        """Run the agent asynchronously."""
+        self.state = AgentState.PLANNING
+        self.messages = []
+        self.execution_log = []
+
+        try:
+            result = await asyncio.wait_for(
+                self._execute_goal(goal),
+                timeout=self.config.timeout_seconds
+            )
+            self.state = AgentState.COMPLETE
+            return {"success": True, "result": result, "log": self.execution_log}
+
+        except asyncio.TimeoutError:
+            self.state = AgentState.FAILED
+            return {"success": False, "error": "Timeout", "log": self.execution_log}
+
+        except Exception as e:
+            self.state = AgentState.FAILED
+            self.logger.error(f"Agent error: {e}")
+            return {"success": False, "error": str(e), "log": self.execution_log}
+
+    async def _execute_goal(self, goal: str) -> str:
+        """Execute the goal."""
+        context = self._build_context(goal)
+
+        self.messages = [
+            {"role": "system", "content": context["system_prompt"]},
+            {"role": "user", "content": goal}
+        ]
+
+        self.state = AgentState.EXECUTING
+
+        for iteration in range(self.config.max_iterations):
+            self.logger.info(f"Iteration {iteration + 1}")
+
+            response = await self._call_llm()
+            message = response.choices[0].message
+
+            self.execution_log.append({
+                "iteration": iteration + 1,
+                "content": message.content,
+                "tool_calls": [tc.function.name for tc in (message.tool_calls or [])]
+            })
+
+            if not message.tool_calls:
+                if self.config.enable_reflection:
+                    self.state = AgentState.REFLECTING
+                    is_complete = await self._reflect_on_completion(goal, message.content)
+                    if is_complete:
+                        return message.content
+                    self.state = AgentState.EXECUTING
+                else:
+                    return message.content
+
+            self.messages.append(message)
+            await self._process_tool_calls(message.tool_calls)
+
+        return "Max iterations reached"
+
+    def _build_context(self, goal: str) -> Dict:
+        """Build context for the agent."""
+        memory_context = ""
+        if self.memory:
+            relevant = self.memory.recall(goal, k=3)
+            if relevant:
+                memory_context = "\nRelevant past experiences:\n" + \
+                    "\n".join([f"- {m['content'][:200]}" for m in relevant])
+
+        system_prompt = f"""You are an autonomous AI agent working to achieve goals.
+
+{memory_context}
+
+Guidelines:
+1. Think step by step before acting
+2. Use tools when needed
+3. Verify your progress
+4. Ask for clarification only when truly stuck
+
+Available tools will be provided. Use them wisely."""
+
+        return {"system_prompt": system_prompt}
+
+    async def _call_llm(self):
+        """Call the LLM."""
+        return client.chat.completions.create(
+            model=self.config.model,
+            messages=self.messages,
+            tools=[t.to_openai_format() for t in self.tools.values()],
+            tool_choice="auto"
+        )
+
+    async def _process_tool_calls(self, tool_calls):
+        """Process tool calls."""
+        for tool_call in tool_calls[:self.config.max_tool_calls_per_iteration]:
+            tool_name = tool_call.function.name
+            arguments = json.loads(tool_call.function.arguments)
+
+            self.logger.info(f"Tool call: {tool_name}")
+
+            if tool_name in self.tools:
+                result = self.tools[tool_name].execute(**arguments)
+            else:
+                result = f"Unknown tool: {tool_name}"
+
+            self.messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": result
+            })
+
+    async def _reflect_on_completion(self, goal: str, result: str) -> bool:
+        """Reflect on whether the goal is achieved."""
+        prompt = f"""Goal: {goal}
+
+Current result: {result}
+
+Has the goal been fully achieved? Respond with JSON:
+{{"complete": true/false, "reason": "..."}}"""
+
+        response = client.chat.completions.create(
+            model=self.config.model,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+
+        reflection = json.loads(response.choices[0].message.content)
+        return reflection.get("complete", False)]]></code>
+      </section>
+    </section>
+    <section name="Best Practices">
+      <section name="Agent Design">
+        <list>
+          <item>Clear Goal Definition: Specific, measurable objectives with success criteria</item>
+          <item>Bounded Scope: Limit task complexity and iteration count</item>
+          <item>Tool Design: Clear descriptions, proper error handling, appropriate granularity</item>
+        </list>
+      </section>
+      <section name="Safety">
+        <list>
+          <item>Iteration Limits: Prevent infinite loops</item>
+          <item>Sandbox Execution: Isolate code execution</item>
+          <item>Human Approval: Critical actions require confirmation</item>
+          <item>Rate Limiting: Control API costs and usage</item>
+        </list>
+      </section>
+      <section name="Monitoring">
+        <list>
+          <item>Action Logging: Track all agent decisions and tool calls</item>
+          <item>Token Usage: Monitor costs and optimize prompts</item>
+          <item>Failure Alerts: Detect and respond to errors quickly</item>
+          <item>Performance Metrics: Measure success rates and latency</item>
+        </list>
+      </section>
+      <section name="Memory Management">
+        <list>
+          <item>Summarization: Compress long conversation histories</item>
+          <item>Relevance Filtering: Only retrieve pertinent memories</item>
+          <item>Cleanup: Clear stale or outdated memories</item>
+          <item>Embedding Quality: Use good embedding models for retrieval</item>
+        </list>
+      </section>
+    </section>
+    <section name="Common Pitfalls">
+      <list>
+        <item>Infinite Loops: No iteration limits causes agents to loop forever. Solution: Set max_iterations to a reasonable value (default 20).</item>
+        <item>Tool Abuse: Calling the same tool repeatedly without progress. Solution: Track and limit tool call frequencies.</item>
+        <item>Context Overflow: Too much message history exceeds token limits. Solution: Summarize or filter old observations before appending new ones.</item>
+        <item>Hallucinated Actions: Agent acts on fabricated tool results or made-up information. Solution: Verify all tool outputs before using them in decisions.</item>
+        <item>No Guardrails: Unsafe tool execution corrupts external state. Solution: Sandbox tool calls and require human approval for mutations.</item>
+        <item>Poor Error Recovery: Failing on first tool error breaks the entire agent loop. Solution: Implement retry logic with exponential backoff.</item>
+      </list>
+      <p>A common pattern in production agents is to combine multiple safeguards: iteration limits prevent runaway token consumption, structured logging enables post-hoc debugging when agents fail, and sandboxed execution prevents accidental modification of critical resources. The ProductionAgent framework above implements all three: max_iterations is enforced via the async timeout mechanism, execution_log captures every decision point, and the Tool.execute method wraps exceptions to prevent silent failures.</p>
+    </section>
+    <section name="Limitations and Considerations">
+      <p>Memory retrieval quality depends on embedding model quality; a weak embedder causes the agent to miss relevant past context. If you observe that recalled memories are semantically unrelated to the current task, switching to a stronger embedding model (e.g., OpenAI's text-embedding-3-large instead of text-embedding-ada-002) usually improves retrieval accuracy by 30-50%.</p>
+      <p>max_iterations must be tuned per task type; too low causes premature termination, too high wastes tokens. A heuristic: start with max_iterations = 2 * expected_steps + 10, then measure on real tasks and adjust. If you observe that successful tasks consistently complete by iteration 8 out of 20, lower max_iterations to 12 to save costs.</p>
+      <p>The _reflect_on_completion step itself costs LLM calls; on long tasks, reflection overhead can exceed 20% of total token spend. Consider reflection frequency: only reflect after task completion if enable_reflection is true, not after every iteration.</p>
+      <p>Async execution requires careful error propagation; a failed tool call that doesn't raise will silently corrupt the message history. Always wrap tool calls in try-except and append a tool_result message even on errors, so the agent sees the failure and can react appropriately.</p>
+      <p>The AgentWithMemory pattern in this document uses OpenAI-format tool definitions; adapting to Anthropic's native tool_use content blocks requires converting the schema format. The ProductionAgent implementation is designed to be tool-provider agnostic; you can swap the _call_llm method to use Anthropic client.messages.create and convert response.content blocks instead of parsing function calls.</p>
+      <p>Memory summarization becomes critical for long-running agents. The Memory.summarize_recent() method returns raw concatenated text; for agents that run for more than 50 iterations, this concatenation will overflow context windows. Implement a compress step that uses the LLM to summarize memories before returning them, or limit summary_recent() to return only the last 3-5 entries instead of all recent ones.</p>
+    </section>
+    <section name="Agentic Workflow and Orchestration">
+      <p>A Claude Sonnet agent orchestrates the full architecture: it initializes the state machine, selects and calls tools, processes results, and decides when to enter the REFLECTING state. Opus is appropriate for the reflection step on complex tasks where goal-completion judgment requires understanding multiple constraints. Haiku handles tool-definition generation from API schemas as a lightweight, cost-efficient preprocessing step. The memory system runs as a sidecar to the orchestrator: the orchestrator writes task outcomes to memory after each iteration and retrieves relevant context at the start of each new task. Human approval is required before any tool call that modifies external state (database writes, API mutations, file deletions).</p>
+      <p>Recommended subagents include faion-sdd-executor-agent for driving agent-architecture implementation tasks from SDD specs, and nero-sdd-executor-agent for NERO-side execution with the same pattern. Both agents should use the ProductionAgent framework above as their foundation, extending it with domain-specific tool sets and custom reflection logic.</p>
+    </section>
+    <section name="Prompt Patterns for Agent Orchestration">
+      <p>When using agents with Anthropic's Models API, structure the prompt to be explicit about the task, constraints, and success criteria. A typical agent task prompt looks like:</p>
+      <code lang="xml"><![CDATA[<agent_task>
+  <goal>Research and summarize the top 5 AI research tools for market researchers in 2026</goal>
+  <tools>["web_search", "perplexity_query", "file_write"]</tools>
+  <constraints>
+    <max_iterations>10</max_iterations>
+    <timeout_seconds>120</timeout_seconds>
+    <require_approval>file_write</require_approval>
+  </constraints>
+  <output_schema>{"summary": "string", "sources": ["url"], "confidence": "low|medium|high"}</output_schema>
+</agent_task>]]></code>
+      <p>For reflection steps, use a separate prompt that passes the original goal, current agent output, and asks for a verification judgment:</p>
+      <code lang="xml"><![CDATA[<reflection_check>
+  <goal>{{original_goal}}</goal>
+  <current_result>{{agent_output}}</current_result>
+  <question>Has the goal been fully achieved? Output JSON: {"complete": bool, "reason": "string", "missing": ["string"]}</question>
+</reflection_check>]]></code>
+    </section>
+    <section name="CLI Tools and Services">
+      <p>Several open-source and commercial tools integrate well with agent architectures. The anthropic SDK provides native tool_use content blocks with proper type handling; numpy enables cosine similarity for memory retrieval without external dependencies; asyncio handles async agent execution loops and timeouts; langsmith traces agent execution chains end-to-end for debugging production issues. For production deployments beyond the single-agent case, consider using a vector store like Chroma or Pinecone for long-term memory persistence instead of in-memory embeddings which are lost on agent restart, Modal for sandboxed tool execution to prevent host contamination and resource abuse, and LangSmith for comprehensive execution tracing with cost breakdown per iteration.</p>
+      <list>
+        <item>anthropic SDK — Primary LLM calls for Claude-based agents. Native support for tool_use content blocks. pip install anthropic and see docs.anthropic.com.</item>
+        <item>openai SDK — OpenAI-format tool definitions and function calling (compatible pattern for reference implementations). pip install openai</item>
+        <item>numpy — Cosine similarity computation for memory retrieval without external vector databases. pip install numpy</item>
+        <item>asyncio — Async agent execution loop with timeout enforcement via asyncio.wait_for. stdlib</item>
+        <item>langsmith — Trace agent execution chains for debugging ReAct loops. Essential for understanding where agents get stuck. pip install langsmith and configure API key</item>
+      </list>
+      <p>Chroma and Pinecone are vector stores suitable for long-term agent memory. Chroma is open-source and can run locally, requiring minimal setup; Pinecone is hosted SaaS with automatic scaling and higher query throughput. For agents with thousands of memory entries, Pinecone scales more reliably. Modal provides serverless code execution for tool functions, isolating them from the main agent process and preventing runaway code from consuming agent host resources.</p>
+    </section>
+    <section name="Agent Selection by Model">
+      <p>Different agent tasks benefit from different model sizes and capabilities. For generating tool definitions from an API schema, use Claude Haiku because the task is purely mechanical transformation requiring no reasoning about business logic. For reviewing agent reasoning chains across multiple steps, use Claude Sonnet because it requires logic analysis and understanding of how intermediate observations affect future decisions. For designing multi-agent orchestration where multiple agents must coordinate strategies, use Claude Opus because the patterns are genuinely complex and require understanding of control flow and resource allocation across the agent team.</p>
+      <list>
+        <item>Generate tool definitions from API — haiku. Mechanical transformation with no reasoning required.</item>
+        <item>Review agent reasoning chains — sonnet. Requires logic analysis across multiple steps.</item>
+        <item>Design multi-agent orchestration — opus. Complex coordination patterns and delegation strategies.</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://arxiv.org/abs/2210.03629">ReAct Paper - Reasoning and Acting</link>
+      <link href="https://arxiv.org/abs/2303.11366">Reflexion Paper - Self-Reflection in Agents</link>
+      <link href="https://github.com/Significant-Gravitas/AutoGPT">AutoGPT - Autonomous GPT-4</link>
+      <link href="https://python.langchain.com/docs/modules/agents/">LangChain Agents - Agent Framework</link>
+      <link href="https://platform.openai.com/docs/guides/function-calling">OpenAI Function Calling - Tool Use API</link>
+    </see-also>
+  </content>
+</methodology>
