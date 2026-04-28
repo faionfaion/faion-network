@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 solo/sdd/sdd-planning methodologies → methodology.xml (impl-plan-task-format, spec-example-ecommerce-cart, spec-examples-basic)
 - migrate: 3/3 solo/product/product-planning methodologies → methodology.xml (continuous-discovery, mvp-scoping, roadmap-design)
 - migrate: 3/3 solo/product/product-manager methodologies → methodology.xml (outcome-based-roadmaps-advanced, product-discovery, product-launch, feature-045 batch 1/3)
 - migrate: 3/3 solo/sdd/sdd-planning methodologies → methodology.xml (spec-requirements, spec-structure, task-creation-principles)
