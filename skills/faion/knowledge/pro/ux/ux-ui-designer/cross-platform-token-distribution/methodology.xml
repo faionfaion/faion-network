@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cross-platform-token-distribution">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>Establish a single source of truth for design tokens that ships to Web (CSS/SCSS), iOS (Swift/UIKit/SwiftUI), Android (XML/Compose), and React Native in synchronized, platform-specific formats.</summary>
+    <tags>
+      <tag>design-tokens</tag>
+      <tag>design-systems</tag>
+      <tag>cross-platform</tag>
+      <tag>token-distribution</tag>
+      <tag>style-dictionary</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>Cross-Platform Token Distribution</title>
+    <summary>Design tokens define a system's colors, spacing, typography, and other design properties. Distributing tokens across platforms requires a transformation pipeline that converts a single source (usually Figma or JSON) into platform-specific outputs: CSS variables for web, Swift structs for iOS, XML resources for Android, and JavaScript objects for React Native. This methodology establishes tooling and process to keep tokens synchronized across all platforms.</summary>
+    <why>
+      <p>Manual token maintenance across platforms leads to drift. Designers update colors in Figma, but the iOS developer misses the update, shipping a mismatched shade. The Android team uses different spacing values because they did not see the new standard. Weeks later, someone discovers that brand colors differ between platforms, damaging user experience and requiring emergency patches.</p>
+      <p>A formalized token distribution system eliminates this drift. A single source of truth (usually a JSON file conforming to W3C Design Tokens standard) is transformed into all platform outputs via scripted build. CI validates that outputs match the source and that platform-specific requirements (e.g., hex8 for Android opacity, dp vs sp for density) are correctly handled.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Single source of truth for design tokens that ship to Web (CSS/SCSS), iOS (Swift/UIKit/SwiftUI), Android (XML/Compose), React Native.</item>
+        <item>Replacing hand-maintained brand colors/spacing/type scales scattered across repos.</item>
+        <item>Wiring Figma tokens into the repo via Tokens Studio, Specify, or Supernova plugins for designer-driven updates.</item>
+        <item>Adding theming (light/dark/high-contrast) and brand variants without per-platform forks or duplication.</item>
+        <item>Teams with a versioning and CI culture that can enforce token consistency across release cycles.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>One platform only and one product — Style Dictionary overhead is not worth the complexity for a single target.</item>
+        <item>Tokens that are not values (animation easing curves, motion specs, temporal properties) — use platform-native specs instead.</item>
+        <item>Highly dynamic runtime theming driven by API responses — use a runtime tokens service instead of static files.</item>
+        <item>A team without a versioning and CI culture — token drift is worse than no system when the system is not enforced.</item>
+      </list>
+    </when-not-to-use>
+    <section name="The Problem: Token Drift">
+      <p>Without a formalized system, token maintenance across platforms fails in predictable ways.</p>
+      <rule>
+        <statement>Naming collisions occur when multiple Figma libraries merge into one Style Dictionary tree, causing shadowing and ambiguity.</statement>
+        <rationale>When two libraries define a color named "primary-blue" with different hex values, the transform is ambiguous. Clear naming conventions (e.g., `color_brand_primary_blue` with category-type-item structure) prevent collisions.</rationale>
+      </rule>
+      <rule>
+        <statement>Platform transforms diverge: rgba vs hex8 for opacity on web, dp vs sp on Android density, points vs pixels on iOS. Without explicit transforms, developers hand-maintain per-platform variants.</statement>
+        <rationale>Each platform has native units and constraints. iOS uses points (logical units that scale with screen density); Android uses dp (density-independent pixels); web uses CSS px. A transforms layer abstracts these away.</rationale>
+      </rule>
+      <rule>
+        <statement>Semantic tokens depending on alias chains break silently when a primitive is renamed. E.g., if `color_neutral_gray_50` is renamed to `color_neutral_50`, all semantic tokens aliasing it become broken.</statement>
+        <rationale>Alias chains are fragile. CI must validate that all aliases resolve and that renames do not orphan semantic tokens.</rationale>
+      </rule>
+      <rule>
+        <statement>Dark-mode tokens on iOS need UIColor(dynamicProvider:) wrappers — not a flat hex map. Code that treats dark-mode tokens as simple hex values will fail on iOS.</statement>
+        <rationale>iOS dynamic colors are a runtime feature; they respond to system settings. Android Compose uses Material theming; web uses CSS variables. The transform must emit platform-correct code.</rationale>
+      </rule>
+      <rule>
+        <statement>Compose (Kotlin) vs XML on Android produce different outputs for the same token. If generators are not co-versioned, drift accumulates quickly.</statement>
+        <rationale>Android teams may use either XML resources (older) or Compose theming (newer). A single transform must support both outputs consistently.</rationale>
+      </rule>
+    </section>
+    <section name="Pipeline Architecture">
+      <p>The standard pipeline transforms tokens through three stages: source, transform, platform outputs.</p>
+      <code lang="text"><![CDATA[Figma Tokens
+    ↓
+Token Studio export (JSON) or Tokens.json (W3C DTCG format)
+    ↓
+Style Dictionary transform and config
+    ↓
+Platform outputs:
+  → CSS variables
+  → SCSS maps
+  → iOS Swift (UIColor + typealias)
+  → Android XML resources
+  → Android Compose Kotlin
+  → React Native JavaScript]]></code>
+    </section>
+    <section name="Tools and Platforms">
+      <p>Several tools implement this pipeline. Choice depends on team size, designer involvement, and target platforms.</p>
+      <code lang="text"><![CDATA[CLI Tools:
+  style-dictionary — Token transform engine (industry standard)
+                     npm i -D style-dictionary; styledictionary.com
+  tokens-studio-cli — Sync Figma token sets to disk
+                      tokens.studio/docs/sync
+  specify CLI — Pull tokens from Specify projects
+               specifyapp.com/docs/cli
+  supernova-cli — Export from Supernova design system
+                  supernova.io/docs
+  theo (Salesforce) — Legacy token transformer
+                      github.com/salesforce-ux/theo
+  terrazzo — W3C DTCG-first transformer (modern alternative)
+             terrazzo.dev]]></code>
+      <code lang="text"><![CDATA[SaaS Platforms:
+  Tokens Studio (Figma) — Designer-driven, JSON export, GitHub sync
+                         Best for workflows where designers push token changes
+  Specify — Distributes tokens, icons, assets across platforms
+            REST API + CLI; strong for enterprise teams
+  Supernova — Full design system platform with token documentation
+              Exporters are scriptable JavaScript; good for complex transforms
+  Knapsack — Config-driven bundler combining tokens with component docs
+  Style Dictionary — Open-source standard; fully scriptable, no SaaS
+  Terrazzo — Modern OSS alternative; DTCG-first from the start]]></code>
+    </section>
+    <section name="W3C Design Tokens Community Group Standard">
+      <p>The W3C Design Tokens Format Module defines the standard structure for tokens. Adopting DTCG format ensures compatibility across tools and portability.</p>
+      <rule>
+        <statement>Pin to W3C Design Tokens Community Group (DTCG) format — use `$value`, `$type`, and `$description` keys. This is the standard format and ensures long-term tool compatibility.</statement>
+        <rationale>DTCG is the official web standard; tools that support it are future-proof. Ad-hoc token formats lock you into specific tools and make migration painful.</rationale>
+      </rule>
+      <rule>
+        <statement>Three-layer token architecture: primitives (hex codes, px values), semantic (intent-based), component-specific (for particular UI elements). Agents alias upward only.</statement>
+        <rationale>Layers separate concerns. Primitives are low-level; semantic tokens bind primitives to use cases; component tokens bind semantic tokens to specific components. This three-layer structure scales to hundreds of tokens without confusion.</rationale>
+      </rule>
+    </section>
+    <section name="Minimal Style Dictionary Config">
+      <p>A basic Style Dictionary configuration handles the core use case: transforming JSON to platform outputs.</p>
+      <code lang="javascript"><![CDATA[module.exports = {
+  source: ["tokens/**/*.json"],
+  platforms: {
+    css: {
+      transformGroup: "css",
+      buildPath: "build/css/",
+      files: [{ destination: "vars.css", format: "css/variables" }],
+    },
+    ios: {
+      transformGroup: "ios-swift",
+      buildPath: "build/ios/",
+      files: [{ destination: "Tokens.swift", format: "ios-swift/class.swift",
+                options: { className: "Tokens" } }],
+    },
+    android: {
+      transformGroup: "android",
+      buildPath: "build/android/",
+      files: [
+        { destination: "colors.xml", format: "android/colors" },
+        { destination: "dimens.xml", format: "android/dimens" },
+      ],
+    },
+  },
+};]]></code>
+      <p>Output examples show the result for each platform.</p>
+      <code lang="css"><![CDATA[/* CSS Output */
+:root {
+  --color-primary: #3B82F6;
+  --spacing-md: 16px;
+}]]></code>
+      <code lang="swift"><![CDATA[// iOS Swift Output
+struct Colors {
+  static let primary = UIColor(hex: "#3B82F6")
+  static let secondary = UIColor(hex: "#10B981")
+}]]></code>
+      <code lang="xml"><![CDATA[<!-- Android XML Output -->
+<color name="primary">#3B82F6</color>
+<color name="secondary">#10B981</color>
+<dimen name="spacing_md">16dp</dimen>]]></code>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Agent-driven token management requires careful process to prevent drift and hallucination.</p>
+      <rule>
+        <statement>Use a subagent to read the Tokens Studio JSON export, validate W3C Design Tokens Community Group schema, generate Style Dictionary config and platform transforms, then run the build and diff outputs against the previous release.</statement>
+        <rationale>Automation ensures consistency; validation prevents invalid tokens from entering the build.</rationale>
+      </rule>
+      <rule>
+        <statement>A second agent inspects the diff for breaking renames and writes a migration note. Humans review the generated CSS/Swift/Kotlin files for naming and tone before merge.</statement>
+        <rationale>Humans catch tone issues, naming inconsistencies, and platform-specific idioms that LLMs miss.</rationale>
+      </rule>
+      <rule>
+        <statement>Agents invent token names that do not exist in the Figma library — ground validation via DTCG schema validation. Reject any generated token without a corresponding Figma definition.</statement>
+        <rationale>LLMs hallucinate plausible-sounding token names. Schema validation prevents phantom tokens from entering the system.</rationale>
+      </rule>
+    </section>
+    <section name="Best Practices">
+      <rule>
+        <statement>Generate outputs in CI; never commit hand-edited build outputs. A pre-commit hook should diff build/output against git and block commits if they diverge.</statement>
+        <rationale>Hand-edited outputs create debt; future regenerations silently overwrite manual changes, causing loss of work.</rationale>
+      </rule>
+      <rule>
+        <statement>Version tokens with semver: rename is major, value tweak is minor, addition is patch. Tag releases.</statement>
+        <rationale>Semver allows consumers to declare compatibility. Apps can pin to major versions and accept minor/patch updates safely.</rationale>
+      </rule>
+      <rule>
+        <statement>Emit a `tokens.json` for downstream consumers (web, React Native, marketing sites) alongside per-platform files. This allows consuming apps to regenerate local tokens if needed.</statement>
+        <rationale>Distribution formats vary; consumers may prefer JSON, CSS, or platform-native formats depending on context.</rationale>
+      </rule>
+      <rule>
+        <statement>Maintain a CODEOWNERS rule on `tokens/` so designers gate changes to token definitions while engineers gate generators and transforms.</statement>
+        <rationale>Shared ownership ensures both design intent and technical correctness.</rationale>
+      </rule>
+      <rule>
+        <statement>LLMs round colors (#3B82F6 becomes #3b82f5 due to floating-point rounding). Enforce exact-match diff and linting.</statement>
+        <rationale>Color rounding can break visual consistency; exact-match validation prevents silent color drift.</rationale>
+      </rule>
+      <rule>
+        <statement>Path aliasing is case-sensitive (e.g., `{color.primary}` vs `{Color.Primary}`). Linux CI catches what macOS misses — always test on CI.</statement>
+        <rationale>macOS filesystem is case-insensitive by default; Linux is case-sensitive. Case errors are invisible in macOS local development but cause CI failures.</rationale>
+      </rule>
+      <rule>
+        <statement>iOS Swift output shadows existing UIKit names if the className is generic (e.g., `Tokens` collides with framework tokens). Pick namespaced names like `BrandTokens` or `AppDesignTokens`.</statement>
+        <rationale>Name collisions cause import ambiguity and runtime errors. Namespaced class names prevent shadowing.</rationale>
+      </rule>
+      <rule>
+        <statement>Agents over-emit semantic tokens; cap at one alias per primitive per surface to keep the system mappable. A single `color-text-default` is better than `color-text-default`, `color-text-primary`, and `color-text-base` all aliasing the same value.</statement>
+        <rationale>Redundant aliases increase maintenance burden and confusion. A clear one-to-one mapping is easier to reason about.</rationale>
+      </rule>
+      <rule>
+        <statement>Dark mode: agent must emit both light and dark values per token, not duplicate the file. Use DTCG `$mode` metadata or explicit tokens named `color-primary-light` and `color-primary-dark`.</statement>
+        <rationale>Theming requires parallel values; duplicating files violates DRY principle and makes sync difficult.</rationale>
+      </rule>
+    </section>
+    <section name="Known Limitations and Failure Points">
+      <rule>
+        <statement>Naming collisions when multiple Figma libraries merge into one Style Dictionary tree. Token "primary" in Library A and "primary" in Library B both exist; one shadows the other.</statement>
+        <rationale>Clear namespacing in Figma (e.g., `lib_a_primary`, `lib_b_primary`) prevents collisions before they reach the transform.</rationale>
+      </rule>
+      <rule>
+        <statement>Platform transforms diverge in subtle ways: rgba vs hex8 on web, dp vs sp on Android, points vs pixels on iOS. Without explicit transform rules, developers hand-code per-platform variants.</statement>
+        <rationale>Document platform differences in the Style Dictionary config comments. Explicitly list which transforms apply to which platforms.</rationale>
+      </rule>
+      <rule>
+        <statement>Semantic tokens depending on alias chains break silently when a primitive is renamed.</statement>
+        <rationale>CI validation must check all aliases; reject builds with broken references.</rationale>
+      </rule>
+    </section>
+    <see-also>
+      <link href="https://design-tokens.github.io/community-group/format/">W3C Design Tokens Format Module</link>
+      <link href="https://styledictionary.com/">Style Dictionary Documentation</link>
+      <link href="https://tokens.studio/docs">Tokens Studio for Figma Documentation</link>
+      <link href="https://specifyapp.com/docs">Specify Documentation</link>
+      <link href="https://medium.com/eightshapes-llc/naming-tokens-in-design-systems-9e86c7444676">Naming Tokens in Design Systems — Nathan Curtis</link>
+      <link href="https://lightningdesignsystem.com/design-tokens/">Salesforce Lightning Design System Token Architecture</link>
+      <link href="https://css-tricks.com/design-token-distribution/">Design Token Distribution — CSS Tricks</link>
+      <link href="https://www.designsystems.com/cross-platform-tokens/">Cross-Platform Design Tokens — Design Systems</link>
+    </see-also>
+  </content>
+</methodology>
