@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="instagram-ads">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>ppc-manager</domain>
+    <summary>Instagram ads via Meta API: Feed, Stories, Reels, Explore placements with per-placement creative specs, ad set targeting, shopping creatives, and placement breakdowns for budget allocation.</summary>
+    <tags>
+      <tag>instagram-ads</tag>
+      <tag>meta-marketing-api</tag>
+      <tag>placement-specs</tag>
+      <tag>creative-optimization</tag>
+      <tag>reels-ads</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Instagram Ads: Placement Specs, API Configuration, and Performance Reporting</title>
+
+    <summary>Instagram ads via Meta API: Feed, Stories, Reels, Explore placements with per-placement creative specs, ad set targeting, shopping creatives, and placement breakdowns for budget allocation.</summary>
+
+    <why>
+      <p>Instagram has five distinct placement surfaces, each with different aspect ratios, safe zones, and audience behaviors. A single ad set can serve all five, but only if creative dimensions match each placement's spec. Mismatched creative triggers automatic rejection or cropping; placement-level reporting (using `breakdowns=platform_position`) is the only way to allocate budget correctly across stream, story, explore, and reels.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Creating or auditing Instagram ad sets via the Meta Marketing API</item>
+        <item>Uploading creative assets and need spec validation before submission</item>
+        <item>Running Instagram-only vs. cross-platform (Facebook + Instagram) campaigns</item>
+        <item>Setting up Instagram Shopping or Collection ads with product catalogs</item>
+        <item>Reporting on placement-level performance with `publisher_platform` + `platform_position` breakdown</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Facebook-only campaigns — use `ads-meta-campaign-setup` for full campaign structure</item>
+        <item>Audience construction — use `meta-audience-targeting` for custom/lookalike audience setup</item>
+        <item>Cross-platform budget allocation decisions — use `ads-budget-optimization`</item>
+        <item>Creative strategy ideation (not API configuration) — this covers specs and API calls, not copywriting</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="placements-and-specs">
+      <title>Instagram Placements and Creative Specs</title>
+
+      <p>Placement positions, format specifications, and safe-zone rules for all Instagram ad surfaces.</p>
+
+      <rule>
+        <statement>Target only the placements that match your creative assets — do not enable a placement without providing a correctly sized creative for it.</statement>
+        <rationale>Meta auto-crops mismatched creative, which cuts off text and product shots, degrading performance and causing policy rejections.</rationale>
+      </rule>
+
+      <list>
+        <item>stream — Feed (1:1 or 4:5)</item>
+        <item>story — Stories (9:16 full-screen)</item>
+        <item>explore — Explore tab (1:1 or 4:5)</item>
+        <item>reels — Reels (9:16 vertical video)</item>
+        <item>search — Search results (1:1 images)</item>
+      </list>
+
+      <title>Image Specs</title>
+
+      <rule>
+        <statement>Use 1080x1350px (4:5) for Feed image ads to maximise vertical screen real estate.</statement>
+        <rationale>4:5 occupies ~22% more screen area than 1:1, increasing visual stop-power in the feed.</rationale>
+      </rule>
+
+      <list>
+        <item>Feed 1:1: 1080x1080px, JPG/PNG, max 30MB</item>
+        <item>Feed 4:5: 1080x1350px, JPG/PNG, max 30MB</item>
+        <item>Stories/Reels: 1080x1920px (9:16), JPG/PNG, max 30MB</item>
+        <item>Explore: 1080x1080px (1:1), max 30MB</item>
+      </list>
+
+      <title>Video Specs</title>
+
+      <rule>
+        <statement>For Stories, keep video duration under 15 seconds; for Reels, target 15-30 seconds with the first 1-2 seconds as a hard hook.</statement>
+        <rationale>Stories ads auto-advance after 15s; Reels skipped in the first 2s are never seen. Attention must be captured before the viewer scrolls.</rationale>
+      </rule>
+
+      <list>
+        <item>Feed video: 1080x1080 or 1080x1350, MP4/MOV, 1s-60min, max 4GB</item>
+        <item>Stories video: 1080x1920, MP4/MOV, 1s-15s, max 4GB</item>
+        <item>Reels video: 1080x1920, MP4/MOV, 1s-90s, max 4GB</item>
+        <item>Min resolution: 720p; codec: H.264; audio: AAC stereo</item>
+      </list>
+
+      <title>Stories Safe Zones</title>
+
+      <rule>
+        <statement>Keep all key content within the Stories safe zone (1080x1420px, centered); avoid the top 250px and bottom 250px.</statement>
+        <rationale>Top 250px is reserved for the profile header overlay; bottom 250px is reserved for the CTA button — content placed there is permanently obscured.</rationale>
+      </rule>
+
+      <title>Carousel Specs</title>
+
+      <list>
+        <item>2-10 cards per carousel</item>
+        <item>Image: 1080x1080px (1:1 only), max 30MB per card</item>
+        <item>Video: 1:1 ratio only, max 4GB per card, 1s-240min</item>
+      </list>
+    </section>
+
+    <section name="ad-set-api">
+      <title>Instagram Ad Set API Configuration</title>
+
+      <p>API calls and targeting JSON for creating Instagram-only and multi-platform ad sets.</p>
+
+      <rule>
+        <statement>Set publisher_platforms to ["instagram"] and list only instagram_positions to run exclusively on Instagram without Facebook bleed-over.</statement>
+        <rationale>Mixed placement campaigns attribute conversions to the cheapest placement (often Facebook Audience Network), inflating apparent performance while under-serving Instagram.</rationale>
+      </rule>
+
+      <title>Multi-Platform Targeting</title>
+
+      <p>To run Instagram and Facebook simultaneously, include both publishers and their respective position arrays.</p>
+
+      <title>Ad Set Creation API Call</title>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+curl -X POST "https://graph.facebook.com/v20.0/act_{ad-account-id}/adsets" \
+  -H "Authorization: Bearer {access-token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Instagram Feed & Stories - US 18-34",
+    "campaign_id": "{campaign-id}",
+    "billing_event": "IMPRESSIONS",
+    "optimization_goal": "OFFSITE_CONVERSIONS",
+    "daily_budget": 5000,
+    "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
+    "status": "PAUSED",
+    "targeting": {
+      "geo_locations": {"countries": ["US"]},
+      "age_min": 18,
+      "age_max": 34,
+      "publisher_platforms": ["instagram"],
+      "instagram_positions": ["stream", "story", "explore", "reels"]
+    },
+    "promoted_object": {
+      "pixel_id": "{pixel-id}",
+      "custom_event_type": "PURCHASE"
+    }
+  }'
+        ]]></code>
+        <note>Always set status to PAUSED on creation; activate after creative review.</note>
+      </example>
+
+      <title>Budget Allocation by Placement</title>
+
+      <rule>
+        <statement>Start with equal budgets across placements, then reallocate based on cost-per-result after 7 days minimum data.</statement>
+        <rationale>Initial algorithmic distribution is not optimized; 7 days provides enough impressions for statistically meaningful placement comparison.</rationale>
+      </rule>
+
+      <p>Typical starting allocation: Feed 40%, Stories 30%, Reels 20%, Explore 10%.</p>
+    </section>
+
+    <section name="shopping-ads">
+      <title>Instagram Shopping and Collection Ads</title>
+
+      <p>API calls for shopping creatives with product tags and collection ad format for Instagram.</p>
+
+      <title>Prerequisites</title>
+
+      <rule>
+        <statement>Before creating shopping ads, connect the Instagram Business Account to Business Manager and verify that the product catalog is live in Commerce Manager.</statement>
+        <rationale>Shopping creative API calls require a valid product_set_id and instagram_actor_id; missing either returns an API error that blocks the entire campaign launch.</rationale>
+      </rule>
+
+      <list>
+        <item>Connect Instagram Business Account to Business Manager</item>
+        <item>Set up Product Catalog in Facebook Commerce Manager</item>
+        <item>Create Campaign with objective OUTCOME_SALES</item>
+        <item>Create Ad Set with Instagram placements only</item>
+      </list>
+
+      <title>Shopping Creative API</title>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+curl -X POST "https://graph.facebook.com/v20.0/act_{ad-account-id}/adcreatives" \
+  -H "Authorization: Bearer {access-token}" \
+  -d '{
+    "name": "Shopping Ad Creative",
+    "object_story_spec": {
+      "instagram_actor_id": "{instagram-business-account-id}",
+      "link_data": {
+        "image_hash": "abc123...",
+        "link": "https://example.com/shop",
+        "message": "Shop our latest collection",
+        "call_to_action": {
+          "type": "SHOP_NOW",
+          "value": {"link": "https://example.com/shop"}
+        }
+      }
+    },
+    "product_set_id": "{product-catalog-id}"
+  }'
+        ]]></code>
+      </example>
+
+      <title>Collection Ads</title>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+curl -X POST "https://graph.facebook.com/v20.0/act_{ad-account-id}/adcreatives" \
+  -H "Authorization: Bearer {access-token}" \
+  -d '{
+    "name": "Collection Ad",
+    "object_story_spec": {
+      "instagram_actor_id": "{instagram-business-account-id}",
+      "template_data": {
+        "collection_hero_image_hash": "hero_image_hash",
+        "collection_thumbnails": [
+          {"product_id": "product_1"},
+          {"product_id": "product_2"},
+          {"product_id": "product_3"},
+          {"product_id": "product_4"}
+        ],
+        "message": "Shop the collection",
+        "link": "https://example.com/collection"
+      }
+    }
+  }'
+        ]]></code>
+        <note>Collection ads require a hero image plus 3-4 product thumbnails pulled from the catalog.</note>
+      </example>
+    </section>
+
+    <section name="performance-reporting">
+      <title>Instagram Ads Performance and Reporting</title>
+
+      <p>Bid strategies, budget scaling rules, and placement-level reporting API for Instagram campaigns.</p>
+
+      <title>Bid Strategies</title>
+
+      <list>
+        <item>Lowest Cost (LOWEST_COST_WITHOUT_CAP) — maximize conversions; CPA unstable at scale</item>
+        <item>Cost Cap — set target CPA ceiling; delivery slows when cost exceeds cap</item>
+        <item>Bid Cap — controls auction competition; use when CPM inflation is detected</item>
+      </list>
+
+      <rule>
+        <statement>Start with Lowest Cost; switch to Cost Cap only after 50+ conversions per ad set to give the algorithm enough learning signal.</statement>
+        <rationale>Cost Cap with insufficient conversion data causes severe under-delivery — the algorithm cannot find users at the target cost if it has no baseline.</rationale>
+      </rule>
+
+      <title>Budget Scaling</title>
+
+      <rule>
+        <statement>Increase budget by 20-30% maximum every 3-4 days; do not double a budget in a single step.</statement>
+        <rationale>Large budget jumps force the campaign back into the learning phase, resetting optimization and causing temporary CPA spikes of 40-80%.</rationale>
+      </rule>
+
+      <title>Placement-Level Reporting</title>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+curl -X GET "https://graph.facebook.com/v20.0/{adset-id}/insights?\
+fields=spend,impressions,reach,clicks,cpc,cpm,ctr,\
+actions,cost_per_action_type,\
+video_p25_watched_actions,video_p75_watched_actions,\
+video_p100_watched_actions&\
+date_preset=last_7d&\
+breakdowns=publisher_platform,platform_position&\
+access_token={token}"
+        ]]></code>
+        <note>breakdowns=platform_position returns rows for instagram_stream, instagram_story, instagram_explore, instagram_reels separately.</note>
+      </example>
+
+      <rule>
+        <statement>Always break down reporting by platform_position when running multi-placement ad sets; never rely on campaign-level aggregates to make placement budget decisions.</statement>
+        <rationale>Aggregate metrics hide placement-level CPA variance of 3-5x; scaling on aggregates can double spend on the worst-performing placement.</rationale>
+      </rule>
+
+      <title>Frequency Control</title>
+
+      <rule>
+        <statement>Monitor frequency and pause or rotate creative when it exceeds 3.0 for any single placement.</statement>
+        <rationale>Above frequency 3.0, engagement rates decline and CPAs rise due to audience fatigue — users have seen the ad enough to develop ad blindness.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices-and-limitations">
+      <title>Best Practices and Limitations</title>
+
+      <title>Best Practices</title>
+      <list>
+        <item>Always burn captions into video files — 85%+ watch sound-off; native auto-captions are unreliable across regions.</item>
+        <item>Test placements as separate ad sets for first 7-14 days, then consolidate winners. Mixing placements in one ad set hides which is profitable.</item>
+        <item>For Reels, design native: phone-shot aesthetic, jump cuts, on-screen text, trending-style audio (re-licensed). Studio-polished ads underperform.</item>
+        <item>Use Advantage+ Creative cautiously — auto-crop can ruin carefully composed images.</item>
+        <item>Implement Conversions API server-side BEFORE iOS 14 traffic exceeds 30% of audience — pixel-only attribution will lose 30-50%.</item>
+        <item>Match Instagram-account instagram_actor_id to brand's actual Business Account; mismatches cause "page link errors" at creative submission.</item>
+        <item>Frequency cap: 2-3/week for conversion campaigns, 5-7/week for awareness. Default uncapped is too high for IG.</item>
+        <item>Use Catalog ads (DPA) for retargeting product viewers — outperforms generic creative 3-5x.</item>
+      </list>
+
+      <title>Common Limitations and Gotchas</title>
+      <list>
+        <item>Reels and Stories require vertical 9:16 video; using square 1:1 reduces delivery quality and cost-per-result.</item>
+        <item>iOS 14.5+ App Tracking Transparency cut signal — Conversions API (CAPI) is now mandatory, not optional.</item>
+        <item>Instagram-positions data inside the Meta API is bundled with Facebook; agents must explicitly filter publisher_platform=instagram AND instagram_positions.</item>
+        <item>Story top/bottom safe zones (250px each) eat into creative real estate — assets that look fine in design tools are clipped.</item>
+        <item>Reels ad autoplay differences: muted vs unmuted varies by user and device, captions are non-negotiable.</item>
+        <item>Music licensing in user-generated Reels does NOT transfer to ads; agents reusing organic Reels in ad-format must re-license audio.</item>
+        <item>Frequency caps are softer than Facebook Feed — burnout faster.</item>
+        <item>Meta API versions deprecate every 2 years; agents pinned to old versions break silently. Pin and monitor.</item>
+        <item>Token expiry: long-lived user tokens last 60 days; system-user tokens are non-expiring but require BM admin to issue.</item>
+        <item>actions field in Insights returns array of action types — agents must filter by action_type; reading actions[0] is wrong.</item>
+        <item>Currency in spend is account-local, not always USD; agents reporting cross-account must convert via FX.</item>
+        <item>iOS Aggregated Event Measurement: only top 8 prioritized events per domain count; agents adding 10+ pixel events lose visibility on lower-priority ones.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/adset-instagram.json" purpose="Ad set targeting JSON for Instagram-only placement"/>
+      <template path="templates/adset-multi-platform.json" purpose="Ad set targeting JSON for Instagram + Facebook"/>
+    </templates>
+  </content>
+</methodology>
