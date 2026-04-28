@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="security-testing">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Identifies vulnerabilities through SAST, DAST, dependency scanning, OWASP tests. Assert exact HTTP codes (401/403/400) and absence of sensitive data in responses, not just "not 500".</summary>
+    <tags>
+      <tag>security</tag>
+      <tag>testing</tag>
+      <tag>owasp</tag>
+      <tag>sast</tag>
+      <tag>ci</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Security Testing</title>
+
+    <summary>Security testing identifies vulnerabilities before exploitation through static analysis (SAST), dynamic testing (DAST), dependency scanning, and OWASP Top 10 scenario tests. Core rule: assert exact HTTP status codes (401/403/400) — not just "not 500" — and assert absence of sensitive data in responses, not just "request did not crash."</summary>
+
+    <why>
+      <p>LLMs and developers frequently re-introduce known vulnerability classes: SQL string concatenation, missing CSRF, weak hashing, hardcoded secrets. Shift-left automated scanning catches these before production. Without security gates in CI, the cost of detection grows exponentially — a pre-push secret scan takes seconds; a production credential rotation takes hours.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Pre-deploy gate after any change touching auth, sessions, file upload, deserialization, or SQL queries</item>
+        <item>After bumping dependencies (transitive CVEs surface via pip-audit, npm audit)</item>
+        <item>Wiring SAST + secrets scan + dep-audit into CI before opening the project to outside contributors</item>
+        <item>Reviewing AI-generated PRs — LLMs frequently re-introduce SQL string concatenation and missing CSRF</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pre-commit on every save — DAST/fuzzing is too slow; restrict to PR/CI or nightly</item>
+        <item>As a substitute for threat modelling — testing only finds what you tell it to look for</item>
+        <item>For business-logic flaws (price tampering, IDOR via valid-but-wrong IDs) — those need handwritten scenario tests</item>
+        <item>Penetration testing of production without written authorization (legal exposure)</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="test-assertion-rule">
+      <p>Test Assertion Rule: assert exact HTTP status codes and absence of sensitive data.</p>
+
+      <rule>
+        <statement>Assert exact HTTP status codes (401/403/400) and assert that sensitive data is absent from the response body. Never assert only that status_code != 500.</statement>
+        <rationale>"Not 500" passes even on a 200 OK that returned the victim's data. An access control test must assert the correct denial code AND confirm the resource was not returned.</rationale>
+      </rule>
+    </section>
+
+    <section name="access-control-tests">
+      <p>Access Control Tests: user isolation and role-based authorization.</p>
+
+      <example type="good">
+        <code lang="python"><![CDATA[
+class TestAccessControl:
+    def test_user_cannot_access_other_user_data(self, client, user_token, other_user):
+        response = client.get(
+            f"/api/users/{other_user.id}",
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        assert response.status_code == 403  # NOT: != 500
+
+    def test_admin_endpoint_requires_admin_role(self, client, user_token):
+        response = client.get(
+            "/api/admin/users",
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        assert response.status_code == 403
+]]></code>
+      </example>
+    </section>
+
+    <section name="injection-tests">
+      <p>Injection Tests: SQL injection and XSS prevention.</p>
+
+      <example type="good">
+        <code lang="python"><![CDATA[
+class TestInjection:
+    @pytest.mark.parametrize("payload", [
+        "'; DROP TABLE users; --",
+        "1 OR 1=1",
+        "admin'--",
+    ])
+    def test_sql_injection_prevented(self, client, payload):
+        response = client.get(f"/api/users?search={payload}")
+        # Must not return 500 (server error) or return all users (data leak)
+        assert response.status_code in [200, 400]
+        if response.status_code == 200:
+            # Ensure injection didn't return extra rows
+            assert len(response.json()) < 100
+
+    @pytest.mark.parametrize("payload", [
+        "<script>alert('xss')</script>",
+        "<img src=x onerror=alert('xss')>",
+    ])
+    def test_xss_escaped_in_output(self, client, user_token, payload):
+        response = client.post(
+            "/api/comments",
+            json={"content": payload},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        if response.status_code == 201:
+            assert payload not in response.json()["content"]
+]]></code>
+      </example>
+    </section>
+
+    <section name="authentication-tests">
+      <p>Authentication Tests: brute force protection and session invalidation.</p>
+
+      <example type="good">
+        <code lang="python"><![CDATA[
+class TestAuthentication:
+    def test_brute_force_protection(self, client):
+        for _ in range(10):
+            response = client.post("/api/auth/login", json={
+                "email": "user@example.com",
+                "password": "wrongpassword"
+            })
+        assert response.status_code in [429, 423]  # rate limited or locked
+
+    def test_token_invalidated_on_logout(self, client, user_token):
+        client.post("/api/auth/logout",
+                    headers={"Authorization": f"Bearer {user_token}"})
+        response = client.get("/api/me",
+                              headers={"Authorization": f"Bearer {user_token}"})
+        assert response.status_code == 401
+]]></code>
+      </example>
+    </section>
+
+    <section name="tool-selection-rules">
+      <p>Tool Selection Rules: SAST tooling, version pinning, dependency audit.</p>
+
+      <rule>
+        <statement>Pin scanner versions in CI. Auto-bumps silently change rule sets and break builds without any code change.</statement>
+        <rationale>A Semgrep or Bandit version update may add new rules that trigger false positives on existing code, blocking unrelated PRs. Version-pinning ensures reproducible pipelines.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Run dependency audit on the lockfile, not on requirements.txt or package.json. Only the lockfile contains resolved transitive dependency versions.</statement>
+        <rationale>requirements.txt often uses version ranges; the vulnerable transitive dep is only visible in the resolved lockfile. pip-audit and npm audit should both target lockfiles.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Add a per-PR quality gate that fails only on new high/critical findings versus a stored baseline. Total-count gates block all PRs when legacy code has known issues.</statement>
+        <rationale>A total-count gate means one legacy finding blocks every future PR. Baseline-delta gates allow forward progress while still catching new issues.</rationale>
+      </rule>
+    </section>
+
+    <section name="secrets-detection">
+      <p>Secrets Detection: credential rotation and history scrubbing.</p>
+
+      <rule>
+        <statement>Treat any secret found in git history as compromised: rotate first, then scrub with git-filter-repo. Scrubbing alone does not recover a leaked credential.</statement>
+        <rationale>The remote repository is already cloned by CI runners, contributors, and potentially attackers before the scrub. The credential was exposed the moment it was pushed.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="python"><![CDATA[
+# Test: no hardcoded secrets in source
+import re
+from pathlib import Path
+
+SECRET_PATTERNS = [
+    (r'api[_-]?key\s*=\s*["\'][a-zA-Z0-9]{20,}["\']', "API key"),
+    (r'password\s*=\s*["\'][^"\']+["\']', "Hardcoded password"),
+    (r'-----BEGIN (RSA |EC )?PRIVATE KEY-----', "Private key"),
+]
+
+def test_no_secrets_in_source():
+    violations = []
+    for path in Path("src").rglob("*.py"):
+        content = path.read_text()
+        for pattern, label in SECRET_PATTERNS:
+            if re.search(pattern, content, re.IGNORECASE):
+                violations.append(f"{path}: {label}")
+    assert not violations, "Secrets found:\n" + "\n".join(violations)
+]]></code>
+      </example>
+    </section>
+
+    <section name="input-validation-tests">
+      <p>Input Validation Tests: email, password, file upload, path traversal.</p>
+
+      <example type="good">
+        <code lang="python"><![CDATA[
+import pytest
+from pydantic import ValidationError
+
+class TestInputValidation:
+    @pytest.mark.parametrize("email", [
+        "not-an-email",
+        "@nodomain.com",
+        "spaces in@email.com",
+        "a" * 256 + "@example.com",
+    ])
+    def test_invalid_email_rejected(self, email):
+        with pytest.raises(ValidationError):
+            UserCreate(email=email, password="ValidPass1")
+
+    @pytest.mark.parametrize("password", [
+        "short",           # too short
+        "nouppercase1",    # no uppercase
+        "NOLOWERCASE1",    # no lowercase
+        "NoDigitsHere",    # no digits
+    ])
+    def test_weak_password_rejected(self, password):
+        with pytest.raises(ValidationError):
+            UserCreate(email="valid@example.com", password=password)
+
+    def test_file_upload_type_blocked(self, client, auth_token):
+        response = client.post(
+            "/api/upload",
+            files={"file": ("malware.exe", b"MZ...", "application/x-msdownload")},
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 400
+
+    def test_file_upload_size_limit(self, client, auth_token):
+        large = b"x" * (10 * 1024 * 1024 + 1)  # > 10 MB
+        response = client.post(
+            "/api/upload",
+            files={"file": ("large.txt", large, "text/plain")},
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 413
+
+    @pytest.mark.parametrize("path", [
+        "../../../etc/passwd",
+        "....//....//....//etc/passwd",
+        "%2e%2e%2f%2e%2e%2fetc/passwd",
+    ])
+    def test_path_traversal_blocked(self, client, auth_token, path):
+        response = client.get(
+            f"/api/files/{path}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code in [400, 404]
+]]></code>
+      </example>
+    </section>
+
+    <section name="security-headers">
+      <p>Security Headers: Content-Type-Options, X-Frame-Options, Strict-Transport-Security.</p>
+
+      <rule>
+        <statement>Assert the presence of required security headers: X-Content-Type-Options: nosniff, X-Frame-Options, and Strict-Transport-Security.</statement>
+        <rationale>Missing security headers enable MIME sniffing attacks, clickjacking, and downgrade attacks. These are cheap to set and easy to test; omitting the test allows them to disappear silently.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="python"><![CDATA[
+def test_security_headers_present(client):
+    response = client.get("/")
+    assert response.headers.get("X-Content-Type-Options") == "nosniff"
+    assert "X-Frame-Options" in response.headers
+    assert "Strict-Transport-Security" in response.headers
+]]></code>
+      </example>
+    </section>
+
+    <section name="test-quality-anti-patterns">
+      <p>Test Quality Anti-Patterns: poor assertions and incomplete coverage.</p>
+
+      <antipattern>
+        <description>Asserting response.status_code != 500 as the security check.</description>
+        <reason>This passes when the server returns 200 with the victim's data. The test confirms "no crash," not "correctly denied." Always assert the exact expected denial code (401/403/400) and that the protected resource is absent from the response body.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Only testing happy paths — no tests for attack scenarios (injection, path traversal, privilege escalation).</description>
+        <reason>Happy-path test coverage gives false confidence. Security vulnerabilities live in edge cases and boundary conditions that are never exercised by tests that only simulate legitimate users.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Hardcoded real or realistic-looking credentials in test files (API keys, passwords, AWS keys).</description>
+        <reason>The moment the repository goes public (or is accessed by a contractor), hardcoded credentials become real secrets. Use placeholder values that cannot be mistaken for real credentials (e.g., "test-password-do-not-use").</reason>
+      </antipattern>
+    </section>
+
+    <section name="process-anti-patterns">
+      <p>Process Anti-Patterns: one-time audits and ignored low-severity findings.</p>
+
+      <antipattern>
+        <description>Security testing as a one-time pre-launch activity rather than an automated CI gate.</description>
+        <reason>Every new feature reintroduces vulnerability classes. Without continuous automated scanning, security degrades incrementally and invisibly between manual audits.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Skipping low-severity findings because they "don't matter."</description>
+        <reason>Low-severity issues frequently combine with each other to produce high-severity exploits (chained vulnerabilities). Every finding should be triaged, not ignored by default.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/security-ci.yml" purpose="GitHub Actions workflow with Bandit, Semgrep, pip-audit, and artifact upload"/>
+      <template path="templates/bandit-config.yaml" purpose="Bandit rules configuration covering the B1xx–B7xx rule set"/>
+    </templates>
+
+    <see-also>
+      <link href="https://owasp.org/Top10/"/>
+      <link href="https://bandit.readthedocs.io/"/>
+      <link href="https://semgrep.dev/"/>
+      <link href="https://pypi.org/project/pip-audit/"/>
+    </see-also>
+  </content>
+</methodology>
