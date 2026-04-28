@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="model-context-protocol">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Open protocol for LLM-tool communication with standardized tool definitions and secure context sharing, developed by Anthropic for decoupling agent versioning from tool versioning.</summary>
+    <tags>
+      <tag>mcp</tag>
+      <tag>tools</tag>
+      <tag>protocol</tag>
+      <tag>integration</tag>
+      <tag>standardization</tag>
+    </tags>
+    <category>integration</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-24</created>
+  </metadata>
+  <content>
+    <title>MCP (Model Context Protocol)</title>
+    <summary>Model Context Protocol is an open standard for connecting LLMs to external tools and data sources without custom SDK integration per tool. MCP decouples tool versioning from agent versioning and provides reusable, composable tool definitions across multiple clients.</summary>
+    <why>
+      <p>Without a standard protocol, every LLM integration requires custom code to expose tools or data sources. This creates maintenance burden, duplicates integration logic across projects, and couples tool updates to agent updates. MCP solves this by providing a standardized, secure way to connect LLMs to external capabilities.</p>
+      <p>Benefits include reusable tool definitions across multiple agents and clients, security through protocol-level abstractions, composable capabilities that can be shared across teams, and standardized interface that works with any MCP-compliant client.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>You need to expose tools, resources, or data sources to Claude or other MCP clients via a standardized protocol without custom SDK integration per tool.</item>
+        <item>Building a reusable tool server that multiple agents or clients can consume without duplicating integration code.</item>
+        <item>The tool set is maintained separately from the agent code — MCP decouples tool versioning from agent versioning.</item>
+        <item>You want Claude Code to access project-specific tools (databases, APIs, file systems) without per-project SDK configuration.</item>
+        <item>Integrating with existing MCP ecosystem servers (Brave Search, PostgreSQL, GitHub, filesystem) that are already MCP-compliant.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>The agent runs in a fully sandboxed environment with no external communication — MCP requires a transport layer (stdio or SSE).</item>
+        <item>You only need one-time tool use for a single agent — direct LangChain/LlamaIndex tool definition is simpler for non-shared tools.</item>
+        <item>The tool response is a binary stream (audio, video) — MCP currently handles text/JSON tool results; binary data requires base64 encoding.</item>
+        <item>Latency is critical under 100ms — stdio transport adds process spawn overhead; SSE adds network round-trip.</item>
+        <item>You need bidirectional streaming during tool execution — MCP tool calls are request/response, not streaming mid-call.</item>
+      </list>
+    </when-not-to-use>
+    <section name="How MCP Works">
+      <p>MCP consists of an MCP Server (hosting tools and data) and an MCP Client (such as Claude Code). Communication flows through a standardized protocol:</p>
+      <p>MCP Server (tools/data) talks to MCP Client (Claude Code), which receives LLM requests.</p>
+      <p>A tool is defined by standardized JSON schema and can be invoked by any MCP-compliant client without custom integration code for each client.</p>
+    </section>
+    <section name="MCP Server Architecture">
+      <p>An MCP server exposes a set of tools with standardized definitions. Each tool specifies:</p>
+      <list>
+        <item>Name — unique identifier for the tool</item>
+        <item>Description — what the tool does, used by LLM for tool selection</item>
+        <item>Input Schema — JSON Schema describing the parameters the tool accepts</item>
+        <item>Execution Logic — the code that runs when the tool is invoked</item>
+      </list>
+      <p>The server runs as a separate process (stdio transport) or HTTP service (SSE transport). Claude Code automatically discovers and registers tools from configured MCP servers at startup.</p>
+    </section>
+    <section name="Transport Mechanisms">
+      <p>MCP supports two transport mechanisms:</p>
+      <term name="Stdio Transport">Direct subprocess communication. Lower latency, no network overhead, simpler setup. Good for local tools. Requires process spawn per client connection, which can cause resource issues at scale.</term>
+      <term name="SSE Transport">HTTP-based streaming. Suitable for remote tools and cloud deployments. Requires persistent HTTP connection; proxies and load balancers with short timeouts may cause disconnections.</term>
+    </section>
+    <section name="Tool Schema Definition">
+      <p>MCP tool schemas use JSON Schema (draft 7). Complex recursive or polymorphic types are difficult to express and may confuse LLM tool selection. Flat, explicit schemas work best.</p>
+      <example type="good" title="Clear Tool Schema">
+        <code lang="json"><![CDATA[
+{
+  "name": "database",
+  "description": "Query company database",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "SQL query to execute"
+      }
+    },
+    "required": ["query"]
+  }
+}
+]]></code>
+      </example>
+    </section>
+    <section name="Agentic Workflow">
+      <p>An agent uses MCP by connecting to one or more MCP servers at startup, discovering available tools, and invoking them during task execution. Claude Code automatically discovers MCP servers from settings.json and makes their tools available.</p>
+      <p>For custom MCP servers, the pattern is: define tool schemas in the server, register the server in Claude Code settings, then invoke tools by name during agent reasoning without any import or SDK call.</p>
+      <p>For multi-agent systems, a single MCP server can be shared across all agents — tools are stateless and connection-multiplexed.</p>
+      <rule>
+        <statement>Every MCP server MUST include a health or ping tool so agents can verify server availability before running tasks.</statement>
+      </rule>
+      <rule>
+        <statement>Tool names MUST be globally unique across all connected MCP servers — two servers with a tool named "search" causes ambiguous tool selection.</statement>
+      </rule>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Use mcp-inspector during development to validate tool schemas and test responses before connecting to Claude Code — inspector catches schema errors that Claude would silently ignore.</item>
+        <item>Keep tool descriptions concise and action-oriented ("Search the web for current information about X") — vague descriptions cause the LLM to select wrong tools or skip valid tools.</item>
+        <item>Return structured JSON as tool result text (not prose) when the caller is an agent — agents parse tool results programmatically.</item>
+        <item>Version MCP servers explicitly in their name field ("my-tools-v2") — this allows rolling upgrades without breaking existing agent sessions.</item>
+        <item>Expose each domain as a separate MCP server rather than one monolithic server — isolation makes debugging easier and allows per-server access control.</item>
+        <item>Use SSE transport only if the server is remote; for local tools, stdio is more reliable and lower latency.</item>
+      </list>
+    </section>
+    <section name="Common Failure Modes and Limitations">
+      <antipattern>
+        <description>MCP stdio transport requires spawning a subprocess per client connection — high connection volume causes process explosion.</description>
+        <reason>Each client creates its own server process. Under load, this exhausts system resources.</reason>
+      </antipattern>
+      <antipattern>
+        <description>MCP spec is versioned; clients and servers must negotiate a compatible version — version mismatch causes silent tool registration failure.</description>
+        <reason>No error is raised when versions don't match; tools simply don't appear in the agent's available tool list.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Tool input schema is JSON Schema; complex recursive or polymorphic types are difficult to express and may confuse LLM tool selection.</description>
+        <reason>The LLM must parse and understand the schema to select the right tool. Complex types introduce ambiguity.</reason>
+      </antipattern>
+      <antipattern>
+        <description>MCP has no built-in authentication for stdio transport — any process with access to the transport can invoke tools.</description>
+        <reason>Stdio is inherently open to the local system. Use environment variables or external secrets management for sensitive credentials.</reason>
+      </antipattern>
+      <antipattern>
+        <description>SSE transport requires a persistent HTTP connection; proxies and load balancers with short connection timeouts drop the session.</description>
+        <reason>Some infrastructure is configured to terminate idle connections. Monitor connection stability in production.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Error handling is limited to string error messages in tool results — structured error codes are not part of the base spec.</description>
+        <reason>Agents must parse error messages as text, which is fragile. Return consistent error message formats.</reason>
+      </antipattern>
+      <antipattern>
+        <description>An MCP server crash does not raise an error to the agent — the agent receives a connection error on the next tool call.</description>
+        <reason>MCP has no built-in health monitoring. Implement server health checks separately and alert users.</reason>
+      </antipattern>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <list>
+        <item>Claude Code reloads MCP server list at startup, not per-session — adding a new server to settings.json requires restarting Claude Code for the agent to discover it.</item>
+        <item>MCP tool schemas use JSON Schema draft 7; oneOf, anyOf, and $ref are supported but LLMs interpret them poorly — prefer flat, explicit schemas.</item>
+        <item>mcp-inspector does not simulate real LLM tool selection — a tool that looks good in inspector may still be ignored by Claude if the description is not sufficiently distinct from other tools.</item>
+        <item>Secrets passed as environment variables to MCP servers are visible in process listings — use a secrets manager or file-based secrets for sensitive credentials.</item>
+      </list>
+    </section>
+    <section name="Recommended Subagents">
+      <list>
+        <item>faion-mcp-server-builder — scaffolds an MCP server for a given set of Python functions; generates schema definitions and transport config.</item>
+        <item>General tool-discovery subagent — connects to MCP server, lists available tools with descriptions, returns tool manifest for orchestrator to select from.</item>
+      </list>
+    </section>
+    <section name="Prompt Patterns for MCP Development">
+      <example type="good" title="Tool Discovery Prompt">
+        <code lang="text"><![CDATA[
+You have access to MCP tools registered under server "my-project-tools".
+Available tools: {tool_list}
+
+Task: "{task}"
+Select the appropriate tool and call it with the correct parameters.
+After the tool returns, validate the result and proceed.
+]]></code>
+      </example>
+      <example type="good" title="Server Building Prompt">
+        <code lang="text"><![CDATA[
+Build an MCP server exposing these functions: {function_signatures}
+Use stdio transport. Generate:
+1. Tool JSON schema for each function
+2. Server implementation in Python using mcp SDK
+3. Claude Code settings.json entry to register the server
+]]></code>
+      </example>
+      <example type="good" title="Schema Validation Prompt">
+        <code lang="text"><![CDATA[
+Review the following MCP tool schema for LLM discoverability:
+
+[SCHEMA HERE]
+
+Check for:
+- Clarity of tool description (would LLM understand when to use this?)
+- Schema complexity (are there any oneOf/anyOf that might confuse the LLM?)
+- Missing required fields in the description
+- Tool naming conventions (is it action-oriented?)
+- Parameter descriptions (clear and concise?)
+
+Provide specific improvements.
+]]></code>
+      </example>
+      <example type="good" title="Tool Implementation Prompt">
+        <code lang="text"><![CDATA[
+Generate a production-ready MCP server that:
+- Follows best practices
+- Includes error handling
+- Has comprehensive logging
+- Is well-documented
+- Implements stdio transport
+- Includes a health/ping tool
+
+Requirements:
+[DESCRIBE TOOL REQUIREMENTS]
+
+Constraints:
+[DESCRIBE CONSTRAINTS]
+
+Output format:
+1. Complete server.py with all tools
+2. Tool JSON schemas
+3. Usage instructions
+4. Claude Code settings.json entry
+5. Testing instructions
+]]></code>
+      </example>
+    </section>
+    <section name="Implementation Checklist">
+      <checklist>
+        <check>Review MCP documentation and requirements</check>
+        <check>Define all tools and their input/output schemas upfront</check>
+        <check>Implement tool listing endpoint returning complete Tool objects</check>
+        <check>Implement tool calling endpoint with parameter validation</check>
+        <check>Add comprehensive error handling for tool calls</check>
+        <check>Test with mcp-inspector before connecting to Claude Code</check>
+        <check>Validate tool descriptions are clear and action-oriented</check>
+        <check>Register server in Claude Code settings.json</check>
+        <check>Add a health or ping tool for availability checking</check>
+        <check>Document each tool with examples and edge cases</check>
+        <check>Set up logging for all tool invocations with timestamps</check>
+        <check>Test multi-agent scenarios if deploying to teams</check>
+        <check>Monitor for version compatibility issues between client and server</check>
+      </checklist>
+    </section>
+    <section name="MCP Ecosystem and Services">
+      <p>Several services provide MCP servers ready to integrate:</p>
+      <term name="Claude Code">Primary MCP client; discovers servers from settings.json. Agent-friendly.</term>
+      <term name="Brave Search MCP">Web search tool server. Package: @modelcontextprotocol/server-brave-search. Agent-friendly.</term>
+      <term name="GitHub MCP">Repo operations: read files, create PRs, list issues. Agent-friendly.</term>
+      <term name="PostgreSQL MCP">NL-to-SQL via MCP. Package: @modelcontextprotocol/server-postgres. Agent-friendly.</term>
+      <term name="Filesystem MCP">Read/write local files. Package: @modelcontextprotocol/server-filesystem. Agent-friendly.</term>
+      <term name="Anthropic MCP Registry">Official directory of verified MCP servers. SaaS.</term>
+      <term name="mcp.run">Hosted MCP server marketplace. SaaS.</term>
+    </section>
+    <section name="CLI Tools and Installation">
+      <p>Tools for working with MCP:</p>
+      <term name="mcp (Python SDK)">Build MCP servers in Python. Install: pip install mcp. Docs: https://github.com/modelcontextprotocol/python-sdk</term>
+      <term name="@modelcontextprotocol/sdk">Build MCP servers in TypeScript/Node. Install: npm install @modelcontextprotocol/sdk</term>
+      <term name="mcp-inspector">Debug and test MCP servers interactively. Install: npx @modelcontextprotocol/inspector</term>
+      <term name="mcpx">Run MCP servers via npx without install. Command: npx mcpx &lt;server&gt;</term>
+      <term name="claude (Claude Code CLI)">MCP client; discovers servers from settings. Install: npm install -g @anthropic-ai/claude-code</term>
+    </section>
+    <section name="Minimal Python MCP Server Template">
+      <p>Example of a minimal Python MCP server exposing a single tool:</p>
+      <code lang="python"><![CDATA[
+# server.py — run via: python server.py
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+from mcp.types import Tool, TextContent
+import asyncio, json
+
+app = Server("my-tools")
+
+@app.list_tools()
+async def list_tools() -> list[Tool]:
+    return [
+        Tool(
+            name="get_weather",
+            description="Get current weather for a city",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "city": {"type": "string", "description": "City name"}
+                },
+                "required": ["city"]
+            }
+        )
+    ]
+
+@app.call_tool()
+async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+    if name == "get_weather":
+        city = arguments["city"]
+        # Replace with real weather API call
+        return [TextContent(type="text", text=f"Weather in {city}: 22°C, sunny")]
+    raise ValueError(f"Unknown tool: {name}")
+
+async def main():
+    async with stdio_server() as (read, write):
+        await app.run(read, write, app.create_initialization_options())
+
+asyncio.run(main())
+]]></code>
+      <p>Register in Claude Code settings.json:</p>
+      <code lang="json"><![CDATA[
+{
+  "mcpServers": {
+    "my-tools": {
+      "command": "python",
+      "args": ["/path/to/server.py"]
+    }
+  }
+}
+]]></code>
+    </section>
+    <section name="Agent Selection for MCP Tasks">
+      <p>Recommended Claude models for different MCP-related tasks:</p>
+      <list>
+        <item>Generate tool definitions from API — Haiku (straightforward mechanical transformation)</item>
+        <item>Review MCP schema and implementation — Sonnet (requires code analysis and edge case thinking)</item>
+        <item>Design complex multi-server orchestration — Opus (complex coordination patterns and system design)</item>
+        <item>Debug tool registration failures — Sonnet or Opus (requires deep protocol understanding)</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/python-server-minimal.py" purpose="Minimal Python MCP server exposing one weather tool with stdio transport"/>
+    </templates>
+    <see-also>
+      <link href="https://modelcontextprotocol.io/introduction"/>
+      <link href="https://github.com/modelcontextprotocol/python-sdk"/>
+      <link href="https://github.com/modelcontextprotocol/typescript-sdk"/>
+      <link href="https://modelcontextprotocol.io/docs/concepts/tools"/>
+      <link href="https://github.com/modelcontextprotocol/servers"/>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/mcp"/>
+    </see-also>
+  </content>
+</methodology>
