@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rust-tokio-async">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Tokio multiplexes thousands of I/O connections on a small thread pool. CPU-bound work must use spawn_blocking; independent calls use try_join!; every spawn handle must be awaited or dropped.</summary>
+    <tags>
+      <tag>tokio</tag>
+      <tag>async</tag>
+      <tag>rust</tag>
+      <tag>concurrency</tag>
+      <tag>runtime</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Tokio Async Patterns</title>
+
+    <summary>Tokio multiplexes thousands of I/O-bound connections on a small thread pool. CPU-bound work must use spawn_blocking; independent DB calls must use try_join! or JoinSet; every spawn handle must be awaited or dropped. Holding MutexGuard across .await or calling blocking syscalls directly causes cascading stalls.</summary>
+
+    <why>
+      <p>Async Rust with Tokio achieves near-zero overhead concurrency for I/O: the runtime parks tasks at .await and resumes them on completion instead of blocking threads. Holding a MutexGuard across .await or calling blocking syscalls directly on the async thread pool causes cascading stalls. Unstructured spawn without JoinHandle management creates memory leaks and lost errors.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Rust services multiplexing thousands of network connections (HTTP, gRPC, WebSocket) on a small thread pool</item>
+        <item>Replacing thread-per-request workers with structured concurrency (try_join!, JoinSet, select!)</item>
+        <item>Wrapping CPU-bound work in spawn_blocking to avoid stalling the runtime</item>
+        <item>Implementing fan-out / fan-in pipelines with channels (mpsc, broadcast, watch)</item>
+        <item>Adding cancellation, timeouts, and graceful shutdown to long-running tasks</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple CLI that does one thing and exits — std::thread or sync code is shorter and clearer</item>
+        <item>Heavy CPU-bound workloads (ML inference, image transforms) — Rayon / dedicated thread pools are better</item>
+        <item>Embedded / no_std targets — Tokio requires an allocator and OS threads; use embassy instead</item>
+        <item>Very low-latency single-shot RPC where the runtime overhead matters; consider glommio or monoio (thread-per-core) for io_uring workloads</item>
+        <item>Teams new to Rust — async + lifetimes + Send/Sync is the steepest cliff in the language</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="parallel-io">
+      <p>Parallel I/O: try_join! for parallel I/O, spawn_blocking for CPU work, structured error propagation.</p>
+
+      <rule>
+        <statement>Use tokio::try_join! for 2 or more independent async calls that can run in parallel. Sequential .await chains serialize operations that could be concurrent.</statement>
+        <rationale>try_join! starts all futures simultaneously and awaits both. Sequential .await runs them one at a time. For two 50ms DB queries, try_join! takes 50ms total; sequential takes 100ms.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="rust"><![CDATA[
+pub async fn list(&self, page: u32, per_page: u32) -> Result<(Vec<User>, i64), AppError> {
+    let offset = ((page - 1) * per_page) as i64;
+    // Both queries run in parallel
+    let (users, total) = tokio::try_join!(
+        self.db.fetch_users(per_page as i64, offset),
+        self.db.count_users()
+    )?;
+    Ok((users, total))
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="cpu-bound-work">
+      <p>CPU-Bound Work: wrap CPU-bound operations in tokio::task::spawn_blocking.</p>
+
+      <rule>
+        <statement>Wrap CPU-bound operations (password hashing, image processing, crypto) in tokio::task::spawn_blocking. Never call blocking functions directly on an async thread.</statement>
+        <rationale>Tokio's async thread pool is sized for I/O waiting. A 100ms CPU computation on an async thread stalls every other task scheduled on that worker thread, causing tail-latency spikes.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="rust"><![CDATA[
+// Hash password without blocking the async runtime
+let password_hash = tokio::task::spawn_blocking({
+    let password = password.to_string();
+    move || {
+        let salt = SaltString::generate(&mut OsRng);
+        Argon2::default()
+            .hash_password(password.as_bytes(), &salt)
+            .map(|h| h.to_string())
+    }
+})
+.await??;  // outer ? = JoinError, inner ? = hash error
+]]></code>
+      </example>
+    </section>
+
+    <section name="joinhandle-management">
+      <p>JoinHandle Management: every tokio::spawn handle must be awaited or explicitly dropped.</p>
+
+      <rule>
+        <statement>Every tokio::spawn handle must be either awaited or explicitly dropped via AbortHandle. Orphaned handles leak memory and suppress errors silently.</statement>
+        <rationale>An unpolled JoinHandle keeps the spawned task alive indefinitely. The task's Result is dropped without being inspected, so panics and errors vanish without a trace.</rationale>
+      </rule>
+    </section>
+
+    <section name="bounded-concurrency">
+      <p>Bounded Concurrency: use a Semaphore to bound concurrent tasks in batch processors.</p>
+
+      <rule>
+        <statement>Use a Semaphore to bound concurrent tasks in batch processors. Unbounded spawn floods the runtime and DB connection pool.</statement>
+        <rationale>Spawning 10,000 tasks simultaneously exhausts connection pool limits and system resources. A semaphore enforces a concurrency ceiling while still processing all items.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="rust"><![CDATA[
+use futures::stream::{self, StreamExt};
+use std::sync::Arc;
+use tokio::sync::Semaphore;
+
+pub async fn process_batch<T, F, Fut, R, E>(
+    items: Vec<T>,
+    concurrency: usize,
+    processor: F,
+) -> Vec<Result<R, E>>
+where
+    T: Send + 'static,
+    F: Fn(T) -> Fut + Send + Sync + 'static,
+    Fut: std::future::Future<Output = Result<R, E>> + Send,
+    R: Send + 'static,
+    E: Send + 'static,
+{
+    let sem = Arc::new(Semaphore::new(concurrency));
+    let proc = Arc::new(processor);
+    stream::iter(items)
+        .map(|item| {
+            let sem = sem.clone();
+            let proc = proc.clone();
+            async move {
+                let _permit = sem.acquire().await.unwrap();
+                proc(item).await
+            }
+        })
+        .buffer_unordered(concurrency)
+        .collect()
+        .await
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="channel-patterns">
+      <p>Channel Patterns: choose the correct channel type for the communication pattern.</p>
+
+      <rule>
+        <statement>Choose the correct channel type for the communication pattern: mpsc for work queues, broadcast for fan-out events, watch for "latest value" (config reload), oneshot for request/response.</statement>
+        <rationale>Using broadcast for a work queue drops messages when the buffer is full instead of backpressuring. Using mpsc for fan-out requires cloning receivers, which is awkward. Each channel type is optimized for its pattern.</rationale>
+      </rule>
+    </section>
+
+    <section name="mutex-rules">
+      <p>Mutex Rules: use parking_lot::Mutex for short critical sections.</p>
+
+      <rule>
+        <statement>Use parking_lot::Mutex for short critical sections. Use tokio::sync::Mutex only when you must hold the lock across an .await. Never hold std::sync::Mutex across .await.</statement>
+        <rationale>std::sync::Mutex is not Send-safe across yield points. Holding it across .await in a multi-thread runtime deadlocks the task. parking_lot is non-poisoning and faster for sync sections.</rationale>
+      </rule>
+    </section>
+
+    <section name="blocking-anti-patterns">
+      <p>Blocking Anti-Patterns: calling blocking syscalls or block_on in async context.</p>
+
+      <antipattern>
+        <description>Calling blocking syscalls (std::fs::read, reqwest::blocking, image processing) directly from an async function.</description>
+        <reason>Blocks the Tokio worker thread for the duration of the syscall. On a 4-thread runtime, 4 simultaneous blocking calls starve all other async tasks until they complete.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Calling tokio::runtime::Handle::block_on or Runtime::block_on from within an async context.</description>
+        <reason>Panics with "cannot block the current thread from within a runtime" — a cryptic error that appears in tests. Test functions must use #[tokio::test] or block_on in a sync context only.</reason>
+      </antipattern>
+    </section>
+
+    <section name="concurrency-anti-patterns">
+      <p>Concurrency Anti-Patterns: unstructured spawn, MutexGuard across await.</p>
+
+      <antipattern>
+        <description>Spawning every task with tokio::spawn without awaiting or aborting the returned JoinHandle.</description>
+        <reason>Orphaned handles keep tasks alive indefinitely. Task panics and errors are silently discarded. Prefer try_join! or JoinSet for structured concurrency; use spawn only for true fire-and-forget background tasks.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using std::sync::Mutex and holding the guard across an .await point.</description>
+        <reason>The Mutex guard is not Send. The compiler rejects this with a wall of trait-bound errors, but the intent is to block the async thread — which must use tokio::sync::Mutex or restructure to not hold the lock across yield points.</reason>
+      </antipattern>
+    </section>
+
+    <section name="cancellation-anti-patterns">
+      <p>Cancellation Anti-Patterns: non-cancel-safe futures on select! branches.</p>
+
+      <antipattern>
+        <description>Placing a non-cancel-safe future (DB transaction, multi-step file write) on a tokio::select! branch.</description>
+        <reason>When a select! branch is not selected, the future is dropped at the next .await point, leaving partial state. Only cancel-safe primitives (recv, sleep, AsyncRead) belong on select branches.</reason>
+      </antipattern>
+
+      <example type="bad">
+        <code lang="rust"><![CDATA[
+// BAD — timeout may drop the transaction mid-flight
+tokio::select! {
+    result = db.transaction(|tx| async { tx.insert(...).await }) => result?,
+    _ = tokio::time::sleep(Duration::from_secs(5)) => Err(AppError::Timeout),
+}
+]]></code>
+      </example>
+
+      <example type="good">
+        <code lang="rust"><![CDATA[
+// GOOD — timeout wraps the entire operation; cancellation is safe at the boundary
+tokio::time::timeout(
+    Duration::from_secs(5),
+    db.transaction(|tx| async { tx.insert(...).await })
+).await
+  .map_err(|_| AppError::Timeout)??
+]]></code>
+      </example>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p>Tokio limitations and common failure modes. Holding a MutexGuard across .await deadlocks tasks scheduled on the same worker; clippy's await_holding_lock catches some, not all. Forgetting Send bounds on spawned tasks: Rc, RefCell, raw pointers, non-Send futures break compile, but trait objects (Box&lt;dyn Future&gt;) often hide it. async fn in traits requires Rust 1.75+ and still has variance/Send quirks — the async-trait macro has a Box&lt;dyn&gt; cost. Cancellation drops the future at any .await point — partial state is the caller's problem (use tokio::select! cancel branches consciously). block_on inside an async context panics with cryptic "cannot block from within a runtime"; agents writing tests sometimes paper over this with nested runtimes. tokio::spawn returns a JoinHandle that must be awaited or aborted; orphaned handles silently leak memory and tasks.</p>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>AI Agent Workflow: have the agent generate the typed service skeleton, then a second pass to add try_join! / JoinSet for fan-out. A reviewer agent runs cargo clippy -- -W clippy::pedantic -W clippy::await_holding_lock -W clippy::unused_async and reports back. cargo nextest for fast test feedback; tokio-console to verify no task is stuck. For any concurrent code path, require a loom-tested invariant if shared mutable state is involved. Recommended subagents: faion-sdd-executor-agent for sequential service-method-by-service-method implementation with quality gates; simplify skill to reduce over-spawned tasks (agents tend to tokio::spawn everything). Recommended prompt pattern: Implement &lt;method&gt; on &lt;Service&gt;. Constraints: async fn signature, returns Result&lt;T, AppError&gt;. Run independent DB calls in tokio::try_join! when there are &gt;=2. CPU-bound work (&gt;1ms) in spawn_blocking. No MutexGuard held across .await — use parking_lot::Mutex only inside sync blocks. Add a unit test using #[tokio::test(flavor = "multi_thread")]. Output: code + test + a 1-line note on cancellation safety.</p>
+    </section>
+
+    <section name="cli-tools-and-services">
+      <p>CLI Tools and Services. cargo + rustup for toolchain; cargo-nextest for faster parallel test running; cargo-watch to re-run on file change; cargo-expand to expand #[tokio::main] and async-trait macros; tokio-console for live task / resource inspector; clippy for async-aware lints (await_holding_lock, unused_async); miri for UB detection in unsafe + concurrency; loom for permutation testing of concurrent code; cargo-flamegraph for profiling async stacks. Services: Tokio runtime OSS with multi_thread (default) or current_thread flavors; Axum / Actix / Tonic OSS all built on Tokio; Sentry, Honeycomb, Grafana Tempo SaaS with tracing-opentelemetry for async traces; Tokio Console server crate for embedded dev inspection; flamegraph.com / Pyroscope SaaS for continuous profiling; loco-rs OSS Rails-like Tokio framework.</p>
+    </section>
+
+    <section name="best-practices">
+      <p>Best Practices. Default to tokio::main(flavor = "multi_thread"); switch to current_thread only for single-core embedded or to debug Send issues. Use parking_lot::Mutex for short critical sections, tokio::sync::Mutex only when you actually need to hold across .await. Channels: mpsc for work queues, broadcast for fan-out events, watch for "latest value" (e.g., config reload), oneshot for request/response. Always pair tokio::spawn with either JoinHandle::await or tokio_util::task::AbortOnDropHandle to avoid leaks. Wrap blocking syscalls (std::fs, reqwest::blocking, image processing) in spawn_blocking; never call them from a hot async path. Use tracing + #[instrument] on every public async fn; without it, async stack traces are useless. For graceful shutdown: signal via tokio::sync::watch::channel(false), hand the receiver to every spawned task, await JoinSet on shutdown.</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>AI Agent Gotchas. LLMs love tokio::spawn everywhere; the result is unstructured concurrency with no error propagation. Prefer try_join! / JoinSet and only spawn for true fire-and-forget background tasks. Agents will use std::sync::Mutex because that's what comes from training data; on the first .await while holding it, the task deadlocks itself. Force parking_lot or tokio::sync::Mutex in the prompt. "Add a timeout" usually becomes tokio::time::timeout(Duration::from_secs(30), fut).await?? which double-? a Result&lt;Result&lt;T, E&gt;, Elapsed&gt; — agent must handle both layers. async fn in traits without #[async_trait] (or Rust ≥1.75 + Send bound) silently produces non-Send futures; spawn fails compile with a wall of trait-bound errors. select! branches that aren't cancel-safe (e.g., db.transaction().begin()) corrupt state on the unselected branch. Lock down which futures are allowed. LLM-written tests often use #[tokio::test] (single-thread) and then call spawn_blocking — passes, but doesn't reflect prod multi-thread runtime. Pin flavor = "multi_thread" in test attributes. Human-in-loop checkpoint: any change to runtime config (flavor, worker_threads, block_on) requires reviewer sign-off; perf and correctness traps live there.</p>
+    </section>
+
+    <templates>
+      <template path="templates/user-service.rs" purpose="Reference async service with try_join!, spawn_blocking, and error propagation"/>
+      <template path="templates/batch-processor.rs" purpose="Semaphore-bounded concurrent batch processor using futures::StreamExt"/>
+    </templates>
+
+    <see-also>
+      <link href="https://tokio.rs/tokio/tutorial"/>
+      <link href="https://docs.rs/tokio"/>
+      <link href="https://rust-lang.github.io/async-book/"/>
+      <link href="https://tokio.rs/blog/2020-04-preemption"/>
+      <link href="https://docs.rs/tokio/latest/tokio/macro.select.html#cancellation-safety"/>
+      <link href="https://github.com/tokio-rs/console"/>
+      <link href="https://github.com/tokio-rs/loom"/>
+    </see-also>
+  </content>
+</methodology>
