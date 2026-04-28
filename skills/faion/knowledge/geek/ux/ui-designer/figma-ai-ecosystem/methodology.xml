@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="figma-ai-ecosystem">
+  <metadata>
+    <tier>geek</tier>
+    <group>ux</group>
+    <domain>ui-designer</domain>
+    <summary>Figma's AI suite (Make, Draw, Sites, Image Tools) has no agent API. Practical agent surfaces: REST API, Webhooks, post-publish audits.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>figma</tag>
+      <tag>ai</tag>
+      <tag>design</tag>
+      <tag>agent-boundary</tag>
+      <tag>api</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Figma AI Ecosystem</title>
+
+    <summary>Figma's AI suite is UI-only with no agent API. Practical surfaces are REST API and Webhooks. Agent role: prompt preparation, validation, post-publish audits.</summary>
+
+    <why>
+      <p>Figma has evolved from a design tool to an end-to-end platform with AI at its core, but all AI features require a human in the Figma UI session. Understanding what the REST and Webhooks APIs do and do not support prevents building automation pipelines that silently fail because they depend on non-existent agent entry points.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Generating structured prompts for Figma Make that a designer then pastes and executes</item>
+        <item>Using Figma Webhooks to trigger downstream agent workflows (spec generation, audit, asset export) on file changes</item>
+        <item>Auditing Figma Sites published pages with Lighthouse and axe after a human publishes</item>
+        <item>Applying non-destructive image editing (erase, isolate, expand) within Figma — human-operated, agent can post-process exported results</item>
+        <item>Evaluating Figma's AI suite before committing to Adobe Firefly or standalone generative tools</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Production-quality code output is required — Figma Make outputs prototype-grade code, not deployable code</item>
+        <item>The design system is token-driven and complex — Figma AI tools do not reliably respect custom token systems</item>
+        <item>Deterministic, reproducible outputs are required — all Figma AI features are non-deterministic</item>
+        <item>The artifact must be version-controlled at code level — Figma files are binary; Sites output is not Git-tracked</item>
+        <item>WCAG compliance is required from day one — Figma AI outputs consistently miss accessibility requirements</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="tool-catalog">
+      <p>Figma's AI-driven features and their agent-facing surfaces.</p>
+      <list>
+        <item>Figma Make — prompt-based web app prototype generation; UI-only, no API or CLI</item>
+        <item>Figma Draw — generative AI vector sketching; UI-only, no external API</item>
+        <item>Figma Sites — publish landing pages directly from Figma; publish is UI-only; published URLs are agent-auditable</item>
+        <item>AI Image Tools — erase objects, isolate objects, expand images (raster only); operates on canvas, no export/re-import cycle; UI-only</item>
+      </list>
+    </section>
+
+    <section name="agent-boundary-rule">
+      <p>The critical rule that prevents agent automation failures.</p>
+      <rule testable="true">
+        <statement>None of Figma's AI features (Make, Draw, Sites publishing, Image Tools) can be triggered by agents via any API — all require a human in a Figma UI session.</statement>
+        <rationale>There is no API or programmatic interface to these features. Any workflow that claims to "use Figma Make via an agent" requires a human at the keyboard. Agents that assume otherwise will silently fail.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use Figma Webhooks instead of polling the REST API to detect file changes.</statement>
+        <rationale>Figma REST API rate limit is 150 requests/minute per token. Polling a complex file for changes quickly exhausts limits. Webhooks are event-driven and do not count against the rate limit for detection.</rationale>
+      </rule>
+      <example type="bad" title="Attempting to call Figma Make from an agent">
+        <code lang="python"><![CDATA[
+# DO NOT DO THIS — Figma Make has no API
+import figma_api
+
+# This does not exist; Figma Make is UI-only
+response = figma_api.make_prototype(
+    prompt="Create a landing page",
+    file_id="12345"
+)
+]]></code>
+        <note>Figma Make is UI-only. The only valid approach is: agent generates a prompt document, logs it, a human copies the prompt into Figma Make UI, and the agent audits the result post-generation.</note>
+      </example>
+    </section>
+
+    <section name="api-surface">
+      <p>The actual agent-accessible surfaces: REST API for structured reads, Webhooks for event-driven reactions.</p>
+      <list>
+        <item>Figma REST API — read file structure, components, styles; limited write (update existing node properties only; cannot create new frames)</item>
+        <item>Figma Webhooks API — event-driven: file_update, library_publish, comment events; triggers agent audit passes</item>
+      </list>
+    </section>
+
+    <section name="agent-workflows">
+      <p>Practical patterns for integrating agents into Figma AI tooling workflows.</p>
+      <rule testable="true">
+        <statement>Agents prepare structured Figma Make prompts as versioned documents and log them for human execution.</statement>
+        <rationale>Figma Make has no versioning; re-generating with the same prompt produces different results. Logging prepared prompts makes iteration traceable and the prompt library improvable over time.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>After a Figma Sites publish, always run a Lighthouse + axe audit — Figma does not validate accessibility or performance on publish.</statement>
+        <rationale>Figma Sites published output is not accessibility-validated. Published pages may fail WCAG contrast, missing ARIA labels, and performance requirements that a designer cannot detect in the Figma canvas.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Separate Figma AI output frames from production design frames using a naming convention (e.g., "[AI Draft] Feature Name").</statement>
+        <rationale>Figma Make output is non-deterministic and prototype-grade. Without a clear naming separator, AI draft frames may be accidentally included in developer handoff or treated as canonical designs.</rationale>
+      </rule>
+      <example type="good" title="Agent prepares and logs Figma Make prompt">
+        <code lang="python"><![CDATA[
+import pathlib, datetime
+
+def prepare_figma_make_prompt(spec: dict) -> str:
+    prompt = f"""Create a prototype for: {spec['feature_name']}
+Layout: {spec['layout']}
+Style: {spec['style']}
+Content: realistic placeholders"""
+    log_path = pathlib.Path("figma-prompts") / f"{datetime.date.today()}-{spec['slug']}.md"
+    log_path.parent.mkdir(exist_ok=True)
+    log_path.write_text(f"# Figma Make Prompt\n\n{prompt}\n")
+    print(f"Prompt prepared and logged to: {log_path}")
+    return prompt
+]]></code>
+        <note>Agent prepares the prompt, logs it for human execution, and tracks it. The human copies this prompt into Figma Make UI.</note>
+      </example>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p>Common failure modes when working with Figma AI tools and APIs.</p>
+      <antipattern>
+        <description>Fetching the full file JSON for complex Figma files.</description>
+        <reason>Figma file JSON can be 50–500 MB for complex files. Always request specific node subtrees using the ?ids=node_id parameter. Fetching the full file at scale will exhaust rate limits and memory.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using Figma Sites published URLs as canonical references without re-checking after file changes.</description>
+        <reason>Figma Sites published URLs do not reflect file changes until a human manually re-publishes. Agents monitoring the URL may audit stale content if they assume the URL is always current.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Diffing a Figma file from a webhook event without scoping to changed node subtrees.</description>
+        <reason>Figma Webhooks send file-level events, not node-level. An agent cannot know which specific frame changed without diffing the full file before and after — which is expensive for large files. Scope webhook reactions to specific frame ranges.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Working on original assets with Figma AI Image Tools instead of copies.</description>
+        <reason>Figma AI image edits (erase, isolate, expand) are not reversible after file save. Always work on copies of assets. Confirm with the designer before applying destructive image operations.</reason>
+      </antipattern>
+      <p>Figma Make prototypes cannot be exported as clean, maintainable code — they are demo-quality and not suitable for handoff to engineering.</p>
+      <p>Figma Sites generates static output only; no server-side rendering, no dynamic data, no backend integration.</p>
+      <p>Figma Draw vector generation is limited to simple shapes and icons; complex illustration requires manual refinement.</p>
+      <p>AI Image Tools (erase, expand) work on raster images only; they do not understand vector layers or component structure.</p>
+      <p>Figma Make has no versioning; iterating discards previous state unless the designer manually duplicates frames.</p>
+      <p>Output quality degrades for non-standard UI patterns (data-dense tables, custom charts, complex navigation).</p>
+    </section>
+
+    <section name="best-practices">
+      <p>Guidelines for sustainable integration of Figma AI tools into design and agent workflows.</p>
+      <list>
+        <item>Use Figma Make for early ideation only — define a clear checkpoint (e.g., stakeholder demo) after which the prototype is discarded and rebuilt in production code</item>
+        <item>Prepare Figma Make prompts as structured documents (not freeform) so they can be reused, versioned, and improved across design iterations</item>
+        <item>After using Figma Sites to publish, always run a Lighthouse + axe audit — the published output is not accessibility-validated by Figma</item>
+        <item>Use Figma Webhooks to trigger downstream agent workflows (spec generation, audit, asset export) rather than polling the REST API</item>
+        <item>For image operations (erase, isolate, expand), work on copies of assets — Figma AI image edits are not reversible after file save</item>
+        <item>Separate Figma AI output frames from production design frames using a clear naming convention (e.g., `[AI Draft] Feature Name`) so they are never confused with handoff-ready work</item>
+      </list>
+      <p>When evaluating Figma's AI suite for adoption, treat Make, Draw, and Sites as prototyping and communication tools — not production engineering tools. The REST API and Webhooks API remain the only programmatic surfaces; build all automation on those foundations. Human designers remain the essential link between Figma AI output and production-ready design handoff. For accessibility-critical projects, audit every Figma Sites output before launch and never rely on Figma's AI-generated defaults for WCAG compliance.</p>
+    </section>
+
+    <section name="services-and-tools">
+      <p>Ecosystem tools for working with Figma AI output.</p>
+      <list>
+        <item>figma-export (community) — Export frames/components to SVG/PNG/PDF from Figma files</item>
+        <item>Lighthouse CLI — Audit Figma Sites published pages for performance + a11y</item>
+        <item>axe-cli — Accessibility audit on Figma Sites published output</item>
+        <item>Playwright — E2E interaction test on Figma Sites pages</item>
+        <item>webhooks.site (dev) — Receive and inspect Figma webhook payloads during development</item>
+        <item>Builder.io (SaaS) — Figma plugin + REST API; converts Figma designs to production-quality code</item>
+        <item>Zeplin (SaaS) — Design-to-spec platform; agents can read component specs from Zeplin API</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/figma-make-prompt.txt" purpose="Structured Figma Make prompt template for feature prototypes"/>
+      <template path="templates/audit-figma-sites.sh" purpose="Lighthouse + axe audit script for Figma Sites published output"/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.figma.com/ai/"/>
+      <link href="https://www.figma.com/developers/api"/>
+      <link href="https://www.figma.com/developers/webhooks"/>
+      <link href="https://www.figma.com/blog/config-2025/"/>
+      <link href="https://help.figma.com/hc/en-us/articles/figma-make"/>
+      <link href="https://www.figma.com/blog/introducing-figma-sites/"/>
+    </see-also>
+  </content>
+</methodology>
