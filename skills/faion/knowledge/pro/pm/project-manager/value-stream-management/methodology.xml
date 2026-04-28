@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="value-stream-management">
+  <metadata>
+    <tier>pro</tier>
+    <group>pm</group>
+    <domain>project-manager</domain>
+    <summary>Map end-to-end flow from customer request to value using Flow Metrics and DORA; identify bottleneck via Theory of Constraints; run targeted experiments to elevate the constraint.</summary>
+    <tags>
+      <tag>flow</tag>
+      <tag>dora</tag>
+      <tag>metrics</tag>
+      <tag>bottleneck</tag>
+      <tag>value-stream</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Value Stream Management</title>
+
+    <summary>Map the end-to-end flow from customer request to customer value, measure it with Flow Metrics (Lead Time, Cycle Time, Throughput, WIP, %C/A) and DORA (Deployment Frequency, Change Lead Time, Change Failure Rate, MTTR), identify the constraint per Theory of Constraints, and run targeted experiments to elevate that constraint. Instrument with telemetry first — a VSM workshop without data decays into a poster within months.</summary>
+
+    <why>
+      <p>AI productivity gains and DevOps automation frequently fail to improve customer-visible delivery time because the bottleneck lies outside the software team (product spec, design review, compliance gate, support queue). Flow Metrics expose end-to-end flow; DORA measures only DevOps efficiency. Used together they locate where value actually stalls, preventing teams from optimizing the wrong stage.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Engineering org has shipped DevOps automation but customer-visible lead time has not improved</item>
+        <item>Cross-functional bottleneck suspected across product → design → eng → release → support</item>
+        <item>Quarterly OKR cycle wants to move from output metrics to flow metrics</item>
+        <item>DORA metrics are already in place but not improving — need upstream view via Flow Metrics</item>
+        <item>Org adopting SAFe, FAST Agile, or the Project-to-Product model</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-team, single-product startup pre-PMF — premature optimization</item>
+        <item>Org without telemetry baseline (no commit timestamps, no deploy log) — instrument first</item>
+        <item>Pure cost-cutting context — VSM exposes inefficiencies but is not a layoff lever</item>
+        <item>Teams with no shared ownership across the stream — VSM names the bottleneck but cannot move it</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="value-stream-mapping-fundamentals">
+      <rule>
+        <statement>Map from "user filed request" to "user received value" — not from "ticket created" to "merged"; customer-visible time is the only honest measurement boundary.</statement>
+        <rationale>Internal pipeline metrics (commit-to-deploy) can look elite while the customer waits weeks for spec, design, and compliance stages that precede the first commit. Only customer-anchored boundaries reveal actual value flow.</rationale>
+      </rule>
+
+      <p>VSM originated from lean manufacturing; Mik Kersten (Project to Product, 2018) adapted it to software with the Flow Framework. It identifies bottlenecks outside the software team — the stages that DevOps automation cannot reach.</p>
+    </section>
+
+    <section name="flow-metrics">
+      <p>Flow Metrics from Kersten / Flow Framework.</p>
+
+      <list>
+        <item>Lead Time: time from accepting work to customer handoff — end-to-end flow. The primary metric.</item>
+        <item>Cycle Time: time within a single process stage — process efficiency. Used to locate the constraint.</item>
+        <item>Throughput: items completed per time period — delivery rate.</item>
+        <item>WIP: work items in progress simultaneously — per Little's Law, WIP = Throughput × Cycle Time.</item>
+        <item>%C/A (Complete and Accurate): percentage received by downstream stage without rework needed — quality of handoffs.</item>
+      </list>
+
+      <rule>
+        <statement>Split flow data by work type (feature, defect, risk, debt) — single-number flow metrics hide trade-offs.</statement>
+        <rationale>A team shipping 100% defect work has high throughput but zero feature delivery; aggregating disguises this. Mik Kersten's four-type split is the minimum granularity.</rationale>
+      </rule>
+    </section>
+
+    <section name="dora-four-tuple">
+      <p>DORA metrics from Forsgren, Humble, Kim (2018).</p>
+
+      <list>
+        <item>Deployment Frequency: how often code deploys to production. Elite = multiple per day.</item>
+        <item>Change Lead Time: commit to production time. Elite = under 1 hour.</item>
+        <item>Change Failure Rate: percentage of deployments causing a failure. Elite = under 5%.</item>
+        <item>Mean Time to Recovery (MTTR): time to restore service after failure. Elite = under 1 hour.</item>
+      </list>
+
+      <rule>
+        <statement>Never optimize one DORA metric in isolation — always pair DF with CFR; high DF + high CFR is a negative trade-off.</statement>
+        <rationale>Deployment frequency can be gamed by deploying trivial changes; the constraint is value delivery per deploy, not deploys per day in isolation.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Do not publish "Elite DORA" status without trend context — the label is meaningless and will be gamed by teams optimizing for the scorecard.</statement>
+        <rationale>DORA levels were designed as benchmarks for improvement, not badges. Publishing static levels without trend data invites Goodhart's Law to destroy the signal.</rationale>
+      </rule>
+    </section>
+
+    <section name="implementation-sequence">
+      <list>
+        <item>1. Instrument: connect Jira/Linear, GitHub, deploy logs, PagerDuty, Zendesk via ID links — commit timestamps are the foundation.</item>
+        <item>2. Map: trace one work item end-to-end; identify the stages; measure Lead Time and Cycle Time per stage.</item>
+        <item>3. Measure DORA: daily collection on git + deploy logs.</item>
+        <item>4. Identify constraint: apply Little's Law; highest WIP × Cycle Time stage is the system bottleneck (Theory of Constraints).</item>
+        <item>5. Experiment: run one targeted experiment on the constraint; measure its effect on Lead Time.</item>
+      </list>
+    </section>
+
+    <section name="agentic-vsm-pipeline">
+      <rule>
+        <statement>A flow-instrumenter subagent maps the actual value stream by tracing IDs across tools (issue → branch → PR → deploy → incident → support ticket), normalizes timestamps into stream stages, and emits per-stage metrics.</statement>
+        <rationale>Manual cross-tool ID linking is error-prone and stale within a week; automated tracing from authoritative event logs is the only way to maintain a live VSM.</rationale>
+      </rule>
+
+      <p>A DORA collector runs daily on git + deploy logs. A bottleneck-analyzer applies Theory of Constraints weekly, flags the constraint stage, and proposes 1-3 experiments. Humans choose which experiment to run; agents track its effect.</p>
+
+      <reference path="templates/flow-item.yaml">Schema for a single traced work item across VSM stages</reference>
+      <reference path="templates/dora-quick.sh">Bash script to compute last-30-day DORA from git + deploy log</reference>
+    </section>
+
+    <section name="recommended-subagents">
+      <list>
+        <item>flow-instrumenter — wires Jira/Linear, GitHub, deploy logs, Sentry; traces item IDs cross-tool; produces stream JSON per work item.</item>
+        <item>dora-collector — daily DORA: deploy frequency, lead time for changes, change failure rate, MTTR from git + PagerDuty.</item>
+        <item>bottleneck-analyzer — applies Little's Law; identifies constraint by highest (cycle time × WIP); requires at least 50 items per work type before declaring a bottleneck.</item>
+        <item>experiment-tracker — A/B's a process change (e.g., trunk-based vs. feature-branch) on flow metrics; tracks before/after lead time distribution.</item>
+      </list>
+    </section>
+
+    <section name="prompt-patterns">
+      <example type="good">
+        <note>Flow-instrumenter prompt — skips items with missing stages rather than hallucinating timestamps</note>
+        <code lang="text"><![CDATA[
+You are a flow-instrumenter. Trace work item {issue_id} across tools using
+mapping {tool_id_links.yaml}. Emit JSON {item_id, stages: [{name, enter_ts,
+exit_ts, blocked_h, type}], outcome: shipped|cancelled, work_type: feature|
+defect|risk|debt}. Skip items with > 1 missing stage — do not interpolate.
+All timestamps in UTC ISO 8601.
+        ]]></code>
+      </example>
+
+      <example type="good">
+        <note>Bottleneck-analyzer prompt — requires minimum sample before declaring constraint</note>
+        <code lang="text"><![CDATA[
+You are a bottleneck-analyzer. Given last 90 days of flow data {flow.json},
+return: (1) constraint stage by Little's Law (highest cycle time x WIP),
+(2) flow distribution across work types, (3) top 3 experiments to elevate
+the constraint, ranked by expected throughput lift / cost.
+Require >= 50 items per work type before declaring a bottleneck.
+Flag insufficient data explicitly rather than guessing.
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Agent hallucinates ID links across tools using loose regex matching.</description>
+        <reason>Require explicit referenced-by chains in source systems; reject inferred links that lack audit trail.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Timezone bugs in lead-time calculation — agent uses local time, losing UTC anchor.</description>
+        <reason>Force UTC; never local. Reconcile agent output against a known-good calculation.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>DORA "elite" is published as a scorecard without trend context.</description>
+        <reason>DORA levels are meaningless without trend. Publish as "up from X% last quarter" not "we are elite".</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Webhook-driven instrumentation drops events under load.</description>
+        <reason>Reconcile with periodic full pulls; webhooks are real-time hints, not the authoritative feed.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>AI commits flood the repo with micro-PRs that distort throughput.</description>
+        <reason>Tag bot PRs and report human/bot split; do not mix them into DORA.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>"Reliability" (5th DORA metric) is org-defined; agent picks the SLO target.</description>
+        <reason>Humans define reliability SLO; agents implement measurement only.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Constraint identification flips month-to-month with low data volume.</description>
+        <reason>Require ≥ 50 items per type before declaring a bottleneck; flag insufficient data explicitly.</reason>
+      </antipattern>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>four-keys (Google) — DORA pipeline reference implementation (https://github.com/dora-team/fourkeys)</item>
+        <item>gh api — GitHub deployments + PR timestamps for DORA collection</item>
+        <item>jq — stream join JSON across tools; essential for cross-tool ID linking (https://jqlang.github.io/jq/)</item>
+        <item>git log --pretty — cycle time inputs from commit timestamps (core git)</item>
+        <item>pagerduty-cli — MTTR data from incident logs (https://github.com/martindstone/pagerduty-cli)</item>
+        <item>glab api — GitLab deployment events, MR timestamps</item>
+      </list>
+    </section>
+
+    <section name="services">
+      <list>
+        <item>LinearB — engineering metrics, GitHub-native, REST API; good for mid-size orgs (SaaS).</item>
+        <item>Plandek — Flow + DORA dashboards, REST API; supports multiple source integrations (SaaS).</item>
+        <item>Jellyfish — engineering benchmarking, REST API; strong on team-level analysis (SaaS).</item>
+        <item>Faros AI — DORA + Flow with open data layer; can self-host (SaaS/OSS).</item>
+        <item>Apache DevLake — self-host DORA + Flow with plugin architecture for all major tools (OSS).</item>
+        <item>Tasktop / Planview Viz — enterprise VSM platform; requires license; REST API partial (SaaS).</item>
+        <item>Code Climate Velocity — cycle time, PR throughput; GitHub-centric (SaaS).</item>
+        <item>Allstacks — forecasting from flow data; REST API (SaaS).</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <rule>
+        <statement>Visualize flow with cumulative flow diagram (CFD), not bar charts — CFD reveals stage starvation and WIP accumulation that bar charts hide.</statement>
+        <rationale>Bar charts show throughput at a point in time; CFDs show the rate of item entry and exit per stage, making bottleneck dynamics visible as widening bands.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use Little's Law (WIP = Throughput × Cycle Time) as a sanity check on agent-collected data — large deviations indicate instrumentation errors.</statement>
+        <rationale>Little's Law holds for any stable system; if agent-collected WIP, throughput, and cycle time do not satisfy it, there is a data collection bug, not an anomaly.</rationale>
+      </rule>
+
+      <rule>
+        <statement>When AI tooling lifts throughput, watch Change Failure Rate and rework rate — productivity that creates incidents is disguised debt.</statement>
+        <rationale>The AI productivity paradox: AI-generated code that deploys fast but fails in production increases MTTR and CFR, erasing the DF gain. Track the full four-tuple together.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Split flow data by work type (Mik Kersten's four: feature, defect, risk, debt) — single-number flow lies.</statement>
+        <rationale>A team shipping 100% defect work has high throughput but zero feature velocity; aggregating hides the truth.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Never optimize one metric in isolation; always pair (e.g., DF up + CFR up = bad trade).</statement>
+        <rationale>DORA metrics interact; optimizing one in isolation breaks others.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Anchor VSM in customer-visible time: from "user filed request" to "user received value", not "ticket created" to "merged".</statement>
+        <rationale>Internal metrics can look elite while the customer waits in queue; customer-visible time is the only honest measure.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Run quarterly VSM workshop; refresh map; do not assume the stream stays static.</statement>
+        <rationale>VSM is a snapshot; the value stream changes as teams reorganize and tooling evolves.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p>Flow Metrics aggregate work types (feature/defect/risk/debt) and hide trade-offs if not split by type. DORA is a four-tuple proxy, not the actual customer outcome — Elite DORA + falling NPS happens. VSM workshops produce posters, not telemetry — without instrumentation, the map decays in months. Cross-team flow data lives in 5+ tools (Jira, GitHub, PagerDuty, Salesforce, Zendesk) with mismatched IDs. "%C/A" (complete and accurate) is hard to measure without explicit handoff QA gates. AI-generated PRs can inflate throughput and Deployment Frequency without raising Earned Value.</p>
+    </section>
+
+    <templates>
+      <template path="templates/dora-quick.sh" purpose="Bash script: compute last-30-day DORA from git log + deploy.log"/>
+      <template path="templates/flow-item.yaml" purpose="Schema for a single traced work item across VSM stages"/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.mik.im/"/>
+      <link href="https://cloud.google.com/devops/state-of-devops"/>
+      <link href="https://devlake.apache.org"/>
+      <link href="https://docs.tasktop.com"/>
+    </see-also>
+  </content>
+</methodology>
