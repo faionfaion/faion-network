@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="task-creation-template-guide">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd-planning</domain>
+    <summary>Canonical template for TASK_NNN.md files. 100k token budget: SDD (15%), dependency tree (10%), research (25%), implementation (40%), tests (10%). Prevents pattern re-discovery.</summary>
+    <tags>
+      <tag>task</tag>
+      <tag>template</tag>
+      <tag>executor</tag>
+      <tag>token-budget</tag>
+      <tag>dependency-tree</tag>
+    </tags>
+    <category>task</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Task Creation Template Guide</title>
+    <summary>The canonical template for TASK_NNN.md files — the atomic units executor agents consume. Each task file must be self-contained within a 100k token budget: SDD references (15%), dependency tree with completed-task summaries and code snippets (10%), research (25%), implementation (40%), testing (10%). The dependency tree is the most critical section — it prevents agents from re-discovering patterns already established in completed tasks.</summary>
+    <why>
+      <p>Executor agents receiving stub task files waste 30-40% of context budget re-discovering patterns, make inconsistent implementation decisions, and contradict earlier tasks. A fully populated task file with a dependency tree (summaries + key code from completed tasks) and explicit FR/AD traceability lets the executor start coding immediately. Token budget enforcement prevents tasks that exceed the 100k context window.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Generating TASK_NNN.md files from an approved implementation plan</item>
+        <item>Ensuring each task contains enough context for single-agent execution without re-reading the whole codebase</item>
+        <item>Before handing off feature execution to faion-sdd-executor-agent</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Before spec.md and design.md are both approved — templates will be incomplete</item>
+        <item>Spike/research tasks with unknown scope (token budget cannot be estimated)</item>
+        <item>New greenfield project with no prior tasks (no dependency tree to build)</item>
+      </list>
+    </when-not-to-use>
+    <section name="context-budget">
+      <p>How the 100k token budget is allocated across task phases and why the dependency tree is the most critical section for executor agent consistency.</p>
+      <rule>
+        <statement>Keep every task within 100k total token budget: SDD docs 15% (~15k), dependency tree 10% (~10k), research 25% (~25k), implementation 40% (~40k), testing 10% (~10k).</statement>
+        <rationale>Claude's effective code generation quality degrades above ~80k context tokens. The 100k budget with component-level breakdown prevents executor agents from loading too much context before starting to code, which produces truncated or incoherent implementations.</rationale>
+      </rule>
+      <list>
+        <item>SDD Docs (15%): constitution.md relevant sections + spec FR-X + design AD-X + contracts.md if API</item>
+        <item>Dependency Tree (10%): completed task summaries + key code snippets from prior tasks</item>
+        <item>Research (25%): reading similar existing code patterns in the codebase</item>
+        <item>Implementation (40%): actual coding — the primary value-producing phase</item>
+        <item>Testing (10%): writing and running tests, verification</item>
+      </list>
+    </section>
+    <section name="why-dependency-tree">
+      <rule>
+        <statement>Include a dependency tree in every task that builds on completed prior tasks; without it, agents re-discover patterns, produce inconsistent implementations, and contradict earlier decisions.</statement>
+        <rationale>The dependency tree is the mechanism by which patterns established in TASK-001 propagate to TASK-005. Without it, the executor in TASK-005 invents its own approach, breaking consistency with existing code. With it, 30-40% of context budget is freed because research is replaced by targeted pattern reuse.</rationale>
+      </rule>
+      <list>
+        <item>Without dependency tree: agent re-discovers patterns (wastes research budget), inconsistent code style, may contradict earlier decisions, duplicates work</item>
+        <item>With dependency tree: reuses established patterns, consistent code, builds on prior decisions, context focused on implementation</item>
+      </list>
+    </section>
+    <section name="dependency-tree-content">
+      <list>
+        <item>Summary: one sentence — what was done in the dependency task</item>
+        <item>Files: exact paths created or modified</item>
+        <item>Patterns: reusable conventions discovered (BaseModel inheritance, email validator, etc.)</item>
+        <item>Key code: critical code snippet (class definition, key function) — anchors executor's style</item>
+        <item>Decisions: implementation decisions made (e.g., UUID for PK instead of auto-increment)</item>
+      </list>
+      <rule>
+        <statement>Keep each task's "Files to Change" table to 8 or fewer files; if more, split the task.</statement>
+        <rationale>More than 8 files means the task is doing too many things. Beyond 8 files, the token budget is consumed by file-reading context, leaving insufficient budget for implementation. Split on logical boundaries: one task per layer (model, service, handler, tests).</rationale>
+      </rule>
+    </section>
+    <section name="template-sections">
+      <p>All sections of the TASK_NNN.md template v2.0 with purpose and constraints for each.</p>
+      <rule>
+        <statement>Write the SUMMARY comment in the header before any other section — it is the value this task delivers, used by subsequent tasks' dependency trees.</statement>
+        <rationale>The SUMMARY comment is parsed by planning agents to build dependency trees for downstream tasks. Missing or vague summaries ("implement stuff") break the context-passing chain that saves 30-40% of subsequent tasks' token budgets.</rationale>
+      </rule>
+      <list>
+        <item>Title line: # TASK_XXX: {Title}</item>
+        <item>HTML comment: &lt;!-- SUMMARY: one sentence business value --&gt; (machine-parseable for dependency trees)</item>
+        <item>Metadata table: Complexity (simple/normal/complex), Priority (P0/P1/P2), Created date, Project, Feature</item>
+      </list>
+    </section>
+    <section name="sdd-and-dependency">
+      <list>
+        <item>SDD References table: Document | Path | Sections — one row per relevant document</item>
+        <item>Dependency Tree: visual tree of completed tasks this one depends on, with summaries, files, patterns, key code</item>
+        <item>Links to completed TASK_NNN.md files: "Read Summary section before starting"</item>
+      </list>
+    </section>
+    <section name="requirements-coverage">
+      <list>
+        <item>FR-X section: full text of each functional requirement this task implements</item>
+        <item>AD-X section: full text of each architectural decision this task applies</item>
+        <item>NFR-X section: if non-functional requirements apply to this task</item>
+      </list>
+      <rule>
+        <statement>Copy the full FR and AD text into the task file — do not reference by ID only; executor agents reading only the task file must not need to re-read spec and design.</statement>
+        <rationale>The task file must be self-contained within the 100k budget. "See FR-001 in spec.md" sends the executor back to load the full spec, wasting 10-15k tokens on re-reading. Inline the relevant sections only.</rationale>
+      </rule>
+    </section>
+    <section name="goals-ac-scope">
+      <list>
+        <item>Description: 2-4 sentences of what to do + business value</item>
+        <item>Goals: 3 specific measurable goals (not "implement X" — "X function returns Y given Z")</item>
+        <item>Acceptance Criteria: Given/When/Then format, each marked with the FR-X it covers</item>
+        <item>Out of Scope: explicit exclusions written BEFORE Goals to prevent scope creep during execution</item>
+      </list>
+    </section>
+    <section name="files-risks-testing">
+      <list>
+        <item>Files to Change: CREATE/MODIFY table with exact paths — maximum 8 files</item>
+        <item>Risks and Mitigations: concrete mitigations for each risk</item>
+        <item>Potential Blockers: checklist — treat as exit conditions, not decorative</item>
+        <item>Testing: unit test file paths + integration test descriptions</item>
+      </list>
+    </section>
+    <section name="executor-sections">
+      <list>
+        <item>Subtasks: research → implement → test → verify (filled by planner)</item>
+        <item>Implementation: (filled by executor during execution — findings per subtask)</item>
+        <item>Summary: (filled after completion — what was done, key decisions, files changed, test results)</item>
+        <item>Lessons Learned: (optional — patterns and mistakes for .aidocs/memory/)</item>
+      </list>
+      <rule>
+        <statement>The Summary section must be filled by the executor after completion — it becomes the dependency tree entry for all downstream tasks.</statement>
+        <rationale>If Summary is empty, downstream tasks cannot build a dependency tree, breaking the context-passing chain. The Summary format (What was done / Key decisions / Files changed / Test results) is parseable by planning agents.</rationale>
+      </rule>
+    </section>
+    <section name="creation-checklist">
+      <p>Phase-by-phase checklist for creating a TASK_NNN.md file and the quality gate for executor-readiness.</p>
+      <rule>
+        <statement>Estimate token budget before writing the task file: SDD docs + dependency tree + research + implementation + testing — must total less than 100k.</statement>
+        <rationale>Rough token estimates prevent upstream creation of tasks that exceed the executor's context window. Tasks over 100k must be split on logical boundaries before executor assignment.</rationale>
+      </rule>
+      <list>
+        <item>Phase 1: Budget and References — estimate tokens, create SDD References table</item>
+        <item>Phase 2: Dependency Tree — identify completed tasks, extract summaries, build tree</item>
+        <item>Phase 3: Requirements and AC — inline FR/AD text, write Out of Scope, define Goals, write AC in Given/When/Then</item>
+        <item>Phase 4: Files and Risks — list CREATE/MODIFY files (max 8), define risks and mitigations, write blockers, specify testing</item>
+        <item>Quality Gate: all required sections present, FR/AD full text (not references), dependency tree with code snippets, AC in Given/When/Then format, Out of Scope before Goals, 8 or fewer files, concrete mitigations, focused objective, machine-parseable SUMMARY comment</item>
+      </list>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Write the dependency tree before any other section — it sets the vocabulary for all subsequent fields</item>
+        <item>Keep each task's "Files to Change" table to ≤8 files; if more, split the task</item>
+        <item>Include at least one code snippet from a completed dependency task to anchor the executor's style</item>
+        <item>Mark AC items with the FR-X they cover so reviewers can trace without re-reading spec</item>
+        <item>Always write "Out of Scope" before "Goals" — prevents scope creep during execution</item>
+        <item>Token estimate should be conservative: add 20% buffer on top of component-level sums</item>
+        <item>Store completed task summaries in a machine-readable format (fixed section header) so future tasks can extract them programmatically</item>
+      </list>
+    </section>
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents tend to skip the "Lessons Learned" section — enforce via reviewer pass or it loses memory value</item>
+        <item>Dependency tree snippets go stale: if TASK_001 is refactored, TASK_005's snippet reference is wrong; add a "last verified" date</item>
+        <item>Haiku generates template shells quickly but leaves placeholder text; always run a Sonnet review pass</item>
+        <item>The 100k budget assumes fresh context; if the executor's session already has prior tasks loaded, effective budget is lower</item>
+        <item>"Potential Blockers" checkboxes are rarely cleared — agents treat them as decorative; make them actual exit conditions</item>
+        <item>Given-When-Then AC works poorly for async tasks (email sends, webhooks) — add explicit "wait for" clauses</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/task-template.md" purpose="Canonical TASK_NNN.md template v2.0 with all sections"/>
+    </templates>
+    <scripts>
+      <script path="scripts/estimate-tokens.py" purpose="Estimate token count for task context components before writing the task file"/>
+    </scripts>
+    <see-also>
+      <link href="https://www.extremeprogramming.org/rules/userstories.html"/>
+      <link href="https://gojko.net/books/specification-by-example/"/>
+      <link href="https://github.com/openai/tiktoken"/>
+      <link href="https://xp123.com/articles/invest-in-good-stories-and-smart-tasks/"/>
+    </see-also>
+  </content>
+</methodology>

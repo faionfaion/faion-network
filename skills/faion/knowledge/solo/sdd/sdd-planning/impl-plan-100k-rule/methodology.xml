@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="impl-plan-100k-rule">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd-planning</domain>
+    <summary>Every task must fit within 100k token context budget. Fixed overhead plus variable codebase reading. Tasks exceeding 80k must be split before any TASK file is written.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>implementation-plan</tag>
+      <tag>token-budget</tag>
+      <tag>task-decomposition</tag>
+      <tag>context-management</tag>
+      <tag>task-splitting</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Implementation Plan: 100k Token Rule</title>
+
+    <summary>Every task assigned to an agent must fit within a 100k token context budget. The budget has fixed overhead (agent prompt ~8k, project context ~12k, task file ~3k, buffer ~15k) plus variable codebase reading. Tasks exceeding 80k tokens must be split before any TASK file is written. Three splitting strategies: by component, by layer, by dependency wave.</summary>
+
+    <why>
+      <p>Agents assigned tasks exceeding their effective context window produce incomplete output, higher hallucination rates, and longer execution times — and the executor does not abort mid-task. Budget enforcement is entirely a planning-phase responsibility. Wave-based task creation (create Wave 1, execute, then create Wave 2 using patterns learned) further reduces token waste from early task files that become stale when Wave 1 reveals wrong assumptions.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Before assigning any task to faion-sdd-executor-agent — validate context budget fits.</item>
+        <item>When decomposing a large design into tasks and unsure whether to split or combine.</item>
+        <item>Auditing an existing implementation plan where tasks seem to exceed context window.</item>
+        <item>Estimating total project token cost before committing to an implementation approach.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Micro-tasks under 5k tokens — budget calculation overhead is not worth it.</item>
+        <item>Reading-only research passes — context budget still applies but failure mode is less severe.</item>
+        <item>Attempting to skip the rule for Claude 200k context — focus degrades at high utilization even within window limits.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="budget-breakdown">
+      <p>The fixed and variable components of the 100k token budget per task, three worked estimation examples, and complexity level thresholds.</p>
+
+      <rule>
+        <statement>Every token budget estimate must itemize all components: agent prompt (~8k), project context (~12k), task file (~3k), design docs (relevant AD-X sections), codebase reading (list every file with size estimate), buffer (~15k). Sum must be under 100k.</statement>
+        <rationale>Unitemized estimates are consistently optimistic by 30-50%. Each component class has different variability. Itemization makes the overrun source diagnosable.</rationale>
+      </rule>
+
+      <p>Fixed overhead per task: agent prompt 8k + project context 12k + task file 3k + buffer 15k = 38k tokens minimum.</p>
+
+      <p>Variable cost: codebase reading = sum of tokens in all files the agent will read. One token ≈ 4 bytes (use wc -c as proxy when ttok unavailable).</p>
+
+      <rule>
+        <statement>Include generated files (ORM clients, GraphQL schemas, migration snapshots) explicitly in the variable cost. They are 5-10x larger than hand-written equivalents.</statement>
+        <rationale>Agents consistently omit generated file sizes from estimates. A Prisma client or full OpenAPI schema can consume 20-40k tokens alone.</rationale>
+      </rule>
+
+      <p>Complexity thresholds: understanding the three baseline complexity levels helps in categorizing and estimating task scope accurately.</p>
+
+      <list>
+        <item>Simple: total context under 30k tokens. Single file change with clear pattern and minimal dependencies. Examples: database migration, utility function addition, configuration change, simple bug fix.</item>
+        <item>Normal: 30-60k tokens. Multiple files involved, some integration between components, standard architectural patterns. Examples: API endpoint implementation, service class addition, middleware integration, straightforward feature addition.</item>
+        <item>Complex: 60-100k tokens. Many files with deep integration, edge case handling, cross-module dependencies. Examples: E2E test suite creation, complex business logic spanning multiple layers, refactoring affecting many files.</item>
+      </list>
+
+      <rule>
+        <statement>Flag tasks with complex tasks that require debugging existing code with a 30k exploration buffer on top of the standard formula. Debugging reads are non-deterministic.</statement>
+        <rationale>Standard formula assumes known files to read. Debugging passes read many files iteratively and unpredictably; the standard 15k buffer is insufficient.</rationale>
+      </rule>
+
+      <example type="good" title="Single file change estimate (~15k)">
+        <code lang="markdown"><![CDATA[
+Breakdown:
+- Agent prompt: 5k
+- Project context: 8k
+- Task file: 2k
+- File to modify (500 lines): ~4k
+- Buffer: 15k
+Total: ~34k tokens (simple complexity)
+]]></code>
+      </example>
+
+      <example type="good" title="Multi-file change (3-5 files) estimate (~45k)">
+        <code lang="markdown"><![CDATA[
+Breakdown:
+- Agent prompt: 5k
+- Project context: 10k
+- Task file: 3k
+- Files to modify: 15k (5 files × 3k avg)
+- Dependencies: 12k (4 files × 3k avg)
+- Buffer: 15k
+Total: ~60k tokens (normal complexity)
+]]></code>
+      </example>
+
+      <example type="good" title="Complex refactoring (10+ files) estimate (~85k)">
+        <code lang="markdown"><![CDATA[
+Breakdown:
+- Agent prompt: 8k
+- Project context: 15k
+- Task file: 5k
+- Files to modify: 35k (10 files × 3.5k avg)
+- Dependencies: 20k (6 files × 3.3k avg)
+- Buffer: 15k
+Total: ~98k tokens (complex complexity - borderline, consider splitting)
+]]></code>
+      </example>
+    </section>
+
+    <section name="splitting-strategies">
+      <p>When to split tasks, three splitting strategies (by component, by layer, by dependency wave), WBS principles, and the wave-based task creation pattern.</p>
+
+      <rule>
+        <statement>Split a task if: context estimate exceeds 80k tokens, task touches more than 10 files, task requires deep research across many modules, task has multiple independent sub-goals. Calculate budget BEFORE writing the TASK file.</statement>
+        <rationale>Tasks over 80k tokens are at risk of context overflow. Estimates that reveal a 120k task should trigger a split before any TASK file is created — not after.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Apply three WBS rules: 100% Rule (all work is accounted for, no orphaned work), Mutually Exclusive (no overlap between tasks), Completeness (each task has clear done criteria). Test-writing tasks and CHANGELOG updates must appear explicitly.</statement>
+        <rationale>WBS omissions are the most common source of "surprise" work at the end of a feature. Test writing and documentation are consistently omitted when the plan focuses on production code only.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Create detailed TASK_*.md files in waves, not all at once. Create and execute Wave 1 first; then create Wave 2 files using patterns learned from Wave 1 execution reports.</statement>
+        <rationale>Task files created before Wave 1 execution are based on design assumptions that may be wrong. Wave 2 files created after Wave 1 reflect actual implementation patterns, reducing rework.</rationale>
+      </rule>
+
+      <example type="good" title="Splitting by component">
+        <code lang="markdown"><![CDATA[
+Before: TASK-001: Implement user authentication (150k tokens)
+
+After:
+TASK-001: Create user database schema (25k tokens)
+TASK-002: Implement password hashing utilities (20k tokens)
+TASK-003: Create registration handler (30k tokens)
+TASK-004: Create login handler (35k tokens)
+TASK-005: Add authentication middleware (25k tokens)
+]]></code>
+        <note>First sub-task has zero dependencies — Wave 1 can start immediately.</note>
+      </example>
+
+      <example type="good" title="Splitting by layer">
+        <code lang="markdown"><![CDATA[
+Before: TASK-001: Build payment system (180k tokens)
+
+After:
+TASK-001: Payment database models (30k tokens)
+TASK-002: Payment service layer (40k tokens)
+TASK-003: Payment API endpoints (35k tokens)
+TASK-004: Payment UI components (35k tokens)
+TASK-005: Payment integration tests (40k tokens)
+]]></code>
+      </example>
+
+      <example type="good" title="Splitting by dependency wave">
+        <code lang="markdown"><![CDATA[
+Before: TASK-001: Implement notification system (140k tokens)
+
+After:
+Wave 1 (parallel):
+  TASK-001: Notification data models (25k tokens)
+  TASK-002: Email sender utility (20k tokens)
+
+Wave 2 (depends on Wave 1):
+  TASK-003: Notification service (35k tokens)
+  TASK-004: Notification templates (25k tokens)
+
+Wave 3 (depends on Wave 2):
+  TASK-005: Notification API (35k tokens)
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Agents asked to "create all tasks now" create Wave 2 and Wave 3 stubs with placeholder content.</description>
+        <reason>Placeholder task files degrade the quality of Wave 2 and 3 execution. Enforce wave-gated creation in the planning prompt.</reason>
+      </antipattern>
+    </section>
+
+    <section name="quality-gates">
+      <p>Quality gate checks for implementation plans using the 100k rule:</p>
+
+      <list>
+        <item>All tasks have token estimate less than 100k tokens.</item>
+        <item>Task estimates include fixed overhead (8k prompt + 12k context + 3k task file + 15k buffer).</item>
+        <item>Generated files are accounted for in variable cost (Prisma, OpenAPI, migration snapshots).</item>
+        <item>Debugging tasks have 30k exploration buffer on top of standard formula.</item>
+        <item>Wave-based task creation is enforced — Wave 2 files created after Wave 1 execution.</item>
+        <item>All WBS rules applied: 100% Rule, Mutually Exclusive, Completeness.</item>
+        <item>Test-writing tasks and CHANGELOG updates appear explicitly in task breakdown.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/estimate-context.sh" purpose="Bash script: sums token estimates for a task's file list using byte count proxy; flags tasks over 100k."/>
+    </templates>
+
+    <see-also>
+      <ref slug="impl-plan-components"/>
+      <ref slug="impl-plan-examples"/>
+    </see-also>
+  </content>
+</methodology>
