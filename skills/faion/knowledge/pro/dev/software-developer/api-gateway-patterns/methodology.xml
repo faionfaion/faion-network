@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-gateway-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Centralized gateway for microservices routing, auth, rate limiting, request tracing, and caching. Stateless design using Kong, AWS API Gateway, Nginx, or BFF aggregation patterns.</summary>
+    <tags>
+      <tag>microservices</tag>
+      <tag>api-gateway</tag>
+      <tag>kong</tag>
+      <tag>aws-api-gateway</tag>
+      <tag>bff</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>API Gateway Patterns</title>
+
+    <summary>Centralized API gateway for microservices: routing, JWT/mTLS auth, rate limiting per consumer, CORS, request tracing via X-Request-ID, circuit breakers, and edge caching. Covers Kong (declarative kong.yml), AWS API Gateway (Serverless/Terraform), Nginx, and BFF (Backend-for-Frontend) aggregation. Gateway must stay stateless and "boring" — no business logic in plugins.</summary>
+
+    <why>
+      <p>Duplicating auth, rate-limiting, and tracing in every microservice is an operations burden and a security inconsistency risk. A gateway centralizes cross-cutting concerns as config-as-code, enables canary routing without service changes, and enforces quotas for public APIs. The "smart gateway" antipattern (business logic in Lua/JS plugins) creates a new monolith owned by the platform team — this methodology enforces the boundary.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Multi-service backend needing centralized auth, rate limiting, request tracing, CORS.</item>
+        <item>Migrating monolith to microservices: front old + new behind one gateway, then peel off routes.</item>
+        <item>Public APIs with plan-based quotas (free/pro) — Kong, AWS APIGW, Apigee handle usage plans natively.</item>
+        <item>BFF per channel (web, mobile, partner) with different auth/aggregation needs.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-service apps — a gateway is one more thing to operate.</item>
+        <item>Sub-1ms latency hot paths — each gateway hop adds 1–5ms; use a sidecar service mesh instead.</item>
+        <item>Internal east-west service-to-service traffic — service mesh (Linkerd, Istio) fits better.</item>
+        <item>Teams that cannot afford Kong/Envoy + config plane operational complexity.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="gateway-core-rules">
+      <p>A gateway is a stateless config-driven proxy. Its job is to route requests, enforce auth/rate-limit/tracing, and fail gracefully. Any business logic in a gateway plugin becomes a platform team's liability.</p>
+
+      <rule testable="true">
+        <statement>Polyglot gateways MUST be stateless and operate only on request headers, path, and auth tokens. Rate-limit state lives in a shared Redis (not memory). Auth state lives in tokens (JWT, signed cookies); never cache user context in the gateway. No business logic in plugins (Lua, JS, WASM) — reserve plugins for auth, rate-limit, request-tracing, and CORS. Any use case requiring business logic (request aggregation, transformation) belongs in a Backend-for-Frontend (BFF) service, not the gateway.</statement>
+        <rationale>Stateless gateways scale horizontally; state in shared Redis survives restarts. Business logic in plugins ties the gateway to domain knowledge only the backend team owns, causing coordination overhead every time a rule changes. BFF services are explicit, versionable, and testable; the gateway stays boring and stable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Rate limiting MUST be per-consumer (API key, authenticated user ID) or per-plan (free/pro tier), never per-IP behind a load balancer or CDN. If the gateway sits behind a CDN, rate-limit by the value of the X-Forwarded-For header (the client's IP) or by authenticated user, never by the CDN's IP.</statement>
+        <rationale>Per-IP rate limiting behind a load balancer or CDN fails because all traffic appears to come from a small set of IPs; every user gets rate-limited globally. Consumer-based rate limiting (API key or user ID from the token) works correctly regardless of network topology.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Every inbound request MUST receive a unique X-Request-ID header (generated at ingress if missing) and propagate that ID to all downstream services. Structured logs at every hop MUST include the request ID so traces can be correlated end-to-end.</statement>
+        <rationale>Request IDs are the only reliable way to debug production issues spanning multiple services. Without them, a user reports "my request failed" and operations has no way to find the matching log entries across five services. This is low-cost at gateway level (one header assignment) and invaluable downstream.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Timeouts at the gateway MUST be shorter than timeouts at the client. Gateway timeout 5s, client timeout 10s, so the gateway returns 504 cleanly before the client gives up. Upstream service timeouts MUST be even shorter (2s per hop) so late responses fail fast.</statement>
+        <rationale>If the gateway times out after the client, the client thinks the request hung (may retry) while the gateway is also retrying upstream; cascading requests and thundering herd. Short gateway timeouts fail fast and give the client a clear 504 to handle.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Circuit breakers MUST be configured per upstream service, not globally. If one service is down, the gateway returns 503 for that service's routes but continues routing to healthy services. Implement via Kong's `proxy-cache` + `request-termination` or Envoy's `outlier_detection`.</statement>
+        <rationale>A global circuit breaker is a total outage; one slow service brings down the whole platform. Per-service circuit breakers degrade gracefully and let users access unaffected parts of the system while operations fixes the failing service.</rationale>
+      </rule>
+
+      <example type="good" title="Stateless, boring gateway">
+        <code lang="yaml"><![CDATA[
+# kong.yml — route to order service with auth, rate limit, tracing
+_format_version: "3.0"
+routes:
+  - name: orders-api
+    paths: ["/api/v2/orders"]
+    methods: [GET, POST, DELETE]
+    service: order-service
+    plugins:
+      - name: jwt
+        config:
+          secret_is_base64: false
+          key_claim_name: "sub"
+      - name: rate-limiting
+        config:
+          policy: "redis"
+          redis_database: 0
+          limit_by: "consumer"
+          second: 60
+      - name: correlation-id
+        config:
+          header_name: "X-Request-ID"
+services:
+  - name: order-service
+    url: "http://order-service:8080"
+    connect_timeout: 2000
+    read_timeout: 5000
+    write_timeout: 5000
+        ]]></code>
+        <note>Auth, rate-limit, correlation-id at the gateway. No business logic. Service URL, timeouts, and health check are config.</note>
+      </example>
+
+      <example type="bad" title="Business logic in gateway plugins">
+        <code lang="lua"><![CDATA[
+-- DO NOT do this: request transformation in a Kong plugin
+local body = ngx.req.get_body_data()
+local data = cjson.decode(body)
+
+-- Custom validation owned by the backend — now the gateway knows
+if not data.user_id or not data.amount then
+    ngx.exit(ngx.HTTP_BAD_REQUEST)
+end
+
+-- Price adjustment logic — pure business, should be in order service
+if data.promo_code == "BLACK_FRIDAY" then
+    data.discount = 0.5
+end
+
+ngx.req.set_body_data(cjson.encode(data))
+        ]]></code>
+        <note>Gateway now owns validation and business rules. Every change to order logic requires deploying the gateway. This is the anti-pattern.</note>
+      </example>
+
+      <antipattern>
+        <description>Disabling individual linter-like rules inside the gateway (e.g., rate-limit exceptions for "power users") instead of handling it properly in configuration or a BFF.</description>
+        <reason>Ad-hoc exceptions creep in and become policy debt. Use configuration (rate-limit plans per consumer type) or a BFF service for complex routing logic.</reason>
+      </antipattern>
+    </section>
+
+    <section name="gateway-implementations">
+      <p>Different gateway choices for different constraints.</p>
+
+      <rule testable="true">
+        <statement>For declarative, version-control-friendly gateways, use Kong (with deck for config sync) or AWS API Gateway (via Terraform). Nginx is for expert operators; it lacks dynamic config without lua-resty or OpenResty. Envoy is for service-mesh deployments. For simple single-region backends, Kong + PostgreSQL or Kong DB-less is the safest default. For multi-region or serverless, use AWS API Gateway + Terraform.</statement>
+        <rationale>Kong's deck tool gives CI/CD integration; config diffs are reviewable. Nginx lacks dynamic config reloads (requires nginx -s reload + downtime). Envoy is powerful but adds orchestration complexity. AWS API Gateway is managed but lock-in; Terraform makes it reviewable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>If using Kong, pick either DB mode (PostgreSQL with live updates) or DB-less mode (config from a ConfigMap, redis, or file). Do not switch mid-flight — Kong loses state during the migration. For high-volume deployments (>10k req/s), use DB mode so multiple Kong instances stay in sync; for static config, DB-less is simpler.</statement>
+        <rationale>DB mode has a slight latency penalty (config reads from DB) but handles dynamic updates. DB-less is read-only (faster) but requires a deployment to change config. Mixing them mid-flight loses state.</rationale>
+      </rule>
+
+      <example type="good" title="Kong declarative config with deck">
+        <code lang="bash"><![CDATA[
+# Version control kong config and sync via deck
+git clone repo && cd kong-config
+deck dump --select-tag=prod > kong.yml  # export current state
+# Edit kong.yml, commit, push
+deck sync --skip-consumers --select-tag=prod
+        ]]></code>
+        <note>deck sync is atomic; either the entire config applies or none does. Review in PR before deploying.</note>
+      </example>
+
+      <example type="good" title="AWS API Gateway via Terraform">
+        <code lang="hcl"><![CDATA[
+resource "aws_api_gatewayv2_route" "orders" {
+  api_id    = aws_api_gatewayv2_api.main.id
+  route_key = "POST /api/v2/orders"
+  target    = "integrations/${aws_api_gatewayv2_integration.order_service.id}"
+}
+
+resource "aws_api_gatewayv2_stage" "prod" {
+  api_id      = aws_api_gatewayv2_api.main.id
+  name        = "prod"
+  auto_deploy = true
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api_log.arn
+    format = "$context.requestId $context.error.message $context.error.messageString"
+  }
+}
+        ]]></code>
+        <note>Infrastructure as code, reviewable diffs, version control.</note>
+      </example>
+    </section>
+
+    <section name="bff-pattern">
+      <p>Backend-for-Frontend (BFF) aggregates requests to multiple microservices and adapts the response shape for each client (web, mobile, partner). BFF sits behind the gateway and handles business logic and request aggregation; the gateway stays boring.</p>
+
+      <rule testable="true">
+        <statement>A BFF MUST aggregate multiple upstream services in parallel (via asyncio.gather, Promise.all, goroutines) and timeout per-service (2s per hop), not globally. Partial failures are handled: if the user service times out, return the user data as null and the rest of the aggregated response; never fail the entire BFF request if one upstream is slow. BFF MUST NOT cache responses; caching belongs at the gateway.</statement>
+        <rationale>Parallel aggregation is faster than serial. Per-service timeouts prevent one slow service from blocking the entire BFF. Partial responses degrade gracefully. Caching at the gateway (not BFF) saves both the aggregation cost and the upstream service cost.</rationale>
+      </rule>
+
+      <example type="good" title="BFF aggregation with partial failures">
+        <code lang="python"><![CDATA[
+from fastapi import FastAPI, Header, HTTPException
+import httpx, asyncio
+
+app = FastAPI()
+
+@app.get("/api/dashboard")
+async def dashboard(authorization: str = Header(...)):
+    headers = {"Authorization": authorization, "X-Request-ID": "..."}
+    async with httpx.AsyncClient(timeout=2.0) as c:
+        try:
+            user, orders, notifs = await asyncio.gather(
+                c.get("http://user-svc/me", headers=headers),
+                c.get("http://order-svc/me/orders?limit=5", headers=headers),
+                c.get("http://notify-svc/me/unread", headers=headers),
+                return_exceptions=True
+            )
+        except httpx.TimeoutException:
+            raise HTTPException(504, "upstream timeout")
+    return {
+        "user": user.json() if isinstance(user, httpx.Response) and user.is_success else None,
+        "orders": orders.json() if isinstance(orders, httpx.Response) and orders.is_success else [],
+        "notifications": notifs.json() if isinstance(notifs, httpx.Response) and notifs.is_success else [],
+    }
+        ]]></code>
+        <note>Parallel gather with per-service timeout. Partial failures are handled gracefully; missing data returns null/empty list, not a 503.</note>
+      </example>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common mistakes when agents generate gateway config.</p>
+
+      <antipattern>
+        <description>Agents put business logic in Kong plugins (Lua) instead of a dedicated BFF service.</description>
+        <reason>Push back hard. Gateway plugins are for cross-cutting concerns (auth, rate-limit, tracing). Business logic belongs in a service layer.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents generate gateway YAML but no smoke tests. A typo'd path silently 404s in production.</description>
+        <reason>Require agents to pair every route change with a smoke test: curl script or Pact contract test that proves the route, auth, and rate-limit behave.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents forget to enable preserve_host on Kong, breaking apps that rely on the original Host header for tenant routing.</description>
+        <reason>Always include preserve_host: true in route config, or document why it is not needed.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents configure rate-limiting per-IP behind a CDN, where every request comes from the CDN's IPs — effective rate-limit is per-CDN, not per-user.</description>
+        <reason>Require agents to check whether the gateway is behind a CDN or load balancer. If so, rate-limit by consumer ID or X-Forwarded-For, never by remote IP.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>AWS API Gateway: agents miss the difference between proxy+ (passthrough) and per-method routing. Usage plans need API keys + stages, easy to misconfigure.</description>
+        <reason>Provide agents with a template serverless.yml or Terraform module that handles these details correctly.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents generate gateway config without a load test. A change to rate limits could cut throughput in half and nobody notices until the product team complains.</description>
+        <reason>Require a human checkpoint: every gateway change should be validated against a load test against staging (e.g., hey or vegeta) so cost/throughput impact is verified before production deploy.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <p>Hard-won lessons from operating gateways in production.</p>
+
+      <rule>
+        <statement>Keep gateway stateless — auth state lives in tokens, rate-limit state in Redis.</statement>
+      </rule>
+
+      <rule>
+        <statement>Implement circuit breakers per upstream (Kong's proxy-cache + request-termination, Envoy's outlier_detection) — never let one slow service take the gateway down.</statement>
+      </rule>
+
+      <rule>
+        <statement>Cache idempotent GETs at the gateway with short TTL (10–60s) — kills 80% of dashboard traffic.</statement>
+      </rule>
+
+      <rule>
+        <statement>Version the gateway config in git; deploy via CI, never via web UI.</statement>
+      </rule>
+
+      <rule>
+        <statement>Add a X-Request-ID header at ingress and propagate to all upstreams for tracing.</statement>
+      </rule>
+
+      <rule>
+        <statement>Set timeouts shorter than client timeouts (gateway 5s, client 10s) so the gateway returns 504 cleanly.</statement>
+      </rule>
+
+      <rule>
+        <statement>Use mTLS for internal service-to-service even behind the gateway — defense in depth.</statement>
+      </rule>
+
+      <rule>
+        <statement>For AWS API Gateway, prefer HTTP API (v2) over REST API (v1) unless you specifically need WAF/usage plans — 70% cheaper, lower latency.</statement>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/kong-route.yml" purpose="Kong declarative route with JWT + rate-limiting + correlation-id plugins."/>
+      <template path="templates/nginx-gateway.conf" purpose="Nginx reverse proxy with upstream, rate limit zone, CORS, health check."/>
+      <template path="templates/bff-aggregator.py" purpose="FastAPI BFF aggregating 3 upstream services with httpx + asyncio.gather + timeout handling."/>
+      <template path="templates/prompt-gateway-route.txt" purpose="Subagent prompt for adding a route + auth + rate-limit + smoke test."/>
+    </templates>
+
+    <see-also>
+      <link href="https://microservices.io/patterns/apigateway.html"/>
+      <link href="https://docs.konghq.com/gateway/latest/"/>
+      <link href="https://docs.aws.amazon.com/apigateway/latest/developerguide/"/>
+      <link href="https://philcalcado.com/2015/09/18/the_back_end_for_front_end_pattern_bff.html"/>
+    </see-also>
+  </content>
+</methodology>
