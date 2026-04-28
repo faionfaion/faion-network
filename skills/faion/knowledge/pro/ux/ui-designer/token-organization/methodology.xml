@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="token-organization">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ui-designer</domain>
+    <summary>A three-layer taxonomy — primitives (raw values) → semantic (purpose-based) → component (exceptions only) — with strict naming convention to keep design systems lean and maintainable.</summary>
+    <tags>
+      <tag>design-tokens</tag>
+      <tag>design-systems</tag>
+      <tag>naming-conventions</tag>
+      <tag>taxonomy</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Token Organization</title>
+    <summary>A three-layer taxonomy — primitives (raw values) → semantic (purpose-based) → component (exceptions only) — plus a strict naming convention {category}.{property}.{variant}.{state}. Token names describe purpose, not appearance (color.surface.primary, not blue-500). Keep the set lean: add a new token only when an existing semantic token cannot cover the case; run a duplicate-value detector in CI.</summary>
+    <why>
+      <p>Token bloat reduces discoverability and defeats the purpose of systematization. Symmetric naming produced by LLMs (color.brand.primary.light.hover.disabled) creates Cartesian explosions nobody uses. Names that describe appearance encode the current design decision into every consumer, making redesigns painful. A lean three-layer model with a naming linter prevents both failure modes.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a new design system's token taxonomy.</item>
+        <item>Auditing an existing token set for bloat, naming inconsistency, or aliasing depth.</item>
+        <item>Renaming tokens across a large repo without breaking references.</item>
+        <item>Reviewing PRs that add new tokens to enforce the lean-first principle.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>A 5-token brand palette for a single landing page — overhead exceeds benefit.</item>
+        <item>Mid-rebrand with source of truth in flux — stabilize visuals before systematizing.</item>
+        <item>Pure component library without theming — indirection adds no payoff.</item>
+        <item>Brand-driven marketing assets that change weekly — naming churn kills ROI.</item>
+      </list>
+    </when-not-to-use>
+    <section name="three-layer-taxonomy">
+      <rule>
+        <statement>Use exactly three layers — primitives, semantic, component — never four or more.</statement>
+        <rationale>A fourth layer (e.g., sub-component variants) creates indirection depth that makes runtime debugging and visual diff verification impractical.</rationale>
+      </rule>
+      <rule>
+        <statement>Add component tokens only when a single component needs a documented exception to a semantic token; justify every component token in its $description.</statement>
+        <rationale>Unjustified component tokens frequently duplicate semantic tokens and double the rename surface area on every rebrand.</rationale>
+      </rule>
+      <list>
+        <item>Primitives — raw values: color.blue.500 = #3B82F6, spacing.4 = 16px.</item>
+        <item>Semantic — purpose: color.surface.primary, color.text.muted, spacing.component.button.</item>
+        <item>Component — exceptions only: button.primary.bg, input.border.focus.</item>
+      </list>
+    </section>
+    <section name="naming-convention">
+      <rule>
+        <statement>Name tokens using {category}.{property}.{variant}.{state} dot-path notation; describe purpose, never appearance.</statement>
+        <rationale>Appearance-based names (blue-500) encode the current design decision into every consumer; purpose-based names (color.action.primary) survive rebranding without consumer changes.</rationale>
+      </rule>
+      <example type="good" title="Purpose-describing token names">
+        <code lang="text"><![CDATA[color.surface.primary
+color.surface.primary.hover
+color.text.muted
+spacing.component.button
+typography.heading.xl]]></code>
+      </example>
+      <example type="bad" title="Appearance-encoding token names">
+        <code lang="text"><![CDATA[blue-1
+blue-500-hover
+gray-light
+button-16px
+xl-text]]></code>
+      </example>
+      <rule>
+        <statement>Limit dot-path depth to 4 segments maximum (category.property.variant.state).</statement>
+        <rationale>Deeper paths indicate a missing taxonomy layer or Cartesian explosion of variants; LLMs generate full state-variant grids nobody uses if not bounded.</rationale>
+      </rule>
+    </section>
+    <section name="lean-first-principle">
+      <rule>
+        <statement>Add a new token only when no existing semantic token covers the case; run a duplicate-value detector in CI.</statement>
+        <rationale>Tokens with identical values under different names are a smell: either the existing token should be reused, or one of them is redundant.</rationale>
+      </rule>
+      <rule>
+        <statement>Add a $description to every semantic token explaining why it exists, not what value it holds.</statement>
+        <rationale>Future maintainers and LLMs read descriptions to decide whether to reuse or create a token; missing descriptions produce duplication.</rationale>
+      </rule>
+    </section>
+    <section name="agent-pitfalls">
+      <antipattern>
+        <description>LLM generates full Cartesian product of state × variant tokens (color.brand.primary.light.hover.disabled).</description>
+        <reason>Symmetric token trees balloon to hundreds of tokens; cap depth and require justification per token in the prompt. Most generated tokens are never referenced.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent suggests component tokens that duplicate existing semantic tokens.</description>
+        <reason>Duplicate component tokens double the rename surface area and confuse consumers about which to use; require an explicit justification for each component token.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent prunes "unused" tokens automatically via static analysis.</description>
+        <reason>Static analysis misses theming, runtime, per-tenant, and Storybook MDX references; auto-pruning causes silent regressions.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent invents a naming convention name ("Carbon style", "MUI v6 style") without grounding in the project's actual convention.</description>
+        <reason>Pin the convention regex in every agent prompt; confidently invented convention names produce non-compliant output.</reason>
+      </antipattern>
+    </section>
+    <section name="aliasing-depth">
+      <rule>
+        <statement>Enforce a maximum aliasing depth of 3 levels; validate in CI.</statement>
+        <rationale>Aliasing depth beyond 3 makes runtime debugging require tracing through multiple files; visual diffs become the only verification method.</rationale>
+      </rule>
+    </section>
+    <section name="rename-codemods">
+      <rule>
+        <statement>When renaming tokens, include MDX, Storybook configs, and JSON data files in the scan — not just TypeScript/JS/CSS.</statement>
+        <rationale>Agents default to code-file globs and miss Storybook MDX stories, documentation JSON, and Figma plugin config files where token names appear as strings.</rationale>
+      </rule>
+      <rule>
+        <statement>Pair every rename with a Storybook visual diff to catch unreferenced usages that the text scan missed.</statement>
+        <rationale>A renamed token with a surviving reference at the visual level indicates a scan gap; the visual diff catches what grep-based tools miss.</rationale>
+      </rule>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Three layers, never four — primitives, semantic, component (use sparingly).</item>
+        <item>Component tokens only when a single component needs an exception; otherwise stay semantic.</item>
+        <item>Names describe purpose, not appearance — color.surface.primary beats blue-500.</item>
+        <item>Add a $description to every semantic token; future maintainers (and LLMs) read it.</item>
+        <item>Run a duplicate-value detector in CI; same value under two names is a smell.</item>
+        <item>Pair every rename with a Storybook visual diff to catch unreferenced usages.</item>
+      </list>
+    </section>
+    <section name="agentic-workflow">
+      <p>Use Claude as a "taxonomy linter + namer": it analyzes a token file, classifies each token into primitive / semantic / component, flags duplicates, suggests merge or rename, and produces a migration codemod. A separate naming pass enforces the project convention ({category}.{property}.{variant}.{state}). For renames, the agent emits a sed-able mapping table plus a Storybook + MDX scan to ensure references are caught everywhere.</p>
+      <list>
+        <item>general-purpose Claude subagent — taxonomy classification + bloat audit.</item>
+        <item>faion-sdd-executor-agent — implement rename codemods as SDD task.</item>
+        <item>A "naming-convention-validator" prompt — score each token name against the regex.</item>
+      </list>
+    </section>
+    <section name="cli-tools">
+      <list>
+        <item>style-dictionary v4+ — Native layered token model</item>
+        <item>jq — Path-level inspection of token JSON</item>
+        <item>comby — Structural codemod for renames across many files</item>
+        <item>ast-grep — Grep with AST awareness for code references</item>
+        <item>ripgrep — Plain-text reference scan in MDX / Storybook</item>
+        <item>tokens-cli (community) — Token-aware diff / merge</item>
+      </list>
+    </section>
+    <section name="services-and-apps">
+      <list>
+        <item>Tokens Studio (Figma) — SaaS plugin; Designer authoring; alias support</item>
+        <item>Supernova — SaaS; Yes (REST + CLI); Visual taxonomy explorer</item>
+        <item>Specify — SaaS; Yes (CLI); Distribution-only, less authoring</item>
+        <item>zeroheight — SaaS; Limited; Documentation-first</item>
+        <item>Knapsack — SaaS; Yes (REST); Token + component co-management</item>
+        <item>Storybook + tokens addon — OSS; Yes; In-repo visual docs</item>
+        <item>Penpot — OSS; Limited; Open-source Figma alternative</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/token-name-lint.py" purpose="Linter that flags names not matching convention and tokens with duplicate values."/>
+    </templates>
+    <see-also>
+      <link href="https://www.designsystems.com/token-naming/"/>
+      <link href="https://bradfrost.com/blog/post/design-token-hierarchy/"/>
+      <link href="https://www.nngroup.com/articles/design-token-architecture/"/>
+      <link href="https://css-tricks.com/organizing-design-tokens/"/>
+      <link href="https://styledictionary.com/info/architecture/"/>
+    </see-also>
+  </content>
+</methodology>
