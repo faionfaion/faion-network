@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vui-privacy-security">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ui-designer</domain>
+    <summary>Five privacy principles (transparency, control, minimization, security, deletion) and split-agent architecture for sensitive VUI operations.</summary>
+    <tags>
+      <tag>voice</tag>
+      <tag>privacy</tag>
+      <tag>security</tag>
+      <tag>vui</tag>
+      <tag>pii</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>VUI Privacy and Security</title>
+    <summary>Five privacy principles (transparency, control, minimization, security, deletion) and a split-agent architecture for sensitive VUI operations: a policy classifier decides "is this turn sensitive?" and an executor crafts the response — the executor never sees raw sensitive values. Redaction must happen pre-storage and pre-LLM-context, not post-hoc. Two-channel confirmation (voice initiates, SMS/push confirms) prevents voice-spoofing attacks on destructive operations.</summary>
+    <why>
+      <p>Voice data is ambient and persistent. ASR transcripts may contain PII, health, or financial data that flows silently into LLM context, observability logs, and training pipelines. A single-agent design that both classifies sensitivity and generates responses creates a path for PII leakage in rationale fields. Splitting into classifier + executor with structured outputs (no free-text echo of user data) blocks the leak at the architecture level.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing voice features that handle PII, health, financial, or auth-sensitive data.</item>
+        <item>Drafting privacy disclosures, consent flows, and data-retention copy for voice products.</item>
+        <item>Auditing existing VUI for missing trust indicators (listening indicator, stop command, history access).</item>
+        <item>Building agentic pipelines where ASR transcripts feed LLM calls and require redaction first.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure text chatbots — covered by general data-privacy methodologies, not VUI specifics.</item>
+        <item>One-off internal tools with no user voice capture (agent-only TTS announcements).</item>
+        <item>Formal compliance scoping (GDPR DPIA, HIPAA controls) — VUI principles inform but do not replace formal assessment.</item>
+      </list>
+    </when-not-to-use>
+    <section name="privacy-principles">
+      <rule>
+        <statement>Disclose what voice data is collected, how it is used, and for how long — before the user first speaks, not buried in terms.</statement>
+        <rationale>Transparency is both a regulatory requirement (GDPR Art. 13) and a user trust baseline; late disclosure causes opt-out and product abandonment.</rationale>
+      </rule>
+      <rule>
+        <statement>Collect only the audio and transcript data necessary for the immediate task; do not retain raw audio for analytics by default.</statement>
+        <rationale>Data minimization reduces regulatory exposure and breach impact; users are more willing to use voice features when they know data is not persisted indefinitely.</rationale>
+      </rule>
+      <rule>
+        <statement>Encrypt all voice data at rest and in transit; use envelope encryption with per-device keys for recordings.</statement>
+        <rationale>Voice recordings are biometric-adjacent data; a breach without encryption exposes users to identification and voice-cloning attacks.</rationale>
+      </rule>
+      <rule>
+        <statement>Provide a user-accessible voice history view backed by a separate auditable store; agents must fetch it, never reconstruct or summarize from LLM context.</statement>
+        <rationale>If the agent can summarize history from context, it can hallucinate it; a separate store ensures accuracy and supports GDPR/CCPA right-of-access requests.</rationale>
+      </rule>
+      <rule>
+        <statement>Implement a hard-delete endpoint for voice history that removes raw audio, transcripts, and derived embeddings; confirm deletion to the user.</statement>
+        <rationale>GDPR Art. 17 right to erasure applies to voice data; embeddings derived from voice are biometric data with a separate retention clock.</rationale>
+      </rule>
+    </section>
+    <section name="trust-indicators">
+      <rule>
+        <statement>Show a visual indicator (LED ring or on-screen icon) whenever the microphone is active; provide an audio confirmation when it stops.</statement>
+        <rationale>Users cannot see whether a microphone is active; a visual/audio indicator is the primary signal that gives users confidence they are not being recorded covertly.</rationale>
+      </rule>
+      <rule>
+        <statement>Make the "stop listening" command work without a wake word and without TTS acknowledgement; provide a silent, immediate kill switch.</statement>
+        <rationale>A stop command that requires hearing the wake word first defeats its purpose; users in sensitive situations need an immediate, unconditional off switch.</rationale>
+      </rule>
+    </section>
+    <section name="sensitive-operation-patterns">
+      <rule>
+        <statement>For banking, health, and personal data operations: require step-up authentication, mask spoken sensitive values, and confirm before executing.</statement>
+        <rationale>Voice is inherently ambient; a second channel (push notification or SMS) that must be acknowledged prevents voice-spoofing attacks from completing high-stakes actions.</rationale>
+      </rule>
+      <rule>
+        <statement>Treat voice biometric IDs as biometric data under GDPR/CCPA — separate consent, separate retention clock, separate deletion API.</statement>
+        <rationale>Biometric data has heightened regulatory protection; co-mingling it with regular user data risks using the wrong retention period and deletion scope.</rationale>
+      </rule>
+    </section>
+    <section name="split-agent-architecture">
+      <rule>
+        <statement>Split every sensitive VUI flow into a policy-classifier agent and an executor agent; the executor never receives raw sensitive slot values.</statement>
+        <rationale>A single agent that both classifies sensitivity and generates responses creates a path for PII to appear in "thought", "rationale", or log fields; the split eliminates that path structurally.</rationale>
+      </rule>
+      <rule>
+        <statement>Redact sensitive slots pre-storage and pre-LLM-context, not post-hoc.</statement>
+        <rationale>Post-hoc redaction fails if the LLM already cached the value or included it in a prior streaming chunk; pre-redaction is the only reliable boundary.</rationale>
+      </rule>
+      <example type="good" title="Policy classifier structured output">
+        <code lang="json"><![CDATA[
+{
+  "sensitive": true,
+  "categories": ["financial"],
+  "requires_step_up_auth": true,
+  "mask_in_logs": ["amount", "account_number"],
+  "rationale": "transfer amount above threshold"
+}
+]]></code>
+      </example>
+      <antipattern>
+        <description>Classifier returns the original utterance text in any field.</description>
+        <reason>Any echo of user text in structured output creates a PII logging path; force structured outputs that reference slot names, not values.</reason>
+      </antipattern>
+    </section>
+    <section name="two-channel-confirmation">
+      <rule>
+        <statement>For destructive or irreversible voice operations, require confirmation via a second channel (SMS or push notification) — not a follow-up voice prompt.</statement>
+        <rationale>Voice spoofing can complete a two-turn voice-only confirmation; a second channel requires device-level possession that a spoofed voice cannot satisfy.</rationale>
+      </rule>
+      <rule>
+        <statement>After step-up authentication succeeds, invalidate the cached LLM context; do not allow the "trusted" flag to persist across unrelated turns.</statement>
+        <rationale>A persistent auth flag in context enables session hijacking — any subsequent turn in the same session would bypass authentication.</rationale>
+      </rule>
+    </section>
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>LLM leaks sensitive slot values into "rationale" or "thought" fields of structured output.</description>
+        <reason>Forbid free-text reasoning that quotes user data; force structured outputs that reference slot names only, validated by schema before logging.</reason>
+      </antipattern>
+      <antipattern>
+        <description>ASR transcripts contain partial sensitive data ("my card is four nine one two...") that regex misses.</description>
+        <reason>Combine word-level NER with intent-aware slot deletion; regex alone cannot handle spoken partial values or transposed digits.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Observability tools (Datadog, Sentry) receive prompt+response containing sensitive data.</description>
+        <reason>Configure log scrubbers at the SDK layer before the log sink; agents cannot reliably self-redact in observability calls made by the framework.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Caching layer re-emits PII because the cache key is the redacted text but the cached value contains the original.</description>
+        <reason>Always cache on redacted outputs only; never use unredacted inputs as cache keys with redacted-output values.</reason>
+      </antipattern>
+    </section>
+    <section name="agentic-workflow">
+      <p>Split privacy/security into a policy agent that decides "is this turn sensitive?" plus an executor agent that crafts the response respecting the policy. The policy agent reads intent + slot values + user profile flags and emits {sensitive:bool, requires_auth:bool, mask_fields:[...], log_level:"redact"|"full"}. The executor consumes that output and never sees raw sensitive values for logging paths. Redaction must happen pre-storage and pre-LLM-context, not post-hoc.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>vui-privacy-classifier — haiku; binary/structured classification of utterances against a policy schema.</item>
+        <item>vui-redactor — haiku; deterministic regex+LLM hybrid that masks PII in transcripts before downstream use.</item>
+        <item>consent-copywriter — sonnet; drafts disclosure scripts tuned for plain-language readability.</item>
+        <item>auth-flow-designer — sonnet; produces step-up auth dialogs (PIN, biometric, fallback) with branch coverage.</item>
+      </list>
+      <p>Prompt pattern:</p>
+      <code lang="text"><![CDATA[
+You are vui-privacy-classifier. Given the user utterance and current slot map,
+return STRICT JSON: {sensitive: bool, categories: [pii|health|financial|auth|other],
+requires_step_up_auth: bool, mask_in_logs: [slot_names], rationale: <=20 words}.
+Never echo the utterance text in fields other than `rationale`.
+]]></code>
+    </section>
+    <section name="cli-tools-and-services">
+      <p>CLI tools for PII detection and redaction:</p>
+      <list>
+        <item>presidio-cli (Microsoft Presidio) — PII detection/redaction in transcripts. Install: pip install presidio-analyzer presidio-anonymizer. Docs: microsoft.github.io/presidio</item>
+        <item>aws cli (Comprehend, Transcribe redaction) — Built-in PII/PHI redaction in ASR. Docs: docs.aws.amazon.com/transcribe/latest/dg/pii-redaction.html</item>
+        <item>gcloud dlp — Google DLP API for transcript scanning. Docs: cloud.google.com/dlp/docs/concepts-info-types</item>
+        <item>op (1Password CLI) — Pull voice-bot secrets at runtime, never in repo. Docs: developer.1password.com/docs/cli/</item>
+        <item>audit-cli (custom) — Diff voice-history exports between releases for retention regressions. Internal use only.</item>
+        <item>step (smallstep) — Generate per-device certs for voice clients. Docs: smallstep.com/docs/step-cli</item>
+      </list>
+      <p>Services and applications:</p>
+      <list>
+        <item>Microsoft Presidio (OSS) — Python SDK + REST. Custom recognizers for domain PII (loyalty IDs, MRNs).</item>
+        <item>AWS Transcribe (SaaS) — REST + boto3. Real-time and batch redaction modes.</item>
+        <item>Google DLP (SaaS) — REST. 100+ infoTypes; supports custom patterns.</item>
+        <item>OneTrust / Transcend (SaaS) — REST for DSAR ops. Use for "delete voice history" request automation.</item>
+        <item>Pindrop / Nuance Gatekeeper (SaaS) — Voice biometrics + spoof detection.</item>
+        <item>Vault by HashiCorp (OSS) — REST/CLI. Encrypt voice recordings at rest with envelope keys.</item>
+      </list>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Default to ephemeral memory for sensitive turns: keep them in the dialog manager only, never persist to logs or vector stores.</item>
+        <item>Two-channel confirmation for destructive/irreversible operations: voice initiates, push notification or SMS confirms — voice spoofing alone cannot complete the action.</item>
+        <item>Make the "stop listening" command work without wake word and without TTS reply (silent acknowledgement) so users feel they have a hard kill switch.</item>
+        <item>Maintain a per-user "voice history" endpoint that reads from a separate auditable store; agents must never invent or summarize the history — only fetch.</item>
+        <item>Run a quarterly red-team: prompt the agent to read back the last few turns or "remind me what I told you about my card." If it succeeds, the redaction layer is broken.</item>
+        <item>Treat voice biometric IDs as biometric data under GDPR/CCPA — separate consent, separate retention clock, separate deletion API.</item>
+      </list>
+    </section>
+    <section name="agent-limitations-and-gotchas">
+      <p>Agent integration notes from practical deployment:</p>
+      <p>Principles are jurisdiction-agnostic; GDPR Art.9, COPPA, HIPAA, EU AI Act voice biometrics rules require their own checklists.</p>
+      <p>"Mask spoken sensitive data" is hard at TTS layer — most engines do not support inline redaction tokens; needs upstream substitution.</p>
+      <p>Wake-word indicator design assumes hardware control (LED, ring); web/embedded VUI with no hardware affordance must use audio-only indicators.</p>
+      <p>Voice biometric authentication is treated as one option; principles do not cover spoof/replay defense or liveness checks.</p>
+      <p>LLMs leak sensitive slots into "rationale" or "thought" fields. Forbid free-text reasoning that quotes user data; force structured outputs without echo.</p>
+      <p>A model asked "is this sensitive?" without examples drifts — pin a few-shot block with positive and negative cases per category.</p>
+      <p>Caching layers (LLM response cache, prompt cache) can re-emit redacted PII if the cache key is the redacted text but the value contains the original. Always cache on redacted outputs only.</p>
+      <p>ASR transcripts may include partial redactions ("my card is four nine one two..."); regex misses these. Combine word-level NER with intent-aware slot deletion.</p>
+      <p>Step-up auth must invalidate the cached LLM context after success — otherwise an attacker who passes auth once retains a "trusted" flag for the whole session.</p>
+      <p>Voice history exports for DSAR must be human-readable transcripts, not opaque audio blobs. Pre-generate text alongside audio at ingest.</p>
+      <p>Logs to observability tools (Datadog, Sentry) regularly contain prompt+response. Configure log scrubbers at the SDK layer; do not rely on agents to self-redact in logs.</p>
+    </section>
+    <templates>
+      <template path="templates/redact-slots.py" purpose="Regex + slot-map redactor that strips PII from transcripts before LLM or log ingestion."/>
+      <template path="templates/privacy-classifier-prompt.txt" purpose="Structured-output prompt for a vui-privacy-classifier subagent."/>
+    </templates>
+    <see-also>
+      <link href="https://nist.gov/privacy-framework"/>
+      <link href="https://gdpr-info.eu/art-9-gdpr/"/>
+      <link href="https://nngroup.com/articles/voice-privacy/"/>
+      <link href="https://microsoft.github.io/presidio/"/>
+      <link href="https://docs.aws.amazon.com/transcribe/latest/dg/pii-redaction.html"/>
+    </see-also>
+  </content>
+</methodology>
