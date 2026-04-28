@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="prompt-cache-prefix-order">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Order your prompt so STABLE parts come first, VOLATILE parts last. Mark a cache_control breakpoint after the longest stable prefix. Anthropic caching then charges 10% (or less) for the cached prefix.</summary>
+    <tags>
+      <tag>prompt-caching</tag>
+      <tag>cost-optimization</tag>
+      <tag>prefix-order</tag>
+      <tag>cache-control</tag>
+      <tag>api-economics</tag>
+    </tags>
+    <category>cost</category>
+    <difficulty>intermediate</difficulty>
+    <created>2024-04-25</created>
+    <related>
+      <ref slug="schema-field-order"/>
+      <ref slug="tool-description-as-prompt"/>
+      <ref slug="weak-model-preselection"/>
+    </related>
+    <see-also>
+      <link href="https://docs.anthropic.com/claude/docs/prompt-caching"/>
+      <link href="https://platform.openai.com/docs/guides/prompt-caching"/>
+      <link href="https://ai.google.dev/gemini-api/docs/caching"/>
+    </see-also>
+  </metadata>
+  <content>
+    <title>Prompt-Cache Prefix Order</title>
+    <summary>Prompt caching saves 80-90% on repeated content by caching tokens only at the prefix level. To maximize cache hits, order your prompt so the longest-stable segments come first, then mark a cache_control breakpoint after them. Each subsequent call in the cache window pays only 10% for those cached tokens.</summary>
+    <why>
+      <p>Prompt caching exploits the fact that the same prefix is processed identically every time. The model only re-runs attention from the breakpoint forward. If your stable content is at the END of the prompt, no caching happens because every call invalidates from the volatile prefix onward.</p>
+      <p>Cost reduction is dramatic — Anthropic's docs cite up to 90% savings on the cached portion. The catch is order: get it wrong and the cache never warms.</p>
+    </why>
+    <section name="why-prefix-order-matters">
+      <p>Caching is prefix-based. Anything that comes before a cache_control breakpoint is cached as one block. If a single token in that block changes between calls, the entire block is recomputed. So:</p>
+      <list>
+        <item>Tools at position N+1 with system prompt at N → entire system+tools block invalidates if you tweak any tool</item>
+        <item>Conversation history before retrieval → cache invalidates every turn</item>
+        <item>User-personalized variable interpolated into system prompt → never caches across users</item>
+      </list>
+    </section>
+    <when-to-use>
+      <list>
+        <item>Long system prompts (&gt;1024 tokens, the Anthropic minimum cacheable size)</item>
+        <item>Stable tool definitions (almost always — tool defs rarely change mid-session)</item>
+        <item>Long-stable contexts: codebase manifests, user profiles, knowledge bases</item>
+        <item>High call volume on the same prefix (chat, agent loops, batch processing)</item>
+        <item>Multi-turn agents — each turn pays only for the new turn</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>One-shot calls (no second call to amortize the cache write)</item>
+        <item>Prefixes &lt; 1024 tokens (Anthropic minimum) or &lt; 2048 tokens (OpenAI)</item>
+        <item>Prefixes that change every call (no cache hit possible)</item>
+        <item>Cost-sensitive systems where prefix is small relative to output (output is never cached)</item>
+      </list>
+    </when-not-to-use>
+    <section name="canonical-order">
+      <p>For Anthropic, the canonical order is:</p>
+      <code lang="text"><![CDATA[[system prompt (long, stable)]
+→ [tool definitions (stable)]
+→ [retrieval context (semi-stable)]
+→ [conversation history (volatile)]
+→ [latest user turn (always volatile)]]]></code>
+      <p>Place the cache breakpoint after the latest segment that is stable across the next ~5 minutes (Anthropic ephemeral cache TTL).</p>
+    </section>
+    <section name="anti-patterns">
+      <antipattern>
+        <description>Tools defined AFTER user input</description>
+        <reason>Tools go in the SDK's tools field at the top of the request; placement is enforced by SDK.</reason>
+      </antipattern>
+      <antipattern>
+        <description>User name interpolated into system prompt</description>
+        <reason>Move user-specific data to the user message; keep system stable.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Conversation history truncated mid-prefix on each turn</description>
+        <reason>Truncate from the OLDEST end and add a fresh cache_control breakpoint after each truncation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Multiple cache_control breakpoints "to be safe"</description>
+        <reason>Anthropic supports up to 4 — use them deliberately, not redundantly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Forgetting cache_control entirely on Claude — assuming "cache is automatic"</description>
+        <reason>Anthropic ephemeral caching is OPT-IN via cache_control.</reason>
+      </antipattern>
+    </section>
+    <section name="caches-per-provider">
+      <p>Different providers have different cache implementations:</p>
+      <list>
+        <item>Anthropic: Explicit cache_control: {"type": "ephemeral"}, 5 min (default) or 1 hour TTL, min 1024 tokens</item>
+        <item>OpenAI (Responses API): Automatic prompt_cache_key, minutes-hour TTL, min 1024 tokens</item>
+        <item>Gemini: Explicit cachedContent (long TTL) or implicit (short), configurable, varies</item>
+      </list>
+    </section>
+    <section name="checklist">
+      <p>Audit current ordering:</p>
+      <checklist>
+        <check>System prompt is STABLE across all calls in the next 5 minutes</check>
+        <check>Tool definitions are STABLE (no per-call interpolation)</check>
+        <check>Retrieval / context segment placed BEFORE conversation history</check>
+        <check>Conversation history truncated from the OLDEST end, not the middle</check>
+        <check>User-personalized data is in the user message, not system prompt</check>
+      </checklist>
+      <p>Add cache breakpoints (Anthropic):</p>
+      <checklist>
+        <check>System prompt: cache_control: ephemeral on the last block</check>
+        <check>Tools: implicit caching of the tool list (depends on SDK)</check>
+        <check>Retrieval block: cache_control if it is the same across many calls</check>
+        <check>Latest user message: NEVER cache (always volatile)</check>
+        <check>Total cache_control breakpoints ≤ 4</check>
+      </checklist>
+      <p>Verify:</p>
+      <checklist>
+        <check>First call returns cache_creation_input_tokens &gt; 0</check>
+        <check>Second call within 5 min returns cache_read_input_tokens &gt; 0 and cache_creation_input_tokens == 0</check>
+        <check>Cost dashboard shows the expected ~90% reduction on cached portion</check>
+        <check>If cache hit rate is low, log first 200 chars of system+tools per call and diff — find the volatile char</check>
+      </checklist>
+      <p>Maintenance:</p>
+      <checklist>
+        <check>When tool list changes, expect a one-call cache miss (acceptable)</check>
+        <check>When system prompt changes, all cache invalidates — schedule big changes during low-traffic windows</check>
+        <check>Do not tweak system prompt for A/B tests in production — caches diverge per variant</check>
+        <check>Use 1-hour TTL {"type": "ephemeral", "ttl": "1h"} for batch workloads</check>
+      </checklist>
+      <p>Composition:</p>
+      <checklist>
+        <check>tool-description-as-prompt: rich tool descriptions are cached, amortized</check>
+        <check>schema-field-order: cached schema = stable schema; do not change order between calls if cache matters</check>
+        <check>weak-model-preselection: each model has its own cache; orchestrate accordingly</check>
+      </checklist>
+    </section>
+    <section name="examples">
+      <example type="good" title="Agent loop, 10 turns">
+        <description>System prompt: 5,000 tokens. Tools: 2,000 tokens. Each user message: ~200 tokens. Each model output: ~500 tokens.</description>
+        <p>Without caching: each turn costs 5,000 + 2,000 + 200 input + 500 output ≈ 7,700 input tokens + 500 output, every turn.</p>
+        <p>With caching after turn 1: 5,000 + 2,000 cached at 10% rate, plus history + 200 + 500. Cached portion drops from 7,000 input &#215;normal rate to 7,000 input &#215;10% rate.</p>
+        <p>10-turn savings: ~$0.20 per session at GPT-4o rates → cents per session at Sonnet-prefix cached.</p>
+      </example>
+      <example type="good" title="Codebase Q-and-A">
+        <description>70K-token codebase manifest. Without caching, every question pays 70K &#215;normal rate. With caching, first question creates the cache (1.25× normal write rate), all subsequent in 5 min pay 0.10× rate.</description>
+        <p>3 questions in 5 min: Without: 3 &#215;70K = 210K paid. With: 1 &#215;70K &#215;1.25 + 2 &#215;70K &#215;0.10 = 87.5K + 14K = 101.5K — half the cost</p>
+        <p>10 questions in 5 min: Without: 700K. With: 70K &#215;1.25 + 9 &#215;70K &#215;0.10 = 87.5K + 63K = 150.5K — 78% saved</p>
+      </example>
+      <example type="good" title="Claude Code session">
+        <description>Claude Code system prompt + skills + tool definitions ≈ 25K tokens. The CLI sets cache_control on the system block automatically. Every tool call after the first reads from cache.</description>
+      </example>
+      <example type="bad" title="Name interpolation">
+        <code lang="python"><![CDATA[system = f"You are NERO, helping {user_name} with their tasks."]]></code>
+        <p>Cache hit rate: 0% across users. Each user's first call pays full price every time.</p>
+        <p>Fix:</p>
+        <code lang="python"><![CDATA[system = "You are NERO. The user's name is in their first message; address them by it."]]></code>
+        <p>Now the system prompt is universal and cacheable.</p>
+      </example>
+      <example type="bad" title="Version string">
+        <code lang="python"><![CDATA[system = f"NERO version {VERSION_STRING}. ..."]]></code>
+        <p>If VERSION_STRING changes when you deploy, every deploy invalidates the cache for every user. Either pin the system prompt or move the version into a side channel.</p>
+      </example>
+      <example type="good" title="1-hour TTL for batch processing">
+        <description>Processing 10,000 documents in a 30-minute batch. Default 5-min TTL means the cache rewrites ~6 times. Setting ttl: "1h" keeps it warm for the whole batch.</description>
+      </example>
+      <example type="good" title="Multiple cache breakpoints (legitimate use)">
+        <code lang="python"><![CDATA[system = [
+    {"type": "text", "text": ROLE_PROMPT, "cache_control": {"type": "ephemeral"}},
+    {"type": "text", "text": COMPANY_KNOWLEDGE, "cache_control": {"type": "ephemeral"}},
+]]]></code>
+        <p>ROLE_PROMPT changes rarely; COMPANY_KNOWLEDGE changes on knowledge updates. Two breakpoints let you invalidate one without the other.</p>
+      </example>
+      <example type="good" title="Cache verification">
+        <code lang="python"><![CDATA[print({
+    "cached_read": response.usage.cache_read_input_tokens,
+    "cached_create": response.usage.cache_creation_input_tokens,
+    "fresh_input": response.usage.input_tokens,
+})
+# After warm-up, expect cached_read > 0 and cached_create == 0]]></code>
+        <p>If cached_read stays 0 in a hot loop, your prefix is volatile — diff prefix bytes between calls.</p>
+      </example>
+    </section>
+    <section name="llm-prompts">
+      <p>LLM prompts for audit, analysis, and implementation:</p>
+      <prompt purpose="prefix-stability-audit"><![CDATA[Given this prompt structure, identify which segments are STABLE and which are VOLATILE across calls. Reorder so stable segments come first.
+
+Mark where you'd place a cache_control breakpoint.
+
+Output: reordered prompt structure with stability annotation per segment.
+
+Structure:
+{paste current prompt builder code}]]></prompt>
+      <prompt purpose="find-cache-invalidators"><![CDATA[Look at this prompt and find every place where data is interpolated. For each:
+- Mark VOLATILE (changes per call) or STABLE (changes rarely)
+- Suggest where to move VOLATILE pieces (usually: into the user message, not system prompt)
+
+Output: list of {segment, vol/stable, suggested_position}.
+
+Prompt builder:
+{paste here}]]></prompt>
+      <prompt purpose="cost-estimator"><![CDATA[Given:
+- System prompt size: X tokens
+- Tools size: Y tokens
+- Average user msg: U tokens
+- Average output: O tokens
+- Calls per session: N
+
+Compute:
+1. Without caching: total tokens billed
+2. With caching: total tokens billed (cache write 1.25x, cache read 0.1x)
+3. Savings %
+
+Use Anthropic Claude pricing (cite the public rate card).]]></prompt>
+      <prompt purpose="add-cache-control"><![CDATA[Take this Python code that builds Anthropic API requests and add appropriate cache_control breakpoints. Follow these rules:
+- System prompts > 1024 tokens get cache_control
+- Stable tool blocks get cache_control
+- User messages NEVER get cache_control
+- ≤ 4 breakpoints total
+
+Code:
+{paste here}]]></prompt>
+    </section>
+    <section name="templates">
+      <p>Code templates for implementing prompt caching across providers:</p>
+      <code lang="python"><![CDATA[from anthropic import Anthropic
+client = Anthropic()
+
+system_prompt = [
+    {
+        "type": "text",
+        "text": LONG_STABLE_SYSTEM_PROMPT,    # 5000 tokens
+        "cache_control": {"type": "ephemeral"}
+    }
+]
+
+tools = [
+    {
+        "name": "search_docs",
+        "description": "...",
+        "input_schema": {...},
+        "cache_control": {"type": "ephemeral"}    # cache the tool block too
+    },
+    # other tools, no cache_control needed if part of same block
+]
+
+messages = [
+    # conversation history (older, may be cacheable if stable)
+    *history,
+    # latest user message (NEVER cached — it's the volatile tip)
+    {"role": "user", "content": user_message}
+]
+
+response = client.messages.create(
+    model="claude-...",
+    system=system_prompt,
+    tools=tools,
+    messages=messages,
+    max_tokens=2048,
+)
+
+# Inspect savings
+print(response.usage.cache_creation_input_tokens)  # first call: > 0
+print(response.usage.cache_read_input_tokens)      # subsequent: > 0]]></code>
+      <code lang="python"><![CDATA[# Anthropic — 1-hour TTL for batch
+system_prompt = [
+    {
+        "type": "text",
+        "text": LONG_STABLE_SYSTEM_PROMPT,
+        "cache_control": {"type": "ephemeral", "ttl": "1h"}
+    }
+]]]></code>
+      <code lang="python"><![CDATA[# OpenAI Responses API — automatic + key
+response = openai.responses.create(
+    model="gpt-...",
+    instructions=LONG_STABLE_SYSTEM_PROMPT,
+    tools=tools,
+    input=user_message,
+    prompt_cache_key="agent-v3-system-prompt"   # opt-in cache routing
+)]]></code>
+      <code lang="python"><![CDATA[# Gemini — explicit context caching
+from google import genai
+
+client = genai.Client()
+
+cached = client.caches.create(
+    model="gemini-...",
+    config={
+        "contents": [LONG_STABLE_CONTEXT],
+        "system_instruction": LONG_STABLE_SYSTEM,
+        "ttl": "3600s"
+    }
+)
+
+response = client.models.generate_content(
+    model="gemini-...",
+    contents=user_message,
+    config={"cached_content": cached.name}
+)]]></code>
+      <code lang="python"><![CDATA[# Pattern: per-conversation cache + fresh user turn
+def chat_turn(history, user_msg):
+    system = [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]
+    return client.messages.create(
+        model="claude-...",
+        system=system,
+        tools=TOOLS_WITH_CACHE,
+        messages=[*history, {"role": "user", "content": user_msg}]
+    )]]></code>
+      <code lang="python"><![CDATA[# Pattern: codebase-as-context (large stable retrieval block)
+codebase_manifest = "\n".join(f"- {p}" for p in repo.iter_paths())  # 50K tokens
+
+response = client.messages.create(
+    system=[
+        {"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}},
+    ],
+    messages=[
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": codebase_manifest, "cache_control": {"type": "ephemeral"}},
+                {"type": "text", "text": user_question}
+            ]
+        }
+    ],
+    ...
+)
+# The codebase manifest is cached separately from the system prompt. Both reused next call.]]></code>
+      <code lang="python"><![CDATA[# Anti-template (don't do this)
+# BAD: user name interpolated in system prompt — cache breaks per user
+system = f"You are an assistant for {user.name}. ..."
+
+# BAD: tools defined AFTER user message — caches don't compose
+messages = [{"role": "user", "content": "..."}]
+tools = [...]]]></code>
+    </section>
+    <section name="composition">
+      <p>This methodology integrates with:</p>
+      <list>
+        <item>schema-field-order: cached prefix should NOT include schema in JSON-mode if the schema changes; otherwise schema is part of the prefix and benefits from caching</item>
+        <item>tool-description-as-prompt: tool definitions are CACHED — descriptions are amortized, so over-investing in description quality is even more justified</item>
+        <item>weak-model-preselection: each stage's prompt has its own cache; the weak model also benefits from caching its rubric</item>
+      </list>
+    </section>
+  </content>
+</methodology>
