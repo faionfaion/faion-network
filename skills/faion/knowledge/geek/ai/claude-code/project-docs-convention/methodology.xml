@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="project-docs-convention">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>claude-code</domain>
+    <summary>Documentation convention using CLAUDE.md + AGENTS.md pairs for multi-agent compatibility. Enables Claude Code and standalone agents to discover context without duplication.</summary>
+    <tags>
+      <tag>documentation</tag>
+      <tag>claude-code</tag>
+      <tag>agents</tag>
+      <tag>convention</tag>
+      <tag>multi-agent</tag>
+    </tags>
+    <category>documentation</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Project Documentation Convention</title>
+    <summary>Convention for organizing documentation so both Claude Code and standalone agents (Agent SDK, subagents, autoheal) can discover and use the same context. Separates essential auto-loaded context (AGENTS.md) from detailed reference (in .agents/) using the @-ref pattern for Claude Code compatibility.</summary>
+    <why>
+      <p>Claude Code auto-loads `CLAUDE.md` files, but standalone agents (Agent SDK, subagents, autoheal) do not. Putting all context in CLAUDE.md makes it invisible to non-Claude-Code agents. Putting it elsewhere makes Claude Code unaware. The solution partitions documentation into two patterns: (1) essential context accessible to both via AGENTS.md, and (2) detailed reference accessible on-demand via .agents/.</p>
+      <p>The @-ref pattern allows CLAUDE.md to contain only a single reference line, making it language-agnostic and future-proof. Agents reading AGENTS.md directly get immediate context; Claude Code following the @-ref gets the same content. This eliminates duplication and inconsistency.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Setting up a new repository or directory that will be worked on by both Claude Code and standalone agents (Agent SDK, autoheal, scheduled workers).</item>
+        <item>Auditing an existing repository to ensure all directories have discoverable context for multi-agent pipelines.</item>
+        <item>Onboarding a new project into the faion-network knowledge layer (CLAUDE.md + AGENTS.md pair required).</item>
+        <item>Migrating a project from "all context in CLAUDE.md" to the two-file pattern for agent compatibility.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Trivial directories with &lt;3 files and no logic (e.g., empty `__init__.py` stubs) — skip creating the pair.</item>
+        <item>External vendored code — do not add CLAUDE.md/AGENTS.md to third-party directories.</item>
+        <item>Temporary scratch directories created during a build or test run — no documentation needed.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Pattern Overview">
+      <p>The directory structure uses this pattern:</p>
+      <example type="good" title="Recommended structure">
+        <code lang="text"><![CDATA[any-dir/
+├── CLAUDE.md       # Always: @AGENTS.md (Claude Code hook, nothing else)
+├── AGENTS.md       # Essential context for THIS dir (auto-loaded via @-ref)
+├── .agents/        # Detailed reference docs (on-demand)
+│   ├── INDEX.md    # Full index of .agents/ contents
+│   └── topic/      # Subdirs with own CLAUDE.md + AGENTS.md
+└── .product/       # SDD + product docs (per-project)
+    └── INDEX.md    # Full index of .product/ contents]]></code>
+      </example>
+    </section>
+    <section name="File Roles">
+      <p>Each file in the convention has a specific purpose:</p>
+      <list>
+        <item>`CLAUDE.md` (1 line): Hook for Claude Code — always contains only `@AGENTS.md`. Enables the @-ref pattern.</item>
+        <item>`AGENTS.md` (20-80 lines): Essential context for this directory. Auto-loaded via @-ref. Self-contained; no @-refs inside.</item>
+        <item>`.agents/INDEX.md`: Comprehensive documentation index. On-demand reference. Uses table format for easy scanning.</item>
+        <item>`.product/INDEX.md`: Product/SDD document index. For project-level specs, designs, roadmaps. Workspace root level only.</item>
+      </list>
+    </section>
+    <section name="How It Works">
+      <p>The convention enables multi-agent context discovery:</p>
+      <list>
+        <item>Claude Code reads `CLAUDE.md` → follows `@AGENTS.md` → gets essential context.</item>
+        <item>Standalone agents read `AGENTS.md` directly → same essential context without @-ref support.</item>
+        <item>Either agent reads `.agents/INDEX.md` when they need details (on-demand).</item>
+        <item>SDD agents read `.product/INDEX.md` for specs, designs, plans.</item>
+      </list>
+    </section>
+    <section name="AGENTS.md Content Guidelines">
+      <p>AGENTS.md is the single source of truth for agents entering the directory cold. It should include:</p>
+      <list>
+        <item>What this directory IS (one sentence).</item>
+        <item>Build / test / deploy commands if applicable.</item>
+        <item>Current state, active gotchas.</item>
+        <item>Key subdirectory listing.</item>
+        <item>Links to INDEX.md files so agents know where to look on demand.</item>
+        <item>File table: `| File | Description |` with one row per file/subdir.</item>
+        <item>Key types / modules / classes.</item>
+      </list>
+      <note>AGENTS.md must be self-contained. It should NOT contain @-refs to other files — standalone agents follow @-refs only if their runtime supports them (Claude Code does; Agent SDK does not).</note>
+    </section>
+    <section name="INDEX.md Format">
+      <p>Both `.agents/INDEX.md` and `.product/INDEX.md` use table format:</p>
+      <example type="good" title="INDEX.md example">
+        <code lang="markdown"><![CDATA[# Index
+
+## Directories
+
+| Directory | Description |
+|-----------|-------------|
+| `architecture/` | System design, component diagrams |
+| `api/` | REST/WS endpoint reference |
+
+## Files
+
+| File | Description |
+|------|-------------|
+| `infrastructure.md` | Server topology, ports, domains |
+| `decisions.md` | Key architectural decisions |]]></code>
+      </example>
+      <rule>
+        <statement>Index tables use one line per entry. No prose in the table itself.</statement>
+        <rationale>Agents scan INDEX files for structure; verbose tables slow comprehension.</rationale>
+      </rule>
+    </section>
+    <section name="Faion-Network Compatibility">
+      <p>This convention extends (not replaces) the faion-network directory structure:</p>
+      <list>
+        <item>`CLAUDE.md` with content → `CLAUDE.md` = `@AGENTS.md`, content → `AGENTS.md`</item>
+        <item>`.aidocs/` (workspace-level SDD) → Stays as `.aidocs/` at workspace root. Add `INDEX.md`.</item>
+        <item>`.aidocs/` (per-project SDD) → Renamed to `.product/`. Add `INDEX.md`.</item>
+        <item>`.aidocs/product_docs/` → `.product/product_docs/` (per-project)</item>
+        <item>`.aidocs/improvements/` → `.product/improvements/` (per-project)</item>
+        <item>`.aidocs/memory/` → `.product/memory/` (per-project)</item>
+        <item>`.claude/skills/` → Unchanged. Skills use own SKILL.md.</item>
+        <item>`docs/` in repositories → Move to `.agents/` or keep if git-tracked public docs.</item>
+      </list>
+    </section>
+    <section name="Rules">
+      <rule>
+        <statement>CLAUDE.md ALWAYS contains only `@AGENTS.md`. No exceptions.</statement>
+        <rationale>Any other content breaks the @-ref pattern and makes the file invisible to agents that don't support references.</rationale>
+      </rule>
+      <rule>
+        <statement>AGENTS.md is self-contained. No @-refs inside AGENTS.md itself.</statement>
+        <rationale>Standalone agents cannot follow @-refs. They must read AGENTS.md and get all necessary context from it directly.</rationale>
+      </rule>
+      <rule>
+        <statement>INDEX.md mentions paths, not @-refs (e.g., "see .agents/INDEX.md for details").</statement>
+        <rationale>Agents know to look at filesystem paths; they do not auto-follow cross-file references.</rationale>
+      </rule>
+      <rule>
+        <statement>Each .agents/ subdir has CLAUDE.md (@AGENTS.md) + AGENTS.md for recursive discovery.</statement>
+        <rationale>Enables multi-level directory hierarchies where agents can navigate depth-first through documentation.</rationale>
+      </rule>
+      <rule>
+        <statement>Don't create .agents/ for trivial dirs (&lt;3 files, no docs needed).</statement>
+        <rationale>Documentation overhead exceeds value for minimal directories.</rationale>
+      </rule>
+      <rule>
+        <statement>Don't move code into .agents/. Only documentation and reference material.</statement>
+        <rationale>Source code belongs in src/; documentation belongs in .agents/. Keeps separation of concerns.</rationale>
+      </rule>
+    </section>
+    <section name="Limitations &amp; Gotchas">
+      <antipattern>
+        <description>If CLAUDE.md contains anything other than `@AGENTS.md`, Claude Code will load mixed content — the @-ref pattern is strict: one line only.</description>
+        <reason>Any extra content breaks the pattern. Use `printf "@AGENTS.md\n" > CLAUDE.md` to ensure exact format.</reason>
+      </antipattern>
+      <antipattern>
+        <description>AGENTS.md with @-refs to other files. Standalone agents do not follow @-refs; they read AGENTS.md directly.</description>
+        <reason>AGENTS.md must be fully self-contained. Put cross-references in .agents/INDEX.md instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>INDEX.md tables without clear descriptions. Agents scanning for "where is X?" need one-line summaries per entry.</description>
+        <reason>Detailed docs go in the referenced files; INDEX.md is only a map.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Confusing `.product/` (per-project SDD) with `.aidocs/` (workspace-level SDD). Different purposes, different content.</description>
+        <reason>Document the mapping explicitly in the root AGENTS.md so agents know which to use.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents creating new directories without creating CLAUDE.md/AGENTS.md pairs. The pair creation must be explicit.</description>
+        <reason>Always include pair creation in agent task prompts. Standard template: CLAUDE.md = `@AGENTS.md`, AGENTS.md = 20-80 lines describing the directory.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Workflow">
+      <p>A documentation audit agent (Read, Glob, Grep) scans all directories with source files, checks for CLAUDE.md/AGENTS.md pairs, and reports missing pairs and content violations. A documentation writer agent (Write, Edit) creates missing files from templates. The audit → write cycle is sequential: no file is created without first checking if it already exists. Human review is recommended before committing the initial pair to a repository.</p>
+      <example type="good" title="Documentation audit script">
+        <code lang="bash"><![CDATA[#!/usr/bin/env bash
+# Check every directory with source files has CLAUDE.md + AGENTS.md
+set -euo pipefail
+ROOT=${1:-.}
+FAIL=0
+
+find "$ROOT" -type f \( -name "*.py" -o -name "*.ts" -o -name "*.js" -o -name "*.go" \) \
+  | xargs -I {} dirname {} | sort -u \
+  | while read -r dir; do
+    [[ "$dir" == */.git/* ]] && continue
+    [[ "$dir" == */node_modules/* ]] && continue
+    [[ "$dir" == */__pycache__/* ]] && continue
+
+    if [[ ! -f "$dir/CLAUDE.md" ]]; then
+      echo "MISSING CLAUDE.md: $dir"; FAIL=1
+    elif ! grep -q "^@AGENTS.md$" "$dir/CLAUDE.md"; then
+      echo "BAD CLAUDE.md (not @-ref only): $dir"; FAIL=1
+    fi
+
+    if [[ ! -f "$dir/AGENTS.md" ]]; then
+      echo "MISSING AGENTS.md: $dir"; FAIL=1
+    fi
+  done
+
+[[ $FAIL -eq 0 ]] && echo "All directories compliant." || exit 1]]></code>
+      </example>
+      <rule>
+        <statement>Create the CLAUDE.md/AGENTS.md pair at the same time as the first source file in a new directory.</statement>
+        <rationale>Retrofitting documentation is harder and more error-prone than creating it upfront.</rationale>
+      </rule>
+    </section>
+    <section name="Best Practices">
+      <rule>
+        <statement>Create the CLAUDE.md/AGENTS.md pair at the same time as the first source file in a new directory.</statement>
+        <rationale>Retrofitting documentation is harder and more error-prone than creating it upfront.</rationale>
+      </rule>
+      <rule>
+        <statement>AGENTS.md file table format: `| File | Description |` with one row per file/subdir — skip auto-generated files.</statement>
+        <rationale>Agents need to know the directory structure; auto-generated files add noise.</rationale>
+      </rule>
+      <rule>
+        <statement>`.agents/INDEX.md` table format: `| File/Dir | Description |` — one line per entry, no prose.</statement>
+        <rationale>Agents scan INDEX for structure; verbose entries slow comprehension.</rationale>
+      </rule>
+      <rule>
+        <statement>Don't put implementation details in AGENTS.md (architecture deep dives, full API reference) — those belong in `.agents/`.</statement>
+        <rationale>AGENTS.md is for orientation; detailed docs belong in .agents/ for on-demand reading.</rationale>
+      </rule>
+      <rule>
+        <statement>When a directory evolves, update AGENTS.md first — it's the single source of truth for agents entering the directory cold.</statement>
+        <rationale>Stale AGENTS.md causes agents to make incorrect decisions based on outdated information.</rationale>
+      </rule>
+      <rule>
+        <statement>The convention doesn't replace code comments — it's for cross-agent discoverability, not inline documentation.</statement>
+        <rationale>Comments in code are for humans reading the implementation; AGENTS.md is for agents entering the directory without reading code.</rationale>
+      </rule>
+    </section>
+    <section name="Audit Tools &amp; Scripts">
+      <p>Verify compliance with the documentation convention across a codebase:</p>
+      <example type="good" title="Check all directories for compliance">
+        <code lang="bash"><![CDATA[bash ~/workspace/scripts/audit-claude-md.sh ~]]></code>
+      </example>
+      <example type="good" title="Quick grep for @-ref pattern">
+        <code lang="bash"><![CDATA[grep -r "@AGENTS.md" .]]></code>
+      </example>
+      <example type="good" title="Find all AGENTS.md files">
+        <code lang="bash"><![CDATA[find . -name "AGENTS.md" | wc -l]]></code>
+      </example>
+      <rule>
+        <statement>Run compliance audit before committing major documentation changes or onboarding a new directory.</statement>
+        <rationale>Catch CLAUDE.md/AGENTS.md pair issues early; prevents agents from discovering broken documentation.</rationale>
+      </rule>
+    </section>
+    <section name="Common Directory Patterns">
+      <p>How the convention applies to different directory types:</p>
+      <list>
+        <item>Source directories (src/, lib/, app/) — ALWAYS need CLAUDE.md + AGENTS.md with file table and key types</item>
+        <item>Test directories (tests/, spec/) — CLAUDE.md + AGENTS.md if >3 test files; describe test structure</item>
+        <item>Configuration directories (config/, .github/) — CLAUDE.md + AGENTS.md if config is complex; describe env vars and secrets</item>
+        <item>Documentation directories (docs/, .agents/) — CLAUDE.md + AGENTS.md describing the docs structure and navigation</item>
+        <item>Build/deployment (scripts/, deploy/) — CLAUDE.md + AGENTS.md with commands, prerequisites, and failure modes</item>
+        <item>Package directories (node_modules/, vendor/, .venv/) — NO CLAUDE.md/AGENTS.md (vendored code, skip)</item>
+      </list>
+    </section>
+    <section name="Migration from Old Patterns">
+      <p>Converting existing projects to the new convention:</p>
+      <list>
+        <item>If CLAUDE.md exists with content, create new AGENTS.md with that content, then replace CLAUDE.md with `@AGENTS.md` only</item>
+        <item>If README.md exists in the directory, move it to `.agents/` and create a minimal AGENTS.md instead</item>
+        <item>If .aidocs/ exists at project root, rename to .product/ and update all cross-references</item>
+        <item>Create INDEX.md in .agents/ and .product/ to guide agents through multi-file docs</item>
+        <item>Update AGENTS.md at each level to mention `.agents/INDEX.md` and `.product/INDEX.md` paths</item>
+      </list>
+      <rule>
+        <statement>Migration should be incremental: directory by directory, not all at once.</statement>
+        <rationale>Reduces risk of breaking existing workflows; allows testing the new pattern in isolation.</rationale>
+      </rule>
+    </section>
+    <see-also>
+      <link href="https://docs.anthropic.com/en/docs/claude-code">Claude Code Documentation</link>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/agents">Agents Documentation</link>
+    </see-also>
+  </content>
+</methodology>
