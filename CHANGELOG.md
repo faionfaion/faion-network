@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 solo/ux/ux-ui-designer methodologies → methodology.xml (error-recovery, flexibility-efficiency, help-documentation)
 - migrate: 3/3 solo/ux/ux-ui-designer methodologies → methodology.xml (card-sorting, competitive-analysis, consistency-standards)
 - migrate: 3/3 solo methodologies → methodology.xml (sdd-planning/writing-specifications, ux-ui-designer/aesthetic-minimalist, accessibility-specialist/flexibility-efficiency)
 - migrate: 3/3 solo/ux/ux-researcher methodologies → methodology.xml (mobile-ux-patterns, usability-testing, user-control-freedom)
