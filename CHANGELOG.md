@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/ux/accessibility-specialist methodologies → methodology.xml (accessibility-first-design, ada-title-ii-compliance-2026, ar-design-patterns; feature-045 batch 209)
 - migrate: 3/3 mixed pro methodologies → methodology.xml (workflows, a11y-basics, a11y-testing; feature-045 batch 208)
 - migrate: 3/3 pro/research/researcher methodologies → methodology.xml (persona-building, product-development-trends, product-development-trends-2026; feature-045 batch 206)
 - migrate: 3/3 pro/research/researcher methodologies → methodology.xml (distribution-channel-research, frameworks, market-research-tam-sam-som; feature-045 batch 204)
