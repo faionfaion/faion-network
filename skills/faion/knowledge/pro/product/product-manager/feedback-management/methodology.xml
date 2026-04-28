@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="feedback-management">
+  <metadata>
+    <tier>pro</tier>
+    <group>product</group>
+    <domain>product-manager</domain>
+    <summary>Pipeline for scattered feedback into product decisions with fixed taxonomy, weighted by segment ARR.</summary>
+    <category>feedback</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>feedback-management</tag>
+      <tag>user-feedback</tag>
+      <tag>product-research</tag>
+      <tag>feedback-triage</tag>
+      <tag>customer-input</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Feedback Management</title>
+
+    <summary>Pipeline to turn scattered feedback into product decisions with fixed taxonomy, weighted by segment ARR and retention risk.</summary>
+
+    <why>
+      <p>Without a structured system, feedback is dominated by the loudest voices, scattered across channels, and never linked to backlog items. Users feel unheard; PMs lack signal on what to build next. A centralized pipeline with a fixed taxonomy and mandatory close-loop step converts feedback from noise into a ranked priority input that feeds directly into roadmap sessions.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Inbound feedback volume exceeds human triage capacity (greater than 20 items/day across channels).</item>
+        <item>Multiple disconnected sources (support tickets, app store, in-app widget, social, sales) need a single canonical store.</item>
+        <item>Recurring monthly review cycle must surface patterns, rank by segment and revenue, and link to backlog items.</item>
+        <item>Close-loop emails to specific requesters are repetitive but high-leverage.</item>
+        <item>Pre-roadmap sessions where PM needs "top 10 themes from last 90 days with verbatim citations."</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pre-PMF with less than 5 feedback items/week — direct human reading is faster and richer.</item>
+        <item>High-stakes strategic decisions (pivot, kill) where verbatim nuance matters more than count.</item>
+        <item>Compliance-bound feedback (HIPAA, GDPR DSAR text) where LLM ingestion needs DPA review first.</item>
+        <item>Sentiment-only loops with no commitment to act — automation amplifies noise without closing the loop.</item>
+        <item>Single-channel products where the channel tool's native AI (Intercom Fin, Zendesk QA) already handles categorization.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pipeline-overview">
+      <p>The feedback pipeline is five discrete stages, each a subagent invocation with structured I/O. Use one agent per stage rather than a monolithic "feedback agent" so failures are isolated and prompts stay short. Persist state as JSON in the feedback store (Productboard/Canny/Linear/Notion) — never trust a single agent run's in-memory state. The PM stays human-in-the-loop on prioritization decisions and all outbound user replies.</p>
+
+      <rule testable="true">
+        <statement>All feedback ingest sources (support tickets, NPS, sales calls, app-store reviews) MUST be mapped to standardized fields: source, date, user_id, segment, verbatim. Never ingest raw data without annotation.</statement>
+        <rationale>Annotated ingest lets agents weight by segment and avoid false-positive clustering from identical generic complaints across different sources.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>The taxonomy is FIXED and closed. TYPE: [bug|request|enhancement|confusion|praise|complaint]. TOPIC: [onboarding|core-A|core-B|billing|integrations|performance|other]. SEGMENT: [free|solo|pro|geek|unknown]. SENTIMENT: [positive|neutral|negative]. Agents must not invent new tags; violations surface as validation errors.</statement>
+        <rationale>Fixed taxonomy prevents drift. LLMs invent new tags ("UI/UX", "minor bug") even when given an enum — enforce with JSON schema validation, not prompt politeness.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Every feedback item MUST include the original verbatim alongside tags. Never let the agent rewrite the user's words — re-tagging later is impossible without the source string.</statement>
+        <rationale>Verbatim preservation is non-negotiable. Close-loop emails must quote the user's original phrasing; paraphrasing erodes trust.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Weight aggregations by ARR / retention risk / segment, not raw mention count. A loud free-tier user is not the same signal as a silent enterprise account.</statement>
+        <rationale>Raw mention count rewards the squeaky wheel. Segment weighting reveals true product priorities beneath noise.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run the triage agent at single-item granularity, not in batches. Batch prompts hide per-item confidence scores and cause the model to over-cluster.</statement>
+        <rationale>Single-item triage lets the agent report confidence honestly. Batch processing produces false-confidence outputs when the model averages across items.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Require a confidence field; route low-confidence items (confidence less than 0.7) to a human queue, not to auto-action.</statement>
+        <rationale>Confidence routing prevents high-risk mis-categorizations from driving roadmap decisions.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Keep close-loop emails as DRAFTS in the human's inbox, never auto-send. Trust collapses fast if a generated reply misquotes the user.</statement>
+        <rationale>Human review gates all outbound communication. Drafts let the PM fix tone or correct agent errors before customer contact.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Link every backlog item back to its source feedback IDs (foreign key, not free-text). Lets you re-contact requesters when shipped.</statement>
+        <rationale>Traceability lets the team close the loop with specific requesters. Without it, feedback and backlog are disconnected.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Re-run categorization quarterly on the historical corpus when the taxonomy evolves — agents make this cheap, humans don't.</statement>
+        <rationale>Quarterly re-tagging keeps historical data consistent with evolved taxonomy. Cheap agent processing enables this audit.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Keep a "rejected suggestions" log with the honest reason. Builds trust and prevents the same idea recurring through the funnel.</statement>
+        <rationale>Transparency in rejection prevents users from feeling unheard. Public archive of why ideas were rejected builds long-term trust.</rationale>
+      </rule>
+    </section>
+
+    <section name="triage-agent-pattern">
+      <p>The core of the pipeline: single-item triage via Haiku, categorized against a fixed taxonomy. Cheap, fast, parallelizable.</p>
+
+      <prompt purpose="feedback-triage"><![CDATA[
+You are a feedback triage agent. Output ONLY one JSON object, no prose.
+
+Taxonomy (FIXED, do not invent new tags):
+TYPE: [bug|request|enhancement|confusion|praise|complaint]
+TOPIC: [onboarding|core-A|core-B|billing|integrations|performance|other]
+SEGMENT: [free|solo|pro|geek|unknown]
+SENTIMENT: [positive|neutral|negative]
+
+Input: {verbatim} from {source} by user {user_id} on {date}.
+Output JSON: {type, topic, segment, sentiment, duplicate_of?, confidence_0_1, action_required: [build|wont_do|need_info|already_planned]}
+
+If confidence < 0.7 OR topic == "other", set action_required = "need_info" and stop.
+]]></prompt>
+
+      <rule testable="true">
+        <statement>Pin the taxonomy in the system prompt and in a JSON schema; reject any agent output with tags outside the enum. Drift kills aggregation.</statement>
+        <rationale>Enum validation is non-negotiable. Agents will drift taxonomy unless the schema blocks unknown tags.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Embedding-based dedup gives false positives on short generic complaints ("slow", "broken"); always require a length floor (~30 chars) or include thread context.</statement>
+        <rationale>Short complaints are generic; dedup requires context. Do not collapse "slow" + "broken" into one data point without evidence they describe the same bug.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Sentiment models read sarcasm wrong ~20% of the time; never use sentiment alone to gate priority.</statement>
+        <rationale>Sentiment is a signal, not a gate. Combine with mention count and segment weighting before making roadmap moves.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Agents conflate prospects, active users, and churned users. Lifecycle stage must be a required input field, not optional.</statement>
+        <rationale>Prospect feedback is signal about messaging, not product. Churned-user feedback is too late for iteration. Separate these signals early.</rationale>
+      </rule>
+    </section>
+
+    <section name="aggregation-and-close-loop">
+      <p>After triage, aggregate and synthesize weekly/monthly for roadmap input.</p>
+
+      <rule testable="true">
+        <statement>"Top requests by mention count" output flatters the agent and the loud minority simultaneously. Force a segment-weighted secondary ranking. Top requests = [sum(mentions × weight_segment × weight_arr)].</statement>
+        <rationale>Weighting prevents loud free-tier users from dominating. Segment weighting + ARR weighting surfaces true product priorities.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Close-loop drafts hallucinate dates ("you mentioned this last quarter") if the source date isn't passed in. Pass it; verify it.</statement>
+        <rationale>Date verification prevents drafts from claiming false recency. Pass source date into the close-loop drafting prompt.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Auto-creating Linear/Productboard items on every feedback-tagged ticket floods the backlog. Require a clustering step (≥3 mentions same theme) before issue creation.</statement>
+        <rationale>Clustering gates backlog creation. Prevents every piece of feedback from becoming a ticket.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Long agent context windows tempt "load all 6 months of feedback at once" — accuracy drops sharply past ~100 items per call. Chunk and reduce.</statement>
+        <rationale>Agent accuracy degrades in long contexts. Chunk feedback by month or theme before synthesis.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Close-the-loop emails MUST quote the user's original verbatim verbatim (not paraphrased), reference the date, and link to the changelog. Do not send — return drafts for human review.</statement>
+        <rationale>Verbatim quotes prove the team was listening. Paraphrase erodes trust. Human review gates tone and correctness.</rationale>
+      </rule>
+    </section>
+
+    <section name="triage-bash-script">
+      <p>Inline triage helper (≤50 lines, Bash + Anthropic API). Pipes any feedback file to a Haiku triage agent and emits one JSON line per item. Use as the first stage before pushing to Productboard/Linear.</p>
+
+      <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# triage-feedback.sh — categorize feedback items via Claude Haiku
+# Usage: cat feedback.txt | ./triage-feedback.sh > triaged.jsonl
+# Each input line: ISO_DATE\tSOURCE\tUSER_ID\tVERBATIM
+set -euo pipefail
+: "${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY}"
+
+SYSTEM='You are a feedback triage agent. Output ONLY one JSON object, no prose.
+Schema: {"type":"bug|request|enhancement|confusion|praise|complaint",
+"topic":"onboarding|core-A|core-B|billing|integrations|performance|other",
+"segment":"free|solo|pro|geek|unknown",
+"sentiment":"positive|neutral|negative",
+"confidence":0.0,
+"action_required":"build|wont_do|need_info|already_planned"}
+If confidence<0.7 set action_required="need_info".'
+
+while IFS=$'\t' read -r date source user verbatim; do
+  body=$(jq -nc --arg s "$SYSTEM" --arg u "Date:$date Source:$source User:$user Verbatim:$verbatim" \
+    '{model:"claude-haiku-4-5", max_tokens:300, system:$s, messages:[{role:"user", content:$u}]}')
+  resp=$(curl -sS https://api.anthropic.com/v1/messages \
+    -H "x-api-key: $ANTHROPIC_API_KEY" \
+    -H "anthropic-version: 2023-06-01" \
+    -H "content-type: application/json" \
+    -d "$body" | jq -r '.content[0].text')
+  jq -nc --argjson t "$resp" --arg d "$date" --arg s "$source" --arg u "$user" --arg v "$verbatim" \
+    '{date:$d, source:$s, user:$u, verbatim:$v} + $t'
+done
+]]></code>
+    </section>
+
+    <section name="failure-modes">
+      <antipattern>
+        <description>LLM categorization drifts: same feedback labelled "billing" on Monday and "pricing" on Friday unless the taxonomy is pinned in the prompt and validated.</description>
+        <reason>Pin the taxonomy in both the system prompt and in a JSON schema; reject any agent output with tags outside the enum.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Duplicate detection on embeddings is fragile for short messages ("doesn't work", "broken") — needs context window from the source thread.</description>
+        <reason>Require a length floor (~30 chars) or include thread context in the dedup agent's input.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Aggregation by mention count rewards the loud minority; weight by segment ARR + retention risk or it just reproduces the squeaky-wheel bias.</description>
+        <reason>Force a segment-weighted secondary ranking. Top requests = [sum(mentions × weight_segment × weight_arr)].</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Auto-generated "you asked, we built" emails sound robotic and erode trust if the user's verbatim is paraphrased away.</description>
+        <reason>Keep the original quote in the email body. Close-loop drafts must reference verbatim. Keep drafts as *drafts* in the human's inbox, never auto-send.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Feedback from prospects (sales calls) and churned users cannot be replied to via the same close-the-loop flow; agents conflate them unless lifecycle stage is a required tag.</description>
+        <reason>Lifecycle stage must be a required input field (prospect, active, churned). Route each through different close-loop templates.</reason>
+      </antipattern>
+    </section>
+
+    <section name="services-and-tools">
+      <rule testable="true">
+        <statement>Central feedback store MUST support REST API and webhooks for ingest. Recommended: Productboard (strongest object model), Canny (public boards + voting), Linear (as backlog destination, not primary store). Notion OK for less than 500 items/month.</statement>
+        <rationale>REST + webhooks let agents push/pull feedback programmatically. Avoid tools that require CSV exports as the primary integration path.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Feedback ingest sources (Intercom, Zendesk, app-store scraper, Slack) all pipe to the triage agent first. Never let raw data bypass categorization.</statement>
+        <rationale>Uniform triage entry ensures consistent taxonomy regardless of source.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use Linear/Jira as the backlog destination, NOT as the feedback store. Link insights from Productboard/Canny into Linear via custom field. This separation keeps insights queryable and issues focused on execution.</statement>
+        <rationale>Feedback stores are built for clustering and synthesis. Issue trackers are built for execution. Mixing them degrades both.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Dovetail is strongest for qualitative interview transcripts and coding, not real-time feedback. Use it in tandem with a feedback store: Dovetail for discovery data, Productboard for inbound.</statement>
+        <rationale>Tool specialization. Each tool is best for its domain.</rationale>
+      </rule>
+    </section>
+
+    <section name="subagent-recommendations">
+      <rule testable="true">
+        <statement>Custom feedback-triage-agent (Haiku): Categorize one item at a time against a fixed taxonomy. Cheap, fast, parallelizable. Enforce JSON schema validation to block taxonomy drift.</statement>
+        <rationale>Haiku is cost-effective for high-volume triage. Single-item processing lets the agent report confidence honestly.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Custom feedback-aggregator-agent (Sonnet): Weekly/monthly: cluster, count, weight by segment, output ranked themes with verbatim citations. Never auto-cluster without human review.</statement>
+        <rationale>Sonnet is strong at structured synthesis. Weekly aggregations build PM-visible signal from daily noise.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>faion-mlp-gap-finder-agent: Already referenced in the README; consume aggregated feedback to surface gaps between current MLP and user requests.</statement>
+        <rationale>Feedback → MLP gap is a key PM decision cycle. Automate this synthesis.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>faion-sdd-executor-agent: Once a feedback theme becomes a backlog item, hand to this agent for spec/design generation in `.aidocs/backlog/`.</statement>
+        <rationale>Feedback → spec is the downstream motion. Automation here shortens the loop from discovery to roadmap.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>faion-brainstorm skill: For open-ended "what does this batch of confused-onboarding feedback really mean?" diverge-converge when triage is ambiguous.</statement>
+        <rationale>Brainstorming before categorization sometimes yields better taxonomy or reveals new patterns.</rationale>
+      </rule>
+    </section>
+
+    <section name="close-loop-email-templates">
+      <p>Three templates: Shipped, Not Planned, More Info Needed. All MUST include verbatim quote and reference date.</p>
+
+      <code lang="markdown"><![CDATA[
+## Shipped template
+Subject: Your suggestion is now live
+
+Hi {name},
+
+Thanks for suggesting {feature} on {date}. We shipped this on {ship_date}.
+
+You mentioned: "{verbatim_quote}"
+
+Here's what we built: {brief description}. The change is now available at {link}.
+
+— {team}
+
+## Not Planned template
+Subject: About your suggestion
+
+Hi {name},
+
+Thanks for suggesting {feature}. We decided not to pursue this right now, because {reason}.
+
+You mentioned: "{verbatim_quote}"
+
+{optional: alternative approach} or {optional: timeline for reconsideration}.
+
+We appreciate the feedback and will revisit if priorities shift.
+
+— {team}
+
+## More Info Needed template
+Subject: Following up on your suggestion
+
+Hi {name},
+
+Thanks for suggesting {feature}. We want to understand this better before deciding.
+
+You mentioned: "{verbatim_quote}"
+
+{questions for clarification or link to survey}
+
+Your input helps us build the right thing.
+
+— {team}
+]]></code>
+    </section>
+
+    <section name="cli-tooling">
+      <p>Tools for feedback integration:</p>
+
+      <rule testable="true">
+        <statement>linear-cli (`@linear/cli`): Create/update issues from feedback themes via Linear API. Never auto-create; require human approval.</statement>
+        <rationale>Backlog automation gates creation. Linear becomes the source of truth for roadmap, not a dump for every feedback mention.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>gh (GitHub CLI): Mine GitHub Issues + Discussions for feedback signal with `gh issue list --label feedback`.</statement>
+        <rationale>GitHub is a feedback source if your product is open-source. CLI lets agents batch-process feedback from GH.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>jq: Parse triage agent JSON output before piping to issue tracker. Validate schema early.</statement>
+        <rationale>jq validation gates bad data from reaching the tracker. Early validation prevents cascading errors.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>intercom-cli (community) / zendesk zcli: Pull conversations tagged `feedback` for batch ingest. Never leave feedback stuck in support tools.</statement>
+        <rationale>Centralization is critical. Feedback locked in support tools becomes orphaned. Ingest into the feedback store.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>play-scraper / app-store-scraper: Pull app-store reviews in JSON. Pipe directly into triage agent.</statement>
+        <rationale>App store reviews are high-signal feedback. Automate their ingestion instead of manual reading.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>slack-cli: Pull `#feedback` channel messages, react with status emoji. Keep team aligned on what's being triaged.</statement>
+        <rationale>Slack channel → feedback store pipeline lets the team see feedback movement in real-time.</rationale>
+      </rule>
+    </section>
+
+    <see-also>
+      <link href="https://developer.productboard.com"/>
+      <link href="https://developers.canny.io"/>
+      <link href="https://www.marty-cagan.com/inspired"/>
+      <link href="https://www.producttalk.org/continuous-discovery-habits"/>
+      <link href="https://www.intercom.com/customer-engagement"/>
+      <link href="https://linear.app/docs/api"/>
+      <link href="https://docs.anthropic.com/en/docs/build-a-capable-ai-system"/>
+      <ref slug="continuous-discovery-habits"/>
+      <ref slug="experimentation-at-scale"/>
+    </see-also>
+  </content>
+</methodology>
