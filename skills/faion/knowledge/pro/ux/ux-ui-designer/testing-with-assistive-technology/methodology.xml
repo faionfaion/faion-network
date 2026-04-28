@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="testing-with-assistive-technology">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>Three-tier AT testing strategy: automated CI scans, manual SR/keyboard sweeps, quarterly user sessions. Automated tools catch only 30-50% of issues; manual testing is essential for WCAG conformance.</summary>
+    <tags>
+      <tag>accessibility</tag>
+      <tag>wcag</tag>
+      <tag>testing</tag>
+      <tag>assistive-technology</tag>
+      <tag>screen-reader</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>Testing with Assistive Technology</title>
+    <summary>A three-tier AT testing strategy: automated scan in CI (every PR), manual screen-reader and keyboard sweep (every release), user-with-disability session (quarterly). Automated tools catch only 30–50% of real issues; screen-reader audio, switch-control, and lived-experience testing cannot be replaced by any automated tool. Each bug report must include: WCAG SC reference, repro snippet, suggested ARIA APG pattern, and scope estimate.</summary>
+    <why>
+      <p>WCAG 2.2 AA conformance claims based on automated scan results alone are legally and technically invalid. The gap (50–70% of real issues missed) is dominated by dynamic-content failures, focus-order errors, and ARIA misuse on custom components — exactly what screen-reader users encounter daily. Filing AT bugs without WCAG citations and repros causes them to be postponed indefinitely.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Pre-release accessibility QA for any public web/app.</item>
+        <item>Validating WCAG 2.2 AA / EN 301 549 / ADA Title II conformance claims.</item>
+        <item>Regression-testing custom components (combobox, modal, tree, datagrid).</item>
+        <item>Investigating user complaints from screen-reader or keyboard-only users.</item>
+        <item>Audit work for legal-risk reduction on B2C and government products.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure backend/API services with no UI surface.</item>
+        <item>Internal tools where the user population is confirmed non-AT (still test keyboard).</item>
+        <item>Early-stage paper prototypes — methodology requires an interactive build.</item>
+        <item>As a substitute for design-time accessibility — testing alone won't fix architectural debt.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Three-Tier Strategy">
+      <rule>
+        <statement>Run automated scans in CI on every PR, manual SR/keyboard sweeps on every release, and user-with-disability sessions quarterly. Never substitute any tier for another.</statement>
+        <rationale>Automated tools catch 30–50% of real issues. The remaining 50–70% — dynamic content failures, focus-order errors, ARIA misuse on custom components — requires human screen-reader testing. Quarterly user sessions catch cognitive accessibility issues invisible to all automated and manual checks.</rationale>
+      </rule>
+    </section>
+    <section name="Screen Reader and Browser Matrix">
+      <p>Maintain a support matrix of three SR+browser pairs and own them completely. Recommended pairs: NVDA + Firefox (Windows, free), JAWS + Chrome (Windows, enterprise benchmark), VoiceOver + Safari (macOS/iOS, required for Apple platform claims). Also test: TalkBack + Chrome (Android, mobile SR); requires real device — simulator parity is poor.</p>
+    </section>
+    <section name="Keyboard Test Keys">
+      <p>Required keyboard actions to verify in every interactive component test:</p>
+      <list>
+        <item>Tab / Shift+Tab — navigate forward and backward</item>
+        <item>Enter / Space — activate controls</item>
+        <item>Arrow keys — navigate within composite widgets (menus, tabs, trees, grids)</item>
+        <item>Escape — dismiss dialogs, close menus, exit modes</item>
+        <item>Skip link — navigate to main content without Tab traversal</item>
+      </list>
+    </section>
+    <section name="Common Failure Taxonomy">
+      <p>Most frequent issues found in manual AT testing (in order of prevalence):</p>
+      <list>
+        <item>Missing form labels — input has no associated label element or aria-label</item>
+        <item>No skip navigation — keyboard users must Tab through full nav on every page</item>
+        <item>Inaccessible custom components — combobox, modal, tree, datagrid with incorrect ARIA roles or key behavior</item>
+        <item>Missing alt text — images convey content but have no text alternative</item>
+        <item>Poor focus management — modal opens without focus move; close returns focus to wrong element</item>
+        <item>Keyboard traps — Tab does not exit a component; Escape does not dismiss</item>
+      </list>
+    </section>
+    <section name="Bug Report Requirements">
+      <rule>
+        <statement>Every AT bug report must include: WCAG 2.2 success criterion reference, minimal HTML repro snippet, suggested ARIA APG pattern with URL, and scope estimate (single component | layout-wide | system).</statement>
+        <rationale>AT bugs filed without WCAG citations and repros get postponed indefinitely. A scope estimate triggers the correct remediation path — a single-component fix vs. a design-system-level change have different owners and timelines.</rationale>
+      </rule>
+    </section>
+    <section name="Testing Limitations">
+      <p>Screen reader behavior differs across SR + browser pairs (NVDA+Firefox vs. JAWS+Chrome vs. VoiceOver+Safari) — what works in one fails in another. Mobile SR (TalkBack, iOS VoiceOver) gestures need real devices; simulator parity is poor. Cognitive accessibility issues are invisible to SR/keyboard tests; you need separate user-with-disability sessions. Switch control, eye-gaze, and voice-control testing each need dedicated hardware setups. Automated tools score what they can reach; SPAs with delayed render or focus-trap bugs slip past.</p>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Agents can: run automated scans in CI (axe-core, pa11y, Lighthouse), cross-check ARIA against accessibility-tree snapshots, generate keyboard-traversal scripts, triage findings into severity buckets. Agents cannot reliably evaluate screen-reader audio — capture it via human reviewer or video recording. Reserve human time for: SR audio QA, switch-control testing, lived-experience sessions.</p>
+      <p>Recommended subagents: faion-usability-agent (runs automated suites, cross-references findings, drafts remediation tickets), faion-ux-researcher-agent (recruits and runs sessions with AT users), faion-sdd-executor-agent (fixes flagged issues with ARIA/semantic-HTML patches, re-runs gates).</p>
+      <p>Prompt pattern for triage: Triage this axe-core JSON result. Group by: {severity, wcag_criterion, component}. For each violation: generate minimal repro (HTML snippet), suggest fix referencing WCAG 2.2 SC and ARIA APG pattern, estimate scope: {single component | layout-wide | system}. Output JSONL.</p>
+      <p>Prompt pattern for keyboard testing: You are scripting a keyboard-only walkthrough. Component: &lt;name&gt;. List exact key sequence. For each step, expected: visible focus state, SR announcement (NVDA + Firefox), aria-live region behavior. Flag deviations as fail/warn/info.</p>
+    </section>
+    <section name="Antipatterns">
+      <antipattern>
+        <description>Agent declares "WCAG AA conformant" based on axe-core results alone.</description>
+        <reason>Automated tools catch 30–50% of real issues. Claiming conformance requires documented testing against all applicable success criteria, including manual SR checks. Always reject this conclusion in prompt rules.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LLM inventing ARIA patterns without citation to ARIA Authoring Practices Guide.</description>
+        <reason>Invented ARIA patterns produce non-standard keyboard behavior and incorrect SR announcements. Every ARIA pattern must cite a specific APG example URL; refuse output without citation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Color-contrast checks performed via static analysis on overlapping translucent layers.</description>
+        <reason>LLM static analysis cannot compute effective contrast of translucent overlapping elements. Must run in browser against the rendered DOM.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Testing only initial render state for dynamic content (aria-live, SPA route changes).</description>
+        <reason>Dynamic content is the primary false-pass area. Focus must be tested post-state: after dialog opens, after route change, after async content loads.</reason>
+      </antipattern>
+    </section>
+    <section name="Best Practices">
+      <rule>
+        <statement>Capture screen reader audio (OBS, screen recorder) when filing AT bugs. Never rely on text descriptions alone.</statement>
+        <rationale>SR announcement strings vary across NVDA/JAWS/VoiceOver versions. Agents quote outdated phrasings. Video recordings are the only evidence that resolves SR behavior disputes with developers.</rationale>
+      </rule>
+      <rule>
+        <statement>Build a regression catalog: components with known AT bugs get re-tested on every release, not only when the component changes.</statement>
+        <rationale>Adjacent changes in CSS or JavaScript frequently reintroduce fixed AT bugs. A regression catalog with test scripts catches this without manual re-discovery each cycle.</rationale>
+      </rule>
+      <list>
+        <item>Maintain an SR + browser support matrix; pick 3 pairs and own them, don't try to cover all.</item>
+        <item>Test focus order with the browser dev-tools accessibility tree; visual order ≠ DOM order ≠ accessibility order.</item>
+        <item>File a11y bugs with WCAG SC + repro + suggested ARIA pattern; vague tickets get postponed.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/a11y-gate.sh" purpose="CI script: fail PR if axe-core finds serious/critical WCAG 2.2 AA violations"/>
+    </templates>
+    <see-also>
+      <link href="https://www.w3.org/TR/WCAG22/"/>
+      <link href="https://www.w3.org/WAI/ARIA/apg/"/>
+      <link href="https://github.com/dequelabs/axe-core/blob/develop/doc/rule-descriptions.md"/>
+      <link href="https://webaim.org/projects/screenreadersurvey/"/>
+    </see-also>
+  </content>
+</methodology>
