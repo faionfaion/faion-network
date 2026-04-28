@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="php-eloquent">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>Eloquent ORM patterns: $fillable whitelisting, scopes, Attribute::make() accessors, N+1 prevention via eager loading, and DB transactions.</summary>
+    <tags>
+      <tag>eloquent</tag>
+      <tag>laravel</tag>
+      <tag>orm</tag>
+      <tag>database</tag>
+      <tag>performance</tag>
+    </tags>
+    <category>orm</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Eloquent ORM Patterns (Laravel)</title>
+
+    <summary>Patterns for Eloquent model definition, query optimization, and repository abstraction in Laravel. Covers $fillable whitelisting, named scopes, Attribute::make() accessors, eager loading to prevent N+1, DB::transaction() for multi-write paths, and query budget enforcement. Repository pattern is optional — adopt only when you have a real swap-out case.</summary>
+
+    <why>
+      <p>Eloquent's lazy loading is the primary source of N+1 regressions in Laravel apps. Relations are loaded on first access unless eager-loaded via ->with(). $fillable misconfiguration is a recurring mass-assignment CVE source. The Attribute::make() API replaces legacy getXAttribute() but the two cannot be mixed without undefined behavior.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Laravel API or web app with non-trivial data layer (5+ related entities, soft deletes, polymorphic relations).</item>
+        <item>Refactoring controllers or services that build raw queries inline — extract to scopes, repositories, or query objects.</item>
+        <item>Adding read-side optimizations (eager loading, chunking) after measuring an N+1 problem.</item>
+        <item>Multi-tenant or role-gated apps where global scopes + policies enforce data boundaries at the model layer.</item>
+        <item>LLM-driven greenfield work where models are the primary "schema-of-truth" the agent reasons about.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Read-heavy analytics workloads — use raw DB:: query builder, chunkById, or jump to Postgres directly. Eloquent hydration is the bottleneck.</item>
+        <item>High-throughput event ingestion (>5k req/s on a single box) — bypass Eloquent for inserts; use DB::table()->insert() or LazyCollection.</item>
+        <item>Cross-database joins or non-RDBMS backends (Cassandra, DynamoDB, ClickHouse). Eloquent's relation API assumes a single SQL connection per query.</item>
+        <item>Microservices where each service is less than 1k LOC and a single repository class adds more ceremony than it saves.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="model-definition">
+      <p>Model definition with explicit $fillable whitelist, $casts, typed relationships, named scopes, and the Attribute::make() accessor API.</p>
+
+      <rule testable="true">
+        <statement>Always whitelist $fillable; never use $guarded = [] on any model.</statement>
+        <rationale>Guarded-empty models expose every attribute to mass assignment. Even fields like is_admin or password_hash can be set via $model->fill($request->all()) when $guarded is empty — a recurring CVE in agent-generated code.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use Attribute::make() exclusively for accessors and mutators; never mix with legacy getXAttribute() on the same model.</statement>
+        <rationale>Mixing the two APIs on one model produces undefined behavior; the framework resolves accessor priority inconsistently across Laravel versions.</rationale>
+      </rule>
+
+      <example type="good" title="Eloquent Model with Fillable, Casts, Scopes, and Accessors">
+        <code lang="php"><![CDATA[
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+
+class User extends Authenticatable
+{
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = ['name', 'email', 'password'];
+    protected $hidden   = ['password', 'remember_token'];
+    protected $casts    = ['email_verified_at' => 'datetime', 'settings' => 'array'];
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class)->withTimestamps()->withPivot('assigned_by');
+    }
+
+    // Scopes
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeSearch(Builder $query, ?string $term): Builder
+    {
+        if (empty($term)) return $query;
+        return $query->where(fn ($q) =>
+            $q->where('name', 'LIKE', "%{$term}%")->orWhere('email', 'LIKE', "%{$term}%")
+        );
+    }
+
+    // Accessor (new API only)
+    protected function email(): Attribute
+    {
+        return Attribute::make(
+            set: fn (string $v) => strtolower($v),
+        );
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return $this->roles()->where('name', $role)->exists();
+    }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="repository-pattern">
+      <p>Optional repository layer that encapsulates eager loading, pagination, and write operations; adopt only when a swap-out case exists.</p>
+
+      <rule testable="true">
+        <statement>Eager-load in repository methods by default; never let controllers or resources trigger lazy associations.</statement>
+        <rationale>N+1 bugs caused by lazy loading in controllers are invisible in code review. Forcing eager loading at the repository boundary makes query cost explicit and reviewable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Wrap multi-write paths in DB::transaction(); Eloquent does not auto-run transactions for create + relation->attach combinations.</statement>
+        <rationale>Without an explicit transaction, a failed attach after a successful create leaves an orphaned record with no rollback.</rationale>
+      </rule>
+
+      <example type="good" title="Eloquent Repository Pattern">
+        <code lang="php"><![CDATA[
+namespace App\Repositories;
+
+use App\Models\User;
+use Illuminate\Pagination\LengthAwarePaginator;
+
+class UserRepository
+{
+    public function __construct(private readonly User $model) {}
+
+    public function paginate(int $perPage = 20): LengthAwarePaginator
+    {
+        return $this->model->with(['roles'])->latest()->paginate($perPage);
+    }
+
+    public function findOrFail(int $id): User
+    {
+        return $this->model->with(['roles', 'orders'])->findOrFail($id);
+    }
+
+    public function create(array $data): User
+    {
+        return $this->model->create($data);
+    }
+
+    public function update(int $id, array $data): User
+    {
+        $user = $this->model->findOrFail($id);
+        $user->update($data);
+        return $user->fresh();
+    }
+
+    public function delete(int $id): bool
+    {
+        return $this->model->findOrFail($id)->delete();
+    }
+
+    public function findByEmail(string $email): ?User
+    {
+        return $this->model->where('email', $email)->first();
+    }
+}
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Repository added for all aggregates "for consistency" but bypassed 50% of the time via Model::query() directly.</description>
+        <reason>Partial adoption is the worst outcome: the team gets ceremony without the swap-out benefit, and two patterns coexist. Either commit fully (no Model::query() outside the repo) or skip the repository entirely.</reason>
+      </antipattern>
+    </section>
+
+    <section name="rules-and-gotchas">
+      <p>Mandatory rules and AI-Agent gotchas for Eloquent ORM usage in Laravel.</p>
+
+      <rule testable="true">
+        <statement>Disable lazy loading in non-production: Model::preventLazyLoading(!$this->app->isProduction()) — makes N+1 throw instead of silently slow.</statement>
+        <rationale>Prevents silent N+1 regressions that surface in production.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always pair a model change with migration + factory + resource; agents that touch only the model cause drift visible in CI hours later.</statement>
+        <rationale>Keeps schema definition, serialization, and test fixtures in sync.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use firstOrCreate / updateOrCreate over manual where-save patterns to avoid race conditions with concurrent writers.</statement>
+        <rationale>These methods handle upsert atomically within a transaction.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Resource classes are the API contract; never return raw models from controllers — leaked password_hash, remember_token, soft-delete columns.</statement>
+        <rationale>Decouples API shape from database schema.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Index every where/orderBy column in migrations; Eloquent makes it cheap to query unindexed columns but the bill arrives in production.</statement>
+        <rationale>Prevents O(n) full table scans on first production query.</rationale>
+      </rule>
+
+      <p>AI-agent gotchas:</p>
+
+      <antipattern>
+        <description>$user->postss returns null without raising — magic relation typos pass static analysis.</description>
+        <reason>Run php artisan ide-helper:models -W after every model change to generate _ide_helper_models.php; Larastan needs it to catch property typos.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>->with(['posts.comments.author', 'roles.permissions']) added "to be safe".</description>
+        <reason>Nested eager loading can load the entire object graph. Cap nesting depth at 2 in code review.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Column added to migration without updating $fillable; User::create($validated) silently drops the field.</description>
+        <reason>Mass assignment guard ($fillable) must be updated alongside every new column; agents frequently forget the $fillable update.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>unique('email') added on a soft-deleted model without a partial index.</description>
+        <reason>Re-creating a previously soft-deleted user fails. Use unique('email')->whereNull('deleted_at') (Postgres) or restore-on-conflict logic.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Tests run on sqlite but app ships to MySQL/Postgres.</description>
+        <reason>JSON_EXTRACT, full-text, and case-sensitivity differ. Force the test suite onto the production DB engine in CI.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Factory state explosion — agents create per-test factories instead of factory states.</description>
+        <reason>Standardize UserFactory::admin(), UserFactory::withPosts(int $n) and document.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Repository over-abstraction — agents wrap Eloquent in a repo, then bypass it 50% of the time.</description>
+        <reason>Either commit fully (no Model::query() outside repo) or skip the pattern.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Policy bypass via find — agents forget $this->authorize in show/update endpoints; multi-tenant data leaks.</description>
+        <reason>Default to findOrFail in the policy itself, not the controller.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive Eloquent work as: (1) a planner subagent reads the current models + migrations and emits a target schema diff; (2) a code-writer subagent generates models, migrations, factories, and seeders together; (3) a test subagent writes feature tests that hit real DB (sqlite in-memory) with RefreshDatabase; (4) a perf subagent runs the test suite under Laravel Debugbar/Clockwork and flags any query count >N or any single query >100ms. Persist context as app/Models/*.php plus database/migrations/ — agents must edit these together or the schema drifts.</p>
+
+      <note>Recommended subagents: faion-backend-agent (referenced in README frontmatter) — primary implementer for model, scope, and repository code. faion-sdd-executor-agent (agents/faion-sdd-executor-agent.md) — converts each schema change or refactor into an SDD task with a quality gate (tests + php artisan migrate:fresh --seed). A purpose-built eloquent-perf-agent (worth creating): wraps php artisan tinker + Telescope query log to count queries per route and gate PRs on N+1 regressions. password-scrubber-agent (agents/password-scrubber-agent.md) — scrub seed/test fixtures before sharing; factories often hard-code emails and tokens.</note>
+
+      <p>Schema change pass: You are a Laravel 11 backend engineer. Given models/User.php and migrations/, add a last_seen_at timestamp to users. Update: model $casts, migration up/down, factory, UserResource, and add a scope scopeRecentlySeen(int $minutes = 5). Output as a single diff. Do not break existing tests; run php artisan test --filter=User.</p>
+
+      <p>N+1 review pass: Run php artisan test with QUERY_LOG=true. For any test where the SAME parameterized SQL fires more than 2 times, report the test, the query, and propose an ->with() fix on the relevant Eloquent call. Do not fix tests; only fix the model/repository.</p>
+    </section>
+
+    <section name="cli-tools">
+      <p>Essential Laravel CLI tools for Eloquent development:</p>
+
+      <command name="php artisan make:model -mfs">Scaffold model + migration + factory + seeder atomically. Bundled with Laravel.</command>
+      <command name="php artisan tinker">Headless REPL for relation/scope smoke tests. Bundled.</command>
+      <command name="php artisan db:seed / migrate:fresh --seed">Reset DB for agent test runs. Bundled.</command>
+      <command name="laravel/telescope">Query log, N+1 detection, dispatched events. composer require laravel/telescope --dev</command>
+      <command name="barryvdh/laravel-debugbar">Per-request query count in dev. composer require barryvdh/laravel-debugbar --dev</command>
+      <command name="nunomaduro/larastan">Static analysis for Eloquent magic methods (PHPStan). composer require nunomaduro/larastan --dev</command>
+      <command name="beyondcode/laravel-query-detector">Auto-fail on N+1 in tests. composer require beyondcode/laravel-query-detector --dev</command>
+      <command name="laravel/pint">Style fixer (PSR-12), runs in pre-commit. composer require laravel/pint --dev</command>
+      <command name="pestphp/pest">Higher-signal test runner over PHPUnit. composer require pestphp/pest --dev</command>
+    </section>
+
+    <section name="services-and-apps">
+      <p>External services and integration points for Eloquent-based Laravel applications:</p>
+
+      <list>
+        <item>Laravel Forge (SaaS deploy, API yes) — Spin up DB-backed apps; agents can drive deploys via forge cli.</item>
+        <item>Laravel Vapor (SaaS serverless, API yes) — RDS-backed Eloquent on Lambda; cold-start hits N+1 hard.</item>
+        <item>PlanetScale / Neon (Managed MySQL/Postgres, API yes) — Branching DBs play well with Laravel migrations per branch.</item>
+        <item>Sentry / Bugsnag (SaaS errors, API yes) — Catches QueryException; tag releases by migration version.</item>
+        <item>Honeybadger Insights (SaaS APM, API yes) — Per-query timing surfaces Eloquent regressions agents missed.</item>
+        <item>Doctrine ORM (OSS alternative) — Use when DDD-heavy or DataMapper preferred over ActiveRecord.</item>
+        <item>Eloquent (standalone via illuminate/database, OSS yes) — Use Eloquent outside Laravel (workers, CLI tools) — same patterns apply.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <p>Core best practices for production Eloquent usage:</p>
+
+      <list>
+        <item>Eager-load by default in repositories. Keep raw lazy access only inside the model layer; controllers/resources should never trigger fresh queries.</item>
+        <item>Use Attribute::make() only. Do not mix legacy getFooAttribute with the new API in the same model — agents copy whichever pattern they saw last.</item>
+        <item>Whitelist $fillable, never use $guarded = []. Guarded-empty is a recurring CVE source in agent-generated code.</item>
+        <item>Always pair model change with migration + factory + resource. Agents that touch only the model produce drift that surfaces in CI an hour later.</item>
+        <item>Wrap multi-write paths in DB::transaction(fn () => ...). Eloquent does not autorun transactions for create + relation->attach.</item>
+        <item>Prefer firstOrCreate / updateOrCreate over manual where → save. Avoids race conditions in concurrent writers.</item>
+        <item>Disable lazy loading in non-prod. Model::preventLazyLoading(! $this->app->isProduction()) makes agent N+1 mistakes throw, not silently slow.</item>
+        <item>Resource classes are the API contract. Never return raw models from controllers — agents leak password_hash, remember_token, soft-delete columns otherwise.</item>
+        <item>Index every where/orderBy column in migrations. Eloquent makes it cheap to query unindexed columns; the bill arrives in prod.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/query-budget.sh" purpose="CI gate: fail if any feature test exceeds N queries (integrates with Debugbar/query log)."/>
+    </templates>
+
+    <see-also>
+      <link href="https://laravel.com/docs/eloquent"/>
+      <link href="https://laravel.com/docs/eloquent-relationships"/>
+      <link href="https://laravel.com/docs/eloquent#mass-assignment"/>
+      <link href="https://themsaid.com/eloquent-lazy-loading"/>
+      <link href="https://spatie.be/docs/laravel-medialibrary"/>
+      <link href="https://github.com/beyondcode/laravel-query-detector"/>
+      <link href="https://github.com/larastan/larastan"/>
+      <ref slug="php-laravel"/>
+      <ref slug="php-laravel-patterns"/>
+    </see-also>
+  </content>
+</methodology>
