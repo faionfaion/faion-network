@@ -1,11 +1,9 @@
 # Changelog
 
 ## [Unreleased]
-<<<<<<< HEAD
-- migrate: 3/3 pro/ux/ui-designer methodologies → methodology.xml (token-organization, voice-ui-patterns, vui-iot-integration; feature-045 batch 216)
-=======
+- migrate: 3/3 pro/ux/user-researcher + pro/ux/ux-researcher methodologies → methodology.xml (user-research-at-scale, cog-walk-basics, cog-walk-process; feature-045 batch 219)
 - migrate: 3/3 pro/ux methodologies → methodology.xml (vui-privacy-security, w3c-design-tokens-standard, audience-segmentation; feature-045 batch 217)
->>>>>>> 7ef81421 (chore: update CHANGELOG for batch 217 migration)
+- migrate: 3/3 pro/ux/ui-designer methodologies → methodology.xml (token-organization, voice-ui-patterns, vui-iot-integration; feature-045 batch 216)
 - migrate: 3/3 pro/ux/ui-designer methodologies → methodology.xml (spatial-design-tools, spatial-interaction-patterns, spatial-ui-patterns; feature-045 batch 215)
 - migrate: 3/3 pro/ux/ui-designer methodologies → methodology.xml (error-handling-in-vui, semantic-tokens-and-modes, spatial-computing-overview; feature-045 batch 214)
 - migrate: 3/3 pro/ux/ui-designer methodologies → methodology.xml (cross-platform-token-distribution, design-system-success-factors, enterprise-xr-applications; feature-045 batch 213)
