@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (spatial-ux-fundamentals, surveys, testing-with-assistive-technology; feature-045 batch 232)
 - migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (spatial-design-tools, spatial-interaction-patterns, spatial-ui-patterns; feature-045 batch 231)
 - migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (immersive-design-principles, personas, regulatory-compliance-2026; feature-045 batch 229)
 - migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (enterprise-xr-applications, error-handling-in-vui, focus-groups; feature-045 batch 228)
