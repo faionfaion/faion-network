@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="design-tokens-fundamentals">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>Three-tier token architecture (primitive, semantic, component) via W3C DTCG JSON and Style Dictionary for multiplatform consistency.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>design-tokens</tag>
+      <tag>w3c-dtcg</tag>
+      <tag>semantic-naming</tag>
+      <tag>theming</tag>
+      <tag>accessibility</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+      <tool>style-dictionary</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Design Tokens Fundamentals</title>
+
+    <summary>Three-tier token architecture (primitive, semantic, component) keeps single source of truth via W3C DTCG JSON and Style Dictionary. Semantic naming enables theming without component changes. Purpose-named tokens survive dark mode and theme swaps.</summary>
+
+    <why>
+      <p>Ad-hoc CSS variables and Tailwind configs create designer-developer drift: values in Figma diverge from code within one sprint. Three-tier token architecture with a CI contrast-lint step keeps a single source of truth across web, iOS, Android, and visionOS surfaces. Semantic naming makes dark/high-contrast mode swaps possible without touching component code.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a design system targeting two or more platforms.</item>
+        <item>Migrating from ad-hoc CSS variables to a single source of truth.</item>
+        <item>Adding dark/light/high-contrast modes to a shipped product.</item>
+        <item>Designer-developer round-trip workflows where Figma values drift from code.</item>
+        <item>Multi-brand white-label products that need theme swaps without rebuild.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-page MVP with one designer/developer — overhead exceeds value until month 3+.</item>
+        <item>Static two-page marketing site — Tailwind defaults suffice.</item>
+        <item>Throwaway internal tools with no design-language target.</item>
+        <item>Teams that haven't agreed on semantic naming yet — resolve naming first.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="three-tier-model">
+      <rule>
+        <statement>Organize tokens in exactly three tiers: primitive (raw values) → semantic (purpose-named aliases) → component (component-scoped). Components must reference only semantic tokens, never primitive tokens directly.</statement>
+        <rationale>Components that reference primitive tokens (e.g., color.blue.500) make dark-mode and theme swaps impossible without touching every component. Semantic layer is the indirection point that makes theming work.</rationale>
+      </rule>
+
+      <section name="tier-definitions">
+        <p>Primitive: raw values with no semantic meaning. Examples: color.blue.500 = #3B82F6, spacing.4 = 16px. These are the only tier that ever contains actual values.</p>
+        <p>Semantic: aliases that give meaning to primitives. Examples: color.text.default references color.gray.900; color.surface.primary references color.white. Names express purpose, not appearance.</p>
+        <p>Component: aliases scoped to a specific component. Examples: button.background references color.surface.primary; card.padding references spacing.md. Generate only for components that actually need them.</p>
+      </section>
+
+      <section name="w3c-dtcg-json-schema">
+        <p>Emit tokens in W3C Design Tokens Community Group format. Each token uses $value (not value) and $type. References use {token.path} syntax.</p>
+        <example type="good">
+          <code lang="json"><![CDATA[{
+  "color": {
+    "gray": {
+      "900": { "$value": "#111827", "$type": "color" }
+    },
+    "text": {
+      "default": { "$value": "{color.gray.900}", "$type": "color", "$description": "Default body text" },
+      "muted": { "$value": "{color.gray.600}", "$type": "color" }
+    }
+  },
+  "spacing": {
+    "xs": { "$value": "4px", "$type": "dimension" },
+    "sm": { "$value": "8px", "$type": "dimension" },
+    "md": { "$value": "16px", "$type": "dimension" }
+  }
+}]]></code>
+          <note>Uses $value and $type per current DTCG spec. Semantic tokens reference primitives via {path} syntax.</note>
+        </example>
+        <reference path="templates/tokens-skeleton.json">Full 3-tier token skeleton</reference>
+      </section>
+    </section>
+
+    <section name="benefits">
+      <p>Consistency: identical values across web, iOS, Android, visionOS from a single JSON source. Scalability: update once, regenerate all platform outputs via Style Dictionary. Theming: dark/light/high-contrast modes require only semantic-layer overrides, no component changes. Maintenance: single source of truth with a publishable changelog. Collaboration: shared naming vocabulary eliminates designer-developer value drift.</p>
+    </section>
+
+    <section name="core-rules">
+      <rule>
+        <statement>Name semantic tokens by purpose, not appearance. Use color.text.muted, not color.gray.600.</statement>
+        <rationale>Appearance-based names make theming impossible — color.gray.600 cannot be a dark-mode override because the name describes the light-mode hue. Purpose-based names survive theme changes because the purpose stays constant.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Pair every semantic foreground token with its background token. Lint every text/background pair for WCAG 2.2 AA contrast (4.5:1 for normal text, 3:1 for large text) in CI.</statement>
+        <rationale>Contrast violations are the most common accessibility failure in design systems. Catching them at token-generation time costs seconds; catching them in a11y audit costs sprints.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Limit token nesting depth to four levels maximum (e.g., color.button.primary.hover). Enforce in CI.</statement>
+        <rationale>LLMs generate tokens with 6–8 nesting levels (color.button.primary.hover.background.disabled). At that depth, naming collapses — no human can find any token in a library of 1,500+ without semantic search.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Treat token rename as a breaking change. Version token packages with SemVer. Ship a migration codemod with every rename.</statement>
+        <rationale>Consumers depend on token name stability. A silent rename of color.text.default to color.text.primary breaks every downstream consumer silently — CSS variables go undefined, not errored.</rationale>
+      </rule>
+
+      <reference path="templates/token-contrast.mjs">CI script: fail if semantic text/background pair &lt; 4.5:1</reference>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Primitive tokens leaking into component code (e.g., color.blue.500 used in a button component directly).</description>
+        <reason>Makes theming and dark mode impossible. Any change to blue.500 breaks every component referencing it unpredictably.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LLM-generated tokens skipping the semantic layer entirely — outputting only primitive and component tiers.</description>
+        <reason>Without semantic layer, theming requires editing every component token. Force 3-tier output schema in the prompt.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Auto-deriving dark theme algorithmically from light theme.</description>
+        <reason>Algorithmic inversion produces poor contrast and violates accessibility requirements. Dark-mode semantic layer must be hand-tuned and contrast-validated.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Cross-platform output emitting px values for iOS (expects pt) or Android (expects dp/sp).</description>
+        <reason>LLMs paste px everywhere without transforms. Style Dictionary must declare unit transforms per platform or assets render at wrong sizes on mobile.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Use agents to (a) generate the initial 3-tier token JSON (primitive → semantic → component) from a design brief, (b) lint token files for naming and reference-cycle violations, (c) generate platform outputs (CSS variables, iOS/Android resources, Tailwind config) via Style Dictionary, and (d) audit existing CSS for hardcoded values that should be tokenized. Human review for naming and the semantic layer is mandatory — names outlive everything.</p>
+
+      <p>Agents can generate initial 3-tier token JSON from a design brief, lint token files for naming and reference-cycle violations, generate platform outputs (CSS variables, iOS/Android resources, Tailwind config) via Style Dictionary, audit existing CSS for hardcoded values to tokenize. Human review for naming and the semantic layer is mandatory — names outlive the codebase.</p>
+
+      <p>Gotchas: W3C DTCG schema uses $value, not value — agents may emit obsolete shape. Hex/OKLCH conversions produce subtly off colors silently — assert exact round-trip match. Generated dark themes need manual contrast verification — never accept agent-declared "accessible".</p>
+    </section>
+
+    <section name="limitations">
+      <p>Token sprawl: teams reach 1,500+ tokens and can't find any of them; without governance, naming collapses. Pure primitive layer leaks into components ("color.blue.500" everywhere) and theming becomes impossible. Cross-platform output diverges silently — fonts, line-heights, and elevation translate poorly to iOS/Android. Figma Variables ↔ JSON sync is still fragile; renaming on either side breaks the other. Animation, motion, and shadow tokens are weakly standardized — most teams hand-roll them.</p>
+    </section>
+
+    <section name="tools-and-services">
+      <note>CLI tools: style-dictionary (transform tokens to platform outputs), Tokens Studio CLI (sync Figma Variables ↔ JSON), theo (Salesforce token transformer), cosmiconfig (centralize token config), chromatic (visual regression on token-driven components), axe-cli (a11y contrast check).</note>
+      <note>Services: Tokens Studio (Figma, SaaS + plugin, agent-friendly JSON export), Specify (SaaS, REST + CLI), Supernova (SaaS, REST), Knapsack (SaaS, partial agent-friendly), Style Dictionary (OSS, CLI/JS), Figma Variables (SaaS, partial REST API beta).</note>
+    </section>
+
+    <section name="prompt-patterns">
+      <note>Generate W3C-format token JSON from design brief (brand, primary_palette, modes, scale, type_scale, components_in_scope). Output 3 layers: primitive (raw values, no semantic names), semantic (alias only, contrast-paired), component (only for listed components). Validate WCAG 2.2 AA contrast for every text/background pair in semantic layer. Emit DTCG (W3C Design Tokens Community Group) JSON.</note>
+      <note>Audit CSS for hardcoded values that should be tokens. Output JSONL: {file, line, value, suggested_token, reason}. Skip values inside @keyframes, transition timing, and z-index.</note>
+    </section>
+
+    <templates>
+      <template path="templates/tokens-skeleton.json" purpose="W3C DTCG 3-tier token skeleton (primitive / semantic / component)."/>
+      <template path="templates/token-contrast.mjs" purpose="CI script: fail if any semantic text/background pair is below WCAG AA 4.5:1."/>
+    </templates>
+
+    <see-also>
+      <link href="https://design-tokens.github.io/community-group/format/"/>
+      <link href="https://amzn.github.io/style-dictionary/"/>
+      <link href="https://medium.com/eightshapes-llc/tagged/design-systems"/>
+      <link href="https://help.figma.com/hc/en-us/articles/15145852043927"/>
+      <link href="https://tokens.studio"/>
+    </see-also>
+  </content>
+</methodology>
