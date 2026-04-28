@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/research/market-researcher methodologies → methodology.xml (ai-research-tool-categories, ai-research-tools, market-sizing-with-ai; feature-045 batch 287)
 - migrate: 3/3 geek/product methodologies → methodology.xml (ai-native-product-development, agentic-ai-product-development, ai-native-product-development; feature-045 batch 286)
 - migrate: 3/3 geek/product methodologies → methodology.xml (ai-powered-pm-tools, agentic-ai-product-development, agents; feature-045 batch 285)
 - migrate: 3/3 geek/marketing, geek/pm methodologies → methodology.xml (agentic-commerce-future-trends, ai-in-project-management, ai-powered-pm-tools; feature-045 batch 284)
