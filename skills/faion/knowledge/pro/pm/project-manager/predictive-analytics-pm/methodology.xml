@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="predictive-analytics-pm">
+  <metadata>
+    <tier>pro</tier>
+    <group>pm</group>
+    <domain>project-manager</domain>
+    <summary>ML-driven early warnings for schedule slip, cost overrun, resource contention, and price risk. Analytics pipeline feeds PM tools via alerts; humans retain all decision authority.</summary>
+    <category>analytics</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>predictive-analytics</tag>
+      <tag>machine-learning</tag>
+      <tag>risk-forecasting</tag>
+      <tag>evm</tag>
+      <tag>data-science</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Predictive Analytics in Project Management</title>
+
+    <summary>Apply machine learning to historical project data to generate early-warning signals for schedule slip, budget overrun, resource contention, and material price risk — turning raw PM telemetry into probability-interval forecasts that change PMO decisions before events occur. The analytics layer lives in a separate ML pipeline feeding the PM tool through alerts and dashboards; humans retain all decision authority.</summary>
+
+    <why>
+      <p>Reactive PM catches problems at post-mortem; predictive analytics catches them 2-6 weeks earlier. Studies show well-implemented ML-based schedule forecasting reduces cost overruns by ~15% on comparable portfolio programs. Reference-class forecasting (Flyvbjerg) is the required baseline — if ML cannot beat it, ML is not worth the data-plumbing cost.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Portfolio of 50+ comparable projects with 12+ months of clean historical data (issues, time logs, budget actuals)</item>
+        <item>Construction, engineering, manufacturing, or infrastructure programs where slip and overrun are repeat offenders</item>
+        <item>PMO needs early-warning dashboard and executive trend signals</item>
+        <item>Vendor/commodity-heavy programs where price volatility (steel, cloud spend) drives budget risk</item>
+        <item>EVM already in place and the org wants an ML complement for interval forecasting</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Portfolio under 10 projects — sample size is too small; use heuristics + EVM instead</item>
+        <item>Brand-new project type with no historical analogues — no training data; use reference-class forecasting alone</item>
+        <item>Highly creative or one-off work (research, novel product) — past patterns do not generalize</item>
+        <item>Organisation without basic data hygiene (inconsistent statuses, missing actuals, freeform fields) — fix data first</item>
+        <item>Goal is optics ("look modern") rather than changing actual PMO decisions — model value requires action on output</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="ml-application-areas">
+      <p>Target use cases by ML type and PM domain:</p>
+
+      <rule>
+        <statement>Apply ML only where a PMO decision changes when the model output flips — define the trigger before training.</statement>
+        <rationale>A model that produces no decision change has zero value regardless of accuracy. Defining trigger first forces PMO alignment and constrains scope.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use reference-class forecasting (Flyvbjerg) as the required baseline; beat it before claiming ML adds value.</statement>
+        <rationale>Simple comparable-project averages often outperform ML on small portfolios. The baseline prevents theater deployments.</rationale>
+      </rule>
+
+      <list>
+        <item>Schedule forecasting: analyze past schedules, predict slip in days (regression); trigger: slip &gt; 14d → escalate to steering.</item>
+        <item>Budget prediction: detect cost overrun early from EVM + vendor invoice patterns; 15% reduction in overruns documented in PMI AI reports.</item>
+        <item>Resource optimization: multi-variable allocation across concurrent projects; useful only when portfolio &gt; 20 projects.</item>
+        <item>Risk detection: pattern recognition in issue velocity, comment cadence, owner-change count; feeds risk register.</item>
+        <item>Material price forecasting: Bayesian / interval models for volatile commodities (steel, cloud spend, semiconductors).</item>
+      </list>
+    </section>
+
+    <section name="data-quality-requirements">
+      <p>Foundational requirements for model training and deployment.</p>
+
+      <rule>
+        <statement>Require clean, structured historical data with consistent status labels, dated transitions, and numeric actuals before training any model.</statement>
+        <rationale>Garbage-in/garbage-out dominates PM datasets. Most trackers have inconsistent labels, undated status changes, and missing actuals — no model survives that.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Predict intervals, not points: express schedule slip as "8 days ± 14 (P80)" rather than "8 days".</statement>
+        <rationale>Interval forecasts guide better decisions and communicate uncertainty honestly; point predictions create false precision.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use GroupKFold cross-validation grouped by project or program — never random splits.</statement>
+        <rationale>Random splits leak future project data into past, producing optimistically biased evaluation metrics.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Training on closed-project-only datasets.</description>
+        <reason>Survivorship bias: killed projects are excluded, making the training set systematically optimistic about completion outcomes.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Shipping a model without a drift monitor.</description>
+        <reason>Organisational change, new domains, and new tooling break models trained on prior projects within 6-18 months. Silent failure ensues.</reason>
+      </antipattern>
+    </section>
+
+    <section name="human-in-the-loop-mandate">
+      <p>Decision authority, explainability, and governance requirements.</p>
+
+      <rule>
+        <statement>The model produces probability + explanation; a human retains all decision authority — no auto-action on budget or schedule.</statement>
+        <rationale>Decision-rights confusion is the top governance failure: agents schedule "auto re-baseline on slip prediction" when PM decisions belong to humans.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Ship SHAP values with every prediction; a black-box risk-register entry will be ignored.</statement>
+        <rationale>Explainability is non-optional in PM governance contexts. Stakeholder trust collapses on unexplained model outputs.</rationale>
+      </rule>
+
+      <list>
+        <item>Mandatory human checkpoints: training-data contract approval, model promotion to prod, threshold changes, deprecation, any auto-action policy.</item>
+        <item>LLMs orchestrate — they draft data contracts, explain SHAP outputs, and propose features. They do not do numeric prediction.</item>
+        <item>Confabulated metrics: agents invent MAE/R²/AUC without running code; force metrics to come from sklearn output captured by a tool call.</item>
+      </list>
+    </section>
+
+    <section name="pipeline-architecture">
+      <p>How to structure the ML analytics pipeline as an agentic system.</p>
+
+      <rule>
+        <statement>Treat the analytics layer as a separate ML pipeline (analytics/ repo) feeding the PM tool through alerts and dashboards — never as a Slackbot.</statement>
+        <rationale>Slackbot coupling creates brittle real-time dependencies; a pipeline with explicit data contracts and scheduled runs is testable and auditable.</rationale>
+      </rule>
+
+      <p>A subagent owns the data contract (issue → feature row), trains and refreshes models, monitors drift, and writes predictions to a predictions/ datastore ingested by the PM tool via webhook.</p>
+    </section>
+
+    <section name="recommended-subagents">
+      <p>Specialized ML orchestration and monitoring agents.</p>
+
+      <list>
+        <item>data-contract-agent (sonnet): inspects PM tool exports, defines stable feature columns, flags inconsistent statuses or missing fields.</item>
+        <item>feature-engineering-agent (sonnet): proposes engineered features (planned vs. actual ratios, queue ages, owner-change counts, comment cadence) with rationale.</item>
+        <item>model-training-agent (sonnet): wraps scikit-learn / XGBoost / LightGBM / Prophet pipelines; outputs model + metrics + SHAP explanations.</item>
+        <item>drift-monitor-agent (haiku): nightly — compares incoming feature distributions vs. training set; raises alerts when KS/PSI exceeds threshold.</item>
+        <item>prediction-explainer-agent (opus): turns SHAP outputs into stakeholder-readable risk-register entries.</item>
+        <item>password-scrubber-agent: scrubs PM exports before any third-party model call; Jira/Linear data leaks vendor names, prices, customer info.</item>
+      </list>
+
+      <reference path="templates/slip-baseline.py">Baseline GBR regressor — beat this before claiming ML adds value</reference>
+      <reference path="templates/data-contract.yaml">Feature contract schema emitted by the data-contract agent</reference>
+    </section>
+
+    <section name="prompt-patterns">
+      <p>Effective LLM prompts for data contract design and model explanation.</p>
+
+      <example type="good" title="Data-contract agent prompt">
+        <note>Forces strict YAML output, explicit leakage exclusions:</note>
+        <code lang="text"><![CDATA[
+You are the data-contract agent. Inputs:
+1. Sample of 5,000 issue rows from the source PM tool (CSV).
+2. Project metadata (type, sponsor, budget, dates).
+
+Emit STRICT YAML:
+features:
+  - name: <snake_case>
+    type: numeric|categorical|boolean|datetime
+    source_field: <jira_field_id>
+    nullable: true|false
+    notes: "..."
+target:
+  name: schedule_slip_days|budget_overrun_pct|risk_materialized
+  type: regression|classification
+  rationale: "..."
+exclusions: [ ... fields with PII/credentials ... ]
+data_quality_rules:
+  - "status not in {Open, In Progress, Done} → flag"
+  - "actual_start > actual_end → drop row"
+        ]]></code>
+      </example>
+
+      <example type="good" title="Explanation prompt for SHAP → risk-register entry">
+        <note>Produces stakeholder-readable explanations:</note>
+        <code lang="text"><![CDATA[
+Given SHAP values for prediction id=X (top 5 features by |contribution|),
+produce a 3-sentence English explanation suitable for a risk-register entry.
+Cite feature name, direction, and magnitude.
+Do not editorialize beyond data.
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common failure modes in ML-driven PM analytics pipelines.</p>
+
+      <antipattern>
+        <description>LLM "predicts" budget overruns from prose narrative without running a model.</description>
+        <reason>LLMs are not numeric forecasters. They confabulate plausible-sounding numbers. Train a model; LLMs draft, explain, and orchestrate.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Random train/test split used for project data.</description>
+        <reason>Random splits leak future project data into past training. Group splits by project_id or program are mandatory.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent declares "deployed" after model.fit() without wiring a drift monitor.</description>
+        <reason>Shipping a model without monitoring is silent failure. Force a monitoring task into the SDD chain before calling any deployment complete.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Sending raw PM CSV rows to a third-party LLM API.</description>
+        <reason>PM data contains salary, vendor pricing, customer names. Tokenize or run on-prem; never send raw rows externally.</reason>
+      </antipattern>
+
+      <list>
+        <item>Data leakage: agents conflate target and feature when columns share names (e.g., `final_cost` vs. `forecast_cost`). Force a leakage audit step.</item>
+        <item>Sample-size collapse: small samples + many features → overfitting. Force a feature-count cap (e.g., features ≤ N/10).</item>
+        <item>Bias replication: protected-class data (region, business-unit reputation) leaks into "high-risk" labels. Run fairness checks; remove proxies.</item>
+        <item>Drift-detection thresholds hallucinated: agents pick "reasonable" KS thresholds that fire constantly or never. Calibrate against a validation period.</item>
+        <item>Long-context drift: LLMs lose the schema after ~3,000 lines of CSV. Always operate on the data contract YAML, not raw rows.</item>
+        <item>Cost runaway: hyperparameter search via cloud GPUs without a budget cap. Cap with explicit budget guardrails per training run.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <p>Python packages and utilities for feature engineering, modeling, and monitoring.</p>
+
+      <list>
+        <item>pandas / polars — feature engineering, ETL of PM data (pip install pandas polars)</item>
+        <item>scikit-learn / xgboost / lightgbm — tabular ML for slip/overrun/risk (pip install scikit-learn xgboost lightgbm)</item>
+        <item>prophet / sktime / darts — time-series for budget runs and material prices (pip install prophet sktime darts)</item>
+        <item>shap / lime — model explanation; required for governance (pip install shap lime)</item>
+        <item>evidently / nannyml / whylogs — drift and data-quality monitoring (pip install evidently nannyml whylogs)</item>
+        <item>mlflow / wandb / dvc — experiment tracking and model registry (pip install mlflow wandb dvc)</item>
+        <item>dbt — SQL transformations of PM warehouse data into feature tables (https://docs.getdbt.com)</item>
+        <item>airbyte / fivetran — source connectors for Jira, Asana, ClickUp, Salesforce (https://airbyte.com / https://fivetran.com)</item>
+        <item>duckdb — local OLAP on exported CSVs without a warehouse (pip install duckdb)</item>
+        <item>feast — feature store for online + offline parity (https://feast.dev)</item>
+        <item>great-expectations — data-quality assertions in CI (https://greatexpectations.io)</item>
+        <item>prefect / dagster / airflow — orchestrate ETL → train → score → publish pipeline</item>
+      </list>
+    </section>
+
+    <section name="services-and-saas">
+      <p>Platform and service options for PM analytics.</p>
+
+      <list>
+        <item>Atlassian Intelligence (Jira) — LLM-summarization features; minimal predictive ML at present.</item>
+        <item>ClickUp AI / Asana Intelligence / Monday AI — mostly auto-summary and field generation; predictive features shallow.</item>
+        <item>Microsoft Project Cortex / Viva Insights — resource and meeting analytics; useful for capacity inputs.</item>
+        <item>Power BI + Project for the Web — cheapest enterprise-grade visualization on Microsoft estate.</item>
+        <item>Tableau / Looker / Sigma — common dashboarding for PM analytics; pair with warehouse.</item>
+        <item>Snowflake / BigQuery / Databricks / Redshift — warehouse for unified PM data; required at scale.</item>
+        <item>dbt Cloud — transformation layer between sources and ML.</item>
+        <item>Procore + Procore Analytics — construction-specific PM with built-in analytics.</item>
+        <item>Autodesk Construction Cloud (BIM 360) — construction analytics + risk insights.</item>
+        <item>Oracle Primavera + Risk Analysis — heavy predictive scheduling for capital projects (Monte Carlo).</item>
+        <item>Deltek Cobra / Acumen — EVM + risk analytics for govt / aerospace contracts.</item>
+        <item>nPlan / ALICE Technologies — ML-driven schedule risk and AI scheduling for construction.</item>
+        <item>KEEL Solutions / Disperse / OpenSpace — construction site progress capture feeding analytics.</item>
+        <item>AlphaSense / Bloomberg Terminal / S&amp;P Capital IQ — material price and macro forecasting feeds.</item>
+        <item>Hugging Face / Anthropic / OpenAI / Vertex AI / Azure ML — LLM/ML hosts; route via privacy DPA + zero-retention only.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <p>Proven patterns for successful PM analytics deployments.</p>
+
+      <rule>
+        <statement>Start with one decision: the model only matters if a PMO action changes when its output flips. Define the trigger before training.</statement>
+        <rationale>Model value requires decision change. Defining the trigger first forces PMO alignment and constrains scope to the achievable.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Reference-class forecasting (Flyvbjerg) as a baseline: simple comparable-project averages often beat ML on small portfolios. Beat the baseline before going complex.</statement>
+        <rationale>ML complexity is not justified if simple reference classes perform equally. The baseline prevents premature optimization.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Calibrate probabilities (Platt / isotonic) before publishing — uncalibrated risk scores produce false alarms.</statement>
+        <rationale>Raw sigmoid outputs from gradient boosters are not calibrated probabilities; stakeholders treating them as such will make misinformed decisions.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Group splits in cross-validation by project or program — random splits leak future into past.</statement>
+        <rationale>Proper fold design prevents optimistically biased evaluation metrics that hide real-world performance degradation.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Explainability is non-optional in PM. Ship SHAP values with every prediction; a black-box risk-register entry will be ignored.</statement>
+        <rationale>Stakeholder trust requires transparent reasoning. Black-box outputs have zero governance value in PM contexts.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Drift-monitor in production: KS / PSI on input distributions, calibration drift on outputs, monthly retrains as default.</statement>
+        <rationale>Models degrade silently without monitoring. Detecting and responding to drift early prevents organizational surprise.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Keep humans in the loop for any escalation. Auto-action is reserved for low-stakes nudges (assignee reminders), never for budget or schedule changes.</statement>
+        <rationale>Decision authority belongs to humans. Predictions inform; decisions belong to organizational leadership.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Version the data, not just the model. Use DVC or warehouse snapshots; "model says X" is meaningless without "trained on snapshot Y".</statement>
+        <rationale>Without data versioning, debugging model degradation is impossible; data provenance is as critical as model reproducibility.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Document model cards (intended use, training data, metrics, limitations) per Mitchell et al. — required by AI Act for high-risk systems.</statement>
+        <rationale>Model cards make assumptions explicit, preventing misapplication and satisfying emerging regulatory requirements.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Cap PII / financial data scope to what the model needs; tokenize or hash identifiers.</statement>
+        <rationale>Minimizing sensitive data exposure reduces privacy and compliance risk without sacrificing model performance.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Pair with `risk-management/`: model outputs are inputs to the register, not replacements.</statement>
+        <rationale>ML predictions augment but do not replace formal risk management processes; integration is bidirectional.</rationale>
+      </rule>
+    </section>
+
+    <section name="where-it-fails">
+      <p>Known limitations and common failure patterns.</p>
+
+      <list>
+        <item>Garbage-in/garbage-out dominates. Most PM trackers have inconsistent labels, undated status changes, and missing actuals — no model survives that.</item>
+        <item>Concept drift: organisational change, new domains, new tooling all break models trained on prior projects within 6–18 months.</item>
+        <item>Predictions become self-fulfilling or self-defeating: if the PMO acts on "delay predicted", the prediction may never realize, making model evaluation hard.</item>
+        <item>Black-box models lose stakeholder trust fast in PM contexts. Explainability (SHAP, LIME, partial dependence) is mandatory for governance.</item>
+        <item>Model bias replicates historical inequities — projects from disfavored business units may be systematically labeled "high-risk".</item>
+        <item>Material price models (steel, copper, semis) inherit macro-volatility; Bayesian / interval forecasts beat point predictions.</item>
+        <item>Resource optimization models often produce mathematically optimal but politically infeasible allocations.</item>
+        <item>Many vendor "AI PM" features are LLM auto-summarizers, not predictive analytics — verify before integrating.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/slip-baseline.py" purpose="Baseline GBR schedule-slip regressor (scikit-learn, GroupKFold, SHAP-ready)"/>
+      <template path="templates/data-contract.yaml" purpose="Feature contract schema for the data-contract agent"/>
+    </templates>
+
+    <see-also>
+      <link href="https://otexts.com/fpp3/"/>
+      <link href="https://en.wikipedia.org/wiki/Reference_class_forecasting"/>
+      <link href="https://arxiv.org/abs/1810.03993"/>
+      <link href="https://arxiv.org/abs/1705.07874"/>
+      <link href="https://research.google/pubs/pub43146/"/>
+      <link href="https://www.pmi.org/learning/thought-leadership/ai-impact"/>
+      <ref slug="earned-value-management"/>
+      <ref slug="risk-management"/>
+      <ref slug="cost-estimation"/>
+      <ref slug="schedule-development"/>
+      <ref slug="pm-tool-selection"/>
+    </see-also>
+  </content>
+</methodology>
