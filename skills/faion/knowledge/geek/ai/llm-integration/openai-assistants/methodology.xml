@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="openai-assistants">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Stateful layer over Chat Completions: manages threads, files, vector stores (File Search), and Python runtime (Code Interpreter) for multi-turn user-facing applications with persistent state.</summary>
+    <category>llm</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>assistants-api</tag>
+      <tag>stateful-llm</tag>
+      <tag>file-search</tag>
+      <tag>code-interpreter</tag>
+      <tag>rag</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>OpenAI Assistants API</title>
+
+    <summary>The Assistants API is a stateful layer over Chat Completions that manages conversation threads, file uploads, a built-in vector store (File Search), and a sandboxed Python runtime (Code Interpreter). It is designed for multi-turn user-facing applications where the caller should not manage message history, document indexing, or code execution infrastructure.</summary>
+
+    <why>
+      <p>Building persistent conversation state, file-based RAG, and code execution from scratch requires significant infrastructure. Assistants API handles chunking, embedding, retrieval, and code sandboxing as managed services. The cost: every feature adds HTTP round-trips and per-token overhead, making it slower and more expensive than Chat Completions for automated pipelines. Use it when state management convenience outweighs throughput requirements.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Multi-turn user-facing applications where conversation history must persist across sessions.</item>
+        <item>RAG over uploaded documents without building a custom vector pipeline (File Search).</item>
+        <item>Data analysis where the LLM needs to execute Python on uploaded CSV/Excel files (Code Interpreter).</item>
+        <item>Prototyping agent applications when stateful conversation overhead is acceptable.</item>
+        <item>Users upload files mid-conversation and the assistant must act on them immediately.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>High-throughput automated pipelines — Assistants adds HTTP round-trips per turn; Chat Completions is faster.</item>
+        <item>When deterministic, auditable tool execution is required — internal tool calling is opaque.</item>
+        <item>Cost-sensitive workloads — file search + thread storage add per-token overhead.</item>
+        <item>Data that must not be stored on OpenAI servers (GDPR/HIPAA) — threads and files persist.</item>
+        <item>Sub-100ms first-token latency requirements — `create_and_poll` polling overhead is too high.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="run-status-handling">
+      <p>Thread lifecycle, run creation, and handling all terminal run statuses.</p>
+
+      <rule>
+        <statement>Handle all run terminal statuses explicitly: completed, failed, cancelled, expired, and requires_action.</statement>
+        <rationale>Treating only "completed" as a terminal state causes silent failures. "requires_action" means a custom function tool was called and is waiting for a response — if ignored, the run expires after 10 minutes.</rationale>
+      </rule>
+
+      <rule>
+        <statement>When stop_reason is "requires_action", submit tool outputs within 10 minutes or the run expires.</statement>
+        <rationale>The Assistants API has a 10-minute timeout for tool output submission. Expired runs cannot be resumed; the entire interaction must be restarted.</rationale>
+      </rule>
+
+      <example type="good" title="One-shot assistant interaction with error handling">
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+
+client = OpenAI()
+
+def query_assistant(assistant_id: str, thread_id: str, question: str) -> str:
+    client.beta.threads.messages.create(
+        thread_id=thread_id, role="user", content=question
+    )
+    run = client.beta.threads.runs.create_and_poll(
+        thread_id=thread_id, assistant_id=assistant_id
+    )
+    if run.status != "completed":
+        raise RuntimeError(f"Run failed: {run.status} — {run.last_error}")
+    msgs = client.beta.threads.messages.list(
+        thread_id=thread_id, order="desc", limit=1
+    )
+    return msgs.data[0].content[0].text.value
+]]></code>
+        <note>run.status is checked explicitly and raises for any non-completed terminal state.</note>
+      </example>
+    </section>
+
+    <section name="message-ordering">
+      <p>Correct handling of thread message ordering and thread lifecycle management.</p>
+
+      <rule>
+        <statement>Use order="asc" when listing thread messages to retrieve conversation order; the default (newest first) reverses the conversation.</statement>
+        <rationale>messages.list returns newest first by default. Code that iterates the result in received order reads the conversation backwards, producing incorrect context assembly.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Archive long threads by creating a new thread with a summary message after N turns rather than letting the thread grow indefinitely.</statement>
+        <rationale>Thread messages accumulate indefinitely. Long threads hit context limits and cost more per run because all prior messages are included in the context window.</rationale>
+      </rule>
+    </section>
+
+    <section name="resource-lifecycle">
+      <p>Thread and vector store cleanup patterns.</p>
+
+      <rule>
+        <statement>Delete threads, vector stores, and files after use. Orphaned resources accumulate and are billed.</statement>
+        <rationale>OpenAI charges for stored files and vector stores independently of API calls. Unused resources from test sessions or one-off queries accumulate silently.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use metadata on threads and assistants to tag with user IDs and session IDs for cost attribution.</statement>
+        <rationale>Without metadata, there is no way to attribute token costs to specific users or sessions in the usage dashboard.</rationale>
+      </rule>
+
+      <example type="good" title="Context managers for resource lifecycle">
+        <code lang="python"><![CDATA[
+from contextlib import contextmanager
+from openai import OpenAI
+
+client = OpenAI()
+
+@contextmanager
+def managed_thread():
+    """Create a thread, yield its ID, then delete on exit."""
+    thread = client.beta.threads.create()
+    try:
+        yield thread.id
+    finally:
+        client.beta.threads.delete(thread.id)
+
+@contextmanager
+def managed_vector_store(name: str, file_paths: list[str]):
+    """Upload files, create vector store, yield vs_id, then delete on exit."""
+    files = [
+        client.files.create(file=open(p, "rb"), purpose="assistants")
+        for p in file_paths
+    ]
+    vs = client.beta.vector_stores.create(name=name)
+    for f in files:
+        client.beta.vector_stores.files.create(vector_store_id=vs.id, file_id=f.id)
+    try:
+        yield vs.id
+    finally:
+        client.beta.vector_stores.delete(vs.id)
+        for f in files:
+            client.files.delete(f.id)
+]]></code>
+        <note>Context managers guarantee cleanup even if an exception occurs during the session.</note>
+      </example>
+    </section>
+
+    <section name="file-search-and-indexing">
+      <p>Vector store creation, file upload, and citation handling in File Search responses.</p>
+
+      <rule>
+        <statement>Poll file.status == "completed" before querying after upload. File processing is asynchronous and may take seconds to minutes for large PDFs.</statement>
+        <rationale>Querying immediately after files.create returns results that do not include the newly uploaded file. The file is not searchable until processing completes.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Maintain a file_id to filename mapping in your application. File Search citations reference file_id, not file name.</statement>
+        <rationale>The API does not return file names in annotations — only file_ids. Without a mapping, citations cannot be displayed to users with meaningful source labels.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Delete vector stores and their associated files when a session ends.</statement>
+        <rationale>Vector stores incur storage billing independently of requests. Session-scoped stores created for one-off queries will accumulate cost if not deleted.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Set max_prompt_tokens and max_completion_tokens on runs in multi-user deployments to cap per-run cost.</statement>
+        <rationale>Without per-run token caps, a single large document query in a shared deployment can consume disproportionate tokens and increase cost unpredictably.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Querying a File Search-enabled assistant immediately after uploading a file.</description>
+        <reason>File processing is asynchronous. Querying before file.status == "completed" returns results that do not include the uploaded content, producing silently incomplete answers.</reason>
+      </antipattern>
+    </section>
+
+    <section name="code-interpreter-usage">
+      <p>File attachment, code execution, image output download, and sandbox constraints.</p>
+
+      <rule>
+        <statement>Attach files to the message, not the assistant, when the file is specific to one analysis task.</statement>
+        <rationale>Files attached to an assistant are available in all future threads. Files attached to a message are scoped to that interaction, limiting cost and data exposure.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Download Code Interpreter-generated image files immediately after the run completes; they expire.</statement>
+        <rationale>Generated images are stored as ephemeral image_file content blocks. If not downloaded promptly, the file_id becomes invalid and the image is lost.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Do not rely on Code Interpreter for tasks requiring custom library versions or external API calls from within executed code.</statement>
+        <rationale>The sandbox has a fixed package set and no outbound network. Tasks requiring custom dependencies must be handled outside the interpreter, with results passed back as file attachments.</rationale>
+      </rule>
+
+      <example type="good" title="Retrieving and downloading Code Interpreter images">
+        <code lang="python"><![CDATA[
+# Retrieve and download generated images after run completes
+messages = client.beta.threads.messages.list(thread_id=thread.id)
+for message in messages.data:
+    if message.role == "assistant":
+        for content in message.content:
+            if content.type == "image_file":
+                # Download immediately before expiry
+                image_data = client.files.content(content.image_file.file_id)
+                with open("output_chart.png", "wb") as f:
+                    f.write(image_data.read())
+            elif content.type == "text":
+                print(content.text.value)
+]]></code>
+        <note>Images are downloaded in the same loop that processes the response to minimize the risk of expiry.</note>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Assistants are best used as the conversational layer in a hybrid architecture: the Assistants API handles multi-turn state and file access while custom tools handle business logic. An agent creates a thread once per user session, adds messages, triggers runs, and polls for completion. For automated pipelines without user interaction, prefer Chat Completions with your own message array. Use File Search for document Q&amp;A; use Code Interpreter for data analysis; avoid both for pure text generation.</p>
+
+      <list>
+        <item>Create a thread once per user session, not per message.</item>
+        <item>Use `create_and_poll` only for synchronous flows; for async, use `runs.create` + poll manually with `asyncio.sleep`</item>
+        <item>Check `run.status` explicitly: `completed`, `failed`, `cancelled`, `expired` all need different handling</item>
+        <item>Limit thread length — archive old messages by creating a new thread with a summary message after N turns</item>
+        <item>Use `metadata` on threads and assistants to tag with user IDs and session IDs for cost attribution</item>
+        <item>For File Search, verify file processing status before querying — upload is async and may take seconds to minutes for large PDFs</item>
+        <item>Set `max_prompt_tokens` and `max_completion_tokens` on runs to cap per-run costs in multi-user deployments</item>
+      </list>
+    </section>
+
+    <section name="agentic-gotchas">
+      <list>
+        <item>`run.status == "requires_action"` means the assistant called a custom function tool and is waiting — if your agent does not handle this, the run expires (10-minute timeout)</item>
+        <item>Vector store file processing is asynchronous — querying immediately after `files.create` may return no results; poll `file.status == "completed"` first</item>
+        <item>File Search citations in message annotations reference `file_id`, not file name — you must maintain a file_id → filename mapping yourself</item>
+        <item>Thread message order: `messages.list` returns newest first by default — use `order="asc"` to get conversation order</item>
+        <item>Code Interpreter-generated images are ephemeral `image_file` content blocks — download them immediately; they expire</item>
+        <item>`create_and_poll` does not surface run step details (which tools were called) — use `run_steps.list` separately if you need auditability</item>
+        <item>Assistants API v2 (vector stores) is different from v1 (file_ids on assistant) — mixing v1 and v2 patterns causes 400 errors</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>`openai` SDK | Assistants, threads, files, runs | `pip install openai` → https://github.com/openai/openai-python</item>
+        <item>`openai` CLI | List/delete assistants, files via CLI | `openai api assistants.list`</item>
+        <item>`tenacity` | Retry polling loops on rate limit errors | `pip install tenacity`</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>OpenAI Platform | SaaS | Yes | Primary endpoint; Assistants v2 with vector stores</item>
+        <item>Helicone | SaaS | Yes | Proxy; logs thread/run costs alongside completions</item>
+        <item>Portkey | SaaS | Yes | Fallback routing; useful if Assistants endpoint degrades</item>
+        <item>LlamaIndex | OSS | Yes | Can use OpenAI Assistants as a retriever backend</item>
+      </list>
+    </section>
+
+    <section name="limitations-constraints">
+      <p>Key limitations of the Assistants API for agent development.</p>
+
+      <list>
+        <item>Run polling is required — no native webhook; `create_and_poll` blocks until completion, making async pipelines complex</item>
+        <item>File Search retrieval quality is not auditable — you cannot inspect the embedding model, chunking strategy, or ranking algorithm</item>
+        <item>Code Interpreter runs in an OpenAI-controlled sandbox — cannot install custom packages or access external network</item>
+        <item>Vector store file processing can fail silently — always check `file.status` before assuming documents are indexed</item>
+        <item>Thread messages accumulate indefinitely — long threads hit context limits and cost more per run</item>
+        <item>Assistant configuration (instructions, tools) cannot be changed per-run — create a new assistant for significantly different configurations</item>
+        <item>Rate limits apply per assistant, not just per account — parallel runs on the same assistant can conflict</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/query-assistant.py" purpose="One-shot assistant interaction with run status validation."/>
+      <template path="templates/managed-resources.py" purpose="Context managers for thread and vector store lifecycle management."/>
+    </templates>
+
+    <see-also>
+      <link href="https://platform.openai.com/docs/assistants/overview"/>
+      <link href="https://platform.openai.com/docs/assistants/tools/file-search"/>
+      <link href="https://platform.openai.com/docs/assistants/tools/code-interpreter"/>
+      <link href="https://platform.openai.com/docs/api-reference/assistants"/>
+      <link href="https://github.com/openai/openai-python/tree/main/examples/assistants"/>
+    </see-also>
+  </content>
+</methodology>
