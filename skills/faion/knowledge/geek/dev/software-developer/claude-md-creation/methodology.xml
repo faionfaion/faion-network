@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="claude-md-creation">
+  <metadata>
+    <tier>geek</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>CLAUDE.md is a project-specific instruction file giving Claude Code context on commands, structure, conventions, and gotchas. A concise CLAUDE.md (under 150 lines) eliminates back-and-forth.</summary>
+    <tags>
+      <tag>claude-code</tag>
+      <tag>documentation</tag>
+      <tag>project-setup</tag>
+      <tag>ai-assisted-dev</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <applies-to>both</applies-to>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>python</language>
+      <language>javascript</language>
+      <language>typescript</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>CLAUDE.md Creation</title>
+
+    <summary>CLAUDE.md is a project-specific instruction file that gives Claude Code the context it needs: commands, structure, conventions, and gotchas. A well-crafted CLAUDE.md (under 150 lines) eliminates the back-and-forth of Claude asking basic questions about the project setup.</summary>
+
+    <why>
+      <p>Claude Code reads CLAUDE.md at session start. Without it, the agent must infer project structure, commands, and conventions from code — a slow, error-prone process that consumes context budget. A 300+ line CLAUDE.md itself wastes context. The sweet spot: concise, structured, focused on what Claude cannot infer from code alone (commands, env vars, gotchas, naming conventions).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a new project where Claude Code will be the primary AI assistant.</item>
+        <item>Inheriting a codebase and needing to orient Claude to existing conventions before making changes.</item>
+        <item>After a major dependency upgrade or framework migration that invalidates existing instructions.</item>
+        <item>Setting up per-module CLAUDE.md files in a monorepo where modules have different stacks.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Throwaway scripts or single-file utilities with no ongoing AI-assisted development.</item>
+        <item>Projects where team policy prohibits AI coding tools entirely.</item>
+        <item>When an accurate CLAUDE.md already exists — update specific sections rather than recreating.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="required-sections">
+      <rule testable="true">
+        <statement>A CLAUDE.md must include: Commands (bash blocks for dev/test/lint/build), Structure (directory tree, 2 levels), Conventions (naming, imports, types), and Key Files (table of important entry points). Project Overview is optional but useful.</statement>
+        <rationale>Commands is the most frequently referenced section during AI-assisted development — agents need it to run tests, start servers, and apply linters. Without it, agents guess at command names and fail silently.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Keep CLAUDE.md under 150 lines total. A file over 300 lines consumes context budget that could be used for code.</statement>
+        <rationale>Claude Code reads CLAUDE.md at session start. Every line of CLAUDE.md is a line not available for the actual code the agent is working on. Concise routing beats comprehensive documentation.</rationale>
+      </rule>
+    </section>
+
+    <section name="commands-section">
+      <rule testable="true">
+        <statement>List every command the agent will need in bash code blocks: dev server, test runner, linter, formatter, build, migration, seed. Group by workflow (Development, Testing, Database, Code Quality).</statement>
+        <rationale>Agents need exact commands, not descriptions. "Run the tests" is ambiguous; pytest --cov=src -x is actionable. Include flags that agents typically need (coverage, fail-fast, verbose).</rationale>
+      </rule>
+
+      <example type="good" title="Commands section format">
+        <code lang="markdown"><![CDATA[
+## Commands
+
+```bash
+# Development
+make dev          # Start development server
+uvicorn src.main:app --reload --port 8000
+
+# Testing
+pytest --cov=src --cov-report=html
+pytest -m "not slow" -x  # Fast tests only
+
+# Code Quality
+ruff check . --fix
+ruff format .
+mypy src
+```
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="structure-section">
+      <rule testable="true">
+        <statement>Show the directory tree to exactly 2 levels. Add one-line comments after important directories. Do not list every file — only directories and their purpose.</statement>
+        <rationale>A 3+ level tree in CLAUDE.md wastes lines on detail the agent can discover by reading. Two levels provides enough context for the agent to know where to look without reading a full file listing.</rationale>
+      </rule>
+    </section>
+
+    <section name="conventions-section">
+      <rule testable="true">
+        <statement>List concrete naming conventions with examples: file case (snake_case.py), class case (PascalCase), function case (snake_case), constants (UPPER_SNAKE_CASE), import order (stdlib, third-party, local).</statement>
+        <rationale>Agents follow naming conventions literally. Vague conventions ("use good names") produce inconsistent output. Specific rules with examples produce consistent output that passes linters without manual fixes.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For Python projects: explicitly name active ruff rule groups. Agents need to know T20 means no print() to avoid triggering pre-commit hooks.</statement>
+        <rationale>Ruff rule groups have non-obvious names. An agent that adds print() for debugging will fail the T20 check and require a follow-up fix. Documenting the active rules prevents this class of pre-commit failures.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Too much information: documenting every edge case, every API endpoint, full architecture diagrams in prose.</description>
+        <reason>Overwhelming context budget. Put detailed architecture docs in .agents/ and reference them from CLAUDE.md with a single line.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Stale content: commands that no longer work, directory paths that no longer exist, env vars with wrong names.</description>
+        <reason>Stale instructions mislead more than they help. An agent following a stale build command wastes tool calls diagnosing the failure rather than doing productive work.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Duplicate docs: same information already in README.md reproduced in CLAUDE.md.</description>
+        <reason>Creates a maintenance burden and inconsistency. CLAUDE.md should contain only what Claude needs that differs from what a human developer would look up in README.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>No structure: wall of text paragraphs without sections or headings.</description>
+        <reason>Agents scan CLAUDE.md for specific sections. Unstructured prose requires parsing the entire file to find a specific command or convention.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Wrong audience: written for human developers with background explanation and narrative prose.</description>
+        <reason>CLAUDE.md is read by an agent, not a human onboarding. Omit explanations of why a technology was chosen; include only what the agent needs to operate correctly.</reason>
+      </antipattern>
+    </section>
+
+    <section name="monorepo-pattern">
+      <rule testable="true">
+        <statement>Root CLAUDE.md in a monorepo must delegate to per-module files using @path/to/AGENTS.md syntax. Never copy module-specific instructions to root.</statement>
+        <rationale>Copying module instructions to root creates duplicate maintenance burden and grows the root file past context budget. Each module owns its instructions; root provides routing only.</rationale>
+      </rule>
+    </section>
+
+    <section name="maintenance">
+      <rule testable="true">
+        <statement>Review and update CLAUDE.md on every major PR that changes directory layout, build commands, or lint configuration.</statement>
+        <rationale>CLAUDE.md is a static snapshot. A 6-month-old file with wrong commands misleads every agent session until it is corrected. Tie updates to the same PR that changes the thing CLAUDE.md describes.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use &lt;required&gt; notation for environment variables, never example values. Use SECRET_KEY=&lt;required&gt; not SECRET_KEY=abc123.</statement>
+        <rationale>Agents may use literal example values found in CLAUDE.md when generating code or configuration. Placeholder notation prevents accidental use of example credentials.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>An agent can auto-generate an initial CLAUDE.md by reading package.json, Makefile, pyproject.toml, .env.example, and directory structure, then filling in the standard skeleton. A follow-up agent validates the output by dry-running each command listed (in a safe environment) and flagging any that error. For monorepos following the faion convention, the agent generates root CLAUDE.md (@AGENTS.md) plus per-module AGENTS.md files with 20-80 line summaries.</p>
+
+      <p>Read package.json, Makefile (if present), and the top-level directory structure. Generate a CLAUDE.md for this project using the standard skeleton: Overview (1 paragraph), Tech Stack (table), Commands (bash blocks for dev/test/lint/build), Structure (directory tree, 2 levels), Conventions (naming, imports, types), Key Files (table). Keep total length under 150 lines.</p>
+
+      <p>Review CLAUDE.md. For each command listed under Commands, verify it exists in package.json scripts or Makefile. For any command that cannot be verified, mark it [UNVERIFIED]. For any directory listed under Structure that doesn't exist, mark it [MISSING].</p>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>claude (Claude Code): Consumes CLAUDE.md at session start; test with `claude --print "what commands does this project have?"` (https://docs.anthropic.com/en/docs/claude-code)</item>
+        <item>tree -L 2: Generate directory tree for Structure section (system package)</item>
+        <item>jq '.scripts' package.json: Extract npm scripts for Commands section (https://jqlang.github.io/jq/)</item>
+        <item>make -qp: List all Makefile targets (system package)</item>
+        <item>python -m poetry show: List Python project dependencies for Tech Stack section (https://python-poetry.org)</item>
+      </list>
+    </section>
+
+    <section name="services">
+      <list>
+        <item>Claude Code: OSS CLI, direct consumer; use `claude --print` to test context loading (https://docs.anthropic.com/en/docs/claude-code)</item>
+        <item>GitHub Copilot Workspace: SaaS (preview), has its own context system; CLAUDE.md not directly consumed</item>
+        <item>Cursor: SaaS/Electron, uses `.cursorrules`; CLAUDE.md not natively consumed</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Write CLAUDE.md for Claude, not for humans: avoid narrative prose, use scannable tables and code blocks instead.</item>
+        <item>Lead with Commands — it is the most frequently referenced section during AI-assisted development.</item>
+        <item>Keep the Structure section to 2 levels deep; deeper nesting is noise for an agent that will glob and grep anyway.</item>
+        <item>Add a "Gotchas" section listing things that have surprised developers (or agents) before: migration order requirements, required but undocumented env vars, test isolation quirks.</item>
+        <item>Review CLAUDE.md on every major PR that changes directory layout, build commands, or lint configuration.</item>
+        <item>For Python projects: explicitly name active ruff rule groups in CLAUDE.md — agents need to know T20 = no print() to avoid triggering pre-commit hooks.</item>
+        <item>For monorepos: root CLAUDE.md delegates to per-module files; never copy module-specific instructions to root.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>An agent that generates CLAUDE.md and then immediately commits it bypasses human validation of commands. The generated file should be reviewed before first commit.</item>
+        <item>If CLAUDE.md references environment variables with example values (SECRET_KEY=abc123), agents may use those literal values in code. Use SECRET_KEY=&lt;required&gt; notation instead.</item>
+        <item>CLAUDE.md with @AGENTS.md delegation (faion convention) requires Claude Code to support the @ include syntax. Verify version compatibility before deploying this pattern to a new team.</item>
+        <item>Agents working on a feature branch may have a branch-local CLAUDE.md that differs from main; ensure the file is kept in sync or explicitly scope which branch the instructions apply to.</item>
+        <item>An outdated CLAUDE.md that references a removed directory causes agents to waste tool calls searching for files that no longer exist.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/claude-md-minimal.md" purpose="Minimal CLAUDE.md (~30 lines) for simple single-stack projects."/>
+      <template path="templates/claude-md-standard.md" purpose="Standard CLAUDE.md (~100 lines) for FastAPI/Django backends."/>
+      <template path="templates/claude-md-monorepo.md" purpose="Monorepo root CLAUDE.md that delegates to per-app files."/>
+      <template path="templates/extract-commands.sh" purpose="Bash script to dump npm scripts and Makefile targets into CLAUDE.md-ready format."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/memory"/>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/project-setup"/>
+      <link href="https://docs.anthropic.com/en/docs/claude-code"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="llm-friendly-architecture">
+  <metadata>
+    <tier>geek</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Architecture patterns keeping source files 100-300 lines, flat structure, self-documenting names, explicit imports — designed to reduce LLM edit errors from large files and hidden imports.</summary>
+    <tags>
+      <tag>llm</tag>
+      <tag>architecture</tag>
+      <tag>file-size</tag>
+      <tag>code-quality</tag>
+      <tag>typescript</tag>
+      <tag>react</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <applies-to>both</applies-to>
+    <tools>
+      <tool>claude-code</tool>
+      <tool>cursor</tool>
+    </tools>
+    <languages>
+      <language>typescript</language>
+      <language>javascript</language>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>react</framework>
+      <framework>nextjs</framework>
+      <framework>vue</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>LLM-Friendly Architecture</title>
+
+    <summary>Architecture patterns that keep individual source files between 100-300 lines, use flat directory structures (max 3 levels), self-documenting file names, and explicit imports — designed to reduce LLM edit errors caused by large files and hidden import chains.</summary>
+
+    <why>
+      <p>LLMs make measurably more errors editing files over 300 lines: context truncation causes wrong line numbers, missed dependencies, and dropped code. Barrel re-exports hide actual file locations causing agents to edit the wrong file. File size and explicitness are correctness requirements for AI-assisted work, not just style choices.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Designing the initial structure of a new TypeScript/React/Python project that will use Claude Code for feature development.</item>
+        <item>During code review: flagging god components, barrel re-exports, or files exceeding 300 lines before they merge.</item>
+        <item>When an agent repeatedly makes wrong edits on a specific file — the root cause is almost always file size or ambiguous naming.</item>
+        <item>Migrating a legacy codebase to LLM-friendly patterns in preparation for AI-assisted feature development.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Auto-generated files (GraphQL schemas, protobuf, ORM migrations, locale bundles) — size limits do not apply.</item>
+        <item>Highly stable, rarely-changed modules where the refactoring cost exceeds the benefit.</item>
+        <item>Performance-sensitive Python CLI startup: many small files increase import time; profile before splitting.</item>
+        <item>Projects without any AI-assisted development planned — the patterns add value but are not mandatory for human-only teams.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="file-size">
+      <rule testable="true">
+        <statement>Keep source files between 100-300 lines. Files over 300 lines require splitting; files over 800 lines are blocked.</statement>
+        <rationale>LLMs produce off-by-one line errors, missed dependencies, and dropped code when editing large files due to context truncation. Small files are correctness requirements for AI-assisted work.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Page/Route: target 30-50, max 100 lines. Feature component: 80-150, max 250. UI component: 50-100, max 150. Hook: 30-80, max 120. Utility: 20-50, max 80. Data file: 50-200, max 300.</statement>
+        <rationale>Different file types have different natural sizes; one limit for all creates unnecessary splits.</rationale>
+      </rule>
+    </section>
+
+    <section name="directory-structure">
+      <rule testable="true">
+        <statement>Limit nesting to 3 levels maximum. Use flat layouts: components/ (flat), features/ (one level deep), utils/ (flat).</statement>
+        <rationale>LLMs navigate by globbing. Deep nesting requires more tool calls to find files and increases probability of targeting the wrong path.</rationale>
+      </rule>
+
+      <example type="good" title="Flat directory structure">
+        <code lang="text"><![CDATA[
+src/
+  components/  (flat — Button.tsx, Input.tsx, Modal.tsx)
+  features/auth/  LoginForm.tsx, SignupForm.tsx, use-auth.ts
+  features/dashboard/  DashboardStats.tsx, use-dashboard.ts
+  data/  pricing.ts, navigation.ts
+  hooks/  use-media-query.ts
+  utils/  format-currency.ts, format-date.ts
+  types/  api.ts, domain.ts
+  pages/  index.tsx (30-50 lines each)
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="naming-and-imports">
+      <rule testable="true">
+        <statement>Name files after what they do: price-calculator.ts, use-auth.ts, pricing-plans.ts. Use direct imports, not barrel re-exports.</statement>
+        <rationale>Ambiguous names (utils.ts, helpers.ts) cause agents to open the wrong file. Barrel re-exports cause agents to edit the barrel rather than the implementation.</rationale>
+      </rule>
+    </section>
+
+    <section name="data-and-types">
+      <rule testable="true">
+        <statement>Extract static data arrays to src/data/. Colocate types used in one component; centralize types used in 3+ files to types/.</statement>
+        <rationale>Data co-located in components inflates files past 800 lines. Centralizing all types creates a large file agents must fully scan.</rationale>
+      </rule>
+    </section>
+
+    <section name="thin-pages">
+      <rule testable="true">
+        <statement>Page components must be orchestrators only: import from features/, compose, return JSX. No data fetching, state management, or calculations in page files. Target 30-50 lines.</statement>
+        <rationale>Thin pages keep the highest-traffic entry points easy for agents to read and modify. Implementing logic in pages spreads concerns across multiple places that need updating together.</rationale>
+      </rule>
+    </section>
+
+    <section name="jsdoc">
+      <rule testable="true">
+        <statement>Add JSDoc to complex or business-domain functions with @param descriptions and @returns explanation. Include a # LLM note: comment for functions with non-obvious constraints.</statement>
+        <rationale>Agents read doc comments before implementation when planning edits. A clear JSDoc allows the agent to understand intent without loading the full function body into context.</rationale>
+      </rule>
+    </section>
+
+    <section name="structural-antipatterns">
+      <antipattern>
+        <description>God component: single file over 800 lines combining routing, auth, data fetching, state, calculations, and rendering.</description>
+        <reason>Context truncation causes the agent to miss the lower half of the file. Multiple concerns mean any change risks unintended side effects.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Utils dumping ground: utils/index.ts with 50+ unrelated functions.</description>
+        <reason>Agents cannot infer which function to edit without reading the entire file. New functions get added to the dump rather than purpose-named files.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Barrel re-exports: components/index.ts with export * from './Button' for 20+ components.</description>
+        <reason>Agents edit the barrel as if it is the implementation. Circular dependency risk increases. TypeScript path alias cache may mask broken imports after restructuring.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Inline large data: 200+ lines of JSON or data arrays inside a component function body.</description>
+        <reason>Inflates the file past the point where the agent holds the full rendering logic in context. Data line edits corrupt adjacent rendering code.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Ambiguous file names: helpers.ts, common.ts, shared.ts, misc.ts as catch-all files.</description>
+        <reason>Agents search by filename. Multiple ambiguous candidates cause wrong-file edits that produce no-ops or bugs in unrelated modules.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-specific-failure-modes">
+      <rule testable="true">
+        <statement>After any agent-driven file split, explicitly verify the original code is removed. Diff original against new files before committing.</statement>
+        <rationale>Agents executing multi-step refactors lose track of deletion steps when context fills. The review pass must check for duplicate code explicitly.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>After a large restructure, explicitly update tsconfig.json path aliases. Run tsc --noEmit in CI to catch stale paths.</statement>
+        <rationale>Agents moving files frequently miss tsconfig changes. Stale path aliases compile locally with cached resolution but fail in CI.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run madge --circular in CI after any agent-driven restructure to detect circular imports introduced by the split.</statement>
+        <rationale>New circular imports from file splits are not caught by tsc or eslint by default. Madge is the standard tool for this check.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>An agent audits existing files (glob + line count), scores each by LLM-friendliness (size, name clarity, barrel usage), and generates a prioritized refactor backlog as a markdown task list. A second agent implements each task sequentially, running TypeScript compilation and tests after each split to catch broken imports. The agent verifies no file exceeds the threshold after each commit before proceeding to the next.</p>
+
+      <p>Run the following audit on src/: (1) list all files over 250 lines, (2) list all files named utils.ts, helpers.ts, index.ts, or common.ts, (3) list all barrel re-export files (files containing "export * from"). Output as a JSON object with keys: large_files, ambiguous_names, barrel_exports.</p>
+
+      <p>Refactor the file src/features/user/UserProfile.tsx following LLM-friendly architecture principles: Extract any static data arrays to src/data/user-profile-data.ts. Extract custom hook logic (useEffect, useState blocks) to src/hooks/use-user-profile.ts. Keep the component under 120 lines. Use explicit imports, not barrel re-exports. Run tsc --noEmit after refactoring to verify no type errors.</p>
+    </section>
+
+    <section name="limitations">
+      <list>
+        <item>Flat component directories become search problems at 100+ components; a secondary grouping by feature (not deep nesting) is still needed.</item>
+        <item>Data extraction to src/data/ creates a coupling between component and data file that makes co-location refactors awkward.</item>
+        <item>LLM context windows continue to grow (2M+ tokens in 2026 models); the urgency of strict file-size limits decreases, but edit precision still suffers on very large files.</item>
+        <item>Barrel re-export prohibition conflicts with some library design patterns and published package APIs. Apply only to internal application code.</item>
+        <item>"Self-documenting names" require agreement across the team; without a linter, naming drift reintroduces ambiguity over time.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>tsc --noEmit: Verify TypeScript compiles after structural changes (https://www.typescriptlang.org/docs/handbook/compiler-options.html)</item>
+        <item>eslint --rule 'max-lines: [error, 250]': Enforce file size limit in CI (https://eslint.org/docs/latest/rules/max-lines)</item>
+        <item>knip: Detect unused exports after splitting files (https://knip.dev)</item>
+        <item>madge: Circular dependency detection after restructuring (https://github.com/pahen/madge)</item>
+        <item>cloc: Count lines of code by file type for audit baseline (https://github.com/AlDanial/cloc)</item>
+        <item>check-file (ESLint plugin): Enforce naming conventions (kebab-case files, PascalCase components) (https://github.com/DukeLuo/eslint-plugin-check-file)</item>
+      </list>
+    </section>
+
+    <section name="services">
+      <list>
+        <item>SonarCloud: SaaS, API + CLI available. Cognitive complexity and file size metrics; gate PRs (https://sonarcloud.io/)</item>
+        <item>CodeClimate: SaaS, REST API available. "File complexity" maintainability checks (https://codeclimate.com/)</item>
+        <item>Danger JS: OSS, CI hook available. Comment on PRs when file line count exceeds threshold (http://danger.systems/)</item>
+        <item>ESLint: OSS, CLI available. `max-lines` rule enforces per-file limit in CI (https://eslint.org/)</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Apply the 100-300 line rule immediately at project start; retrofitting it on large codebases requires significant refactoring effort.</item>
+        <item>Use self-documenting names aggressively: price-calculator.ts not utils.ts. The agent's first action is usually grepping for a file by name.</item>
+        <item>Define the naming convention in CLAUDE.md so every agent working on the project applies it consistently.</item>
+        <item>When splitting a large component, keep the original filename as the orchestrator; renaming the original breaks all existing import paths.</item>
+        <item>Run `knip` after every significant refactor to detect dead exports left behind from splitting.</item>
+        <item>Enforce explicit imports via ESLint `no-restricted-imports` — this single rule prevents the barrel re-export anti-pattern from creeping back in.</item>
+        <item>Add JSDoc `@param` and `@returns` to complex utility functions so agents understand intent from the signature without reading the implementation.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>An agent refactoring a 600-line file may split it correctly but leave the original 600-line file untouched (forgetting to delete or clear the source of truth). Always diff before and after.</item>
+        <item>When extracting data to src/data/, an agent may create the file but not update the component's import. The TypeScript compiler catches this — run `tsc --noEmit` as a quality gate.</item>
+        <item>Barrel re-exports (export * from) cause agents to look in the wrong file for implementations. The agent edits the barrel index, not the actual component, causing silent no-ops.</item>
+        <item>After renaming a file to a descriptive name, the agent must update all import paths. Missing even one breaks the build; always run compile as the commit quality gate.</item>
+        <item>Agents have been observed naming new hook files with PascalCase (UseAuth.ts) instead of the kebab-case convention (use-auth.ts). ESLint `check-file` plugin prevents this in CI.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/llm-arch-audit.sh" purpose="Bash audit script: find files over line limit and barrel re-exports."/>
+      <template path="templates/claude-md-project.md" purpose="CLAUDE.md skeleton for documenting project structure to LLMs."/>
+    </templates>
+
+    <see-also>
+      <link href="https://eslint.org/docs/latest/rules/max-lines"/>
+      <link href="https://knip.dev"/>
+      <link href="https://github.com/pahen/madge"/>
+      <link href="https://github.com/DukeLuo/eslint-plugin-check-file"/>
+      <link href="https://www.typescriptlang.org/docs/handbook/compiler-options.html"/>
+    </see-also>
+  </content>
+</methodology>
