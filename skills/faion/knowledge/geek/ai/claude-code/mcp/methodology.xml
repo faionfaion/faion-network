@@ -1,0 +1,548 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="mcp">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>claude-code</domain>
+    <summary>Create, install, and configure Model Context Protocol (MCP) servers to bridge Claude Code agents with internal APIs, databases, and ML pipelines.</summary>
+    <tags>
+      <tag>mcp</tag>
+      <tag>server-development</tag>
+      <tag>integration</tag>
+      <tag>apis</tag>
+      <tag>databases</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>MCP Server Development Guide</title>
+    <summary>Build custom MCP (Model Context Protocol) servers in TypeScript or Python to expose internal APIs, databases, and services as typed tools that Claude agents can invoke directly. MCP provides standardized interfaces, automatic schema generation, and secure credential handling.</summary>
+    <why>
+      <p>MCP servers standardize the way Claude agents access external systems. Instead of agents writing ad-hoc Bash commands or WebFetch calls with no type safety, MCP provides named tools with Zod/Pydantic schemas. This reduces errors, improves agent reliability, and makes tool invocations faster because the model doesn't have to generate correct curl or SQL syntax.</p>
+      <p>MCP servers also enforce permissions at the server level (e.g., read-only database access) so agents cannot accidentally delete data. Large organizations use MCP to publish internal tools for all their Claude agents in a consistent format.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building a custom integration between Claude Code agents and an internal API, database, or service.</item>
+        <item>The target service has no existing MCP server in the public catalog.</item>
+        <item>Standardizing tool interfaces for a team: all agents use the same typed MCP tools instead of ad-hoc curl/Bash.</item>
+        <item>Wrapping a Python ML pipeline so Claude agents can invoke model inference as a named tool.</item>
+        <item>Creating a read-only database tool that enforces SELECT-only policy at the server level.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>A well-maintained public MCP server already exists for the service — prefer npx -y @package/name over building from scratch.</item>
+        <item>The integration is a single-use one-off script — direct Bash/WebFetch is faster to write and maintain.</item>
+        <item>The service requires complex OAuth flows that are interactive — MCP servers run non-interactively.</item>
+        <item>You need sub-100ms latency for every tool call — MCP stdio transport adds approximately 10-50ms per call.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Creating MCP Servers in TypeScript">
+      <p>TypeScript is the recommended language for npm distribution. The MCP TypeScript SDK is mature and widely deployed.</p>
+      <rule>
+        <statement>TypeScript MCP servers require Node.js >= 18 with "type": "module" in package.json. The SDK handles tool registration, schema generation, and stdio transport automatically.</statement>
+      </rule>
+      <example type="good" title="Setup Steps">
+        <code lang="bash"><![CDATA[mkdir my-mcp-server && cd my-mcp-server
+npm init -y
+npm install @modelcontextprotocol/sdk zod
+npm install -D @types/node typescript]]></code>
+      </example>
+      <example type="good" title="package.json">
+        <code lang="json"><![CDATA[{
+  "name": "my-mcp-server",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "build/index.js",
+  "bin": {
+    "my-mcp-server": "build/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js"
+  }
+}]]></code>
+      </example>
+      <example type="good" title="tsconfig.json">
+        <code lang="json"><![CDATA[{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "outDir": "./build",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "declaration": true
+  },
+  "include": ["src/**/*"]
+}]]></code>
+      </example>
+      <example type="good" title="Basic TypeScript Server (src/index.ts)">
+        <code lang="typescript"><![CDATA[#!/usr/bin/env node
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+
+const server = new McpServer({
+  name: "my-mcp-server",
+  version: "1.0.0",
+});
+
+// Define a tool
+server.tool(
+  "greet",
+  "Greet a user by name",
+  {
+    name: z.string().describe("Name to greet"),
+  },
+  async ({ name }) => {
+    return {
+      content: [{ type: "text", text: `Hello, ${name}!` }],
+    };
+  }
+);
+
+// Define a resource
+server.resource(
+  "config",
+  "config://app",
+  async (uri) => ({
+    contents: [{ uri, mimeType: "application/json", text: JSON.stringify({ version: "1.0" }) }],
+  })
+);
+
+// Start server
+const transport = new StdioServerTransport();
+await server.connect(transport);]]></code>
+      </example>
+      <example type="good" title="Build &amp; Test TypeScript Server">
+        <code lang="bash"><![CDATA[npm run build
+npx @modelcontextprotocol/inspector node build/index.js]]></code>
+      </example>
+    </section>
+    <section name="Creating MCP Servers in Python">
+      <p>Python is recommended for data/ML integrations. The FastMCP library provides a decorator-based interface with less boilerplate than the official SDK.</p>
+      <rule>
+        <statement>FastMCP is the fastest path to a working Python MCP server. Use the official SDK only if you need streaming responses or advanced features.</statement>
+      </rule>
+      <example type="good" title="Setup Steps">
+        <code lang="bash"><![CDATA[mkdir my-mcp-server && cd my-mcp-server
+python -m venv venv
+source venv/bin/activate
+pip install "mcp[cli]" fastmcp]]></code>
+      </example>
+      <example type="good" title="FastMCP Server (server.py)">
+        <code lang="python"><![CDATA[#!/usr/bin/env python3
+from fastmcp import FastMCP
+
+mcp = FastMCP(name="my-mcp-server")
+
+@mcp.tool
+def greet(name: str) -> str:
+    """Greet a user by name."""
+    return f"Hello, {name}!"
+
+@mcp.tool
+def calculate(a: float, b: float, operation: str) -> float:
+    """Perform arithmetic: add, subtract, multiply, divide."""
+    ops = {
+        "add": a + b,
+        "subtract": a - b,
+        "multiply": a * b,
+        "divide": a / b if b != 0 else float('inf'),
+    }
+    return ops.get(operation, 0)
+
+@mcp.resource("config://app")
+def get_config() -> str:
+    """Return app configuration."""
+    import json
+    return json.dumps({"version": "1.0"})
+
+if __name__ == "__main__":
+    mcp.run()]]></code>
+      </example>
+      <example type="good" title="Official SDK Server (server.py)">
+        <code lang="python"><![CDATA[#!/usr/bin/env python3
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+from mcp.types import Tool, TextContent
+
+server = Server("my-mcp-server")
+
+@server.list_tools()
+async def list_tools():
+    return [
+        Tool(
+            name="greet",
+            description="Greet a user",
+            inputSchema={
+                "type": "object",
+                "properties": {"name": {"type": "string"}},
+                "required": ["name"]
+            }
+        )
+    ]
+
+@server.call_tool()
+async def call_tool(name: str, arguments: dict):
+    if name == "greet":
+        return [TextContent(type="text", text=f"Hello, {arguments['name']}!")]
+
+async def main():
+    async with stdio_server() as (read, write):
+        await server.run(read, write, server.create_initialization_options())
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())]]></code>
+      </example>
+      <example type="good" title="Test Python Server">
+        <code lang="bash"><![CDATA[python -m mcp dev server.py
+# or
+fastmcp dev server.py]]></code>
+      </example>
+    </section>
+    <section name="API Wrapper Template (TypeScript)">
+      <p>Common pattern for wrapping a REST API. Template includes authentication, error handling, and multiple tool definitions.</p>
+      <example type="good" title="TypeScript API Wrapper">
+        <code lang="typescript"><![CDATA[#!/usr/bin/env node
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+
+const API_KEY = process.env.MY_API_KEY;
+const BASE_URL = "https://api.example.com";
+
+const server = new McpServer({
+  name: "example-api-mcp",
+  version: "1.0.0",
+});
+
+async function apiCall(endpoint: string, method = "GET", body?: object) {
+  const res = await fetch(`${BASE_URL}${endpoint}`, {
+    method,
+    headers: {
+      "Authorization": `Bearer ${API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return res.json();
+}
+
+// List items
+server.tool(
+  "list_items",
+  "List all items from the API",
+  {},
+  async () => {
+    const data = await apiCall("/items");
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  }
+);
+
+// Get item by ID
+server.tool(
+  "get_item",
+  "Get a specific item by ID",
+  { id: z.string().describe("Item ID") },
+  async ({ id }) => {
+    const data = await apiCall(`/items/${id}`);
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  }
+);
+
+// Create item
+server.tool(
+  "create_item",
+  "Create a new item",
+  {
+    name: z.string().describe("Item name"),
+    description: z.string().optional().describe("Item description"),
+  },
+  async ({ name, description }) => {
+    const data = await apiCall("/items", "POST", { name, description });
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  }
+);
+
+const transport = new StdioServerTransport();
+await server.connect(transport);]]></code>
+      </example>
+    </section>
+    <section name="Database Wrapper Template (Python)">
+      <p>Pattern for exposing database access as MCP tools. Enforces read-only access at the server level.</p>
+      <example type="good" title="Python Database Wrapper">
+        <code lang="python"><![CDATA[#!/usr/bin/env python3
+import os
+import json
+from fastmcp import FastMCP
+import asyncpg
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+mcp = FastMCP(name="database-mcp")
+
+@mcp.tool
+async def query(sql: str) -> str:
+    """Execute a read-only SQL query."""
+    if not sql.strip().upper().startswith("SELECT"):
+        return "Error: Only SELECT queries are allowed"
+
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        rows = await conn.fetch(sql)
+        return json.dumps([dict(row) for row in rows], default=str)
+    finally:
+        await conn.close()
+
+@mcp.tool
+async def list_tables() -> str:
+    """List all tables in the database."""
+    sql = """
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+    """
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        rows = await conn.fetch(sql)
+        return json.dumps([row["table_name"] for row in rows])
+    finally:
+        await conn.close()
+
+@mcp.tool
+async def describe_table(table: str) -> str:
+    """Get column information for a table."""
+    sql = """
+        SELECT column_name, data_type, is_nullable
+        FROM information_schema.columns
+        WHERE table_name = $1
+    """
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        rows = await conn.fetch(sql, table)
+        return json.dumps([dict(row) for row in rows])
+    finally:
+        await conn.close()
+
+if __name__ == "__main__":
+    mcp.run()]]></code>
+      </example>
+    </section>
+    <section name="Publishing MCP Servers">
+      <p>Distribute MCP servers via npm (TypeScript) or PyPI (Python) so others can install them.</p>
+      <example type="good" title="Publish to npm (TypeScript)">
+        <code lang="bash"><![CDATA[# Build
+npm run build
+
+# Login to npm
+npm login
+
+# Publish
+npm publish --access public]]></code>
+      </example>
+      <example type="good" title="Publish to PyPI (Python)">
+        <code lang="bash"><![CDATA[# Install build tools
+pip install build twine
+
+# Build
+python -m build
+
+# Upload
+twine upload dist/*]]></code>
+      </example>
+    </section>
+    <section name="Testing &amp; Debugging">
+      <p>Use MCP Inspector for interactive testing or dev mode with live reload.</p>
+      <example type="good" title="Testing Commands">
+        <code lang="bash"><![CDATA[# TypeScript - use MCP Inspector
+npx @modelcontextprotocol/inspector node build/index.js
+
+# Python - use FastMCP dev mode
+fastmcp dev server.py
+
+# Or official MCP dev
+python -m mcp dev server.py]]></code>
+      </example>
+      <rule>
+        <statement>MCP Inspector opens a web GUI for manual testing. It displays exact JSON input/output and catches schema mismatches immediately.</statement>
+      </rule>
+    </section>
+    <section name="Configuration in Claude Code">
+      <p>Register MCP servers in Claude Code settings so agents can use them.</p>
+      <example type="good" title="Via CLI">
+        <code lang="bash"><![CDATA[claude mcp add <name> -s user -- <command> [args...]
+claude mcp add <name> -s user -e KEY=value -- <command>
+claude mcp list
+claude mcp remove <name> -s user]]></code>
+      </example>
+      <example type="good" title="Via settings.json">
+        <code lang="json"><![CDATA[{
+  "mcpServers": {
+    "my-server": {
+      "command": "npx",
+      "args": ["-y", "my-mcp-server"],
+      "env": {
+        "API_KEY": "..."
+      }
+    }
+  }
+}]]></code>
+      </example>
+      <example type="good" title="Manual Configuration (~/.claude/settings.json)">
+        <code lang="json"><![CDATA[{
+  "mcpServers": {
+    "figma": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/figma-mcp"]
+    },
+    "meta-ads": {
+      "command": "npx",
+      "args": ["-y", "@pipeboard-co/meta-ads-mcp"],
+      "env": { "META_ACCESS_TOKEN": "..." }
+    },
+    "stripe": {
+      "command": "npx",
+      "args": ["-y", "@stripe/mcp", "--tools=all"],
+      "env": { "STRIPE_SECRET_KEY": "..." }
+    },
+    "twitter": {
+      "command": "npx",
+      "args": ["-y", "mcp-twitter-server"],
+      "env": {
+        "TWITTER_API_KEY": "...",
+        "TWITTER_API_SECRET": "...",
+        "TWITTER_ACCESS_TOKEN": "...",
+        "TWITTER_ACCESS_SECRET": "..."
+      }
+    },
+    "cloudflare": {
+      "command": "npx",
+      "args": ["-y", "@cloudflare/mcp-server-cloudflare"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "...",
+        "CLOUDFLARE_ACCOUNT_ID": "..."
+      }
+    }
+  }
+}]]></code>
+      </example>
+    </section>
+    <section name="Troubleshooting Configuration">
+      <p>Common MCP configuration issues and solutions.</p>
+      <rule>
+        <statement>Server not starting: Check claude mcp list, verify package exists. Auth errors: Verify API keys/tokens in env. Timeout: Increase timeout in settings. Tools not showing: Restart Claude Code session.</statement>
+      </rule>
+    </section>
+    <section name="Limitations and Failure Modes">
+      <p>Understanding MCP server limitations helps design more robust integrations.</p>
+      <antipattern>
+        <description>Stdio transport (the default) requires a running subprocess per Claude Code session — no connection pooling.</description>
+        <reason>For high-volume use cases, consider HTTP transport (custom implementation). Each Claude session spawns a separate server process.</reason>
+      </antipattern>
+      <antipattern>
+        <description>TypeScript servers built with "type": "module" require Node.js >= 18; older Node versions silently fail.</description>
+        <reason>Pin Node.js version in .nvmrc or engine in package.json. Test with your minimum supported Node version.</reason>
+      </antipattern>
+      <antipattern>
+        <description>FastMCP's @mcp.tool decorator doesn't support streaming responses — use the official SDK for streaming.</description>
+        <reason>For streaming, use official mcp SDK. For non-streaming, FastMCP is simpler and faster to write.</reason>
+      </antipattern>
+      <antipattern>
+        <description>If the MCP server process crashes mid-session, tools become unavailable with no clear error message to the agent.</description>
+        <reason>Implement robust error handling in tool implementations. Return errors as text content, not Python exceptions. Monitor process stability.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Tool descriptions are the only interface between the model and the server — vague descriptions cause wrong tool invocation.</description>
+        <reason>Write tool descriptions as complete sentences explaining what the tool does, when to use it, and what it returns. The model uses these to decide which tool to call.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Large return payloads (> 100KB) from tools inflate the agent's context window significantly.</description>
+        <reason>Truncate large payloads before returning: json.dumps(data)[:5000] is better than sending 1MB to Claude's context.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Python SDK async servers don't work with python -m mcp dev if the event loop is already running (Jupyter).</description>
+        <reason>Use fastmcp for Jupyter environments. For async official SDK, ensure the event loop is fresh.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Design pattern for agents to build and deploy MCP servers.</p>
+      <rule>
+        <statement>A scaffolding agent creates the server directory structure, writes src/index.ts or server.py from a template, builds and tests with MCP Inspector, then registers the server via claude mcp add. A separate validation agent queries the server with known inputs and checks outputs against expected schemas. Deployment is idempotent: the registration script is re-runnable.</statement>
+      </rule>
+      <note>Recommended subagents: General-purpose implementer (Write, Edit, Bash) — scaffolds server code from template. Bash testing agent — runs npx @modelcontextprotocol/inspector or fastmcp dev to validate tools. faion-spec-reviewer-agent — reviews tool descriptions for clarity and completeness.</note>
+      <example type="good" title="Prompt Pattern for MCP Server Creation">
+        <code lang="text"><![CDATA[Build an MCP server in {TypeScript|Python} that wraps {API/service}.
+Tools needed:
+- {tool_name}: {description}. Input: {params}. Output: {format}.
+Use API key from env var {ENV_VAR_NAME}.
+Register as: claude mcp add {server-name} -s user -e {ENV_VAR_NAME}=${{ENV_VAR}} -- {run command}]]></code>
+      </example>
+    </section>
+    <section name="Best Practices">
+      <p>Key recommendations for reliable MCP server development.</p>
+      <rule>
+        <statement>Write tool descriptions as complete sentences explaining what the tool does, when to use it, and what it returns — the model uses these to decide which tool to call. Return errors as text content (not Python exceptions) — the agent can read and handle text; uncaught exceptions crash the server. Enforce permissions at the server level, not in the prompt — a read-only database server should reject non-SELECT queries in code.</statement>
+      </rule>
+      <rule>
+        <statement>Use zod (TS) or Pydantic-style type hints (Python) for input schemas — they auto-generate JSON schema for the tool definition. Truncate large payloads before returning — json.dumps(data)[:5000] is better than sending 1MB to Claude's context. Pin the SDK version in package.json / requirements.txt — @modelcontextprotocol/sdk releases occasionally include breaking changes. Test with MCP Inspector before deploying — it shows exact JSON input/output and surfaces schema mismatches.</statement>
+      </rule>
+    </section>
+    <section name="CLI Tools and Services">
+      <p>External tools used in MCP server development and testing.</p>
+      <rule>
+        <statement>npx @modelcontextprotocol/inspector provides an interactive GUI to test any MCP server's tools. fastmcp dev server.py offers Python dev mode with live reload. python -m mcp dev server.py is official Python SDK dev mode. npm run build compiles TypeScript MCP servers. claude mcp add registers servers in Claude Code settings. tsc compiles TypeScript for MCP servers.</statement>
+      </rule>
+      <rule>
+        <statement>MCP TypeScript SDK (OSS, native support). FastMCP Python (OSS, decorator-based, gofastmcp.com). MCP Python SDK official (OSS, required for streaming). MCP Inspector (OSS, web GUI for testing). npm registry (SaaS, publish TypeScript servers). PyPI (SaaS, publish Python servers).</statement>
+      </rule>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <p>Specific challenges when agents build and use MCP servers.</p>
+      <antipattern>
+        <description>An agent building an MCP server cannot use that server in the same session — it must restart Claude Code after claude mcp add.</description>
+        <reason>Plan multi-session workflows when server installation is part of the task. Document that agents must restart or continue with a new session to use newly-installed servers.</reason>
+      </antipattern>
+      <antipattern>
+        <description>If a tool returns an empty string or null, some clients interpret it as a server error — always return at least a status message.</description>
+        <reason>Even in success cases, return a plain-text message like "OK" or "No results found" instead of empty/null.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Tool names must be globally unique within a server (no namespacing); name collisions with other registered servers produce unexpected routing.</description>
+        <reason>Prefix tool names with a namespace if building a large server with many tools, e.g., "db_query", "db_list_tables".</reason>
+      </antipattern>
+      <antipattern>
+        <description>The model cannot see the server's source code — it only sees tool names and descriptions; a poorly named tool with a misleading description will be misused.</description>
+        <reason>Invest in clear, complete tool descriptions. Include examples in the description if the tool has complex behavior.</reason>
+      </antipattern>
+      <antipattern>
+        <description>MCP Inspector (npx @modelcontextprotocol/inspector) opens a browser GUI on port 5173 — not usable in headless agent environments.</description>
+        <reason>Use --cli mode or direct stdio testing instead for CI/headless environments. Test in MCP Inspector during development, use CLI mode for CI validation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Building a server with fastmcp and publishing to PyPI means any version bump is immediately pulled by pip install fastmcp-myserver — pin versions in production registrations.</description>
+        <reason>Pin exact versions in claude mcp add commands: claude mcp add my-server -s user -- npx my-mcp-server@1.2.3.</reason>
+      </antipattern>
+    </section>
+    <section name="Agent Selection Guide">
+      <p>Choosing the right agent model for MCP server tasks.</p>
+      <rule>
+        <statement>Use haiku for: Create new skill from template (mechanical task with clear structure). Use sonnet for: Configure MCP server for Claude (implementation with moderate complexity), Write agent system prompt (requires clear communication and nuance), Implement custom slash command (coding with context and interaction). Use opus for: Design agent architecture for complex task (requires reasoning about delegation and isolation).</statement>
+      </rule>
+    </section>
+    <see-also>
+      <link href="https://github.com/modelcontextprotocol/typescript-sdk"/>
+      <link href="https://github.com/modelcontextprotocol/python-sdk"/>
+      <link href="https://gofastmcp.com/"/>
+      <link href="https://www.npmjs.com/package/@modelcontextprotocol/inspector"/>
+      <link href="https://github.com/modelcontextprotocol/servers"/>
+      <link href="https://help.figma.com/hc/en-us/articles/32132100833559"/>
+      <link href="https://www.notion.com/blog/notions-hosted-mcp-server-an-inside-look"/>
+    </see-also>
+  </content>
+</methodology>
