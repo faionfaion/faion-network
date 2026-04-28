@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="reranking-models">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Two-stage retrieval: fast ANN retrieves top-50 candidates, reranker rescores to top-5. Covers Cohere, Jina, Voyage AI, LLM-based scoring, local cross-encoders, and RerankerService with fallback.</summary>
+    <tags>
+      <tag>rag</tag>
+      <tag>reranking</tag>
+      <tag>cross-encoder</tag>
+      <tag>retrieval</tag>
+      <tag>vector-search</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Reranking Models</title>
+    <summary>Two-stage retrieval: fast ANN retrieves top-50 candidates, then a reranker (cross-encoder or API service) rescores them to return top-5 for generation. Covered: Cohere Rerank, Jina Rerank, Voyage AI, LLM-based scoring (GPT-4o), local cross-encoders (sentence-transformers), and a production RerankerService with fallback to original ordering on timeout or error.</summary>
+    <why>
+      <p>First-stage ANN retrieval optimizes for recall (the right answer is somewhere in the top-50); reranking optimizes precision (the right answer is in the top-5 passed to generation). Cross-encoders score query-document pairs jointly, capturing interactions the bi-encoder embedding step misses. This two-stage approach achieves better precision@5 than a single-stage ANN at top-5 at lower latency cost than running a cross-encoder over the full corpus.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>RAG pipelines where first-stage precision is low (top-5 does not contain the answer but top-50 does)</item>
+        <item>Two-stage retrieval pattern: ANN (k=50-100) → rerank to top-5 for generation</item>
+        <item>Domain-specific corpora where embedding similarity scores are poorly calibrated (legal, medical, code)</item>
+        <item>Multilingual retrieval where query and document languages may differ</item>
+        <item>Pipelines tolerating 100-400ms additional latency per query for precision gains</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>First-stage precision@5 is already above 0.85 — reranking adds latency and cost with diminishing returns</item>
+        <item>Total latency SLA is &lt;100ms — even fast local cross-encoders add 20-50ms</item>
+        <item>Chunk corpus is very short (&lt;200 chars per chunk) — cross-encoders underperform on very short texts</item>
+        <item>Cost is the primary constraint and a small local model is not viable</item>
+        <item>Queries are purely keyword-based — BM25 or hybrid search already handles these well</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="cohere-rerank">
+      <rule>
+        <statement>Cohere reranker accepts up to 1000 documents per request and enforces a 10K total character limit; truncate or pre-filter beyond these limits.</statement>
+        <rationale>Exceeding the document count or character limit raises a 400 error. Pre-filter to top-50 ANN candidates before calling the reranker.</rationale>
+      </rule>
+      <example type="good" title="Cohere Rerank">
+        <code lang="python"><![CDATA[
+import cohere
+co = cohere.Client(api_key="your-api-key")
+
+def cohere_rerank(query: str, documents: list[str], top_n: int = 5) -> list[dict]:
+    r = co.rerank(query=query, documents=documents, top_n=top_n, model="rerank-english-v3.0")
+    return [{"document": documents[res.index], "score": res.relevance_score, "index": res.index}
+            for res in r.results]
+]]></code>
+      </example>
+    </section>
+
+    <section name="jina-rerank">
+      <example type="good" title="Jina Rerank">
+        <code lang="python"><![CDATA[
+import requests
+
+def jina_rerank(query: str, documents: list[str], top_n: int = 5, api_key: str = "") -> list[dict]:
+    r = requests.post(
+        "https://api.jina.ai/v1/rerank",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={"query": query, "documents": documents, "top_n": top_n,
+              "model": "jina-reranker-v2-base-multilingual"},
+    ).json()
+    return [{"document": documents[i["index"]], "score": i["relevance_score"], "index": i["index"]}
+            for i in r["results"]]
+]]></code>
+        <note>Jina v2 supports multilingual; use for non-English corpora where Cohere English model degrades.</note>
+      </example>
+    </section>
+
+    <section name="voyage-ai-rerank">
+      <example type="good" title="Voyage AI Rerank">
+        <code lang="python"><![CDATA[
+import voyageai
+vo = voyageai.Client(api_key="your-api-key")
+
+def voyage_rerank(query: str, documents: list[str], top_k: int = 5) -> list[dict]:
+    r = vo.rerank(query=query, documents=documents, model="rerank-2", top_k=top_k)
+    return [{"document": documents[res.index], "score": res.relevance_score, "index": res.index}
+            for res in r.results]
+]]></code>
+      </example>
+    </section>
+
+    <section name="llm-based-reranking">
+      <rule>
+        <statement>Reserve LLM reranking for offline or low-QPS workflows; at 500-2000ms per call it is not viable for real-time search.</statement>
+        <rationale>GPT-4o scoring runs an LLM completion per rerank call. At &gt;1 QPS the cost and latency are prohibitive compared to a local cross-encoder at 20-50ms.</rationale>
+      </rule>
+      <example type="good" title="LLM-Based Reranking">
+        <code lang="python"><![CDATA[
+import json
+from openai import OpenAI
+client = OpenAI()
+
+def llm_rerank(query: str, documents: list[str], top_k: int = 5) -> list[dict]:
+    doc_list = "\n".join([f"[{i}] {doc[:500]}" for i, doc in enumerate(documents)])
+    prompt = (f'Query: {query}\n\nDocuments:\n{doc_list}\n\n'
+              f'Return JSON: {{"scores": [{{"index": 0, "score": 8}}, ...]}} (0-10 scale).')
+    r = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"},
+        temperature=0,
+    )
+    scores = sorted(json.loads(r.choices[0].message.content)["scores"],
+                    key=lambda x: x["score"], reverse=True)
+    return [{"document": documents[s["index"]], "score": s["score"] / 10.0, "index": s["index"]}
+            for s in scores[:top_k] if s["index"] < len(documents)]
+]]></code>
+      </example>
+    </section>
+
+    <section name="local-cross-encoder">
+      <rule>
+        <statement>Require GPU for cross-encoder production throughput; CPU inference on MiniLM-L6 is ~30ms/pair, which becomes 1500ms for 50 candidates.</statement>
+        <rationale>Cross-encoders score each query-document pair independently. 50 pairs at 30ms each exceed typical P99 SLAs on CPU.</rationale>
+      </rule>
+      <example type="good" title="Local Cross-Encoder">
+        <code lang="python"><![CDATA[
+from sentence_transformers import CrossEncoder
+import numpy as np
+
+model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-12-v2")
+
+def cross_encoder_rerank(query: str, documents: list[str], top_k: int = 5) -> list[dict]:
+    pairs = [[query, doc] for doc in documents]
+    scores = model.predict(pairs, batch_size=32)
+    top_idx = np.argsort(scores)[::-1][:top_k]
+    return [{"document": documents[i], "score": float(scores[i]), "index": i} for i in top_idx]
+]]></code>
+      </example>
+    </section>
+
+    <section name="model-selection">
+      <list>
+        <item>Cohere rerank-english-v3.0: English, high quality, 100-300ms, $$$</item>
+        <item>Jina jina-reranker-v2-base-multilingual: multilingual, balanced, 150-400ms, $$</item>
+        <item>Voyage rerank-2: domain-specific, 100-300ms, $$$</item>
+        <item>cross-encoder/ms-marco-MiniLM-L-6-v2: local, small, 20-50ms GPU, good quality</item>
+        <item>cross-encoder/ms-marco-MiniLM-L-12-v2: local, medium, 40-100ms GPU, better quality</item>
+        <item>cross-encoder/ms-marco-electra-base: local, large, 80-200ms GPU, best local quality</item>
+      </list>
+    </section>
+
+    <section name="langchain-integration">
+      <example type="good" title="LangChain Integration">
+        <code lang="python"><![CDATA[
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import CohereRerank
+
+base_retriever = vector_store.as_retriever(search_kwargs={"k": 50})
+compressor = CohereRerank(cohere_api_key="your-key", model="rerank-english-v3.0", top_n=5)
+compression_retriever = ContextualCompressionRetriever(base_compressor=compressor, base_retriever=base_retriever)
+docs = compression_retriever.get_relevant_documents("What is the capital of France?")
+]]></code>
+      </example>
+    </section>
+
+    <section name="pitfalls">
+      <antipattern>
+        <description>Comparing relevance scores across different reranking providers (e.g., Cohere 0.9 vs local cross-encoder 0.9).</description>
+        <reason>Reranker output scores are not calibrated probabilities. The same numeric value from two providers carries different semantics. Use rankings, not absolute scores, for cross-provider comparisons.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Relying on reranking to surface a document not retrieved in the first stage.</description>
+        <reason>Rerankers only re-order the candidate set returned by ANN. If the relevant document is not in the top-50 candidates, reranking cannot surface it.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Cohere API returns results indexed into the original documents list — assuming results are in input order.</description>
+        <reason>Agents must preserve the original list order and use result.index to map back, not assume results are in input order.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LLM-based reranking with JSON output returning indices out of range if the LLM hallucinates.</description>
+        <reason>Agents must bounds-check all rankings values before indexing into the candidate list.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>The retrieval agent fetches top-50 candidates from the vector store using ANN. A reranking agent receives the query and all 50 candidate texts, calls the configured reranking service, and returns the top-5 re-ranked results to the generation agent. The reranking step is wrapped in a fallback: if the service fails or times out, the original retrieval order is preserved. The choice of reranking service (Cohere vs local cross-encoder) is a configuration decision made at deployment time, not by the agent at runtime.</p>
+      <example type="good" title="Fallback wrapper">
+        <code lang="python"><![CDATA[
+import logging, time
+logger = logging.getLogger(__name__)
+
+def rerank_with_fallback(reranker_fn, query, candidates, top_k=5):
+    """candidates: list of str. Returns list of {text, score, index}."""
+    try:
+        start = time.time()
+        results = reranker_fn(query, candidates, top_k)
+        logger.info(f"Rerank: {len(candidates)} → {top_k} in {time.time()-start:.3f}s")
+        return results
+    except Exception as e:
+        logger.error(f"Rerank failed ({e}), using original order")
+        return [{"text": c, "score": 1.0 - i/len(candidates), "index": i}
+                for i, c in enumerate(candidates[:top_k])]
+]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always retrieve 5-10x the final top-K at stage 1, then rerank to final top-K — reranking is most effective with a larger candidate pool</item>
+        <item>Use a local cross-encoder (ms-marco-MiniLM-L-12-v2) for latency-sensitive paths; Cohere/Jina for batch offline eval</item>
+        <item>Attach metadata separately from document texts when calling the API — do not include metadata in the text passed for scoring, as it dilutes the relevance signal</item>
+        <item>Monitor the rank delta (original rank vs reranked rank) per query — a consistently low delta means stage-1 retrieval is already good and reranking may not be worth the cost</item>
+        <item>Cache reranking results for identical (query, candidate_set) pairs with a short TTL (5 minutes) — repeated queries in chatbot sessions benefit significantly</item>
+        <item>For multilingual pipelines, use jina-reranker-v2-base-multilingual or mmarco-mMiniLMv2-L12 local model rather than English-only Cohere</item>
+      </list>
+    </section>
+
+    <prompt purpose="reranking-agent"><![CDATA[
+You are a reranking agent. Given: query, list of {id, text} candidates.
+Steps:
+1. Call rerank API with query and candidate texts.
+2. If API fails, return candidates in original order with warning.
+3. Return top-K reranked candidates: [{id, text, score, original_rank, new_rank}]
+4. Log score delta between original_rank=1 and new_rank=1.
+]]></prompt>
+
+    <templates>
+      <template path="templates/reranker_service.py" purpose="RerankerService with cross-encoder + Cohere dispatch, fallback, and FastAPI endpoint"/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.cohere.com/docs/reranking"/>
+      <link href="https://jina.ai/reranker/"/>
+      <link href="https://docs.voyageai.com/docs/reranker"/>
+      <link href="https://www.mixedbread.ai/docs/reranking"/>
+      <link href="https://www.sbert.net/docs/pretrained-models/ce-msmarco.html"/>
+      <link href="https://arxiv.org/abs/2004.12832"/>
+    </see-also>
+  </content>
+</methodology>
