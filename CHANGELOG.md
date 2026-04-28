@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 content-marketer methodologies → methodology.xml (growth-podcast-strategy, growth-reddit-marketing, growth-tiktok-basics)
 - migrate: 3/3 solo/dev/software-developer methodologies → methodology.xml (rust-tokio-async, security-testing, seo-for-spas)
 - migrate: 3/3 content-marketer methodologies → methodology.xml (growth-email-marketing, growth-newsletter-growth, growth-onboarding-emails)
 - migrate: 3/3 methodologies → methodology.xml (security-testing, docker-compose, git-server-workflow)
