@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 solo/product/product-manager methodologies → methodology.xml (micro-mvps, okr-setting, outcome-based-roadmaps)
+- migrate: 3/3 solo/pm/project-manager methodologies → methodology.xml (reporting-dashboards, trello-kanban, and solo/product/product-manager/backlog-management)
 - migrate: 3/3 solo/product/product-operations methodologies → methodology.xml (feature-prioritization-moscow, feature-prioritization-rice, feedback-management)
 - migrate: 3/3 solo/marketing/content-marketer methodologies → methodology.xml (growth-content-marketing, growth-copywriting-fundamentals, growth-customer-testimonials)
 - migrate: 3/3 solo/marketing/smm-manager methodologies → methodology.xml (growth-linkedin-strategy, growth-social-media-strategy, growth-twitter-x-growth)
