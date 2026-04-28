@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="stream-json-orchestration">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Use stream-json format when wrapping agent CLIs as subprocesses so orchestrators can react mid-run: budget caps, hand-offs, conditional chaining, safety stops.</summary>
+    <tags>
+      <tag>stream-json</tag>
+      <tag>orchestration</tag>
+      <tag>cli</tag>
+      <tag>subprocess</tag>
+      <tag>safety</tag>
+    </tags>
+    <category>cli</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Stream-JSON Orchestration</title>
+
+    <summary>When wrapping an agent CLI (Claude Code, Codex, Aider, opencode) as a subprocess inside a larger orchestrator, use the stream-json output format so the orchestrator can react MID-RUN — apply budget caps, hand off to another agent, chain conditional steps, kill on safety violations — instead of waiting for final output. A line-delimited JSON stream is the load-bearing format for CLI-as-subprocess orchestration. Each event (model_message, tool_use, tool_result, status) arrives as a JSON object on stdout the moment it happens. The orchestrator parses each line as-it-lands.</summary>
+
+    <why>
+      <p>A line-delimited JSON stream is the load-bearing format for CLI-as-subprocess orchestration. Each event (model_message, tool_use, tool_result, status) arrives as a JSON object on stdout the moment it happens. The orchestrator parses each line as-it-lands.</p>
+      <p>That gives you budget caps (track token spend per event; kill on threshold), hand-off triggers (detect a tool call or message pattern; route to another agent), live UI (pipe events to a dashboard), conditional chaining (if first agent returns X, spawn second), and safety stops (detect dangerous tool call before it executes with --permission-mode plan or bash-deny-list patterns).</p>
+      <p>Without stream-json, you wait for the agent to finish, then post-mortem.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Orchestrator spawns Claude Code or Codex CLI as a subprocess (most common 2026 pattern).</item>
+        <item>Long-running agent tasks (greater than 30 sec) where you want feedback.</item>
+        <item>Multi-step pipelines where step N+1 depends on signals from step N's progress.</item>
+        <item>Production agents where you want telemetry per event.</item>
+        <item>Safety/policy enforcement that must intervene mid-run.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-shot, short tasks (less than 5 sec) — overhead of parsing is not worth it.</item>
+        <item>When the SDK is available and gives you the same hooks more cleanly (use SDK directly).</item>
+        <item>When you are piping stdout to a human user — pretty-print mode is more readable for direct interaction.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="the-rule">
+      <p>When wrapping an agent CLI (Claude Code, Codex, Aider, opencode) as a subprocess inside a larger orchestrator, use the stream-json output format so the orchestrator can react MID-RUN — apply budget caps, hand off to another agent, chain conditional steps, kill on safety violations — instead of waiting for final output.</p>
+      <p>For Claude Code: claude -p "task" --output-format stream-json --include-partial-messages.</p>
+    </section>
+
+    <section name="event-shapes">
+      <p>Common event types from Claude Code stream-json:</p>
+      <code lang="jsonl"><![CDATA[
+{"type":"system","subtype":"init","session_id":"...","model":"...","tools":[...]}
+{"type":"assistant","message":{"role":"assistant","content":[...]}}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result",...}]}}
+{"type":"result","subtype":"success","total_cost_usd":0.0042,...}
+]]></code>
+      <p>Parse line-by-line; ignore unknown types; never assume order beyond "init" → many → "result".</p>
+    </section>
+
+    <section name="anti-patterns">
+      <antipattern>
+        <description>Reading agent output as one big JSON blob at end.</description>
+        <reason>Switch to stream-json; parse per line.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using regex on plain-text output to detect tool calls.</description>
+        <reason>Use the structured stream — robust across model versions.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Buffering events without back-pressure.</description>
+        <reason>Use line-buffered reads plus a queue; backpressure when downstream slow.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Killing the agent without --max-turns and --allowedTools.</description>
+        <reason>Defense in depth: hard cap plus allowlist plus monitor stream events.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Ignoring result event.</description>
+        <reason>Always handle the final event — that is your "done, with summary".</reason>
+      </antipattern>
+    </section>
+
+    <section name="headless-safety-pattern">
+      <p>For headless agent runs, ALL of these matter:</p>
+      <list>
+        <item>-p "task" — non-interactive mode, exits when done.</item>
+        <item>--allowedTools "Read,Bash(npm test)" — explicit allowlist; nothing else can run.</item>
+        <item>--max-turns N — hard cap on iteration count.</item>
+        <item>--output-format stream-json — observable plus interruptible.</item>
+        <item>(close stdin) — no chance of injection from a TTY.</item>
+      </list>
+    </section>
+
+    <section name="example-1-live-ui">
+      <p>Example 1: Live UI for a CLI agent.</p>
+      <p>A Discord bot wraps Claude Code: User: /agent fix the login bug. Bot spawns claude -p ... --output-format stream-json. Each assistant event becomes a Discord message edit (live updates). result event closes with the final cost.</p>
+      <p>Without stream-json, the user would wait silently for 2 minutes.</p>
+    </section>
+
+    <section name="example-2-cost-cap">
+      <p>Example 2: Cost cap kills agent at $0.50.</p>
+      <p>Production agent service caps each task at $0.50. Stream-json events include rolling cost estimates; orchestrator kills the subprocess the moment cumulative spend exceeds $0.50, even mid-tool-call.</p>
+      <p>Saved revenue: 12% of total spend was tasks that would have run unbounded due to bad prompts.</p>
+    </section>
+
+    <section name="example-3-safety-veto">
+      <p>Example 3: Safety veto on file delete.</p>
+      <code lang="python"><![CDATA[
+Orchestrator inspects every tool_use event:
+if event.type == "assistant" and is_tool_call(event):
+    tool_name = extract_tool_name(event)
+    if tool_name == "delete_file" and not user_approved_delete:
+        kill(proc)
+]]></code>
+      <p>The veto fires BEFORE the deletion executes (the model's tool_use event arrives before the tool actually runs).</p>
+    </section>
+
+    <section name="example-4-conditional-chaining">
+      <p>Example 4: Conditional chaining (faion-cli pattern).</p>
+      <p>Stage 1 (planner Claude Code): emits a plan as final assistant message. Orchestrator parses the plan, spawns N parallel Stage 2 agents (one per task in plan). Each Stage 2 emits its own stream; orchestrator gathers results. Stage 3 (reviewer) reads aggregate result, emits approval/changes.</p>
+      <p>All connected via stream-json plus Python orchestrator. No SDK, no in-process complexity.</p>
+    </section>
+
+    <section name="example-5-telemetry">
+      <p>Example 5: Telemetry to Langfuse.</p>
+      <p>Each event maps to an OpenTelemetry span: system/init → root span, assistant → child span "assistant_message", tool_use → child span "tool_call", result → close root span with cost/duration.</p>
+      <p>Langfuse / Phoenix consumes the OTLP feed; each agent run becomes a queryable trace.</p>
+    </section>
+
+    <section name="example-6-anti-buffered-output">
+      <p>Example 6: Anti-example — buffered output.</p>
+      <code lang="python"><![CDATA[
+result = subprocess.run([...], capture_output=True)
+events = json.loads(result.stdout)  # WRONG: stream-json is LINE-DELIMITED, not one JSON
+]]></code>
+      <p>Symptom: parse errors. Fix: read line-by-line as in templates.</p>
+    </section>
+
+    <section name="example-7-opencode">
+      <p>Example 7: opencode terminal agent.</p>
+      <p>opencode (140k+ stars by April 2026) follows the same pattern. Spawn it headless, parse its stream-json, layer your own orchestration. Some teams report dropping to opencode for simpler tasks because Claude Code's tool surface is overkill.</p>
+    </section>
+
+    <section name="example-8-pause-resume">
+      <p>Example 8: Pause plus resume.</p>
+      <code lang="python"><![CDATA[
+Stream events are inherently durable. Save them to a file. Later, resume with:
+session_id = events[0]["session_id"]
+proc = subprocess.Popen(["claude", "--resume", session_id, ...])
+]]></code>
+      <p>Replay events to UI, then continue from where it left off.</p>
+    </section>
+
+    <section name="python-spawn-and-parse">
+      <p>Python: spawn Claude Code, parse stream.</p>
+      <code lang="python"><![CDATA[
+import json
+import subprocess
+
+proc = subprocess.Popen(
+    [
+        "claude", "-p", task_prompt,
+        "--output-format", "stream-json",
+        "--include-partial-messages",
+        "--allowedTools", "Read,Grep,Bash(npm test:*)",
+        "--max-turns", "20",
+    ],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    stdin=subprocess.DEVNULL,
+    text=True,
+    bufsize=1,
+)
+
+total_cost = 0.0
+for line in proc.stdout:
+    line = line.strip()
+    if not line:
+        continue
+    try:
+        event = json.loads(line)
+    except json.JSONDecodeError:
+        log_warning(f"non-JSON line: {line!r}")
+        continue
+
+    handle_event(event)
+
+    if event.get("type") == "result":
+        total_cost = event.get("total_cost_usd", 0)
+        break
+
+    if total_cost_so_far(event) > BUDGET_USD:
+        proc.kill()
+        raise BudgetExceeded(f"killed at ${total_cost_so_far(event)}")
+]]></code>
+    </section>
+
+    <section name="bash-pipe-stream">
+      <p>Bash: pipe stream to jq.</p>
+      <code lang="bash"><![CDATA[
+claude -p "Refactor src/auth.py" \
+    --output-format stream-json \
+    --allowedTools "Read,Edit" \
+    --max-turns 15 \
+  | jq -c 'select(.type == "assistant") | .message.content[0].text // empty'
+]]></code>
+      <p>Streams only assistant messages.</p>
+    </section>
+
+    <section name="nodejs-sse-style">
+      <p>Node.js: SSE-style consumption.</p>
+      <code lang="javascript"><![CDATA[
+const { spawn } = require("child_process");
+const readline = require("readline");
+
+const proc = spawn("claude", [
+    "-p", task,
+    "--output-format", "stream-json",
+    "--allowedTools", "Read,Grep",
+    "--max-turns", "10",
+]);
+
+const rl = readline.createInterface({ input: proc.stdout });
+rl.on("line", (line) => {
+    const event = JSON.parse(line);
+    if (event.type === "assistant") emitToUI(event);
+    if (event.type === "result")    finalize(event);
+});
+]]></code>
+    </section>
+
+    <section name="python-budget-aware-kill">
+      <p>Python: budget-aware kill.</p>
+      <code lang="python"><![CDATA[
+class BudgetWatcher:
+    def __init__(self, max_usd: float):
+        self.max = max_usd
+        self.so_far = 0.0
+    def observe(self, event: dict) -> bool:
+        # Claude Code sends running totals in some events
+        cost = event.get("total_cost_usd")
+        if cost is not None:
+            self.so_far = cost
+        return self.so_far <= self.max
+]]></code>
+    </section>
+
+    <section name="pattern-fan-out-collect">
+      <p>Pattern: fan-out plus collect.</p>
+      <code lang="python"><![CDATA[
+async def parallel_agents(tasks: list[str]) -> list[dict]:
+    procs = [start_claude(t) for t in tasks]
+    results = await asyncio.gather(*[
+        consume_stream(p) for p in procs
+    ])
+    return results
+]]></code>
+      <p>Each subprocess has its own stream; orchestrator joins their final results.</p>
+    </section>
+
+    <section name="pattern-conditional-hand-off">
+      <p>Pattern: conditional hand-off.</p>
+      <code lang="python"><![CDATA[
+for event in stream:
+    if event["type"] == "assistant" and "REQUEST_REVIEW" in extract_text(event):
+        kill(proc)
+        spawn_review_agent(latest_diff())
+        break
+]]></code>
+      <p>The first agent signals; orchestrator spawns the next one.</p>
+    </section>
+
+    <section name="pattern-event-log-replay">
+      <p>Pattern: full event log for replay.</p>
+      <code lang="python"><![CDATA[
+log = []
+for event in stream:
+    log.append(event)
+    handle_event(event)
+
+# After run, save for replay
+with open(f"runs/{session_id}.jsonl", "w") as f:
+    for e in log:
+        f.write(json.dumps(e) + "\n")
+]]></code>
+    </section>
+
+    <section name="llm-prompts">
+      <p>Prompt 1: Generate a stream-handler skeleton. Write a Python class StreamHandler for consuming Claude Code's stream-json output. It should: (1) Spawn claude -p "..." as a subprocess with --output-format stream-json, --allowedTools allowlist, --max-turns N, closed stdin. (2) Read stdout line-by-line. (3) Dispatch events by type to handler methods (init, assistant, user, result). (4) Track cumulative cost; raise BudgetExceeded when over a threshold. (5) Return a structured Result on completion. No external deps beyond stdlib. Use type hints.</p>
+      <p>Prompt 2: Convert SDK-based agent to CLI-stream pattern. Take this code that uses the Claude SDK directly and convert it to spawn claude -p as a subprocess and consume the stream-json stream. Preserve all behavior (tool calls, budget, output) and add --max-turns 20 and --allowedTools set to the same tools the SDK code allows.</p>
+      <p>Prompt 3: Diagnose a stream that hangs. This agent stream stops emitting events but does not exit. Suggest 5 likely causes and a check for each.</p>
+      <p>Prompt 4: Map event types to OTel spans. Given the Claude Code stream-json event types (system/init, assistant, user/tool_result, result), generate Python code that creates OpenTelemetry spans following the OTel GenAI semantic conventions. Each event becomes a span; spans are properly nested. Output: code using opentelemetry SDK only.</p>
+    </section>
+
+    <checklist>
+      <check>CLI invoked with --output-format stream-json (Claude Code) or equivalent.</check>
+      <check>Subprocess stdout read line-by-line (line-buffered).</check>
+      <check>Each line parsed as JSON; bad lines logged not crashed.</check>
+      <check>Subprocess stderr captured separately for debugging.</check>
+      <check>Closed stdin (or piped from a known source) — never an open TTY.</check>
+      <check>-p "task" (or equivalent non-interactive flag).</check>
+      <check>--allowedTools (or equivalent allowlist) — explicit whitelist.</check>
+      <check>--max-turns N — hard cap.</check>
+      <check>--permission-mode plan if pre-approval is wanted.</check>
+      <check>Timeout at the orchestrator level (subprocess.run timeout=).</check>
+      <check>system/init event captured — record session_id.</check>
+      <check>assistant events streamed to telemetry / UI.</check>
+      <check>user (tool_result) events checked against budget / safety rules.</check>
+      <check>result event always handled — never assume the agent ran forever.</check>
+      <check>Unknown event types pass through gracefully.</check>
+      <check>Token-budget tracker accumulates per event; kills on overrun.</check>
+      <check>Tool-call inspector can veto specific calls (kill subprocess if unauthorized).</check>
+      <check>Conditional chaining: at known event patterns, spawn next agent / route.</check>
+      <check>Backpressure when downstream consumer is slow.</check>
+      <check>Final result event logged with cost plus duration.</check>
+      <check>Full event log persisted (replay-debugging).</check>
+      <check>Failures categorized (timeout / budget / safety / agent error).</check>
+      <check>Each subagent gets its own stream (firewall pattern).</check>
+      <check>Stream events feed eval-trajectory-as-spans for OTel.</check>
+      <check>Stream plus caching plus cheap-then-strong equals full observability cheap loop.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="schema-field-order"/>
+      <ref slug="semantic-field-naming"/>
+    </see-also>
+  </content>
+</methodology>
