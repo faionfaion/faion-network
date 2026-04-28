@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="visibility-of-system-status">
+  <metadata>
+    <tier>solo</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>Nielsen Heuristic #1: every user action must produce visible feedback within appropriate time thresholds — spinner for 1-3s, progress bar for 3-10s, progress bar with percentage and cancel for >10s. Every interactive element needs loading, success, and error states.</summary>
+    <tags>
+      <tag>heuristics</tag>
+      <tag>feedback</tag>
+      <tag>loading-states</tag>
+      <tag>accessibility</tag>
+      <tag>usability</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Visibility of System Status</title>
+
+    <summary>Nielsen Heuristic #1: every user action must produce visible feedback within the appropriate time threshold — spinner for 1-3s, progress bar for 3-10s, progress bar with percentage and cancel for over 10s. Every interactive element needs three implemented states: loading (disabled + visual indicator), success (confirmation), and error (message with recovery action). Disable the trigger element during async operations to prevent double-submission.</summary>
+
+    <why>
+      <p>When users click and nothing visibly happens, they click again (duplicate submissions), wait in uncertainty, or abandon the task. NNG response time thresholds are empirically validated: under 0.1s feels instantaneous; over 1s users feel the system is slow; over 10s users disengage without a progress indicator. Feedback must be immediate even if the operation is not — the loading state is feedback that the click registered.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Auditing any interactive UI where user actions trigger async operations (form submissions, file uploads, API calls)</item>
+        <item>Code review: verifying every button, link, and form has loading, success, and error states</item>
+        <item>Before a launch: sweep all user flows for dead-click moments where UI appears unresponsive</item>
+        <item>When support tickets or session recordings show users double-clicking or resubmitting forms</item>
+        <item>Designing real-time features (chat, live data, collaborative editing) requiring continuous state feedback</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Static informational pages with no interactive elements — nothing to communicate</item>
+        <item>Background operations the user does not need to know about (cache refresh completing in &lt;100ms)</item>
+        <item>Micro-interactions already covered by platform defaults (OS-level progress bars for file transfers)</item>
+        <item>When audit findings for this heuristic are already documented and tracked — fix, don't re-audit</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="response-time-thresholds">
+      <rule>
+        <statement>Provide visible feedback within 100ms of any user action. For operations taking 1-3s use a spinner. For 3-10s use a progress indicator. For over 10s use a determinate progress bar with percentage and a cancel option.</statement>
+        <rationale>NNG research (Miller/Card/Newell) establishes empirical thresholds: under 0.1s feels instantaneous; under 1s users notice the delay but stay engaged; over 10s users lose focus and need continuous feedback to stay. Cancel option over 10s respects user autonomy — they should not be trapped.</rationale>
+      </rule>
+      <rule>
+        <statement>Use skeleton screens instead of spinners when loading content into a known layout. Skeleton screens set accurate spatial expectations and reduce perceived wait time for list and feed content.</statement>
+        <rationale>Spinners communicate only "something is loading" without spatial context. Skeleton screens show where content will appear, allowing users to orient themselves during load. They consistently reduce perceived load time in user studies.</rationale>
+      </rule>
+    </section>
+
+    <section name="three-required-states">
+      <rule>
+        <statement>Every button, form, and link triggering an async operation must implement three states: loading (element disabled + visual indicator), success (confirmation message or visual change), and error (error message with recovery action).</statement>
+        <rationale>Missing any one state creates confusion: no loading state causes double-submission; no success state leaves users uncertain the action worked; no error state creates a dead end. All three are required for async operations.</rationale>
+      </rule>
+      <rule>
+        <statement>Disable the trigger element (button, link) immediately on click during async operations. Re-enable on success or error. Never leave the element active during processing.</statement>
+        <rationale>An active button during processing invites repeated clicks. Duplicate form submissions, duplicate payments, and duplicate data creation are direct consequences of missing disabled state. This is also an ARIA requirement (aria-busy).</rationale>
+      </rule>
+    </section>
+
+    <section name="state-indicator-patterns">
+      <example type="good">
+        <note>Inline button state transitions for form submit</note>
+        <code lang="text"><![CDATA[
+Idle:    [Save]
+Loading: [Saving...] (disabled, spinner icon)
+Success: [Saved ✓]   (briefly, then returns to [Save])
+Error:   error message appears near form with [Retry]
+        ]]></code>
+      </example>
+      <example type="good">
+        <note>Document auto-save status (continuous operation)</note>
+        <code lang="text"><![CDATA[
+"Draft"           — unsaved changes exist
+"Saving..."       — write in progress
+"All changes saved" — current state persisted
+        ]]></code>
+      </example>
+      <example type="good">
+        <note>Connection status indicators for real-time features</note>
+        <code lang="text"><![CDATA[
+Green dot:  Online
+Yellow dot: Connecting... (with auto-retry)
+Red dot:    Offline — [Retry] [Work Offline]
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="auto-dismiss-timing">
+      <rule>
+        <statement>Success toast notifications: auto-dismiss after 3-5 seconds. Error notifications: require manual dismissal — users must read and act on errors; auto-dismiss hides them before they can.</statement>
+        <rationale>Success confirmations are informational; missing them is acceptable. Error messages are actionable; auto-dismissing them before the user reads them creates a state where the user does not know what failed or how to fix it.</rationale>
+      </rule>
+    </section>
+
+    <section name="accessibility-requirements">
+      <rule>
+        <statement>Use aria-busy="true" on loading elements. Use aria-live="polite" for non-critical status updates (success toasts). Use aria-live="assertive" only for critical errors requiring immediate attention. Use role="status" for persistent status regions.</statement>
+        <rationale>Screen readers do not perceive visual changes to spinners or state transitions. ARIA live regions announce changes to screen reader users. Polite announcements wait for the user to finish their current task; assertive interrupts — use assertive sparingly to avoid disruptive announcements.</rationale>
+      </rule>
+    </section>
+
+    <section name="good-examples">
+      <example type="good">
+        <note>File upload — complete status lifecycle</note>
+        <code lang="text"><![CDATA[
+Step 1: Click "Upload" → button shows "Uploading..." (disabled)
+Step 2: Progress bar appears: "45% — 2.3 MB of 5.1 MB"
+Step 3: Speed shown: "1.2 MB/s"
+Step 4: Complete → checkmark + "Upload complete" toast
+Step 5: Error → "Upload failed: file too large. Maximum is 10 MB." + [Retry]
+        ]]></code>
+      </example>
+      <example type="good">
+        <note>Form submission — button state with error recovery</note>
+        <code lang="text"><![CDATA[
+Click "Submit":
+  → button disabled + spinner shown
+  → [Success] green banner: "Form submitted successfully"
+  → [Error] red banner: "Submission failed. Please check your connection." + [Try Again]
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>No loading state: user clicks button, nothing visible happens, user clicks again</description>
+        <reason>Without loading state, users cannot tell if their click registered. Repeated clicks cause duplicate form submissions, duplicate API calls, or duplicate payments. The loading state is the signal that the click was received.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Vague status messages: "Please wait...", "Processing...", "Loading..."</description>
+        <reason>Duration-free, content-free status messages give users no information to judge whether the wait is acceptable. "Uploading 3 of 5 files" is infinitely more useful than "Processing..."</reason>
+      </antipattern>
+      <antipattern>
+        <description>Progress bar showing fake/frozen progress (0% → 100% in one jump, or stuck at 99%)</description>
+        <reason>Progress bars showing inaccurate progress erode trust more than no progress bar at all. Only use determinate progress bars when the backend provides real progress events. Otherwise use an indeterminate spinner.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Success toast auto-dismissing before user can read it; error toast also auto-dismissing</description>
+        <reason>Auto-dismiss on success is acceptable (3-5s is enough). Auto-dismiss on error is never acceptable — users must be able to read the error and act on it. Errors require manual dismissal.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using aria-live="assertive" for routine status updates (e.g., "Changes saved")</description>
+        <reason>Assertive live regions interrupt the screen reader immediately, regardless of what the user is doing. Using assertive for non-critical status announcements disrupts users unnecessarily. Reserve assertive for actual errors requiring immediate response.</reason>
+      </antipattern>
+    </section>
+
+    <section name="measurement">
+      <rule>
+        <statement>Track rage clicks and dead clicks in session recording tools (LogRocket, FullStory) as the primary signal for missing loading states. Duplicate API submissions in server logs are a secondary signal.</statement>
+        <rationale>Rage clicks directly indicate user frustration from unresponsive elements. Dead clicks on inactive areas indicate confusion. Both signal missing or invisible feedback states that users are trying to trigger.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <p>Every clickable element must give visible feedback within 100ms of the click — if the operation takes longer, show a loading state immediately, then update when complete. Disable the trigger element (button, link) during async operations to prevent double-submission — re-enable on success or error. Distinguish between skeleton screens (known layout, loading content) and spinners (unknown layout or very short wait) — use the right pattern for the context. Document auto-dismiss timing for toast notifications: 3-5 seconds for success, indefinite for errors (user must dismiss manually). "All changes saved" document status is more reassuring than a save button — continuous auto-save with status text outperforms explicit save actions for documents. Connection status indicators (online/offline/reconnecting) are required for any real-time feature — users need to know if their actions are being persisted. Provide a cancel option for operations that take over 10 seconds — users should not be trapped waiting.</p>
+    </section>
+
+    <templates>
+      <template path="templates/status-audit.md" purpose="Audit table: action, feedback present, feedback type, timing, gaps, severity"/>
+      <template path="templates/loading-state.spec.ts" purpose="Playwright test: verify loading state appears on form submit and file upload"/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.nngroup.com/articles/visibility-system-status/"/>
+      <link href="https://m3.material.io/components/progress-indicators/overview"/>
+      <link href="https://developer.apple.com/design/human-interface-guidelines/progress-indicators"/>
+      <link href="https://webaim.org/articles/usable/"/>
+      <link href="https://www.nngroup.com/articles/response-times-3-important-limits/"/>
+    </see-also>
+  </content>
+</methodology>
