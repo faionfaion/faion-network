@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="claude-code-hooks">
+  <metadata>
+    <tier>geek</tier>
+    <group>infra</group>
+    <domain>server-craft</domain>
+    <summary>User-defined shell scripts executing at lifecycle events with JSON contracts, enabling quality gates before tool execution and state preservation during long runs.</summary>
+    <tags>
+      <tag>claude-code</tag>
+      <tag>hooks</tag>
+      <tag>quality-gates</tag>
+      <tag>automation</tag>
+      <tag>shell-scripting</tag>
+    </tags>
+    <category>automation</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Claude Code Hooks</title>
+    <summary>Claude Code hooks are user-defined shell scripts that execute synchronously at specific lifecycle events (PreToolUse, PostToolUse, UserPromptSubmit, SubagentStart, Stop, SessionStart, PreCompact, PostCompact). The core rule: always read stdin fully with `INPUT=$(cat)` as the first command and always return valid JSON on stdout — hooks that ignore stdin or emit invalid JSON break the Claude Code session.</summary>
+    <why>
+      <p>Without hooks, Claude edits files without auto-formatting, can execute destructive git commands without safeguards, and loses session context during long runs. Hooks enforce quality gates locally at the point of execution rather than relying on developer discipline or post-hoc CI checks, and they integrate directly with the tool call lifecycle before CI ever runs.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Auto-formatting code after Claude edits a file (PostToolUse + Edit/Write matcher)</item>
+        <item>Blocking dangerous git commands before execution (PreToolUse + Bash matcher)</item>
+        <item>Saving tmux session state during long agent runs (UserPromptSubmit, SubagentStart)</item>
+        <item>Auto-running tests after code changes (PostToolUse + Edit matcher)</item>
+        <item>Enforcing coding standards on every edit without manual invocation</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Logic that belongs in CI/CD pipelines — hooks run locally and do not replace remote quality gates</item>
+        <item>Actions taking more than 10 seconds — blocking hooks make the entire Claude session unresponsive</item>
+        <item>Network-dependent validation (external API calls, remote test runners) — latency is unpredictable</item>
+        <item>Operations requiring human judgment — hooks are automatic and cannot pause mid-execution</item>
+        <item>Environments without `jq` installed — most hook patterns depend on it for JSON parsing</item>
+      </list>
+    </when-not-to-use>
+    <section name="Hook Events">
+      <rule>
+        <statement>Use PreToolUse to validate, block, or modify tool parameters before execution. Use PostToolUse to format, lint, test, or notify after execution. Both receive tool name and parameters on stdin.</statement>
+        <rationale>PreToolUse is the only event that can prevent an action. PostToolUse cannot undo what was done but can apply corrections (formatting, staging). Choosing the wrong event wastes the opportunity to intercept.</rationale>
+      </rule>
+      <rule>
+        <statement>Available events: PreToolUse, PostToolUse, UserPromptSubmit, SubagentStart, Stop, SessionStart, PreCompact, PostCompact. Each fires at a specific lifecycle point and receives event-specific JSON on stdin.</statement>
+        <rationale>Understanding the event model prevents hooks being added to the wrong event. A tmux-save hook belongs on UserPromptSubmit and SubagentStart, not on PostToolUse (which fires on every tool call).</rationale>
+      </rule>
+    </section>
+    <section name="Hook Types">
+      <rule>
+        <statement>command type: runs a shell command. The command receives event JSON on stdin and must return valid JSON on stdout (or no output). The Agent hook type is reserved for future use and is not yet available.</statement>
+        <rationale>command hooks are synchronous and blocking. They run in the same process context as Claude Code. Invalid stdout JSON surfaces as a session error visible to the user.</rationale>
+      </rule>
+      <rule>
+        <statement>prompt type: returns text injected into Claude's context. Does not run a shell command. Use for static rule injection ("always use single quotes in TypeScript"), not for dynamic file processing.</statement>
+        <rationale>Prompt hooks add context without executing code. They are appropriate for lightweight conventions that do not require reading files or running tools.</rationale>
+      </rule>
+    </section>
+    <section name="Stdin/Stdout JSON Contract">
+      <rule>
+        <statement>Every command hook script must read stdin fully as the first operation: INPUT=$(cat). Hooks that ignore stdin can block waiting for EOF in some shell environments, hanging the Claude session.</statement>
+        <rationale>The stdin pipe remains open until the hook reads it. Ignoring stdin does not cause an error on all platforms but is unreliable. Always consume it, even if the hook does not use the data.</rationale>
+      </rule>
+      <rule>
+        <statement>PreToolUse output must be one of: {"action":"allow"}, {"action":"block","reason":"..."}, or {"action":"modify","parameters":{...}}. Always include "reason" with block actions — without it Claude retries the tool indefinitely.</statement>
+        <rationale>Claude interprets a block action without a reason as a transient failure and retries. A reason terminates the retry loop and presents the explanation to the user.</rationale>
+      </rule>
+      <rule>
+        <statement>PostToolUse output must be {"status":"ok"} or {"status":"error","message":"..."}. Producing no output is treated as success, but explicit output is easier to debug.</statement>
+        <rationale>Silent hooks are harder to monitor. Explicit status output enables log analysis and distinguishes "ran and succeeded" from "ran but produced nothing."</rationale>
+      </rule>
+    </section>
+    <section name="Matchers">
+      <rule>
+        <statement>Use matchers to scope PostToolUse and PreToolUse hooks narrowly. A PostToolUse hook without a matcher fires on every tool call including Read and Glob, adding latency to all operations.</statement>
+        <rationale>An unscoped PostToolUse formatter hook that runs prettier on every Read call will run on documentation files being read, not just files being edited. Matcher = "Edit" restricts it to edit operations only.</rationale>
+      </rule>
+      <rule>
+        <statement>Set timeouts explicitly for any hook that calls external tools: "timeout": 10000 (10 seconds) for formatters, 5000 for safety guards. Hooks without timeouts use the default 30 seconds, which blocks Claude for 30 seconds on failure.</statement>
+        <rationale>A formatter that hangs (e.g. prettier waiting for a missing package) blocks the entire Claude session for 30 seconds per tool call without an explicit timeout.</rationale>
+      </rule>
+    </section>
+    <section name="Common Hook Patterns">
+      <section name="Auto-Format on Edit/Write">
+        <rule>
+          <statement>PostToolUse + matcher "Edit" (and separately "Write"): read file_path from stdin JSON, detect extension, run formatter, always exit 0. Skip files larger than 1MB. Log errors to /tmp/claude-hooks.log, never to stderr.</statement>
+          <rationale>stderr output appears in Claude's context as noise. Error file logging keeps it invisible to the session while still diagnosable. Files larger than 1MB are likely generated or binary — formatters should not process them.</rationale>
+        </rule>
+        <example type="good">
+          <note>Formatter hook: detect .py extension → ruff format + ruff check --fix --quiet. Detect .ts/.tsx/.js/.jsx/.json → npx prettier --write. Detect .go → gofmt -w. Each formatter guarded by command -v check to skip gracefully if not installed.</note>
+        </example>
+      </section>
+      <section name="Tmux Session Save">
+        <rule>
+          <statement>UserPromptSubmit + SubagentStart: check if running in tmux ($TMUX is set), capture pane content to a timestamped file, keep only last 10 captures. This preserves session context across context compaction events.</statement>
+          <rationale>Context compaction can discard tool output history. Tmux captures provide a fallback log of what Claude was doing when compaction occurred, enabling session resume without full context loss.</rationale>
+        </rule>
+      </section>
+      <section name="Git Safety Guard">
+        <rule>
+          <statement>PreToolUse + matcher "Bash": parse the command from stdin JSON, block: (1) git push --force to main/master; (2) git clean -f; (3) rm -rf / or rm -rf ~; (4) shutdown/reboot. Return {"action":"block","reason":"..."} with a specific reason per rule.</statement>
+          <rationale>These commands are irreversible and frequently generated by agents operating in unfamiliar environments. The safety guard is the last line of defense before execution, not a substitute for careful prompting.</rationale>
+        </rule>
+      </section>
+      <section name="Auto-Run Tests on Edit">
+        <rule>
+          <statement>PostToolUse + matcher "Edit": skip non-.py files, skip test files (test_*.py, *_test.py), find project root via pyproject.toml or setup.py, locate corresponding test file, run pytest with -x -q --tb=short. Always exit 0.</statement>
+          <rationale>Auto-test after edit surfaces regressions immediately rather than at commit time. The skip-test-files guard prevents infinite loops when Claude edits a test file, triggering the test, which triggers another edit.</rationale>
+        </rule>
+      </section>
+      <section name="Auto-Stage New Files">
+        <rule>
+          <statement>PostToolUse + matcher "Write": check if file is in a git repo, check git status for "??" (untracked), git add only if untracked. Never stage modified files — only newly created ones.</statement>
+          <rationale>Auto-staging modified files would stage partial work. The "??" check restricts staging to new files only, which is the case where forgetting to git add is most common.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="Anti-Patterns">
+      <antipattern>
+        <description>Hook script ignores stdin — no INPUT=$(cat) at the start. The script exits immediately without consuming the stdin pipe.</description>
+        <reason>In some shell environments, an unconsumed stdin pipe causes the hook to block waiting for EOF that never arrives, hanging the Claude session until the hook timeout triggers. Always consume stdin as the first command, even if unused.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hook returns invalid JSON on stdout (trailing newline, mixed text and JSON, missing closing brace). Claude Code surfaces a parse error in the conversation.</description>
+        <reason>Invalid JSON breaks the hook contract and can prevent the tool from executing (for PreToolUse) or produce session-visible errors (for PostToolUse). Validate hook JSON output with `jq .` during testing before adding to settings.json.</reason>
+      </antipattern>
+      <antipattern>
+        <description>PreToolUse block action without a "reason" field: {"action":"block"}.</description>
+        <reason>Claude interprets a block without a reason as a transient error and retries the tool call. The session enters a loop. Always include "reason" to terminate the retry and present the explanation to the user.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Directly modifying settings.json by appending JSON fragments without reading the existing structure first. Results in malformed JSON that breaks all hooks until manually repaired.</description>
+        <reason>settings.json is a single JSON object. Appending to it outside proper JSON structure produces a parse error on next Claude Code load, silently disabling all hooks. Use the update-config skill which merges safely.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hook ordering: adding a linter hook before a formatter hook in the PostToolUse array. The linter sees unformatted code and reports violations that will be auto-fixed by the formatter.</description>
+        <reason>Multiple hooks for the same event execute in array order. Formatters must run before linters; linters must run before tests. The array order in settings.json is the execution order.</reason>
+      </antipattern>
+      <antipattern>
+        <description>PostToolUse hook without a matcher that runs on every tool call including Read and Glob, adding several seconds of latency to every file read.</description>
+        <reason>An unmatched PostToolUse hook runs on all tool calls. A formatter hook running on Read operations processes files that were not edited, wasting time and potentially reformatting files Claude is only reading for reference.</reason>
+      </antipattern>
+    </section>
+    <section name="Agent Integration">
+      <p>Claude subagents can write, test, and install hook scripts end-to-end: generate the hook shell script with correct stdin JSON parsing, create the settings.json fragment, test the hook by piping sample event JSON, and update the global or project settings.json. The `update-config` skill handles settings.json modifications safely. Human review is required before deploying hooks that block tool execution (PreToolUse with `block` action) since incorrect matchers can silently prevent legitimate operations.</p>
+    </section>
+    <section name="Setup for New Claude Code Project">
+      <p>When setting up a new Claude Code project environment, hooks enforce auto-formatting, linting, or test execution after edits. Hooks also enforce coding standards across a team or solo workflow by blocking dangerous git commands and enforcing file conventions. For long-running agentic sessions where context compaction is expected, hooks preserve state. When Claude subagents are spawned frequently, each needs consistent environment setup at start.</p>
+    </section>
+    <section name="Debugging and Limitations">
+      <p>Hooks run synchronously and block Claude Code entirely until they complete; a slow hook degrades the whole session. PreToolUse `block` action prevents the tool from running but cannot prevent Claude from planning the blocked action again. Agent hook type (sub-agent creation) is reserved for future use and not yet available as of 2025. Hooks do not have access to the full conversation context — they only receive event-specific JSON on stdin. Settings.json hook changes do not take effect until Claude Code is restarted or the session reloads. On Windows (WSL), path handling in hook scripts requires explicit WSL path normalization.</p>
+    </section>
+    <section name="CLI Tools and Services">
+      <p>CLI tools: `jq` for parsing stdin JSON in hook scripts (apt install jq / https://jqlang.github.io/jq/); `ruff` for Python formatting/linting called from hooks (pip install ruff / https://docs.astral.sh/ruff/); `prettier` for JS/TS/JSON formatting (npm i -g prettier / https://prettier.io/); `tmux` for session state capture in SubagentStart/UserPromptSubmit hooks (system package); `bash` for hook script runtime. Services: Claude Code (SaaS/local CLI, native hook support), GitHub Actions (SaaS, hooks are local-only and cannot trigger remote CI directly), tmux (OSS, hooks can interact with tmux sessions).</p>
+    </section>
+    <templates>
+      <template path="templates/settings-hooks.json" purpose="Complete settings.json with PostToolUse/PreToolUse/UserPromptSubmit/SubagentStart hooks"/>
+      <template path="templates/post-edit-format.sh" purpose="Auto-format hook: Python (ruff), JS/TS (prettier), Go (gofmt), Rust (rustfmt)"/>
+      <template path="templates/pre-bash-safety.sh" purpose="Safety guard: blocks force-push to main, git clean -f, rm -rf /, shutdown"/>
+      <template path="templates/tmux-save.sh" purpose="Captures tmux pane content on prompt submit and subagent start"/>
+    </templates>
+    <section name="Best Practices">
+      <list>
+        <item>Always read stdin fully with `INPUT=$(cat)` even if the hook doesn't use event data — unread stdin can cause pipe errors</item>
+        <item>Return `{"status":"ok"}` or `{"action":"allow"}` explicitly rather than producing no output — silent hooks are harder to debug</item>
+        <item>Log errors to a dedicated file (`/tmp/claude-hooks.log`) rather than stderr — stderr output appears in Claude's context as noise</item>
+        <item>Set timeouts explicitly for any hook that calls external tools: `"timeout": 10000` (10 seconds) prevents hanging sessions</item>
+        <item>Use matchers to scope hooks narrowly — a PostToolUse hook without a matcher runs on every tool call including Read and Glob</item>
+        <item>Test every hook by piping a realistic event payload before adding it to settings.json</item>
+        <item>Store hook scripts in a dotfiles repo and symlink to `~/.claude/hooks/` for version control and portability</item>
+      </list>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <list>
+        <item>Agents writing hook scripts must include `INPUT=$(cat)` as the first command — hooks that ignore stdin will block waiting for EOF in some environments</item>
+        <item>A hook that returns invalid JSON (e.g., a trailing newline with text) causes Claude Code to surface an error in the conversation; agents must validate JSON output before writing hook scripts</item>
+        <item>`PreToolUse` hooks with `"action":"block"` prevent the tool from running but do NOT tell Claude why without the `reason` field — always include `reason` to avoid Claude retrying indefinitely</item>
+        <item>Agents that modify settings.json directly may corrupt the file if they append without validating existing JSON structure — use the `update-config` skill which merges safely</item>
+        <item>Hook execution order within an event is deterministic (array order) but agents often generate hooks without considering ordering dependencies — linters must run after formatters, not before</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/hooks"/>
+      <link href="https://jqlang.github.io/jq/manual/"/>
+      <link href="https://docs.astral.sh/ruff/"/>
+      <link href="https://prettier.io/docs/en/"/>
+    </see-also>
+  </content>
+</methodology>
