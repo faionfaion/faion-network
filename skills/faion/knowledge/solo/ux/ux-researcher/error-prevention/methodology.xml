@@ -4,7 +4,7 @@
     <tier>solo</tier>
     <group>ux</group>
     <domain>ux-researcher</domain>
-    <summary>Apply six prevention strategies in order of preference — constraints, suggestions, defaults, confirmation, real-time validation, and affordances. Eliminate error-prone conditions before they occur instead of recovering afterward.</summary>
+    <summary>Design to eliminate error-prone conditions before they occur. Apply six prevention strategies in order of preference: constraints, defaults, suggestions, inline validation, confirmation, and affordances. Prevention is always cheaper than recovery.</summary>
     <category>error-handling</category>
     <difficulty>intermediate</difficulty>
     <created>2026-04-28</created>
@@ -23,7 +23,7 @@
     <summary>Design to eliminate error-prone conditions before they occur. Apply six strategies in order of preference — constraints, suggestions, defaults, confirmation, real-time validation, and affordances. Use confirmation dialogs only for irreversible or high-consequence actions; avoid them for routine or easily reversible ones. Prevention is always cheaper than recovery: the user wastes less effort, support costs are lower, and data quality is better.</summary>
 
     <why>
-      <p>Error recovery is always more expensive than prevention: the user wastes effort, support costs rise, and data quality degrades. Prevention strategies — particularly input constraints and inline validation — interrupt errors at the point of entry rather than after form submission, reducing abandonment and the cognitive load of parsing a list of errors at the end of a long form.</p>
+      <p>Error recovery is always more expensive than prevention: the user wastes effort, support costs rise, and data quality degrades. Prevention strategies — particularly input constraints and inline validation — interrupt errors at the point of entry rather than after form submission, reducing abandonment and the cognitive load of parsing a list of errors at the end of a long form. Recovery forces humans to summarize errors and parse them; AI agents can handle structured error lists, but users cannot.</p>
     </why>
 
     <when-to-use>
@@ -32,6 +32,10 @@
         <item>When form abandonment or submission error rates are high in analytics.</item>
         <item>When reviewing any destructive action (delete, cancel subscription, bulk operation) for whether it needs a confirmation step.</item>
         <item>When validating that input fields constrain or guide input to valid values only.</item>
+        <item>When analytics or support data shows a high rate of form submission failures or abandonment.</item>
+        <item>Before launching a flow that involves irreversible actions (delete, cancel subscription, bulk operations).</item>
+        <item>When auditing an existing product for heuristic compliance (Nielsen Heuristic #5).</item>
+        <item>When input data quality downstream is poor (corrupted records, broken emails, invalid dates) — trace back to missing front-end constraints.</item>
       </list>
     </when-to-use>
 
@@ -39,27 +43,30 @@
       <list>
         <item>Do not add confirmation dialogs to routine or easily reversible actions — over-confirming trains users to dismiss dialogs without reading, defeating the purpose.</item>
         <item>Do not apply real-time validation to every field indiscriminately — aggressive inline errors before the user has finished typing increase frustration; validate on blur for most fields, on keypress only for password strength indicators.</item>
+        <item>Do not use error prevention as a substitute for error recovery design — prevention reduces errors but cannot eliminate them; both heuristics (#5 and #9) must be addressed.</item>
+        <item>Do not apply prevention patterns to read-only interfaces with no user input — prevention patterns are irrelevant without user input.</item>
+        <item>Do not make confirmation dialogs the default response to every action — overuse trains users to dismiss without reading.</item>
       </list>
     </when-not-to-use>
 
     <section name="the-heuristic">
       <rule>
         <statement>Apply Nielsen Heuristic #5: eliminate error-prone conditions or present a confirmation option before users commit to a consequential action.</statement>
-        <rationale>Recovery is always more expensive than prevention — it costs user effort, time, and trust. Prevention eliminates the error path entirely; recovery only mitigates its impact.</rationale>
+        <rationale>Recovery is always more expensive than prevention — it costs user effort, time, and trust. Prevention eliminates the error path entirely; recovery only mitigates its impact. An error prevented costs nothing. An error recovered from costs user effort, support escalation, and risk of data loss or corruption.</rationale>
       </rule>
     </section>
 
     <section name="error-type-classification">
       <rule>
         <statement>Distinguish slips (right intention, wrong action) from mistakes (wrong intention) — they require different prevention strategies.</statement>
-        <rationale>Slips are prevented by constraints and confirmation; mistakes are prevented by providing better information and guidance. Applying confirmation dialogs to slip-prone actions without addressing the underlying ambiguity only slows users down.</rationale>
+        <rationale>Slips are prevented by constraints and confirmation; mistakes are prevented by providing better information and guidance. Applying confirmation dialogs to slip-prone actions without addressing the underlying ambiguity only slows users down without preventing the error.</rationale>
       </rule>
     </section>
 
     <section name="strategy-1-constraints">
       <rule>
         <statement>Constrain input to valid values only — use pickers, dropdowns, and bounded fields instead of free-text fields wherever the valid value set is finite.</statement>
-        <rationale>A constrained input cannot produce an invalid value; a free-text field always can. Constraints eliminate the error before it is possible to make it.</rationale>
+        <rationale>A constrained input cannot produce an invalid value; a free-text field always can. Constraints eliminate the error before it is possible to make it. This is the most powerful prevention strategy because it makes certain errors impossible by design.</rationale>
       </rule>
       <example type="good">
         <note>Date: use a date picker that only allows valid dates, not a text field where users type dates. Quantity: min 1, max 99 with +/- buttons, not a free numeric field. Country: dropdown of countries, not "enter country name".</note>
@@ -69,41 +76,41 @@
     <section name="strategy-2-smart-defaults">
       <rule>
         <statement>Pre-populate fields with the most likely correct value whenever context (location, history, profile) makes it determinable.</statement>
-        <rationale>Smart defaults reduce the number of fields users must fill in and simultaneously prevent errors on those fields by providing a correct starting value that requires no change for the majority of users.</rationale>
+        <rationale>Smart defaults reduce the number of fields users must fill in and simultaneously prevent errors on those fields by providing a correct starting value that requires no change for the majority of users. Defaults also reduce cognitive load by eliminating one more decision the user must make.</rationale>
       </rule>
       <example type="good">
-        <note>Detect user location and pre-fill country. Pre-fill today's date for current events. Remember previous selections from the user's history.</note>
+        <note>Detect user location and pre-fill country. Pre-fill today's date for current events. Remember previous selections from the user's history. Pre-populate known email addresses in email fields when the user is logged in.</note>
       </example>
     </section>
 
     <section name="strategy-3-inline-validation">
       <rule>
         <statement>Validate on blur for most fields; validate on keypress only for password strength and character counters. Never validate on keypress for format errors — wait until the user has finished typing.</statement>
-        <rationale>Validating format errors on every keystroke (showing "invalid email" when the user has typed "us") creates false error states that frustrate before any error has actually been made.</rationale>
+        <rationale>Validating format errors on every keystroke (showing "invalid email" when the user has typed "us") creates false error states that frustrate before any error has actually been made. Blur validation catches errors only after the user has finished entering data in that field, preventing false positives during composition.</rationale>
       </rule>
       <example type="good">
-        <note>Password field: show requirements checklist, check each as user types (8+ characters, one uppercase, one number). Email field: validate format on blur — not while typing.</note>
+        <note>Password field: show requirements checklist, check each as user types (8+ characters, one uppercase, one number). Email field: validate format on blur — not while typing. Postal code field: validate format and existence on blur; show specific message if the code is invalid or not found in the database.</note>
       </example>
     </section>
 
     <section name="strategy-4-confirmation-dialogs">
       <rule>
         <statement>Use confirmation dialogs only for irreversible actions with significant consequences. Do not use them for routine, frequent, or easily reversible operations.</statement>
-        <rationale>Overuse of confirmations trains users to dismiss them without reading. This is worse than no confirmation — users click through the dialog reflexively and still trigger the unwanted action.</rationale>
+        <rationale>Overuse of confirmations trains users to dismiss them without reading. This is worse than no confirmation — users click through the dialog reflexively and still trigger the unwanted action. Experienced users habituate to clicking "OK" on everything; they lose protective value.</rationale>
       </rule>
       <list>
         <item>Use: permanent delete, cancel subscription, bulk destructive operations.</item>
         <item>Do not use: save file, move to trash, log out, send message with undo available.</item>
       </list>
       <example type="good">
-        <note>Good confirmation: "Delete 47 items permanently? This action cannot be undone. All selected files will be permanently removed." Buttons: [Cancel] [Delete 47 Items]. The button label repeats the count — users see the magnitude of what they are confirming.</note>
+        <note>Good confirmation: "Delete 47 items permanently? This action cannot be undone. All selected files will be permanently removed." Buttons: [Cancel] [Delete 47 Items]. The button label repeats the count — users see the magnitude of what they are confirming. The message is specific and actionable, not generic "Are you sure?"</note>
       </example>
     </section>
 
     <section name="strategy-5-format-guidance">
       <rule>
         <statement>Show expected format inside or below the field before the user starts typing; auto-format as the user types for structured data like phone numbers and credit cards.</statement>
-        <rationale>Users should not have to guess the format. Format shown after an error is too late — it should be visible before input begins.</rationale>
+        <rationale>Users should not have to guess the format. Format shown after an error is too late — it should be visible before input begins. Placeholder text inside the field disappears when the user starts typing; put format guidance below the field where it remains visible during data entry.</rationale>
       </rule>
     </section>
 
@@ -112,6 +119,37 @@
       <p>Numeric: numeric keyboard on mobile, min/max constraints, increment buttons, format guidance for currency.</p>
       <p>Date: date picker (never text input), disable invalid dates, clear format display, relative dates (Today, Tomorrow).</p>
       <p>Selection: default selection when appropriate, logical ordering, search for lists over 10 items.</p>
+    </section>
+
+    <section name="agent-workflow">
+      <p>A Claude subagent can audit form specifications or HTML source code to identify missing error prevention patterns: fields without type constraints, text inputs where structured pickers should be used, absence of real-time validation, and destructive actions without confirmation. Given a list of actions in a product and their consequences, the agent can also classify which require confirmation dialogs and suggest appropriate dialog copy. Implementation of specific validation logic is mechanical and can be delegated to a code-generation agent.</p>
+      <p>When designing any form with more than 3 fields, review every field for constraint, default, and validation opportunities. When analytics or support data shows a high rate of form submission failures or abandonment, apply prevention strategies. Before launching a flow that involves irreversible actions (delete, cancel subscription, bulk operations), confirm prevention is in place. When auditing an existing product for heuristic compliance (Nielsen Heuristic #5), use the structured audit process. When input data quality downstream is poor (corrupted records, broken emails, invalid dates), trace back to missing front-end constraints.</p>
+      <p>Do not use error prevention as a substitute for error recovery design — prevention reduces errors but cannot eliminate them; both heuristics (#5 and #9) must be addressed. Prevention patterns are irrelevant for read-only interfaces with no user input. Confirmation dialogs should not be the default response to every action; overuse trains users to dismiss without reading.</p>
+    </section>
+
+    <section name="limitations">
+      <p>Inline validation with aggressive feedback (triggering on every keystroke) creates anxiety and interrupts the user before they finish typing; timing matters. Smart defaults derived from location or profile data may be wrong for edge cases (VPN users, shared devices, corporate accounts) and cannot be treated as ground truth. Dropdown constraints prevent invalid input but also prevent valid inputs not on the list — internationalization of phone numbers, addresses, and names breaks many constraint assumptions. Confirmation dialogs are frequently bypassed by experienced users who have habituated to clicking "OK" on everything; they protect against slips, not deliberate mistakes. Pattern matching for validation (email, phone, URL) via regex is notoriously imperfect; validating existence (DNS lookup for email, API call for address) is more reliable but adds latency.</p>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Apply validation on blur (when the field loses focus), not on every keystroke — keystroke validation for email or password triggers errors before the user has finished typing.</item>
+        <item>Show format examples inside the field (placeholder or hint text) before the user starts typing; do not wait for an error to explain the expected format.</item>
+        <item>When using dropdowns to constrain input, ensure the list is complete enough to not frustrate valid edge cases (e.g., include all 249 ISO countries, not just the 20 most common).</item>
+        <item>Log validation errors server-side (which fields fail, how often) — this is the fastest way to identify which prevention measures are missing or broken in production.</item>
+        <item>Never disable the submit button as the primary prevention strategy — it leaves users confused about what is wrong; use it only after a first failed submission attempt.</item>
+        <item>For destructive confirmation dialogs, make the confirm button label describe the action ("Delete 47 Items"), not just "OK" or "Confirm" — specificity reduces accidental confirmations.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents generating validation schemas tend to use overly strict regex for email and phone — prefer library validators (zod `.email()`, libphonenumber) over agent-written patterns.</item>
+        <item>When auditing existing forms, agents need the actual HTML or component code, not a description — descriptions omit the specific missing constraints that matter.</item>
+        <item>Agents often recommend confirmation dialogs for too many actions; explicitly tell the agent to reserve dialogs for irreversible actions with significant consequences only.</item>
+        <item>Smart default recommendations from agents are theoretical — implementation requires access to user context (geolocation, profile data) that the agent does not have; flag these as "requires runtime data".</item>
+        <item>Inline validation timing is a UX decision that agents cannot make correctly without knowing the form's interaction pattern; always review timing recommendations with a UX designer.</item>
+      </list>
     </section>
 
     <templates>
@@ -124,6 +162,7 @@
       <link href="https://formsthatwork.com/"/>
       <link href="https://zod.dev"/>
       <link href="https://react-hook-form.com"/>
+      <link href="https://www.npmjs.com/package/libphonenumber-js"/>
       <ref slug="error-recovery"/>
       <ref slug="heuristic-evaluation"/>
     </see-also>

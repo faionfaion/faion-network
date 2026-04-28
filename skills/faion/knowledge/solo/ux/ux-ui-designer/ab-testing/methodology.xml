@@ -142,13 +142,64 @@
       </rule>
     </section>
 
+    <section name="agentic-workflow">
+      <p>A Claude subagent takes a design change description, baseline metric, and desired improvement threshold and outputs a complete A/B Test Plan document (hypothesis, metrics, guardrails, sample size, duration estimate, risk flags). After the test runs, a second agent pass receives the results table and returns a structured analysis: statistical significance assessment, segment breakdown, guardrail check, and a clear ship/hold/extend recommendation.</p>
+    </section>
+
+    <section name="recommended-subagents">
+      <list>
+        <item>faion-sdd-executor-agent — produce the test plan as a structured SDD artifact.</item>
+        <item>General Claude subagent with analyst role — analyze results CSV and produce the decision report.</item>
+      </list>
+    </section>
+
+    <section name="prompt-pattern">
+      <p>You are a CRO analyst. Given: Change: [describe variant vs. control]; Primary metric: [metric name, current baseline %]; Minimum detectable effect: [%]; Statistical power: 80%, significance level: 95%. Output: 1. Hypothesis statement (If/Then/Because format); 2. Required sample size per variant (show calculation); 3. Estimated test duration at [N] daily visitors; 4. Three guardrail metrics to monitor; 5. Risks and confounds to watch for.</p>
+      <p>You are a CRO analyst reviewing A/B test results. Input: [results table with control/variant metrics, confidence intervals, p-values, segment breakdown]. Output: 1. Was statistical significance reached? (yes/no, confidence level); 2. Practical significance: is the lift meaningful for the business?; 3. Segment analysis: does the effect hold across key segments?; 4. Guardrail metrics: did any worsen?; 5. Recommendation: Ship / Hold / Extend test — with rationale; 6. Key learning for future tests.</p>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>scipy (Python): Statistical significance calculations, t-tests, chi-squared. pip install scipy. https://docs.scipy.org/doc/scipy/reference/stats.html</item>
+        <item>statsmodels (Python): Sample size calculation (statsmodels.stats.power). pip install statsmodels. https://www.statsmodels.org</item>
+        <item>R (base stats): Full frequentist and Bayesian A/B analysis. R -e "prop.test(c(conv_a, conv_b), c(n_a, n_b))"</item>
+        <item>abba (Node.js): CLI A/B test significance calculator. npm install -g abba. https://github.com/thumbtack/abba</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>Optimizely (SaaS): Results, experiments, and audiences accessible via REST; agent can pull result data programmatically. Yes (REST API).</item>
+        <item>VWO (SaaS): Similar to Optimizely; report export via API. Yes (REST API).</item>
+        <item>Google Analytics 4 (SaaS): A/B test results via GA4 experiments exported through Data API. Yes (Data API).</item>
+        <item>PostHog (OSS/SaaS): Open-source experimentation with full API access; self-hostable. Yes (REST API).</item>
+        <item>GrowthBook (OSS/SaaS): Open-source A/B testing platform; agent-friendly REST API for feature flags and results. Yes (REST API).</item>
+        <item>Statsig (SaaS): Experimentation platform with Bayesian and frequentist modes; REST API for results. Yes (REST API).</item>
+        <item>Evan Miller's Sample Size Calculator: Reference for manual calculations; use scipy/statsmodels for programmatic equivalent. No API.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always pre-register the hypothesis, primary metric, and minimum sample size before launching — prevents peeking and moving goalposts.</item>
+        <item>Run tests for full business cycles (minimum 2 weeks) to capture weekday/weekend variation.</item>
+        <item>Test one thing at a time in the variant; multiple simultaneous changes make attribution impossible.</item>
+        <item>Compute segment results only for pre-specified segments — post-hoc segment fishing inflates false-positive risk.</item>
+        <item>When there is no clear winner, default to keeping the control — simpler is better, and a null result is still a valid learning.</item>
+        <item>Document every test result, including null results, in a shared experiment log — prevents re-running the same tests.</item>
+      </list>
+    </section>
+
     <section name="limitations-and-gotchas">
       <list>
         <item>Agent cannot run the test — it can only plan, analyze data provided to it, and report.</item>
         <item>Sample size calculations are sensitive to baseline conversion rate; agent output is only as accurate as the baseline you provide.</item>
-        <item>Agent analysis of segment data without statistical significance per segment leads to false conclusions.</item>
+        <item>Agent analysis of segment data without statistical significance per segment leads to false conclusions (multiple comparisons problem).</item>
         <item>Novelty effect: agent cannot detect whether an uplift is short-term curiosity or durable improvement — human judgment on test duration is required.</item>
         <item>Agent has no access to your testing platform (Optimizely, VWO, GA4 experiments) without manual data export.</item>
+        <item>Agent cannot detect test contamination (users switching between control and variant devices) in the data — flag this risk in the test plan.</item>
+        <item>Agent significance analysis using just "p &lt; 0.05" is fragile; require agent to also assess practical significance (effect size in business terms) and confidence intervals.</item>
+        <item>Sequential testing (peeking) invalidates standard p-values; if results are checked mid-test, agent should note this caveat explicitly.</item>
       </list>
     </section>
 
