@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="decomposition-laravel">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>LLM-friendly code organization for Laravel using the Action + DTO + Form Request + Resource + Policy pattern. One Action = one verb; DTOs derive from Form Requests; controllers stay under 80 lines.</summary>
+    <tags>
+      <tag>laravel</tag>
+      <tag>php</tag>
+      <tag>decomposition</tag>
+      <tag>action-pattern</tag>
+      <tag>dto</tag>
+    </tags>
+    <category>decomposition</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Laravel Decomposition Patterns</title>
+
+    <summary>LLM-friendly code organization for Laravel using the Action + DTO + Form Request + Resource + Policy pattern. One Action = one verb; DTOs derive from Form Requests; controllers stay under 80 lines. Requires PHP 8.1+ for readonly constructor promotion. File size budgets (Controller ≤150, Action ≤100, DTO ≤40 lines) are enforced by the structural lint script.</summary>
+
+    <why>
+      <p>Fat controllers (500+ lines) cause merge collisions when multiple agents edit the same file and make it impossible for LLMs to reason about boundaries. Small, single-purpose Action classes map 1:1 to SDD tasks and are independently testable. DTO `fromRequest()` decouples the Action from HTTP so it can be reused from queue jobs and console commands.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield Laravel project where LLM agents must extend the codebase without re-reading 500-line controllers.</item>
+        <item>Refactoring legacy "fat controller / fat model" apps before letting agents touch them.</item>
+        <item>Multi-developer or multi-agent parallel work where separate feature Actions avoid merge collisions.</item>
+        <item>SDD-driven projects: one task = one Action class.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tiny CRUD admin tools (&lt;20 endpoints) — Action/DTO ceremony costs more than the readability gain.</item>
+        <item>Prototype phase where the domain is unstable — locking shapes into DTOs slows discovery.</item>
+        <item>Teams without PHP 8.1+ — readonly constructor promotion is load-bearing for the DTO pattern.</item>
+        <item>Codebases already using a consistent pattern (e.g., pure Service-class style) — mixing styles is worse than picking one.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="action-dto-pattern">
+      <p>Single-purpose Action classes with DB::transaction, and readonly DTO with fromRequest factory method.</p>
+
+      <rule>
+        <statement>One Action = one verb (CreateUserAction, not UserAction::create). Actions must return a domain entity or result object — never void.</statement>
+        <rationale>Named-verb actions map 1:1 to SDD tasks and are independently testable. Returning void prevents downstream composition by queue jobs or console commands.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Wrap multi-write Actions in DB::transaction(); Eloquent does not auto-run transactions across create + relation-attach chains.</statement>
+        <rationale>A failed notification or role assignment after a successful user create leaves orphaned state without rollback.</rationale>
+      </rule>
+
+      <example type="good" title="Action with DB::transaction">
+        <code lang="php"><![CDATA[
+// app/Actions/User/CreateUserAction.php (~50 lines)
+namespace App\Actions\User;
+
+use App\DTOs\User\CreateUserDTO;
+use App\Models\User;
+use App\Notifications\WelcomeNotification;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+
+class CreateUserAction
+{
+    public function execute(CreateUserDTO $dto): User
+    {
+        return DB::transaction(function () use ($dto) {
+            $user = User::create([
+                'name'     => $dto->name,
+                'email'    => $dto->email,
+                'password' => Hash::make($dto->password),
+            ]);
+            $user->notify(new WelcomeNotification());
+            return $user;
+        });
+    }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="DTO with fromRequest factory">
+        <code lang="php"><![CDATA[
+// app/DTOs/User/CreateUserDTO.php (~25 lines)
+namespace App\DTOs\User;
+
+use App\Http\Requests\CreateUserRequest;
+
+class CreateUserDTO
+{
+    public function __construct(
+        public readonly string $name,
+        public readonly string $email,
+        public readonly string $password,
+    ) {}
+
+    public static function fromRequest(CreateUserRequest $request): self
+    {
+        return new self(
+            name:     $request->validated('name'),
+            email:    $request->validated('email'),
+            password: $request->validated('password'),
+        );
+    }
+}
+]]></code>
+        <note>DTO fromRequest() is the single point of truth. Never reach into $request->input() inside an Action — it couples the Action to HTTP.</note>
+      </example>
+
+      <antipattern>
+        <description>Action calling another Action inline in the same request transaction.</description>
+        <reason>Multi-Action orchestration belongs in a Service class. Actions calling Actions span unclear transaction boundaries and become untestable in isolation.</reason>
+      </antipattern>
+    </section>
+
+    <section name="controller-pattern">
+      <p>Controller delegating to Action classes via DI, with authorize() at the controller boundary and Resource wrapping for responses.</p>
+
+      <rule>
+        <statement>Controllers must stay under 80 lines and handle only HTTP routing, authorization, and Resource wrapping; all domain logic lives in Actions.</statement>
+        <rationale>Thin controllers prevent merge collisions when multiple agents work in parallel on the same domain. Reducing the controller to HTTP plumbing makes it stable and rarely-changed.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Authorize at the controller boundary; never inside an Action. Actions assume authorization already passed.</statement>
+        <rationale>Placing authorization in Actions duplicates it in every caller (HTTP, console, queue). Policy checks belong at the HTTP boundary where the actor is known.</rationale>
+      </rule>
+
+      <example type="good" title="Thin controller using Actions">
+        <code lang="php"><![CDATA[
+// app/Http/Controllers/Api/UserController.php (~70 lines)
+namespace App\Http\Controllers\Api;
+
+use App\Actions\User\CreateUserAction;
+use App\Actions\User\UpdateUserAction;
+use App\DTOs\User\CreateUserDTO;
+use App\DTOs\User\UpdateUserDTO;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\CreateUserRequest;
+use App\Http\Requests\UpdateUserRequest;
+use App\Http\Resources\UserResource;
+use App\Models\User;
+
+class UserController extends Controller
+{
+    public function index()
+    {
+        $users = User::query()
+            ->when(request('search'), fn ($q, $search) =>
+                $q->where('name', 'like', "%{$search}%"))
+            ->paginate();
+        return UserResource::collection($users);
+    }
+
+    public function store(CreateUserRequest $request, CreateUserAction $action)
+    {
+        $user = $action->execute(CreateUserDTO::fromRequest($request));
+        return new UserResource($user);
+    }
+
+    public function show(User $user)
+    {
+        $this->authorize('view', $user);
+        return new UserResource($user);
+    }
+
+    public function update(UpdateUserRequest $request, User $user, UpdateUserAction $action)
+    {
+        $this->authorize('update', $user);
+        $user = $action->execute($user, UpdateUserDTO::fromRequest($request));
+        return new UserResource($user);
+    }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="file-size-guidelines-and-gotchas">
+      <p>Enforced size budgets per Laravel file type and common LLM mistakes that collapse the decomposition pattern.</p>
+
+      <rule>
+        <statement>File size budgets: Model target 50–80 lines max 150; Action target 40–60 lines max 100; Service target 80–100 lines max 200; Controller target 60–80 lines max 150; Form Request target 30–40 lines max 80; Resource target 30–50 lines max 100; DTO target 20–30 lines max 40.</statement>
+        <rationale>Size budgets make files independently reasonably by agents. Controllers and Actions exceeding their budgets indicate missing decomposition. Enforcement via structural lint prevents regression.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Pattern collapse: agent adds business logic directly to the controller when asked to "just add an endpoint quickly".</description>
+        <reason>Lock the convention in CONTRIBUTING.md and reference it in every system prompt. Without enforcement, agents regress to fat controllers within one sprint.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>DTO drift: same field added to CreateUserDTO and User::$fillable with different names (first_name vs firstName).</description>
+        <reason>Enforce snake_case in DB, camelCase only in DTOs with an explicit mapper layer. Two agents writing parallel fields cause silent data loss.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Resource leaks fields via $this-&gt;all() or spread operators.</description>
+        <reason>Always explicit field lists in Resources; all() exposes password_hash, remember_token, soft-delete columns.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Action executing void — def execute(): void.</description>
+        <reason>Downstream queue jobs and console commands cannot compose void Actions. Always return the canonical entity or result object.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents invent new layers: "Manager", "Coordinator", "Handler" without an ADR.</description>
+        <reason>Whitelist allowed namespaces (Actions, Services, Repositories, DTOs, Policies) and block PRs introducing new ones.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Treat each feature as a tree: Controller → Action(s) → DTO + Service/Repo + Resource + Policy + Test. Drive with: (1) a planner subagent emits the file list and intended sizes (per the size table); (2) a code-writer subagent generates files in dependency order (DTO → Action → Controller → Resource); (3) a test subagent writes one Pest test per Action; (4) a structural-lint subagent fails the PR if any controller exceeds 150 lines or any Action exceeds 100. Persist the convention in CONTRIBUTING.md and load it as system prompt context for every agent run.</p>
+
+      <rule>
+        <statement>One Action = one verb. CreateUserAction, not UserAction::create(). Names map cleanly to SDD tasks.</statement>
+        <rationale>Explicit verb naming makes intent clear and prevents god-object Actions that do multiple unrelated operations.</rationale>
+      </rule>
+
+      <rule>
+        <statement>DTO `fromRequest` is the single source of truth. Never reach into `$request->input()` from inside an Action — it couples the Action to HTTP.</statement>
+        <rationale>Actions must be reusable from queue jobs and console commands. Only the DTO knows how to transform HTTP input into domain objects.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Resources never call relations. `$this->relation` inside a Resource is an N+1 trigger; eager-load in the Action and assert presence with `whenLoaded`.</statement>
+        <rationale>Resources are serialization boundaries. Eager-loading must happen at the query level, in the Action, before the Resource wrapper is instantiated.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Action returns a domain object. Not an array, not a Resource. The Controller wraps in a Resource; the Action is reusable from queue jobs and console commands.</statement>
+        <rationale>Returning the raw entity allows composition and testing without HTTP context.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use Form Request for validation, DTO for transport. Don't validate inside the DTO — Form Requests integrate with Laravel's auth and locale.</statement>
+        <rationale>Form Request is the HTTP boundary; DTO is the domain boundary. Separating concerns keeps both testable.</rationale>
+      </rule>
+
+      <rule>
+        <statement>No Actions calling Actions in the same request. That's a Service. Multi-Action orchestrations live one layer up; otherwise transactions span unclear boundaries.</statement>
+        <rationale>Composing Actions risks nested transactions and unclear atomicity boundaries. Services orchestrate multiple Actions with explicit transaction control.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Keep Policies in `app/Policies/`, not in Actions. Authorize at the Controller boundary. Actions assume authorization already passed.</statement>
+        <rationale>Authorization is a HTTP concern. Actions can run from queue jobs where authorization doesn't apply. The controller is the right place to check.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Tag each generated file with the spec ID (e.g., `// @sdd FEAT-007`). Lets agents trace files back to specs during refactor.</statement>
+        <rationale>Traceability helps future agents understand why a file exists and what feature it belongs to.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Lint-as-you-go. Run Pint + Larastan + the structural lint in the same pre-commit so the next agent inherits a clean tree.</statement>
+        <rationale>Proactive enforcement prevents technical debt accumulation and keeps files predictable in size and style.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas-and-limitations">
+      <p>Common failure modes when agents adopt the decomposition pattern.</p>
+
+      <antipattern>
+        <description>Pattern collapse under deadline pressure. When asked to "just add an endpoint quickly," agents skip the Action layer and put logic in the controller.</description>
+        <reason>Lock the convention in CONTRIBUTING.md and reference it in every system prompt.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>DTO drift. Two agents add the same field to CreateUserDTO and User::$fillable with different names (first_name vs firstName).</description>
+        <reason>Enforce snake_case in DB, camelCase in DTOs only if you have a mapper layer.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Resource leaks soft-deleted/hidden fields. Agent generates Resource with $this->all() instead of explicit field list.</description>
+        <reason>Never use all(), toArray(), or spread operators in Resources.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Action doing two things. "CreateUserAction" also sends an email and assigns a role.</description>
+        <reason>Acceptable if wrapped in a transaction with intent; not acceptable if email failure rolls back the user. Force agents to declare side-effects in the docblock.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Test-per-Action explosion ignored. Agents skip tests for Actions assuming the Controller test covers them.</description>
+        <reason>The Controller test does NOT cover Action edge-cases. Require `actions/*/*.php` ↔ `tests/Feature/Actions/*/*.php` parity.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Form Request bypass. Agents call Action directly from a console command without re-validating; invariants the Form Request enforced are now skipped.</description>
+        <reason>Move invariant checks into the Action's first 3 lines.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents invent new layers. "Manager", "Coordinator", "Handler" classes appear after a refactor.</description>
+        <reason>Whitelist allowed namespaces (Actions, Services, Repositories, DTOs, Policies) and block PRs introducing new ones without an ADR.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Decomposition without DI. Agents `new CreateUserAction()` inside the controller.</description>
+        <reason>Use constructor injection so tests can mock; otherwise the pattern's testability gain evaporates.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Repository confusion. Pattern includes a Repository layer optionally; agents add it everywhere "for consistency".</description>
+        <reason>Either adopt repos for all aggregates or for none — partial adoption is the worst case.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Action returns void. Agents emit `public function execute(): void` and mutate state; downstream agents can't compose.</description>
+        <reason>Always return the canonical entity or a result object.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/decomp-lint.sh" purpose="Structural lint: fail CI if any Controller/Model/Action/Service/DTO exceeds its size budget."/>
+    </templates>
+
+    <see-also>
+      <link href="https://laravelactions.com"/>
+      <link href="https://spatie.be/docs/laravel-data"/>
+      <link href="https://freek.dev/2218"/>
+      <link href="https://stitcher.io/blog"/>
+      <link href="https://laravel.com/docs/eloquent-resources"/>
+      <link href="https://laravel.com/docs/validation#form-request-validation"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,458 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="csharp-dotnet-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>Clean Architecture + CQRS for .NET 8/9 enforces Domain → Application → Infrastructure → API layering with MediatR, Entity Framework, and NetArchTest validation.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>clean-architecture</tag>
+      <tag>cqrs</tag>
+      <tag>dotnet</tag>
+      <tag>entity-framework</tag>
+      <tag>ddd</tag>
+    </tags>
+    <languages>
+      <language>csharp</language>
+    </languages>
+    <frameworks>
+      <framework>aspnet-core</framework>
+    </frameworks>
+  </metadata>
+  <content>
+    <title>C# .NET Clean Architecture + CQRS Patterns</title>
+    <summary>Clean Architecture for .NET 8/9 with MediatR/CQRS: Domain (entities, value objects, domain events) → Application (Commands, Queries, Handlers, Validators) → Infrastructure (EF Core, configurations) → API (controllers or Minimal API, composition root only). One Command/Query per folder. Domain behavior in entity methods, not Application handlers. Architecture fitness enforced by NetArchTest in CI.</summary>
+    <why>
+      <p>Without layer enforcement, agents add EF Core imports to the Application layer within weeks. CQRS (MediatR) separates reads and writes cleanly, but only delivers value when Domain entities hold real behavior — otherwise you get an anemic layered monolith with extra indirection. NetArchTest catches layer violations at compile time, which agents would otherwise silently introduce.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>.NET 8/9 service with non-trivial domain (3+ aggregate roots, multiple bounded contexts, business rules beyond CRUD).</item>
+        <item>Multi-team enterprise codebase where Application/Domain/Infrastructure separation enables parallel work.</item>
+        <item>Microservices with event-driven integration — domain events + MediatR Notification pattern for cross-aggregate hand-offs.</item>
+        <item>Apps targeting native AOT / containerized deploys where layering trims Infrastructure dependencies.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Simple CRUD apps (&lt;20 endpoints, no business rules) — four projects are pure overhead.</item>
+        <item>Lambda/Functions with cold-start budget — DI graph + MediatR add 100-300ms startup; use Minimal API + direct DbContext.</item>
+        <item>Teams unfamiliar with DDD — pattern's value depends on rich domain models; without that, you have a layered anemic codebase.</item>
+        <item>Pure read-side services (reporting, dashboards) — CQRS is overkill; one project with SELECT queries is fine.</item>
+      </list>
+    </when-not-to-use>
+    <section name="domain-layer">
+      <p>BaseEntity with domain event collection, rich entity with static factory and behavior methods, and Value Object with factory validation.</p>
+      <rule>
+        <statement>Domain entity constructors must be private; expose behavior via static factory methods (User.Create(...)) that raise domain events. Never new-up entities outside their aggregate.</statement>
+        <rationale>Private constructors prevent agents from bypassing invariant checks. Static factories enforce all required fields and ensure domain events are raised consistently on creation.</rationale>
+      </rule>
+      <rule>
+        <statement>Value objects for every primitive concept (Email, Money, Slug); never pass raw strings across aggregate boundaries.</statement>
+        <rationale>Stringly-typed arguments let agents pass emails where URLs are expected. Value objects enforce format invariants at construction and make type mismatches a compile error.</rationale>
+      </rule>
+      <example type="good" title="BaseEntity and rich domain entity">
+        <code lang="csharp"><![CDATA[
+// Domain/Entities/BaseEntity.cs
+public abstract class BaseEntity
+{
+    public Guid Id { get; protected set; } = Guid.NewGuid();
+    public DateTime CreatedAt { get; protected set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; protected set; } = DateTime.UtcNow;
+
+    private readonly List<IDomainEvent> _domainEvents = new();
+    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+
+    public void AddDomainEvent(IDomainEvent e) => _domainEvents.Add(e);
+    public void ClearDomainEvents() => _domainEvents.Clear();
+}
+
+// Domain/Entities/User.cs
+public class User : BaseEntity
+{
+    public string Name { get; private set; } = string.Empty;
+    public Email Email { get; private set; } = null!;
+    public string PasswordHash { get; private set; } = string.Empty;
+    public UserRole Role { get; private set; }
+    public bool IsActive { get; private set; } = true;
+
+    private User() { } // For EF Core
+
+    public static User Create(string name, Email email, string passwordHash)
+    {
+        var user = new User { Name = name, Email = email, PasswordHash = passwordHash };
+        user.AddDomainEvent(new UserCreatedEvent(user.Id, email.Value));
+        return user;
+    }
+
+    public void Promote()
+    {
+        if (Role == UserRole.Admin)
+            throw new DomainException("User is already an admin");
+        Role = UserRole.Admin;
+        AddDomainEvent(new UserPromotedEvent(Id));
+    }
+
+    public void Deactivate()
+    {
+        IsActive = false;
+        AddDomainEvent(new UserDeactivatedEvent(Id));
+    }
+}
+
+// Domain/ValueObjects/Email.cs
+public sealed class Email : ValueObject
+{
+    public string Value { get; }
+    private Email(string value) => Value = value;
+
+    public static Email Create(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            throw new DomainException("Email cannot be empty");
+        if (!IsValidEmail(email))
+            throw new DomainException("Invalid email format");
+        return new Email(email.ToLowerInvariant());
+    }
+
+    protected override IEnumerable<object> GetEqualityComponents() { yield return Value; }
+    public static implicit operator string(Email e) => e.Value;
+}
+]]></code>
+      </example>
+    </section>
+    <section name="application-cqrs">
+      <p>MediatR Command + FluentValidation Validator + Handler, and read Query with AsNoTracking projection via AutoMapper ProjectTo.</p>
+      <rule>
+        <statement>One Command/Query per folder (Application/Users/Commands/CreateUser/{Command,Validator,Handler}). Agents read one folder per task without scrolling.</statement>
+        <rationale>Placing all Commands in one file forces agents to scan hundreds of lines to find the relevant handler. One folder per Command/Query keeps context bounded and enables parallel agent work without conflicts.</rationale>
+      </rule>
+      <rule>
+        <statement>CancellationToken on every async Handle signature; plumb from controller through handler to DbContext. Enforce via Roslynator rule MA0042.</statement>
+        <rationale>Without CancellationToken, client disconnects leave orphaned DB transactions and threads. Roslynator catches missing CT parameters in code review.</rationale>
+      </rule>
+      <example type="good" title="Command with validation and handler">
+        <code lang="csharp"><![CDATA[
+// Application/Users/Commands/CreateUser/CreateUserCommand.cs
+public record CreateUserCommand(string Name, string Email, string Password, Guid OrganizationId)
+    : IRequest<Guid>;
+
+public class CreateUserCommandValidator : AbstractValidator<CreateUserCommand>
+{
+    public CreateUserCommandValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().MinimumLength(2).MaximumLength(100);
+        RuleFor(x => x.Email).NotEmpty().EmailAddress();
+        RuleFor(x => x.Password).NotEmpty().MinimumLength(8);
+    }
+}
+
+public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Guid>
+{
+    private readonly IApplicationDbContext _context;
+    private readonly IPasswordHasher _hasher;
+
+    public CreateUserCommandHandler(IApplicationDbContext context, IPasswordHasher hasher)
+    {
+        _context = context;
+        _hasher = hasher;
+    }
+
+    public async Task<Guid> Handle(CreateUserCommand request, CancellationToken ct)
+    {
+        var email = Email.Create(request.Email);
+        if (await _context.Users.AnyAsync(u => u.Email == email, ct))
+            throw new ConflictException("Email already exists");
+
+        var user = User.Create(request.Name, email, _hasher.Hash(request.Password));
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync(ct);
+        return user.Id;
+    }
+}
+]]></code>
+      </example>
+      <example type="good" title="Query with AsNoTracking and projection">
+        <code lang="csharp"><![CDATA[
+// Application/Users/Queries/GetUsers/GetUsersQuery.cs
+public record GetUsersQuery(Guid OrgId, string? Search, int Page = 1, int PageSize = 20)
+    : IRequest<PaginatedList<UserDto>>;
+
+public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, PaginatedList<UserDto>>
+{
+    private readonly IApplicationDbContext _context;
+    private readonly IMapper _mapper;
+
+    public GetUsersQueryHandler(IApplicationDbContext context, IMapper mapper)
+    { _context = context; _mapper = mapper; }
+
+    public async Task<PaginatedList<UserDto>> Handle(GetUsersQuery request, CancellationToken ct)
+    {
+        var query = _context.Users
+            .AsNoTracking()
+            .Where(u => u.OrganizationId == request.OrgId && u.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var s = request.Search.ToLower();
+            query = query.Where(u => u.Name.ToLower().Contains(s) ||
+                                     u.Email.Value.ToLower().Contains(s));
+        }
+
+        return await query
+            .OrderByDescending(u => u.CreatedAt)
+            .ProjectTo<UserDto>(_mapper.ConfigurationProvider)
+            .PaginatedListAsync(request.Page, request.PageSize, ct);
+    }
+}
+]]></code>
+      </example>
+    </section>
+    <section name="infrastructure-api">
+      <p>EF Core DbContext dispatching domain events at SaveChanges, IEntityTypeConfiguration for value objects, and MediatR-backed API controller.</p>
+      <rule>
+        <statement>API project is the composition root only; it must not reference EntityFrameworkCore or Infrastructure types directly (composition root wiring in AddInfrastructure() extension only).</statement>
+        <rationale>Agents add EFCore imports to the API project for "convenience"; this couples the presentation layer to persistence and defeats the layering purpose.</rationale>
+      </rule>
+      <example type="good" title="DbContext with domain event dispatch and configuration">
+        <code lang="csharp"><![CDATA[
+// Infrastructure/Persistence/ApplicationDbContext.cs
+public class ApplicationDbContext : DbContext, IApplicationDbContext
+{
+    private readonly IMediator _mediator;
+
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IMediator mediator)
+        : base(options) { _mediator = mediator; }
+
+    public DbSet<User> Users => Set<User>();
+
+    protected override void OnModelCreating(ModelBuilder mb)
+    {
+        mb.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+        base.OnModelCreating(mb);
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
+    {
+        var entities = ChangeTracker.Entries<BaseEntity>()
+            .Where(e => e.Entity.DomainEvents.Any()).Select(e => e.Entity).ToList();
+        var events = entities.SelectMany(e => e.DomainEvents).ToList();
+        entities.ForEach(e => e.ClearDomainEvents());
+        foreach (var ev in events)
+            await _mediator.Publish(ev, ct);
+        return await base.SaveChangesAsync(ct);
+    }
+}
+
+// Infrastructure/Persistence/Configurations/UserConfiguration.cs
+public class UserConfiguration : IEntityTypeConfiguration<User>
+{
+    public void Configure(EntityTypeBuilder<User> b)
+    {
+        b.ToTable("Users");
+        b.Property(u => u.Name).HasMaxLength(100).IsRequired();
+        b.OwnsOne(u => u.Email, e =>
+        {
+            e.Property(x => x.Value).HasColumnName("Email").HasMaxLength(256).IsRequired();
+            e.HasIndex(x => x.Value).IsUnique();
+        });
+        b.Property(u => u.Role).HasConversion<string>().HasMaxLength(50);
+    }
+}
+]]></code>
+      </example>
+      <example type="good" title="API controller composition">
+        <code lang="csharp"><![CDATA[
+// Api/Controllers/UsersController.cs
+[ApiController]
+[Route("api/v1/[controller]")]
+[Authorize]
+public class UsersController : ControllerBase
+{
+    private readonly ISender _mediator;
+    public UsersController(ISender mediator) => _mediator = mediator;
+
+    [HttpPost]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
+    public async Task<IActionResult> CreateUser(
+        [FromBody] CreateUserRequest request, CancellationToken ct = default)
+    {
+        var command = new CreateUserCommand(request.Name, request.Email, request.Password,
+                                            User.GetOrganizationId());
+        var id = await _mediator.Send(command, ct);
+        return CreatedAtAction(nameof(GetUser), new { id }, id);
+    }
+}
+]]></code>
+      </example>
+    </section>
+    <section name="mandatory-rules">
+      <list>
+        <item>Architecture tests run in dotnet test — same gate as unit tests; do not relegate to a separate optional stage.</item>
+        <item>MediatR pipeline behaviors for cross-cutting concerns (validation, logging, transaction, caching) — never repeat per-handler.</item>
+        <item>required keyword + init on DTOs (.NET 7+); surfaces missing fields at compile time rather than runtime AutoMapper errors.</item>
+        <item>Migrations checked into Infrastructure project only — API project never references EF Core.</item>
+        <item>MediatR v12+ and AutoMapper v13+ are commercial products; verify SPDX license in CI before adding via dotnet add package.</item>
+      </list>
+    </section>
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Agent adds behavior to Application handler instead of Domain entity method.</description>
+        <reason>Business logic in handlers breaks the DDD invariant; entities become property bags and the architecture's value evaporates. Prompt agents to read Domain/Entities/ first.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent imports Microsoft.EntityFrameworkCore into the Application project.</description>
+        <reason>NetArchTest catches this; without it, agents drift within weeks and the layering benefit is lost.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Domain events raised at SaveChanges inside the same transaction as handlers that also write to DB.</description>
+        <reason>Handler exceptions roll back the outer transaction unexpectedly. Use the outbox pattern (MassTransit) for cross-aggregate events.</reason>
+      </antipattern>
+      <antipattern>
+        <description>MediatR overused: GET /health, simple lookups wrapped in Commands/Queries.</description>
+        <reason>Every MediatR dispatch pays handler resolution + pipeline behavior overhead. Reserve for use cases with cross-cutting needs (validation, auth, transactions).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Entity collection mutated outside aggregate: handler does user.Posts.Add(post) directly.</description>
+        <reason>Encapsulate collection mutation in aggregate methods (user.AddPost(post)); outside mutation bypasses invariants and domain events.</reason>
+      </antipattern>
+      <antipattern>
+        <description>IgnoreQueryFilters() used outside explicit admin tools.</description>
+        <reason>Multi-tenant global query filter bypassed silently; data from other tenants leaks. Lint to forbid this call outside designated admin repositories.</reason>
+      </antipattern>
+    </section>
+    <section name="agentic-workflow">
+      <p>Drive Clean Architecture work as: (1) a planner subagent reads Domain/Entities/ + existing aggregates and emits the target Command/Query list (name, request DTO, response DTO, validator, handler, integration events); (2) a code-writer subagent generates Domain entity changes + Application Command/Query/Handler/Validator + Infrastructure Configuration + xUnit tests in one pass per feature folder; (3) an architecture-test subagent runs NetArchTest to verify Domain has zero references to Application/Infrastructure/Api; (4) a build-and-test subagent runs dotnet build -warnaserror + dotnet test. Keep each Command/Query in its own folder (Application/Users/Commands/CreateUser/) so agents read one folder per task.</p>
+      <rule>
+        <statement>Recommended subagents: faion-backend-agent (implementer for entities, value objects, handlers); faion-sdd-executor-agent (one task per Command/Query; quality gate runs dotnet test + NetArchTest + Roslynator); arch-fitness-agent (runs NetArchTest assertions on every PR; outputs failing rule + fix proposal); domain-event-audit-agent (scans SaveChangesAsync overrides and asserts every domain event has a handler; flags orphan events); password-scrubber-agent (scrub appsettings.Development.json, secrets, and seed data before commit).</statement>
+        <rationale>Subagent decomposition keeps each task bounded and verifiable. Architecture fitness automation prevents drift within weeks.</rationale>
+      </rule>
+      <example type="good" title="Prompt pattern for adding a Command">
+        <code lang="text"><![CDATA[
+You are a .NET 8 architect using Clean Architecture +
+MediatR/CQRS pattern from csharp-dotnet-patterns/README.md. Add a
+"Promote user to admin" use case. Output:
+- Domain: User.Promote() with invariant + UserPromotedEvent
+- Application/Users/Commands/PromoteUser/: Command, Validator,
+  Handler
+- Domain event handler in Application/Users/EventHandlers/
+- xUnit test covering: success, already-admin, deactivated user
+- API controller action mapped to PUT /users/{id}/promote
+Run: dotnet build -warnaserror && dotnet test --filter "Promote".
+]]></code>
+      </example>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Constructors private, factories static. User.Create(...) returns a constructed aggregate; new-ing entities outside is banned by analyzer.</item>
+        <item>Value objects for every primitive concept (Email, Money, Slug). Stops "stringly-typed" agent bugs.</item>
+        <item>Domain events raised inside aggregate methods, dispatched at SaveChangesAsync. Side-effects via NotificationHandlers, not inline.</item>
+        <item>No ToList/ToArray in handlers without pagination. Always paged + AsNoTracking for read.</item>
+        <item>MediatR pipeline behaviors for cross-cutting concerns (validation, logging, transaction, caching, auth). Don't repeat per-handler.</item>
+        <item>CancellationToken on every async signature. Plumb from controller → handler → repository. Roslynator + analyzer enforced.</item>
+        <item>required keyword + init for DTOs (.NET 7+). Surfaces missing fields at compile time.</item>
+        <item>Migrations checked into Infrastructure project, only. Api project never references EF — composition root only.</item>
+        <item>One Command/Query per folder. Users/Commands/CreateUser/{Command,Validator,Handler,Result}.cs. Agents read one folder; no scrolling.</item>
+        <item>Architecture tests run in dotnet test. Same gate as unit tests; don't relegate to a separate stage that gets skipped.</item>
+        <item>Source-generated MediatR + Mapster for AOT. Skip if not AOT-targeting.</item>
+      </list>
+    </section>
+    <section name="where-it-fails">
+      <list>
+        <item>Anemic domain anyway. Teams adopt the layout but keep behavior in handlers; entities stay property bags. Pattern's value evaporates.</item>
+        <item>MediatR over-use. Every method becomes a Command/Query; trivial reads pay for handler resolution + pipeline behaviors.</item>
+        <item>CQRS without separate read model. Pattern hints at separation but most teams query the write DB through projections — read paths still hit aggregate repositories.</item>
+        <item>Domain events firing at SaveChanges. Exceptions inside handlers roll back the transaction; agents expect "fire-and-forget" and break atomicity.</item>
+        <item>AutoMapper magic. ProjectTo&lt;T&gt; + complex mappings produce runtime-only errors; agents unable to debug map registration issues.</item>
+        <item>Validation duplication. FluentValidation rules on Commands repeat DataAnnotations on entities and DTOs; agents update one, not all three.</item>
+        <item>Source generation incompatibility. Reflection-heavy MediatR + AutoMapper fight native AOT; pattern needs Mapster + manual handler dispatch for AOT.</item>
+        <item>Layer violations invisible. Without ArchUnit-style tests, agents reference Infrastructure types from Application within months.</item>
+      </list>
+    </section>
+    <section name="tools-and-services">
+      <p>Architecture scaffolding, CI verification, and optional subagents.</p>
+      <commands>
+        <command name="dotnet new ca-sln">Scaffold Clean Architecture sln. Install: dotnet new install Clean.Architecture.Solution.Template</command>
+        <command name="dotnet ef migrations">EF Core migrations. Install: dotnet tool install -g dotnet-ef</command>
+        <command name="dotnet test --collect:&quot;XPlat Code Coverage&quot;">Coverage with coverlet; bundled.</command>
+        <command name="dotnet tool install -g Roslynator.DotNet.Cli">Analyzers + automated fixes.</command>
+        <command name="dotnet add package NetArchTest.Rules">Architecture fitness functions.</command>
+        <command name="dotnet format">Roslyn formatter (pre-commit); bundled.</command>
+        <command name="dotnet tool install -g dotnet-outdated-tool">Stale NuGet deps.</command>
+        <command name="dotnet tool install -g Mapster.Tool">AOT-compatible mapping (alternative to AutoMapper).</command>
+        <command name="dotnet add package Verify.Xunit">Snapshot testing for handler outputs.</command>
+      </commands>
+      <p>Services: MediatR (v12+, OSS, paid for commercial); FluentValidation (OSS); AutoMapper (OSS, paid for commercial v13+); Mapster (OSS, source-generated, AOT-friendly); MassTransit (OSS, outbox pattern + integration events); Marten (OSS, document DB on Postgres + event sourcing); Wolverine (OSS, MediatR alternative with built-in messaging).</p>
+    </section>
+    <section name="ai-agent-antipatterns">
+      <p>Common mistakes that break layering or introduce license issues.</p>
+      <antipattern>
+        <description>Anemic regression. Agent adds new behavior to UserService (Application) instead of User entity (Domain). Force prompts to read Domain/Entities/&lt;Aggregate&gt;.cs first; require behavior changes there.</description>
+        <reason>Business logic in handlers breaks DDD invariant; entities become property bags.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Layer leakage. Agent imports Microsoft.EntityFrameworkCore into Application for "convenience". NetArchTest catches; without it, agents drift over time.</description>
+        <reason>Couples presentation layer to persistence and defeats the layering purpose.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Domain events vs Integration events confusion. Agents fire a domain event for cross-service notification; these don't cross process boundaries. Document which is which in Domain/Events/ vs Application/IntegrationEvents/.</description>
+        <reason>Domain events are intra-aggregate; integration events span services and need outbox pattern.</reason>
+      </antipattern>
+      <antipattern>
+        <description>DbContext.SaveChangesAsync ordering. Domain event handlers running inside the same transaction can deadlock or roll back unexpectedly. Use outbox pattern (MassTransit) for anything crossing aggregates.</description>
+        <reason>Handler exceptions roll back the outer transaction unexpectedly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Validator duplication. Agent adds RuleFor(x =&gt; x.Email).EmailAddress() in three places (entity, validator, DTO annotation). Standardize: validators on Commands, invariants in entity factories, no annotations.</description>
+        <reason>Duplication leads to inconsistency and maintenance burden.</reason>
+      </antipattern>
+      <antipattern>
+        <description>AutoMapper runtime errors. Agent adds a property without mapping; tests pass, prod 500s. Add MapperConfiguration.AssertConfigurationIsValid() as a unit test.</description>
+        <reason>Source-generated mapping catches misses at compile time; reflection does not.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Handler returning Task. Agent forgets Task&lt;TResponse&gt;; compile error or wrong return shape. Roslynator rule MA0042 catches.</description>
+        <reason>Wrong return type breaks the CQRS contract.</reason>
+      </antipattern>
+      <antipattern>
+        <description>async void in event handlers. Agent uses async void Handle(...) for "fire-and-forget"; one exception kills the host. INotificationHandler&lt;T&gt; must return Task.</description>
+        <reason>async void suppresses exceptions and crashes the application.</reason>
+      </antipattern>
+      <antipattern>
+        <description>MediatR over-use for trivial paths. Agent wraps GET /health in a Query/Handler. Reserve MediatR for use cases with cross-cutting needs.</description>
+        <reason>Every MediatR dispatch pays handler resolution + pipeline behavior overhead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Entity collection mutation outside aggregate. Agent does user.Posts.Add(post) from a handler. Add via user.AddPost(post) — encapsulate.</description>
+        <reason>Outside mutation bypasses invariants and domain events.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Soft-delete + global query filter forgotten on a query. Agent uses IgnoreQueryFilters() to "see all rows" and ships it; multi-tenant leak. Lint forbids IgnoreQueryFilters outside admin tools.</description>
+        <reason>Multi-tenant global query filter bypassed silently; data from other tenants leaks.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Migration generated by agent but not applied to seed/integration tests. PR builds fail intermittently; agents blame flaky tests. Force dotnet ef database update on test container startup.</description>
+        <reason>Test isolation requires fresh schema on each test run.</reason>
+      </antipattern>
+      <antipattern>
+        <description>MediatR/AutoMapper license accepted by accident. Agent adds via dotnet add package; commercial license trip wires fire later. Pin SPDX checks in CI.</description>
+        <reason>License changes may impose commercial obligations.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/arch-tests.cs" purpose="NetArchTest xUnit tests asserting Domain has zero references to outer layers."/>
+    </templates>
+    <see-also>
+      <link href="https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures"/>
+      <link href="https://github.com/ardalis/CleanArchitecture"/>
+      <link href="https://github.com/jasontaylordev/CleanArchitecture"/>
+      <link href="https://enterprisecraftsmanship.com"/>
+      <link href="https://github.com/davidfowl/AspNetCoreDiagnosticScenarios"/>
+      <link href="https://github.com/BenMorris/NetArchTest"/>
+      <link href="https://wolverine.netlify.app"/>
+      <link href="https://www.jimmybogard.com/automapper-and-mediatr-becoming-commercial-products/"/>
+    </see-also>
+  </content>
+</methodology>
