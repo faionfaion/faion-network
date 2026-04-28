@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vui-iot-integration">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ui-designer</domain>
+    <summary>Design voice control for smart home and IoT ecosystems: command patterns, multi-device coordination, partial failure handling, and undo support for coherent VUI.</summary>
+    <tags>
+      <tag>voice-iot</tag>
+      <tag>smart-home</tag>
+      <tag>voice-control</tag>
+      <tag>iot-design</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>VUI + IoT Integration</title>
+    <summary>Methodology for designing coherent voice control of smart home and IoT device ecosystems: command pattern taxonomy (direct control, scene activation, status query, conditional, scheduled), multi-device coordination flows, partial failure handling, and undo support. The core rule: always confirm multi-device actions verbally after execution, and handle partial failures gracefully rather than silently.</summary>
+    <why>
+      <p>Smart home voice control fails most often at the seam between user intent and multi-device coordination: an "I'm leaving" command that locks doors but fails to arm security silently leaves the home insecure. Explicit confirmation after multi-device actions and graceful partial failure handling are the two most impactful design decisions.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing VUI flows for smart home or IoT control applications</item>
+        <item>Specifying voice command grammars for device ecosystems</item>
+        <item>Auditing an existing smart home VUI for failure handling gaps</item>
+        <item>Designing scene/routine naming and grouping for voice discoverability</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>IoT device firmware or protocol design (Matter, Zigbee) — hardware/protocol concerns, not VUI UX</item>
+        <item>Enterprise IoT control systems — different use case and constraint set</item>
+        <item>Single-device voice control with no multi-device coordination</item>
+      </list>
+    </when-not-to-use>
+    <section name="command-pattern-taxonomy">
+      <list>
+        <item>Direct control: single device command — "Turn off the lights" → one device, immediate execution</item>
+        <item>Scene activation: named routine triggering multiple devices — "Goodnight" → lights off, thermostat set, doors locked</item>
+        <item>Status query: read device state — "Is the front door locked?" → returns current state, no action</item>
+        <item>Conditional: state-triggered automation — "Turn on the AC when I get home" → registers a geofence trigger</item>
+        <item>Scheduled: time-triggered action — "Turn off the lights at 11 PM" → registers a timer</item>
+      </list>
+      <rule>
+        <statement>Design scene names to be discoverable by voice: short, memorable, natural-language phrases that match how users talk about activities ("Movie time", "Goodnight", "I'm leaving") rather than technical labels ("Mode 3", "Preset B").</statement>
+        <rationale>Scene names that match natural speech patterns are recalled and used; technical labels are forgotten and users revert to device-by-device control, defeating the purpose of scenes.</rationale>
+      </rule>
+    </section>
+    <section name="multi-device-coordination">
+      <rule>
+        <statement>After a multi-device command, confirm all executed actions in a single summary response — not a separate confirmation per device. If some actions failed, report the failures explicitly in the same summary.</statement>
+        <rationale>Per-device confirmations are verbose and slow; a single summary is faster and still provides the information needed to detect partial failures.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[User: "I'm leaving"
+System executes: lock doors, lights off, thermostat set to 68F, arm security
+
+VUI response: "Home secured. Doors locked, lights off, thermostat set to 68.
+              Have a good day."
+
+Partial failure response: "Mostly done. Doors locked and lights off, but
+                          the thermostat didn't respond. Check the app."]]></code>
+        <note>Partial failure is reported without alarming language; the user gets actionable next step (check the app).</note>
+      </example>
+      <rule>
+        <statement>Never report a multi-device scene as fully complete when one or more devices failed silently. Always surface partial failures to the user.</statement>
+        <rationale>Silent partial failures leave the home in an unexpected state — an armed security system with an unlocked thermostat is a minor annoyance; a silent failure to lock doors is a safety issue.</rationale>
+      </rule>
+    </section>
+    <section name="undo-and-recovery">
+      <rule>
+        <statement>Support "undo" for the most recent multi-device action by voice command ("Undo that" or "Never mind") within a 30-second window. After 30 seconds, provide a scene command that reverses the previous state.</statement>
+        <rationale>Users issue voice commands in ambient contexts without full attention; immediate undo significantly reduces the frustration of misrecognized commands that change multiple devices.</rationale>
+      </rule>
+      <rule>
+        <statement>For conditional and scheduled commands, always read back the registered automation with specifics before confirming: "Turning on the AC at 3:30 PM when you arrive home. Say 'cancel' to remove it."</statement>
+        <rationale>Future-state commands are easy to misset; reading back the specifics catches time zone errors, wrong device references, and misrecognized conditions before they execute.</rationale>
+      </rule>
+    </section>
+    <section name="device-grouping-design">
+      <rule>
+        <statement>Group devices by room and by function — not by technical ID. Users say "the kitchen lights", not "device-group-14". Design the schema to match room names as they appear on floor plans or as users naturally refer to spaces.</statement>
+        <rationale>Device naming that does not match natural spatial language requires users to remember a separate naming convention, reducing adoption and satisfaction.</rationale>
+      </rule>
+    </section>
+    <section name="agentic-workflow">
+      <p>Use Claude as a "scene composer": given a list of devices + capabilities (lights, locks, thermostat, alarm) and a desired user phrase, it emits a routine spec (ordered steps, parallel groups, retry policy, confirmation script). A second pass generates platform-specific JSON: Alexa Smart Home directive payload, Google Home Graph trait config, HomeKit accessory definition, or Home Assistant script.yaml. Voice confirmation copy passes through the same length / blame-free linter used in error-handling-in-vui.</p>
+      <list>
+        <item>general-purpose Claude subagent — scene composition + routine spec.</item>
+        <item>faion-sdd-executor-agent — implement Home Assistant automations / vendor skills as SDD tasks.</item>
+        <item>A "voice-copy-reviewer" prompt — vet confirmation utterances against time / blame rules.</item>
+      </list>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Lock + alarm steps run first in "leaving home" routines — fail-safe ordering.</item>
+        <item>Always speak a final summary ("Home secured") with what actually happened, not what was requested.</item>
+        <item>Provide a 5-second undo window for destructive actions ("Cancel goodnight").</item>
+        <item>Use Matter where possible for new builds; vendor lock-in via Alexa-only skills is a long-term liability.</item>
+        <item>Group devices by physical room, not by vendor; users speak in spatial terms.</item>
+        <item>Test with cloud disconnected; routines should degrade to local control where the hub supports it.</item>
+      </list>
+    </section>
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>Claude readily invents device capabilities (e.g., "set the lock to 50%"); validate against the actual capability schema.</description>
+        <reason>Generated routines may reference nonexistent device states; always match generated capabilities against a real schema.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Generated routines often run in parallel without dependency analysis — locking the door before the user is out, etc.</description>
+        <reason>Smart home workflows have implicit ordering constraints; require explicit step ordering and validate against a constraint model.</reason>
+      </antipattern>
+      <antipattern>
+        <description>"Smart home" demos in LLM training often feature unrealistic latency; real cloud round-trips are 1–3 s.</description>
+        <reason>Prompt agents about real latency bounds and test generated routines in a slow-network simulation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent will skip privacy considerations (always-on mic, voice transcript retention); add a privacy review checkpoint.</description>
+        <reason>Privacy review is a mandatory gate before deploying voice-control routines in any home environment.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Auto-deploying a routine update can lock users out of their own home — require human approval + dry-run.</description>
+        <reason>Always require staged rollout and manual approval for critical routines (doors, locks, alarms).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Vendor JSON schemas drift quarterly; pin the API version in the prompt and re-validate on every release.</description>
+        <reason>Smart home APIs are not stable; lock schema versions and re-validate generated payloads on every vendor update.</reason>
+      </antipattern>
+    </section>
+    <section name="cli-tools">
+      <list>
+        <item>ask-cli (Alexa Skills Kit CLI) — Deploy Smart Home skill, lambda, intent model</item>
+        <item>gactions — Google Home Actions / smart home schema</item>
+        <item>hass (Home Assistant CLI) — Author / validate script.yaml, automations.yaml</item>
+        <item>mosquitto_pub / _sub — MQTT testing for Matter / Zigbee2MQTT bridges</item>
+        <item>chip-tool — Matter device commissioning + control</item>
+        <item>nodecg / node-red CLI — Visual flow programming for IoT routines</item>
+      </list>
+    </section>
+    <section name="services-and-apps">
+      <list>
+        <item>Home Assistant — OSS; Yes (REST + WebSocket API); Best agent integration target</item>
+        <item>openHAB — OSS; Yes (REST API); Java-based; good for industrial-ish</item>
+        <item>Alexa Smart Home Skills — SaaS; Yes (ASK CLI); Vendor certification required</item>
+        <item>Google Home Cloud-to-Cloud — SaaS; Yes (Home Graph API); Requires Google review</item>
+        <item>Apple HomeKit / HAP — OS framework; Limited; Cert via MFi; agent stubs only</item>
+        <item>Matter / Thread (CSA) — Open standard; Yes (chip-tool); Future-proof; vendor support uneven</item>
+        <item>Hubitat — SaaS-on-device; Yes (Maker API); Local-first alternative</item>
+        <item>SmartThings (Samsung) — SaaS; Yes (REST API); Cloud-only; rate-limited</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://developer.amazon.com/en-US/docs/alexa/smarthome/understand-the-smart-home-skill-api.html"/>
+      <link href="https://developers.home.google.com/cloud-to-cloud"/>
+      <link href="https://csa-iot.org/all-solutions/matter/"/>
+      <link href="https://www.home-assistant.io/docs/scripts/"/>
+      <link href="https://www.nngroup.com/articles/voice-iot/"/>
+    </see-also>
+  </content>
+</methodology>
