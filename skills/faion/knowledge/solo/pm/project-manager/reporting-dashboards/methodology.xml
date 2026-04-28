@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="reporting-dashboards">
+  <metadata>
+    <tier>solo</tier>
+    <group>pm</group>
+    <domain>project-manager</domain>
+    <summary>Automated PM reporting: tool-specific dashboard configuration, scheduled report generation for weekly status and sprint reviews, Slack digest delivery, and BI tool integration via API ETL. Report agents query PM tools as read-only, validate data before sending, and archive every generated report.</summary>
+    <tags>
+      <tag>reporting</tag>
+      <tag>dashboards</tag>
+      <tag>automation</tag>
+      <tag>metrics</tag>
+      <tag>slack</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Reporting Dashboards</title>
+
+    <summary>Automated PM reporting: tool-specific dashboard configuration (Jira, Linear, ClickUp), scheduled report generation for weekly status and sprint reviews, Slack digest delivery, and BI tool integration (PowerBI, Metabase, Grafana) via API ETL. Report agents query PM tools as read-only, validate data before sending (zero committed → abort, not 0% completion), and archive every generated report. Dashboard data is only as clean as underlying PM data — garbage in, garbage out.</summary>
+
+    <why>
+      <p>Manual status reporting is the most common PM overhead for engineering leads. Automating sprint metrics collection (velocity, completion rate, blocked items) eliminates a weekly task and makes metrics consistent and comparable across sprints. BI integrations (Grafana, Metabase) enable trend analysis over time that native PM tool dashboards cannot provide. The key rule: separate report generation from report delivery — validate before sending.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Sprint-cadence status reporting requires manual data collection from multiple PM tools</item>
+        <item>Stakeholders need a consolidated view across several projects without PM tool access</item>
+        <item>PM tool native reports are insufficient and data needs cross-referencing with external sources</item>
+        <item>Automated Slack digests needed on a fixed schedule (daily standup summary, weekly status)</item>
+        <item>PM data needs to feed into BI tools for trend analysis over time</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Team of 1-3 people where a quick manual update is faster than building dashboard automation</item>
+        <item>PM tool's native dashboard covers all stakeholder needs — adding automation creates maintenance burden</item>
+        <item>Regulated environments needing report provenance and immutability guarantees — automated reports lack audit trails unless outputs are explicitly archived</item>
+        <item>Real-time operational dashboards (incident response) — PM dashboards lag by minutes to hours</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="data-quality">
+      <rule>
+        <statement>Validate data before sending any report. If committed issues = 0, the sprint query likely failed — send an error alert, not a 0% completion report. If velocity data is unavailable, state "data unavailable" explicitly rather than showing 0.</statement>
+        <rationale>Technically correct but contextually misleading reports (0% because of a query failure) erode trust in automated reporting. Recipients will stop reading the reports within weeks.</rationale>
+      </rule>
+      <rule>
+        <statement>Dashboard data is only as clean as the underlying PM data. Before automating reports, audit PM data quality: are all sprint issues estimated? Are statuses current? Are done issues actually marked Done? Fix data quality issues before building dashboards — automation amplifies existing problems.</statement>
+        <rationale>Automated reports surface data quality problems to stakeholders at scale. A dashboard reporting inflated velocity because of uncleared "Done" issues does more harm than no dashboard.</rationale>
+      </rule>
+      <rule>
+        <statement>Do not infer project health from a single metric. A sprint with 90% completion but 10 scope-added issues mid-sprint is not actually healthy. Combine completion rate, scope creep (issues added after Day 2), and blocked item count as minimum health indicators.</statement>
+        <rationale>Single-metric thresholds create false positive health reports that undermine the value of dashboards over time.</rationale>
+      </rule>
+    </section>
+
+    <section name="report-schema">
+      <rule>
+        <statement>Define a fixed report schema before automating. Every automated report must include: status (On Track/At Risk/Off Track), the metric thresholds that determine status (On Track = completion >= 85%, At Risk = 70-84%, Off Track = &lt;70%), a link to the live dashboard, and archival path for the generated report.</statement>
+        <rationale>Ad-hoc report formats generate "what does this number mean?" questions from recipients. Fixed thresholds make status classifications auditable.</rationale>
+      </rule>
+      <rule>
+        <statement>Archive every generated report as a file (Notion page, S3 object, GitHub issue comment, or local file) before delivery. Slack message history is ephemeral — archived reports enable trend analysis and dispute resolution.</statement>
+        <rationale>Reports that exist only in Slack are inaccessible after 30 days (free plan) or when searching for specific historical data. Archival creates a queryable record.</rationale>
+      </rule>
+    </section>
+
+    <section name="slack-delivery">
+      <rule>
+        <statement>Slack Block Kit messages have a 3001-character limit per block. Reports with large tables must be chunked into multiple blocks or truncated with a "see full report" link to the archived version.</statement>
+        <rationale>Messages exceeding the block limit are silently truncated by the Slack API without error. Recipients receive incomplete data without knowing it was truncated.</rationale>
+      </rule>
+      <rule>
+        <statement>Scheduled reports sent to Slack lose readership within 2-4 weeks if signal-to-noise is poor. Start with weekly cadence, not daily. Include a link to the live dashboard in every automated message. Remove or simplify reports that get zero interaction after 4 consecutive sends.</statement>
+        <rationale>Slack notification fatigue is the most common cause of automated report abandonment. High signal-to-noise requires pruning metrics that recipients do not act on.</rationale>
+      </rule>
+    </section>
+
+    <section name="report-agent-pattern">
+      <rule>
+        <statement>Separate report generation from report delivery in the agent chain: generate → validate → archive → deliver. Never combine generation and delivery in a single step. A report that fails validation should send an error alert, not a broken report.</statement>
+        <rationale>Skipping the validate step leads to sending empty tables, 0% completions from query failures, or missing data fields. Recipients lose trust in automation after the first bad report.</rationale>
+      </rule>
+      <rule>
+        <statement>Report agents must treat PM tool data as read-only. Never update, close, or modify PM records during a reporting run. Read-only agents can run more frequently without risk and simplify permission scoping.</statement>
+        <rationale>A reporting agent that inadvertently closes issues or updates statuses during a reporting pass causes data corruption that is difficult to reverse at scale.</rationale>
+      </rule>
+    </section>
+
+    <section name="pagination">
+      <rule>
+        <statement>PM tool APIs return paginated results. Default page sizes are 50-100 items. An agent that stops at page 1 will silently undercount metrics for projects with more than 50 issues. Always paginate until the last page or until maxResults is reached.</statement>
+        <rationale>JQL results (Jira) are capped at 1000 items per request. A board with 200+ issues needs at least 3 pages at default size. Undercounting creates systematically wrong velocity metrics.</rationale>
+      </rule>
+    </section>
+
+    <section name="tool-specific-api-gotchas">
+      <rule>
+        <statement>JQL (Jira) and GraphQL (Linear/GitHub) filter syntax differs. Never reuse a query written for one tool in prompts targeting another tool. Maintain tool-specific query templates in .aidocs/memory/ or templates/.</statement>
+        <rationale>A JQL query like "sprint in openSprints()" will fail verbatim on Linear's GraphQL API. Tool-specific prompts prevent silent query failures that return empty datasets.</rationale>
+      </rule>
+      <rule>
+        <statement>Scheduled agents that run at sprint boundaries may query a "transitional" state: the old sprint is closed but the new sprint has no committed issues yet. Add a guard: if sprint start date is in the future or the sprint has 0 committed issues, skip report generation and send a "sprint not started" notification instead.</statement>
+        <rationale>A sprint boundary report with 0% completion and 0 issues committed is always a false negative from timing. Guards prevent misleading reports during setup periods.</rationale>
+      </rule>
+    </section>
+
+    <section name="etl-for-bi-integration">
+      <rule>
+        <statement>Use idempotent upserts (not inserts) when writing to a database for BI. Running the ETL agent twice should produce the same database state. Key on sprint_id + issue_id for row identity.</statement>
+        <rationale>ETL jobs run on schedules and may run twice (restart, cron overlap). Duplicate rows in a BI database produce double-counted metrics that compound over time.</rationale>
+      </rule>
+      <rule>
+        <statement>API token rotation for PowerBI/Grafana/Metabase connectors breaks pipelines silently — the connector stops updating but does not error visibly. Set a calendar reminder for token expiry and store token expiry dates in .aidocs/memory/.</statement>
+        <rationale>Long-lived API tokens (90-365 day expiry) are commonly used for BI connectors. Silent expiry is the most common cause of "why hasn't the dashboard updated?" incidents.</rationale>
+      </rule>
+    </section>
+
+    <section name="human-checkpoint">
+      <rule>
+        <statement>Add a human checkpoint before sending executive-level reports. Automated numbers can be technically correct but contextually misleading without narrative. The checkpoint is a review step, not approval — the agent generates, a human adds 1-2 sentence context, then the report goes out.</statement>
+        <rationale>A sprint with 85% completion but a production incident on Day 10 is "On Track" by the metric but not by stakeholder expectation. Human context bridges the gap.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/weekly-status-report.md" purpose="Weekly status report markdown template with exec summary, metrics table, risks, next week focus"/>
+      <template path="templates/sprint-report.md" purpose="Sprint report template with delivery summary, burndown, quality metrics, retrospective highlights"/>
+      <template path="templates/jira-metrics-fetcher.py" purpose="Python script to pull Jira sprint metrics and post to Slack"/>
+    </templates>
+
+    <see-also>
+      <link href="https://support.atlassian.com/jira-software-cloud/docs/create-and-customize-a-dashboard/"/>
+      <link href="https://linear.app/docs/insights"/>
+      <link href="https://api.slack.com/block-kit"/>
+      <link href="https://docs.metabase.com/latest/api-documentation"/>
+      <link href="https://grafana.com/docs/grafana/latest/http_api/"/>
+    </see-also>
+  </content>
+</methodology>

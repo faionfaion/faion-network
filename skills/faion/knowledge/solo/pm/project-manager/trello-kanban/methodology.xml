@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="trello-kanban">
+  <metadata>
+    <tier>solo</tier>
+    <group>pm</group>
+    <domain>project-manager</domain>
+    <summary>A visual, card-based kanban workflow on Trello: board structure with WIP-limited lists, card anatomy with labels and checklists, Butler automation for rule-based transitions, custom fields for story points and sprint tracking, and REST API integration for agent-driven card management.</summary>
+    <tags>
+      <tag>trello</tag>
+      <tag>kanban</tag>
+      <tag>project-management</tag>
+      <tag>automation</tag>
+      <tag>api</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Trello Kanban</title>
+
+    <summary>A visual, card-based kanban workflow on Trello: board structure with WIP-limited lists, card anatomy with labels and checklists, Butler automation for rule-based transitions, custom fields for story points and sprint tracking, and REST API integration for agent-driven card management. WIP limits are enforced by list-name convention and Butler rules — not automatically blocked by the platform.</summary>
+
+    <why>
+      <p>Trello's simplicity makes it the lowest-friction kanban tool for small teams and non-technical stakeholders. Its REST API is straightforward, and Butler automation handles mechanical state transitions (all checklists complete → move to Done) so agents only need to trigger higher-level operations. The tradeoff: no native velocity charts, no dependency tracking, no built-in OKR layer.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Team of 1–5 people needing a visual board with minimal setup overhead</item>
+        <item>Stakeholders are non-technical and need to update the board without training</item>
+        <item>Rapid prototyping or pre-MVP phases where flexibility beats structure</item>
+        <item>Budget constraints: Trello Free covers up to ~10 boards (1 Power-Up per board)</item>
+        <item>No cross-repository code traceability needed</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Team is already on GitHub — GitHub Projects has native code integration; use that instead</item>
+        <item>Complex dependency tracking needed — Trello has no native dependency visualization</item>
+        <item>OKR or goal tracking required — Trello has no goals layer; use ClickUp or Linear</item>
+        <item>Velocity metrics or burndown charts needed regularly — requires premium Power-Ups</item>
+        <item>More than ~10 boards under Free plan (Power-Up limit of 1 per board on Free)</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="board-structure">
+      <rule>
+        <statement>Use 5–7 lists maximum. Encode WIP limits directly in list names: "In Progress (WIP: 3)". WIP is enforced by Butler rule or human review — Trello does not block card moves automatically.</statement>
+        <rationale>More than 7 lists create cognitive overhead. Named WIP limits make violations visible without requiring a Power-Up.</rationale>
+      </rule>
+      <example type="good">
+        <note>Board lists in order: Backlog → Ready for Dev → In Development (WIP: 3) → Code Review (WIP: 2) → QA Testing (WIP: 2) → Done. Archive done cards at sprint end — do not delete them (preserves velocity history).</note>
+      </example>
+    </section>
+
+    <section name="label-system">
+      <rule>
+        <statement>Limit labels to 8–12 maximum. Assign labels by type (Feature, Bug, Tech Debt, Docs), priority (P0-Critical, P1-High, P2-Medium, P3-Low), and status modifiers (Blocked, Quick Win). Apply one type label per card — not Feature AND Bug simultaneously.</statement>
+        <rationale>Label bloat makes filtering unreliable. Agents producing cards without a fixed label set create arbitrary new labels that break board filters.</rationale>
+      </rule>
+    </section>
+
+    <section name="card-anatomy">
+      <rule>
+        <statement>Every card must have: a clear action-oriented title, a description using the card template (user story, AC, technical notes, DoD checklist), at least one type label, a due date if committed for the current sprint, and an assignee.</statement>
+        <rationale>Unstructured card descriptions cannot be reliably parsed by agents. Templates at card creation enforce consistent structure.</rationale>
+      </rule>
+      <rule>
+        <statement>Use Custom Fields Power-Up for story points (number), sprint (dropdown), and component (dropdown). These fields are readable/writable via the Trello REST API custom fields endpoint — use them instead of embedding data in card titles.</statement>
+        <rationale>Data in card titles cannot be queried or aggregated via the API. Custom fields are structured and filterable.</rationale>
+      </rule>
+    </section>
+
+    <section name="sprint-operations">
+      <rule>
+        <statement>Archive the Done list at sprint end — do not delete cards. Create a new Done list for the next sprint. This preserves card history for velocity calculations via the API.</statement>
+        <rationale>Deleted cards cannot be retrieved for historical metrics. Archived cards are queryable via the Trello API archive endpoint.</rationale>
+      </rule>
+    </section>
+
+    <section name="butler-automation">
+      <rule>
+        <statement>Use Butler rules for mechanical state transitions: move card when all checklists are complete, add "Blocked" label and notify on manual block, post stale-card comment after 7 days of inactivity. Document all Butler rules in constitution.md — agents cannot create or modify Butler rules via API.</statement>
+        <rationale>Butler rules are UI-configured only; no API endpoint exists. Agents must treat Butler automation as pre-existing infrastructure.</rationale>
+      </rule>
+      <example type="good">
+        <note>Butler rule: when all checklists on a card are complete → move to Done. Butler rule: when card has no activity for 7 days AND is not in Done → add "Stale" label and post comment. These are configured once in the board UI and documented in constitution.md.</note>
+      </example>
+    </section>
+
+    <section name="rest-api-agent-usage">
+      <rule>
+        <statement>All write operations require board/list/card IDs (not names). Agents must do a read pass first to map human-readable names to IDs. Store board ID, list IDs, and label IDs in .aidocs/memory/ or constitution.md — do not fetch them on every session.</statement>
+        <rationale>Trello API requires numeric/hash IDs for all writes. Agents that skip the read pass fail silently or operate on wrong lists.</rationale>
+      </rule>
+      <rule>
+        <statement>Respect the rate limit: 100 requests per 10 seconds per token. Parallel agent operations that create or move multiple cards simultaneously will hit this limit. Batch sequentially with a small delay or use n8n for bulk operations.</statement>
+        <rationale>Rate limit violations return 429 errors that agents must handle; unhandled, they cause silent data loss.</rationale>
+      </rule>
+      <rule>
+        <statement>Moving a card to Done via API does not trigger Butler card-archive automation. If archiving is required, make a separate API call: PUT /cards/{id} with closed=true.</statement>
+        <rationale>Butler automation fires on UI events, not on API-triggered state changes. Agents that rely on Butler archive automation after an API move will leave cards unarchived.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="javascript"><![CDATA[
+// Agent pattern: fetch list IDs once, then create card
+const lists = await fetch(
+  `https://api.trello.com/1/boards/${BOARD_ID}/lists?key=${KEY}&token=${TOKEN}`
+).then(r => r.json());
+const backlogId = lists.find(l => l.name === "Backlog").id;
+
+await fetch(`https://api.trello.com/1/cards?key=${KEY}&token=${TOKEN}`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    name: 'Add OAuth integration',
+    desc: '## Feature\n...',
+    idList: backlogId,
+    idLabels: [FEATURE_LABEL_ID]
+  })
+});
+        ]]></code>
+      </example>
+      <antipattern>
+        <description>Creating a card with idList set by fetching the list name on every API call.</description>
+        <reason>Wastes 1 API call per card write. Store list IDs in session memory after the first fetch.</reason>
+      </antipattern>
+    </section>
+
+    <section name="secrets">
+      <rule>
+        <statement>Store TRELLO_KEY and TRELLO_TOKEN in environment variables or 1Password. Never hardcode in agent prompts, scripts, or configuration files.</statement>
+        <rationale>Trello tokens have board-level write access. Exposed tokens allow full board modification by anyone who reads the file.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/card-feature.md" purpose="Feature card template with user story, AC, technical notes, DoD checklist"/>
+      <template path="templates/card-bug.md" purpose="Bug card template with steps to reproduce, severity, environment"/>
+    </templates>
+
+    <see-also>
+      <link href="https://developer.atlassian.com/cloud/trello/rest/"/>
+      <link href="https://trello.com/butler"/>
+      <link href="https://trello.com/power-ups"/>
+      <link href="https://support.atlassian.com/trello/"/>
+      <link href="https://trello.com/templates"/>
+    </see-also>
+  </content>
+</methodology>
