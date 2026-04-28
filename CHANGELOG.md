@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- fix: trim methodology summary solution-assessment
 - migrate: 2/2 pro/marketing/ppc-manager methodologies → methodology.xml (google-search-ads, google-shopping-ads; feature-045 batch 303 — FINAL)
 - migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (ads-google-keywords, ads-google-reporting, google-pmax; feature-045 batch 302)
 - migrate: 2/3 geek/ux + pro/marketing methodologies → methodology.xml (multimodal-vui-design, ops-upselling-cross-selling; feature-045 batch 301)
