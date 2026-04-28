@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="openai-api-integration">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Integrate OpenAI Chat Completions API with proper authentication, model selection, error handling, and production patterns. Use async for batch processing and tiktoken for token counting.</summary>
+    <category>llm</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>openai</tag>
+      <tag>gpt-4</tag>
+      <tag>api-integration</tag>
+      <tag>llm</tag>
+      <tag>async</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>OpenAI API Integration</title>
+
+    <summary>OpenAI API provides access to GPT-4, GPT-4 Turbo, GPT-4o, and other models for text generation, embeddings, image generation, and more. This methodology covers authentication, model selection, request handling, and production-ready integration patterns.</summary>
+
+    <why>
+      <p>OpenAI's API provides state-of-the-art language capabilities and a well-documented, production-grade interface. The official Python and JavaScript SDKs handle authentication, error recovery, and async execution patterns that are critical for building scalable applications. Integrating the API correctly prevents common failures like truncated responses, authentication errors, and rate limiting issues.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building conversational AI applications</item>
+        <item>Text generation, summarization, translation</item>
+        <item>Code generation and analysis</item>
+        <item>Content moderation and classification</item>
+        <item>When you need state-of-the-art language capabilities</item>
+        <item>Production applications requiring high reliability</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>The task fits a smaller model (Claude Haiku, GPT-4o-mini) — always start with the cheapest model that meets quality bar</item>
+        <item>You need 1M+ context — Gemini 1.5 Pro is the right tool; OpenAI's max is 128K</item>
+        <item>The project policy requires on-premise or self-hosted inference — use Ollama or a local model</item>
+        <item>The response format is unknown/flexible — structured output requires knowing the schema up front</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="models-hierarchy">
+      <p>Models available as of 2024-2025. Capabilities and costs vary; select based on task complexity and budget.</p>
+
+      <rule>
+        <statement>Model selection MUST match task complexity: gpt-4o-mini for simple tasks and cost optimization, gpt-4o for general tasks with multimodal support, gpt-4-turbo for complex reasoning, gpt-4 for legacy compatibility only.</statement>
+        <rationale>Model cost and capability differ significantly; selecting the wrong model wastes budget (using gpt-4-turbo for simple tasks) or produces poor results (using gpt-4o-mini for complex reasoning). Start with the cheapest option and escalate only if quality tests fail.</rationale>
+      </rule>
+
+      <list>
+        <item>gpt-4o | 128K context | Multimodal, general tasks | Medium cost</item>
+        <item>gpt-4o-mini | 128K context | Fast, cost-effective | Low cost</item>
+        <item>gpt-4-turbo | 128K context | Complex reasoning | High cost</item>
+        <item>gpt-4 | 8K/32K context | Legacy support | High cost</item>
+        <item>gpt-3.5-turbo | 16K context | Simple tasks, high volume | Very low cost</item>
+      </list>
+    </section>
+
+    <section name="api-structure">
+      <p>OpenAI's REST API exposes multiple endpoints for different capabilities.</p>
+
+      <list>
+        <item>POST https://api.openai.com/v1/chat/completions</item>
+        <item>POST https://api.openai.com/v1/embeddings</item>
+        <item>POST https://api.openai.com/v1/images/generations</item>
+        <item>POST https://api.openai.com/v1/audio/transcriptions</item>
+      </list>
+    </section>
+
+    <section name="basic-setup">
+      <p>Initialize the OpenAI client and make basic completion requests.</p>
+
+      <example type="good" title="Client initialization and simple completion">
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+import os
+
+# Initialize client
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+# Simple completion
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Explain quantum computing in simple terms."}
+    ],
+    temperature=0.7,
+    max_tokens=500
+)
+
+print(response.choices[0].message.content)
+]]></code>
+      </example>
+    </section>
+
+    <section name="streaming-responses">
+      <p>Stream responses for better user experience in interactive applications.</p>
+
+      <example type="good" title="Streaming response implementation">
+        <code lang="python"><![CDATA[
+def stream_response(prompt: str) -> str:
+    """Stream response for better UX in interactive applications."""
+    stream = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        stream=True
+    )
+
+    full_response = ""
+    for chunk in stream:
+        if chunk.choices[0].delta.content:
+            content = chunk.choices[0].delta.content
+            print(content, end="", flush=True)
+            full_response += content
+
+    return full_response
+]]></code>
+      </example>
+    </section>
+
+    <section name="async-implementation">
+      <p>Use AsyncOpenAI for concurrent batch processing of multiple prompts.</p>
+
+      <example type="good" title="Async completion and batch processing">
+        <code lang="python"><![CDATA[
+import asyncio
+from openai import AsyncOpenAI
+
+async_client = AsyncOpenAI()
+
+async def async_completion(prompt: str) -> str:
+    """Async completion for concurrent requests."""
+    response = await async_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.choices[0].message.content
+
+async def batch_completions(prompts: list[str]) -> list[str]:
+    """Process multiple prompts concurrently."""
+    tasks = [async_completion(p) for p in prompts]
+    return await asyncio.gather(*tasks)
+]]></code>
+      </example>
+    </section>
+
+    <section name="structured-output-json-mode">
+      <p>Extract structured data using JSON mode with Pydantic validation.</p>
+
+      <example type="good" title="Structured output with JSON mode">
+        <code lang="python"><![CDATA[
+from pydantic import BaseModel
+from typing import List
+
+class ProductReview(BaseModel):
+    sentiment: str
+    score: float
+    key_points: List[str]
+    summary: str
+
+def analyze_review(review_text: str) -> ProductReview:
+    """Extract structured data from review."""
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "system",
+                "content": "Analyze the review and return JSON with: sentiment, score (0-1), key_points, summary"
+            },
+            {"role": "user", "content": review_text}
+        ],
+        response_format={"type": "json_object"}
+    )
+
+    import json
+    data = json.loads(response.choices[0].message.content)
+    return ProductReview(**data)
+]]></code>
+      </example>
+    </section>
+
+    <section name="error-handling-and-retries">
+      <p>Implement robust error handling with exponential backoff retry logic.</p>
+
+      <example type="good" title="Error handling with tenacity retry decorator">
+        <code lang="python"><![CDATA[
+from openai import OpenAI, APIError, RateLimitError, APIConnectionError
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+client = OpenAI()
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=60),
+    retry=lambda e: isinstance(e, (RateLimitError, APIConnectionError))
+)
+def robust_completion(messages: list, model: str = "gpt-4o") -> str:
+    """Completion with automatic retry on transient errors."""
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            timeout=30.0
+        )
+        return response.choices[0].message.content
+    except APIError as e:
+        if e.status_code == 429:
+            raise RateLimitError(e.message)
+        raise
+]]></code>
+      </example>
+    </section>
+
+    <section name="token-counting">
+      <p>Count tokens before sending requests to estimate cost and detect context overflow.</p>
+
+      <example type="good" title="Token counting and cost estimation">
+        <code lang="python"><![CDATA[
+import tiktoken
+
+def count_tokens(text: str, model: str = "gpt-4o") -> int:
+    """Count tokens for cost estimation."""
+    encoding = tiktoken.encoding_for_model(model)
+    return len(encoding.encode(text))
+
+def estimate_cost(input_tokens: int, output_tokens: int, model: str) -> float:
+    """Estimate API cost in USD."""
+    pricing = {
+        "gpt-4o": {"input": 0.005, "output": 0.015},
+        "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
+        "gpt-4-turbo": {"input": 0.01, "output": 0.03},
+    }
+
+    if model not in pricing:
+        return 0.0
+
+    p = pricing[model]
+    return (input_tokens * p["input"] + output_tokens * p["output"]) / 1000
+]]></code>
+      </example>
+
+      <rule>
+        <statement>Always count tokens before sending a request and validate that (prompt_tokens + max_tokens) does not exceed the model's context limit; silently truncated responses (finish_reason == "length") cause data loss in production.</statement>
+        <rationale>When the response is truncated, the model stops at the context boundary without signaling that the output is incomplete. Agents that do not check `finish_reason` produce incomplete results that are hard to detect in production.</rationale>
+      </rule>
+    </section>
+
+    <section name="production-service-class">
+      <p>Wrap OpenAI API calls in a production-ready service class with logging and error handling.</p>
+
+      <example type="good" title="Production-ready OpenAI service wrapper">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass
+from typing import Optional, List, Dict, Any
+import logging
+
+@dataclass
+class CompletionConfig:
+    model: str = "gpt-4o"
+    temperature: float = 0.7
+    max_tokens: int = 1000
+    top_p: float = 1.0
+    frequency_penalty: float = 0.0
+    presence_penalty: float = 0.0
+
+class OpenAIService:
+    """Production-ready OpenAI service wrapper."""
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.client = OpenAI(api_key=api_key)
+        self.logger = logging.getLogger(__name__)
+
+    def complete(
+        self,
+        messages: List[Dict[str, str]],
+        config: Optional[CompletionConfig] = None
+    ) -> Dict[str, Any]:
+        """Execute completion with full response metadata."""
+        config = config or CompletionConfig()
+
+        try:
+            response = self.client.chat.completions.create(
+                model=config.model,
+                messages=messages,
+                temperature=config.temperature,
+                max_tokens=config.max_tokens,
+                top_p=config.top_p,
+                frequency_penalty=config.frequency_penalty,
+                presence_penalty=config.presence_penalty
+            )
+
+            return {
+                "content": response.choices[0].message.content,
+                "model": response.model,
+                "usage": {
+                    "prompt_tokens": response.usage.prompt_tokens,
+                    "completion_tokens": response.usage.completion_tokens,
+                    "total_tokens": response.usage.total_tokens
+                },
+                "finish_reason": response.choices[0].finish_reason
+            }
+
+        except Exception as e:
+            self.logger.error(f"OpenAI API error: {e}")
+            raise
+]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>API Key Management: Never hardcode API keys; use environment variables or secret managers; rotate keys periodically</item>
+        <item>Cost Control: Set usage limits in OpenAI dashboard; count tokens before sending large requests; use appropriate model for task complexity</item>
+        <item>Rate Limiting: Implement exponential backoff; use async for batch processing; consider request queuing for high volume</item>
+        <item>Prompt Engineering: Use system messages for consistent behavior; be specific about output format; include examples for complex tasks</item>
+        <item>Monitoring: Log all API calls with token usage; track latency and error rates; set up alerts for unusual patterns</item>
+      </list>
+    </section>
+
+    <section name="common-pitfalls">
+      <list>
+        <item>Token Overflow: Not checking if prompt + max_tokens exceeds context limit</item>
+        <item>Ignoring Finish Reason: Not handling "length" finish reason (truncated output)</item>
+        <item>Blocking Calls: Using sync API in async applications</item>
+        <item>No Timeout: Requests hanging indefinitely</item>
+        <item>Hardcoded Prompts: Difficulty updating prompts in production</item>
+        <item>Missing Error Handling: API errors crashing applications</item>
+      </list>
+    </section>
+
+    <section name="agent-integration">
+      <p>A subagent integrating OpenAI should initialize the `OpenAI` or `AsyncOpenAI` client from the environment, wrap calls with exponential backoff using `tenacity`, count tokens with `tiktoken` before sending to catch context overflow, and always check `finish_reason` in the response. For batch operations, the subagent should use `AsyncOpenAI` with `asyncio.gather` and a concurrency semaphore to stay within rate limits. Structured output should use `client.beta.chat.completions.parse` with Pydantic models for guaranteed schema compliance.</p>
+
+      <list>
+        <item>Use AsyncOpenAI to process {count} prompts concurrently (max {concurrency} at a time).</item>
+        <item>Model: gpt-4o-mini. Return structured JSON per prompt matching schema: {schema}.</item>
+        <item>Log token usage per request. Handle RateLimitError with exponential backoff (max 3 retries).</item>
+        <item>Extract structured data from the text using response_format=Person (Pydantic model).</item>
+        <item>Validate the parsed object. If parsing fails, return {"error": "parse_failed", "raw": "&lt;response&gt;"}.</item>
+      </list>
+    </section>
+
+    <section name="agentic-gotchas">
+      <list>
+        <item>`message.tool_calls` is `None` (not `[]`) when no tools are called; always use `if message.tool_calls:` not `if message.tool_calls is not None and len(message.tool_calls) > 0:`</item>
+        <item>Parallel tool calls: the model may call multiple tools in one response; agents that only handle the first `tool_call` silently drop the rest</item>
+        <item>`response_format={"type": "json_object"}` requires the word "json" to appear somewhere in the prompt or system message — otherwise the model ignores the format instruction</item>
+        <item>Human checkpoint before switching from `gpt-4o-mini` to `gpt-4o` in production; the cost jump is significant and should be justified by documented quality test results</item>
+        <item>Organization-level rate limits are shared across all API keys; multiple subagents running concurrently can exhaust the org's TPM limit even if each individual agent is well-behaved</item>
+        <item>`json_object` mode does not guarantee a specific schema — the LLM may omit fields or add extras; always validate with Pydantic</item>
+        <item>`AsyncOpenAI` does not work inside Jupyter notebooks without `nest_asyncio` — the event loop is already running</item>
+        <item>Rate limits are tier-dependent; newly created API keys start at Tier 1 (low RPM/TPM) and must be upgraded manually</item>
+        <item>The `openai` SDK v1 (>=1.0) is incompatible with code written for v0.x; `openai.ChatCompletion.create` vs. `client.chat.completions.create` — check package version in CI</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>`pip install openai` | Official Python SDK | https://pypi.org/project/openai/</item>
+        <item>`pip install tiktoken` | Token counting for cost estimation | https://pypi.org/project/tiktoken/</item>
+        <item>`pip install tenacity` | Retry with exponential backoff | https://pypi.org/project/tenacity/</item>
+        <item>`pip install pydantic` | Structured output validation | https://pypi.org/project/pydantic/</item>
+        <item>`openai api` | CLI for quick completions and file uploads | bundled with `openai` package</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>OpenAI Platform | SaaS | Yes | Primary API; `OPENAI_API_KEY` env var; usage limits per tier</item>
+        <item>Azure OpenAI | SaaS | Yes | Same API surface; enterprise compliance; requires Azure subscription</item>
+        <item>LiteLLM | OSS | Yes | Drop-in proxy; route `openai` SDK calls to Claude/Gemini without code changes</item>
+        <item>Langfuse | OSS/SaaS | Yes | Trace + log all OpenAI calls; self-hostable</item>
+        <item>Helicone | SaaS | Yes | Proxy with caching, rate limiting, analytics; minimal code change</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>SDK Installation: Install openai Python package (pip install openai)</check>
+      <check>SDK Installation: Install Node.js SDK for JavaScript (npm install openai)</check>
+      <check>SDK Installation: Verify SDK version compatibility with API</check>
+      <check>SDK Installation: Create virtual environment for Python projects</check>
+      <check>SDK Installation: Add SDK to requirements.txt or package.json</check>
+      <check>SDK Installation: Test SDK import and initialization</check>
+      <check>API Key Configuration: Set OPENAI_API_KEY environment variable</check>
+      <check>API Key Configuration: Verify API key validity and permissions</check>
+      <check>API Key Configuration: Use API key from OpenAI dashboard</check>
+      <check>API Key Configuration: Store keys securely (never hardcode)</check>
+      <check>API Key Configuration: Implement key rotation strategy</check>
+      <check>API Key Configuration: Test authentication with simple API call</check>
+      <check>Client Initialization: Create OpenAI client with API key</check>
+      <check>Client Initialization: Configure client for Python or JavaScript</check>
+      <check>Client Initialization: Set up error handling for client creation</check>
+      <check>Client Initialization: Test API connectivity</check>
+      <check>Client Initialization: Document client configuration</check>
+      <check>Client Initialization: Implement client as singleton/shared instance</check>
+      <check>Model Selection: Review available models (gpt-4o, gpt-4o-mini, etc.)</check>
+      <check>Model Selection: Understand model capabilities and costs</check>
+      <check>Model Selection: Select appropriate model for use case</check>
+      <check>Model Selection: Document model selection rationale</check>
+      <check>Model Selection: Plan for model updates/deprecation</check>
+      <check>Model Selection: Test multiple models if needed</check>
+      <check>Request Creation: Build messages array with role/content</check>
+      <check>Request Creation: Set max_tokens parameter</check>
+      <check>Request Creation: Configure temperature for randomness control</check>
+      <check>Request Creation: Add optional parameters (top_p, top_k, etc.)</check>
+      <check>Request Creation: Implement request timeout handling</check>
+      <check>Request Creation: Test request creation and validation</check>
+      <check>Response Handling: Parse response.choices[0].message.content</check>
+      <check>Response Handling: Extract finish_reason (stop, length, content_filter, tool_calls)</check>
+      <check>Response Handling: Track usage tokens (prompt, completion, total)</check>
+      <check>Response Handling: Handle partial responses</check>
+      <check>Response Handling: Implement response validation</check>
+      <check>Response Handling: Log responses for debugging</check>
+      <check>Error Handling &amp; Recovery: Implement try/catch for API calls</check>
+      <check>Error Handling &amp; Recovery: Handle authentication errors (401)</check>
+      <check>Error Handling &amp; Recovery: Handle rate limit errors (429) with backoff</check>
+      <check>Error Handling &amp; Recovery: Handle server errors (5xx) with retry</check>
+      <check>Error Handling &amp; Recovery: Implement exponential backoff strategy</check>
+      <check>Error Handling &amp; Recovery: Log detailed error information</check>
+      <check>Error Handling &amp; Recovery: Provide fallback responses</check>
+      <check>Advanced Features: Implement streaming responses</check>
+      <check>Advanced Features: Support vision/image inputs if needed</check>
+      <check>Advanced Features: Implement function calling (if applicable)</check>
+      <check>Advanced Features: Support batch processing</check>
+      <check>Advanced Features: Implement request caching if appropriate</check>
+      <check>Advanced Features: Handle long context sequences</check>
+      <check>Production Deployment: Implement monitoring for API calls</check>
+      <check>Production Deployment: Set up alerting for failures</check>
+      <check>Production Deployment: Implement rate limiting client-side</check>
+      <check>Production Deployment: Configure API key rotation</check>
+      <check>Production Deployment: Set up cost tracking and budgeting</check>
+      <check>Production Deployment: Test failover scenarios</check>
+      <check>Production Deployment: Implement graceful degradation</check>
+      <check>Production Deployment: Document API dependencies and SLAs</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://platform.openai.com/docs/api-reference"/>
+      <link href="https://cookbook.openai.com/"/>
+      <link href="https://github.com/openai/tiktoken"/>
+      <link href="https://github.com/openai/openai-python"/>
+      <link href="https://tenacity.readthedocs.io/"/>
+    </see-also>
+  </content>
+</methodology>
