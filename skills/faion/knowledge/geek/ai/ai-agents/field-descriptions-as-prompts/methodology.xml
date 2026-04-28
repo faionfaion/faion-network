@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="field-descriptions-as-prompts">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Use field descriptions as micro-prompts to improve extraction accuracy by 60%+. Specify format, units, edge cases, and forbidden patterns.</summary>
+    <tags>
+      <tag>structured-output</tag>
+      <tag>schema-design</tag>
+      <tag>llm-reliability</tag>
+      <tag>field-descriptions</tag>
+      <tag>prompt-engineering</tag>
+    </tags>
+    <category>structured-output</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>Field Descriptions as Inline Mini-Prompts</title>
+    <summary>Treat every `description=` on a schema field as a tiny prompt the model sees right before it generates that field. Be explicit about format, range, units, edge cases, and forbidden patterns. PARSE research (2025) showed that optimizing field descriptions yields 60%+ improvement in extraction accuracy. Making relationships explicit in descriptions improves complex-reasoning accuracy by up to 40%.</summary>
+    <why>
+      <p>When a model fills a schema field, it sees the schema serialization as part of the prompt. Each field's description appears just before the field's value position in the autoregressive sequence. The description is, effectively, a per-field micro-instruction.</p>
+      <p>A short, vague description ("the user's age") leaves the model interpolating from priors. A precise one ("integer years; if you only see month/year DOB, assume day=01 to compute") collapses the variance.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Always — descriptions cost ~10 tokens each and pay for themselves</item>
+        <item>Especially for: ambiguous units (USD vs cents, kg vs lb), formats (ISO-8601), exclusions ("ignore retracted papers"), cardinality bounds</item>
+        <item>For fields where you need format compliance > 99%</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>When description duplicates enum members verbatim (the enum already constrains decoding)</item>
+        <item>When schema is so large that descriptions blow the cold-cache budget — strip them only on cache-warm calls</item>
+        <item>When the description would contradict the field name (rename instead)</item>
+      </list>
+    </when-not-to-use>
+    <section name="What Goes In a Good Description">
+      <p>A description ≈ 1-3 short sentences. The description is the densest, most surgical place to put steering signal. Cover up to four key elements:</p>
+      <list>
+        <item><term name="What">the field represents (semantic meaning). Be specific about what kind of data goes here, not just a generic label.</term></item>
+        <item><term name="Format / units / range">if non-obvious. State it explicitly: ISO-8601, cents not dollars, lowercase only, max 50 chars, range [0, 100].</term></item>
+        <item><term name="Edge cases">what to do when the input is missing, ambiguous, or contradictory. These are the cases that models struggle with most.</term></item>
+        <item><term name="Forbidden patterns">common ways the model mis-fills this field. Call out specific failure modes you have observed in production.</term></item>
+      </list>
+    </section>
+    <section name="Anti-patterns">
+      <antipattern>
+        <description>Empty description</description>
+        <reason>Add at minimum the format/units</reason>
+      </antipattern>
+      <antipattern>
+        <description>Description duplicates field name (age: int = Field(description="age"))</description>
+        <reason>Drop or expand to format/edge-case info</reason>
+      </antipattern>
+      <antipattern>
+        <description>Description asks for reasoning ("explain why...")</description>
+        <reason>Reasoning belongs in its own field; this field is for a value</reason>
+      </antipattern>
+      <antipattern>
+        <description>Generic "the X for this object" pattern</description>
+        <reason>Concretize — what kind of X, in what units</reason>
+      </antipattern>
+      <antipattern>
+        <description>Long flowing prose</description>
+        <reason>Tighten to 1-3 sentences; the model parses bullet-style fine</reason>
+      </antipattern>
+      <antipattern>
+        <description>Contradictory hints (name says cents, description says dollars)</description>
+        <reason>Reconcile — one source of truth</reason>
+      </antipattern>
+    </section>
+    <section name="Empirical Anchor">
+      <p>PARSE (LLM-driven schema optimization, 2025) showed that optimizing field descriptions yields 60%+ improvement in extraction accuracy. Making relationships explicit in descriptions improves complex-reasoning accuracy by up to 40%.</p>
+    </section>
+    <example type="good" title="Currency conversion errors → 0%">
+      <p>Before:</p>
+      <code lang="python"><![CDATA[total: float = Field(description="invoice total")]]></code>
+      <p>Errors: ~12% returned dollars when cents were expected, ~8% off-by-cents.</p>
+      <p>After:</p>
+      <code lang="python"><![CDATA[total_cents: int = Field(
+    description=(
+        "Total in CENTS as integer. $19.99 -> 1999. "
+        "Never include currency symbol. Includes tax."
+    )
+)]]></code>
+      <p>Errors: &lt; 0.5% on the same 1000-invoice eval.</p>
+    </example>
+    <example type="good" title="ISO-8601 with edge cases">
+      <code lang="python"><![CDATA[published_iso: str = Field(
+    description=(
+        "ISO-8601 YYYY-MM-DD. "
+        "If only month visible, use day=01. "
+        "If only year visible, use 01-01. "
+        "If 'NYT 2024' visible, year is 2024 (NYT is a publisher, not a date prefix)."
+    )
+)]]></code>
+      <note>The "NYT 2024" hint cuts a specific failure mode where the parser previously emitted "2024-NY-T1".</note>
+    </example>
+    <example type="good" title="Boolean with explicit forbiddance">
+      <code lang="python"><![CDATA[is_genuine_complaint: bool = Field(
+    description=(
+        "True if the message expresses dissatisfaction. "
+        "Sarcastic praise counts as complaint. "
+        "Pure questions do NOT count. "
+        "Comments asking for refunds DO count."
+    )
+)]]></code>
+      <note>The "do NOT" line is load-bearing — the model would otherwise mark questions as complaints 30% of the time.</note>
+    </example>
+    <example type="good" title="Dependency reference">
+      <code lang="python"><![CDATA[class Article(BaseModel):
+    body: str
+    summary: str = Field(
+        description="3-sentence summary of `body` above. Same tense and tone."
+    )
+    title: str = Field(
+        description="Sharp 6-10 word title derived from `body` and `summary`. No clickbait."
+    )]]></code>
+      <note>Naming the dependent field in the description re-grounds the model on what it's summarizing.</note>
+    </example>
+    <example type="good" title="Enum value choice rules">
+      <code lang="python"><![CDATA[priority: Literal["low", "medium", "high", "critical"] = Field(
+    description=(
+        "low = informational. "
+        "medium = should be addressed within a sprint. "
+        "high = needs same-day attention. "
+        "critical = production down or data loss imminent."
+    )
+)]]></code>
+      <note>Without these rules, the model splits high vs critical near 50/50 on borderline cases.</note>
+    </example>
+    <example type="good" title="Numerical bounds">
+      <code lang="python"><![CDATA[confidence_0_to_1: float = Field(
+    description=(
+        "Confidence in [0.0, 1.0]. "
+        "0.0 = guessing. 0.5 = uncertain. 1.0 = certain. "
+        "Round to 2 decimals. Never use 1.0 unless the answer is logically derived."
+    )
+)]]></code>
+    </example>
+    <example type="good" title="Forbidden patterns">
+      <code lang="python"><![CDATA[slug_kebab: str = Field(
+    description=(
+        "kebab-case slug, max 60 chars, ASCII lower. "
+        "Derived from `title`. "
+        "DO NOT include articles (a/an/the). "
+        "DO NOT include the year unless the title mentions a year. "
+        "DO NOT use special characters or emoji."
+    )
+)]]></code>
+    </example>
+    <example type="bad" title="Description that asks for reasoning">
+      <code lang="python"><![CDATA[verdict: str = Field(
+    description="Explain your reasoning, then give the verdict."
+)]]></code>
+      <note>Split into separate fields instead:</note>
+      <code lang="python"><![CDATA[class Output(BaseModel):
+    reasoning: str = Field(description="Step-by-step analysis of evidence.")
+    verdict: Literal["approve", "reject"] = Field(description="Final call. Must follow from reasoning above.")]]></code>
+    </example>
+    <section name="Composition">
+      <p>Field description methodology composes with:</p>
+      <list>
+        <item>semantic-field-naming: name carries the gist, description carries the rules. The combination of a clear field name and a precise description creates redundancy that improves reliability.</item>
+        <item>schema-field-order: in dependent fields, the description can reference earlier fields by name (e.g., "must be derived from `body` above"). This leverages the fact that schemas are processed top-to-bottom, and models can ground their generation in prior fields.</item>
+        <item>enum constraints: description complements enum by specifying when to choose each value, not duplicating the values. The enum constrains the output space; the description constrains the reasoning about which value to pick.</item>
+      </list>
+    </section>
+    <section name="Design Phase">
+      <p>When designing field descriptions, think of each description as a tiny instruction that appears right before the model generates the field value. The description is not metadata for humans—it is a steering signal in the prompt itself.</p>
+      <p>Every non-trivial field should have a description. Descriptions cost approximately 10 tokens each but pay for themselves many times over by reducing error rates, especially in high-stakes extraction tasks.</p>
+      <p>The ideal description is 1–3 sentences and covers: what the field represents, format or units if non-obvious, edge cases (what to do when input is missing, ambiguous, or contradictory), and forbidden patterns (common mistakes the model makes when filling this field).</p>
+    </section>
+    <section name="Review Phase">
+      <p>During code review, check that descriptions are not duplicating field names verbatim. They should add information, not repeat it. Reject descriptions that ask for reasoning—reasoning belongs in a separate field. Descriptions that contradict the field name or type should be reworked: either fix the name or fix the description, but choose one source of truth.</p>
+      <p>Avoid descriptions that are too generic. "The X for this object" should be tightened to specify what kind of X and in what units. Long flowing prose should be tightened to 1–3 sentences. The model parses bullet-style hints just fine.</p>
+    </section>
+    <section name="Verification Phase">
+      <p>After deployment, measure format compliance. A good target is > 99% on a 50-task eval. If you fall short, perform field-by-field error analysis to identify which descriptions are still leaking edge cases. Iterate on the most-failed fields and re-measure.</p>
+      <p>Keep descriptions version-controlled alongside the schema. When you rename a field, review and update its description. When the schema changes shape, audit descriptions for staleness. Do not maintain separate "cold-cache" and "warm-cache" versions of descriptions—keep one source of truth and use it everywhere.</p>
+    </section>
+    <checklist>
+      <check>Every non-trivial field has a `description=`</check>
+      <check>Each description is 1-3 sentences, not a paragraph</check>
+      <check>Format / units / range stated when non-obvious</check>
+      <check>Edge cases covered (missing input, ambiguous input, conflicts)</check>
+      <check>Forbidden patterns called out where the model commonly mis-fills</check>
+      <check>No description duplicates the field name verbatim</check>
+      <check>No description asks for reasoning (reasoning has its own field)</check>
+      <check>No description contradicts the field name or type</check>
+      <check>No description duplicates enum values verbatim</check>
+      <check>Dependent fields reference their dependencies by name in their description</check>
+      <check>On a 50-task eval, format-compliance rate is > 99%</check>
+      <check>Field-by-field error analysis: which descriptions still leak edge cases?</check>
+      <check>Descriptions are version-controlled with the schema</check>
+      <check>Renamed fields keep their description aligned</check>
+      <check>When schema changes shape, descriptions are reviewed for staleness</check>
+    </checklist>
+    <prompt purpose="Generate descriptions">
+For each field below, write a 1-3 sentence `description` covering:
+- What the field represents
+- Format / units / range
+- Edge cases (missing/ambiguous input)
+- Forbidden patterns
+
+Output: same schema, with descriptions added.
+
+Schema:
+{paste here}
+    </prompt>
+    <prompt purpose="Audit descriptions">
+Review every field description in this schema. Flag:
+- Empty descriptions
+- Descriptions that duplicate the field name
+- Descriptions asking for reasoning (move reasoning to its own field)
+- Descriptions contradicting the field name or type
+- Descriptions longer than 3 sentences (tighten)
+
+Output: list of issues with proposed rewrites.
+
+Schema:
+{paste here}
+    </prompt>
+    <prompt purpose="Edge-case enumeration">
+For each field below, list the top 5 likely failure modes:
+- ambiguous input
+- missing input
+- conflicting input
+- unit confusion
+- format drift
+
+Then propose a 1-sentence addition to the description that addresses each failure.
+
+Schema:
+{paste here}
+    </prompt>
+    <prompt purpose="Description for a constrained string">
+Field: {field_name}
+Type: {type}
+Constraints: {constraints, e.g., max length, regex, enum}
+
+Write a 1-2 sentence description that an LLM can use to fill this field correctly. Include format and the most likely failure mode to avoid.
+    </prompt>
+    <templates>
+      <template path="templates/pydantic-invoice.py" purpose="Pydantic Invoice schema with field descriptions"/>
+      <template path="templates/openai-structured.json" purpose="OpenAI structured output with field descriptions"/>
+      <template path="templates/anthropic-tool-schema.json" purpose="Anthropic tool input schema with descriptions"/>
+      <template path="templates/pattern-numeric.py" purpose="Pattern template for numeric field with units"/>
+      <template path="templates/pattern-constrained-string.py" purpose="Pattern template for constrained string"/>
+      <template path="templates/pattern-boolean-rule.py" purpose="Pattern template for boolean with rule"/>
+      <template path="templates/pattern-list-cardinality.py" purpose="Pattern template for list with cardinality"/>
+      <template path="templates/pattern-sentinel.py" purpose="Pattern template for edge-case sentinel"/>
+    </templates>
+    <see-also>
+      <ref slug="semantic-field-naming"/>
+      <ref slug="schema-field-order"/>
+      <link href="https://arxiv.org/html/2510.08623v1">PARSE: LLM Driven Schema Optimization for Reliable Entity Extraction (arxiv 2510.08623)</link>
+      <link href="https://python.useinstructor.com/blog/2024/09/26/bad-schemas-could-break-your-llm-structured-outputs/">Bad Schemas could break your LLM Structured Outputs — Instructor blog</link>
+    </see-also>
+  </content>
+</methodology>
