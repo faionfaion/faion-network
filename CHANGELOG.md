@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/llm-integration methodologies → methodology.xml (cot-basics, cot-techniques, function-calling-patterns; feature-045 batch 253)
 - migrate: 3/3 geek/ai/claude-code methodologies → methodology.xml (mcp-servers, project-docs-convention, skills; feature-045 batch 250)
 - migrate: 3/3 geek/ai/llm-integration methodologies → methodology.xml (claude-advanced-features, claude-api-basics, claude-api-integration; feature-045 batch 251)
 - migrate: 3/3 geek/ai/llm-integration methodologies → methodology.xml (claude-best-practices, claude-messages-api, claude-tool-use; feature-045 batch 252)
