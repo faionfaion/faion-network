@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/dev/backend-enterprise decomposition methodologies → methodology.xml (decomposition-laravel, decomposition-rails, java-jpa-hibernate; feature-045 batch)
 - migrate: 3/3 pro/dev/backend-enterprise C# methodologies → methodology.xml (csharp-aspnet-core, csharp-background-services, csharp-dotnet; feature-045 batch)
 - migrate: 3/3 pro/comms/hr-recruiter methodologies → methodology.xml (employer-branding, interview-methods, onboarding; feature-045 batch)
 - migrate: 3/3 pro/dev/backend-enterprise C# methodologies → methodology.xml (csharp-dotnet-patterns, csharp-entity-framework, csharp-xunit-testing; feature-045 batch)

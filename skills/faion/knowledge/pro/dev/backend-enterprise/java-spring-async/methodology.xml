@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="java-spring-async">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>Spring @Async offloads IO-bound work from request threads to ThreadPoolTaskExecutor for composability and exception visibility.</summary>
+    <category>concurrency</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>async</tag>
+      <tag>threading</tag>
+      <tag>spring-boot</tag>
+      <tag>concurrency</tag>
+      <tag>executor</tag>
+    </tags>
+    <languages>
+      <language>java</language>
+    </languages>
+    <frameworks>
+      <framework>spring-boot</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Spring Async</title>
+
+    <summary>Spring @Async offloads IO-bound work from request threads to ThreadPoolTaskExecutor. Name executors explicitly.</summary>
+
+    <why>
+      <p>Request threads are a scarce resource; blocking them on slow IO degrades throughput and increases p99 latency. `@Async` delegates to a tuned thread pool without the operational overhead of a full message broker. Named executors allow independent pool sizing (email vs general task), backpressure via `CallerRunsPolicy`, and Micrometer metrics per pool. `CompletableFuture` composition replaces nested callbacks and makes exception propagation explicit.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Offloading IO-bound work (email, SMS, webhooks, audit logs) from request threads in an existing Spring Boot service.</item>
+        <item>Fan-out parallel sub-tasks per request via `CompletableFuture.allOf` when work is short-lived and confined to one JVM.</item>
+        <item>Fire-and-forget events that do not need cross-process durability.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Work must survive a JVM crash — use Spring Batch, Kafka, or RabbitMQ instead.</item>
+        <item>Cross-service or cross-host coordination — use a real broker, not an in-memory `ThreadPoolTaskExecutor`.</item>
+        <item>CPU-bound parallelism on large datasets — use `ForkJoinPool` or Project Reactor; `@Async` is sized for IO.</item>
+        <item>Methods already inside `@Transactional` — `@Async` opens a new thread; the outer transaction does not propagate.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="executor-configuration">
+      <p>Named executors are the foundation of `@Async` work. Each executor pools threads independently and can be tuned for its workload (email vs general tasks).</p>
+
+      <rule testable="true">
+        <statement>Projects MUST define at least one named `ThreadPoolTaskExecutor` bean (e.g., "emailExecutor", "taskExecutor") via `@Configuration`. The executor MUST set `RejectedExecutionHandler` to `CallerRunsPolicy` for backpressure. Core pool size MUST be calculated as cores × (1 + wait/compute ratio), with sensible defaults (4 for email, 8 for general tasks). Graceful shutdown MUST be enabled: `setWaitForTasksToCompleteOnShutdown(true)` and `setAwaitTerminationSeconds(30)`. Every `@Async` method MUST explicitly name its executor: `@Async("emailExecutor")`. Omitting the name falls back to Spring's default, which changes between Boot versions.</statement>
+        <rationale>Named executors prevent contention and allow independent tuning. `CallerRunsPolicy` provides backpressure when the queue is full, preventing unbounded memory growth. Pool sizing prevents thread explosion. Graceful shutdown ensures in-flight tasks complete before the app stops. Explicit naming makes executor choice visible in the code and stable across versions.</rationale>
+      </rule>
+
+      <example type="good" title="AsyncConfig with two named executors">
+        <code lang="java"><![CDATA[
+@Configuration
+@EnableAsync
+public class AsyncConfig implements AsyncConfigurer {
+
+    @Bean(name = "emailExecutor")
+    public ThreadPoolTaskExecutor emailExecutor() {
+        var executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("Email-");
+        executor.setRejectedExecutionHandler(new ThreadPoolTaskExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
+        executor.setTaskDecorator(new MdcTaskDecorator()); // propagate MDC
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "taskExecutor")
+    public ThreadPoolTaskExecutor taskExecutor() {
+        var executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(8);
+        executor.setMaxPoolSize(16);
+        executor.setQueueCapacity(200);
+        executor.setThreadNamePrefix("Task-");
+        executor.setRejectedExecutionHandler(new ThreadPoolTaskExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
+        executor.setTaskDecorator(new MdcTaskDecorator());
+        executor.initialize();
+        return executor;
+    }
+
+    @Override
+    public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
+        return (ex, method, params) -> {
+            logger.error("Uncaught exception in async method " + method.getName(), ex);
+        };
+    }
+}
+]]></code>
+        <note>Two executors: email (small pool) and task (general). Both use `CallerRunsPolicy`. MDC decorator propagates request context. Exception handler logs uncaught errors.</note>
+      </example>
+
+      <example type="good" title="MdcTaskDecorator for context propagation">
+        <code lang="java"><![CDATA[
+public class MdcTaskDecorator implements TaskDecorator {
+    @Override
+    public Runnable decorate(Runnable runnable) {
+        // Capture MDC and SecurityContext from current thread
+        var mdcMap = MDC.getCopyOfContextMap() != null ?
+            new HashMap<>(MDC.getCopyOfContextMap()) : new HashMap<>();
+        var securityContext = SecurityContextHolder.getContext();
+
+        return () -> {
+            try {
+                // Restore MDC and SecurityContext in the async thread
+                if (!mdcMap.isEmpty()) {
+                    MDC.setContextMap(mdcMap);
+                }
+                SecurityContextHolder.setContext(securityContext);
+                runnable.run();
+            } finally {
+                MDC.clear();
+                SecurityContextHolder.clearContext();
+            }
+        };
+    }
+}
+]]></code>
+        <note>Captures request-id, user context, security principal in the decorator. Async method runs with the same context as the caller.</note>
+      </example>
+
+      <antipattern>
+        <description>Using the default executor without a custom `ThreadPoolTaskExecutor` bean.</description>
+        <reason>Spring's default `SimpleAsyncTaskExecutor` creates a new thread per call with no pooling. OOM and thread explosion on high load. Default executor changes between Boot versions; behavior is unpredictable.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mixing `@Async` methods on the same bean without explicit executor names.</description>
+        <reason>All methods use the default executor. Slow email tasks starve fast cache-warm tasks. Separate executors allow independent tuning.</reason>
+      </antipattern>
+    </section>
+
+    <section name="async-method-patterns">
+      <p>Async methods must return `CompletableFuture&lt;T&gt;` to allow callers to compose and observe exceptions.</p>
+
+      <rule testable="true">
+        <statement>Every `@Async` method MUST return `CompletableFuture&lt;T&gt;` (not `Future&lt;T&gt;`, not `void`). The method body MUST wrap the computation in a try-catch or use `CompletableFuture.supplyAsync()` to ensure exceptions reach the caller. Callers MUST NOT assume fire-and-forget; they MUST `.get()` or `.thenAccept()` to observe completion and errors. If fire-and-forget is truly desired, the error handling MUST be explicit (logged, sent to Sentry, etc.).</statement>
+        <rationale>`CompletableFuture&lt;T&gt;` allows callers to compose (`.thenCombine()`, `.allOf()`) and observe exceptions. `void` methods swallow exceptions unless an `AsyncUncaughtExceptionHandler` is registered, and even then, only uncaught exceptions — caught exceptions inside the method vanish silently. `Future&lt;T&gt;` is older API; `CompletableFuture` is composable and more flexible.</rationale>
+      </rule>
+
+      <example type="good" title="Async method returning CompletableFuture">
+        <code lang="java"><![CDATA[
+@Service
+@RequiredArgsConstructor
+public class NotificationService {
+    private final EmailClient emailClient;
+    private final SmsClient smsClient;
+    private final AuditLog auditLog;
+
+    @Async("emailExecutor")
+    public CompletableFuture&lt;Void&gt; sendWelcomeEmail(String userId, String email) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                emailClient.sendWelcome(email);
+                auditLog.log(userId, "welcome_email_sent");
+            } catch (EmailException ex) {
+                auditLog.log(userId, "welcome_email_failed: " + ex.getMessage());
+                throw new CompletionException(ex);
+            }
+        });
+    }
+
+    @Async("taskExecutor")
+    public CompletableFuture<String> generateReport(Long reportId) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return reportGenerator.generate(reportId);
+            } catch (Exception ex) {
+                throw new CompletionException(ex);
+            }
+        });
+    }
+
+    public CompletableFuture&lt;Void&gt; notifyUser(String userId, String email) {
+        // Compose multiple async tasks
+        var emailTask = sendWelcomeEmail(userId, email);
+        var smsTask = sendSmS(userId);
+
+        return CompletableFuture.allOf(emailTask, smsTask)
+            .exceptionally(ex -> {
+                logger.error("Notification failed for user " + userId, ex);
+                return null;
+            });
+    }
+}
+]]></code>
+        <note>Explicit error handling inside async methods. Exceptions wrap in `CompletionException`. Caller can compose with `.allOf()` and handle errors with `.exceptionally()`.</note>
+      </example>
+
+      <antipattern>
+        <description>`@Async` method with `void` return type and no exception handler.</description>
+        <reason>Exceptions are swallowed completely. Silent failures. Caller cannot observe or retry.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Caller does not `.get()` or `.thenAccept()` on the returned `CompletableFuture`.</description>
+        <reason>Fire-and-forget without visibility. If the async work fails, no one knows. Silent corruption.</reason>
+      </antipattern>
+    </section>
+
+    <section name="context-propagation">
+      <p>Spring's `@Async` opens a new thread; by default, `SecurityContext` and MDC are lost. Explicit propagation is necessary.</p>
+
+      <rule testable="true">
+        <statement>ThreadPoolTaskExecutor MUST use a `TaskDecorator` to capture and restore MDC (Mapped Diagnostic Context, used for request-id) and `SecurityContext` (authentication principal). Without a decorator, logs in the async thread lose correlation with the original request, and authenticated endpoints called inside async methods throw `AuthenticationException`.</statement>
+        <rationale>Request tracing relies on request-id propagation via MDC. Async threads starting fresh have empty MDC, breaking correlation. Security operations inside async methods need the authenticated principal; `SecurityContextHolder` is ThreadLocal and empty in a new thread. The decorator pattern is the standard way to propagate context.</rationale>
+      </rule>
+
+      <example type="good" title="MDC propagation via TaskDecorator (shown above)">
+        <note>The `MdcTaskDecorator` example captures MDC and SecurityContext in the decorator and restores them in the async thread. Every `ThreadPoolTaskExecutor` should use a similar decorator.</note>
+      </example>
+
+      <antipattern>
+        <description>Async method that calls `SecurityContextHolder.getContext()` or uses `@Transactional` without a `TaskDecorator`.</description>
+        <reason>SecurityContext is null in the new thread. `@Transactional` requires the transaction context (from Spring's `TransactionContextHolder`), also lost. Method fails with cryptic NullPointerException or `RuntimeException: not transactional`.</reason>
+      </antipattern>
+    </section>
+
+    <section name="self-invocation-and-common-pitfalls">
+      <p>Spring's AOP-based `@Async` has surprising failure modes that agents commonly trigger.</p>
+
+      <rule testable="true">
+        <statement>CRITICAL: Do NOT call an `@Async` method from the same bean (self-invocation). Spring proxies only wrap external calls; self-invocation bypasses the proxy and runs synchronously. If self-invocation is necessary, inject the bean into itself or use `AopContext.currentProxy()`. Code review MUST flag any self-invocation. No `@Async` method inside `@Transactional` — the outer transaction does not propagate to the async thread; rollback is not coordinated. If async work is conditional on a transaction, move the `@Async` call outside the transaction boundary.</statement>
+        <rationale>Self-invocation is a well-known Spring AOP gotcha. The caller gets back the result immediately (blocking), defeating the purpose of `@Async`. The proxy pattern requires external method calls. `@Transactional` with `@Async` is even more insidious: the caller thinks the async work is within the transaction boundary, but it runs in a new thread with a new transaction (if any), silently causing data corruption on partial failure.</rationale>
+      </rule>
+
+      <example type="bad" title="Self-invocation (WRONG)">
+        <code lang="java"><![CDATA[
+@Service
+public class UserService {
+    @Transactional
+    public void registerUser(String email) {
+        saveUser(email);
+        sendWelcomeEmail(email);  // BUG: self-invocation, runs sync, not async
+    }
+
+    @Async("emailExecutor")
+    public CompletableFuture&lt;Void&gt; sendWelcomeEmail(String email) {
+        return CompletableFuture.runAsync(() -> {
+            emailClient.send(email);
+        });
+    }
+}
+]]></code>
+        <note>`sendWelcomeEmail()` is called from the same bean. Spring proxy is not used. Method runs synchronously, blocking the request thread. Caller blocks on email send.</note>
+      </example>
+
+      <example type="good" title="Fix: inject the bean (CORRECT)">
+        <code lang="java"><![CDATA[
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserService self;  // inject self
+
+    @Transactional
+    public void registerUser(String email) {
+        saveUser(email);
+        self.sendWelcomeEmail(email);  // external call, proxy is used, truly async
+    }
+
+    @Async("emailExecutor")
+    public CompletableFuture&lt;Void&gt; sendWelcomeEmail(String email) {
+        return CompletableFuture.runAsync(() -> {
+            emailClient.send(email);
+        });
+    }
+}
+]]></code>
+        <note>Injecting self bypasses the self-invocation gotcha. Call goes through the proxy and is truly async.</note>
+      </example>
+
+      <antipattern>
+        <description>Wrapping an `@Async` method in `@Transactional` expecting the async work to be part of the transaction.</description>
+        <reason>The async method runs in a new thread with a new transaction (or no transaction, depending on propagation). Partial failure leaves inconsistent state. Rollback is not coordinated.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using `Thread.sleep()` in a test to wait for an async task.</description>
+        <reason>Flaky on CI under load. Use `Awaitility.await().atMost(...)` instead for deterministic completion detection.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Suggesting `@Async` to "speed up" CPU-heavy computations.</description>
+        <reason>Thread pools are for IO-bound work. CPU-bound parallelism requires `ForkJoinPool` or Project Reactor. `@Async` will add overhead and contention.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A coding subagent should treat `@Async` as a thin wrapper around an executor, not a job queue.</p>
+
+      <p>Drive it by:</p>
+      <list>
+        <item>(1) detecting if the project already has `@EnableAsync` and a custom executor.</item>
+        <item>(2) generating the `@Async("namedExecutor")` method with a `CompletableFuture&lt;T&gt;` return type.</item>
+        <item>(3) adding an `AsyncUncaughtExceptionHandler` when missing.</item>
+        <item>(4) writing a Spring Boot test using `@SpringBootTest` plus `Awaitility` to verify completion.</item>
+      </list>
+
+      <p>Have the agent flag any call site where the caller currently relies on `@Transactional` propagation and refuse to convert it without a human checkpoint.</p>
+
+      <p>Recommended subagents:</p>
+      <list>
+        <item>`general-purpose` Claude subagent — codegen for executor config + `@Async` method conversion.</item>
+        <item>Code-review subagent (Sonnet) — checks for self-invocation, missing exception handler, executor pool sizing.</item>
+      </list>
+
+      <p>Prompt pattern for method conversion:</p>
+      <prompt purpose="Async method conversion"><![CDATA[
+Convert <ServiceClass.method> to use @Async("emailExecutor"). Return CompletableFuture&lt;Void&gt;. Verify @EnableAsync is present, ThreadPoolTaskExecutor "emailExecutor" exists, no self-invocation, no enclosing @Transactional. If any check fails, stop and ask.
+]]></prompt>
+
+      <p>Prompt pattern for exception handler setup:</p>
+      <prompt purpose="Exception handler setup"><![CDATA[
+Add AsyncUncaughtExceptionHandler that forwards to <existing logger / error tracker>. Update AsyncConfig to implement AsyncConfigurer and override getAsyncUncaughtExceptionHandler().
+]]></prompt>
+    </section>
+
+    <section name="tools-and-services">
+      <p>Standard tools for profiling and observing async executors.</p>
+
+      <p>Local dev: `mvn spring-boot:run` / `./gradlew bootRun` for local run with hot reload.</p>
+      <p>Thread inspection: `jcmd &lt;pid&gt; Thread.print` (JDK) to inspect live threads and verify pool naming (e.g., Async-N, Email-N).</p>
+      <p>Profiling: `async-profiler` (https://github.com/async-profiler/async-profiler) to sample CPU/wall on async pool and detect saturation.</p>
+      <p>Metrics: Micrometer `executor` metrics (https://micrometer.io) — enable with `management.metrics.enable.executor=true` to expose pool stats to Prometheus.</p>
+
+      <p>Observability: Spring Boot Actuator (OSS, HTTP JSON) exposes `/actuator/metrics/executor.active` for live pool queries.</p>
+      <p>Monitoring: Prometheus + Grafana (OSS) to scrape executor metrics and alert on `executor.queued` ≥ capacity-1.</p>
+      <p>Distributed tracing: OpenTelemetry Java agent (OSS) provides automatic context propagation across `@Async` (with `otel.instrumentation.executors.enabled=true`).</p>
+      <p>Error tracking: Sentry / Honeybadger (SaaS, SDK) to capture exceptions from `AsyncUncaughtExceptionHandler`.</p>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always name the executor: `@Async("emailExecutor")`. Default executor is rarely what you want and changes between Boot versions.</item>
+        <item>Set `RejectedExecutionHandler` to `CallerRunsPolicy` for backpressure unless you have a downstream queue.</item>
+        <item>Wrap `Runnable` with a `TaskDecorator` to propagate MDC, `SecurityContext`, and tracing baggage — without it, logs lose request-id correlation.</item>
+        <item>Return `CompletableFuture&lt;T&gt;` (not `Future&lt;T&gt;` or `void`) so callers can compose and exceptions are observable.</item>
+        <item>Pool size: cores × (1 + wait/compute) for IO-bound; profile, do not guess.</item>
+        <item>Shut down gracefully: `setWaitForTasksToCompleteOnShutdown(true)` and `setAwaitTerminationSeconds(...)`.</item>
+      </list>
+    </section>
+
+    <section name="agent-gotchas">
+      <list>
+        <item>LLM commonly emits `@Async` on a method called from the same class — silently no-op. Static-analysis check or human review required before merge.</item>
+        <item>LLM tends to omit explicit executor name; falls back to default. Force the prompt to require a named bean.</item>
+        <item>Generated tests using `Thread.sleep` are flaky on CI. Mandate `Awaitility.await().atMost(...)`.</item>
+        <item>LLM may suggest `@Async` to "speed up" CPU-heavy work — wrong tool. Review must reject unless workload is IO-bound.</item>
+        <item>Virtual threads: if upgrading to Java 21 + Boot 3.2, the agent should detect `spring.threads.virtual.enabled` and rewrite executor sizing, not blindly keep `corePoolSize=4`.</item>
+        <item>Human-in-loop checkpoint: any conversion of a method currently inside `@Transactional` must pause for review — silent transaction loss is a high-severity regression.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/AsyncConfig.java" purpose="ThreadPoolTaskExecutor config with CallerRunsPolicy, graceful shutdown, TaskDecorator hook"/>
+      <template path="templates/async-service.java" purpose="@Async method skeleton returning CompletableFuture&lt;Void&gt; with error handling"/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.spring.io/spring-framework/reference/integration/scheduling.html#scheduling-annotation-support-async"/>
+      <link href="https://docs.spring.io/spring-boot/reference/features/task-execution-and-scheduling.html"/>
+      <link href="https://github.com/spring-projects/spring-framework/wiki/Async-Annotation-Caveats"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="java-junit-testing">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>Layered testing strategy for Spring Boot applications using JUnit 5 + Mockito + AssertJ. Uses Spring test slices to isolate each layer, keeping tests fast and failure messages diagnostic.</summary>
+    <category>testing</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>junit</tag>
+      <tag>testing</tag>
+      <tag>spring-boot</tag>
+      <tag>mockito</tag>
+      <tag>coverage</tag>
+    </tags>
+    <languages>
+      <language>java</language>
+    </languages>
+    <frameworks>
+      <framework>spring-boot</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>JUnit Testing (Spring Boot)</title>
+
+    <summary>Layered testing strategy for Spring Boot applications using JUnit 5 + Mockito + AssertJ. Uses Spring test slices (`@WebMvcTest` for controllers, plain Mockito for services, `@DataJpaTest` for repositories, `@SpringBootTest` for full integration) to isolate each layer, keeping tests fast and failure messages diagnostic.</summary>
+
+    <why>
+      <p>Spring test slices boot only the relevant application context slice, cutting build time vs full `@SpringBootTest` on every test. Layer isolation (real controller, mocked service) catches HTTP contract bugs without a database. Naming convention `methodUnderTest_state_expectedBehavior` makes CI failure output self-documenting. Coverage + mutation testing together catch assertion-free tests that pass regardless of behavior.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Spring Boot app with REST controllers that need HTTP contract tests.</item>
+        <item>Service-layer unit tests requiring Mockito mocks for repository, password encoder, or mapper.</item>
+        <item>Repository-layer tests with real SQL via `@DataJpaTest` + Testcontainers.</item>
+        <item>Teams enforcing coverage gates (line ≥70%, branch ≥60%) via Jacoco.</item>
+        <item>Refactor projects that need a safety net before agents modify the service layer.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Reactive Spring (WebFlux) — `@WebMvcTest` does not apply; use `WebTestClient` + `StepVerifier`.</item>
+        <item>Pure library projects with no Spring context — Spring test slices add no value; plain JUnit 5 + Mockito is enough.</item>
+        <item>Spring Boot &lt; 2.4 targets — test infrastructure here assumes JUnit 5 + AssertJ + recent Boot versions.</item>
+        <item>Domain-heavy DDD codebases where behavior lives in plain POJOs — favor pure unit tests; reserve Spring slices for I/O boundaries.</item>
+        <item>Performance benchmarks — use JMH, not example-based tests.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="slice-pattern">
+      <p>Spring test slices boot only the relevant application context slice, cutting build time vs full `@SpringBootTest` on every test. Slice-per-layer isolates concerns and catches HTTP contract bugs without a database.</p>
+
+      <rule testable="true">
+        <statement>Controller tests MUST use `@WebMvcTest(ControllerName.class)` with `@MockBean` for service dependencies. Service tests MUST use `@ExtendWith(MockitoExtension.class)` with plain Mockito. Repository tests MUST use `@DataJpaTest` with real Testcontainers database, never H2. Full-stack integration tests MUST use `@SpringBootTest` with Testcontainers only when cross-layer interaction is being tested.</statement>
+        <rationale>Each slice boots only the needed context; context caching in CI is critical for build time. Mixing slice types defeats the cache. Testcontainers ensures behavior parity with production (Postgres-specific SQL, transaction semantics).</rationale>
+      </rule>
+
+      <example type="good" title="Controller slice with mocked service">
+        <code lang="java"><![CDATA[
+@WebMvcTest(UserController.class)
+class UserControllerTest {
+    @Autowired private MockMvc mockMvc;
+    @MockBean private UserService userService;
+
+    @Test
+    void postUser_validBody_returns201() throws Exception {
+        var req = new CreateUserRequest("user@example.com", "password");
+        var res = new UserResponse(1L, "user@example.com");
+        when(userService.create(any())).thenReturn(res);
+
+        mockMvc.perform(post("/api/v1/users")
+            .contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value(1))
+            .andExpect(jsonPath("$.email").value("user@example.com"));
+    }
+}
+]]></code>
+        <note>Controller is real, service is mocked. HTTP contract is tested without database. `@WebMvcTest` boots ~200ms; `@SpringBootTest` boots 2-3s.</note>
+      </example>
+
+      <example type="good" title="Service unit test with Mockito">
+        <code lang="java"><![CDATA[
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+    @InjectMocks private UserService service;
+    @Mock private UserRepository repo;
+    @Mock private PasswordEncoder encoder;
+
+    @Test
+    void create_validRequest_savesEncryptedPassword() {
+        var req = new CreateUserRequest("user@example.com", "secret123");
+        when(encoder.encode("secret123")).thenReturn("$2a$10$...");
+        when(repo.save(any())).thenAnswer(i -> {
+            var u = (User) i.getArgument(0);
+            u.setId(1L);
+            return u;
+        });
+
+        var res = service.create(req);
+
+        assertThat(res.id()).isEqualTo(1L);
+        verify(encoder).encode("secret123");
+        verify(repo).save(argThat(u -> u.getEmail().equals("user@example.com")));
+    }
+}
+]]></code>
+        <note>No Spring context. Service logic is exercised in isolation. Mockito verifies exact calls.</note>
+      </example>
+
+      <antipattern>
+        <description>Mixing `@SpringBootTest` with `@MockBean` on every test class in the suite.</description>
+        <reason>Each `@SpringBootTest` boots a new context; adding `@MockBean` invalidates the cache. Build time balloons from 10s to 5+ minutes. CI quota gets consumed.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using H2 in-memory database for repository tests.</description>
+        <reason>H2 behavior diverges from PostgreSQL on SQL syntax, transactions, and type coercion. Tests pass with H2 and fail in prod. Always use Testcontainers with the target database.</reason>
+      </antipattern>
+    </section>
+
+    <section name="naming-and-structure">
+      <p>Test names should document the scenario being tested. The Arrange/Act/Assert pattern makes test flow explicit.</p>
+
+      <rule testable="true">
+        <statement>Test method names MUST follow the pattern `methodUnderTest_state_expectedBehavior` (e.g., `findById_whenUserNotExists_throwsException`). Every test MUST have three clearly visible sections: Arrange (set up mocks/data), Act (call the SUT), Assert (verify outcome and interactions).</statement>
+        <rationale>CI failure output shows the test name; `methodUnderTest_state_expectedBehavior` is self-documenting. Humans and agents both find the failing case instantly. Arrange/Act/Assert makes the test intent obvious and prevents assertions buried in setup.</rationale>
+      </rule>
+
+      <example type="good" title="Test with named pattern and structure">
+        <code lang="java"><![CDATA[
+@Test
+void findById_whenUserNotFound_throwsResourceNotFoundException() {
+    // Arrange
+    when(repo.findById(999L)).thenReturn(Optional.empty());
+
+    // Act & Assert
+    assertThatThrownBy(() -> service.findById(999L))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("User 999 not found");
+}
+]]></code>
+        <note>Name is self-documenting. Arrange/Act/Assert sections are visually distinct.</note>
+      </example>
+
+      <antipattern>
+        <description>Test names like `test1()`, `testUserService()`, or nested assertions without clear Arrange/Act/Assert.</description>
+        <reason>CI logs become unreadable. Agents cannot infer what failed. Human debugging takes 3x longer.</reason>
+      </antipattern>
+    </section>
+
+    <section name="coverage-and-mutation-testing">
+      <p>Coverage gates (line ≥70%, branch ≥60%) catch obvious gaps. Mutation testing exposes assertion-free tests that pass regardless of behavior.</p>
+
+      <rule testable="true">
+        <statement>Projects MUST enforce coverage thresholds in CI via Jacoco: minimum 70% line coverage, 60% branch coverage. Repositories MUST run PIT (Pitest) on critical paths (payment, auth) at least quarterly. Test generation agents MUST NOT disable coverage checks or lower thresholds as "quick fixes".</statement>
+        <rationale>Coverage gates prevent accidental blind spots. Mutation testing catches tests that pass without actually asserting (e.g., `service.save(user)` with no `assertThat(result)`). Quarterly mutation scans on critical paths find flaky or missing tests before they hide prod bugs.</rationale>
+      </rule>
+
+      <example type="good" title="Jacoco threshold in CI">
+        <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# .github/workflows/ci.yml snippet
+- name: Run tests and coverage
+  run: ./mvnw verify
+
+- name: Check coverage thresholds
+  run: |
+    python3 scripts/jacoco-gate.sh target/site/jacoco/jacoco.xml 70 60
+]]></code>
+        <note>CI blocks on coverage drop. Agents cannot merge without explicit threshold raise.</note>
+      </example>
+
+      <antipattern>
+        <description>Coverage gate set but not enforced; agents generate tests that pass the gate but fail mutation testing.</description>
+        <reason>Mutation testing would reveal empty assertions and missing edge cases. Without it, tests look good but hide behavior changes.</reason>
+      </antipattern>
+    </section>
+
+    <section name="common-agent-mistakes">
+      <p>LLMs commonly make mistakes when generating Spring Boot tests. These patterns are detectable and preventable.</p>
+
+      <rule testable="true">
+        <statement>Test generation agents MUST NOT mock the same layer twice (e.g., mocking both UserRepository and UserService in a controller test). MUST NOT use H2 database; MUST use Testcontainers with the target database. MUST NOT omit `@Transactional` on repository tests if inserting seed data. MUST NOT mix Hamcrest, AssertJ, and JUnit assertions in the same test class — pick one idiom per repo.</statement>
+        <rationale>Double-mocking defeats the point (tests everything stubbed, real controller flow untested). H2 hides prod bugs. Missing transactional state causes pollution between tests. Mixed assertion idioms make code hard to read and agents copy the wrong style.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Mocking both UserRepository and UserService in the same controller test.</description>
+        <reason>Controller logic path is entirely stubbed; the test never exercises real service code or repository contract. Controller → mocked service is correct; controller → real service → mocked repo is also correct. Never both.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using `mockStatic(LocalDateTime.class)` without `try-with-resources`, leaving the mock active across tests.</description>
+        <reason>Subsequent tests inherit the stubbed time. Test order dependence, flakiness, and CI intermittency result.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Calling an `@Async` method in a test without `Awaitility` — just checking results immediately after the call.</description>
+        <reason>Race condition. Test passes locally (single-threaded), flakes in CI under load.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Test-only `application-test.yml` with different config than production (e.g., `spring.flyway.enabled=false` in test but true in prod).</description>
+        <reason>Tests pass in test config, features break in prod config. Catch this by running smoke tests with production config.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive JUnit work as a multi-stage pipeline with quality gates at each step.</p>
+
+      <p>A planner subagent identifies the SUT (controller / service / repo) and emits the slice + dependency mocks. A code-writer subagent generates a test class with Arrange/Act/Assert sections per scenario. A coverage subagent runs `mvn test jacoco:report` and reports per-class line coverage with red/green diff vs threshold. A context-cache subagent flags any `@MockBean`/`@SpyBean` addition that would invalidate the shared context. Persist tests in `src/test/java/.../&lt;SUTName&gt;Test.java`; agents must use the same package as the SUT for package-private access.</p>
+
+      <p>Recommended subagents:</p>
+      <list>
+        <item>`faion-backend-agent` — implementer for test classes.</item>
+        <item>`faion-sdd-executor-agent` — quality gate runs `mvn verify` (compile + test + jacoco threshold) before task close.</item>
+        <item>A purpose-built **junit-coverage-agent**: wraps Jacoco, parses `target/site/jacoco/jacoco.xml`, returns per-class missed lines + fix proposal mapped to behaviors.</item>
+        <item>A **mutation-test-agent**: runs `mvn org.pitest:pitest-maven:mutationCoverage` on changed files; flags mutations that survive (tests pass when they shouldn't).</item>
+        <item>`password-scrubber-agent` — scrub `application-test.yml` and seed fixtures (DB URLs, JWT secrets) before commit.</item>
+      </list>
+
+      <p>Prompt pattern for controller test scaffold:</p>
+      <prompt purpose="Controller test generation"><![CDATA[
+You are a Spring Boot 3.x engineer using JUnit 5 + Mockito + AssertJ. Generate UserControllerTest covering POST /api/v1/users:
+1. Valid body → 201 + JSON shape
+2. Invalid email → 400 + errors.email field
+3. Existing email → 409 + ConflictResponse
+Use @WebMvcTest(UserController.class), @MockBean UserService.
+ObjectMapper from autowire. Use jsonPath for body assertions.
+Run: ./mvnw test -Dtest=UserControllerTest.
+]]></prompt>
+
+      <p>Prompt pattern for coverage triage:</p>
+      <prompt purpose="Coverage triage"><![CDATA[
+Read target/site/jacoco/jacoco.xml. For each Java class with line coverage <70%, output: class FQN, missed lines (with source context), and propose ONE specific test (name + 3-line outline). Skip generated code (lombok, MapStruct, DTO records).
+]]></prompt>
+    </section>
+
+    <section name="tools-and-services">
+      <p>Standard tools for JUnit work in Spring Boot.</p>
+
+      <p>Build and test execution: `mvn test` / `gradle test` (bundled), `mvn verify` (run tests + integration tests + jacoco threshold).</p>
+      <p>Coverage: Jacoco (https://www.jacoco.org) for XML output; CI parsing. PIT/Pitest (org.pitest:pitest-maven) for mutation testing.</p>
+      <p>Test report XML: Surefire / Failsafe (bundled).</p>
+      <p>Test fixtures: `spring-boot-testcontainers` (https://www.testcontainers.org) for real DB / Kafka / Redis in tests.</p>
+      <p>Architecture validation: ArchUnit (com.tngtech.archunit:archunit-junit5) for layer fitness in tests.</p>
+      <p>HTTP stubbing: WireMock (wiremock-jre8) for integration tests.</p>
+      <p>Assertions: AssertJ (bundled with Spring Boot starter test) for fluent assertions; JsonUnit / JSONassert (net.javacrumbs.json-unit:json-unit-assertj) for strict JSON assertions in controller tests.</p>
+
+      <p>CI platforms: GitHub Actions / GitLab CI / Jenkins for running `mvn verify` + jacoco + Pitest gates.</p>
+      <p>SaaS coverage: Codecov / Coveralls (API-friendly) for per-PR coverage diff; agent-readable.</p>
+      <p>SaaS quality: SonarCloud / SonarQube for code smells, security, coverage; integrates with PRs.</p>
+      <p>SaaS test infra: Testcontainers Cloud for remote container infra; faster local + CI.</p>
+      <p>Bootstrap: Spring Initializr (https://start.spring.io) for new projects with starter-test pre-configured.</p>
+      <p>Dependency security: Snyk / Dependabot for test-scope CVE alerts (e.g., Mockito vulns).</p>
+      <p>SaaS APM: LogRocket / Datadog for tagging releases; correlating test runs with prod errors.</p>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>One test class per SUT: `UserService` → `UserServiceTest`. Agents finding tests for `UserManager` named `UserManagerTests` waste cycles.</item>
+        <item>Arrange / Act / Assert visible in every test. Use blank lines or comments — agents emit clean tests when prompted with structure.</item>
+        <item>Test names: `methodUnderTest_state_expectedBehavior`. `findById_whenUserNotExists_throwsException`. Self-documenting in failure output.</item>
+        <item>AssertJ for non-trivial assertions: `assertThat(list).extracting(User::getEmail).containsExactly(...)` beats hand-rolled loops.</item>
+        <item>Reuse a single `@SpringBootTest` for full-stack + many slice tests for layers. Don't sprinkle `@SpringBootTest` everywhere.</item>
+        <item>`@DynamicPropertySource` with Testcontainers for real DB tests. Avoid H2 — behavior diverges from Postgres.</item>
+        <item>Verify exactly what's needed: `verify(svc, times(1)).save(any())` over `verify(svc, atLeastOnce())` — flaky.</item>
+        <item>No `Thread.sleep`. Awaitility (org.awaitility:awaitility) for async assertions.</item>
+        <item>Test data via factories (`given_user_with_role(...)` builders) not via `new User(...)` repeated.</item>
+        <item>Run mutation tests on critical paths (payment, auth) — coverage alone hides assertion-free tests.</item>
+        <item>Pin Mockito version that matches Java/Kotlin combo to avoid `final` mocking surprises.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/controller-test.java" purpose="@WebMvcTest skeleton with MockMvc, ObjectMapper, @MockBean"/>
+      <template path="templates/service-test.java" purpose="@ExtendWith(MockitoExtension.class) skeleton with @InjectMocks"/>
+      <template path="templates/jacoco-gate.sh" purpose="CI script: parse jacoco.xml, fail if line/branch coverage below threshold"/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.spring.io/spring-framework/reference/testing.html"/>
+      <link href="https://spring.io/guides/gs/testing-web/"/>
+      <link href="https://junit.org/junit5/docs/current/user-guide/"/>
+      <link href="https://site.mockito.org"/>
+      <link href="https://assertj.github.io/doc/"/>
+      <link href="https://www.testcontainers.org"/>
+      <link href="https://pitest.org"/>
+    </see-also>
+  </content>
+</methodology>
