@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 solo/dev/software-developer methodologies → methodology.xml (rust-tokio-async, security-testing, seo-for-spas)
 - migrate: 3/3 content-marketer methodologies → methodology.xml (growth-email-marketing, growth-newsletter-growth, growth-onboarding-emails)
 - migrate: 3/3 methodologies → methodology.xml (security-testing, docker-compose, git-server-workflow)
 - refactor: 3/3 solo/dev/software-developer methodologies migrated to methodology.xml (batch: shadcn-ui-architecture, sql-optimization, tailwind-architecture)
