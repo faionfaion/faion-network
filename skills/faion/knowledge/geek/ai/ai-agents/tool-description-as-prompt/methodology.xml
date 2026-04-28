@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tool-description-as-prompt">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Tool descriptions are zero-shot teaching: state when to call, inputs needed, output expected, when NOT to call. Quality moves scores more than model swaps.</summary>
+    <tags>
+      <tag>tool-use</tag>
+      <tag>prompting</tag>
+      <tag>agents</tag>
+      <tag>evaluation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Tool Description as Prompt</title>
+    <summary>A tool's description field is part of the prompt the model sees on every turn. Treat tool descriptions as zero-shot teaching: state when to call this tool, what inputs are required, what output to expect, and when NOT to call it. Tool description quality moves benchmark scores more than swapping the model.</summary>
+    <why>
+      <p>A tool definition becomes part of the system context every time the model decides whether to call a tool. The description IS the prompt the model uses to decide whether this tool is the right one for the current sub-goal, what to put in input arguments, and how to interpret the result when it comes back.</p>
+      <p>A vague description like "get info about a thing" collapses the model's discrimination between similar tools, causing wrong tool selection or the model inventing implausible arguments.</p>
+      <p>Anthropic's engineering team reported that improving tool descriptions, without changing the model, achieved state-of-the-art on SWE-bench. Description engineering is now part of the eval loop, not a docstring afterthought.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Always. But most teams under-invest in tool descriptions. The bar is: write your tool descriptions as if they were the system prompt of a junior engineer being asked to use this for the first time.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Skipping tool descriptions altogether (very common and very wrong)</item>
+        <item>Copying the function docstring verbatim — function docs target humans, tool descriptions target the LLM. Different audiences, different priorities.</item>
+        <item>Tool descriptions that contradict the input_schema (e.g., describing pagination but no page parameter exists)</item>
+      </list>
+    </when-not-to-use>
+    <section name="what-belongs-in-a-tool-description">
+      <p>Structure tool descriptions to cover six key elements:</p>
+      <list>
+        <item>Verb-object name that hints at what it does (search_docs, not docs)</item>
+        <item>One-sentence "use this when ..." trigger</item>
+        <item>One-sentence "do NOT use this when ..." anti-trigger (very high leverage)</item>
+        <item>Input contract if not obvious from the schema (e.g., "path is relative to repo root")</item>
+        <item>Output shape and limits ("returns up to 50 results, ranked by relevance, JSON-line format")</item>
+        <item>Composition hints ("call validate_path first if path source is untrusted")</item>
+      </list>
+    </section>
+    <antipattern>
+      <description>Tool name is not verb-object; description is generic</description>
+      <reason>Description: "Search the docs" — needs when-to-use, when-NOT-to-use, output shape</reason>
+    </antipattern>
+    <antipattern>
+      <description>Marketing prose instead of technical specification</description>
+      <reason>Strip marketing language ("Powerful, AI-driven, real-time...") — model doesn't care</reason>
+    </antipattern>
+    <antipattern>
+      <description>Description longer than 200 tokens</description>
+      <reason>Tighten — long descriptions lose the model's attention</reason>
+    </antipattern>
+    <antipattern>
+      <description>Description includes implementation details</description>
+      <reason>Cut implementation details ("uses Bedrock under the hood") — model only needs the contract</reason>
+    </antipattern>
+    <antipattern>
+      <description>Tools with overlapping descriptions cause mis-selection</description>
+      <reason>Differentiate via the "do NOT use this when ..." line pointing to the other tool</reason>
+    </antipattern>
+    <section name="designing-tool-descriptions">
+      <p>The design of a tool description starts with naming. Use verb-object names (search_docs, apply_patch, validate_path) that hint immediately at function. A verb-object name tells the model what action it performs before reading the full description.</p>
+      <p>The core structure follows a five-part pattern. First, provide a one-sentence trigger that answers: use this when the user asks for X. Second, provide a one-sentence anti-trigger: do NOT use this when the user asks for Y (critical—this is the highest-leverage part because it prevents mis-selection to similar tools). Third, clarify the input contract if not obvious from the JSON schema—e.g., "path is relative to repo root" or "timestamps in ISO-8601 format". Fourth, state the output contract: shape, limits, sort order. Fifth, call out side effects: "modifies the database", "idempotent", "dry-run available".</p>
+      <p>Keep each description under 200 tokens. Longer descriptions lose the model's attention and consume prompt budget without adding discrimination signal. Strip all marketing prose ("powerful", "AI-driven", "enterprise-grade", "cutting-edge") because the model has no use for it. Remove implementation details ("uses Bedrock under the hood") because the model only needs the contract, not how it works.</p>
+    </section>
+    <section name="anti-triggers-are-high-leverage">
+      <p>The "do NOT use this when" anti-trigger is the highest-leverage line in a tool description. When two or more tools have overlapping use cases, the model often alternates between them near-randomly unless the descriptions clearly differentiate them. Adding mutual anti-triggers that point to the other tool collapses the mis-selection rate to near zero. For example, read_file says "do NOT use for searching across files — use grep_repo" and grep_repo says "do NOT use if you already know the file path — use read_file". With those lines, the model learns the boundary instantly.</p>
+    </section>
+    <section name="side-effects-and-latency">
+      <p>Mark side-effect tools clearly. Use the word MUTATING in all-caps to signal destructive operations. A description like "delete_branch: MUTATING. Deletes a remote branch. Do NOT use on the current working branch. Use archive_branch instead if you want to preserve history." prevents accidental calls on the wrong branch. Similarly, state latency explicitly if a tool takes minutes or hours. "batch_train_model: ... LATENCY: 5-30 minutes; the agent should NOT poll; the job will emit completion via webhook." prevents the agent from spinning in a polling loop.</p>
+      <p>For paginated tools, cap the agent's loop count. Instead of allowing the agent to call search_docs 100 times to enumerate a corpus, say "Returns 30 per page; pass cursor from the previous response to paginate. Do NOT loop more than 5 pages — narrow the query if you need more." This forces the agent toward better queries rather than brute-force enumeration.</p>
+    </section>
+    <section name="composition">
+      <p>Tool descriptions compose with other methodologies:</p>
+      <list>
+        <item>tool-naming: verb-object names plus tight description equals lowest tool-selection error rate</item>
+        <item>strict-mode: input schema enforced; description teaches when to use, schema enforces how</item>
+        <item>idempotent-plus-preview-apply-pairs: descriptions explicitly state side-effects ("modifies the database; pair with dry_run_query first")</item>
+      </list>
+    </section>
+    <section name="empirical-evidence">
+      <p>The empirical anchor for this methodology comes from Anthropic's engineering team, which reported that improving tool descriptions (without changing the model) achieved state-of-the-art on SWE-bench. Description engineering is now part of the eval loop, not a docstring afterthought. Multiple teams have reported that the leap to SOTA on benchmarks came largely from rewriting tool descriptions, not from a new model. Specifically, replacing terse one-liners with structured "use this when / do NOT use this when / output shape" descriptions cut wrong-tool selection errors and improved end-to-end task success. The model didn't change. The eval improved because the prompt-shaped-as-tool-defs got better.</p>
+    </section>
+    <section name="worked-examples">
+      <example type="good" title="Disambiguating two read tools">
+        <p>Before ambiguous descriptions:</p>
+        <code lang="python"><![CDATA[read_file: "Read a file."
+grep: "Search files."]]></code>
+        <p>The model alternated between them roughly randomly when the user said "find the auth handler".</p>
+        <p>After structured descriptions with anti-triggers:</p>
+        <code lang="python"><![CDATA[read_file: "Use when you know the file path. Returns full content. Do NOT use for cross-file search."
+grep: "Use when you don't know the file path or need cross-file matches. Returns line matches. Do NOT use for reading a known file."]]></code>
+        <p>Tool selection error rate dropped to near zero.</p>
+      </example>
+      <example type="good" title="Side-effect surfacing">
+        <p>Before:</p>
+        <code lang="text"><![CDATA[delete_branch: "Delete a branch."]]></code>
+        <p>The model would call this on the working branch by accident.</p>
+        <p>After:</p>
+        <code lang="text"><![CDATA[delete_branch: "MUTATING. Deletes a remote branch. Do NOT use on the current working branch. Use archive_branch instead if you want to preserve history."]]></code>
+        <p>The MUTATING marker plus explicit forbiddance fixed the bug.</p>
+      </example>
+      <example type="good" title="Latency hint">
+        <code lang="text"><![CDATA[batch_train_model: "Submit a model training job. Returns a job_id. LATENCY: 5-30 minutes; the agent should NOT poll; the job will emit completion via webhook."]]></code>
+        <p>The latency hint plus "do not poll" instruction prevents the agent from spinning waiting for results.</p>
+      </example>
+      <example type="good" title="Output cap">
+        <code lang="text"><![CDATA[search_docs: "Returns up to 10 results. If you need more, narrow your query first; do NOT call repeatedly with offsets."]]></code>
+        <p>Without this cap, agents call search_docs 5 times trying to enumerate the corpus.</p>
+      </example>
+      <example type="good" title="Validate-then-apply pair">
+        <code lang="text"><![CDATA[dry_run_patch: "Preview a patch's effect without writing. Returns conflicts and changed files. Always call before apply_patch."
+
+apply_patch: "MUTATING. Applies the patch. Use AFTER dry_run_patch returned no conflicts. Do NOT call on a dirty tree."]]></code>
+        <p>The pairing makes the correct sequence ("dry first, apply second") obvious from the descriptions alone.</p>
+      </example>
+      <example type="good" title="Project-mining catch (faion-cli)">
+        <p>Initial state:</p>
+        <code lang="text"><![CDATA[generate_implementation: "Generate code"]]></code>
+        <p>The agent often called this for refactor tasks where it should have called refactor_code. After splitting and adding when-to and when-not lines, mis-selection dropped measurably.</p>
+      </example>
+      <example type="bad" title="Anti-example — marketing prose">
+        <p>Bad approach:</p>
+        <code lang="text"><![CDATA[description: "Our powerful, AI-driven, enterprise-grade search powered by cutting-edge embeddings and a state-of-the-art reranker"]]></code>
+        <p>The model has no use for any of those words. They consume prompt budget and add zero discrimination signal.</p>
+        <p>Good approach:</p>
+        <code lang="text"><![CDATA[description: "Hybrid search over the docs corpus. Keyword plus semantic. Returns top 10 passages with paths."]]></code>
+      </example>
+    </section>
+    <templates>
+      <template path="templates/anthropic-tool-definition.py" purpose="Anthropic SDK tool definition with structured description"/>
+      <template path="templates/openai-tool-definition.py" purpose="OpenAI SDK tool definition with structured description"/>
+      <template path="templates/mcp-tool-description.py" purpose="MCP tool with description as docstring"/>
+      <template path="templates/tool-family-with-anti-triggers.py" purpose="Pattern for tool family with mutual anti-triggers"/>
+      <template path="templates/side-effect-tools.py" purpose="Pattern for side-effect tools with MUTATING marker"/>
+      <template path="templates/pagination-pattern.py" purpose="Pattern for paginated tools with loop limits"/>
+    </templates>
+    <prompt purpose="rewrite-tool-descriptions"><![CDATA[For each tool below, rewrite the description to follow this structure:
+
+1. One-sentence "use this when ..."
+2. One-sentence "do NOT use this when ..."
+3. Input contract (if not obvious from schema)
+4. Output contract (shape, limits)
+5. Side effects (mutating? idempotent?)
+
+Keep under 200 tokens per description. No marketing prose. No implementation details.
+
+Tools:
+{paste tool list}]]></prompt>
+    <prompt purpose="disambiguate-similar-tools"><![CDATA[The following tools have overlapping use cases. Add CLEAR "do NOT use this when..." lines that point to the other tool when applicable:
+
+Tool A: {description}
+Tool B: {description}
+
+Output: rewritten descriptions with mutual anti-triggers.]]></prompt>
+    <prompt purpose="audit-existing-tool-catalog"><![CDATA[For each tool below, score 0-5:
+- Has when-to-use trigger? (0/1)
+- Has when-NOT-to-use anti-trigger? (0/1)
+- Side effects called out? (0/1)
+- Output shape stated? (0/1)
+- Avoids marketing prose? (0/1)
+
+Output: ranked list, lowest score first. These are your top rewrite candidates.]]></prompt>
+    <prompt purpose="new-tool-description-writer"><![CDATA[You are creating a new tool: {name}.
+
+Write a tool description following the standard structure (use-when, NOT-use-when, input contract, output contract, side effects). The description is the prompt the model will see when deciding whether to call this tool — write for that audience, not for human docs.
+
+Function signature: {signature}
+Function purpose: {one sentence}]]></prompt>
+    <checklist>
+      <check>Tool name is verb-object (e.g., search_docs, apply_patch, validate_path)</check>
+      <check>Description has one-sentence "use this when ..." trigger</check>
+      <check>Description has one-sentence "do NOT use this when ..." anti-trigger</check>
+      <check>Input contract clarified (paths, units, formats)</check>
+      <check>Output contract clarified (shape, limits, sort order)</check>
+      <check>Side effects called out ("modifies state", "idempotent", "dry-run available")</check>
+      <check>Description is less than 200 tokens</check>
+      <check>No marketing prose, no implementation details</check>
+      <check>Two tools with similar names have CLEARLY differentiated when-to-use lines</check>
+      <check>Description matches input_schema (no fields described that don't exist)</check>
+      <check>Description does not duplicate the JSON schema (it complements it)</check>
+      <check>Description matches the function's actual behavior drift kills agent reliability faster than anything</check>
+      <check>Tool description reviewed alongside the function it wraps</check>
+      <check>Description updated whenever the function behavior changes</check>
+      <check>Description is part of the eval loop (regress when description quality drops)</check>
+      <check>On 50 tasks, tool-selection errors measured</check>
+      <check>On the same 50, argument-fill errors measured</check>
+      <check>After improving descriptions, both metrics should drop measurably</check>
+    </checklist>
+    <verify>
+      <step>On 50 tasks, count tool-selection errors (wrong tool chosen)</step>
+      <step>On the same 50, count argument-fill errors</step>
+      <step>After improving descriptions, both should drop measurably</step>
+      <step>If they don't, look at which description was misleading and iterate</step>
+    </verify>
+    <see-also>
+      <link href="https://www.anthropic.com/engineering/swe-bench-sonnet">Anthropic Engineering Tool Use Best Practices</link>
+      <link href="https://docs.anthropic.com/claude/docs/tool-use">Anthropic Tool Use docs</link>
+    </see-also>
+  </content>
+</methodology>
