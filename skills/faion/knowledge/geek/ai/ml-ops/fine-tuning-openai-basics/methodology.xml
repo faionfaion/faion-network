@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="fine-tuning-openai-basics">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-ops</domain>
+    <summary>Data preparation for OpenAI fine-tuning: JSONL format in chat messages, validation with tiktoken, cost estimation, three-phase agentic workflow with human approval gates.</summary>
+    <tags>
+      <tag>openai</tag>
+      <tag>fine-tuning</tag>
+      <tag>data-preparation</tag>
+      <tag>validation</tag>
+      <tag>cost-estimation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Fine-tuning OpenAI — Basics</title>
+    <summary>Data preparation methodology for OpenAI fine-tuning: creating JSONL training examples in the chat messages format, validating structure and token counts with tiktoken, and generating additional examples with GPT-4. Covers the decision matrix for when fine-tuning beats few-shot prompting or RAG, and the three-phase pipeline: dataset prep → job submission → evaluation.</summary>
+    <why>
+      <p>OpenAI fine-tuning requires exactly the right JSONL format — missing assistant turns or inconsistent system prompts silently produce poor models. Validating dataset structure and estimating cost before upload prevents wasted training spend. Starting with a solid data preparation workflow is the highest-leverage step in the fine-tuning pipeline.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Output format or style is inconsistently produced by the base model despite prompt engineering (below 80% compliance)</item>
+        <item>Domain-specific vocabulary causes incorrect or inconsistent terminology in base model outputs</item>
+        <item>Current prompts are long (>500 tokens of examples) and reducing them via fine-tuning would cut latency and cost</item>
+        <item>Deterministic output structure (strict JSON schemas) needed but base model produces it inconsistently</item>
+        <item>Task clearly benefits from style/format fine-tuning rather than knowledge injection</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Goal is injecting new facts or knowledge — fine-tuning memorizes patterns, not facts; use RAG</item>
+        <item>Fewer than 50 high-quality examples available — invest in data collection first</item>
+        <item>Prompt engineering already achieves >90% quality — fine-tuning adds cost and operational overhead without meaningful gain</item>
+        <item>Application uses many diverse tasks — a task-specific fine-tuned model can regress on other tasks</item>
+        <item>Rapid iteration is needed — fine-tuning jobs take 30-60 minutes; prompt engineering allows instant iteration</item>
+        <item>Sensitive data that must not be processed on OpenAI servers</item>
+      </list>
+    </when-not-to-use>
+    <section name="JSONL Format and Data Preparation">
+      <rule>
+        <statement>Every training example must be a JSON object with a "messages" key containing at least one "user" and one "assistant" turn.</statement>
+        <rationale>OpenAI rejects files missing the assistant turn; the validation API error is non-descriptive and wastes upload time.</rationale>
+      </rule>
+      <rule>
+        <statement>Keep the system prompt identical across ALL training examples and match it exactly to the system prompt used in production inference.</statement>
+        <rationale>Divergence between training and inference system prompts is the most common cause of unexpected fine-tuned model behavior.</rationale>
+      </rule>
+      <example type="good" title="Correct JSONL Format with Consistent System Prompt">
+        <code lang="python"><![CDATA[
+def create_training_example(system: str, user: str, assistant: str) -> dict:
+    return {
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+            {"role": "assistant", "content": assistant},
+        ]
+    }
+
+def prepare_dataset(examples: list, output_file: str) -> None:
+    with open(output_file, "w") as f:
+        for ex in examples:
+            f.write(json.dumps(ex) + "\n")
+]]></code>
+        <note>One JSON object per line. System prompt is a parameter — caller ensures consistency.</note>
+      </example>
+      <antipattern>
+        <description>Using different system prompts across training examples (e.g., varying the company name or tone).</description>
+        <reason>The model learns to associate different behaviors with different prompts, producing unpredictable results at inference with a single system prompt.</reason>
+      </antipattern>
+    </section>
+    <section name="Dataset Size and Splitting">
+      <rule>
+        <statement>Use a minimum of 50-100 examples; for meaningful improvement on complex tasks, target 500+.</statement>
+        <rationale>Below 50 examples the fine-tuned model may not meaningfully differ from the base model on the evaluation set.</rationale>
+      </rule>
+      <rule>
+        <statement>Split dataset 80% training / 20% held-out test; never evaluate on training data.</statement>
+        <rationale>Training data evaluation produces artificially high metrics; the held-out test set is the only unbiased quality signal.</rationale>
+      </rule>
+      <rule>
+        <statement>Have a human review a random 10% sample before submitting — quality over quantity.</statement>
+        <rationale>200 excellent examples beat 2000 mediocre ones; automated generation without human review propagates systematic errors into training.</rationale>
+      </rule>
+    </section>
+    <section name="Decision Matrix">
+      <p>Use fine-tuning when the task requires consistent format/style. Use RAG when the task requires current factual knowledge. Use few-shot when you have fewer than 50 examples or need rapid iteration.</p>
+      <list>
+        <item>Consistent format → fine-tuning (best), RAG (OK), few-shot (OK)</item>
+        <item>Domain style → fine-tuning (best), RAG (OK), few-shot (OK)</item>
+        <item>New facts → RAG (best), few-shot (OK), fine-tuning (poor)</item>
+        <item>Reduce latency → fine-tuning (best), RAG (OK), few-shot (poor)</item>
+        <item>Reduce cost → fine-tuning (best), RAG (depends), few-shot (poor)</item>
+      </list>
+    </section>
+    <section name="Dataset Validation and Cost Estimation">
+      <rule>
+        <statement>Validate JSONL format locally before upload — check that each line is valid JSON, has "messages" key, and contains an "assistant" turn.</statement>
+        <rationale>The API rejects malformed files after upload; local validation prevents wasted time waiting for server-side rejection.</rationale>
+      </rule>
+      <rule>
+        <statement>Count tokens with tiktoken before upload and display cost estimate to humans for approval.</statement>
+        <rationale>Training cost = total_tokens * n_epochs * cost_per_1M; a bad dataset can be expensive to discover after training starts.</rationale>
+      </rule>
+      <example type="good" title="Complete Dataset Validation with Token Counting">
+        <code lang="python"><![CDATA[
+import json
+import tiktoken
+from collections import defaultdict
+
+def validate_dataset(filepath: str, model: str = "gpt-4o-mini-2024-07-18") -> dict:
+    encoding = tiktoken.encoding_for_model(model)
+    stats = {"total_examples": 0, "total_tokens": 0, "errors": []}
+
+    with open(filepath) as f:
+        for i, line in enumerate(f):
+            try:
+                ex = json.loads(line)
+            except json.JSONDecodeError as e:
+                stats["errors"].append(f"Line {i}: invalid JSON — {e}")
+                continue
+            if "messages" not in ex:
+                stats["errors"].append(f"Line {i}: missing 'messages' key")
+                continue
+            roles = [m.get("role") for m in ex["messages"]]
+            if "assistant" not in roles:
+                stats["errors"].append(f"Line {i}: no assistant turn")
+            for msg in ex["messages"]:
+                stats["total_tokens"] += len(encoding.encode(msg.get("content", "")))
+            stats["total_examples"] += 1
+
+    stats["estimated_cost_usd"] = round(
+        (stats["total_tokens"] / 1_000_000) * 3.0 * 3, 4  # $3/1M * 3 epochs
+    )
+    return stats
+]]></code>
+        <note>Returns full stats dict including errors list. Caller checks errors before proceeding to upload.</note>
+      </example>
+      <section name="Common Validation Errors">
+        <list>
+          <item>Missing "messages" key — line is not an OpenAI chat format example</item>
+          <item>No assistant turn — training example has no target output for the model to learn</item>
+          <item>Invalid JSON on a line — JSONL requires exactly one object per line, no trailing commas</item>
+          <item>Content field is None or empty — silent token count of 0, model learns nothing from the turn</item>
+        </list>
+      </section>
+    </section>
+    <section name="Data Generation with GPT-4">
+      <rule>
+        <statement>When generating training examples with GPT-4, manually review a random 10% sample before using them — do not auto-submit LLM-generated data.</statement>
+        <rationale>GPT-4-generated training data creates a feedback loop: the fine-tuned model inherits GPT-4's errors, blind spots, and phrasings as if they were ground truth.</rationale>
+      </rule>
+    </section>
+    <section name="Three-Phase Agentic Workflow">
+      <rule>
+        <statement>Treat fine-tuning as three discrete phases with human approval gates between phases 1-to-2 and 2-to-3.</statement>
+        <rationale>A bad dataset is expensive to discover after training. A bad model is dangerous to deploy without evaluation. Human approval gates prevent automated systems from spending budget or affecting production without review.</rationale>
+      </rule>
+      <list>
+        <item>Phase 1 (Dataset prep): validate JSONL, count tokens, estimate cost → human approves or rejects</item>
+        <item>Phase 2 (Job submission): upload file, create job, poll for completion, download metrics → human approves evaluation</item>
+        <item>Phase 3 (Evaluation): run fine-tuned model on held-out test set, compare to base model → human decides promote or retrain</item>
+      </list>
+      <section name="Job Submission and Polling">
+        <rule>
+          <statement>Sleep at least 30-60 seconds between poll calls; never poll in a tight loop.</statement>
+          <rationale>Tight polling loops hit OpenAI rate limits and provide no value — fine-tuning jobs run for minutes to hours.</rationale>
+        </rule>
+        <rule>
+          <statement>Check job.status == "succeeded" before reading job.fine_tuned_model — the field is null until the job succeeds.</statement>
+          <rationale>Reading fine_tuned_model before job completion causes an AttributeError that silently breaks the pipeline.</rationale>
+        </rule>
+        <rule>
+          <statement>Store fine-tuned model IDs in a config file or database with metadata (base model, dataset version, training date).</statement>
+          <rationale>OpenAI model IDs are opaque strings (e.g., ft:gpt-4o-mini::abc123) that become impossible to manage at scale without a registry. Checkpoints expire after 90 days of inactivity.</rationale>
+        </rule>
+        <example type="good" title="Complete Job Submission and Polling Pattern">
+          <code lang="python"><![CDATA[
+import time
+from openai import OpenAI
+
+def submit_finetune_job(training_file: str, model: str = "gpt-4o-mini-2024-07-18",
+                        suffix: str = "v1", n_epochs: int = 3) -> str:
+    client = OpenAI()
+    with open(training_file, "rb") as f:
+        upload = client.files.create(file=f, purpose="fine-tune")
+
+    job = client.fine_tuning.jobs.create(
+        training_file=upload.id, model=model,
+        suffix=suffix, hyperparameters={"n_epochs": n_epochs},
+    )
+
+    while job.status not in ("succeeded", "failed", "cancelled"):
+        time.sleep(60)
+        job = client.fine_tuning.jobs.retrieve(job.id)
+
+    if job.status == "succeeded":
+        return job.fine_tuned_model
+    raise RuntimeError(f"Fine-tuning failed: {job.error}")
+]]></code>
+          <note>Polls every 60 seconds. Returns model ID only on success; raises on failure.</note>
+        </example>
+      </section>
+    </section>
+    <section name="Recommended Subagents and Integration">
+      <list>
+        <item>faion-sdd-executor-agent — drives fine-tuning pipeline from an SDD task card</item>
+        <item>A data-prep subagent (custom) — runs validate_dataset, generates stats, flags format errors, returns go/no-go for training</item>
+        <item>A job-monitor subagent (custom) — polls OpenAI fine-tuning job status every 5 minutes, notifies when complete or failed</item>
+      </list>
+      <section name="Quality Review Prompt Pattern">
+        <p>Review this sample of 5 training examples from a fine-tuning dataset. Check for: consistent system prompt across all examples, assistant responses matching the target style/format, user messages covering diverse query patterns.</p>
+        <p>Examples: {json_sample}</p>
+        <p>Return JSON: { "quality": "good|acceptable|poor", "issues": [str], "recommendation": "proceed|fix_and_resubmit|rebuild_dataset" }</p>
+      </section>
+      <section name="Evaluation Decision Prompt Pattern">
+        <p>A fine-tuning job completed. Base model: {base_model}. Fine-tuned model: {ft_model}. Test set results: Base model exact match: {base_score}. Fine-tuned model exact match: {ft_score}. Base model avg tokens per response: {base_tokens}. Fine-tuned model avg tokens per response: {ft_tokens}.</p>
+        <p>Should we promote the fine-tuned model to production? Return JSON: {"promote": bool, "rationale": str, "threshold_met": bool}</p>
+      </section>
+    </section>
+    <section name="Best Practices and Gotchas">
+      <list>
+        <item>Curate quality over quantity — 200 excellent examples beat 2000 mediocre ones; have a human review a random 10% sample before submitting</item>
+        <item>Keep system prompts identical across all training examples and match exactly the system prompt used in production inference — divergence is the most common cause of unexpected fine-tuned behavior</item>
+        <item>Always split your dataset: 80% training, 20% held-out test; never evaluate on training data</item>
+        <item>Run the base model on the held-out test set before fine-tuning to establish a baseline — without it you cannot measure the improvement delta</item>
+        <item>Monitor training loss from the platform dashboard; if loss stops decreasing before epoch 2, the dataset is either too small or has quality issues</item>
+        <item>Store fine-tuned model IDs in a config file or database with metadata (base model, dataset version, training date) — OpenAI model IDs are opaque strings that become impossible to manage at scale without a registry</item>
+        <item>Fine-tuning job submission is a human-in-loop breakpoint: agents must not auto-submit jobs without human review of the dataset stats and cost estimate — a bad dataset is expensive to discover after training</item>
+        <item>OpenAI file upload has a 512MB limit — agents must check file size before upload; large datasets need chunking and multiple jobs</item>
+        <item>client.fine_tuning.jobs.retrieve() polling in a tight loop will hit OpenAI rate limits — always sleep at least 30-60 seconds between poll calls</item>
+        <item>The fine_tuned_model field in the job response is null until the job succeeds; agents that try to read it before checking status == "succeeded" will get an attribute error</item>
+        <item>Fine-tuned models are not available in all regions or API endpoints immediately after training — there can be a 5-15 minute propagation delay before the model is callable</item>
+        <item>Training data uploaded to OpenAI is stored by OpenAI; agents handling sensitive data must confirm data retention policies and use data opt-out headers where available</item>
+      </list>
+    </section>
+    <section name="Limitations and Failure Modes">
+      <list>
+        <item>Fine-tuning does not improve reasoning ability — a fine-tuned gpt-4o-mini will not reason like gpt-4o; it will only follow patterns seen in training data</item>
+        <item>The validation dataset in the validate_dataset script counts tokens but does not detect semantic quality issues — bad training examples produce a bad model even with zero format errors</item>
+        <item>generate_training_data using GPT-4 to synthesize training data creates a feedback loop risk — the fine-tuned model will inherit GPT-4's errors and blind spots</item>
+        <item>OpenAI fine-tuning does not expose training loss curves in real time — you must poll the job status API and wait for completion before knowing if training succeeded</item>
+        <item>Once deployed, fine-tuned model behavior is opaque — there is no gradient inspection or attention visualization; behavioral debugging requires manual output analysis</item>
+        <item>Fine-tuned model checkpoints expire after 90 days of inactivity on OpenAI — production systems must track checkpoint health and retrain before expiry</item>
+      </list>
+    </section>
+    <section name="CLI Tools and Services">
+      <list>
+        <item>openai SDK — Upload files, create jobs, poll status, list models | pip install openai / platform.openai.com/docs/guides/fine-tuning</item>
+        <item>tiktoken — Count tokens in training examples before upload | pip install tiktoken / github.com/openai/tiktoken</item>
+        <item>jsonlines — Read/write JSONL fine-tuning datasets | pip install jsonlines</item>
+        <item>OpenAI CLI — openai api fine_tuning.jobs.list — list and cancel jobs | Included in openai package</item>
+        <item>pandas — Analyze token distribution, quality statistics | pip install pandas</item>
+        <item>OpenAI Fine-tuning API (SaaS, agent-friendly via REST API + Python SDK) — The primary service; $3-25/1M training tokens depending on model</item>
+        <item>OpenAI Platform Dashboard (SaaS, partial agent support) — Monitor job status, training loss curve, model list</item>
+        <item>Weights &amp; Biases (SaaS, agent-friendly via integration) — Integrates via training metadata; attach W&amp;B run ID to fine-tuning job for experiment tracking</item>
+        <item>Argilla (OSS, agent-friendly via Python SDK + REST) — Data labeling and quality review platform for training data curation</item>
+        <item>Label Studio (OSS, agent-friendly via REST API) — Data annotation; export to JSONL format for fine-tuning</item>
+        <item>Scale AI (SaaS, agent-friendly via REST API) — Managed human data labeling for fine-tuning dataset creation</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/training-example.jsonl" purpose="Minimal valid JSONL training file with system/user/assistant structure"/>
+      <template path="templates/submit-job.py" purpose="End-to-end upload → create job → poll → return model ID"/>
+      <template path="templates/dataset-review-prompt.txt" purpose="Prompt for LLM quality review of training examples"/>
+    </templates>
+    <see-also>
+      <link href="https://platform.openai.com/docs/guides/fine-tuning">OpenAI Fine-tuning Guide</link>
+      <link href="https://platform.openai.com/docs/guides/fine-tuning/preparing-your-dataset">Fine-tuning Best Practices — Preparing Your Dataset</link>
+      <link href="https://cookbook.openai.com/examples/how_to_finetune_chat_models">OpenAI Cookbook — Fine-tuning Chat Models</link>
+      <link href="https://github.com/openai/tiktoken">tiktoken GitHub</link>
+      <link href="https://argilla.io/">Argilla — Data Labeling</link>
+      <link href="https://labelstud.io/">Label Studio</link>
+    </see-also>
+  </content>
+</methodology>
