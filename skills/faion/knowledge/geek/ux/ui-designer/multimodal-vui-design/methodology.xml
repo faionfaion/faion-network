@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="multimodal-vui-design">
+  <metadata>
+    <tier>geek</tier>
+    <group>ux</group>
+    <domain>ui-designer</domain>
+    <summary>Voice + visual interfaces for smart displays with fallback hierarchies and state-sync rules.</summary>
+    <tags>
+      <tag>multimodal</tag>
+      <tag>voice-ui</tag>
+      <tag>smart-display</tag>
+      <tag>apl</tag>
+      <tag>fallback</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Multimodal VUI Design</title>
+
+    <summary>Design voice + visual interfaces for smart displays by specifying four interaction patterns (voice-initiated screen-completed, screen-initiated voice-completed, voice + visual feedback, voice navigation + visual content) and enforcing a three-tier fallback hierarchy (voice → touch → keyboard). Every feature requires explicit timeout behavior, error state handling, and state-sync verification.</summary>
+
+    <why>
+      <p>Voice-only interfaces cannot display complex data; screen-only UIs miss the hands-free use case. The combination requires synchronized state between voice and visual layers — the seam between modalities is where the UX fails. Explicit fallback hierarchies and timeout rules prevent the most common breakages.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Designing a voice interface for a smart display (Amazon Echo Show, Google Nest Hub, Alexa TV)</item>
+        <item>Building a product combining voice input with screen output</item>
+        <item>Auditing an existing VUI for missing visual fallbacks</item>
+        <item>Generating APL or equivalent smart display template markup from a design brief</item>
+        <item>Prototyping a multimodal conversation flow where visual selection resolves voice ambiguity</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Building a voice-only screenless speaker interface — pure VUI methodology is more appropriate</item>
+        <item>Building a screen-only UI with optional voice layer — voice-initiated patterns add no value</item>
+        <item>Target device has no reliable microphone (high-noise kiosk without directional mic)</item>
+        <item>User research shows the target audience strongly opposes voice interaction</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="interaction-patterns">
+      <p>Four multimodal interaction patterns, smart display card layout rules, fallback hierarchy requirements, and timeout standards.</p>
+
+      <list>
+        <item>Voice-initiated, screen-completed: search results, selections (user speaks query; screen shows results; user taps to select)</item>
+        <item>Screen-initiated, voice-completed: form filling (user sees form; voice fills fields)</item>
+        <item>Voice + visual feedback: confirmations, progress (voice command → visual confirmation shown + spoken summary)</item>
+        <item>Voice navigation + visual content: information browsing (voice navigates between visual cards/sections)</item>
+      </list>
+    </section>
+
+    <section name="smart-display-design-rules">
+      <rule testable="true">
+        <statement>Always provide a three-tier fallback hierarchy — primary (voice) → secondary (touch) → tertiary (keyboard if available).</statement>
+        <rationale>Users who cannot speak need touch alternatives; users who cannot touch need keyboard. Designing primary-only leaves large user segments unable to complete interactions.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Design the fallback hierarchy before the primary interaction — if touch is broken, voice is broken too for a large user segment.</statement>
+        <rationale>Multimodal state sync failures often affect both voice and visual layers simultaneously. The fallback path must work independently of the primary path.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set visual element timeouts to match displayed content complexity: list (10s), detail card (20s), multi-step form (60s). Minimum 10s for accessibility.</statement>
+        <rationale>Agent-suggested timeouts are often too short for elderly users or users with cognitive disabilities. Accessibility-minimum values must be specified explicitly in the prompt.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Spoken summaries must be shorter than visual content — users listening cannot process paragraph-length speech.</statement>
+        <rationale>VUI users listening to confirmation speech cannot rewind. Visual content can be re-read; spoken content cannot. Keep summaries to 1–2 sentences maximum.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations-and-antipatterns">
+      <p>Multimodal design requires synchronized state between voice and visual layers — AI-generated flows often miss state sync edge cases. Wake-word false positive rate disrupts the visual experience unexpectedly — AI cannot solve this at the UX layer; hardware matters. Voice-initiated, screen-completed flows break when the user takes longer than the VUI timeout to interact with the visual element. Smart display APL/response templates are platform-specific — design for Echo Show does not transfer directly to Google Nest Hub. AI-generated fallback hierarchies often omit the tertiary (keyboard) path for accessibility edge cases. Touch-to-voice handoff is poorly handled by most AI-generated flow designs — the seam between modalities is where the UX fails.</p>
+
+      <antipattern>
+        <description>AI-generated flow spec misses state sync when user speaks while simultaneously touching.</description>
+        <reason>Multimodal state sync on simultaneous input is an edge case agent-generated specs routinely miss. Add it as an explicit review checklist item in every multimodal spec review.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using Echo Show APL templates on Google Nest Hub without adaptation.</description>
+        <reason>APL is Amazon-specific; Google uses Action Builder with Rich Responses and Canvas. Platform-specific templates require separate implementations. Simulator rendering also differs from actual hardware.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent-generated APL JSON using deprecated APL version features.</description>
+        <reason>APL evolves between versions. Without specifying the exact target APL version in the prompt, agents default to older patterns that fail on current firmware.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Confusing "fallback" (user cannot use primary input) with "error" (input understood but failed).</description>
+        <reason>Fallback paths handle inability to use a modality; error paths handle understood-but-failed interactions. Conflating them produces flows where errors are handled with the wrong recovery mechanism.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Wake-word false positives disrupting visual UI experience.</description>
+        <reason>AI cannot solve wake-word false positive rate at the UX layer — this is a hardware problem. Design visual UI to be resilient to unexpected voice activation, with visible state indicators when VUI is active.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>VUI timeout set too short for complex visual content without accessibility consideration.</description>
+        <reason>Default timeouts from agent-generated specs are typically optimized for average users. Elderly users and users with cognitive disabilities need at minimum 10s for simple responses, 60s for multi-step forms.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-integration">
+      <p>A Claude subagent (Haiku) receives a feature brief specifying the interaction type (voice-initiated/screen-completed, screen-initiated/voice-completed, simultaneous) and generates the multimodal interaction specification: voice trigger phrases, visual output layout, fallback hierarchy, and timeout behavior. A Sonnet subagent reviews the generated spec for state-sync consistency and platform-specific constraints. Human VUI designers validate on actual device hardware.</p>
+
+      <rule testable="true">
+        <statement>Use a Haiku subagent for interaction pattern generation and APL/response template scaffolding, and a Sonnet subagent for state-sync consistency review and accessibility fallback audit.</statement>
+        <rationale>Haiku handles template generation efficiently; Sonnet provides deeper review of edge cases and platform constraints. Human VUI designers validate on actual hardware before production deployment.</rationale>
+      </rule>
+
+      <p>Prompt pattern for multimodal VUI design: You are a multimodal VUI designer for [device: Echo Show / Google Nest Hub]. Design the interaction flow for: [feature description]. Interaction type: [voice-initiated screen-completed | screen-initiated voice-completed | voice + visual feedback | voice navigation + visual content]. Output: (1) Voice trigger phrases (primary + 2 alternates), (2) Visual output layout (card/carousel/list/detail), (3) Spoken confirmation summary, (4) Fallback hierarchy: primary (voice) → secondary (touch) → tertiary (keyboard if available), (5) Timeout behavior (what happens after [N] seconds of no input), (6) Error state: what to say/show if voice input is not understood.</p>
+
+      <p>Prompt pattern for multimodal spec review: Review this multimodal flow spec for state-sync issues: [spec text]. Check: Does the visual state stay consistent if the user speaks while touching? Are timeouts appropriate for the visual complexity shown? Is the fallback hierarchy complete for users who cannot speak? Are error recovery paths present for both voice and touch failures? Output a numbered list of issues with severity (Blocking/High/Low).</p>
+
+      <p>CLI tools: Alexa Skills Kit CLI (ask-cli) deploys Alexa skills with APL templates via npm install -g ask-cli. Google Actions CLI (gactions) deploys Google Actions with canvas/rich responses via npm install -g @assistant/gactions. pyaudio captures microphone input for local VUI prototyping via pip install pyaudio. Voiceflow CLI exports/imports conversation flows from voiceflow.com/api.</p>
+
+      <p>Services: Amazon Alexa Presentation Language (APL) is a platform SDK with JSON templates; agents can generate APL JSON from design spec. Google Assistant Canvas is a platform SDK with JS/JSON for agent-scaffolded canvas response templates. Voiceflow is a SaaS visual conversation flow builder with REST API for programmatic flow management. Dialogflow CX is a SaaS intent/entity manager with REST API where agents can create intents via API. Amazon Polly provides SaaS TTS with voice persona selection and SSML control. Google Text-to-Speech provides SaaS TTS with WaveNet voices and SSML. Botpress is an OSS self-hosted conversation management system with agent-updatable flows and REST API.</p>
+
+      <example type="good" title="Multimodal interaction pattern">
+        <note>Voice input: "Show me recipes for pasta" → Visual: card carousel with 5 recipe images → Spoken: "I found 5 pasta recipes" → User taps to expand, speaks to navigate</note>
+      </example>
+
+      <example type="good" title="APL list card generation">
+        <code lang="python"><![CDATA[
+import json
+
+def make_apl_card(title: str, items: list[dict], spoken_summary: str) -> dict:
+    """Generate a minimal APL list card for Echo Show."""
+    return {
+        "type": "APL",
+        "version": "1.9",
+        "document": {
+            "type": "APL",
+            "mainTemplate": {
+                "item": {
+                    "type": "Container",
+                    "items": [
+                        {"type": "Text", "text": title, "style": "textStyleHeading"},
+                        {
+                            "type": "Sequence",
+                            "items": [
+                                {
+                                    "type": "Text",
+                                    "text": item["label"],
+                                    "speech": item.get("speech", item["label"]),
+                                }
+                                for item in items
+                            ],
+                        },
+                    ],
+                }
+            },
+        },
+        "datasources": {"spoken_summary": spoken_summary},
+    }
+
+if __name__ == "__main__":
+    card = make_apl_card(
+        "Pasta Recipes",
+        [{"label": "Spaghetti Bolognese"}, {"label": "Cacio e Pepe"}],
+        "I found 2 pasta recipes.",
+    )
+    print(json.dumps(card, indent=2))
+]]></code>
+        <note>Generate APL JSON for Alexa Echo Show list display with voice triggers.</note>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <p>Test with the screen covered (voice-only degradation) and microphone muted (touch-only degradation) separately. Use SSML prosody tags to control speaking pace for confirmation messages — too fast and users miss the confirmation. Platform-specific APL templates must be tested on actual Echo Show models — simulator rendering differs from hardware. Document all supported voice trigger phrases in the skill's interaction model — undocumented phrases fail silently in production.</p>
+
+      <p>Agent-generated APL JSON often uses deprecated APL version features — specify the target APL version explicitly in the prompt. Multimodal state sync (voice selects item simultaneously with touch) is an edge case that agent-generated specs routinely miss — add it as an explicit review checklist item. Agent timeout suggestions are often too short for elderly users or users with cognitive disabilities — require accessibility-minimum timeout values in the prompt (minimum 10s for simple responses). Agents conflate "fallback" (user cannot use primary input) with "error" (input was understood but failed) — keep these paths separate in the spec. Human-in-loop checkpoint: VUI design requires testing with real users on actual hardware before any production deployment — no agent review substitutes for this.</p>
+    </section>
+
+    <see-also>
+      <link href="https://designguidelines.withgoogle.com/conversation/multimodal/"/>
+      <link href="https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-overview.html"/>
+      <link href="https://www.nngroup.com/articles/multimodal-voice/"/>
+      <link href="https://www.w3.org/TR/WCAG22/"/>
+    </see-also>
+
+    <templates>
+      <template path="templates/apl-card-generator.py" purpose="Generate Alexa Presentation Language (APL) list card JSON for Echo Show"/>
+      <template path="templates/prompt-design-flow.txt" purpose="Haiku prompt: feature brief → full multimodal interaction spec with fallback hierarchy"/>
+      <template path="templates/prompt-review-flow.txt" purpose="Sonnet prompt: spec → state-sync and accessibility audit with severity ratings"/>
+    </templates>
+  </content>
+</methodology>
