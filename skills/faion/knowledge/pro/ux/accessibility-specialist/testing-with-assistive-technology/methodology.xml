@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="testing-with-assistive-technology">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>accessibility-specialist</domain>
+    <summary>Manual AT testing (NVDA, JAWS, VoiceOver, TalkBack) catches 50-70% of a11y issues automated tools miss. Keyboard navigation, screen reader checks, smoke tests to comprehensive audits.</summary>
+    <tags>
+      <tag>accessibility</tag>
+      <tag>testing</tag>
+      <tag>screen-reader</tag>
+      <tag>wcag</tag>
+      <tag>assistive-technology</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Testing with Assistive Technology</title>
+
+    <summary>Manual testing with real screen readers, keyboard-only navigation, and mobile AT to catch the 50-70% of accessibility issues that automated tools miss. Covers NVDA, JAWS, VoiceOver (macOS/iOS), and TalkBack (Android), with tiered test workflows from 15-minute smoke checks to 4-hour comprehensive audits.</summary>
+
+    <why>
+      <p>Automated scanners (axe, WAVE, Lighthouse) detect ~30-50% of WCAG violations. The remainder — focus management bugs, incorrect live-region timing, custom-widget semantics, and misleading alt text — only surface when a real AT processes the DOM and produces speech output. AT + browser pairings matter and diverge; passing one combo does not generalize.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Verifying screen-reader and keyboard parity before any web, iOS, Android, or Electron release.</item>
+        <item>Catching focus-management regressions (modal close, route transitions, toast announcements).</item>
+        <item>Reproducing user-reported AT bugs with the exact screen reader + browser combo they use.</item>
+        <item>Authoring Gherkin test cases that a Guidepup agent or human tester can execute.</item>
+        <item>Pre-release sign-off on custom widgets (combobox, tree, grid, live regions).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>First-pass scanning — run `a11y-testing` with axe/Pa11y first to remove easy issues.</item>
+        <item>Compliance paperwork / VPAT generation — use `regulatory-compliance-2026` with AT findings as input.</item>
+        <item>Native mobile UI design reviews (not runtime AT) — those are design-phase concerns.</item>
+        <item>Fully automated AT-driven E2E without human verification — screen-reader automation reads the accessibility tree, not real speech; results lie.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="screen-reader-matrix">
+      <rule>
+        <statement>Test with the AT + browser pairs that real users actually use: NVDA+Firefox, JAWS+Chrome, VoiceOver+Safari, TalkBack+Chrome Android.</statement>
+        <rationale>Screen readers and browsers diverge on ARIA interpretation; a green run on one combo does not generalize to another.</rationale>
+      </rule>
+
+      <section name="nvda-windows">
+        <p>Free, ~40% market share. Download from nvaccess.org. Pair with Firefox for best standards coverage.</p>
+        <example type="good" title="NVDA Key Commands">
+          <code lang="text"><![CDATA[
+NVDA modifier: Insert or Caps Lock
+Stop speech:   Ctrl
+Navigate headings: H (next) / Shift+H (prev)
+Navigate links:    K / Shift+K
+Navigate form fields: F / Shift+F
+Forms mode:    automatic on form entry
+Read all:      NVDA + Down Arrow
+Landmarks:     D / Shift+D
+          ]]></code>
+          <note>Start NVDA before the browser; restart if speech stalls.</note>
+        </example>
+      </section>
+
+      <section name="jaws-windows">
+        <p>Paid ($95-1500), ~40% market share. Enterprise baseline. Pair with Chrome or Edge.</p>
+        <example type="good" title="JAWS Key Commands">
+          <code lang="text"><![CDATA[
+JAWS modifier:  Caps Lock or Insert
+Stop speech:    Ctrl
+Virtual cursor: Arrow keys
+Forms mode:     Enter/Space on form element
+Read all:       Insert + Down Arrow
+Headings:       H / Shift+H
+Links:          Tab / U (unvisited links)
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="voiceover-apple">
+        <p>Built-in, ~15% desktop market share; leading on iOS. Pair with Safari.</p>
+        <example type="good" title="VoiceOver Key Commands">
+          <code lang="text"><![CDATA[
+macOS activation: Cmd + F5
+iOS activation:   triple-click Home/Side button
+VO modifier:      Ctrl + Option (abbreviated VO)
+Navigate:         VO + Right/Left Arrow
+Interact:         VO + Shift + Down Arrow
+Exit interaction: VO + Shift + Up Arrow
+Rotor (web nav):  VO + U
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="talkback-android">
+        <p>Built-in Android default. Pair with Chrome. Gestures are model- and OS-version-specific.</p>
+        <example type="good" title="TalkBack Gestures">
+          <code lang="text"><![CDATA[
+Activation:       Volume up + down simultaneously
+Navigate:         Swipe right/left
+Activate:         Double tap
+Context menu:     Swipe down then right (L shape)
+Reading controls: Swipe up/down
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="automation-boundary">
+        <rule>
+          <statement>Distinguish accessibility-tree probes from real speech output in every test report.</statement>
+          <rationale>Most "AT automation" (axe-core, Guidepup tree mode) reads the OS accessibility tree, not actual NVDA/VoiceOver speech. Bugs where the tree is correct but the SR announces nothing are invisible to tree-only tools.</rationale>
+        </rule>
+        <p>Real-speech automation: Guidepup driving NVDA on Windows (JS), voiceover-test driving VO via AppleScript (macOS). Both are slow and platform-locked — use for a curated critical-flow subset only.</p>
+      </section>
+    </section>
+
+    <section name="keyboard-testing">
+      <rule>
+        <statement>Every interactive element must be reachable and operable using only Tab, Shift+Tab, Enter, Space, Escape, and Arrow keys — no mouse required.</statement>
+        <rationale>Screen reader users navigate by keyboard; motor-disability users may not use a mouse; legal requirement under WCAG 2.1 SC 2.1.1.</rationale>
+      </rule>
+      <example type="good" title="Core Keyboard Commands">
+        <code lang="text"><![CDATA[
+Tab:         move to next focusable element
+Shift+Tab:   move to previous focusable element
+Enter:       activate link or button
+Space:       activate button / toggle checkbox
+Arrow keys:  navigate dropdown options, radio groups, tabs, sliders
+Escape:      close modal / cancel action
+        ]]></code>
+      </example>
+
+      <section name="focus-indicators">
+        <rule>
+          <statement>Never remove the focus outline without providing a visible replacement with at least 3:1 contrast ratio.</statement>
+          <rationale>WCAG 2.2 SC 2.4.11 (AA): focused element must be at least partially visible. SC 2.4.13 (AAA): 2px minimum thickness, sufficient contrast.</rationale>
+        </rule>
+        <antipattern>
+          <description>CSS rule outline: none or outline: 0 applied globally without a replacement focus style.</description>
+          <reason>Keyboard users cannot see where they are; fails WCAG 2.4.7 and 2.4.11.</reason>
+        </antipattern>
+      </section>
+
+      <section name="component-keyboard-behavior">
+        <rule>
+          <statement>Custom interactive components must implement the keyboard interaction pattern specified in the ARIA Authoring Practices Guide (APG).</statement>
+          <rationale>Arbitrary implementations break AT user expectations built over years of using native widgets.</rationale>
+        </rule>
+        <example type="good" title="Component Keyboard Patterns">
+          <code lang="text"><![CDATA[
+Accordion:   Enter/Space to expand/collapse; Tab to next control
+Tabs:        Arrow keys to switch tabs; Tab to move into tab panel
+Modal:       Tab cycles within modal; Escape closes; focus returns to trigger
+Carousel:    Arrow keys for prev/next; focus managed per panel
+Dropdown:    Enter/Space to open; Arrow keys to navigate; Escape to close
+Slider:      Arrow keys to adjust value; Home/End for min/max
+          ]]></code>
+        </example>
+        <antipattern>
+          <description>Drag-and-drop with no keyboard alternative (e.g., reorderable list, Kanban board).</description>
+          <reason>Fails WCAG 2.5.7 (AA, new in 2.2). Must provide button-driven move alternatives for every drag interaction.</reason>
+        </antipattern>
+      </section>
+
+      <section name="common-keyboard-failures">
+        <list>
+          <item>No visible focus — outline removed without replacement.</item>
+          <item>Illogical tab order — DOM order differs from visual layout; wrong tabindex values.</item>
+          <item>Keyboard trap — cannot Tab out of a widget or modal.</item>
+          <item>Mouse-only hover menus — no keyboard trigger to open navigation flyouts.</item>
+          <item>Focus lost after modal close — not returned to the trigger element.</item>
+          <item>Enter/Space not handled on custom div/span buttons.</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="screen-reader-checklist">
+      <section name="content-checklist">
+        <rule>
+          <statement>Every image must have a meaningful alt attribute; decorative images must have alt="" so they are skipped.</statement>
+          <rationale>WCAG 1.1.1 Non-text Content (Level A). A missing or generic alt (e.g., "image.jpg") conveys nothing to SR users.</rationale>
+        </rule>
+        <list>
+          <item>All images have alt text.</item>
+          <item>Alt text is meaningful, not generic ("photo", "icon").</item>
+          <item>Decorative images have alt="" and no ARIA label.</item>
+          <item>Complex images (charts, diagrams) have long descriptions via figcaption or aria-describedby.</item>
+          <item>Inline SVG icons have aria-label or title + role="img".</item>
+        </list>
+      </section>
+
+      <section name="structure-checklist">
+        <rule>
+          <statement>Headings must form a logical hierarchy (H1 → H2 → H3) with no skipped levels; landmarks must mark major regions.</statement>
+          <rationale>SR users navigate by heading (H key in NVDA/JAWS) and by landmark (D key). Missing or skipped headings force linear reading of entire pages.</rationale>
+        </rule>
+        <list>
+          <item>One H1 per page.</item>
+          <item>Headings hierarchical — no skipped levels (e.g., H1 → H3).</item>
+          <item>Landmarks present: main, nav, header, footer.</item>
+          <item>Lists marked up as ul/ol/dl, not styled divs.</item>
+          <item>Data tables have th elements with scope; caption provided.</item>
+          <item>Reading order matches visual order.</item>
+        </list>
+      </section>
+
+      <section name="forms-checklist">
+        <rule>
+          <statement>Every form input must have a programmatically associated label; error messages must be announced via ARIA live region or focus management.</statement>
+          <rationale>WCAG 1.3.1, 3.3.1, 3.3.2. "Edit, blank" is the most common screen reader announcement — it means no label is associated.</rationale>
+        </rule>
+        <list>
+          <item>All inputs have associated label for="..." or aria-label / aria-labelledby.</item>
+          <item>Error messages linked to inputs via aria-describedby.</item>
+          <item>Required fields marked with aria-required="true" or required attribute.</item>
+          <item>Helper/hint text associated with inputs via aria-describedby.</item>
+          <item>Field groups wrapped in fieldset + legend.</item>
+          <item>Form validation errors announced — via live region or focus shift to error summary.</item>
+        </list>
+      </section>
+
+      <section name="dynamic-content-checklist">
+        <rule>
+          <statement>All asynchronous state changes (loading, success, error, count updates) must be announced via an appropriate ARIA live region.</statement>
+          <rationale>SR users receive no visual feedback from DOM mutations unless the accessibility tree signals a change.</rationale>
+        </rule>
+        <list>
+          <item>aria-live="polite" for non-critical updates (search results count, auto-save status).</item>
+          <item>aria-live="assertive" for critical errors only — interrupts current SR reading.</item>
+          <item>Loading spinners have aria-live or aria-busy="true" on the container.</item>
+          <item>Modal dialogs trap focus on open; focus returns to trigger on close.</item>
+          <item>Modals have role="dialog", aria-modal="true", and aria-labelledby pointing to title.</item>
+        </list>
+      </section>
+
+      <section name="navigation-checklist">
+        <list>
+          <item>Skip link to main content is first focusable element; visible on focus.</item>
+          <item>All links have descriptive text — no bare "click here" or "read more".</item>
+          <item>Current page indicated with aria-current="page" on nav link.</item>
+          <item>Link purpose is clear from link text alone or link text + programmatic context.</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="test-workflows">
+      <rule>
+        <statement>Run a 15-minute smoke test on every PR; reserve the comprehensive 2-4 hour pass for release candidates and major feature launches.</statement>
+        <rationale>Full AT testing is expensive; catching regressions early on targeted flows prevents compound debt without blocking velocity.</rationale>
+      </rule>
+
+      <section name="smoke-test">
+        <example type="good" title="15-Minute Smoke Test">
+          <code lang="text"><![CDATA[
+1. Keyboard pass (5 min)
+   - Tab through entire page
+   - All interactive elements reachable?
+   - Focus indicator always visible?
+   - No keyboard traps?
+
+2. Screen reader spot check (5 min)
+   - Navigate headings (H key in NVDA)
+   - Navigate landmarks (D key in NVDA)
+   - Try one form field — label announced?
+
+3. Automated scan (5 min)
+   - Run axe DevTools
+   - Zero critical violations?
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="comprehensive-test">
+        <example type="good" title="2-4 Hour Comprehensive Test">
+          <code lang="text"><![CDATA[
+1. Automated scan (30 min): axe + WAVE + Lighthouse; log all issues.
+2. Keyboard navigation (1 hr): full Tab pass; all interactions; custom components.
+3. Screen reader (1-2 hr): NVDA+Firefox (or JAWS+Chrome); headings, landmarks,
+   all forms, dynamic content, custom widgets.
+4. Mobile SR (30 min): VoiceOver on iOS Safari; TalkBack on Android Chrome;
+   test gestures; test forms.
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="agentic-pipeline">
+        <rule>
+          <statement>Drive AT testing as a tiered chain: Playwright+axe for tree coverage, Guidepup for real-speech critical flows, human tester for final sign-off on custom widgets.</statement>
+          <rationale>Automation keeps regressions cheap; it cannot replace an expert AT user for nuanced judgment on custom components, live regions, and mobile gestures.</rationale>
+        </rule>
+        <reference path="templates/guidepup-nvda-form-error.js">Real-speech Playwright + Guidepup test for NVDA form-error announcement</reference>
+        <reference path="templates/at-test-case.txt">Gherkin template for AT test cases anchored to WCAG SC</reference>
+        <list>
+          <item>Playwright agent runs axe-core for tree-level coverage on every PR.</item>
+          <item>Guidepup agent drives NVDA/VoiceOver for curated critical flows (form submit, modal, SR navigation).</item>
+          <item>Human AT user signs off on custom widgets, live-region semantics, mobile gesture coverage.</item>
+        </list>
+      </section>
+
+      <section name="key-gotchas">
+        <antipattern>
+          <description>Asserting exact SR speech phrases such as "screen reader will say 'invalid'".</description>
+          <reason>Over-specifies phrasing; NVDA and JAWS render the same ARIA differently. Assert on intent (error announced within 1s) not exact string.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Closing an a11y bug without linking to the WCAG criterion and pre/post screenshot.</description>
+          <reason>Reviewers cannot audit drift; regressions are silently reintroduced.</reason>
+        </antipattern>
+        <rule>
+          <statement>Treat focus restoration after modal close as its own checklist item; it is the most common AT regression.</statement>
+          <rationale>Frameworks re-render on modal close and reset focus to document.body; must explicitly return focus to the trigger element.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Anchor every AT test to a specific WCAG 2.2 Success Criterion — easier to triage and to defend in audit.</item>
+        <item>Test pairs that real users actually use: NVDA+Firefox, JAWS+Chrome, VoiceOver+Safari, TalkBack+Chrome.</item>
+        <item>Run keyboard-only and screen-reader passes separately — different bugs surface in each.</item>
+        <item>Maintain a "known false positive" list; axe and pa11y misfire and noise destroys trust.</item>
+        <item>Keep one small, fast AT smoke suite in PR CI; full run nightly or pre-release.</item>
+        <item>Recruit at least one paid AT user for quarterly review — automation will not catch what a habitual user catches.</item>
+        <item>Treat focus restoration after modal close as its own checklist line item; it's the most common regression.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents conflate accessibility-tree probes with real speech output — call out which mode each test uses.</item>
+        <item>LLM-generated AT test cases assume single-page app behavior; multi-page navigation breaks focus expectations.</item>
+        <item>Generated assertions like "screen reader will say 'invalid'" overspecify — assert on intent, not exact phrasing.</item>
+        <item>Mobile AT gesture sequences hallucinate; copy from official Apple/Google docs.</item>
+        <item>Agents miss the difference between aria-live="polite" vs assertive for error timing — require explicit choice and justification.</item>
+        <item>tabindex="0" on non-interactive divs is suggested too easily — escalate to human.</item>
+        <item>Human-in-loop checkpoints: every custom-widget pattern (combobox, tree, grid), live-region semantics, modal/dialog focus trap, mobile gesture coverage, final pre-release suite.</item>
+      </list>
+    </section>
+
+    <section name="limitations">
+      <list>
+        <item>Screen-reader output is not directly capturable from headless browsers; most automation cheats by reading the accessibility tree, not the speech buffer.</item>
+        <item>JAWS, NVDA, VoiceOver, TalkBack, Orca behave differently for the same DOM — testing one is not testing all.</item>
+        <item>AT + browser pairings matter (NVDA + Firefox vs. NVDA + Chrome); a green run on one combo does not generalize.</item>
+        <item>Mobile AT (VoiceOver iOS, TalkBack) gestures are model- and OS-version-specific; flaky in CI.</item>
+        <item>Live-region timing is non-deterministic — agents fail to assert announcements reliably without polling.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/guidepup-nvda-form-error.js" purpose="Playwright + Guidepup test asserting inline form error announced by NVDA."/>
+      <template path="templates/at-test-case.txt" purpose="Gherkin template for authoring AT test cases per WCAG SC."/>
+    </templates>
+
+    <see-also>
+      <link href="https://webaim.org/articles/screenreader_testing/"/>
+      <link href="https://www.nvaccess.org/files/nvda/documentation/userGuide.html"/>
+      <link href="https://support.apple.com/guide/voiceover/welcome/mac"/>
+      <link href="https://support.google.com/accessibility/android/answer/6283677"/>
+      <link href="https://www.guidepup.dev"/>
+      <link href="https://www.w3.org/WAI/ARIA/apg/"/>
+      <link href="https://www.deque.com/blog/keyboard-testing/"/>
+    </see-also>
+  </content>
+</methodology>

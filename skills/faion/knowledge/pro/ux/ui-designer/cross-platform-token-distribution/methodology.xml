@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cross-platform-token-distribution">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ui-designer</domain>
+    <summary>Pipeline pattern for distributing design tokens from Tokens Studio/Figma to CSS, SCSS, iOS Swift, Android XML, and React Native via Style Dictionary transforms.</summary>
+    <tags>
+      <tag>design-tokens</tag>
+      <tag>style-dictionary</tag>
+      <tag>multi-platform</tag>
+      <tag>ci-drift-detection</tag>
+      <tag>design-systems</tag>
+    </tags>
+    <category>tokens</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Cross-Platform Token Distribution</title>
+    <summary>A pipeline pattern for distributing design tokens from a single source (Tokens Studio / Figma) to multiple platform outputs — CSS variables, SCSS maps, iOS Swift, Android XML, React Native — using Style Dictionary as the transform engine. Tokens are authored once and emitted per-platform via config-driven transforms; CI blocks merges when outputs drift from source.</summary>
+    <why>
+      <p>Without a shared pipeline, per-platform token copies diverge silently. A wrong primary color ships on iOS while web stays correct. Style Dictionary's transform groups isolate platform quirks (rem→dp, hex→UIColor) without polluting the shared source, and a CI drift check makes drift visible before it reaches users.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Setting up a multi-platform product (web + iOS + Android) with shared brand tokens.</item>
+        <item>Migrating a web-only token set to cover native platforms.</item>
+        <item>Adding CI gates that fail when generated platform outputs are stale relative to source.</item>
+        <item>Auditing drift between Figma token export and shipped artifacts.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-platform web-only products — Style Dictionary adds pipeline complexity with no payoff.</item>
+        <item>Pre-design-system phase where the token contract is still unstable; pipeline churn exceeds value.</item>
+        <item>Brand assets that change every campaign — distribution overhead exceeds reuse benefit.</item>
+        <item>Closed mobile apps with a single developer who hand-edits XML — overhead exceeds saved minutes.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Tool Roles">
+      <rule>
+        <statement>Use Style Dictionary as the sole transform engine; never hand-edit platform output files.</statement>
+        <rationale>Hand-editing outputs breaks the pipeline: the next Style Dictionary build overwrites changes and introduces undetected drift.</rationale>
+      </rule>
+      <rule>
+        <statement>Treat Tokens Studio JSON as the single source of truth; all platforms read from it, none write to it.</statement>
+        <rationale>Multiple sources of truth diverge silently; a single authoritative source makes drift detectable via CI diff.</rationale>
+      </rule>
+    </section>
+    <section name="Pipeline Stages">
+      <p>Figma Tokens (designer) → Tokens Studio export (JSON) → Style Dictionary build → per-platform outputs committed to repo.</p>
+      <rule>
+        <statement>Commit generated platform outputs (CSS, Swift, XML) to the repo; never resolve tokens at app runtime.</statement>
+        <rationale>Runtime resolution adds a failure point and makes token values invisible to code review and visual regression tools.</rationale>
+      </rule>
+      <rule>
+        <statement>Use one Style Dictionary transformGroup per platform; override individual transforms only when strictly necessary.</statement>
+        <rationale>Over-customizing transforms makes the pipeline fragile and difficult to upgrade when Style Dictionary releases breaking changes.</rationale>
+      </rule>
+    </section>
+    <section name="Platform Output Formats">
+      <example type="good">
+        <note>CSS custom properties for web</note>
+        <code lang="css"><![CDATA[:root {
+  --color-primary: #3B82F6;
+  --spacing-md: 16px;
+}]]></code>
+      </example>
+      <example type="good">
+        <note>iOS Swift struct</note>
+        <code lang="swift"><![CDATA[struct Colors {
+  static let primary = UIColor(hex: "#3B82F6")
+}]]></code>
+      </example>
+      <example type="good">
+        <note>Android XML resources</note>
+        <code lang="xml"><![CDATA[<color name="primary">#3B82F6</color>
+<dimen name="spacing_md">16dp</dimen>]]></code>
+      </example>
+    </section>
+    <section name="CI Drift Check">
+      <rule>
+        <statement>Run the token build in CI on every PR and block merges when platform output files diverge from the current source.</statement>
+        <rationale>Drift is invisible without automated checking; a stale iOS Swift file ships wrong brand colors to the App Store.</rationale>
+      </rule>
+      <reference path="templates/tokens-drift-check.sh">CI script that fails the build when Style Dictionary outputs are stale.</reference>
+      <reference path="templates/style-dictionary-config.json">Style Dictionary config skeleton covering all five platform targets.</reference>
+    </section>
+    <section name="Known Limitations">
+      <antipattern>
+        <description>Using rem values in iOS or dp values in CSS output.</description>
+        <reason>Style Dictionary transforms are unit-and-platform-aware but trip on edge cases; always specify the unit transform explicitly per platform.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Relying on Tokens Studio JSON being W3C-compatible without validation.</description>
+        <reason>Tokens Studio JSON dialect drifts from the W3C draft; round-tripping breaks alias references unless validated on each export.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Semantic token aliasing across platforms expecting one-level resolution.</description>
+        <reason>Android XML resolves only one level deep without custom resolvers; deep alias chains silently produce wrong values.</reason>
+      </antipattern>
+    </section>
+    <section name="Agent Pitfalls and Best Practices">
+      <p>Common agent-generated mistakes in token pipeline setup and the rules that prevent them.</p>
+      <section name="Agent Pitfalls">
+        <antipattern>
+          <description>Agent writes Style Dictionary transforms against the deprecated v3 API.</description>
+          <reason>Style Dictionary v4 has a different transform API; v3 transforms silently produce no output or malformed files.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Generated SCSS maps use Dart Sass-deprecated syntax (e.g., misplaced !default).</description>
+          <reason>Newer Dart Sass deprecations surface only at build time; lint generated SCSS before committing.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Color-space metadata (sRGB vs. P3) is dropped during token transform.</description>
+          <reason>Transforms silently coerce color spaces; require explicit color-space metadata in the source and validate output format.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Agent invents Tokens Studio capabilities (e.g., "math expressions") not in current docs.</description>
+          <reason>Hallucinated features produce pipeline configs that break at runtime; validate all claimed features against current Tokens Studio documentation.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Agent prunes "unused" tokens automatically using static analysis.</description>
+          <reason>Static analysis misses theming, runtime, and per-tenant token references; auto-pruning causes silent regressions.</reason>
+        </antipattern>
+      </section>
+      <section name="Best Practices">
+        <rule>
+          <statement>Snapshot-test rendered components after every token change, not just raw value diffs.</statement>
+          <rationale>Raw value diffs miss visual regressions caused by aliasing, transforms, or platform-specific rendering differences.</rationale>
+        </rule>
+        <rule>
+          <statement>Validate token files against the W3C draft format on every export to keep future tooling compatibility.</statement>
+          <rationale>Early validation prevents a forced re-migration when the ecosystem converges on the standard.</rationale>
+        </rule>
+        <rule>
+          <statement>Never auto-apply token PRs that change a primary color without a staged rollout and visual diff review.</statement>
+          <rationale>A wrong primary color rebrands the product instantly across all platforms simultaneously.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Use Claude as a "transform pipeline author": given a Tokens Studio export and a list of target platforms, it generates the Style Dictionary config.json, custom transforms (e.g., px→dp, color→UIColor), build script, and a per-platform output checker. A second pass writes a CI job that diff-checks committed outputs vs. fresh build, blocking PRs on drift. The agent also produces a README explaining how designers add tokens without breaking transforms.</p>
+      <section name="Recommended Subagents">
+        <list>
+          <item>general-purpose Claude subagent — pipeline scaffolding + transform code.</item>
+          <item>faion-sdd-executor-agent — execute SDD task implementing the pipeline as repo.</item>
+          <item>A "design-token-validator" prompt — diff Figma export vs. Style Dictionary output, list mismatches.</item>
+        </list>
+      </section>
+      <section name="Prompt Pattern">
+        <code lang="text"><![CDATA[Targets: web (CSS vars + SCSS), iOS (Swift UIColor + CGFloat), Android (colors.xml + dimens.xml).
+Source: tokens.json (Tokens Studio v0.5 export).
+Output: style-dictionary config.json + custom transforms for px→dp and color formats + npm build script.]]></code>
+        <code lang="text"><![CDATA[Given the diff between commit A and commit B of tokens.json,
+list which platform output files are stale and the exact npm
+script to rebuild them.]]></code>
+      </section>
+    </section>
+    <section name="CLI Tools">
+      <list>
+        <item>style-dictionary — Token transform engine (de-facto standard): npm i -g style-dictionary</item>
+        <item>tokens-studio-cli (community) — Export Figma Tokens Studio JSON in CI: https://docs.tokens.studio/</item>
+        <item>supernova-cli — Pull tokens from Supernova platform: npm i -g @supernovaio/cli</item>
+        <item>specify-cli — Specify token sync: npm i -g @specifyapp/cli</item>
+        <item>cosmos-config — Multi-platform token build (JetBrains): https://cosmos.jetbrains.com/</item>
+        <item>theo (Salesforce, legacy) — Predecessor of Style Dictionary: https://github.com/salesforce-ux/theo</item>
+        <item>tinacms tina-tokens — Visual token editor → JSON: https://tina.io/</item>
+      </list>
+    </section>
+    <section name="Services and Platforms">
+      <list>
+        <item>Style Dictionary (OSS) — Pipeline core. Yes to agents (Node API).</item>
+        <item>Tokens Studio for Figma (SaaS plugin) — Designer-side authoring. Limited to agents (export JSON).</item>
+        <item>Supernova (SaaS) — Full lifecycle but pricey. Yes to agents (CLI + REST).</item>
+        <item>Specify (SaaS) — Distribution-focused. Yes to agents (CLI + REST).</item>
+        <item>Knapsack (SaaS) — Component + token co-management. Yes to agents (REST API).</item>
+        <item>zeroheight (SaaS) — Documentation-first. Limited to agents (Figma sync).</item>
+        <item>Chromatic (SaaS) — Visual regression for token impact. Indirect for agents.</item>
+        <item>Penpot (OSS) — Open-source Figma alternative. Limited to agents.</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://styledictionary.com/">Style Dictionary</link>
+      <link href="https://tokens.studio/">Tokens Studio</link>
+      <link href="https://www.supernova.io/">Supernova</link>
+      <link href="https://specifyapp.com/">Specify</link>
+      <link href="https://design-tokens.github.io/community-group/format/">W3C Design Tokens Format</link>
+      <link href="https://css-tricks.com/what-are-design-tokens/">CSS-Tricks: What are Design Tokens?</link>
+    </see-also>
+    <templates>
+      <template path="templates/style-dictionary-config.json">Style Dictionary config skeleton for CSS, SCSS, iOS, Android, React Native outputs.</template>
+      <template path="templates/tokens-drift-check.sh">CI script that fails if Style Dictionary outputs are stale relative to source.</template>
+    </templates>
+  </content>
+</methodology>
