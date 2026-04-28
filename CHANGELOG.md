@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (fine-tuning-lora, finetuning, graph-rag; feature-045 batch 262)
 - migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (claude-api, cost-optimization, decision-framework; feature-045 batch 261)
 - migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (ai-agent-patterns, chain-of-thought, chunking-strategies; feature-045 batch 260)
 - migrate: 3/3 geek methodologies → methodology.xml (structured-output-patterns, tool-use-basics, agentic-rag; feature-045 batch 259)
