@@ -4,7 +4,7 @@
     <tier>pro</tier>
     <group>dev</group>
     <domain>software-developer</domain>
-    <summary>Rails backend patterns for production: Service Objects encapsulating business logic with transactions and result objects; RSpec model/service/request specs with factories; Sidekiq background jobs with retry policies; and proper error handling via ActiveRecord::RecordInvalid.</summary>
+    <summary>Rails backend patterns: Service Objects with transactions, RSpec specs, Sidekiq jobs with retry policies, and error handling.</summary>
     <category>backend</category>
     <difficulty>intermediate</difficulty>
     <created>2026-04-28</created>
@@ -370,6 +370,65 @@ end
         <note>Batch export uses find_each(batch_size: 1000) to avoid loading all records into memory.</note>
       </example>
     </section>
+
+
+    <section name="when-not-to-use-detailed">
+      <p>Hard real-time / low-latency systems (sub-10ms p99). MRI Ruby + Rails middleware is not the right footprint; pick Go/Rust.</p>
+      <p>CPU-bound workloads (ML inference, video transcoding). Use Rails as the API surface, push compute to a service in another language.</p>
+      <p>Strict single-binary distribution. Rails wants Bundler + a Ruby runtime — not friendly to "drop one binary on the box."</p>
+      <p>Polyglot orgs without Ruby expertise. Rails magic (autoloading, callbacks, method_missing, scopes) is opaque to non-Ruby agents and becomes a maintenance liability.</p>
+      <p>Greenfield where the team explicitly committed to typed Python/Go/TS — Rails is not a "we'll add types later" stack (Sorbet/RBS exists but is opt-in, not idiomatic for most gems).</p>
+    </section>
+
+    <section name="where-it-fails-limitations">
+      <p>Callback hell. before_save, after_create_commit, around_destroy chains create implicit ordering that breaks when reused via accepts_nested_attributes_for. The README's before_validation :normalize_email is fine; production accumulates 8 callbacks and diagnoses become forensic.</p>
+      <p>Fat models, then fat services. Skinny-controller advice pushes logic to model, model bloats, "service objects" extract — but service-object conventions are not standardised. Teams diverge (Interactor, Trailblazer, dry-transaction, hand-rolled call like the README).</p>
+      <p>N+1 queries. ActiveRecord lazy loading is a footgun; bullet gem catches local cases, prod still surprises. The README's with_associations chain is correct; agents skip it.</p>
+      <p>Strong parameters drift. params.require(:user).permit(...) lists drift from the model schema as columns are added; tests don't catch silent ignored fields.</p>
+      <p>Sidekiq retry semantics. At-least-once delivery; without idempotency, retries double-charge. README's return if order.processed? is the right pattern; agents forget it.</p>
+      <p>Autoloading (Zeitwerk) errors. Constant-name → file-name mismatch produces NameErrors only at runtime. Test suites must boot the full app to surface them.</p>
+      <p>Asset pipeline churn. Sprockets / Webpacker / esbuild / importmap / Propshaft — every Rails upgrade asks you to migrate. Agents copy snippets across pipelines.</p>
+      <p>Scope leakage into tests. A scope on User bleeds into FactoryBot defaults; tests pass locally, fail under random ordering. Use default_scope only when you are sure.</p>
+      <p>Database transactional state in tests. RSpec + transactional fixtures + Sidekiq-inline = surprising commit ordering for after_create_commit callbacks.</p>
+    </section>
+
+    <section name="cli-tools">
+      <p>Essential CLI tools: rails, bundle, rake, rspec, rubocop, brakeman, bullet, bundler-audit, sidekiq, kamal, solargraph/ruby-lsp, dotenv-rails, factory_bot_rails, rspec-bisect, rails db:migrate:status.</p>
+    </section>
+
+    <section name="services">
+      <p>External services: Sidekiq + Redis, Solid Queue/Cache, Heroku/Render/Fly.io, Kamal, Postgres, Skylight/Scout/Datadog, Honeybadger/Sentry/Rollbar, AppSignal, Faktory, Mailtrap/Postmark/SES, GoodJob, ImageMagick/libvips.</p>
+    </section>
+
+    <section name="best-practices">
+      <p>Service objects: one shape. Query objects extract scopes. Cap callbacks: ≤3. Strong params + serializers. Idempotent jobs. Backoff strategy per error. Transactions: no HTTP. Strict loading in tests. Pin versions. Credentials: encrypted vs ENV. Migrations: forward-only.</p>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Old Rails syntax. Wrong paths. Strong-params drift. Blind retries. update_all skipping. N+1 in serializers. Hallucinated traits. Migration mismatch. permit!. Human review for data migrations. Idempotency testing.</p>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Five-stage pipeline: Design (inventory) → Code-gen (files) → Jobs (Sidekiq) → Tests (specs) → Review (lint). Pin Rails version. Subagents: faion-sdd-executor-agent, password-scrubber, rails-review, faion-feature-executor.</p>
+    </section>
+
+
+    <section name="greenfield-use-cases">
+      <p>Greenfield SaaS or CRUD-heavy domains where Rails-the-omakase (ActiveRecord, ActionController, ActionMailer, ActiveJob, Hotwire) maps cleanly to the product. Solo / small-team builds where convention-over-configuration is the productivity edge — you want rails generate scaffold shaped code, then refine. Modernising an existing Rails 5/6 app to Rails 7+ with Hotwire/Turbo, Solid Queue, Solid Cache, Kamal deploys. Backends with substantial async/background work where Sidekiq + Redis is operationally cheap. Teams already running RSpec + FactoryBot + Capybara who want service-object + query-object discipline layered on top of Rails defaults.</p>
+    </section>
+
+    <section name="activerecord-patterns">
+      <p>Efficient database access with proper query optimization. Query Objects for chainable filters with proper scopes using lambdas. Eager loading via includes to prevent N+1. Callback structure and association semantics (has_one, has_many, through). Query Objects pull chained scopes out of the controller to improve testability and reusability. Scopes defined with lambdas (not block form) ensure they compose properly. Eager loading with includes(...) or eager_load(...) must be applied before iteration. Associations: has_one is singular and implies one-to-one, has_many is plural and implies collection loading, has_many :through connects two models via a join table, belongs_to is the inverse of has_one/has_many.</p>
+    </section>
+
+    <section name="query-objects-pattern">
+      <p>Query Objects encapsulate SELECT logic. Initialize with a base relation (defaults to Model.all). Chain methods that return self for composability. Final .results returns the relation. Controllers call UsersQuery.new.active.with_role('admin').search(term).results. This pattern keeps controllers thin and SELECT logic testable in isolation. Pagination via kaminari: query.paginate(page: params[:page]).results.</p>
+    </section>
+
+    <section name="rspec-test-strategy">
+      <p>RSpec for specs across three levels. Model specs validate presence/uniqueness/length and association structure using shoulda-matchers. Scope specs isolate the WHERE clause: create fixture with condition true, create fixture with condition false, assert scope returns only the true case. Service specs exercise business logic: happy path (valid params → success, side effects dispatched), error cases (invalid params → failure, no persistence). Request specs test full endpoint: auth, routing, JSON shape, status codes. Use Factory Bot for test data creation. Never use database_cleaner with transactional fixtures and Sidekiq-inline together — the commit ordering becomes surprising.</p>
+    </section>
+
 
     <see-also>
       <link href="https://guides.rubyonrails.org/"/>
