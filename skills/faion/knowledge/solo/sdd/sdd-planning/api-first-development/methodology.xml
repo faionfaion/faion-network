@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-first-development">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd-planning</domain>
+    <summary>Design OpenAPI 3.1 contract before writing any code. The spec is the single source of truth: generate server stubs, client SDKs, mock servers, and contract tests from it.</summary>
+    <tags>
+      <tag>api</tag>
+      <tag>openapi</tag>
+      <tag>contract</tag>
+      <tag>specification</tag>
+      <tag>design-first</tag>
+    </tags>
+    <category>api</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+
+  <content>
+    <title>API-First Development</title>
+
+    <summary>Design the OpenAPI 3.1 contract before writing any implementation code. The spec is the single source of truth: generate server stubs, client SDKs, mock servers, and contract tests from it. Every endpoint, schema, and error format is decided in YAML before a line of backend code exists. API-first design surfaces usability problems early, enables parallel frontend and backend development via mock servers (Prism), and prevents implementation-driven inconsistency across services.</summary>
+
+    <why>
+      <p>APIs designed after implementation are inconsistent across services, break consumers on change, and block frontend teams until the backend ships. Writing the spec first forces the team to agree on the contract, enables parallel frontend development via mock servers (Prism), and lets Spectral linting catch naming and versioning violations before any code drifts from the design.</p>
+      <p>Consumer-driven design surfaces usability problems before code is written. Implementation-convenient designs often expose internal data structures, forcing consumers to do transformation work the API should handle. The spec is the single source of truth: all downstream work — server stubs, client SDKs, mock servers, documentation, contract tests — is generated from or validated against the spec. This prevents implementation-driven API shapes that are inconsistent across services.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Multiple consumers planned (frontend, mobile, third-party) before backend is written.</item>
+        <item>Frontend and backend agents or teams work in parallel: mock server unblocks frontend.</item>
+        <item>Public or partner-facing API where contract stability is a hard requirement.</item>
+        <item>Microservice boundaries require agreed contracts before implementation begins.</item>
+        <item>SDK generation is needed (client libraries from spec).</item>
+        <item>API governance required: linting rules enforce naming, versioning, error format.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Internal single-consumer service where spec would be written after implementation anyway (YAGNI).</item>
+        <item>Rapid prototype with fewer than 3 endpoints: design overhead exceeds benefit.</item>
+        <item>GraphQL-first projects: OpenAPI is REST-specific; use AsyncAPI for event-driven.</item>
+        <item>No CI pipeline to enforce spec compliance: spec drift will occur within weeks.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-principles">
+      <rule>
+        <statement>Design the API contract (OpenAPI spec) before writing any implementation code.</statement>
+        <rationale>The contract is the first artifact. All downstream work — server stubs, client SDKs, mock servers, documentation, contract tests — is generated from or validated against the spec. This prevents implementation-driven API shapes that are inconsistent across services.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use the spec as the single source of truth: generate code, tests, and docs from it, never the reverse.</statement>
+        <rationale>When code is the source of truth, documentation drifts within weeks. Generating from spec ensures structural consistency; deviations are caught by Spectral linting and contract tests (Dredd, Pact).</rationale>
+      </rule>
+
+      <rule>
+        <statement>Design endpoints for API consumers, not for implementation convenience.</statement>
+        <rationale>Consumer-driven design surfaces usability problems before code is written. Implementation-convenient designs often expose internal data structures, forcing consumers to do transformation work the API should handle.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Deploy a mock server (Prism) from the spec before any backend code exists.</statement>
+        <rationale>Mock servers enable parallel frontend and backend development. Frontend teams build against the contract; backend teams implement against it. Both converge on the same interface without blocking each other.</rationale>
+      </rule>
+    </section>
+
+    <section name="workflow">
+      <p>API-first workflow flows through eight distinct phases:</p>
+
+      <list>
+        <item>DESIGN: Write OpenAPI 3.1 YAML spec (endpoints, schemas, auth, errors)</item>
+        <item>VALIDATE: Run Spectral linting; fix errors before proceeding</item>
+        <item>MOCK: Start Prism mock server; share with frontend team</item>
+        <item>IMPLEMENT: Generate server stubs from spec; implement business logic</item>
+        <item>TEST: Run Dredd or Pact contract tests against running server</item>
+        <item>DEPLOY: Gate on contract tests passing in CI before merge</item>
+      </list>
+    </section>
+
+    <section name="openapi-3-1-key-features">
+      <rule>
+        <statement>Use OpenAPI 3.1 (not 3.0) for all new specs; use type: ['string', 'null'] for nullable fields, not nullable: true.</statement>
+        <rationale>OAS 3.1 aligns with full JSON Schema 2020-12 vocabulary. The nullable: true pattern is OAS 3.0-only and produces incorrect schema validation in 3.1-aware tools. Agents default to 3.0 patterns — specify version explicitly in every prompt.</rationale>
+      </rule>
+
+      <list>
+        <item>JSON Schema alignment: full JSON Schema vocabularies supported (not subset)</item>
+        <item>Webhooks: new top-level element for event-driven and outbound APIs</item>
+        <item>$ref improvements: better reference handling, circular refs supported</item>
+        <item>Nullable: use type: ['string', 'null'] not nullable: true</item>
+      </list>
+    </section>
+
+    <section name="toolchain">
+      <list>
+        <item>Specification: OpenAPI 3.1 (REST), AsyncAPI 2.x (event-driven)</item>
+        <item>Linting: Spectral (configurable rules), Redocly CLI (bundle + lint)</item>
+        <item>Mocking: Prism (mock server from spec), WireMock (stateful mocking)</item>
+        <item>Documentation: Swagger UI, Redoc, Stoplight</item>
+        <item>Code generation: openapi-generator-cli (server stubs + client SDKs)</item>
+        <item>Contract testing: Dredd (spec vs. server), Pact (consumer-driven)</item>
+        <item>Breaking change detection: bump diff (CI diff on every PR)</item>
+      </list>
+    </section>
+
+    <section name="spec-design-phase">
+      <rule>
+        <statement>Define API title, version, description, authentication method, rate limiting strategy, and server URLs before writing any endpoint.</statement>
+        <rationale>Global settings establish the contract envelope. Authentication schemes defined globally and referenced per-operation prevent inconsistent security definitions.</rationale>
+      </rule>
+
+      <list>
+        <item>Define API title, version (semantic), and description with auth + rate limit docs</item>
+        <item>List production and staging server URLs</item>
+        <item>Plan versioning strategy (/v1/, /v2/) before writing first endpoint</item>
+        <item>Define global security schemes (bearerAuth, apiKey, OAuth2)</item>
+      </list>
+    </section>
+
+    <section name="endpoint-design-phase">
+      <rule>
+        <statement>Assign an operationId to every endpoint; without it, SDK generators and mock routers produce unusable output.</statement>
+        <rationale>openapi-generator uses operationId for function names. Prism uses it for routing. Blank operationIds produce conflicts or random names that break generated code.</rationale>
+      </rule>
+
+      <list>
+        <item>Design all resource endpoints (/resources, /resources/{id})</item>
+        <item>Define HTTP methods per endpoint (GET/POST/PUT/DELETE/PATCH)</item>
+        <item>Assign camelCase operationId to every operation</item>
+        <item>Define request parameters (path, query, body) with types and constraints</item>
+        <item>Design success responses (200, 201) and all error responses</item>
+        <item>Include at least one example per POST/PUT/PATCH endpoint</item>
+      </list>
+    </section>
+
+    <section name="schema-definition-phase">
+      <list>
+        <item>Define all reusable schemas under components/schemas</item>
+        <item>Mark required properties explicitly</item>
+        <item>Set format hints (uuid, date-time, email, uri)</item>
+        <item>Define validation constraints (minLength, maxLength, minimum, maximum, pattern)</item>
+        <item>Use $ref for all shared schemas: never inline the same shape twice</item>
+        <item>Define global error schema and reference from all error responses</item>
+      </list>
+    </section>
+
+    <section name="validation-phase">
+      <rule>
+        <statement>Run Spectral linting before generating mock servers or code; lint errors that break mock server routing are blocking, style issues are deferrable.</statement>
+        <rationale>Spectral catches $ref to non-existent components, missing required fields, and naming violations. Unresolved $refs crash Prism. Style issues can be addressed after first mock deployment.</rationale>
+      </rule>
+
+      <list>
+        <item>Run Spectral with project ruleset (.spectral.yaml)</item>
+        <item>Categorize violations: (1) errors blocking mock server, (2) SDK generation warnings, (3) deferrable style issues</item>
+        <item>Verify all operations have examples</item>
+        <item>Check consistent naming conventions across all endpoints</item>
+      </list>
+    </section>
+
+    <section name="mock-codegen-testing-phases">
+      <list>
+        <item>Generate mock server: prism mock openapi.yaml --port 4010</item>
+        <item>Test all endpoints with mock data before backend implementation starts</item>
+        <item>Generate server stubs from spec: openapi-generator-cli generate</item>
+        <item>Generate client SDKs for all consumer languages</item>
+        <item>Write contract tests (Dredd/Pact) that run in CI on every PR</item>
+        <item>Gate merge on contract tests passing: prevents spec drift</item>
+        <item>Run bump diff on every PR to surface breaking changes</item>
+      </list>
+    </section>
+
+    <section name="process-antipatterns">
+      <antipattern>
+        <description>Writing the spec after the implementation is complete.</description>
+        <reason>The spec becomes documentation, not a contract. Inconsistencies between spec and implementation are never caught because there are no contract tests. Consumers build against the spec and hit unexpected behavior from the real server.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>No versioning strategy planned before the first endpoint is written.</description>
+        <reason>Retroactively adding /v1/ prefix requires breaking changes for all existing consumers. Plan for v1 and v2 from the start; adding /v2/ for breaking changes is expected, not a failure.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Regenerating server stubs after manually modifying generated code.</description>
+        <reason>Regeneration overwrites customizations. Generated stubs must be treated as read-only scaffolding; all business logic lives in separate service files that stubs delegate to.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Spec and implementation live in separate PRs or repositories.</description>
+        <reason>Spec diverges from implementation within days. Version the spec file in the same commit as the first implementation task: breaking the spec-code coupling is the root cause of most API contract drift.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-specific-failures">
+      <antipattern>
+        <description>Agent generates valid OpenAPI syntax but uses nullable: true in an OAS 3.1 spec.</description>
+        <reason>nullable: true is OAS 3.0 syntax. In 3.1, nullable fields require type: ['string', 'null']. Spectral flags this; un-linted agent output will produce incorrect schema validation in 3.1-aware parsers.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent generates syntactically valid spec with $ref pointing to a non-existent component.</description>
+        <reason>Prism and SDK generators crash on unresolved $refs. Agents produce valid YAML that references #/components/schemas/Foo where Foo is never defined. Always run Spectral after agent-generated specs.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Frontend code written against mock server silently breaks when connecting to real backend.</description>
+        <reason>Mock servers serve spec-driven stubs, not real business logic. Mocks enforce contract shape but not business rules (e.g., stock validation, price calculation). Agents writing frontend against mocks miss this gap.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent modifies backend implementation without updating the spec.</description>
+        <reason>Contract drift: Dredd/Pact tests fail on next run, not immediately. Configure CI to run contract tests and fail the PR; without this gate, spec and implementation diverge silently.</reason>
+      </antipattern>
+    </section>
+
+    <section name="human-checkpoints">
+      <rule testable="false">
+        <statement>Flag breaking changes (added required fields, removed endpoints, changed response shapes) and stop for human approval before merging.</statement>
+        <rationale>Breaking changes require consumer notification and migration windows. Agents cannot assess the downstream impact; human approval is a hard checkpoint for any spec change that fails bump diff.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>An agent can draft the initial OpenAPI 3.1 spec from a feature spec.md (FR-X → endpoint mapping), run Spectral linting programmatically, and generate a Prism mock server command. The implementation agent then codes against the spec, and a post-implementation Dredd or Pact run validates compliance. The spec file is the single source of truth that flows through draft → linted → mock-verified → contract-tested states.</p>
+
+      <rule>
+        <statement>From functional requirements, generate an OpenAPI 3.1 spec. Output valid YAML only. No prose explanation. One operationId per endpoint, camelCase. All error responses reference #/components/responses/Error. Include at least one request example per POST/PUT/PATCH endpoint. Nullable fields use type: ['string', 'null'] (OAS 3.1 style).</statement>
+        <rationale>Explicit prompt constraints produce better spec quality. Agents default to verbose explanations and 3.0 patterns; constraining the output format prevents this.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Lint the OpenAPI spec with Spectral default ruleset. List violations grouped by: (1) errors that break mock server, (2) warnings that affect SDK generation, (3) style issues that can be deferred. Do not fix — report only.</statement>
+        <rationale>Agents should report linting findings without over-zealously fixing style issues. Human reviewers decide which issues block spec approval.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <rule>
+        <statement>Write the spec in YAML, not JSON: YAML supports $ref splits across files, comments, and is more readable for large schemas.</statement>
+        <rationale>JSON is compact but harder to navigate. YAML is human-readable and agent-friendly.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Version the spec file in the same commit as the first implementation task: never let the spec live in a separate PR.</statement>
+        <rationale>Decoupled spec and code quickly diverge. Coupling them in git history enforces traceability.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Set up Spectral in CI as a pre-merge gate before writing any backend code: breaking lint means a broken contract.</statement>
+        <rationale>CI enforcement prevents spec drift. Without it, teams skip linting under deadline pressure.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use operationId on every endpoint: SDK generators and mock routers depend on it; blank operationIds produce unusable output.</statement>
+        <rationale>operationId is not optional. It's the bridge between spec and generated code.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Define global error schemas (#/components/schemas/Error, #/components/responses/Unauthorized) once and reference everywhere: prevents inconsistent error formats across endpoints.</statement>
+        <rationale>Error consistency is critical for client implementations. A single global error schema enforces uniformity.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Run bump diff or equivalent on every PR to surface breaking changes before they hit consumers.</statement>
+        <rationale>Breaking change detection is a hard requirement for public APIs. Bump diff provides this visibility in CI.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/openapi-3.1-skeleton.yaml" purpose="Minimal complete OpenAPI 3.1 spec with auth, pagination, error schemas. Copy-paste starting point."/>
+    </templates>
+
+    <scripts>
+      <script path="scripts/api-first-check.sh" purpose="Lint spec with Spectral, then start Prism mock server. One-command validation and local testing."/>
+    </scripts>
+
+    <see-also>
+      <link href="https://spec.openapis.org/oas/v3.1.0"/>
+      <link href="https://stoplight.io/open-source/spectral"/>
+      <link href="https://github.com/stoplightjs/prism"/>
+      <link href="https://dredd.readthedocs.io"/>
+      <link href="https://docs.pact.io"/>
+      <link href="https://bump.sh/blog/what-is-api-contract-testing"/>
+      <ref slug="design-doc-structure"/>
+      <ref slug="writing-implementation-plans"/>
+    </see-also>
+  </content>
+</methodology>
