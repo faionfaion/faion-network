@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="db-qdrant">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Production self-hosted vector DB: HNSW indexing, payload filtering, quantization, hybrid search, snapshots. Docker on port 6333/6334.</summary>
+    <tags>
+      <tag>vector-database</tag>
+      <tag>qdrant</tag>
+      <tag>production</tag>
+      <tag>rag</tag>
+      <tag>hybrid-search</tag>
+    </tags>
+    <category>vector-db</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <related>
+      <ref slug="db-chroma"/>
+      <ref slug="db-comparison"/>
+      <ref slug="hybrid-search-implementation"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Qdrant Vector Database</title>
+
+    <summary>Qdrant outperforms Pinecone at production scale for self-hosted workloads (41 QPS @ 50M vectors) and exposes HNSW tuning knobs unavailable in Chroma. Scalar quantization halves RAM without measurable recall loss for most corpora; binary quantization achieves 32x reduction for high-dimensional models. Built-in sparse-vector support eliminates the need for a separate keyword search engine in hybrid pipelines.</summary>
+
+    <why>
+      <p>Qdrant outperforms Pinecone at production scale for self-hosted workloads (41 QPS @ 50M vectors) and exposes HNSW tuning knobs unavailable in Chroma. Scalar quantization halves RAM without measurable recall loss for most corpora; binary quantization achieves 32x reduction for high-dimensional models. Built-in sparse-vector support eliminates the need for a separate keyword search engine in hybrid pipelines.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Standing up a production self-hosted vector store (Docker or Kubernetes)</item>
+        <item>RAG pipelines needing payload-level filtering alongside vector similarity</item>
+        <item>Systems requiring hybrid dense+sparse (BM25) search without a separate engine</item>
+        <item>High-volume indexing (>1M vectors) with memory constraints</item>
+        <item>Multi-modal retrieval (one point stores text + image vectors as named vectors)</item>
+        <item>Pipelines requiring point-level snapshots and incremental backups</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Prototype/local dev with &lt;50K vectors and no filtering needs — Chroma is simpler and zero-config</item>
+        <item>Existing PostgreSQL stack where pgvector extension is already present</item>
+        <item>Teams that need a fully managed SaaS with zero infra ops — use Qdrant Cloud or Pinecone</item>
+        <item>Requirements for GraphQL or Weaviate-style schema-first data modeling</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="installation-and-connection">
+      <p>Qdrant runs as a Docker container on port 6333 (REST) and 6334 (gRPC). gRPC port 6334 must be explicitly opened in firewall; forgetting it causes silent REST-only mode with 2-3x lower throughput. Install Python client with pip install qdrant-client. Connect via REST (default), gRPC (prefer_grpc=True for 2-3x throughput), or Qdrant Cloud with api_key.</p>
+
+      <example type="good" title="Docker and client setup">
+        <code lang="bash"><![CDATA[
+# docker run -p 6333:6333 -p 6334:6334 \
+#   -v $(pwd)/qdrant_storage:/qdrant/storage:z qdrant/qdrant
+# pip install qdrant-client
+]]></code>
+      </example>
+
+      <example type="good" title="Python connection patterns">
+        <code lang="python"><![CDATA[
+from qdrant_client import QdrantClient
+from qdrant_client.models import VectorParams, Distance, HnswConfigDiff, OptimizersConfigDiff
+
+# REST (default)
+client = QdrantClient(host="localhost", port=6333)
+
+# gRPC — 2-3x higher throughput; open port 6334 in firewall
+client = QdrantClient(host="localhost", port=6334, prefer_grpc=True, timeout=30)
+
+# Qdrant Cloud
+# client = QdrantClient(url="https://xxx.qdrant.io", api_key="...")
+]]></code>
+        <note>gRPC port 6334 must be explicitly opened; forgetting it causes silent REST-only mode.</note>
+      </example>
+    </section>
+
+    <section name="collection-creation">
+      <rule testable="true">
+        <statement>Set on_disk_payload=True for collections storing large text payloads; keeps vectors in RAM while payloads hit disk.</statement>
+        <rationale>Text payloads bloat RAM; moving them to disk reduces memory while maintaining vector search speed.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Create payload indexes before bulk ingestion, not after — adding indexes post-ingest locks the collection during the (hours-long) build for large collections.</statement>
+        <rationale>Payload index creation is synchronous and can stall searches. Building indexes upfront prevents downtime during production bulk loads.</rationale>
+      </rule>
+
+      <example type="good" title="Single-vector collection with HNSW">
+        <code lang="python"><![CDATA[
+client.create_collection(
+    collection_name="documents",
+    vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
+    hnsw_config=HnswConfigDiff(m=16, ef_construct=100),
+    optimizers_config=OptimizersConfigDiff(indexing_threshold=20000),
+    on_disk_payload=True,  # large payloads on disk, not RAM
+)
+
+info = client.get_collection("documents")
+print(f"Points: {info.points_count}, Indexed: {info.indexed_vectors_count}")
+]]></code>
+      </example>
+
+      <example type="good" title="Named multi-vector collection (multimodal)">
+        <code lang="python"><![CDATA[
+client.create_collection(
+    collection_name="multimodal",
+    vectors_config={
+        "text": VectorParams(size=1536, distance=Distance.COSINE),
+        "image": VectorParams(size=512, distance=Distance.COSINE),
+    },
+)
+]]></code>
+      </example>
+
+      <example type="good" title="Payload indexes for filtered search">
+        <code lang="python"><![CDATA[
+from qdrant_client.models import PayloadSchemaType
+
+client.create_payload_index("documents", field_name="category", field_schema=PayloadSchemaType.KEYWORD)
+client.create_payload_index("documents", field_name="created_at", field_schema=PayloadSchemaType.DATETIME)
+client.create_payload_index("documents", field_name="page", field_schema=PayloadSchemaType.INTEGER)
+client.create_payload_index("documents", field_name="text", field_schema=PayloadSchemaType.TEXT)
+]]></code>
+      </example>
+    </section>
+
+    <section name="upsert-and-search">
+      <rule testable="true">
+        <statement>Upsert in batches of 100 points; single-point upserts at scale crush throughput.</statement>
+        <rationale>Each upsert call has per-request overhead. Batching amortizes that cost across 100 points.</rationale>
+      </rule>
+
+      <example type="good" title="Batch upsert">
+        <code lang="python"><![CDATA[
+from qdrant_client.models import PointStruct
+
+batch_size = 100
+points = []
+for i, doc in enumerate(documents):
+    points.append(PointStruct(
+        id=i,
+        vector=get_embedding(doc["text"]),
+        payload={"text": doc["text"], "source": doc["source"]},
+    ))
+    if len(points) >= batch_size:
+        client.upsert(collection_name="documents", points=points)
+        points = []
+if points:
+    client.upsert(collection_name="documents", points=points)
+]]></code>
+      </example>
+
+      <example type="good" title="Filtered vector search">
+        <code lang="python"><![CDATA[
+from qdrant_client.models import Filter, FieldCondition, MatchValue, Range
+
+results = client.search(
+    collection_name="documents",
+    query_vector=query_embedding,
+    query_filter=Filter(
+        must=[
+            FieldCondition(key="category", match=MatchValue(value="technical")),
+            FieldCondition(key="page", range=Range(gte=1, lte=10)),
+        ]
+    ),
+    limit=10,
+    score_threshold=0.7,
+    with_payload=True,
+    with_vectors=False,
+)
+
+for r in results:
+    print(f"ID: {r.id}, Score: {r.score:.3f} | {r.payload['text'][:80]}")
+]]></code>
+      </example>
+    </section>
+
+    <section name="hybrid-search">
+      <rule testable="true">
+        <statement>Pre-compute BM25 sparse vectors outside Qdrant before upserting; Qdrant stores indices/values but has no built-in tokenizer.</statement>
+        <rationale>Qdrant's sparse vector format expects pre-tokenized (indices, values) pairs. Raw text tokenization must happen in the application layer.</rationale>
+      </rule>
+
+      <example type="good" title="Hybrid dense + sparse with RRF fusion">
+        <code lang="python"><![CDATA[
+from qdrant_client.models import (
+    SparseVectorParams, SparseIndexParams, SparseVector,
+    Prefetch, FusionQuery, Fusion
+)
+
+# Collection with sparse vectors
+client.create_collection(
+    collection_name="hybrid_docs",
+    vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
+    sparse_vectors_config={"bm25": SparseVectorParams(index=SparseIndexParams(on_disk=False))},
+)
+
+# Upsert with both vector types
+client.upsert(
+    collection_name="hybrid_docs",
+    points=[PointStruct(
+        id=1,
+        vector=dense_embedding,
+        sparse_vectors={"bm25": SparseVector(indices=[100, 500], values=[0.5, 0.3])},
+        payload={"text": "..."},
+    )],
+)
+
+# Hybrid query with Reciprocal Rank Fusion
+results = client.query_points(
+    collection_name="hybrid_docs",
+    prefetch=[
+        Prefetch(query=dense_query, using="", limit=20),
+        Prefetch(query=sparse_query, using="bm25", limit=20),
+    ],
+    query=FusionQuery(fusion=Fusion.RRF),
+    limit=10,
+)
+]]></code>
+      </example>
+    </section>
+
+    <section name="snapshots-and-backups">
+      <rule testable="true">
+        <statement>Snapshot restore requires the target collection to be absent first; restoring over an existing collection fails silently.</statement>
+        <rationale>Qdrant uses atomic collection swap. The collection to be restored into must not exist to prevent data corruption.</rationale>
+      </rule>
+
+      <example type="good" title="Creating and restoring snapshots">
+        <code lang="python"><![CDATA[
+snapshot_info = client.create_snapshot(collection_name="documents")
+snapshots = client.list_snapshots(collection_name="documents")
+# Restore (collection must not exist)
+client.recover_snapshot(
+    collection_name="documents",
+    location=f"http://localhost:6333/collections/documents/snapshots/{snapshot_info.name}",
+)
+]]></code>
+        <note>Snapshot restore requires the target collection to be absent; restoring over an existing collection fails silently.</note>
+      </example>
+    </section>
+
+    <section name="quantization">
+      <rule testable="true">
+        <statement>Enable rescoring (oversampling=2.0) when using quantization to recover the top-k precision loss.</statement>
+        <rationale>Quantization reduces recall. Fetching 2x candidates and rescoring with original float vectors restores near-original precision at the cost of extra memory reads.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Do not use binary quantization for embeddings with fewer than 256 dimensions; recall degrades significantly at low dimensionality.</statement>
+        <rationale>Binary quantization compresses each float to a single bit. Low-dimensional vectors have few bits, making the approximation too coarse for reliable similarity.</rationale>
+      </rule>
+
+      <example type="good" title="Scalar quantization (int8, 4x reduction)">
+        <code lang="python"><![CDATA[
+from qdrant_client.models import ScalarQuantization, ScalarQuantizationConfig
+
+client.update_collection(
+    collection_name="documents",
+    quantization_config=ScalarQuantization(
+        scalar=ScalarQuantizationConfig(
+            type="int8",
+            quantile=0.99,
+            always_ram=True,
+        )
+    ),
+)
+]]></code>
+      </example>
+
+      <example type="good" title="Binary quantization (32x reduction)">
+        <code lang="python"><![CDATA[
+from qdrant_client.models import BinaryQuantization, BinaryQuantizationConfig
+
+client.update_collection(
+    collection_name="documents",
+    quantization_config=BinaryQuantization(
+        binary=BinaryQuantizationConfig(always_ram=True)
+    ),
+)
+]]></code>
+      </example>
+
+      <example type="good" title="Search with rescoring">
+        <code lang="python"><![CDATA[
+from qdrant_client.models import SearchParams, QuantizationSearchParams
+
+results = client.search(
+    collection_name="documents",
+    query_vector=query_embedding,
+    limit=10,
+    search_params=SearchParams(
+        quantization=QuantizationSearchParams(
+            rescore=True,
+            oversampling=2.0,  # fetch 20 candidates, rescore to top 10
+        )
+    ),
+)
+]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always set on_disk_payload=True for collections storing large text payloads; keeps vectors in RAM while payloads hit disk</item>
+        <item>Use prefer_grpc=True with timeout=30 in production clients — gRPC throughput is 2-3x REST</item>
+        <item>Create payload indexes before bulk ingestion, not after — adding indexes post-ingest locks the collection</item>
+        <item>Set indexing_threshold to 0 during bulk load, then restore to 20000 after — avoids repeated HNSW rebuilds</item>
+        <item>Use with_vectors=False in search responses unless the caller explicitly needs raw vectors — reduces response size 5-10x</item>
+        <item>Enable binary quantization with always_ram=True and rescore=True + oversampling=2.0 for balanced speed/recall</item>
+        <item>Use UUIDs or deterministic integer IDs for points; random IDs cause HNSW locality degradation at scale</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents must check info.indexed_vectors_count vs info.points_count before querying — unindexed points are searched with brute force and skew latency benchmarks</item>
+        <item>Sparse vector construction (BM25 token IDs + weights) must happen in the agent's pre-processing step, not inside Qdrant — agents need a tokenizer (e.g., fastembed or custom BM25Encoder)</item>
+        <item>Score thresholds (score_threshold=0.7) silently return zero results if embeddings are not normalized — agents should validate that embedding magnitudes are ~1.0 for cosine distance</item>
+        <item>Snapshot restore requires the agent to DELETE the collection first — this is a destructive step that needs human-in-loop confirmation in production</item>
+        <item>Agent loops that call create_collection on every startup will fail if the collection exists — always guard with get_collection + exception handling</item>
+        <item>Quantization always_ram=True requires that RAM >= collection vector footprint; agent must query info.vectors_size_bytes and compare against host memory before enabling</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/qdrant_store.py" purpose="QdrantStore wrapper: create collection, batch upsert, filtered search, snapshot"/>
+    </templates>
+
+    <see-also>
+      <ref slug="db-comparison"/>
+      <ref slug="db-chroma"/>
+      <ref slug="hybrid-search-implementation"/>
+      <ref slug="rag-implementation"/>
+      <link href="https://qdrant.tech/documentation/"/>
+      <link href="https://github.com/qdrant/qdrant-client"/>
+      <link href="https://qdrant.tech/articles/hybrid-search/"/>
+      <link href="https://qdrant.tech/documentation/guides/quantization/"/>
+    </see-also>
+  </content>
+</methodology>
