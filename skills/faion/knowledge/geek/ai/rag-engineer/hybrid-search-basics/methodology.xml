@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="hybrid-search-basics">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Hybrid search combines dense vector search with sparse BM25 keyword search, fused using Reciprocal Rank Fusion (RRF). Captures both semantic and exact-match signals for improved NDCG.</summary>
+    <category>retrieval</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>hybrid-search</tag>
+      <tag>bm25</tag>
+      <tag>rrf</tag>
+      <tag>fusion</tag>
+      <tag>retrieval</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="embedding-models"/>
+      <ref slug="hybrid-search-implementation"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Hybrid Search Basics</title>
+
+    <summary>Hybrid search combines dense vector search (semantic similarity) with sparse lexical search (BM25/keyword) and fuses the ranked results using Reciprocal Rank Fusion (RRF) or weighted linear combination. RRF is the default fusion strategy. The balance between semantic and keyword signals is controlled by an alpha parameter (1.0 = pure semantic, 0.0 = pure keyword) that should be tuned per domain on a labeled query set.</summary>
+
+    <why>
+      <p>Pure semantic search misses exact technical terms, product codes, model numbers, and rare names because the embedding space blurs them into low-dimensional approximations. Pure keyword search misses paraphrases, synonyms, and conceptual queries. Hybrid search captures both: semantic for intent, keyword for precision. RRF is more robust than linear score normalization because it operates on rank positions rather than raw scores, which have incompatible scales between BM25 and cosine similarity.</p>
+      <p>BM25 scores are unbounded and distribution-dependent: a score of 10 on a small corpus is not comparable to a score of 10 on a large corpus. Cosine similarity is bounded between 0 and 1. Directly combining scores produces meaningless results because the scales are incommensurable. RRF sidesteps this by using only rank positions, treating a document that ranks first in either method equally regardless of its raw scores.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Document corpus contains exact technical terms, product codes, or names that semantic search misses.</item>
+        <item>Domain is legal, medical, or compliance-heavy where precise phrase matching is required.</item>
+        <item>User queries mix conceptual intent with specific identifiers.</item>
+        <item>Pure vector search recall is below acceptable threshold on benchmark query set.</item>
+        <item>System uses Qdrant, Weaviate, or Elasticsearch — all support hybrid natively.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Corpus is purely natural-language prose with no technical identifiers — pure semantic suffices.</item>
+        <item>Latency budget is very tight (&lt; 100ms) — hybrid adds BM25 scoring overhead.</item>
+        <item>Corpus is too small (&lt; 500 documents) — BM25 gains are negligible at small scale.</item>
+        <item>Already using a cross-encoder reranker over broad vector retrieval — reranker compensates for keyword misses.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="fusion-strategies">
+      <p>Two main fusion approaches exist: Reciprocal Rank Fusion (RRF), which combines rank positions, and linear score combination, which normalizes scores. RRF is the default because it requires no per-corpus tuning of score scales.</p>
+
+      <rule testable="true">
+        <statement>Use Reciprocal Rank Fusion (RRF) as the default fusion strategy. Use linear score normalization only after benchmarking shows improvement on the specific corpus.</statement>
+        <rationale>RRF operates on rank positions rather than raw scores, making it robust to scale differences between BM25 (unbounded, corpus-dependent) and cosine similarity (0–1). Linear fusion requires careful per-corpus normalization to avoid BM25 scores dominating.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Never compare raw BM25 scores across different corpora or index configurations.</statement>
+        <rationale>BM25 scores are distribution-dependent. A score of 10 on a small corpus is not comparable to a score of 10 on a large corpus. Always normalize BM25 within the same retrieval call before fusion.</rationale>
+      </rule>
+
+      <example type="good" title="RRF fusion implementation">
+        <code lang="python"><![CDATA[
+from collections import defaultdict
+
+def rrf_fuse(rankings: list[list[str]], k: int = 60) -> list[tuple[str, float]]:
+    """rankings: list of ranked doc-ID lists, one per retriever."""
+    scores: dict[str, float] = defaultdict(float)
+    for ranking in rankings:
+        for rank, doc_id in enumerate(ranking):
+            scores[doc_id] += 1.0 / (k + rank + 1)
+    return sorted(scores.items(), key=lambda x: x[1], reverse=True)
+
+# Usage: fuse vector and BM25 rankings
+vector_ids = [r.id for r in vector_results]
+bm25_ids   = [r.id for r in bm25_results]
+fused = rrf_fuse([vector_ids, bm25_ids])
+]]></code>
+        <note>RRF parameter k=60 is the standard value from the original paper. Adjust only with empirical justification.</note>
+      </example>
+    </section>
+
+    <section name="alpha-tuning">
+      <p>Alpha controls the blend between semantic (vector) and keyword (BM25) search. 1.0 = pure semantic, 0.0 = pure keyword. The optimal alpha is domain-dependent and must be tuned on a labeled query set.</p>
+
+      <rule testable="true">
+        <statement>Start alpha at 0.5 (50% semantic / 50% keyword) and tune per domain using a labeled evaluation set of at least 50 queries.</statement>
+        <rationale>There is no universally optimal alpha. Technical corpora with many exact identifiers tend toward lower alpha (more keyword weight). Prose-heavy corpora tend toward higher alpha (more semantic weight).</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Log the alpha value used per query in production to build a calibration dataset for automated tuning.</statement>
+        <rationale>Dynamic alpha selection improves retrieval quality but requires empirical data. Without logging, there is no basis for improving the alpha selection heuristics over time.</rationale>
+      </rule>
+
+      <example type="good" title="Dynamic alpha selection">
+        <code lang="python"><![CDATA[
+def compute_alpha(query: str) -> float:
+    """1.0 = pure semantic, 0.0 = pure keyword."""
+    if '"' in query:                    return 0.2   # Quoted exact phrase
+    if any(c.isdigit() for c in query): return 0.35  # Contains codes/numbers
+    if len(query.split()) <= 3:         return 0.5   # Short specific query
+    return 0.7                                        # Long conceptual query
+]]></code>
+        <note>Alpha is computed from query characteristics before the retrieval call. Heuristics are starting points; tune against a labeled query set.</note>
+      </example>
+
+      <antipattern>
+        <description>Using equal weights (alpha=0.5) for all query types without per-domain tuning.</description>
+        <reason>A mistuned alpha underperforms pure vector search on semantic-heavy queries and pure BM25 on keyword-heavy queries. Equal weighting is the starting point, not the optimal value for most domains.</reason>
+      </antipattern>
+    </section>
+
+    <section name="native-hybrid-search">
+      <p>Vector databases (Qdrant, Weaviate, Elasticsearch) offer native hybrid search endpoints that run both retrievers server-side, reducing latency vs client-side fusion.</p>
+
+      <rule testable="true">
+        <statement>Use the vector database's native hybrid search endpoint when available (Qdrant, Weaviate, Elasticsearch) rather than calling two endpoints and fusing client-side.</statement>
+        <rationale>Native hybrid search executes both retrievers in a single server-side call, reducing latency. Client-side fusion requires two round-trips and local merge logic.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For Qdrant sparse vectors, pre-compute BM25 or SPLADE sparse encodings before insert. You cannot pass raw text to a sparse vector endpoint.</statement>
+        <rationale>Qdrant's sparse vector format requires pre-encoded sparse representations. Attempting to pass tokenized text directly produces a type error at the API level.</rationale>
+      </rule>
+    </section>
+
+    <section name="bm25-preprocessing">
+      <p>BM25 performance depends on proper text preprocessing and index configuration.</p>
+
+      <rule testable="true">
+        <statement>Apply domain-specific stop words for BM25. Generic English stop words hurt technical corpora where words like "the" may appear in product names.</statement>
+        <rationale>Standard stop word lists remove common words that may carry meaning in technical domains. For example, "The Architect" as a product name would lose its key token.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Rebuild the BM25 index when documents are added incrementally. Some vector databases do not support live BM25 updates.</statement>
+        <rationale>BM25 IDF scores are corpus-wide statistics. Adding documents without rebuilding the BM25 component produces stale IDF values that degrade keyword scoring for both old and new documents.</rationale>
+      </rule>
+    </section>
+
+    <section name="dynamic-alpha-rules">
+      <p>Alpha selection must happen before the retrieval call, not after, because alpha determines the retrieval mix.</p>
+
+      <rule testable="true">
+        <statement>Compute alpha before the retrieval call, not after. An agent that decides alpha post-retrieval cannot change the already-returned result set.</statement>
+        <rationale>Alpha determines the retrieval mix at query time. It must be computed from the query characteristics before the retrieval call is made.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <p>Production hybrid search follows established patterns for quality and reliability.</p>
+
+      <rule testable="true">
+        <statement>Start alpha at 0.5 and tune per domain using a labeled evaluation set of 50+ queries.</statement>
+        <rationale>Equal weighting is the starting point, but domain-specific tuning dramatically improves quality.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use RRF over linear score normalization by default — it is more robust to scale differences between BM25 and cosine scores.</statement>
+        <rationale>RRF eliminates the need for per-corpus score normalization, which is error-prone and corpus-dependent.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Apply BM25 domain-specific stop words; generic English stop words hurt technical corpora.</statement>
+        <rationale>Technical domains have product names and identifiers that overlap with common English stop words.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run vector search and BM25 independently in parallel, then fuse — do not rely on the database to do this unless the DB offers native hybrid.</statement>
+        <rationale>Parallel execution reduces latency. Many databases do not offer native hybrid, making client-side fusion and parallelization necessary.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Normalize vectors before cosine scoring; un-normalized vectors produce incorrect similarity scores with dot-product indices.</statement>
+        <rationale>Unit-normalized vectors allow dot-product to equal cosine similarity, which is faster.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common pitfalls for agents implementing hybrid search.</p>
+
+      <antipattern>
+        <description>Dynamic alpha must be computed before the retrieval call; an agent that decides alpha post-retrieval cannot change the result.</description>
+        <reason>Alpha affects which documents are retrieved. Deciding after retrieval cannot retroactively change the result set.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>BM25 scores are unbounded and distribution-dependent — never compare raw BM25 scores across different corpora or index configurations.</description>
+        <reason>BM25 scores depend on corpus statistics. Comparing raw scores across corpora is meaningless.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>When using EnsembleRetriever in LangChain, set weights explicitly; the default equal weighting is rarely optimal.</description>
+        <reason>Equal weighting is the starting point but almost never the optimal configuration for production.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Qdrant's sparse vector format requires SPLADE or BM25 pre-computed sparse encodings — you cannot pass raw text; tokenize and encode first.</description>
+        <reason>Qdrant sparse vectors are pre-computed representations, not raw text that the database tokenizes.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Human-in-loop checkpoint: when a query returns 0 results from both retrievers, escalate to a query-expansion step or human clarification rather than returning an empty answer.</description>
+        <reason>Zero-result queries indicate a mismatch between query and corpus. Graceful degradation with query expansion is better than empty results.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/rrf-fuse.py" purpose="Provider-agnostic RRF fusion of ranked ID lists."/>
+      <template path="templates/dynamic-alpha.py" purpose="Alpha selection logic based on query characteristics (quotes, codes, length)."/>
+    </templates>
+
+    <see-also>
+      <link href="https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf"/>
+      <link href="https://qdrant.tech/articles/hybrid-search/"/>
+      <link href="https://python.langchain.com/docs/modules/data_connection/retrievers/ensemble/"/>
+      <link href="https://en.wikipedia.org/wiki/Okapi_BM25"/>
+      <link href="https://arxiv.org/abs/2109.10086"/>
+      <ref slug="embedding-models"/>
+      <ref slug="hybrid-search-implementation"/>
+    </see-also>
+  </content>
+</methodology>
