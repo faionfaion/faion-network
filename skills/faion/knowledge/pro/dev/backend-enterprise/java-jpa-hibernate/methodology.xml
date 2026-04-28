@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="java-jpa-hibernate">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>JPA/Hibernate entity patterns: explicit @Table/@Column constraints, @Version optimistic locking, business-key equals/hashCode. Resolve N+1 via JOIN FETCH or @EntityGraph, not EAGER fetch.</summary>
+    <tags>
+      <tag>java</tag>
+      <tag>hibernate</tag>
+      <tag>jpa</tag>
+      <tag>spring-boot</tag>
+      <tag>orm</tag>
+    </tags>
+    <category>orm</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>JPA / Hibernate Patterns</title>
+
+    <summary>Entity modeling and query patterns for Spring Data JPA with Hibernate. Entities use explicit `@Table`/`@Column` constraints, `@Version` for optimistic locking, and business-key-based `equals`/`hashCode` (never ID-based, never Lombok `@Data`). All schema changes ship with a Flyway/Liquibase migration. N+1 is resolved via `JOIN FETCH` or `@EntityGraph`, never by switching to `EAGER` fetch globally.</summary>
+
+    <why>
+      <p>Hibernate's defaults are correct for simple CRUD but produce silent perf traps at scale: lazy `@OneToMany` without a JOIN FETCH generates N+1 queries; `FetchType.EAGER` causes Cartesian explosions on multi-collection fetches; `@Data` on entities causes `equals`/`hashCode` cycles via collections. DTO projections avoid `LazyInitializationException` across transaction boundaries. `@Transactional(readOnly = true)` on read paths skips dirty-checking for a significant throughput gain.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Spring Boot service with Hibernate ORM needing new entities, repositories, or query refactors.</item>
+        <item>Fixing N+1 queries via `JOIN FETCH`, entity graphs, or projection DTOs.</item>
+        <item>Adding optimistic locking (`@Version`), auditing (`@CreationTimestamp`/`@UpdateTimestamp`), or soft delete.</item>
+        <item>Generating type-safe Criteria queries with the JPA Static Metamodel.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Read-heavy analytics on huge tables — use `JdbcTemplate`, jOOQ, or native SQL views.</item>
+        <item>Bulk loads / ETL — use `JdbcTemplate.batchUpdate` or COPY; Hibernate per-entity flush is a perf trap.</item>
+        <item>Polyglot persistence where JPA's relational mapping is the wrong shape (graph, time-series, document).</item>
+        <item>Microservices where the schema is owned by another service — consume via API or jOOQ on a read replica.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="entity-modeling-rules">
+      <p>Entity modeling, fetch strategy, equals/hashCode, migration pairing, and read-path optimization rules.</p>
+
+      <rule>
+        <statement>Declare @Table(name = "...") and @Column(nullable = false, length = N) explicitly on every entity field with a constraint.</statement>
+        <rationale>Without explicit @Column constraints, Hibernate generates a lenient DDL that diverges from the actual DB schema; the divergence is only caught at runtime.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Add @Version Long version to every entity that may be updated concurrently.</statement>
+        <rationale>@Version enables optimistic locking: Hibernate adds WHERE version = N to UPDATE; if another transaction has already updated, a StaleObjectStateException is thrown before committing a conflict.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Implement equals() and hashCode() on a stable business key (email, slug, external ID), never on auto-generated ID, never via Lombok @Data.</statement>
+        <rationale>Auto-generated ID is null before persist; using it in hashCode breaks Set membership pre-persist. @Data generates equals/hashCode over all fields including collections, causing infinite recursion.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Pair every entity change with a Flyway or Liquibase migration; never use hbm2ddl.auto=update outside development.</statement>
+        <rationale>hbm2ddl.auto=update is destructive in production: it may drop or rename columns unexpectedly. Migrations provide a reviewable, reversible, versioned schema history.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Set spring.jpa.open-in-view=false in application.yml.</statement>
+        <rationale>OSIV keeps a database session open for the full HTTP request, enabling lazy loading in views/controllers. This is a footgun: it hides N+1 bugs during development and causes connection pool exhaustion under load.</rationale>
+      </rule>
+
+      <example type="good" title="Entity with explicit @Table, @Column, @Version, and business-key equals">
+        <code lang="java"><![CDATA[
+@Entity
+@Table(name = "users", indexes = {
+    @Index(name = "idx_users_email", columnList = "email")
+})
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @Version
+    private Long version;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "user_roles",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    @Builder.Default
+    private Set<Role> roles = new HashSet<>();
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof User u)) return false;
+        return email != null && email.equalsIgnoreCase(u.email);
+    }
+
+    @Override
+    public int hashCode() {
+        return email != null ? email.toLowerCase().hashCode() : 0;
+    }
+}
+]]></code>
+        <note>Business-key equals on email. LAZY fetch. @Version. Explicit @Column. Index declared on entity.</note>
+      </example>
+    </section>
+
+    <section name="fetch-strategy">
+      <p>How to prevent and fix N+1 queries in Hibernate.</p>
+
+      <rule>
+        <statement>Default to FetchType.LAZY for all associations; use JOIN FETCH or @EntityGraph at the query level for specific use cases.</statement>
+        <rationale>EAGER fetch loads all associations on every query, causing Cartesian product explosions when multiple collections are fetched simultaneously (MultipleBagFetchException).</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use @OneToMany with Set&lt;T&gt; not List&lt;T&gt; to avoid MultipleBagFetchException when fetching multiple collections.</statement>
+        <rationale>Hibernate cannot fetch two @OneToMany List collections simultaneously via JOIN FETCH; using Set avoids the Cartesian product issue and is semantically correct for unordered associations.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Mark service read methods @Transactional(readOnly = true).</statement>
+        <rationale>readOnly = true tells Hibernate to skip dirty-checking on all loaded entities, providing a significant throughput gain on read-heavy paths.</rationale>
+      </rule>
+
+      <example type="good" title="Repository with JOIN FETCH and @Modifying">
+        <code lang="java"><![CDATA[
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+
+    Optional<User> findByEmail(String email);
+
+    boolean existsByEmail(String email);
+
+    @Query("SELECT u FROM User u JOIN FETCH u.roles WHERE u.id = :id")
+    Optional<User> findByIdWithRoles(@Param("id") Long id);
+
+    @Query("""
+        SELECT u FROM User u
+        WHERE (:name IS NULL OR LOWER(u.name) LIKE LOWER(CONCAT('%', :name, '%')))
+        AND (:isActive IS NULL OR u.isActive = :isActive)
+        """)
+    Page<User> search(
+        @Param("name") String name,
+        @Param("isActive") Boolean isActive,
+        Pageable pageable
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE User u SET u.isActive = false WHERE u.lastLoginAt < :cutoff")
+    int deactivateInactiveUsers(@Param("cutoff") LocalDateTime cutoff);
+}
+]]></code>
+        <note>JOIN FETCH only where needed. @Modifying with clearAutomatically. Pageable search with nullable filters.</note>
+      </example>
+    </section>
+
+    <section name="bulk-operations">
+      <p>Bulk UPDATE/DELETE patterns.</p>
+
+      <rule>
+        <statement>Add @Modifying(clearAutomatically = true, flushAutomatically = true) to all bulk @Query UPDATE/DELETE statements.</statement>
+        <rationale>@Modifying updates bypass Hibernate's first-level cache; without clearAutomatically, subsequent finds return stale cached entities instead of the updated values.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <p>Common mistakes that collapse ORM correctness.</p>
+
+      <antipattern>
+        <description>Lombok @Data on JPA entities: generates equals/hashCode over all fields including lazy collections, causing infinite recursion and broken Set semantics.</description>
+        <reason>@Data iterates all fields for equals; lazy collection fields trigger a DB load and form a cycle. Use @Getter @Setter only and implement equals/hashCode manually on a business key.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>FetchType.EAGER on @OneToMany or @ManyToMany to "be safe": every query loads all associated records, creating Cartesian explosions when multiple collections are fetched.</description>
+        <reason>EAGER fetch cannot be selectively disabled at the query level; once declared on the mapping it applies to every find. It multiplies rows when joined with other EAGER collections, hitting MultipleBagFetchException.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>cascade = CascadeType.ALL on a @ManyToOne relationship: deleting the child cascades to the parent, wiping the parent entity and all its other children.</description>
+        <reason>CascadeType.ALL on @ManyToOne propagates persist/merge/remove up the ownership chain — semantically backwards. Cascade is appropriate on @OneToMany from parent to children, not from child to parent.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Changing an entity column type or renaming a column without a paired Flyway migration.</description>
+        <reason>Hibernate schema validation (spring.jpa.hibernate.ddl-auto=validate) will throw a SchemaManagementException on startup. Production deployments without migrations cause downtime or data loss on column type changes.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>@Modifying on a bulk UPDATE without clearAutomatically = true: subsequent findById returns stale entity from first-level cache.</description>
+        <reason>Bulk UPDATE bypasses Hibernate's entity lifecycle; the first-level cache (L1) is not aware of the change and returns the pre-update state. clearAutomatically flushes the L1 cache after the bulk operation.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using @SpringBootTest for repository slice tests instead of @DataJpaTest.</description>
+        <reason>@SpringBootTest loads the full application context including web layer, security, and services. @DataJpaTest slices to just the JPA layer, boots 10x faster, and isolates schema issues from application logic.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LazyInitializationException in controllers: entity with a lazy association is serialized outside the Hibernate session after the transaction closes.</description>
+        <reason>OSIV (open-in-view) masks this problem in development by keeping the session open. With OSIV disabled (the correct setting), agents must use DTO projections or JOIN FETCH to load required associations within the transaction.</reason>
+      </antipattern>
+    </section>
+
+    <section name="testing">
+      <p>Testing patterns for JPA repositories.</p>
+
+      <example type="good" title="@DataJpaTest slice with Testcontainers">
+        <code lang="java"><![CDATA[
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = NONE) // use Testcontainers Postgres, not H2
+class UserRepositoryTest {
+
+    @Autowired private UserRepository repository;
+
+    @Test
+    void findByIdWithRoles_loadsBothUserAndRoles_inOneQuery() {
+        // Arrange
+        User user = repository.save(userWithRoles("admin", "user"));
+
+        // Act
+        Optional<User> found = repository.findByIdWithRoles(user.getId());
+
+        // Assert
+        assertThat(found).isPresent();
+        assertThat(found.get().getRoles()).hasSize(2);
+    }
+}
+]]></code>
+        <note>@DataJpaTest slices to JPA layer. replace = NONE forces Testcontainers instead of in-memory H2.</note>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <p>Hibernate-specific best practices for production systems.</p>
+
+      <rule>
+        <statement>Always pair an entity change with a Flyway/Liquibase migration. Never rely on `hibernate.hbm2ddl.auto=update` outside dev.</statement>
+        <rationale>Migrations provide a reviewable, reversible, versioned schema history that survives deployment.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use DTO projections (`interface UserView { String getName(); String getEmail(); }`) to avoid loading whole entities and to dodge LazyInitializationException.</statement>
+        <rationale>Projections reduce payload and prevent lazy-loading errors across transaction boundaries.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Mark service read paths `@Transactional(readOnly = true)` — Hibernate skips dirty-checking, big perf win.</statement>
+        <rationale>Dirty-checking is expensive on large result sets. Read-only transactions disable it entirely.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Prefer `@OneToMany` with `Set&lt;&gt;` not `List&lt;&gt;` to avoid `MultipleBagFetchException` when fetching siblings.</statement>
+        <rationale>Sets are semantically correct for unordered associations and avoid Hibernate's Cartesian product gotcha.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Always set `spring.jpa.open-in-view=false` in `application.yml`. The default OSIV is a footgun.</statement>
+        <rationale>OSIV hides N+1 bugs and causes connection pool exhaustion. It is the wrong default.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use `@Filter`/`@Where` for soft delete, never bolt it on with `WHERE deleted_at IS NULL` everywhere.</statement>
+        <rationale>Filters apply uniformly across all queries on a model, preventing accidental inclusion of soft-deleted records.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Index any column referenced in `findBy*`, `WHERE`, `ORDER BY`, and FK columns.</statement>
+        <rationale>Unindexed query columns cause table scans and cache misses under load.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common LLM mistakes with Hibernate.</p>
+
+      <antipattern>
+        <description>LLM emits `@Data` (Lombok) on entities — generates `equals`/`hashCode` over all fields including collections, causing infinite loops and broken `Set` semantics.</description>
+        <reason>Use `@Getter @Setter` + manual `equals/hashCode` over business key.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LLM defaults to `FetchType.EAGER` "to be safe" — kills perf.</description>
+        <reason>Force `LAZY` and explicit fetch joins.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent adds `cascade = CascadeType.ALL` everywhere, including on `@ManyToOne` (semantic nonsense).</description>
+        <reason>Reject in review.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>`@Transactional` on `private` methods is a no-op (proxy). Self-invocation also breaks.</description>
+        <reason>Static analysis should flag.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LLM tends to skip the migration when changing entity columns.</description>
+        <reason>Mandate: every entity diff requires a migration diff.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Generated tests use `@SpringBootTest` even for repository slices — slow.</description>
+        <reason>Prefer `@DataJpaTest` + Testcontainers.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Human checkpoint: any schema change touching production data (rename, type change, drop column) requires migration plan review (expand-contract pattern).</description>
+        <reason>Manual review prevents data loss.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/entity.java" purpose="Entity skeleton: @Table, @Column constraints, @Version, @CreationTimestamp, business-key equals."/>
+      <template path="templates/repository.java" purpose="Repository with derived methods, @Query JOIN FETCH, pageable search, @Modifying bulk update."/>
+      <template path="templates/application-test.yml" purpose="JPA test config: Hibernate statistics, batch inserts, Flyway, SQL debug logging."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.spring.io/spring-data/jpa/reference/jpa.html"/>
+      <link href="https://flywaydb.org"/>
+      <link href="https://www.liquibase.org"/>
+      <link href="https://hibernate.org"/>
+    </see-also>
+  </content>
+</methodology>
