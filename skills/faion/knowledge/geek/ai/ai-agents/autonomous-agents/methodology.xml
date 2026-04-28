@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="autonomous-agents">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Build agents using ReAct loops, Plan-and-Execute patterns, and Reflexion cycles with hard iteration caps and error handling for multi-step task execution.</summary>
+    <category>agents</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <tags>
+      <tag>agents</tag>
+      <tag>react</tag>
+      <tag>planning</tag>
+      <tag>tool-use</tag>
+      <tag>orchestration</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Autonomous Agents</title>
+
+    <summary>Autonomous agents are LLM-powered systems that can independently plan, execute tasks, use tools, and iterate toward goals. They combine reasoning, memory, and action capabilities to accomplish complex objectives with minimal human intervention through core patterns: ReAct (Reason + Act loop), Plan-and-Execute (planning first), and Reflexion (self-critique and improvement). Build them with hard iteration caps, idempotent tools, explicit terminal conditions, and human checkpoints for irreversible actions.</summary>
+
+    <why>
+      <p>Multi-step tasks with dynamic branching (search → read → decide → act) require agents, not single-turn prompts. ReAct agents emit thought-action-observation cycles; each cycle adds 1-3 LLM calls but enables convergence on underspecified goals (research, debugging, code generation with feedback loops). Plan-and-Execute decomposes complex projects into ordered tasks, enabling parallelization of subtask execution. Reflexion improves quality by adding a self-critique pass after each major output.</p>
+      <p>Infinite loops and tool abuse are common failures: ReAct agents without hard iteration caps spiral on ambiguous tasks; agents calling the same search tool 10+ times without convergence waste tokens. Context overflow after 20+ steps breaks reasoning; truncation of old observations makes agents forget prior findings. Hallucinated actions (LLM invents invalid tool parameters) fail silently if tools don't validate. Sandboxing gaps (code execution agents) and missing human checkpoints for irreversible actions (financial writes, deletes) create production risks.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Task requires 3+ sequential tool calls where each step depends on prior output.</item>
+        <item>Workflow involves dynamic branching based on intermediate observations (e.g., search → read → decide → act).</item>
+        <item>Goal is underspecified at start and requires iterative refinement (research, debugging, code generation with feedback loops).</item>
+        <item>Automating knowledge work: data collection, analysis, report generation, competitive research.</item>
+        <item>Code generation tasks that require run-fix-retry cycles (sandbox execution).</item>
+        <item>Multi-source information synthesis requiring dynamic retrieval decisions.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-turn tasks with deterministic output — just use a direct prompt.</item>
+        <item>Latency-sensitive production paths (each ReAct loop adds 1-3 LLM calls).</item>
+        <item>Structured ETL with known schema — a script beats an agent every time.</item>
+        <item>Tasks with binary success/failure where hallucinated tool calls cause irreversible side effects (financial writes, database deletes).</item>
+        <item>When you need reproducible deterministic output — agent non-determinism is a bug here.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="react-agent-pattern">
+      <p>ReAct agents emit `thought → action → observation` cycles. System prompt defines tools, agent selects tools, and a supervisor subagent enforces an iteration cap and classifies terminal states. Each cycle lets the agent reason about the current state and decide next action. Hard iteration cap (default 15) prevents infinite loops. Explicit terminal conditions in system prompt prevent over-running: vague "stop when done" causes agents to continue past completion.</p>
+
+      <rule testable="true">
+        <statement>ReAct agents MUST have a hard iteration cap (15 is safe default; lower for production critical paths). Define explicit terminal conditions in the system prompt; vague "stop when done" causes over-running. Log every thought-action-observation triplet to a structured store before the next step; this is your only replay artifact.</statement>
+        <rationale>Infinite loops spiral on ambiguous tasks. Iteration logging is critical for debugging agent behavior and understanding token consumption. Cheaper models (Haiku) should parse tool calls and format output; reserve Sonnet/Opus for reasoning steps to optimize cost.</rationale>
+      </rule>
+
+      <code lang="text"><![CDATA[
+You are an autonomous research agent. You have these tools: [search, read_url, extract_data, write_file].
+Goal: {goal}
+Max iterations: 15
+
+On each step output:
+Thought: <reasoning about current state and next action>
+Action: <tool_name>(<params>)
+Observation: <result>
+
+When goal is achieved output:
+DONE: <summary of result>
+      ]]></code>
+
+      <code lang="python"><![CDATA[
+# Iteration guard — wrap every agent loop
+MAX_ITERS = 15
+for i in range(MAX_ITERS):
+    response = agent.step(observation)
+    if response.is_terminal:
+        break
+else:
+    raise AgentTimeoutError(f"Agent exceeded {MAX_ITERS} iterations")
+      ]]></code>
+
+      <example type="good" title="Iteration-safe agent loop">
+        <code lang="python"><![CDATA[
+from typing import Callable
+import json
+
+def run_react_agent(
+    llm_call: Callable[[list], str],
+    tools: dict[str, Callable],
+    goal: str,
+    max_iters: int = 15,
+) -> str:
+    messages = [{"role": "user", "content": f"Goal: {goal}"}]
+    for i in range(max_iters):
+        raw = llm_call(messages)
+        messages.append({"role": "assistant", "content": raw})
+        if "DONE:" in raw:
+            return raw.split("DONE:", 1)[1].strip()
+        if "Action:" not in raw:
+            break
+        action_line = [l for l in raw.splitlines() if l.startswith("Action:")][0]
+        tool_call = action_line.replace("Action:", "").strip()
+        name, _, args_str = tool_call.partition("(")
+        args = json.loads("{" + args_str.rstrip(")") + "}")
+        try:
+            result = tools[name](**args)
+        except Exception as e:
+            result = f"ERROR: {e}"
+        messages.append({"role": "user", "content": f"Observation: {result}"})
+    return "AGENT_TIMEOUT: max iterations reached"
+        ]]></code>
+        <note>Handles tool lookup, JSON parsing errors, and iteration timeout gracefully.</note>
+      </example>
+
+      <antipattern>
+        <description>LLM tool-call JSON is not always valid; parsing fails and the agent crashes.</description>
+        <reason>Always parse with try/except and return structured error back to the agent. "Observation: None" is invisible to the LLM — always return a non-empty string ("Success: no output" is better than empty). ReAct agents often confuse "what I should do" with "what I just did" when the observation is similar to a prior step; include step counters in observations.</reason>
+      </antipattern>
+    </section>
+
+    <section name="plan-and-execute-pattern">
+      <p>For multi-step research tasks, spawn a Plan-and-Execute pattern: one subagent (Opus) decomposes the goal into a task list, a pool of executor subagents (Sonnet/Haiku) works through subtasks, and a verifier subagent checks each result before marking it done. This pattern enables parallelization and scales better than single ReAct agents for complex goals. The planner breaks down work upfront, reducing the cognitive load on each executor, and allows subtasks to run in parallel. Executors then work independently on their assigned tasks without needing the full context, and each output is verified before proceeding.</p>
+
+      <rule testable="true">
+        <statement>Plan-and-Execute requires four subagent roles: planner (Opus, decomposes goal into ordered task list), executor pool (Sonnet/Haiku, handles a single subtask with defined inputs/outputs), verifier (checks task output against success criteria, returns pass/fail + reason), and critic (Reflexion pass: compares output against goal, generates improvement suggestions). Each executor runs on separate task; verifier blocks next task until current one passes.</statement>
+        <rationale>Multi-agent decomposition scales to complex goals without context overflow. Executor and verifier are cheaper (Sonnet/Haiku) than planner (Opus). Critic pass improves output quality before writing to persistent storage. Parallelization reduces total wall-clock time for large projects.</rationale>
+      </rule>
+
+      <example type="good" title="Plan-and-Execute orchestration">
+        <p>Planner (Opus) reads research goal, outputs JSON with task list: [task 1, task 2, task 3]. Executors (Sonnet, batched) pick tasks, run ReAct loops on each task independently, return results with task ID. Verifier (Sonnet) checks each result against success criteria (completeness, accuracy, format). Critic (Sonnet) compares aggregated results against original goal, suggests improvements. If quality fails on any task, that task is re-assigned (up to 2 cycles); otherwise write final report. This orchestration keeps each agent's context size minimal while handling complex multi-part goals.</p>
+      </example>
+    </section>
+
+    <section name="reflexion-and-self-critique">
+      <p>Reflexion improves quality by adding a self-critique pass after each major output before writing to persistent storage. Agent compares output against goal, generates improvement suggestions, and optionally re-executes steps to fix identified issues. This pattern is especially effective for code generation and writing tasks where correctness is difficult to verify automatically. The critic subagent acts as a quality gate: it reads the agent's output, the original goal, and any execution context (e.g., test results for code), then returns a structured assessment with specific issues and improvement suggestions.</p>
+
+      <rule testable="true">
+        <statement>Reflexion requires a critic subagent that reads the agent's output and the original goal, returns JSON with quality assessment (pass/fail), critique (list of issues), and improvement suggestions. If quality fails, the agent re-executes relevant steps; if it still fails after 2 cycles, escalate to human review instead of shipping broken output. The critic should also include confidence scores on each issue (high/medium/low) to help prioritize re-execution effort.</statement>
+        <rationale>Agents often complete tasks technically but miss the actual requirement; Reflexion catches this. Re-execution is cheaper than human review for fixable issues. Confidence scores help the agent prioritize which issues matter most.</rationale>
+      </rule>
+
+      <example type="good" title="Reflexion for code generation">
+        <p>Agent (Sonnet) generates code for a task. Critic subagent (Sonnet) reads code and requirements, runs tests if available, checks for missing edge cases, style issues, performance concerns. Critic returns JSON: {"pass": false, "issues": [{"issue": "missing null check", "confidence": "high"}, {"issue": "inefficient loop", "confidence": "medium"}]}. Agent re-executes with feedback. If still fails after 2 attempts, human review is triggered.</p>
+      </example>
+    </section>
+
+    <section name="error-handling-and-safety">
+      <p>Tool abuse (calling the same search tool 10+ times without convergence) is common; tools must be idempotent so agents retry on failure without data corruption. Hallucinated actions (LLM invents invalid tool parameters) fail silently if tools don't validate; always return structured errors back to the agent. Context overflow after 20+ steps breaks reasoning; pass only the last N=5 observations once history exceeds 10 steps. Summarize older steps to preserve context.</p>
+
+      <rule testable="true">
+        <statement>Write tools to be idempotent — agents retry on failure, so non-idempotent tools cause data corruption. Never give agents write access to production systems without a human approval checkpoint. Code execution agents need OS-level isolation (e2b sandbox); missing this is a critical security failure. Streaming responses break action parsing if you parse before the stream completes — buffer fully before parsing.</statement>
+        <rationale>Agents are non-deterministic and will encounter errors; idempotent tools survive retries. Human-in-the-loop checkpoint is mandatory for irreversible actions (file delete, external API write, email send).</rationale>
+      </rule>
+
+      <code lang="python"><![CDATA[
+# Tool with error handling and idempotency
+def search_docs(query: str) -> str:
+    """Search the corpus; safe to call multiple times."""
+    try:
+        results = corpus.search(query, limit=5)
+        if not results:
+            return "No results found."
+        return "\n".join([f"- {r['title']}: {r['snippet']}" for r in results])
+    except Exception as e:
+        return f"ERROR: search failed: {e}"
+
+# Keep only recent observations to prevent context overflow
+def log_step(thought: str, action: str, observation: str):
+    step = {"thought": thought, "action": action, "observation": observation}
+    message_log.append(step)
+    if len(message_log) > 10:
+        # Summarize first 5 steps, keep last 5
+        summary = summarize_steps(message_log[:5])
+        message_log[:5] = [{"role": "system", "content": f"[Summarized earlier steps]: {summary}"}]
+      ]]></code>
+    </section>
+
+    <section name="recommended-tools-and-frameworks">
+      <p>LangGraph provides agent orchestration with state checkpointing; AutoGen (Microsoft) offers multi-agent conversation framework; CrewAI enables role-based multi-agent teams; AgentOps provides observability and replay; E2B offers secure sandboxed code execution. Services: LangSmith (SaaS, trace every agent step, critical for debugging), E2B Code Interpreter (SaaS/OSS, isolated Python sandbox, safe execution), Helicone (SaaS, LLM proxy with logging), Weights and Biases (SaaS, track agent runs as experiments), Temporal (OSS, durable execution for long-running workflows with retries).</p>
+
+      <reference path="templates/react-agent-template.py">Full ReAct agent template with iteration guard</reference>
+      <reference path="templates/plan-execute-template.py">Plan-and-Execute orchestration skeleton</reference>
+    </section>
+
+    <section name="gotchas-and-debugging">
+      <p>Agents will try tools in alphabetical order if tool descriptions are equal quality — name and describe tools precisely. "Observation: None" is invisible to the LLM — always return non-empty string. Streaming responses break action parsing if you parse before stream completes — buffer fully before parsing. Human-in-the-loop checkpoint: pause before any irreversible action (file delete, external API write, email send); require explicit confirmation token from a human approval queue.</p>
+
+      <note>Use a separate, cheaper model (Haiku) for tool-call parsing and output formatting; reserve Sonnet/Opus for reasoning steps. Pass only the last N=5 observations into context once history exceeds 10 steps; summarize older steps. Define explicit terminal conditions in the system prompt; vague "stop when done" causes over-running. Always set a hard iteration cap (15 is safe default).</note>
+    </section>
+
+    <checklist>
+      <check>Define agent goal clearly and measurably.</check>
+      <check>List all tools the agent will use; ensure each has clear description and error handling.</check>
+      <check>Set hard iteration cap (default 15; lower for latency-sensitive paths).</check>
+      <check>Define explicit terminal conditions in system prompt.</check>
+      <check>Implement iteration logging to a structured store for replay/debugging.</check>
+      <check>Validate tool-call JSON with try/except; return structured errors to agent.</check>
+      <check>Write tools to be idempotent so agents can safely retry on failure.</check>
+      <check>For code execution agents: use e2b sandbox or equivalent OS-level isolation.</check>
+      <check>Add human approval checkpoint before irreversible actions (writes, deletes).</check>
+      <check>Test agent on representative goals; measure token consumption and iteration count.</check>
+      <check>Monitor production: log every thought-action-observation for post-mortem analysis.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://arxiv.org/abs/2210.03629">ReAct paper: Reasoning + Acting in LLMs</link>
+      <link href="https://arxiv.org/abs/2303.11366">Reflexion: Language Agents with Verbal Reinforcement Learning</link>
+      <link href="https://github.com/Significant-Gravitas/AutoGPT">AutoGPT: autonomous agent architecture</link>
+      <link href="https://langchain-ai.github.io/langgraph/">LangGraph: agent orchestration and checkpointing</link>
+      <link href="https://microsoft.github.io/autogen/">AutoGen: multi-agent conversation framework</link>
+      <link href="https://docs.crewai.com/">CrewAI: role-based multi-agent teams</link>
+      <link href="https://e2b.dev/">E2B: secure sandboxed code execution</link>
+      <link href="https://www.agentops.ai/">AgentOps: agent observability and replay</link>
+      <link href="https://docs.anthropic.com/claude/docs/tool-use">Anthropic: Tool use best practices</link>
+    </see-also>
+  </content>
+</methodology>
