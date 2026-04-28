@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="semantic-tokens-and-modes">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ui-designer</domain>
+    <summary>Semantic token layer maps primitives to purpose-based aliases with different values per mode. Three tiers, every alias in every mode, contrast pairs co-located for automatable validation.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>design-tokens</tag>
+      <tag>theming</tag>
+      <tag>semantic-layer</tag>
+      <tag>figma-variables</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Semantic Tokens and Modes</title>
+
+    <summary>A semantic token layer maps primitive values (`color.blue.500`) to purpose-based aliases (`color.action.primary`) that resolve to different values per mode (light/dark, high-contrast, compact density, brand). Modes are declared per collection in Figma Variables or token JSON; Style Dictionary emits platform-specific output per mode. Every alias must have a value in every declared mode, and contrast pairs must be co-located so validation is automatable.</summary>
+
+    <why>
+      <p>Hardcoding primitive tokens in components couples visual decisions to component code. A semantic layer decouples them: adding a dark-mode means adding one set of semantic alias resolutions, not touching every component. Aliasing depth must stay at three levels (primitive → semantic → component) to keep runtime debugging tractable and contrast validation automated.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building a token system that supports light/dark, high-contrast, density, or brand modes.</item>
+        <item>Migrating from raw color/spacing tokens to a semantic layer.</item>
+        <item>Wiring Figma Variables to Style Dictionary so designers and engineers share one source of truth.</item>
+        <item>Adding a new mode without doubling component code paths.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-theme apps where modes add cost without payoff — start with raw tokens, promote when the second theme arrives.</item>
+        <item>Print or static asset pipelines where mode-switching does not apply.</item>
+        <item>Pure animation/motion tokens where mode semantics are rarely meaningful.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="three-tier-naming">
+      <rule testable="true">
+        <statement>Use three tiers exactly — primitive, semantic, component — and ensure component tokens reference semantic tokens, never primitives.</statement>
+        <rationale>Component-to-primitive coupling means every primitive rename requires touching component definitions; the semantic layer is the decoupling boundary.</rationale>
+      </rule>
+      <list>
+        <item>Primitive: `color.blue.500 = #3B82F6` — raw value, no design intent.</item>
+        <item>Semantic: `color.action.primary → {color.blue.500}` — purpose-based alias.</item>
+        <item>Component: `button.primary.bg → {color.action.primary}` — exception only, must have `$description`.</item>
+      </list>
+      <example type="good" title="Semantic alias with mode values in Figma Variables format">
+        <code lang="json"><![CDATA[
+{
+  "collections": {
+    "Colors": {
+      "modes": ["Light", "Dark"],
+      "aliases": {
+        "color.surface.primary": {
+          "values": {
+            "Light": "#FFFFFF",
+            "Dark": "#1A1A1A"
+          }
+        },
+        "color.text.primary": {
+          "values": {
+            "Light": "#1A1A1A",
+            "Dark": "#FFFFFF"
+          }
+        }
+      }
+    }
+  }
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="mode-matrix-rules">
+      <rule testable="true">
+        <statement>Every alias must have a value in every declared mode; missing values cause silent fallbacks that ship wrong colors.</statement>
+        <rationale>A mode with a missing alias resolves to undefined behavior; different platforms handle undefined differently, making the regression unpredictable and hard to reproduce.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Reserve one mode per axis as the explicit default; document inheritance rules so consumers of unset modes fall back deterministically.</statement>
+        <rationale>Implicit inheritance from an undocumented default causes surprise regressions when the default mode is renamed or reordered.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Bound mode combinations by design decision, not by combinatorial exhaustion; mode explosion (4 color × 3 density × 5 brands = 60 configs) kills maintainability.</statement>
+        <rationale>Each supported configuration requires validation; unchecked mode growth creates an exponential testing burden that makes additions prohibitively expensive.</rationale>
+      </rule>
+    </section>
+
+    <section name="contrast-pair-co-location">
+      <rule testable="true">
+        <statement>Co-locate contrast partner pairs in the token spec (e.g., `text.on-surface-primary` declares its surface partner); validation requires both halves.</statement>
+        <rationale>WCAG contrast must be verified as a pair, not per token; without co-location the validator cannot determine which text color applies to which surface color in each mode.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Generate runtime CSS custom properties at build time, not at app boot; boot-time JS theming causes flicker and hurts Core Web Vitals.</statement>
+        <rationale>CSS custom properties set at boot add a render-blocking JS execution step before first paint; build-time generation eliminates this entirely.</rationale>
+      </rule>
+      <antipattern>
+        <description>Per-platform deltas (iOS 14px button padding) expressed as inline overrides on a shared token (`"ios": "14px"`)</description>
+        <reason>Inline platform overrides are invisible to designers in Figma and to linters; use separate platform-prefixed tokens instead.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-pipeline">
+      <rule testable="true">
+        <statement>Use agents for mechanical token operations (alias generation, mode-matrix expansion, contrast checks, format conversion); keep humans on naming and semantic decisions.</statement>
+        <rationale>Agents are reliable at deterministic transformations but poor at naming intent; auto-promoted primitive-to-semantic names are the one place where human meaning is irreplaceable.</rationale>
+      </rule>
+      <list>
+        <item>Step 1: `token-aliaser` (haiku) — deterministic mapping of primitive to semantic from a rules file.</item>
+        <item>Step 2: `mode-validator` (haiku) — verifies every (alias × mode) cell has a value and meets contrast requirements.</item>
+        <item>Step 3: `multi-platform-emitter` — runs Style Dictionary to write CSS, iOS, Android, JSON.</item>
+        <item>Trigger: re-run on every Figma library version bump in CI.</item>
+      </list>
+      <rule testable="true">
+        <statement>Treat a token rename as a breaking API change; use codemods or alias deprecation periods, never silent removals.</statement>
+        <rationale>Consumers reference tokens as strings in code, config, and MDX; a silent removal breaks builds at runtime without compile-time warning.</rationale>
+      </rule>
+    </section>
+
+    <section name="mode-coverage-check">
+      <rule testable="true">
+        <statement>Run the mode coverage check in CI on every PR that touches token source files; block on any missing (alias, mode) pair.</statement>
+        <rationale>A missing value detected in CI costs a fix; a missing value that ships costs a themed-product regression report, a hotfix, and user trust.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>LLM invents token names from a closed enumeration without pinning to the manifest.</description>
+        <reason>Pin the agent to a closed enumeration loaded from the project manifest; reject outputs with identifiers not present in the manifest.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Color math regressions are silent: agent emits `oklch()` values that look fine but fail contrast in dark mode.</description>
+        <reason>Always run the mode-validator post-generation; visual inspection is insufficient for contrast in wide-gamut color spaces.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Figma Variables REST API uses `tempId` for newly-created variables; agent reuses a stale ID in a dependent operation.</description>
+        <reason>Capture and reuse `tempId` values within the same API call batch; stale IDs create dangling references that are silent until the file is reloaded.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent reorders Style Dictionary transforms while "cleaning up" the config.</description>
+        <reason>Style Dictionary transforms run in declared order; reordering silently changes platform output. Lock the order in the agent's tooling spec.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent auto-promotes primitives to semantic layer without human review.</description>
+        <reason>Semantic naming is the one step that adds real human meaning; an auto-promoted name like `color.blue-500-alias` is worse than no semantic layer.</reason>
+      </antipattern>
+    </section>
+
+    <section name="recommended-subagents">
+      <list>
+        <item>`token-aliaser` — haiku; deterministic mapping primitive→semantic from a rules file.</item>
+        <item>`mode-validator` — haiku; verifies every (alias × mode) cell has a value and passes contrast/spec checks.</item>
+        <item>`token-diff-reporter` — sonnet; summarizes additions/removals/breaking changes between two token snapshots for release notes.</item>
+        <item>`figma-syncer` — sonnet; handles Figma Variables REST mutations with idempotent payloads.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>`style-dictionary` — Multi-platform token build (CSS, iOS, Android, JSON). Install: `npm i -g style-dictionary`. Docs: amzn.github.io/style-dictionary</item>
+        <item>`theo` (Salesforce) — Token transforms similar to Style Dictionary. Docs: github.com/salesforce-ux/theo</item>
+        <item>`tokens-studio` plugin + sync CLI — Figma Variables ↔ JSON sync. Website: tokens.studio</item>
+        <item>`figma-api-exporter` (community) — Pull Figma Variables via REST. Docs: github.com/figma/api-spec</item>
+        <item>`culori` — Programmatic color manipulation, contrast. Install: `npm i culori`. Website: culorijs.org</item>
+        <item>`axe-core` CLI — Contrast/a11y validation on rendered modes. Install: `npm i -g @axe-core/cli`</item>
+        <item>`chroma.js` — Color conversion, palettes. Website: gka.github.io/chroma.js</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>LLMs invent token names confidently. Pin the agent to a closed enumeration loaded from a manifest; reject outputs with unknown identifiers.</item>
+        <item>Color math regressions are silent: agent may emit `oklch()` values that look fine but fail contrast in dark mode. Always run `mode-validator` post-generation.</item>
+        <item>Figma Variables REST API uses `tempId` for newly-created variables in the same call. Agents must capture and reuse those IDs in dependent operations or risk dangling refs.</item>
+        <item>Mode counts are per-collection; agents that flatten across collections can lose mode info. Preserve collection scope end-to-end.</item>
+        <item>Avoid agent-driven "auto-promotion" of primitives to semantic without human review — semantic naming is the one place humans add real meaning.</item>
+        <item>Cache invalidation: when tokens change, downstream artifacts (Storybook stories, Tailwind config, iOS asset catalog) must rebuild. Drive with file hashes, not timestamps.</item>
+        <item>Style Dictionary transforms run in declared order; an agent reordering them silently can break platform output. Lock the order in the agent's tooling spec.</item>
+      </list>
+    </section>
+
+    <section name="limitations">
+      <list>
+        <item>Mode explosion: 4 color modes × 3 density modes × 5 brands = 60 effective configurations. Methodology does not bound combinatorial growth.</item>
+        <item>Figma Variables have hard limits (collection size, mode count per plan); methodology does not surface those.</item>
+        <item>iOS/Android/Web have different runtime mode-switching semantics (system colorScheme vs CSS media query vs Compose `LocalConfiguration`); naming alone does not guarantee parity.</item>
+        <item>"Semantic" is subjective — `text.primary` means different things to different designers; without governance the layer rots.</item>
+        <item>High-contrast and AAA contrast modes are not free additions — they require ratio testing on every alias before claiming support.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/mode-coverage.py" purpose="Script that fails if any alias is missing a value in any declared mode."/>
+      <template path="templates/mode-validator-prompt.txt" purpose="Structured-output prompt for a mode-validator subagent including contrast checks."/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.designtokens.org/"/>
+      <link href="https://github.com/amzn/style-dictionary"/>
+      <link href="https://www.figma.com/plugin-docs/how-variables-work/"/>
+      <link href="https://medium.com/eightshapes-llc/naming-tokens-in-design-systems-9e86c7444676"/>
+      <link href="https://design-tokens.github.io/community-group/format/"/>
+    </see-also>
+  </content>
+</methodology>
