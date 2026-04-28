@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (ai-governance-compliance, autonomous-agents, bundle-vs-split-tools; feature-045 batch 238)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (agent-architectures, agent-patterns, ai-agent-patterns; feature-045 batch 237)
 - migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (vui-testing-best-practices, w3c-design-tokens-standard, wcag-22-compliance; feature-045 batch 236)
 - migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (token-organization, tree-testing, voice-ui; feature-045 batch 233)
