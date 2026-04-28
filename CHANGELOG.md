@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 solo/research methodologies → methodology.xml (pricing-research, feature-discovery, idea-generation)
 - migrate: 3/3 solo/research/researcher methodologies → methodology.xml (jobs-to-be-done, niche-evaluation, pain-point-research)
 - migrate: 3/3 solo/sdd/sdd-planning methodologies → methodology.xml (impl-plan-task-format, spec-example-ecommerce-cart, spec-examples-basic)
 - migrate: 3/3 solo/product/product-planning methodologies → methodology.xml (continuous-discovery, mvp-scoping, roadmap-design)

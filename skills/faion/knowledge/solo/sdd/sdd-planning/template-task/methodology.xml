@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="template-task">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd-planning</domain>
+    <summary>Fill-in-the-blanks template for TASK_NNN.md files — atomic execution units that subagents read and implement with all required context in one file.</summary>
+    <tags>
+      <tag>sdd</tag>
+      <tag>task</tag>
+      <tag>template</tag>
+      <tag>execution</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Template: Task File</title>
+
+    <summary>A fill-in-the-blanks template for TASK_NNN.md files — the atomic execution units that a subagent reads and implements. Each task file includes SDD References, Task Dependency Tree, Requirements Coverage (FR-X / AD-X inline), Objective, Dependencies, Acceptance Criteria (Given-When-Then), Technical Approach (numbered steps), Files (CREATE/MODIFY), Estimated Tokens, and sections for execution output.</summary>
+
+    <why>
+      <p>Executor agents without a complete task file are forced to re-read the full SDD context on each run, wasting tokens and introducing inconsistency. A self-contained task file with inline FR/AD text, explicit dependency outputs, and testable ACs lets the executor proceed without external lookups, and makes the token budget predictable and enforceable (hard cap: 100k per task).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Generating TASK_*.md files from an approved implementation plan.</item>
+        <item>Converting implementation plan row stubs into standalone, self-contained task files.</item>
+        <item>Ensuring the executing agent has all required context within a single file.</item>
+        <item>Verifying completed tasks before marking them done — template defines the done state.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Before the implementation plan is approved — task scope will change and the file is wasted effort.</item>
+        <item>For research spikes where the deliverable is a decision, not code — use a lighter note format.</item>
+        <item>When a task takes fewer than 5k tokens to execute — overhead of full template is not worth it.</item>
+        <item>For manual human execution — human tasks need narrative description, not Given-When-Then AC.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="section-responsibility-split">
+      <p>Rules for correctly creating TASK_NNN.md files: section responsibilities (creator vs executor), token budget enforcement, INVEST validation, lifecycle states, and anti-patterns.</p>
+      <rule>
+        <statement>Task creator fills SDD References, Dependency Tree, Requirements Coverage, Objective, Dependencies, AC, Technical Approach, Files, and Estimated Tokens. Executor fills Implementation and Summary. Never pre-fill executor sections.</statement>
+        <rationale>Pre-filled Implementation sections give the executor incorrect expectations and reduce quality — the executor follows the pre-fill rather than the actual codebase.</rationale>
+      </rule>
+      <list>
+        <item>Creator fills: SDD References, Task Dependency Tree, Requirements Coverage, Objective, Dependencies, Acceptance Criteria, Technical Approach, Files, Estimated Tokens</item>
+        <item>Executor fills: Implementation (Changes Made, Tests Added), Summary (Completed, Issues, Lessons)</item>
+      </list>
+    </section>
+
+    <section name="token-budget">
+      <p>Every task must have an Estimated Tokens breakdown, and the total must be under 100k tokens.</p>
+      <rule>
+        <statement>Every task must have an Estimated Tokens breakdown, and the total must be under 100k tokens.</statement>
+        <rationale>Tasks exceeding 100k tokens cause executor agents to run out of context mid-implementation, producing partial or inconsistent code.</rationale>
+      </rule>
+      <example type="good" title="Token budget breakdown for a normal-complexity task">
+        <code lang="text"><![CDATA[SDD Documents (constitution + spec + design): ~15k
+Task Dependency Tree (done task summaries): ~10k
+Research (read existing code patterns): ~25k
+Implementation (actual coding): ~40k
+Testing (writing tests): ~10k
+TOTAL: ~100k]]></code>
+      </example>
+      <list>
+        <item>Simple task: &lt;30k tokens — single file, clear pattern</item>
+        <item>Normal task: 30-60k tokens — multiple files, some decisions</item>
+        <item>Complex task: 60-100k tokens — architecture decisions, research needed</item>
+      </list>
+    </section>
+
+    <section name="requirements-coverage-section">
+      <p>Inline requirements in task files eliminate external lookups at runtime.</p>
+      <rule>
+        <statement>Paste the full text of each FR-X and AD-X inline into the task file. Do not write "See spec.md" — the executor must not re-read the full SDD at runtime.</statement>
+        <rationale>Each re-read of the full spec adds 10-30k tokens of context cost and risks the executor misreading a section out of context.</rationale>
+      </rule>
+    </section>
+
+    <section name="objective-section">
+      <p>The Objective must be a single, measurable, agent-executable goal in 2-3 sentences. If the title contains "and", split the task.</p>
+      <rule>
+        <statement>The Objective must be a single, measurable, agent-executable goal in 2-3 sentences. If the title contains "and", split the task.</statement>
+        <rationale>Tasks with compound objectives are executed partially — agents complete the first part and mark done without attempting the second.</rationale>
+      </rule>
+      <example type="bad" title="Compound objective — should be split">
+        <code lang="text"><![CDATA[Create User model with email validation and password hashing and add login endpoint.]]></code>
+      </example>
+      <example type="good" title="Single-responsibility objective">
+        <code lang="text"><![CDATA[Create User model with email field (Zod RFC 5322 validation) and password_hash field (bcrypt wrapper). Expose via UserRepository interface.]]></code>
+      </example>
+    </section>
+
+    <section name="task-lifecycle">
+      <p>Task lifecycle is directory-based to avoid confusion between field values and execution state.</p>
+      <rule>
+        <statement>Task lifecycle is directory-based: todo/ → in-progress/ → done/. The Status field in the task header must match the directory. Never place a task in the wrong directory.</statement>
+        <rationale>Executor agents check the directory, not the status field. A task in todo/ is picked up regardless of its header status.</rationale>
+      </rule>
+    </section>
+
+    <section name="anti-patterns">
+      <antipattern>
+        <description>Vague acceptance criteria: "system works correctly" or "user experience is smooth".</description>
+        <reason>Executor agents cannot verify vague criteria. Every AC must have an observable, code-verifiable outcome.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Given-When-Then format used for background jobs (no "when" actor).</description>
+        <reason>Use "Given / Triggered by / Then" variant for jobs with no user actor.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Estimated Tokens for test files set to &lt;10k.</description>
+        <reason>Test files for Django viewsets or React components consistently run 30-40k tokens. Underestimating causes executor to run out of context before tests are complete.</reason>
+      </antipattern>
+    </section>
+
+    <section name="execution-phase-checklist">
+      <p>Ordered checklist for creating a complete TASK_NNN.md file from file structure through quality gate before assignment to an executor.</p>
+      <checklist>
+        <check>Create file at .aidocs/features/{status}/{feature}/todo/TASK_{NNN}_{slug}.md</check>
+        <check>Add task identifier TASK_{NNN}</check>
+        <check>Set status: todo (when created)</check>
+        <check>Add feature name and created date</check>
+        <check>Create reference table with Document, Path links to spec.md, design.md, implementation-plan.md</check>
+        <check>Read actual done/ task files — do not work from memory</check>
+        <check>Create dependency table showing Task ID, Status, Key Output</check>
+        <check>For each dependency: show what it provided that this task uses</check>
+        <check>Verify no circular dependencies</check>
+        <check>For each FR from spec: paste full FR-X text inline</check>
+        <check>For each AD from design: paste full AD-X text inline</check>
+        <check>State which part(s) this task covers</check>
+        <check>Single, measurable goal — 2-3 sentences</check>
+        <check>Specific and actionable for an AI agent</check>
+        <check>If title contains "and" — split into two tasks</check>
+        <check>State which tasks must complete first</check>
+        <check>Format: "TASK_{XXX} must complete first (provides {what})"</check>
+        <check>Use Finish-to-Start (FS) dependency type</check>
+        <check>Mark blocking relationships explicitly</check>
+        <check>Use Given-When-Then format (or "Given/Triggered by/Then" for background jobs)</check>
+        <check>Cover happy path scenarios</check>
+        <check>Cover error scenarios</check>
+        <check>Cover boundary conditions</check>
+        <check>Each criterion is testable — pass/fail verifiable by running a test or command</check>
+        <check>Tag each AC item with FR-X reference</check>
+        <check>Step-by-step numbered approach</check>
+        <check>Research phase (read existing code)</check>
+        <check>Implementation phase (write code)</check>
+        <check>Testing phase (write tests)</check>
+        <check>Verification phase (ensure AC met)</check>
+        <check>Steps ordered to match file change order — avoids import errors</check>
+        <check>Table: File, Action (CREATE/MODIFY), Scope</check>
+        <check>For CREATE: what to create and purpose</check>
+        <check>For MODIFY: what changes and extent</check>
+        <check>Include test files explicitly</check>
+        <check>State total token count with breakdown: SDD docs + dependency tree + research + impl + tests</check>
+        <check>Total must be &lt;100k</check>
+        <check>Test files: budget at least 20-40k for Django viewsets or React component tests</check>
+        <check>If total exceeds 100k: split at natural boundary (interface → implementation → API layer)</check>
+        <check>Objective is single, clear, achievable</check>
+        <check>Acceptance criteria cover happy path and errors — all testable</check>
+        <check>Dependencies documented</check>
+        <check>Files list is complete including test files</check>
+        <check>Token estimate &lt;100k with breakdown</check>
+        <check>Task is atomic — one responsibility only</check>
+        <check>Status is "todo" and file is in todo/ directory</check>
+      </checklist>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A task-creator subagent receives one row from the implementation plan and the full SDD context (constitution, spec, design). It reads dependency task summaries from done/ TASK_*.md files, then instantiates the template. The critical sections are: SDD References, Task Dependency Tree, Objective, AC, Technical Approach, and Files. The Implementation and Summary sections are left for the executor to fill. After creation, the task file is placed in todo/ and reviewed by faion-sdd-reviewer-agent (mode: tasks) before execution begins.</p>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p>Known limitations where the template breaks down in practice.</p>
+      <antipattern>
+        <description>Estimated Tokens field is advisory; executors often exceed it without enforcement.</description>
+        <reason>Task files have no hard token limit enforced by the framework itself — context overflow happens at execution time.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Implementation and Summary sections are filled after execution — they are empty when task is dispatched, defeating their purpose as context for the executor.</description>
+        <reason>These sections capture execution results, not pre-execution context. They cannot be filled until the task is done.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Token estimation guide in template is Django/React-centric; other stacks have different baselines.</description>
+        <reason>Add stack-specific calibration to the token budget section for your tech stack.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Task states (todo → in-progress → done) are file-system directory states, not fields — template section is ambiguous.</description>
+        <reason>The Status field in the task header and the directory must stay in sync manually; consider a hook to validate this.</reason>
+      </antipattern>
+      <antipattern>
+        <description>No field for "rollback" — when a task must be undone, there is no documented reversal procedure.</description>
+        <reason>Add a "Rollback" section for tasks that modify stable data or deployed services.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/task.md" purpose="Complete TASK_NNN.md template with all required sections and placeholder text."/>
+      <template path="templates/task-lifecycle.sh" purpose="Script to move a task file between lifecycle states (todo/in-progress/done) with section header validation."/>
+    </templates>
+
+    <see-also>
+      <ref slug="writing-implementation-plans"/>
+      <ref slug="template-spec"/>
+    </see-also>
+  </content>
+</methodology>

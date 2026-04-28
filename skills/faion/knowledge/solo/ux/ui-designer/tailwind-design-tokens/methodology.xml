@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tailwind-design-tokens">
+  <metadata>
+    <tier>solo</tier>
+    <group>ux</group>
+    <domain>ui-designer</domain>
+    <summary>Integrating design tokens into Tailwind CSS by mapping token values to CSS custom properties and referencing them in `tailwind.config.js` — using RGB channel syntax for color tokens to preserve opacity modifier functionality (`bg-primary/50`), and extending (not replacing) the default theme.</summary>
+    <tags>
+      <tag>tailwind</tag>
+      <tag>design-tokens</tag>
+      <tag>css-variables</tag>
+      <tag>theming</tag>
+      <tag>style-dictionary</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Tailwind + Design Tokens</title>
+
+    <summary>Integrating design tokens into Tailwind CSS by mapping token values to CSS custom properties and referencing them in `tailwind.config.js` — using RGB channel syntax for color tokens to preserve opacity modifier functionality (`bg-primary/50`), and extending (not replacing) the default theme.</summary>
+
+    <why>
+      <p>Hardcoded Tailwind utility values (`text-[#3B82F6]`, `p-[13px]`) scatter design decisions and break theming. A token-backed config where every color and spacing utility references a CSS variable enables dark mode, brand variants, and white-label theming with a single token file change.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a new Tailwind project that must support theming (dark mode, brand variants, white-label)</item>
+        <item>Migrating an existing Tailwind codebase from hardcoded utility values to CSS-variable-backed tokens</item>
+        <item>Generating `tailwind.config.js` theme overrides from a Style Dictionary token build output</item>
+        <item>Auditing a Tailwind codebase for arbitrary values (`text-[#...]`, `p-[...]`) that should become tokens</item>
+        <item>Setting up a Storybook token documentation layer alongside a Tailwind component library</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Projects not using Tailwind — use Style Dictionary + CSS custom properties directly</item>
+        <item>Pure CSS/SCSS codebases where Tailwind migration is not planned</item>
+        <item>When design tokens are not yet defined or stable — generating config before taxonomy is finalized creates throwaway work</item>
+        <item>Utility-class-only projects with zero theming requirements — CSS variable indirection adds complexity without payoff</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="rgb-channel-pattern">
+      <p>Color tokens must use RGB channel values in CSS custom properties to enable Tailwind opacity modifiers.</p>
+
+      <rule>
+        <statement>Define color tokens as RGB channel values (not hex) in CSS custom properties to preserve Tailwind opacity modifier functionality (bg-primary/50).</statement>
+        <rationale>Tailwind opacity modifiers generate classes like bg-primary/50 by injecting an alpha channel. This only works when the color is expressed as separate RGB channels that can be combined with a transparency value. Raw hex breaks the modifier syntax entirely.</rationale>
+      </rule>
+
+      <example type="good" title="RGB channel variables for opacity support">
+        <code lang="css"><![CDATA[:root {
+  --color-primary-rgb: 59 130 246;
+  --color-primary: #3B82F6;
+}]]></code>
+        <note>RGB channel variable enables opacity modifiers; hex variable available for non-Tailwind consumers.</note>
+      </example>
+
+      <example type="good" title="Tailwind config with alpha-value placeholder">
+        <code lang="javascript"><![CDATA[// tailwind.config.js
+module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        primary: {
+          default: 'rgb(var(--color-primary-rgb) / <alpha-value>)',
+        }
+      }
+    }
+  }
+}]]></code>
+        <note>alpha-value placeholder is Tailwind v3+ syntax for opacity modifier injection.</note>
+      </example>
+
+      <antipattern>
+        <description>Color token defined as hex in Tailwind config: primary: 'var(--color-primary)'</description>
+        <reason>bg-primary/50 silently renders as fully opaque because the opacity modifier cannot decompose a hex CSS variable into RGB channels.</reason>
+      </antipattern>
+    </section>
+
+    <section name="theme-extension">
+      <p>Always extend the Tailwind theme rather than replacing it to preserve default utilities.</p>
+
+      <rule>
+        <statement>Always extend the Tailwind default theme (theme.extend) rather than replacing it — replacement removes useful defaults like font-sans, leading-*, and the full default spacing scale.</statement>
+        <rationale>Agents frequently generate config at the theme level instead of theme.extend, silently wiping defaults that downstream components depend on.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Extend Tailwind's spacing scale with semantic token names (spacing.md = 16px) rather than overriding the numeric scale (spacing.4 = 16px) — both can coexist.</statement>
+        <rationale>Numeric and semantic scale coexistence allows gradual migration without breaking existing components that use the default numeric scale.</rationale>
+      </rule>
+    </section>
+
+    <section name="css-variable-declaration">
+      <p>CSS custom properties must be declared at the base layer to ensure they are available globally.</p>
+
+      <rule>
+        <statement>Declare all token-mapped CSS custom properties in a @layer base { :root { } } block — never in a component CSS file.</statement>
+        <rationale>@layer base ensures custom properties are available to all Tailwind utilities without specificity conflicts and survive PurgeCSS/JIT correctly.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Safelist token-generated classes that are constructed dynamically (e.g., bg-${color}) to prevent JIT purge from removing them.</statement>
+        <rationale>Tailwind JIT only keeps classes it finds as literal strings in source files; dynamic class construction is invisible to the scanner and the class is silently dropped.</rationale>
+      </rule>
+    </section>
+
+    <section name="pipeline-discipline">
+      <p>Token integration requires strict CI/CD discipline to prevent manual edits degrading the system.</p>
+
+      <rule>
+        <statement>Keep the Style Dictionary build step in the CI pipeline before tailwind build runs; never hand-edit the generated tailwind-theme.js.</statement>
+        <rationale>Manual edits to generated files are overwritten on next token sync; the generated file must be treated as a build artifact, not source of truth.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Enforce no-arbitrary-value via eslint-plugin-tailwindcss to prevent new hardcoded values entering the codebase after token integration.</statement>
+        <rationale>Token migration is reversible without enforcement; developers under deadline will reach for arbitrary values and the token layer degrades over time.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common mistakes agents make when generating token configurations.</p>
+
+      <rule>
+        <statement>Agents frequently generate color tokens without RGB channel support, breaking opacity modifiers — explicitly request the `&lt;alpha-value&gt;` pattern.</statement>
+        <rationale>This is a Tailwind-specific syntax that agents from general training sometimes get wrong.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Tailwind scale naming conflicts with token naming: `spacing.4 = 16px` in Tailwind default but `spacing.md = 16px` in tokens — agents produce wrong mappings without both scales as input.</statement>
+        <rationale>Provide reference tables to avoid this conflict.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Generated configs extend instead of replace by default but agents sometimes generate at `theme` level, wiping defaults — verify `theme.extend` placement.</statement>
+        <rationale>Validation is essential after agent-generated config.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Agents do not know which generated classes will be purged by JIT — require a safelist audit after generation.</statement>
+        <rationale>Dynamic class construction is invisible to Tailwind's scanner.</rationale>
+      </rule>
+    </section>
+
+    <note>
+      Best practices: Always use RGB channel pattern for color tokens, not raw hex, to preserve Tailwind's opacity modifier functionality (`bg-primary/50`). Extend the Tailwind default theme (`theme.extend`) rather than replacing it — replacing removes useful defaults like `font-sans`. Keep the Style Dictionary build step in the CI pipeline before `tailwind build` runs; config should never be hand-edited. Use `eslint-plugin-tailwindcss` with `no-arbitrary-value` rule to prevent new hardcoded values entering the codebase. Document token-to-utility-class mapping in Storybook tokens docs page — devs should not need to read `tailwind.config.js` to know which class to use. Safelist token-generated classes that are constructed dynamically (e.g., `bg-${color}`) to prevent JIT purge.
+    </note>
+
+    <see-also>
+      <link href="https://tailwindcss.com/docs/theme"/>
+      <link href="https://tailwindcss.com/docs/customizing-colors#using-css-variables"/>
+      <link href="https://amzn.github.io/style-dictionary/"/>
+      <link href="https://www.smashingmagazine.com/2025/tailwind-design-tokens/"/>
+      <link href="https://www.designsystems.com/tailwind-integration/"/>
+    </see-also>
+
+    <templates>
+      <template path="templates/tailwind.config.js" purpose="Tailwind config example with CSS variable references for color and spacing tokens using RGB channel pattern"/>
+      <template path="templates/build-tailwind-tokens.mjs" purpose="Node.js script that reads tokens.json and outputs tailwind-theme.js + tokens.css with correct RGB channel handling"/>
+    </templates>
+  </content>
+</methodology>

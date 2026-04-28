@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="design-doc-writing-process">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd-planning</domain>
+    <summary>7-phase process for writing design.md with codebase research, traceability matrix, architecture decisions, file structure, data models, and API contracts.</summary>
+    <tags>
+      <tag>design-process</tag>
+      <tag>architecture-decisions</tag>
+      <tag>specification-driven-development</tag>
+      <tag>workflow</tag>
+      <tag>sdd</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Design Document Writing Process</title>
+
+    <summary>A 7-phase process for writing design.md: (1) load SDD context and constitution, (2) codebase research to discover existing patterns, (3) build a FR traceability matrix, (4) write ADR-style Architecture Decisions (AD-X), (5) plan file structure with CREATE/MODIFY table, (6) define data models and database schema, (7) write API contracts. The process is sequential by design — skipping Phase 2 or 3 produces designs that conflict with existing code or leave FRs without implementing ADs.</summary>
+
+    <why>
+      <p>Codebase research before architecture decisions (Phase 2) is the highest-ROI step: designs written without it introduce naming inconsistencies, duplicate patterns, and API contracts that conflict with existing routes. The traceability matrix (Phase 3) catches gaps before any AD is written, not after. Two-turn structure (Phases 1-3 → human review → Phases 4-7) prevents committing to contracts before the coverage is confirmed.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>After spec.md is approved and before implementation-plan.md is created.</item>
+        <item>When the feature touches multiple subsystems and API contracts must be pinned.</item>
+        <item>When codebase patterns need to be discovered before architecture decisions are made.</item>
+        <item>Generating ADR-style decisions (AD-X) that executor agents will reference during coding.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Features with no new architecture (CRUD on an existing model) — copy existing AD patterns directly without a full design process.</item>
+        <item>Hot-fixes where the solution is already known.</item>
+        <item>Before spec.md is approved — design without locked requirements causes rework.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="phase-1-load-sdd-context">
+      <rule testable="true">
+        <statement>Read constitution.md, contracts.md, spec.md, and completed done/ designs BEFORE writing any section. Extract tech stack constraints, naming conventions, and existing patterns.</statement>
+        <rationale>Designs written without constitution context violate tech stack decisions. Designs written without done/ patterns introduce duplicate or conflicting architectural choices.</rationale>
+      </rule>
+
+      <list>
+        <item>.aidocs/constitution.md — tech stack, principles, standards</item>
+        <item>.aidocs/contracts.md — existing API contracts</item>
+        <item>{FEATURE_DIR}/spec.md — all FR-X and NFR-X to implement</item>
+        <item>features/done/ — completed designs for patterns and naming conventions</item>
+      </list>
+    </section>
+
+    <section name="phase-2-codebase-research">
+      <rule testable="true">
+        <statement>Run codebase research before writing any architecture decision. Invest 20-40k tokens here. Designs skipping Phase 2 conflict with existing patterns.</statement>
+        <rationale>Naming inconsistencies, duplicate service patterns, and API contracts that conflict with existing routes are all caused by skipping Phase 2.</rationale>
+      </rule>
+
+      <example type="good" title="Pattern discovery table — what to extract per component type">
+        <code lang="text"><![CDATA[
+Component Type  | Pattern Source        | What to Extract
+--------------- | --------------------- | ---------------
+API endpoints   | existing routes       | URL structure, middleware chain
+Services        | existing services     | Base class, error handling pattern
+Models          | existing models       | Field naming conventions, relationships
+Components      | existing UI           | Props interface, styling approach
+Tests           | existing test files   | Setup, mocking strategy, fixture patterns
+]]></code>
+      </example>
+    </section>
+
+    <section name="phase-3-traceability-matrix">
+      <rule testable="true">
+        <statement>Build the FR coverage table before writing any AD. Every FR-X and NFR-X must map to at least one AD candidate. Gaps found here are cheaper to fix than gaps found after ADs are written.</statement>
+        <rationale>The traceability matrix is the planning instrument for Phase 4. Without it, ADs are written in isolation and FRs are accidentally omitted.</rationale>
+      </rule>
+
+      <example type="good" title="Traceability matrix format">
+        <code lang="markdown"><![CDATA[
+## Spec Coverage
+
+| FR     | Requirement Summary                    | Implemented By (AD candidates) |
+|--------|----------------------------------------|-------------------------------|
+| FR-001 | User registration with email/password  | AD-001, AD-002, AD-003         |
+| FR-002 | Email validation required              | AD-001                         |
+| NFR-001| Response < 500ms p95                   | AD-004                         |
+]]></code>
+      </example>
+    </section>
+
+    <section name="phase-4-architecture-decisions">
+      <rule testable="true">
+        <statement>Each AD must include Context, Decision, Rationale (minimum 2 reasons), Alternatives Considered (minimum 2 real alternatives with rejection reasons), Consequences (positive/negative/risks), and Traces to FR-X.</statement>
+        <rationale>Future agents reading design.md need to understand why a path was NOT taken. Missing Consequences and rejection reasons cause agents to re-open closed decisions during implementation.</rationale>
+      </rule>
+
+      <example type="good" title="Full ADR format">
+        <code lang="markdown"><![CDATA[
+### AD-001: Email Validation Strategy
+
+**Context:** Users must provide valid email addresses. RFC 5322 validation at API level prevents invalid data from reaching the database.
+
+**Decision:** Use Zod schema validation with RFC 5322 format check at the API handler layer.
+
+**Rationale:**
+- Immediate feedback to user on invalid format
+- Prevents invalid data from reaching database
+- Zod provides TypeScript type safety
+
+**Alternatives Considered:**
+| Alternative | Pros | Cons | Why Rejected |
+|-------------|------|------|--------------|
+| Database constraint only | Simple | No user feedback until commit | Poor UX |
+| External email verification service | Catches typos | Latency, cost | Over-engineering for MVP |
+
+**Consequences:**
+- Positive: Fast validation, good UX, no external dependencies
+- Negative: Will not catch typos in valid-format emails
+- Risks: Strict RFC 5322 may reject some valid unusual formats
+
+**Traces to:** FR-001, FR-002
+]]></code>
+      </example>
+    </section>
+
+    <section name="phase-5-file-structure">
+      <rule testable="true">
+        <statement>Every file in the implementation must appear in the Files table with Action (CREATE/MODIFY/DELETE), File path, Description, FR, and AD columns. Test files must be explicit entries.</statement>
+        <rationale>Files not in the table are not implemented. Agents stop after source files and treat tests as optional unless tests are listed explicitly.</rationale>
+      </rule>
+    </section>
+
+    <section name="phase-6-data-models">
+      <rule testable="true">
+        <statement>Data model tables must include a constraints column. Omitting constraints causes migration failures when the executor implements the schema.</statement>
+        <rationale>Executor agents implement exactly what the table shows. Missing NOT NULL, UNIQUE, or FK constraints are silently omitted from migrations.</rationale>
+      </rule>
+    </section>
+
+    <section name="phase-7-api-contracts">
+      <rule testable="true">
+        <statement>If contracts.md exists: write "See contracts.md section X" — do not redefine endpoints in design.md. If contracts.md does not exist: document each endpoint with method, path, request/response schema, and all 4xx/5xx error responses.</statement>
+        <rationale>Two sources of truth for API contracts always drift. Executor agents implement from design.md and produce code that diverges from the actual contract.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Write API contracts (Phase 7) only after data models (Phase 6) are finalized. Contracts referencing undefined model fields produce executor tasks with incomplete validation.</statement>
+        <rationale>Data model field types, constraints, and names determine the contract's request/response shapes. Reversing the order produces contracts that do not match the models.</rationale>
+      </rule>
+    </section>
+
+    <section name="phase-1-load-sdd-context-checklist">
+      <list>
+        <item>Read .aidocs/constitution.md — extract tech stack and standards</item>
+        <item>Read .aidocs/contracts.md — note existing API patterns</item>
+        <item>Read {FEATURE_DIR}/spec.md — list all FR-X and NFR-X</item>
+        <item>Read features/done/ — extract naming conventions and architecture patterns</item>
+        <item>Note code standards and architectural constraints from constitution</item>
+      </list>
+    </section>
+
+    <section name="phase-2-codebase-research-checklist">
+      <list>
+        <item>Search for similar implementations using Glob/Grep</item>
+        <item>Find existing service patterns (class naming, base classes, error handling)</item>
+        <item>Locate controller/handler patterns (URL structure, middleware)</item>
+        <item>Study existing database schemas and migration patterns</item>
+        <item>Read existing test patterns (setup, mocking, fixtures)</item>
+      </list>
+    </section>
+
+    <section name="phase-3-traceability-matrix-checklist">
+      <list>
+        <item>List all FR-X from specification</item>
+        <item>List all NFR-X from specification</item>
+        <item>Plan AD candidates needed to implement each FR/NFR</item>
+        <item>Map each FR-X to at least one AD candidate</item>
+        <item>Document in Spec Coverage table — review for gaps before writing ADs</item>
+      </list>
+    </section>
+
+    <section name="phase-4-architecture-decisions-checklist">
+      <list>
+        <item>Write each AD with: Context, Decision, Rationale (min 2 reasons), Alternatives (min 2), Consequences, Traces to</item>
+        <item>Alternatives must be real options — not straw-man choices</item>
+        <item>Each alternative must have an explicit rejection reason</item>
+        <item>Consequences must list positive, negative, and risks</item>
+      </list>
+    </section>
+
+    <section name="phase-5-file-structure-checklist">
+      <list>
+        <item>List all files to CREATE with purpose</item>
+        <item>List all files to MODIFY with scope of changes</item>
+        <item>Include test files explicitly as CREATE entries</item>
+        <item>Include migration rollback scripts for schema changes</item>
+        <item>Assign FR and AD to each file</item>
+      </list>
+    </section>
+
+    <section name="phase-6-data-models-checklist">
+      <list>
+        <item>Define table for each data entity with fields, types, constraints</item>
+        <item>Include constraints column (NOT NULL, UNIQUE, FK, etc.)</item>
+        <item>Show relationships between models</item>
+        <item>Document validation rules per field</item>
+        <item>Plan indexes for query patterns</item>
+      </list>
+    </section>
+
+    <section name="phase-7-api-contracts-checklist">
+      <list>
+        <item>If contracts.md exists: reference it — do not redefine</item>
+        <item>If no contracts.md: document Method, Path, Request schema, Response schema, all 4xx/5xx errors</item>
+        <item>Write contracts only AFTER data models are finalized</item>
+        <item>Validate that request/response shapes match defined data models</item>
+      </list>
+    </section>
+
+    <section name="final-quality-gate">
+      <list>
+        <item>Every FR-X has at least one AD in the coverage table</item>
+        <item>Every AD has context, options (min 2), decision, rationale, consequences, traces to</item>
+        <item>Files table includes test files and migration rollbacks</item>
+        <item>Data models have constraints column populated</item>
+        <item>API contracts consistent with data models</item>
+        <item>No code snippets in design.md</item>
+        <item>Overview written last as summary of actual decisions</item>
+        <item>Status advanced to Review before handing off for approval</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A design agent runs Phases 1–3 in a single pass (context loading + codebase research + traceability matrix), then pauses for human review of the FR coverage table. After approval, it runs Phases 4–7 to produce architecture decisions, file structure, data models, and API contracts. This two-turn structure prevents the agent from committing to contracts before understanding existing patterns.</p>
+
+      <p>The research in Phase 2 is the most valuable subagent task: it can run in parallel across multiple modules using Glob/Grep, then feed findings into the AD drafting pass.</p>
+
+      <example type="good" title="Phase 1-3 prompt pattern">
+        <code lang="markdown"><![CDATA[
+Phase 1-3: Read constitution.md, spec.md, and existing done/ features.
+Build a traceability matrix: every FR-X maps to at least one AD-X candidate.
+Output only the matrix — do not write ADs yet.
+]]></code>
+      </example>
+
+      <example type="good" title="Phase 4-7 prompt pattern">
+        <code lang="markdown"><![CDATA[
+Phase 4-7: Given this traceability matrix and codebase research,
+write design.md sections: Architecture Decisions (ADR format), File Changes table,
+Data Models (TypeScript types + SQL schema), API Contracts (OpenAPI-style).
+Every AD must reference the FR-X it satisfies.
+]]></code>
+      </example>
+    </section>
+
+    <section name="limitations">
+      <list>
+        <item>Phase 2 (codebase research) consumes 20–40k tokens; skipping it produces designs that conflict with existing patterns</item>
+        <item>OpenAPI-style documentation in Phase 7 becomes stale quickly if generated early — write contracts after data models are finalized (Phase 6)</item>
+        <item>The 7-phase process is sequential by design; agents that skip phases (especially Phase 3, the traceability matrix) produce designs where some FR-X have no implementing AD</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always run Phase 2 (codebase research) before writing any AD — naming and structural decisions must match the existing codebase</item>
+        <item>Each AD must declare its alternatives with explicit rejection reasons; future agents need to understand why a path was NOT taken</item>
+        <item>Keep the traceability matrix (Phase 3) as a living section in design.md — update it when ADs are added</item>
+        <item>API contracts (Phase 7) should include error responses for every 4xx and 5xx case; executor agents generate incomplete error handling when contracts are vague</item>
+        <item>Separate concerns: data model decisions (AD-Data) and API contract decisions (AD-API) should be distinct ADs so they can be implemented in separate tasks</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents skip Phase 2 when under context pressure — explicitly require a codebase research section in the design.md output or it will not happen</item>
+        <item>"Alternatives Considered" tables are frequently fabricated; validate that alternatives listed were actually considered against real constraints</item>
+        <item>Phase 7 API contracts generated without real validation rules (field types, lengths, required flags) produce executor tasks that implement incomplete validation</item>
+        <item>Design docs written without reading `constitution.md` violate tech stack decisions — always load constitution first and cite it in ADs</item>
+        <item>Human approval of design.md is required before creating TASK_*.md files — automatic continuation is a common agent failure mode</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/find-patterns.sh" purpose="Phase 2 helper: discovers service, handler, model, and migration patterns across a codebase using ripgrep."/>
+    </templates>
+
+    <see-also>
+      <link href="https://opensource.zalando.com/restful-api-guidelines/"/>
+      <link href="https://refactoring.com/catalog/"/>
+      <link href="https://martinfowler.com/eaaCatalog/"/>
+      <link href="https://github.com/npryce/adr-tools"/>
+      <link href="https://c4model.com/"/>
+      <ref slug="design-doc-structure"/>
+      <ref slug="design-doc-examples"/>
+      <ref slug="writing-specifications"/>
+    </see-also>
+  </content>
+</methodology>
