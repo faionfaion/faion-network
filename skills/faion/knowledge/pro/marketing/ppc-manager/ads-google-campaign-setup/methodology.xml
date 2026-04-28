@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ads-google-campaign-setup">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>ppc-manager</domain>
+    <summary>API-driven Search campaign provisioning: conversion tracking → PAUSED campaign → themed ad groups → RSAs + extensions → launch-gate validation before ENABLED.</summary>
+    <category>setup</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tags>
+      <tag>campaign-setup</tag>
+      <tag>google-ads-api</tag>
+      <tag>search-campaigns</tag>
+      <tag>responsive-search-ads</tag>
+      <tag>api-automation</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>python</language>
+      <language>yaml</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Google Ads Campaign Setup</title>
+
+    <summary>Structured process for creating Google Ads Search campaigns via the API: conversion tracking first, then campaign with PAUSED status, ad groups by theme, Responsive Search Ads (RSA), and extensions. Default network settings must explicitly disable Display and Search Partners — the API does not match the UI defaults. Never flip status to ENABLED without verified conversion tracking firing in the last 24 hours and at least one RSA per ad group.</summary>
+
+    <why>
+      <p>Wrong campaign settings waste budget from day one. The API's network-settings default silently opts campaigns into Display Network and Search Partners, unlike the UI recommendation. Smart Bidding without seeded conversions spends ~14 days in learning burning budget. A spec-driven, PAUSED-first approach with a pre-launch gate prevents these failure modes and makes multi-account provisioning repeatable.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Templating new Google Ads accounts: agent provisions a Search campaign with conversion tracking, RSAs, extensions, and naming convention enforced</item>
+        <item>Onboarding agency or multi-tenant clients where the same campaign skeleton repeats across many accounts</item>
+        <item>Pre-launch QA: agent walks the launch checklist and refuses to enable until every item passes</item>
+        <item>Migrating manual campaigns to Smart Bidding by templating fresh campaigns with historical conversions</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-off campaigns launched in the UI in under 20 minutes — API setup overhead does not pay back</item>
+        <item>Campaigns using UI-only features (some recommendations, brand-suitability tweaks, certain PMax settings)</item>
+        <item>Heavily creative-led campaigns where asset variation is the primary work</item>
+        <item>Already-running accounts with established Smart Bidding — re-templating restarts learning</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="setup-process">
+      <p>Campaign setup follows a strict sequence: conversion tracking → campaign creation in PAUSED state → ad group + keyword structure → RSAs and extensions → launch gate validation.</p>
+
+      <rule testable="true">
+        <statement>Install and verify conversion tracking before creating any campaign that targets a conversion goal.</statement>
+        <rationale>Smart Bidding without conversion data wastes ~14 days in learning burning budget. A campaign verified firing conversions starts with useful signal immediately.</rationale>
+      </rule>
+
+      <list>
+        <item>Create Google Ads account</item>
+        <item>Link to Google Analytics 4</item>
+        <item>Create conversion actions (purchase, lead, sign-up, call, install)</item>
+        <item>Install Google Tag (gtag.js) or GTM container</item>
+        <item>Verify Tag Assistant shows conversions firing before launch</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Default to Search campaign type for new advertisers; it provides direct intent matching and is the easiest to diagnose and optimize.</statement>
+        <rationale>Search campaigns match ads to active queries, providing clear signal about intent. Display and PMax require more data and budget to optimize effectively.</rationale>
+      </rule>
+
+      <list>
+        <item>SEARCH: people actively searching — best for high-intent leads, simplest to optimize</item>
+        <item>DISPLAY: image ads across websites — brand awareness, retargeting</item>
+        <item>SHOPPING: product feed-driven — e-commerce with Merchant Center feed</item>
+        <item>VIDEO: YouTube ads — views, awareness, product demos</item>
+        <item>PERFORMANCE_MAX: AI cross-channel — requires 30+ conversions/month</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Always explicitly set target_search_network=False, target_content_network=False, target_partner_search_network=False for Search-only campaigns; the API does not default to Search-only like the UI recommends.</statement>
+        <rationale>API-created Search campaigns silently enable Display and Search Partners unless explicitly disabled. This wastes budget on irrelevant placements from day one.</rationale>
+      </rule>
+
+      <list>
+        <item>Campaign name: [Product]_[Type]_[Goal]_[Date] — enforced via regex</item>
+        <item>Networks: Search only (disable Display and Search Partners explicitly)</item>
+        <item>Locations: target market specifically (use geoTargetConstants/&lt;id&gt;, not country name strings)</item>
+        <item>Languages: match content language</item>
+        <item>Bidding: Maximize Conversions (no target CPA) for first 30 conversions</item>
+        <item>Budget: minimum $20-50/day; $1/day budget signals a unit error (1,000,000 micros = $1)</item>
+        <item>Status: always create as PAUSED; require explicit go-live step</item>
+      </list>
+
+      <rule testable="true">
+        <statement>One theme per ad group; 10-20 keywords per group; all keywords in a group must share the same intent and match the ad copy.</statement>
+        <rationale>Tightly themed ad groups produce higher Quality Scores because keyword-to-ad relevance improves. Mixing intents dilutes relevance and raises CPC.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Write at least 3 RSA headlines per ad group with 15 total headlines; include the primary keyword in at least one headline; target Ad Strength of Good or Excellent.</statement>
+        <rationale>More headlines give Google more combinations to test, improving CTR over time. Keyword inclusion in headlines raises Quality Score expected CTR component.</rationale>
+      </rule>
+
+      <list>
+        <item>Headlines: up to 15, 30 characters each</item>
+        <item>Descriptions: up to 4, 90 characters each</item>
+        <item>Include: keyword, benefit, social proof, CTA, offer/urgency</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Add sitelinks (4-6), callouts (4-6), and structured snippets at account or campaign level before launch; missing extensions lower ad rank and CTR.</statement>
+        <rationale>Extensions expand ad size, increase CTR, and contribute to Quality Score. They are listed as Asset resources in API v12+; using deprecated Extension service resources returns errors.</rationale>
+      </rule>
+    </section>
+
+    <section name="launch-checklist">
+      <p>The launch checklist is a gate that prevents campaigns from going live without all prerequisites met.</p>
+
+      <list>
+        <item>Conversion tracking installed and verified firing in last 24 hours</item>
+        <item>Google Analytics 4 linked to Google Ads account</item>
+        <item>Remarketing audience created from website visitors</item>
+        <item>Campaign spec YAML/JSON written and validated against schema</item>
+      </list>
+
+      <p>Campaign setup requirements:</p>
+
+      <list>
+        <item>Campaign type: Search</item>
+        <item>Network: Search only (Display and Search Partners explicitly disabled)</item>
+        <item>Locations: geoTargetConstants/&lt;id&gt; format (not country name strings)</item>
+        <item>Languages: configured explicitly</item>
+        <item>Budget: set in micros (dollars * 1,000,000)</item>
+        <item>Bidding: Maximize Conversions, no Target CPA for first 30 conversions</item>
+        <item>Status: PAUSED</item>
+        <item>start_date and end_date: set explicitly (default end_date is forever)</item>
+      </list>
+
+      <p>Ad groups and ads requirements:</p>
+
+      <list>
+        <item>One ad group per keyword theme</item>
+        <item>10-20 keywords per ad group, same intent</item>
+        <item>Minimum 1 RSA per ad group with 15 headlines and 4 descriptions</item>
+        <item>Headline character limits validated (30 chars each)</item>
+        <item>Description character limits validated (90 chars each)</item>
+        <item>Keyword included in at least one headline per RSA</item>
+      </list>
+
+      <p>Extensions (Assets) requirements:</p>
+
+      <list>
+        <item>Sitelinks: 4-6 at account or campaign level</item>
+        <item>Callouts: 4-6 at account or campaign level</item>
+        <item>Structured snippets: at least one category</item>
+        <item>Images: logo and product images</item>
+        <item>Extensions use Asset resources (not deprecated Extension resources)</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Run the launch gate check and require all items to pass before flipping campaign status to ENABLED.</statement>
+        <rationale>A single missing item — no RSA, conversion tracking not firing, Display network on — can waste the entire budget before anyone notices.</rationale>
+      </rule>
+
+      <reference path="templates/launch-gate.py">Pre-flight check script: validates RSA count, network settings, budget unit, conversion tracking</reference>
+    </section>
+
+    <section name="api-gotchas">
+      <p>API-specific failure modes that are invisible in staging and only appear in production.</p>
+
+      <rule testable="true">
+        <statement>Treat every campaign setting as explicit; never rely on API defaults matching UI recommendations.</statement>
+        <rationale>The most dangerous default: Search campaigns created via API opt into Display Network and Search Partners unless explicitly disabled. The UI defaults to Search-only. This single oversight burns budget from day one.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Omitting network_settings fields when creating a Search campaign via API.</description>
+        <reason>API defaults enable Display Network and Search Partners. Agents that do not explicitly set target_content_network=False create campaigns that spend on irrelevant placements.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Verify budget amount_micros equals dollars * 1,000,000 before submission; budgets under 1,000,000 micros ($1/day) indicate a unit error.</statement>
+        <rationale>Budget micros confusion is the most common setup bug. A $50/day budget written as 50 instead of 50,000,000 creates a $0.000050/day budget that generates zero impressions.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Start with Maximize Conversions without a Target CPA target; switch to Target CPA only after accumulating 30+ conversions.</statement>
+        <rationale>Smart Bidding requires sufficient conversion history to train. Setting a Target CPA before 30 conversions forces the bidder to over-fit on sparse data and underdeliver.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Using country or city name strings in location targeting criteria.</description>
+        <reason>Location targeting only accepts geoTargetConstants/&lt;numeric-id&gt; format. Name strings fail validation with a non-obvious error that does not mention the format requirement.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Use Asset resources for extensions (sitelinks, callouts, images) in API v12+; the older Extension service resources return deprecated-resource errors.</statement>
+        <rationale>Google migrated extensions to the Asset model in 2022. Code written against the Extension service silently fails or returns deprecation errors without explaining the migration path.</rationale>
+      </rule>
+
+      <list>
+        <item>Enabling the campaign (status ENABLED): human approval required</item>
+        <item>Raising budget by more than 25%: human approval required</item>
+        <item>Switching bid strategy: human approval required</item>
+        <item>Opening a new geographic target: human approval required</item>
+        <item>Removing extensions: human approval required</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Setup agent reads a YAML "campaign spec" (objective, budget, locations, languages, ad-group themes, assets, extensions). It validates the spec, calls Google Ads API in order: budget → campaign → ad groups → keywords → assets → RSAs → extensions, and emits a final "what was created" report. Status is left as PAUSED for human review before flipping to ENABLED. Always pair with the google-ads-reporting agent so a fresh campaign is monitored from minute one.</p>
+
+      <p>Recommended subagents:</p>
+
+      <list>
+        <item>faion-ads-agent — campaign creation + mutation calls.</item>
+        <item>faion-feature-executor — wraps "set up new client account" as a multi-step SDD task.</item>
+        <item>faion-sdd-executor-agent — runs quality gates around the campaign-spec parser + idempotency tests.</item>
+        <item>A copy-generation sub-agent for headline/description drafting that the executor consumes.</item>
+      </list>
+
+      <example type="good" title="Campaign setup prompt pattern">
+        <code lang="text"><![CDATA[
+System: You are the campaign-setup agent. Always create with status PAUSED.
+        Default network = Search only (target_search_network=False,
+        target_content_network=False, target_partner_search_network=False).
+        Refuse to ENABLE without conversion tracking verified firing in
+        the last 24 hours and at least one RSA per ad group.
+User:   Bootstrap a Search campaign for SaaS X: $50/day, US+CA, en, three
+        ad-group themes [main, alternative, competitor]. Use spec.yaml.
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <rule testable="true">
+        <statement>Generate a campaign-spec schema (pydantic / JSON Schema) and validate before any API call — most setup failures are typos.</statement>
+        <rationale>Validation catches obvious errors before they reach the API. A spec that passes schema validation is likely to succeed on the API call.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Default to PAUSED status; require an explicit "go-live" step.</statement>
+        <rationale>PAUSED-first prevents accidental launch with missing elements. The go-live step is a checkpoint where humans verify everything is correct before spend begins.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Lock naming convention to a regex; agents producing "Test Test 1" should fail their own lint.</statement>
+        <rationale>Naming convention consistency enables quick identification and bulk operations. Enforcing it via lint prevents drift.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Verify conversion tracking fires (Tag Assistant or gtag debug) BEFORE creating any campaign that targets a conversion goal.</statement>
+        <rationale>Conversion tracking must be live before bidding starts. Creating a campaign with a conversion target and no tracking wastes budget during learning.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Start with Maximize Conversions (no Target CPA) for the first 30 conversions; switch to Target CPA only after enough data lands.</statement>
+        <rationale>Maximize Conversions is less constrained; it allows the algorithm to explore and learn the cost/conversion curve. Once enough data is available, Target CPA locks in more predictable outcomes.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Add all relevant assets (sitelinks, callouts, structured snippets) at account or campaign level; missing them lowers ad-rank meaningfully.</statement>
+        <rationale>Extensions are high-leverage — they increase click rates and quality score. Including them in launch is a quick win.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For multi-account agency setups, drive everything from a CSV / YAML so spec changes are reviewable in git before they hit accounts.</statement>
+        <rationale>Version control on specs makes audits and rollbacks possible. Agents deploying without review create untrackable changes.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set start_date / end_date explicitly; default end_date is "forever" and agents that forget to set it accumulate stale forever-running campaigns.</statement>
+        <rationale>Explicit dates prevent campaigns from outliving their purpose. Campaigns with no end_date become zombie campaigns that drain budget months after their intent is obsolete.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/launch-gate.py" purpose="Pre-flight checks before flipping campaign to ENABLED"/>
+      <template path="templates/campaign-checklist.md" purpose="Human-readable launch checklist for Search campaigns"/>
+      <template path="templates/ad-copy.md" purpose="RSA headline and description template (15 headlines, 4 descriptions)"/>
+    </templates>
+
+    <see-also>
+      <link href="https://developers.google.com/google-ads/api/docs/campaigns/budgets"/>
+      <link href="https://developers.google.com/google-ads/api/docs/"/>
+      <link href="https://ads.google.com/intl/en/home/tools/ads-editor/"/>
+      <link href="https://tagassistant.google.com"/>
+    </see-also>
+  </content>
+</methodology>
