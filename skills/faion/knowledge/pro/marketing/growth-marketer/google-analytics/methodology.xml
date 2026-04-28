@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="google-analytics">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>growth-marketer</domain>
+    <summary>GA4 setup, event taxonomy, custom dimensions, Data API reporting, and Measurement Protocol integration with agent rules for parameter limits and data consistency.</summary>
+    <tags>
+      <tag>google-analytics</tag>
+      <tag>ga4</tag>
+      <tag>analytics</tag>
+      <tag>data-api</tag>
+      <tag>event-tracking</tag>
+    </tags>
+    <category>analytics</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Google Analytics 4 (GA4)</title>
+
+    <summary>GA4 setup, event taxonomy, custom dimensions, Data API reporting, and framework integrations (React/Gatsby, Django, Measurement Protocol). The rule: lock the event taxonomy in a repo file before deploying code; register all custom dimensions in GA4 Admin before data flows; always pass client_id from the cookie when sending Measurement Protocol events server-side.</summary>
+
+    <why>
+      <p>GA4 is free and ubiquitous for web/app analytics, but its event-driven model requires upfront taxonomy design. Silent data loss is the most common failure: events with unregistered custom dimensions write nothing; Measurement Protocol calls with fresh UUIDs as client_id create ghost users; custom dimension names exceeding 40 characters are silently truncated. An agent that generates the taxonomy, code, and admin checklist in one pass prevents all three.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Instrumenting a new site/app and needing a complete event taxonomy + gtag/Measurement Protocol code.</item>
+        <item>Agent-driven daily or weekly reporting via the Data API.</item>
+        <item>Auditing an existing GA4 property for misconfigurations (missing user_id, broken funnels, double-counted events).</item>
+        <item>Server-side tracking via Measurement Protocol because client tracking is blocked by ad-blockers.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Privacy-strict EU-only audiences without server-side proxy + Consent Mode — GA4 in default mode breaks GDPR/Schrems II for many setups; use Plausible or Matomo instead.</item>
+        <item>High-volume product analytics needing sub-second latency — GA4 data is sampled and delayed; use Mixpanel, Amplitude, or PostHog.</item>
+        <item>BigQuery export not enabled — agent analytical depth is capped at the GA4 UI.</item>
+        <item>B2B sales-led operations where revenue is closed in CRM, not on the site.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="data-streams">
+      <rule testable="true">
+        <statement>Create one data stream per platform (web, iOS, Android); use a single GA4 property to unify cross-platform data rather than separate properties per platform.</statement>
+        <rationale>Separate properties prevent cross-platform user stitching. A unified property with multiple streams allows unified user_id tracking and cross-platform funnel analysis.</rationale>
+      </rule>
+      <reference path="templates/gtag-snippet.html">GA4 gtag.js installation snippet for web streams</reference>
+    </section>
+
+    <section name="enhanced-measurement">
+      <p>When enabled, GA4 auto-tracks: page_view, scroll (90% depth), outbound link clicks, site search, video engagement, and file downloads. These require no code but can be selectively disabled.</p>
+      <rule testable="true">
+        <statement>Enable BigQuery export from day 1 — it is free for most traffic volumes and bypasses sampling and thresholding that affects the GA4 UI.</statement>
+        <rationale>Without BigQuery, agents are limited to sampled, rounded UI data. BigQuery gives raw event-level access, enabling accurate cohort, funnel, and retention queries.</rationale>
+      </rule>
+    </section>
+
+    <section name="user-properties">
+      <rule testable="true">
+        <statement>Set user properties (subscription_tier, signup_source) via gtag('set', 'user_properties', {...}) before sending events so that all subsequent events in the session carry the properties.</statement>
+        <rationale>User properties must be set before the events they should segment. Setting them after a session starts means those events have null property values in reports.</rationale>
+      </rule>
+    </section>
+
+    <section name="event-categories">
+      <list>
+        <item>Automatic: collected by default — first_visit, session_start, page_view</item>
+        <item>Enhanced measurement: scroll, click (outbound), file_download, video_start/complete</item>
+        <item>Recommended: Google-defined schemas — login, sign_up, purchase, begin_checkout, add_to_cart</item>
+        <item>Custom: product-specific — feature_used, subscription_started, error_occurred</item>
+      </list>
+      <rule testable="true">
+        <statement>Prefer recommended event names (login, sign_up, purchase) over custom names when the semantic is identical; Google pre-configures reports and conversion tracking for them.</statement>
+        <rationale>Custom event names require manual report configuration. Recommended events flow into built-in reports and conversion funnels automatically.</rationale>
+      </rule>
+    </section>
+
+    <section name="recommended-events">
+      <example type="good" title="Key Recommended Events">
+        <code lang="javascript"><![CDATA[
+// Sign up
+gtag('event', 'sign_up', { method: 'email' });
+
+// Purchase — transaction_id is REQUIRED for deduplication
+gtag('event', 'purchase', {
+  transaction_id: 'T12345',
+  value: 99.99,
+  currency: 'USD',
+  items: [{ item_id: 'SKU_001', item_name: 'Premium Plan', price: 99.99, quantity: 1 }]
+});
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="custom-event-parameters">
+      <rule testable="true">
+        <statement>Keep event names under 40 characters and parameter names under 40 characters; values under 100 characters; max 25 parameters per event. Build a validator into the codegen step.</statement>
+        <rationale>GA4 silently truncates or drops data that exceeds these limits. There is no error — data just disappears. Agents auto-generating long names from product specs hit this constantly.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Register all custom dimensions in GA4 Admin (Admin → Data display → Custom definitions) BEFORE deploying code that sends them; unregistered params are collected but invisible in reports.</statement>
+        <rationale>GA4 stores raw event params but only surfaces registered custom dimensions in the UI and Data API. Events sent before registration are not backfilled.</rationale>
+      </rule>
+    </section>
+
+    <section name="data-api-reporting">
+      <reference path="templates/ga4_pull.py">Python Data API helper for daily top-events report</reference>
+      <list>
+        <item>Common dimensions: date, eventName, pagePath, sessionSource, deviceCategory, country</item>
+        <item>Common metrics: eventCount, totalUsers, sessions, averageSessionDuration, bounceRate, conversions</item>
+        <item>API quota: 50 concurrent requests, 250k tokens/day per property — a haiku agent in a tight loop can exhaust this</item>
+      </list>
+    </section>
+
+    <section name="server-side-tracking-measurement-protocol">
+      <rule testable="true">
+        <statement>When sending Measurement Protocol events server-side, always pass the client_id from the browser cookie (_ga cookie value); never generate a fresh UUID server-side for existing users.</statement>
+        <rationale>A server-side call with a fresh UUID creates a ghost user in GA4 that is counted separately from the real user. This inflates user counts and breaks funnel attribution.</rationale>
+      </rule>
+      <reference path="templates/mp_track.py">Measurement Protocol server-side event helper</reference>
+    </section>
+
+    <section name="agent-gotchas-and-antipatterns">
+      <antipattern>
+        <description>purchase event fires without transaction_id parameter.</description>
+        <reason>Without transaction_id, GA4 cannot deduplicate purchase events. If the page reloads or the event fires twice, revenue is double-counted. Always include transaction_id in every purchase event.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent generates event/parameter names longer than 40 characters from product specs.</description>
+        <reason>GA4 silently truncates names. Build a validator into the taxonomy codegen step: assert len(name) &lt;= 40 for every event and parameter name before deploying.</reason>
+      </antipattern>
+      <antipattern>
+        <description>DebugView used to confirm historical events are tracking correctly.</description>
+        <reason>DebugView only shows real-time events. Standard reports have a 24-48h lag. An agent asking "why isn't my event in reports?" must wait, not re-debug the implementation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Service account JSON keys passed as a parameter in agent prompts.</description>
+        <reason>JSON keys in prompts leak credentials into LLM context logs. Use Workload Identity Federation or short-lived OAuth tokens; never hard-code key material.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Comparing pre-Consent-Mode vs post-Consent-Mode periods as a performance regression.</description>
+        <reason>Consent Mode v2 changes reported data dramatically (EU traffic can drop 30-50%). An agent must check consent mode rollout dates before attributing declines to campaign performance.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent-generated single-domain gtag code deployed on a multi-domain site.</description>
+        <reason>Without the linker config (gtag 'linker' parameter), users crossing domains appear as new sessions with lost attribution. Always check if the site spans multiple domains before generating gtag code.</reason>
+      </antipattern>
+    </section>
+
+    <section name="reporting-rules">
+      <rule testable="true">
+        <statement>"Conversions" in GA4 reports only counts events that were explicitly marked as conversions in Admin; an agent reporting "conversions" from a property where no events are marked returns zero.</statement>
+        <rationale>GA4 does not automatically infer conversion intent from event names. An agent must verify which events are marked as conversions in Admin before interpreting conversion metrics.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/gtag-snippet.html" purpose="GA4 gtag.js installation snippet for web streams"/>
+      <template path="templates/ga4_pull.py" purpose="Python Data API helper for daily top-events report"/>
+      <template path="templates/mp_track.py" purpose="Measurement Protocol server-side event helper"/>
+    </templates>
+
+    <section name="best-practices">
+      <p>Lock the event taxonomy in an events.md file in the repo and have agents diff against it before code changes. Always pass client_id from cookie when sending Measurement Protocol events; never let the agent generate fresh UUIDs server-side. Enable BigQuery export from day 1 — it's free for most volumes and bypasses sampling/thresholding. Use GTM Server-Side for resilience against ad-blockers and to keep secrets server-side. Register all custom dimensions in admin before deploying code that sends them; agents should generate the admin checklist alongside the code. Tie consent-mode signals to the event flow; without it, post-2024 EU traffic is severely under-reported.</p>
+    </section>
+
+    <section name="ai-agent-gotchas-extended">
+      <p>Agents may exceed the 25-parameter or 40-char-name limits silently; build a validator into the codegen step. The Data API has quotas (50 concurrent, 250k tokens/day per property); a haiku agent in a tight loop can exhaust them. DebugView only shows real-time, not historical; agents asking "why isn't my event in standard reports?" must remember the 24-48h lag. Service account JSON keys leak into prompts — use Workload Identity Federation or short-lived OAuth tokens. Cross-domain tracking requires the linker config; agent-generated single-domain code breaks attribution on multi-domain sites. "Conversions" in GA4 = events you marked as conversions in admin; an agent reporting "conversions" without that mapping reports zero.</p>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A sonnet instrumentation agent generates a full event taxonomy (recommended events, custom events, params, user properties) from a product spec, plus the gtag and Measurement Protocol code. A haiku reporting agent runs daily Data API queries and writes a markdown digest (top events, top sources, conversion deltas). An opus audit agent inspects the property for missing key events, broken funnels, BigQuery export status, and consent-mode coverage.</p>
+      <section name="recommended-subagents">
+        <list>
+          <item>faion-growth-agent (opus for audits, sonnet for taxonomy design).</item>
+          <item>Generic data/haiku subagent — daily Data API pulls into markdown.</item>
+          <item>DevTools/sonnet subagent — write/refactor gtag, GTM tags, server-side MP calls.</item>
+        </list>
+      </section>
+      <section name="prompt-pattern">
+        <p>Pattern 1: "Given product = {description} with key flows {flow_list}, generate a GA4 event taxonomy: recommended events (login/sign_up/purchase) and custom events. For each, list params (≤25, ≤40 chars), user_properties, and admin steps to register custom dimensions. Output as markdown table." Pattern 2: "Pull last 7d from property {id}: top 10 events by count, top 5 sources, conversion count by event_name. Use Data API with date_ranges [7daysAgo, today]. Return markdown + flag any event with day-over-day delta >30%."</p>
+      </section>
+    </section>
+
+    <section name="cli-tools-and-services">
+      <p>CLI tools include google-analytics-data Python SDK (query Data API reports; pip install google-analytics-data), google-analytics-admin Python SDK (manage properties, custom dimensions; pip install google-analytics-admin), gcloud CLI (auth, service account keys for API access; https://cloud.google.com/sdk), GTM Server-Side container (server-side tagging proxy; https://developers.google.com/tag-platform/tag-manager/server-side), bq CLI (query GA4 BigQuery export tables; https://cloud.google.com/bigquery/docs/bq-command-line-tool), and dbt (model GA4 BigQuery export into clean tables; pip install dbt-bigquery). Services include GA4 Data API (SaaS, read-only reporting, yes REST + SDKs), GA4 Admin API (SaaS, manage events, audiences, custom dims, yes REST), GA4 Measurement Protocol (SaaS, server-side event ingest, yes REST), BigQuery (GA4 export) (SaaS, raw event-level data, no sampling, yes SQL + bq), Looker Studio (SaaS, dashboards, partial APIs limited, agent can build via gas), GTM (web + server) (SaaS, partial container management API exists but heavy), Stape / Addingwell (SaaS, yes managed server-side GTM hosting), and Consent platforms (CookieYes, OneTrust, Cookiebot) (SaaS, yes REST, required for GA4 + EU compliance).</p>
+    </section>
+
+    <section name="inline-data-api-helper">
+      <p>Inline Data API helper for agent's daily report: from google.analytics.data_v1beta import BetaAnalyticsDataClient; from google.analytics.data_v1beta.types import DateRange, Dimension, Metric, RunReportRequest. def top_events(property_id: str, days: int = 7): client = BetaAnalyticsDataClient(); req = RunReportRequest(property=f"properties/{property_id}", date_ranges=[DateRange(start_date=f"{days}daysAgo", end_date="today")], dimensions=[Dimension(name="eventName")], metrics=[Metric(name="eventCount"), Metric(name="totalUsers")], limit=10); resp = client.run_report(req); return [{"event": r.dimension_values[0].value, "count": int(r.metric_values[0].value), "users": int(r.metric_values[1].value)} for r in resp.rows].</p>
+    </section>
+
+    <section name="references">
+      <list>
+        <item>GA4 Data API docs — https://developers.google.com/analytics/devguides/reporting/data/v1</item>
+        <item>Measurement Protocol GA4 — https://developers.google.com/analytics/devguides/collection/protocol/ga4</item>
+        <item>Simo Ahava's blog — https://www.simoahava.com/ (de facto practitioner reference)</item>
+        <item>GA4 BigQuery export schema — https://support.google.com/analytics/answer/7029846</item>
+        <item>Google's GA4 migration guide — https://support.google.com/analytics/topic/14088998</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://developers.google.com/analytics/devguides/reporting/data/v1"/>
+      <link href="https://developers.google.com/analytics/devguides/collection/protocol/ga4"/>
+      <link href="https://www.simoahava.com/"/>
+      <link href="https://support.google.com/analytics/answer/7029846"/>
+      <link href="https://support.google.com/analytics/topic/14088998"/>
+    </see-also>
+  </content>
+</methodology>

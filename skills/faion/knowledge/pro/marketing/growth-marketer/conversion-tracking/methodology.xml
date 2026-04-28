@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="conversion-tracking">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>growth-marketer</domain>
+    <summary>Event tracking patterns for GA4, funnel instrumentation, A/B testing, SaaS lifecycle events, and server-side purchase reconciliation with event registry discipline.</summary>
+    <tags>
+      <tag>conversion-tracking</tag>
+      <tag>ga4</tag>
+      <tag>funnel</tag>
+      <tag>event-tracking</tag>
+      <tag>analytics</tag>
+    </tags>
+    <category>tracking</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Conversion Tracking</title>
+
+    <summary>Implementation patterns for tracking conversion events across the full user lifecycle — GA4 goal setup, funnel step instrumentation, A/B test exposure and conversion events, SaaS user-lifecycle events (signup, activation, retention, purchase, referral), content engagement, and video tracking. Includes a reusable FunnelTracker class and an event-registry validator.</summary>
+
+    <why>
+      <p>Client-side tracking loses 20-40% of events to ad-blockers, ITP, and consent gating. A versioned event registry with typed wrappers and server-side purchase reconciliation is the only reliable source of truth for funnel analysis, paid-channel ROAS, and A/B test results.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Pre-launch: setting up GA4 + privacy-friendly analytics and a server-side event log before first users.</item>
+        <item>Implementing a SaaS funnel (signup → activation → trial → paid → expansion) with consistent naming.</item>
+        <item>Replatforming or migrating analytics — codifying schema prevents lossy reinstrumentation.</item>
+        <item>Need a single source-of-truth for conversion events backing A/B tests and exec dashboards.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pure 1:1 sales with fewer than 100 prospects/month — CRM tracking is simpler and sufficient.</item>
+        <item>Pre-launch landing-page test where a sign-up form already gives the answer.</item>
+        <item>Highly regulated environments (healthcare PHI, COPPA) without a prior privacy/legal review of payloads.</item>
+        <item>Cannot commit to maintaining the schema; broken events are worse than no events.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="ga4-conversion-goals-and-funnel-setup">
+      <rule testable="true">
+        <statement>Mark events as conversions in GA4 Admin → Events by toggling "Mark as conversion"; assign monetary value via the value and currency parameters on every purchase-type event.</statement>
+        <rationale>Events without value make revenue attribution impossible in GA4. Without the conversion toggle, events do not appear in Goals reports or inform bidding in linked Google Ads campaigns.</rationale>
+      </rule>
+      <section name="key-saas-conversion-events">
+        <example type="good" title="Key SaaS Conversion Events">
+          <code lang="javascript"><![CDATA[
+// Subscription conversion
+gtag('event', 'generate_lead', {
+  currency: 'USD',
+  value: 19.00,
+  lead_source: 'landing_page'
+});
+
+// Trial started
+gtag('event', 'start_trial', {
+  plan_name: 'Pro',
+  trial_duration_days: 14
+});
+
+// Upgrade conversion
+gtag('event', 'upgrade_plan', {
+  from_plan: 'Free',
+  to_plan: 'Plus',
+  value: 19.00,
+  currency: 'USD'
+});
+
+// Purchase (always include transaction_id for deduplication)
+gtag('event', 'purchase', {
+  value: 99.99,
+  currency: 'USD',
+  transaction_id: 'T12345'
+});
+          ]]></code>
+        </example>
+      </section>
+      <rule testable="true">
+        <statement>Define funnels in GA4 Explorations → Funnel exploration with explicit named steps; instrument each step with a distinct event rather than relying on page-view sequence.</statement>
+        <rationale>Page-view funnels break on SPAs and client-side routing. Named events are stable across routing changes and portable to other analytics tools.</rationale>
+      </rule>
+      <section name="subscription-funnel-steps">
+        <example type="good" title="Subscription Funnel Steps">
+          <code lang="javascript"><![CDATA[
+// Step 1: Landing page
+gtag('event', 'landing_page_view', { page_variant: 'A', utm_source: 'google' });
+
+// Step 2: Pricing view
+gtag('event', 'pricing_view', { displayed_plans: ['Free', 'Plus', 'Pro'] });
+
+// Step 3: Checkout started
+gtag('event', 'begin_checkout', { selected_plan: 'Plus', value: 19.00, currency: 'USD' });
+
+// Step 4: Payment info entered
+gtag('event', 'add_payment_info', { payment_type: 'credit_card' });
+
+// Step 5: Purchase complete
+gtag('event', 'purchase', { transaction_id: 'T12345', value: 19.00, currency: 'USD' });
+          ]]></code>
+        </example>
+      </section>
+    </section>
+
+    <section name="ab-test-tracking">
+      <rule testable="true">
+        <statement>Emit an experiment_exposure event at the moment the variant is rendered, and set it as a user property; without exposure tracking, post-hoc segment analysis is unreliable.</statement>
+        <rationale>If exposure is not recorded, any user who saw a variant but did not convert is invisible to the analysis. Survivor bias inflates measured lift.</rationale>
+      </rule>
+      <example type="good" title="A/B Test Exposure and Conversion Tracking">
+        <code lang="javascript"><![CDATA[
+function trackExperiment(experimentId, variant) {
+  gtag('event', 'experiment_exposure', {
+    experiment_id: experimentId,
+    variant_id: variant
+  });
+  gtag('set', 'user_properties', { [`exp_${experimentId}`]: variant });
+  plausible('Experiment', { props: { experiment: experimentId, variant } });
+}
+
+function trackExperimentConversion(experimentId, variant, conversionType, value = 0) {
+  gtag('event', 'experiment_conversion', {
+    experiment_id: experimentId,
+    variant_id: variant,
+    conversion_type: conversionType,
+    value
+  });
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="saas-user-lifecycle-events">
+      <rule testable="true">
+        <statement>Track the five lifecycle events — signup, activation, return visit, purchase, referral — with consistent naming across web, mobile, and backend; use server-side Stripe webhook as the authoritative purchase source.</statement>
+        <rationale>Client-side purchase events are lost to ad blockers, ITP, and tab-close race conditions. Server-side purchase events from Stripe webhooks are the only complete record and should override client-side fallbacks.</rationale>
+      </rule>
+      <example type="good" title="SaaS Lifecycle Event Tracking">
+        <code lang="javascript"><![CDATA[
+function trackSignup(method, source) {
+  gtag('event', 'sign_up', { method, source });
+  plausible('Signup', { props: { method, source } });
+}
+
+function trackActivation(feature) {
+  gtag('event', 'activation', { first_feature: feature });
+  plausible('Activation', { props: { feature } });
+}
+
+function trackReturn(daysSinceLastVisit) {
+  gtag('event', 'user_return', { days_away: daysSinceLastVisit });
+}
+
+function trackPurchase(plan, price, currency) {
+  gtag('event', 'purchase', {
+    value: price, currency,
+    items: [{ item_name: plan, price }]
+  });
+  plausible('Purchase', { revenue: { currency, amount: price }, props: { plan } });
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="feature-usage-and-content-engagement">
+      <rule testable="true">
+        <statement>Track feature usage with a generic feature_usage event carrying feature_name and feature_action; track article read progress at 25/50/75/100% milestones and video progress at 25/50/75% milestones.</statement>
+        <rationale>Milestone-based progress tracking avoids event flooding while preserving the shape of engagement curves needed for content optimization and onboarding analysis.</rationale>
+      </rule>
+      <example type="good" title="Feature Usage and Content Progress Tracking">
+        <code lang="javascript"><![CDATA[
+function trackFeatureUsage(featureName, action, metadata = {}) {
+  gtag('event', 'feature_usage', {
+    feature_name: featureName,
+    feature_action: action,
+    ...metadata
+  });
+}
+
+function trackReadProgress(articleId, percentage) {
+  const milestones = [25, 50, 75, 100];
+  if (milestones.includes(percentage)) {
+    gtag('event', 'article_progress', { article_id: articleId, progress: percentage });
+  }
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="event-registry">
+      <rule testable="true">
+        <statement>Maintain a versioned event registry (YAML or JSON) checked into the repo; treat event schema changes like API changes — bump a version, emit a deprecation alias for one release before removing the old name.</statement>
+        <rationale>Renaming events silently breaks all dashboards, alerts, and ML models that depend on them. A registry with CI validation prevents unregistered events from reaching production.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use snake_case for all event names and property names without exception; never mix camelCase mid-project.</statement>
+        <rationale>Inconsistent casing creates duplicate events in analytics tools (sign_up vs signUp vs SignUp are three separate events), inflating acquisition counts and breaking funnel steps.</rationale>
+      </rule>
+      <reference path="templates/validate-events.py">CI script that fails if any tracking call uses an unregistered event name</reference>
+    </section>
+
+    <section name="currency-and-value">
+      <rule testable="true">
+        <statement>Store all monetary values as integer cents in a single canonical field (value_cents); document this unit at the top of the event registry and in every code comment that touches the field.</statement>
+        <rationale>Mixed dollar/cent values in purchase events corrupt revenue reporting silently — the error is invisible until a discrepancy is noticed in monthly reconciliation.</rationale>
+      </rule>
+    </section>
+
+    <section name="pii-and-consent">
+      <rule testable="true">
+        <statement>Never include email addresses, full names, or other directly identifying fields as event properties; pair each conversion with user-property updates (plan, signup_source) for cohorting instead.</statement>
+        <rationale>PII in event streams violates GDPR/CCPA. User properties stored in the analytics platform are separate from raw events and provide segmentation without raw PII exposure in event logs.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Gate all analytics dispatches behind a CMP consent check; do not fire any events before consent state is resolved.</statement>
+        <rationale>Firing before consent state is resolved is a GDPR violation. Events from unconsented sessions must fall back to aggregate-only metrics without user identifiers.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Tracking purchase events only client-side (browser JavaScript).</description>
+        <reason>Client-side purchase events are the most fraud-prone and lossy event type — ad blockers, ITP, and tab-close race conditions cause 20-40% loss. Use Stripe webhook server-side events as the authoritative source.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Adding 10 optional properties to every event "for completeness."</description>
+        <reason>Downstream warehouses charge per row times column count. Sparse columns with mostly-null values inflate cost without analytical value.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Firing tracking events in test environments without a production guard.</description>
+        <reason>Test runs burn through GA4 hit quotas and pollute conversion data with automated traffic, skewing funnel metrics.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/funnel-tracker.js" purpose="FunnelTracker class: trackStep, trackCompletion, trackAbandonment with GA4 + Plausible"/>
+      <template path="templates/validate-events.py" purpose="CI script to fail if any tracking call uses an unregistered event name"/>
+    </templates>
+
+    <section name="best-practices">
+      <p>Maintain a versioned event registry (YAML/JSON) checked into the repo; treat schema changes like API changes. Use snake_case for event names + props, never mix with camelCase mid-project; consistency saves hours in dashboards. Always store value in a single unit (recommend integer cents) and document it; mixed units corrupt revenue charts silently. Implement server-side purchase events from Stripe webhooks — client-side purchase is the most fraud-prone, lossy event. Pair each conversion with a user-property update (plan: pro, signup_source: organic) so cohorting works without joins. Pipe Stripe → Meta CAPI / Google Ads Enhanced Conversions for >20% recovery of lost client-side attribution. Treat A/B test exposure events as first-class: every variant rendering emits an experiment_exposure event; without it, post-hoc analysis is unreliable.</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>LLMs invent GA4 event names — signup_started vs start_sign_up vs signup interchangeably; pin the agent to your registry file. Property bloat: agent will add 10 optional props "for completeness"; downstream warehouses charge per row × column. PII risk: agent may suggest tracking email or full_name as event props, breaking GDPR/CCPA. Ban a list of fields explicitly in the prompt. Currency unit mistakes: agent oscillates between dollars and cents; force value_cents (integer) as canonical. Consent gating: agent suggests firing all events without checking CMP state; require consentMode checks before dispatch. Test mode: prompt should include if (NODE_ENV !== 'production') return; guard for tests; otherwise CI burns through GA quotas. Event-name renames break dashboards silently — agent should always emit a deprecation alias for one release.</p>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Subagents are excellent at producing the event-schema spec, generating typed wrappers, and reviewing PRs that add new tracking calls. The privacy-impact assessment, consent flow, and final cookie configuration stay with humans + privacy/legal. Pipeline: schema spec (agent draft + human review) → codegen typed event SDK (agent) → instrumentation PRs (agent assist) → schema validation in CI (agent rules) → dashboard build (agent + analytics tool) → quarterly hygiene audit (agent).</p>
+      <section name="recommended-subagents">
+        <list>
+          <item>general-purpose — generate typed event-schema TypeScript/Python wrappers from a YAML spec; verify event-name registry consistency.</item>
+          <item>faion-sdd-executor-agent — drive instrumentation tasks across PRs with quality gates (every new event references the registry).</item>
+          <item>Custom analytics-qa-agent (build): scrapes git diff for gtag() / plausible() / track() calls and verifies registry membership + payload schema.</item>
+        </list>
+      </section>
+      <section name="prompt-pattern">
+        <p>Pattern 1: "Given this funnel description (signup → email-verify → first-action → paid), produce: (1) YAML event registry with required props, (2) TypeScript wrapper with one function per event, (3) GA4 + Plausible call inside each." Pattern 2: "Audit this PR for new tracking calls. For each call, check: registered name? all required props? value in cents or dollars consistent with registry? Output table: file, line, event, status, fix."</p>
+      </section>
+    </section>
+
+    <section name="cli-tools-and-services">
+      <p>CLI tools include gtm-cli (community) (manage GTM containers via API; https://developers.google.com/tag-platform/tag-manager/api/v2), ga4-admin Python SDK (configure conversion events; pip install google-analytics-admin), Plausible API (pull realtime aggregated metrics; https://plausible.io/docs/stats-api), segment CLI (test event-payload shape against Segment; npm i -g @segmentio/cli), RudderStack OSS (self-host event router, open-source Segment alternative; https://rudderstack.com), mitmproxy (inspect outbound analytics calls during QA; pip install mitmproxy), Snowplow Mini (local end-to-end event-pipeline testbed; https://docs.snowplow.io), and dbt (model events into funnels in warehouse; pip install dbt-core). Services include GA4 (SaaS, free, default web analytics, API yes), Google Tag Manager (SaaS, tag deployment without code changes, API yes), Plausible (SaaS / OSS, privacy-friendly, no cookies, API yes), Fathom Analytics (SaaS, Plausible alternative, API yes), Mixpanel (SaaS, product analytics + funnels, API yes), Amplitude (SaaS, product analytics + cohort retention, API yes), Heap (SaaS, auto-capture, API yes), PostHog (SaaS / OSS, self-host product analytics, API yes), Segment (SaaS, CDP / event router, API yes), RudderStack (SaaS / OSS, OSS Segment alternative, API yes), Snowplow (OSS, enterprise-grade event pipeline, API yes), Stripe (SaaS, server-side purchase source-of-truth, API yes), and Meta CAPI / Google Ads Enhanced Conversions (SaaS, server-side conversion uploads to ad networks, API yes).</p>
+    </section>
+
+    <section name="references">
+      <list>
+        <item>GA4 Recommended Events: https://support.google.com/analytics/answer/9267735</item>
+        <item>GA4 Measurement Protocol: https://developers.google.com/analytics/devguides/collection/protocol/ga4</item>
+        <item>Plausible custom events: https://plausible.io/docs/custom-event-goals</item>
+        <item>Mixpanel event-tracking guide: https://docs.mixpanel.com/docs/tracking-events</item>
+        <item>PostHog data model: https://posthog.com/docs/data</item>
+        <item>Snowplow tracker design principles: https://docs.snowplow.io</item>
+        <item>Avo (event schema-as-code): https://www.avo.app</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://support.google.com/analytics/answer/9267735"/>
+      <link href="https://developers.google.com/analytics/devguides/collection/protocol/ga4"/>
+      <link href="https://plausible.io/docs/custom-event-goals"/>
+      <link href="https://docs.mixpanel.com/docs/tracking-events"/>
+      <link href="https://posthog.com/docs/data"/>
+      <link href="https://docs.snowplow.io"/>
+      <link href="https://www.avo.app"/>
+    </see-also>
+  </content>
+</methodology>
