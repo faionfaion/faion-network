@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/pm/pm-agile methodologies → methodology.xml (scrum-ceremonies, seven-performance-domains, six-core-principles; feature-045 batch 165)
 - migrate: 3/3 pro/pm/pm-agile methodologies → methodology.xml (jira-workflow-management, kanban-scaled-agile-ceremonies, performance-domains-overview; feature-045 batch)
 - migrate: 3/3 pro/marketing/smm-manager + pro/pm/pm-agile methodologies → methodology.xml (instagram-basics, threads-basics, agile-hybrid-approaches; feature-045 batch)
 - migrate: 3/3 pro/pm/pm-agile methodologies → methodology.xml (azure-devops-boards, gitlab-boards, hybrid-delivery; feature-045 batch)
