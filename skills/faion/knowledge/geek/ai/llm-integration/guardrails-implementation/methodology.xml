@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="guardrails-implementation">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Complete implementation patterns for guardrails pipelines: GuardrailsPipeline class, input/output validation, hallucination detection, PII scrubbing, and layered defense.</summary>
+    <tags>
+      <tag>guardrails</tag>
+      <tag>implementation</tag>
+      <tag>production</tag>
+      <tag>validation</tag>
+      <tag>hallucination-detection</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+    <applies-to>agents</applies-to>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+  <content>
+    <title>Guardrails Implementation</title>
+    <summary>Public-facing LLM applications receive adversarial input and must not relay toxic, hallucinated, or PII-laden content downstream. A pipeline with no guardrails silently passes policy violations, leaks credentials, and produces unauditable output. Guardrails add structured violation logging, per-category detection, and an audit trail — requirements in regulated industries and multi-agent pipelines where one agent's bad output becomes another's poisoned input.</summary>
+    <why>
+      <p>Public-facing LLM applications receive adversarial input and must not relay toxic, hallucinated, or PII-laden content downstream. A pipeline with no guardrails silently passes policy violations, leaks credentials, and produces unauditable output. Guardrails add structured violation logging, per-category detection, and an audit trail — requirements in regulated industries and multi-agent pipelines where one agent's bad output becomes another's poisoned input.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Public-facing applications where users may submit adversarial or off-policy input</item>
+        <item>Regulated industries (healthcare, finance, legal) with compliance output requirements</item>
+        <item>Multi-agent pipelines where one agent's output feeds another — prevent cascading bad data</item>
+        <item>Any app storing or transmitting user content through an LLM</item>
+        <item>Applications where hallucinated facts could cause real harm (medical advice, legal citations)</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Internal developer tools where all users are trusted — guardrails add latency and cost for no benefit</item>
+        <item>Pure text transformation (translation, summarization of provided text) — hallucination guardrails irrelevant</item>
+        <item>Prototype/PoC stages — implement before production, not during exploration</item>
+        <item>When the guardrail check itself calls an LLM and latency budget is under 500ms — use rule-based checks only</item>
+      </list>
+    </when-not-to-use>
+    <section name="Config and Result Dataclasses">
+      <rule>
+        <statement>Define GuardrailConfig at application startup; never hardcode thresholds inside validator functions.</statement>
+        <rationale>Centralizing config enables tuning without code changes and makes the security posture auditable.</rationale>
+      </rule>
+      <reference path="templates/guardrails-pipeline.py">GuardrailConfig, GuardrailResult, and GuardrailsPipeline production class</reference>
+    </section>
+    <section name="Input Processing">
+      <rule>
+        <statement>Run rule-based injection checks first (microseconds), then API-based content moderation (~100ms), then LLM-based checks only if required by config.</statement>
+        <rationale>Layering by cost prevents slow checks from running on traffic that fast checks would block.</rationale>
+      </rule>
+      <example type="good" title="Input processing pipeline">
+        <code lang="python"><![CDATA[
+def process_input(self, user_input: str) -> tuple[str, list[dict]]:
+    violations = []
+    sanitized = user_input
+    if self.config.enable_pii_detection:
+        result = self.input_guardrails.validate(sanitized)
+        if not result.is_valid:
+            violations.extend([{"type": "input_validation", "detail": v}
+                                for v in result.violations])
+        sanitized = result.sanitized_input
+    if self.config.enable_prompt_injection_detection:
+        is_injection, detections = self.injection_detector.detect(sanitized)
+        if is_injection:
+            violations.append({"type": "prompt_injection", "detections": detections})
+            return None, violations  # block immediately
+    if self.config.enable_content_moderation:
+        moderation = self.content_moderator.moderate(sanitized)
+        if moderation["is_flagged"]:
+            violations.append({"type": "content_moderation",
+                                "categories": moderation["flagged_categories"]})
+            return None, violations
+    return sanitized, violations
+]]></code>
+        <note>Returns None for sanitized_input when the request must be blocked, not just logged.</note>
+      </example>
+    </section>
+    <section name="Output Processing">
+      <rule>
+        <statement>Run output moderation before hallucination detection; hallucination detection is optional and expensive — enable only when context is available and stakes are high.</statement>
+        <rationale>Without a context document, hallucination detection is guesswork. Moderation is always relevant.</rationale>
+      </rule>
+      <rule>
+        <statement>Never catch exceptions silently inside validators — a failed guardrail check must fail loudly, not pass through.</statement>
+        <rationale>Silent swallowing of guardrail errors turns safety failures into invisible pass-throughs.</rationale>
+      </rule>
+    </section>
+    <section name="Async Variant">
+      <rule>
+        <statement>For high-throughput applications, run input checks in parallel using ThreadPoolExecutor; collect all results before deciding to pass or block.</statement>
+        <rationale>Sequential checks add latency proportional to the number of checks; parallel reduces it to the slowest single check.</rationale>
+      </rule>
+      <example type="good" title="Async input processing">
+        <code lang="python"><![CDATA[
+async def process_input_async(self, user_input: str):
+    with ThreadPoolExecutor() as executor:
+        loop = asyncio.get_event_loop()
+        pii_check = loop.run_in_executor(executor, self.input_guardrails.validate, user_input)
+        injection_check = loop.run_in_executor(executor, self.injection_detector.detect, user_input)
+        moderation_check = loop.run_in_executor(executor, self.content_moderator.moderate, user_input)
+        results = await asyncio.gather(pii_check, injection_check, moderation_check)
+    return self._process_results(results)
+]]></code>
+      </example>
+    </section>
+    <section name="OutputGuardrails Class">
+      <rule>
+        <statement>Separate validators (boolean: is this output acceptable?) from filters (transform: make this output acceptable). Run validators first; only apply filters if the output is not blocked.</statement>
+        <rationale>Mixing validation and filtering logic makes it impossible to audit why an output was blocked vs. modified.</rationale>
+      </rule>
+      <example type="good" title="OutputGuardrails with validators and filters">
+        <code lang="python"><![CDATA[
+class OutputGuardrails:
+    def __init__(self):
+        self.validators: list[Callable] = []
+        self.filters: list[Callable] = []
+
+    def add_validator(self, validator: Callable):
+        self.validators.append(validator)
+
+    def validate(self, output: str) -> tuple[bool, list[str]]:
+        errors = []
+        for validator in self.validators:
+            is_valid, error = validator(output)
+            if not is_valid:
+                errors.append(error)
+        return len(errors) == 0, errors
+
+    def filter(self, output: str) -> str:
+        filtered = output
+        for filter_func in self.filters:
+            filtered = filter_func(filtered)
+        return filtered
+]]></code>
+      </example>
+    </section>
+    <section name="Common Validators">
+      <example type="good" title="JSON format, length, and URL filtering validators">
+        <code lang="python"><![CDATA[
+import json, re
+from typing import Tuple
+
+def validate_json_format(output: str) -> Tuple[bool, str]:
+    try:
+        json.loads(output)
+        return True, ""
+    except json.JSONDecodeError as e:
+        return False, f"Invalid JSON: {e}"
+
+def validate_length(max_length: int):
+    def validator(output: str) -> Tuple[bool, str]:
+        if len(output) > max_length:
+            return False, f"Output exceeds {max_length} characters"
+        return True, ""
+    return validator
+
+def filter_remove_urls(output: str) -> str:
+    return re.sub(r'https?://\S+', '[URL REMOVED]', output)
+]]></code>
+      </example>
+    </section>
+    <section name="Hallucination Detection">
+      <rule>
+        <statement>Require a context document before enabling hallucination detection; set enable_hallucination_detection=False by default — enable only for high-stakes outputs where a context is always available.</statement>
+        <rationale>Without ground truth, LLM-based hallucination detection is guesswork that adds cost and latency with no reliability benefit.</rationale>
+      </rule>
+      <rule>
+        <statement>Do not run hallucination detection synchronously in the request path for every call — queue it as async post-processing and surface results in a review UI.</statement>
+        <rationale>Hallucination detection doubles cost and adds 200–800ms; running it on every call makes it a reliability bottleneck.</rationale>
+      </rule>
+      <example type="good" title="Hallucination detector with context">
+        <code lang="python"><![CDATA[
+class HallucinationDetector:
+    def __init__(self, client, model: str = "gpt-4o"):
+        self.client = client
+        self.model = model
+
+    def detect_hallucinations(self, output: str, context: str) -> dict:
+        prompt = f"""Context:\n{context}\n\nResponse:\n{output}\n\n
+Return JSON: {{"has_hallucinations": bool, "hallucinated_claims": [str], "confidence": float}}"""
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+        return json.loads(response.choices[0].message.content)
+]]></code>
+      </example>
+    </section>
+    <section name="Guardrails AI Library">
+      <rule>
+        <statement>Use the guardrails-ai library for standard validators (ToxicLanguage, ValidLength, RegexMatch, ValidJSON) rather than writing them from scratch.</statement>
+        <rationale>50+ battle-tested validators exist; re-implementing them introduces gaps in edge-case coverage.</rationale>
+      </rule>
+      <example type="good" title="guardrails-ai with multiple validators">
+        <code lang="python"><![CDATA[
+from guardrails import Guard
+from guardrails.validators import ValidLength, ToxicLanguage
+
+guard = Guard().use_many(
+    ValidLength(min=1, max=1000, on_fail="fix"),
+    ToxicLanguage(threshold=0.5, on_fail="filter"),
+)
+result = guard(
+    llm_api=openai.chat.completions.create,
+    prompt="Tell me about AI safety",
+    model="gpt-4o",
+    max_tokens=500
+)
+if result.validation_passed:
+    print(result.validated_output)
+]]></code>
+      </example>
+    </section>
+    <section name="Implementation Checklist">
+      <section name="Framework Integration">
+        <list>
+          <item>Install guardrails-ai and presidio: pip install guardrails-ai presidio-analyzer presidio-anonymizer</item>
+          <item>Define GuardrailConfig with thresholds at app startup</item>
+          <item>Instantiate GuardrailsPipeline once (not per request)</item>
+          <item>Wire pipeline.run() into the LLM call path</item>
+          <item>Verify GuardrailResult is returned on both safe and blocked paths</item>
+        </list>
+      </section>
+      <section name="Custom Validators">
+        <list>
+          <item>Implement validator as (output: str) -&gt; (bool, str) — bool=is_valid, str=error message</item>
+          <item>Register via output_guardrails.add_validator()</item>
+          <item>Test validator with valid input, invalid input, and edge cases</item>
+          <item>Confirm exceptions surface as errors, not silent pass-throughs</item>
+        </list>
+      </section>
+      <section name="Production Hardening">
+        <list>
+          <item>Enable rate limiting on the guardrails endpoint</item>
+          <item>Log every violation with: timestamp, violation type, truncated input (100 chars max), metadata</item>
+          <item>Set up monitoring alerts on violation_count by type</item>
+          <item>Test failover: confirm app degrades gracefully if a guardrail check times out</item>
+          <item>Configure max-retries and human-escalation path for repeated injection attempts</item>
+        </list>
+      </section>
+      <section name="Testing">
+        <list>
+          <item>Test injection signals: "ignore previous instructions", "you are now", "act as DAN"</item>
+          <item>Test PII detection: email, phone, SSN patterns</item>
+          <item>Test hallucination detection with a known-false claim vs. provided context</item>
+          <item>Benchmark: confirm guardrail pipeline adds less than 500ms for rule-based-only config</item>
+          <item>Load test: confirm no per-request object instantiation (pipeline is reused)</item>
+        </list>
+      </section>
+    </section>
+    <section name="Agent Integration">
+      <p>Guardrails wrap the agent's LLM call, not the agent itself. The GuardrailsPipeline sits between the user request and the LLM: input validation → LLM call → output validation → response. In multi-agent systems, guardrails run at the boundary between user-facing agents and internal agents — not on every inter-agent message, which would be too slow. Human-in-the-loop review should trigger when violations are non-empty but not severe enough to auto-block.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>password-scrubber-agent — strips credentials and secrets from input before passing to LLM (related pattern)</item>
+        <item>A dedicated moderation-agent that wraps GuardrailsPipeline and routes flagged requests to human review queue</item>
+      </list>
+      <p>Input sanitization check (rule-based, fast):</p>
+      <code lang="python"><![CDATA[
+INJECTION_SIGNALS = ["ignore previous", "disregard instructions", "you are now", "act as", "DAN"]
+def has_injection_signal(text: str) -> bool:
+    return any(sig.lower() in text.lower() for sig in INJECTION_SIGNALS)
+]]></code>
+      <p>Hallucination check prompt (LLM-based, slow — use sparingly):</p>
+      <code lang="python"><![CDATA[
+Given this context: {context}
+And this response: {response}
+List any claims in the response NOT supported by the context. Return JSON: {"unsupported": [...]}.
+]]></code>
+    </section>
+    <section name="Tools and Dependencies">
+      <list>
+        <item>guardrails-ai — Framework for LLM input/output validation with validators. Install: pip install guardrails-ai. Docs: https://www.guardrailsai.com</item>
+        <item>openai (Moderation API) — Content moderation (toxicity, self-harm, violence). Built-in SDK. Docs: https://platform.openai.com/docs/guides/moderation</item>
+        <item>presidio (Microsoft) — PII detection and anonymization. Install: pip install presidio-analyzer presidio-anonymizer. Docs: https://microsoft.github.io/presidio</item>
+        <item>langchain (callbacks) — Guardrail hooks at chain/agent step boundaries. Install: pip install langchain</item>
+        <item>rebuff — Prompt injection detection service. Docs: https://github.com/protectai/rebuff</item>
+      </list>
+      <list>
+        <item>OpenAI Moderation API — SaaS, free, fast, covers 11 harm categories, agent-friendly</item>
+        <item>Guardrails AI — OSS + SaaS, 50+ pre-built validators, custom validators, agent-friendly</item>
+        <item>Microsoft Presidio — OSS, best-in-class PII detection, entity anonymization, agent-friendly</item>
+        <item>AWS Comprehend — SaaS, PII + sentiment + entity recognition, agent-friendly</item>
+        <item>Azure Content Safety — SaaS, enterprise content moderation with audit logs, agent-friendly</item>
+        <item>Lakera Guard — SaaS, dedicated prompt injection detection API, agent-friendly</item>
+        <item>Rebuff — OSS, heuristic + semantic prompt injection detection, agent-friendly</item>
+      </list>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Layer defense: fast rule-based checks first, slow LLM-based checks only when needed</item>
+        <item>OpenAI Moderation API is free and adds ~100ms — always run it before passing user input to a generation call</item>
+        <item>Use Microsoft Presidio for PII detection; regex-only PII detection has unacceptably high false-negative rates</item>
+        <item>Define a GuardrailConfig object at app startup — never hardcode thresholds inside validator functions</item>
+        <item>Log every violation with the original input (truncated), violation type, and timestamp — this is your audit trail</item>
+        <item>For hallucination detection, require a context document; without ground truth, hallucination detection is guesswork</item>
+        <item>Set enable_hallucination_detection=False by default — it doubles cost and latency; enable only for high-stakes outputs</item>
+      </list>
+    </section>
+    <section name="Common Gotchas">
+      <antipattern>
+        <description>Catching exceptions inside validators and returning True (is_safe) on failure.</description>
+        <reason>A broken validator silently approves all requests, turning a safety component into a no-op. Failed checks must propagate as violations, not as passes.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Running LLM-based hallucination detection synchronously on every request regardless of stakes.</description>
+        <reason>Adds 200–800ms latency and doubles LLM cost per call. Reserve for high-stakes outputs where a context document is available; use async post-processing for review.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Trusting inter-agent messages implicitly and not running input guardrails on tool results.</description>
+        <reason>Prompt injection can arrive through tool outputs, not just user messages. An agent that validates user input but trusts tool results is vulnerable to injection via poisoned tool responses.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Logging the full violating content including PII to a shared log store.</description>
+        <reason>Audit logs must preserve evidence of the violation type without leaking the PII that triggered it. Hash or truncate violating content before writing to logs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Retrying indefinitely on injection detection without a max-attempts block.</description>
+        <reason>A genuinely adversarial user will send the same injection forever. Agents must cap retry attempts and escalate to human review or rate-limit the source.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using regex-only PII detection without a purpose-built library like Microsoft Presidio.</description>
+        <reason>Regex-only PII detection has unacceptably high false-negative rates for real-world content. Presidio combines NER models, regex, and context rules for production-grade accuracy.</reason>
+      </antipattern>
+    </section>
+    <section name="Limitations">
+      <p>LLM-based hallucination detection is itself fallible — a hallucinating model checking another model's output may miss hallucinations.</p>
+      <p>Prompt injection detection has high false-positive rates on legitimate technical prompts (code, SQL, shell commands).</p>
+      <p>OpenAI Moderation API covers toxicity/self-harm well but misses domain-specific policy violations (e.g., medical misinformation).</p>
+      <p>Async guardrail pipelines add 200–800ms latency per call — unacceptable for real-time voice interfaces.</p>
+      <p>Custom validators that call external APIs (PII scanners, content classifiers) introduce external failure modes.</p>
+    </section>
+    <templates>
+      <template path="templates/guardrails-pipeline.py" purpose="Production-ready GuardrailsPipeline class with GuardrailConfig and GuardrailResult"/>
+      <template path="templates/moderate-input.py" purpose="Minimal fast input moderation combining rule-based injection check and OpenAI Moderation API"/>
+    </templates>
+    <see-also>
+      <link href="https://www.guardrailsai.com/docs"/>
+      <link href="https://platform.openai.com/docs/guides/moderation"/>
+      <link href="https://microsoft.github.io/presidio/"/>
+      <link href="https://github.com/protectai/rebuff"/>
+      <link href="https://owasp.org/www-project-top-10-for-large-language-model-applications/"/>
+    </see-also>
+  </content>
+</methodology>
