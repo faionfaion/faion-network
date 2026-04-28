@@ -236,6 +236,85 @@ func NewUserService(repo UserRepository) *UserService {
       </rule>
     </section>
 
+    <section name="agentic-workflow">
+      <p>The agent should (1) inspect the repo: is this a single binary, multi-binary, library? (2) propose layout: flat for small, cmd+internal for services, cmd+internal+pkg only when external import is needed; (3) generate the directory tree with empty .gitkeep placeholders + a working cmd/&lt;name&gt;/main.go + internal/config/config.go + a Makefile + Dockerfile; (4) wire CI (golangci-lint, go test -race ./...); (5) generate one vertical slice through handler→service→repository so the layout is exercised end-to-end. Do not let the agent introduce pkg/ unless it can name an external consumer.</p>
+      <rule testable="true">
+        <statement>Generate an end-to-end vertical slice for at least one resource to prove the layout works. The slice should span cmd/&lt;name&gt;/main.go → internal/handler → internal/service → internal/repository → internal/model with tests at each layer.</statement>
+        <rationale>Agents generate empty directories and skip the actual implementation. A working CRUD endpoint proves package boundaries are correct.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <p>Best practices for Go project structure:</p>
+      <list>
+        <item>Default to one binary, one module. Add a second cmd/&lt;name&gt; only when a real second entrypoint exists.</item>
+        <item>Keep internal/ rich and pkg/ empty until proven otherwise; renaming pkg/foo → internal/foo later is painful.</item>
+        <item>Inject dependencies through constructors (NewXService(deps...)); never package-level globals.</item>
+        <item>Define interfaces at the consumer (the service) not the producer (the repository) — Go style.</item>
+        <item>Set explicit http.Server timeouts (ReadHeaderTimeout, WriteTimeout, IdleTimeout) in cmd/api/main.go.</item>
+        <item>Graceful shutdown must close DB pools, drain queues, cancel contexts — not just srv.Shutdown.</item>
+        <item>Use a typed config loader (envconfig/koanf); roll-your-own getEnv invites silent type bugs.</item>
+        <item>CI matrix on the two latest Go minor versions; go vet, staticcheck, go test -race -shuffle=on are the minimum gates.</item>
+        <item>Pin tools used by the build via tools.go and go mod tidy for reproducible local toolchains.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common mistakes LLMs make when generating Go project layouts:</p>
+      <antipattern>
+        <description>LLMs reflexively create a pkg/ directory and put helpers there.</description>
+        <reason>This leaks internals once anyone imports the module. Reject pkg/ without a named external consumer.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Generated cmd/api/main.go often skips defer srv.Shutdown(ctx) or shuts down the DB pool before draining requests.</description>
+        <reason>Require an audit checklist. Graceful shutdown must close DB, drain queues, cancel contexts in the right order.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents drop graceful shutdown for worker binaries entirely.</description>
+        <reason>Require a select { case &lt;-quit: case &lt;-ctx.Done(): } pattern in every long-running goroutine.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LLMs use package-level var DB *sql.DB; this works for tutorials and breaks for tests.</description>
+        <reason>Insist on constructor injection. Global state prevents parallel test execution and mocking.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents propose cyclic imports (handler → service → handler) when extracting interfaces.</description>
+        <reason>Require a dependency graph review before commit. Cyclic imports reveal design flaws.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Generated getEnvInt and similar helpers silently return defaults on parse error.</description>
+        <reason>Require an explicit error-on-malformed mode. A missing PORT should fail startup, not default silently.</reason>
+      </antipattern>
+      <antipattern>
+        <description>An agent migrating from flat layout often rewrites import paths globally and breaks vendored modules.</description>
+        <reason>Require a go build ./... proof and a check for replace directives in go.mod.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Any move into internal/ from a previously exported path is a public-API break.</description>
+        <reason>Agents underestimate this. Require a human checkpoint before breaking public APIs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents emit Dockerfile without USER nobody and without distroless base.</description>
+        <reason>Review for prod-readiness. No binaries should run as root.</reason>
+      </antipattern>
+    </section>
+
+    <section name="cli-tools">
+      <p>Essential CLI tools for Go project development:</p>
+      <list>
+        <item>go mod: Module management — stdlib</item>
+        <item>golangci-lint: Aggregator linter — https://golangci-lint.run</item>
+        <item>staticcheck: Deeper static analysis — https://staticcheck.dev</item>
+        <item>govulncheck: CVE scan for deps — https://go.dev/blog/vuln</item>
+        <item>gotestsum: Pretty test runner — https://github.com/gotestyourself/gotestsum</item>
+        <item>air: Live reload during dev — https://github.com/cosmtrek/air</item>
+        <item>mockery / gomock: Generate mocks for repository interfaces</item>
+        <item>wire: Compile-time DI when manual wiring grows — https://github.com/google/wire</item>
+        <item>go-licenses: License compliance check — https://github.com/google/go-licenses</item>
+        <item>koanf / viper / envconfig: Typed config loaders</item>
+      </list>
+    </section>
+
     <templates>
       <template path="templates/new-resource.sh" purpose="Shell script to scaffold handler/service/repository/model for a new resource."/>
       <template path="templates/Makefile" purpose="Standard Makefile with build, run, test, lint, docker targets."/>
