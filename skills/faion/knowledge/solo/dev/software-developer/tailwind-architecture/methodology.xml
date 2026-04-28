@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tailwind-architecture">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Utility-first CSS architecture for React/Vue/Svelte. Design tokens in config, class merging through `cn()`, variant-rich components use `cva`, @apply restricted.</summary>
+    <tags>
+      <tag>tailwind</tag>
+      <tag>css</tag>
+      <tag>design-tokens</tag>
+      <tag>utility-first</tag>
+      <tag>variants</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tools>
+      <tool>claude-code</tool>
+      <tool>cursor</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Tailwind Architecture</title>
+
+    <summary>A utility-first CSS architecture for React/Vue/Svelte apps: design tokens live in `tailwind.config.ts` (or v4 `@theme`); all conditional class merging goes through a project-tuned `cn()` (`tailwind-merge` + `clsx`); variant-rich components use `cva` or `tv()`; `@apply` is restricted to `@layer components` only; `prettier-plugin-tailwindcss` enforces class order; `eslint-plugin-tailwindcss` blocks unknown utilities. Any duplicated 5+ utility chain across 3+ files becomes a primitive component.</summary>
+
+    <why>
+      <p>Without `tailwind-merge`, conflicting utilities silently both apply. Without `cva`, variant logic explodes into ternary chains that are hard to extend. Without lint, dynamic class names (`bg-${color}-500`) silently break JIT purging in production. Centralizing tokens in config means one change propagates everywhere instead of grep-and-replace. Class ordering consistency makes diffs reviewable.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield React/Vue/Svelte/Next.js apps where utility-first is the team standard</item>
+        <item>Building design-token-driven Tailwind config for a multi-app design system</item>
+        <item>Refactoring CSS Modules / styled-components / SCSS to Tailwind v3 / v4</item>
+        <item>Auditing utility class chaos — extracting components, normalizing variants</item>
+        <item>Wiring `tailwind-merge` + `cva` / `tv()` for variant-rich component libraries</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Email HTML — CSS support is sparse, use inlining tools instead</item>
+        <item>Strict CSP environments banning `style-src 'unsafe-inline'` for Tailwind's runtime</item>
+        <item>Static-site generators with a hard 14KB CSS budget</item>
+        <item>Server-rendered apps shipped to non-Tailwind designers maintaining handcrafted CSS</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="design-token-config-rule">
+      <rule testable="true">
+        <statement>All design values (colors, spacing, font families, border radii, shadows) must be defined in tailwind.config.ts (v3) or an @theme block (v4). No arbitrary Tailwind values (w-[347px], bg-[#3b82f6]) are allowed outside of one-off overrides explicitly safelist-annotated.</statement>
+        <rationale>Arbitrary values bypass the token pipeline entirely. When the design changes, arbitrary values must be hunted down with grep. Config-defined utilities are found by IDE autocomplete and Tailwind's purge.</rationale>
+      </rule>
+      <reference path="templates/tailwind.config.ts">Design-token-driven Tailwind config consuming Style Dictionary outputs</reference>
+    </section>
+
+    <section name="class-merging-rule">
+      <rule testable="true">
+        <statement>All conditional class composition must go through a project-tuned cn() function that wraps clsx + tailwind-merge. Ban raw clsx-only joins in lint. The cn() must be configured with extendTailwindMerge for any custom token utilities so conflicts are resolved correctly.</statement>
+        <rationale>Without tailwind-merge, conflicting classes (bg-red-500 overridden by bg-blue-500) both apply — the last class in the string wins based on CSS specificity, not code order. tailwind-merge resolves conflicts by Tailwind utility group.</rationale>
+      </rule>
+      <reference path="templates/cn.ts">cn() helper with tailwind-merge + clsx</reference>
+    </section>
+
+    <section name="component-extraction-threshold">
+      <rule testable="true">
+        <statement>Extract a duplicated utility chain into a primitive component when it meets ALL of: 5 or more utilities, appears in 3 or more call sites, and represents a named UI concept (Card, Stack, Button). Do not extract for 2 duplicates — the cost of indirection exceeds the benefit.</statement>
+        <rationale>Premature extraction adds abstraction cost (imports, props, docs) without simplifying code. The 5/3 threshold is a concrete, auditable rule agents can apply without judgment.</rationale>
+      </rule>
+    </section>
+
+    <section name="apply-restriction">
+      <rule testable="true">
+        <statement>@apply is allowed only inside @layer components in CSS files. It is forbidden inside component .tsx/.vue/.svelte files and inside @layer utilities. Any @apply in component code must be replaced with a React/Vue component abstraction.</statement>
+        <rationale>@apply in component files defeats Tailwind's JIT tree-shaking, inflates CSS bundle size, and forces CSS file management alongside component files. Component abstraction serves the same purpose with better colocation.</rationale>
+      </rule>
+      <example type="bad" title="@apply inside component file (WRONG)">
+        <code lang="tsx"><![CDATA[
+// WRONG: @apply inside component file
+<div className="btn-base"> // CSS somewhere: .btn-base { @apply px-4 py-2; }
+        ]]></code>
+      </example>
+      <example type="good" title="Component abstraction with cva">
+        <code lang="tsx"><![CDATA[
+// CORRECT: component abstraction with cva variants
+import { cva } from 'class-variance-authority';
+const button = cva('px-4 py-2 rounded font-medium', {
+  variants: {
+    intent: { primary: 'bg-blue-600 text-white', ghost: 'bg-transparent' },
+  },
+});
+        ]]></code>
+      </example>
+      <reference path="templates/cva-variant-example.tsx">Button with cva variants and cn() passthrough</reference>
+    </section>
+
+    <section name="class-ordering">
+      <rule testable="true">
+        <statement>Use prettier-plugin-tailwindcss to enforce canonical class order automatically. Never manually reorder classes in PR review — the formatter defines the order. Run the formatter before any diff review to eliminate noise.</statement>
+        <rationale>Inconsistent class order makes diffs unreadable and causes merge conflicts on unrelated lines. Automated formatting makes class order a non-discussion.</rationale>
+      </rule>
+    </section>
+
+    <section name="dynamic-class-purge-failure">
+      <antipattern>
+        <description>Building class names dynamically: bg-${color}-500, text-${size}.</description>
+        <reason>JIT cannot statically analyze template string concatenation. The generated class names are not included in the CSS bundle. Production styles are missing. Use a static lookup map: const colorMap = { red: 'bg-red-500', blue: 'bg-blue-500' } and safelist entries for any truly dynamic cases.</reason>
+      </antipattern>
+    </section>
+
+    <section name="tailwind-merge-config-drift">
+      <antipattern>
+        <description>Adding custom token utilities to tailwind.config.ts theme.extend without calling extendTailwindMerge to register them.</description>
+        <reason>tailwind-merge does not know about custom utilities. When two custom utilities from the same group conflict, both apply silently instead of the second overriding the first.</reason>
+      </antipattern>
+    </section>
+
+    <section name="v3-vs-v4-config-mixing">
+      <antipattern>
+        <description>Emitting a tailwind.config.js in a project using Tailwind v4's @theme CSS block, or writing @theme in a v3 project.</description>
+        <reason>v4 removed tailwind.config.js as the primary config mechanism. v3 does not support @theme. Mixing produces broken builds with no error message about the version mismatch.</reason>
+      </antipattern>
+    </section>
+
+    <section name="deprecated-opacity-syntax">
+      <antipattern>
+        <description>Using bg-opacity-50 or text-opacity-75 instead of bg-black/50 or text-gray-900/75.</description>
+        <reason>bg-opacity-* was deprecated in Tailwind v3. The slash syntax is canonical and supported by all modern Tailwind versions. bg-opacity-* may be removed in v4.</reason>
+      </antipattern>
+    </section>
+
+    <section name="over-extraction">
+      <antipattern>
+        <description>Creating a component (ButtonRow, TextWrapper, PaddedBox) for 2-utility duplicates.</description>
+        <reason>The cost of an additional import, props interface, and documentation exceeds the benefit of removing 2 classes. Apply the 5-utility / 3-site threshold before extracting.</reason>
+      </antipattern>
+    </section>
+
+    <section name="apply-everywhere">
+      <antipattern>
+        <description>Using @apply to create utility aliases: .text-big { @apply text-2xl; } or embedding @apply inside .tsx component files.</description>
+        <reason>Utility aliases hide what classes are being used from IDE tools and the Tailwind scan. Embedded @apply in component files increases CSS bundle size and breaks JIT tree-shaking.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Treat Tailwind config as a typed contract: agent edits design tokens (in `tailwind.config.{ts,js}` or v4 `@theme` block), runs the type-checked codegen for `cva`/`tv`, then a review subagent runs `eslint-plugin-tailwindcss` + `prettier-plugin-tailwindcss` and fails on unknown utilities. Component extraction policy: any duplicated 5+ utility chain across 3+ files becomes a primitive component with `cva` variants.</p>
+    </section>
+
+    <section name="recommended-subagents">
+      <p>General-purpose subagent — utility refactors, variant extraction</p>
+      <p>`faion-feature-executor` — pipeline: edit tokens → codegen → migrate consumers → assert visual regression</p>
+      <p>`faion-sdd-execution` — gate enforcing `eslint-plugin-tailwindcss` clean + no `@apply` outside `@layer components`</p>
+      <p>Visual-regression subagent (Playwright + Percy/Chromatic) — diff before/after refactor</p>
+    </section>
+
+    <section name="prompt-pattern">
+      <p>Migrate the Card component to a `cva` variant API.</p>
+      <list>
+        <item>Identify all &lt;Card&gt;/&lt;div className="card-..."&gt; sites with grep.</item>
+        <item>Define base + variants (size: sm/md/lg, intent: default/elevated/outline) in cva.</item>
+        <item>Replace usages, preserving className passthrough via cn(...).</item>
+        <item>Run `pnpm lint &amp;&amp; pnpm test` and `playwright test --project=visual`.</item>
+      </list>
+      <p>Output: a diff plus a coverage table (sites migrated / total).</p>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Configure `tailwind-merge` once, export your project-tuned `cn()` (handles custom token utilities) and ban raw `clsx`-only joins in lint</item>
+        <item>Use `cva` (or `tv()` for slot-heavy components) for any component with >2 visual variants — kills branching ternary chains</item>
+        <item>Keep `@apply` out of component code; allowed only inside `@layer components` for true CSS-only primitives (e.g., `.prose` overrides)</item>
+        <item>Lock Tailwind version + plugin versions in lockfile; minor versions add utilities the IDE will autocomplete then break in CI</item>
+        <item>Theming (light/dark/brand variants) via CSS custom properties referenced in `tailwind.config`, not separate compiled themes</item>
+        <item>Set `safelist` for any class generated dynamically (e.g., `bg-${tone}`) or refactor to lookup map — never trust JIT to find them</item>
+        <item>Co-locate Storybook stories with components; visual snapshots become the regression contract for utility refactors</item>
+        <item>v4 migration: pre-pin `tailwindcss@^3.4`, then upgrade with explicit codemod (`npx @tailwindcss/upgrade`) — never let the agent drift to v4 mid-feature</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>LLMs frequently emit deprecated `bg-opacity-*` instead of `bg-black/50` slash syntax — modern Tailwind has had `/` for years; lint must catch</item>
+        <item>Agents output `className={`...${dynamic}...`}` template strings that JIT cannot purge → unstyled production. Force lookup tables.</item>
+        <item>`tailwind-merge` config drift: agents add custom utilities to `theme.extend` but forget the `extendTailwindMerge` call; result: conflicts silently both apply</item>
+        <item>v3 vs v4 config syntax mixing — verify the file extension and surrounding imports before generating config</item>
+        <item>`prettier-plugin-tailwindcss` rewrites class order on save; agents diffing pre/post format see noise — always run formatter before review</item>
+        <item>Agents over-extract components for 2-utility duplicates ("ButtonRow"); the cost of indirection > duplication. Set a 5-utility / 3-site threshold.</item>
+        <item>Human-in-loop checkpoint when: changing primary brand color, adding global font, modifying `screens` breakpoints — these reflow every component</item>
+        <item>Do not paste compiled CSS output into LLM context; always feed the `tailwind.config` + a few representative components</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/cn.ts" purpose="Project-tuned cn() helper combining clsx + tailwind-merge"/>
+      <template path="templates/tailwind.config.ts" purpose="Design-token-driven config consuming Style Dictionary tokens"/>
+      <template path="templates/cva-variant-example.tsx" purpose="Button component with cva variants (size, intent) + className passthrough"/>
+    </templates>
+
+    <see-also>
+      <link href="https://tailwindcss.com/docs"/>
+      <link href="https://ui.shadcn.com/"/>
+      <link href="https://cva.style/"/>
+      <link href="https://www.tailwind-variants.org/"/>
+      <link href="https://github.com/dcastil/tailwind-merge"/>
+      <link href="https://github.com/francoismassart/eslint-plugin-tailwindcss"/>
+      <link href="https://tailwindcss.com/blog/tailwindcss-v4-alpha"/>
+    </see-also>
+  </content>
+</methodology>

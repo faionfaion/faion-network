@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 3/3 solo/dev/software-developer methodologies migrated to methodology.xml (batch: shadcn-ui-architecture, sql-optimization, tailwind-architecture)
 - refactor: 3/3 software-developer methodologies migrated to methodology.xml (batch: rust-testing, shadcn-ui, storybook-setup)
 - refactor: 3/3 api-developer methodologies migrated to methodology.xml (batch: api-graphql, api-monitoring, api-openapi-spec)
 - migrate: testing, typescript-strict-mode, unit-testing → methodology.xml (free/dev/software-developer)

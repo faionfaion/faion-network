@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="sql-optimization">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Profile queries with EXPLAIN ANALYZE before touching indexes. Use composite indexes with equality columns first, keyset pagination instead of OFFSET, and batch operations.</summary>
+    <tags>
+      <tag>sql</tag>
+      <tag>query-optimization</tag>
+      <tag>postgresql</tag>
+      <tag>indexing</tag>
+      <tag>performance</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tools>
+      <tool>claude-code</tool>
+      <tool>cursor</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>SQL Optimization</title>
+
+    <summary>Profile queries with `EXPLAIN (ANALYZE, BUFFERS)` before touching any index or query, add composite indexes with equality columns first and range columns last, replace OFFSET pagination with keyset cursors, and batch inserts/updates. Measure actual vs estimated rows — large discrepancies indicate stale statistics.</summary>
+
+    <why>
+      <p>Unoptimized queries on tables above ~100k rows cause latency spikes that compound under load. Sequential scans that were fast at 10k rows become multi-second at 10M rows. OFFSET pagination degrades O(N) with page depth. Covering indexes eliminate table heap lookups. Without EXPLAIN ANALYZE, optimization is guesswork — the planner's chosen plan often differs from the developer's assumption.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>A query takes more than 100ms under normal load</item>
+        <item>Database CPU or IO is consistently above 70%</item>
+        <item>Application response times degrade as data grows</item>
+        <item>Adding a new feature that queries large or frequently joined tables</item>
+        <item>Regular performance audits before capacity events</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tables under ~10k rows — full scans are typically sub-millisecond</item>
+        <item>Write-heavy tables where index overhead outweighs read gain</item>
+        <item>Premature optimization of queries not yet on the hot path</item>
+        <item>Before running EXPLAIN ANALYZE — never add indexes without profiling first</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="profiling-rule">
+      <rule testable="true">
+        <statement>Always run EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) before adding any index or rewriting any query.</statement>
+        <rationale>The planner's chosen plan often differs from developer expectations. Optimization without measurement produces indexes that are never used and rewrites that change nothing.</rationale>
+      </rule>
+      <example type="good" title="Profiling with EXPLAIN ANALYZE">
+        <code lang="sql"><![CDATA[
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT o.id, o.total_amount, u.email
+FROM orders o
+JOIN users u ON u.id = o.user_id
+WHERE o.status = 'pending'
+  AND o.created_at > NOW() - INTERVAL '7 days'
+ORDER BY o.created_at DESC
+LIMIT 100;
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="reading-plan-nodes">
+      <list>
+        <item>Seq Scan — full table scan; acceptable on small tables (&lt;10k rows), problematic on large ones.</item>
+        <item>Index Scan — uses a B-tree index; good for selective queries returning a small fraction of rows.</item>
+        <item>Bitmap Index Scan — combines multiple indexes; used when selectivity is medium.</item>
+        <item>Nested Loop — for each outer row, probes inner; fast when outer set is small; catastrophic when outer is large.</item>
+        <item>Hash Join — builds hash table from smaller relation, probes with larger; efficient for larger datasets.</item>
+        <item>Sort — watch for disk sorts (Sort Method: external); add index or increase work_mem.</item>
+      </list>
+      <rule testable="true">
+        <statement>Investigate when actual rows differ from estimated rows by more than 10x — this signals stale statistics.</statement>
+        <rationale>The planner chooses join order and index use based on row estimates. Large discrepancies cause poor plan choices that cannot be fixed by indexes alone; run ANALYZE first.</rationale>
+      </rule>
+    </section>
+
+    <section name="composite-index-column-order">
+      <rule testable="true">
+        <statement>In composite indexes, place equality-filter columns first, range-filter columns last.</statement>
+        <rationale>The B-tree can use prefix columns for equality and then traverse a range on the last column. Placing range columns first makes the index unusable for the equality filter.</rationale>
+      </rule>
+      <example type="good" title="Correct composite index order">
+        <code lang="sql"><![CDATA[
+-- Query: WHERE user_id = ? AND created_at > ?
+-- Equality first, range last:
+CREATE INDEX idx_orders_user_created ON orders(user_id, created_at);
+        ]]></code>
+      </example>
+      <example type="bad" title="Wrong composite index order">
+        <code lang="sql"><![CDATA[
+-- Range first -- index used only for created_at range, not user_id equality:
+CREATE INDEX idx_orders_created_user ON orders(created_at, user_id);
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="covering-indexes">
+      <rule testable="true">
+        <statement>Use INCLUDE columns to add non-filtered columns to an index to avoid heap lookups for read-heavy queries.</statement>
+        <rationale>A covering index satisfies the query entirely from index pages, eliminating the heap fetch (table lookup) for each matched row.</rationale>
+      </rule>
+      <example type="good" title="Covering index with INCLUDE">
+        <code lang="sql"><![CDATA[
+CREATE INDEX idx_orders_covering ON orders(user_id, status)
+    INCLUDE (total_amount, created_at);
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="partial-indexes">
+      <rule testable="true">
+        <statement>Use partial indexes with a WHERE clause for queries that always filter on a specific value.</statement>
+        <rationale>Partial indexes are smaller (fewer rows indexed) and faster to scan than full indexes. Useful for status columns where only one value (e.g. 'pending') is queried frequently.</rationale>
+      </rule>
+      <example type="good" title="Partial index for status filter">
+        <code lang="sql"><![CDATA[
+CREATE INDEX idx_orders_pending ON orders(created_at)
+    WHERE status = 'pending';
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="expression-indexes">
+      <rule testable="true">
+        <statement>Create an expression index when queries apply a function to an indexed column; do not apply functions to indexed columns in WHERE clauses.</statement>
+        <rationale>WHERE LOWER(email) = ? bypasses the regular index on email. An expression index on LOWER(email) makes the query use the index.</rationale>
+      </rule>
+      <example type="good" title="Expression index for function application">
+        <code lang="sql"><![CDATA[
+CREATE INDEX idx_users_email_lower ON users(LOWER(email));
+-- Query: WHERE LOWER(email) = 'test@example.com'  -- uses the index
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="pagination">
+      <rule testable="true">
+        <statement>Use keyset (cursor) pagination instead of OFFSET for any collection larger than ~1000 rows.</statement>
+        <rationale>OFFSET N scans and discards N rows on every page. At page 500 with 20 items per page, the database scans 10,000 rows to return 20. Keyset pagination uses an index seek regardless of page depth.</rationale>
+      </rule>
+      <example type="bad" title="Inefficient OFFSET pagination">
+        <code lang="sql"><![CDATA[
+SELECT * FROM products ORDER BY created_at DESC LIMIT 20 OFFSET 10000;
+-- Scans 10,020 rows to return 20
+        ]]></code>
+      </example>
+      <example type="good" title="Efficient keyset pagination">
+        <code lang="sql"><![CDATA[
+SELECT * FROM products
+WHERE (created_at, id) < ('2024-01-15 10:30:00', 'last-seen-uuid')
+ORDER BY created_at DESC, id DESC
+LIMIT 20;
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="n-plus-1-elimination">
+      <rule testable="true">
+        <statement>Replace subqueries in SELECT lists with a single JOIN plus aggregation to eliminate N+1 query patterns.</statement>
+        <rationale>A subquery in the SELECT list executes once per row in the outer result. 1000 rows = 1001 queries. A JOIN executes once regardless of result set size.</rationale>
+      </rule>
+      <example type="good" title="JOIN instead of subquery">
+        <code lang="sql"><![CDATA[
+SELECT o.id, COUNT(oi.id) AS item_count
+FROM orders o
+LEFT JOIN order_items oi ON oi.order_id = o.id
+GROUP BY o.id;
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="batch-operations">
+      <rule testable="true">
+        <statement>Use multi-row INSERT for bulk inserts; use CTE with LIMIT for large batch updates to avoid long-running transactions.</statement>
+        <rationale>Individual INSERT per row in a loop causes N round trips and N transaction commits. A batched UPDATE without LIMIT locks all matching rows for the full duration.</rationale>
+      </rule>
+      <example type="good" title="Batch insert and chunked update">
+        <code lang="sql"><![CDATA[
+-- Batch insert
+INSERT INTO logs (message, created_at) VALUES
+    ('log1', NOW()), ('log2', NOW()), ('log3', NOW());
+
+-- Chunked update to avoid long lock
+WITH to_update AS (
+    SELECT id FROM orders
+    WHERE status = 'pending' AND created_at < NOW() - INTERVAL '30 days'
+    LIMIT 1000
+)
+UPDATE orders SET status = 'expired'
+WHERE id IN (SELECT id FROM to_update);
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="materialized-views">
+      <rule testable="true">
+        <statement>Use materialized views for expensive aggregations queried frequently; refresh CONCURRENTLY to avoid blocking reads.</statement>
+        <rationale>Re-computing GROUP BY over millions of rows on every dashboard load is wasteful. A materialized view precomputes it; CONCURRENTLY refresh avoids a read lock on the view.</rationale>
+      </rule>
+    </section>
+
+    <section name="sql-antipatterns">
+      <antipattern>
+        <description>SELECT * — fetching all columns when only a subset is needed.</description>
+        <reason>Fetches unused data across the network and prevents covering index optimizations.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LIKE '%pattern%' with a leading wildcard on an indexed column.</description>
+        <reason>Leading wildcards prevent B-tree index use; the planner falls back to a sequential scan. Use a full-text search index (GIN with tsvector) for substring search.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>ORDER BY RAND() or ORDER BY random() on large tables.</description>
+        <reason>Assigns a random value to every row, sorts all rows, then discards most. O(N log N) for every page load. Use reservoir sampling or a random offset instead.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Implicit type conversion in WHERE: WHERE user_id = 123 when user_id is VARCHAR.</description>
+        <reason>The planner casts every indexed column value to match the literal's type, preventing index use. Match literal types to column types.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>UPDATE or DELETE without a WHERE clause.</description>
+        <reason>Modifies every row in the table. In production this is almost always a mistake and can cause irreversible data loss.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>DISTINCT as a workaround for duplicate rows in a JOIN result.</description>
+        <reason>DISTINCT symptoms indicate a JOIN that produces a Cartesian product — usually a missing join condition. Fix the query; do not mask the problem with DISTINCT.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Applying a function to an indexed column in WHERE (e.g. WHERE DATE(created_at) = '2024-01-15').</description>
+        <reason>The function wraps every stored value, bypassing the B-tree index. Use range conditions instead: WHERE created_at &gt;= '2024-01-15' AND created_at &lt; '2024-01-16'.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Not using prepared statements for repeated parameterized queries.</description>
+        <reason>Non-prepared queries re-parse and re-plan on every execution. Prepared statements cache the plan, improve performance, and prevent SQL injection.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A four-step loop, each step gated. (1) **Identify** — an agent pulls top queries from `pg_stat_statements` (or `slow_log`), ranked by `total_exec_time`. (2) **Diagnose** — for each top query, run `EXPLAIN (ANALYZE, BUFFERS, VERBOSE, FORMAT JSON)` against a prod-shaped staging DB; feed the JSON plan to a planner-reading agent. (3) **Propose** — generate index / rewrite / partition candidates with cost estimates and write impact; emit each candidate as an SDD task. (4) **Validate** — apply candidate to staging, re-run EXPLAIN, compare plan + latency + buffer hits; require improvement of ≥30% on the metric of interest before merge. Schedule re-baseline weekly via cron. Human-approve any DDL change in prod (CREATE INDEX CONCURRENTLY, REFRESH MATERIALIZED VIEW).</p>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always profile against production-shaped data and concurrency. Tuning on a 10k-row dev DB is theater.</item>
+        <item>Use `EXPLAIN (ANALYZE, BUFFERS, VERBOSE)` — buffer counts catch IO problems plan times miss.</item>
+        <item>Add covering / partial indexes only when read frequency × savings > write frequency × cost. Use `hypopg` to estimate before `CREATE INDEX`.</item>
+        <item>Use `CREATE INDEX CONCURRENTLY` in prod, with `lock_timeout` and `statement_timeout`. Never naked `CREATE INDEX` on a hot table.</item>
+        <item>Switch deep pagination from `OFFSET` to keyset / cursor when collection size > ~10k rows.</item>
+        <item>Replace `LIKE '%foo%'` with proper full-text (`tsvector` + GIN) or trigram (`pg_trgm`) — ad-hoc LIKE doesn't scale.</item>
+        <item>Refresh `ANALYZE` after big data changes; use `ALTER TABLE ... SET STATISTICS` on skewed columns.</item>
+        <item>Connection pooling (PgBouncer in transaction mode) is mandatory above ~100 connections; without it tuning gains are dwarfed by connection overhead.</item>
+        <item>For aggregations on growing tables, materialized views with `REFRESH ... CONCURRENTLY` and a refresh schedule beat live `GROUP BY`.</item>
+        <item>Treat schema changes as code: migrations + rollback + benchmark numbers in the PR.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents propose indexes on every `WHERE` column without considering write amplification. Always run the impact pre-flight.</item>
+        <item>LLMs read estimated row counts as ground truth; force them to use `actual_rows` from EXPLAIN ANALYZE.</item>
+        <item>Plan-reading agents miss disk-spill (`Sort Method: external merge Disk: ...`) because the line is buried; provide a checklist of red-flag substrings in the prompt.</item>
+        <item>Agents propose composite indexes with wrong column order — they ignore selectivity. Require the agent to cite `n_distinct` from `pg_stats` for each column.</item>
+        <item>Suggesting `ORDER BY ... LIMIT` "fixes" without verifying actual cardinality leads to plans that flip under data growth. Validate with twice the data volume.</item>
+        <item>LLMs confidently mix dialects (Postgres syntax in MySQL solution). Pin the dialect in the system prompt and reject foreign syntax.</item>
+        <item>Agents propose materialized views without a refresh strategy; require the proposal to include refresh cadence, lock impact, and replication-lag implications.</item>
+        <item>Hint-injection: agents add `/*+ INDEX(t, idx) */` and other vendor hints which break on engine upgrades. Disallow hints unless explicitly approved.</item>
+        <item>Human-in-loop checkpoint: every prod DDL change (index, partition, materialized view, column type change) must be human-approved with the EXPLAIN diff and benchmark attached.</item>
+        <item>Agents skip the rollback section. Mandate that every migration includes the inverse DDL.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://use-the-index-luke.com/"/>
+      <link href="https://www.postgresql.org/docs/current/performance-tips.html"/>
+      <link href="https://momjian.us/main/writings/pgsql/optimizer.pdf"/>
+      <link href="https://pganalyze.com/blog"/>
+      <link href="https://www.citusdata.com/blog/"/>
+      <link href="https://www.percona.com/blog/category/postgresql/"/>
+    </see-also>
+  </content>
+</methodology>
