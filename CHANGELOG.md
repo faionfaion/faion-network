@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 project-manager methodologies → methodology.xml (github-projects, linear-issue-tracking, notion-pm)
 - migrate: 3/3 gtm-strategist methodologies → methodology.xml (growth-hacker-news-launch, growth-indiehackers-strategy, growth-product-hunt-launch)
 - migrate: 3/3 content-marketer methodologies → methodology.xml (growth-podcast-strategy, growth-reddit-marketing, growth-tiktok-basics)
 - migrate: 3/3 solo/dev/software-developer methodologies → methodology.xml (rust-tokio-async, security-testing, seo-for-spas)
