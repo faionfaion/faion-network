@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="linear-issue-tracking">
+  <metadata>
+    <tier>solo</tier>
+    <group>pm</group>
+    <domain>pm-agile</domain>
+    <summary>Keyboard-first issue tracker for engineering teams. Fixed hierarchy: Workspace → Team → Cycle (sprint) → Issue. GraphQL API, GitHub integration, velocity metrics built-in.</summary>
+    <tags>
+      <tag>linear</tag>
+      <tag>issue-tracking</tag>
+      <tag>sprints</tag>
+      <tag>velocity</tag>
+      <tag>graphql</tag>
+      <tag>automation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Linear Issue Tracking for Engineering Teams</title>
+    <summary>Linear's opinionated, minimal workflow eliminates configuration overhead — teams are productive in under an hour. The GraphQL API is best-in-class for agents: rich query and mutation support with a stable schema. GitHub integration auto-transitions issue status when PRs are opened or merged, removing the manual "move to In Review" step. Velocity and cycle metrics are built-in without formula configuration.</summary>
+    <why>
+      <p>Linear's opinionated, minimal workflow eliminates configuration overhead — teams are productive in under an hour. The GraphQL API is best-in-class for agents: rich query and mutation support with a stable schema. GitHub integration auto-transitions issue status when PRs are opened or merged, removing the manual "move to In Review" step. Velocity and cycle metrics are built-in without formula configuration.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building software products with engineering-focused teams valuing speed and keyboard shortcuts</item>
+        <item>Automating cycle hygiene: moving stale issues, closing duplicates, adding labels from SDD tasks</item>
+        <item>Syncing Linear issue state with GitHub PR status in CI pipelines</item>
+        <item>Creating issues in bulk from structured input (SDD implementation-plan.md, CSV backlogs)</item>
+        <item>Generating weekly velocity or cycle summary reports</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Teams not using Linear — do not retrofit this workflow onto Jira, Trello, or GitHub Projects</item>
+        <item>Real-time incident response — Linear's async model is too slow for live war-rooms</item>
+        <item>One-time exploratory tasks where creating an issue adds overhead, not value</item>
+        <item>Replacing human judgment on priority or roadmap sequencing</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="linear-workspace-and-team-configuration">
+      <p>Team configuration, issue properties, cycle workflow, project and roadmap setup for engineering teams.</p>
+
+      <rule testable="true">
+        <statement>Configure each team with: key prefix (e.g., BAK), workflow states (Backlog/Todo/In Progress/In Review/Done/Canceled), Fibonacci estimate scale (0/1/2/3/5/8/13), and triage enabled.</statement>
+        <rationale>Team key prefixes make issue identifiers human-readable across multi-team workspaces (BAK-123 vs FE-456); Fibonacci scale prevents false precision in estimates.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set cycle duration to 2 weeks, start day Monday, auto-archive enabled — cycles provide time-boxing without requiring manual sprint management.</statement>
+        <rationale>Linear cycles auto-advance and archive completed issues; manual sprint management adds overhead that Linear's opinionated workflow is designed to eliminate.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Required issue properties: Status, Priority (Urgent/High/Medium/Low/No Priority), Estimate (Fibonacci), Cycle, Project, Label, Assignee. Priority is an integer enum (Urgent=1, High=2, Medium=3, Low=4, NoPriority=0) in the API — not a string.</statement>
+        <rationale>Agents receiving natural-language priority must map explicitly to integers before calling the API; passing strings causes silent mutation failure.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Cycle scope must be frozen after Day 2 of the cycle; API-driven cycle assignment must target nextCycle or futureCycle only — never the active cycle.</statement>
+        <rationale>Mid-cycle additions disrupt velocity tracking and flow; agents that auto-add issues to active cycles create scope creep without human intent.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Cycle IDs rotate every cycle; always resolve the current cycle by querying team.activeCycle — never hardcode a cycle ID in agent configuration.</statement>
+        <rationale>Hardcoded cycle IDs break every 2 weeks when the cycle advances; dynamic resolution via activeCycle query is always correct.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Projects span multiple cycles and represent initiatives; use milestones within projects to mark key deliverables with target dates.</statement>
+        <rationale>Cycles are time-boxes; projects are outcome-scopes. Mixing them confuses velocity (cycle) with delivery (project completion).</rationale>
+      </rule>
+    </section>
+
+    <section name="linear-workflow-triage-github-integration-views">
+      <p>Triage process, GitHub sync configuration, custom view patterns, and keyboard shortcut usage.</p>
+
+      <rule testable="true">
+        <statement>Process triage in this order: valid? → urgent? → scoped? → ready for backlog. Invalid issues go to Closed/Duplicate immediately; unscoped issues get "Needs Refinement" label and stay in triage.</statement>
+        <rationale>Triage order prevents time spent scoping issues that should be closed; "Needs Refinement" creates a visible queue for refinement sessions without cluttering the backlog.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Triage is a human-only step; agents must not auto-close or auto-route issues from the triage inbox without a human checkpoint.</statement>
+        <rationale>Triage decisions require context that agents cannot infer from issue text alone (duplicate detection, organizational priority, business context).</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Configure GitHub integration: branch format "{username}/bak-{issue_number}-{issue_title}", PR-opened → "In Review", PR-merged → "Done", commit pattern "Fixes BAK-\\d+".</statement>
+        <rationale>Consistent branch naming enables bidirectional traceability; fix commit pattern auto-links PRs to issues; auto-transitions eliminate manual status updates.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Store issue identifiers (e.g., BAK-123) in git branch names and PR titles to enable bidirectional traceability between Linear issues and GitHub PRs.</statement>
+        <rationale>Linear's GitHub integration matches PRs to issues by identifier in branch name or PR title; without this, no automatic status transitions occur.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Create four standard views: my_work (assignee:me, group by priority), team_board (team filter, group by status, show estimates), bugs_triage (label:bug, status:triage, sort by created date), release_scope (project filter, status:-canceled).</statement>
+        <rationale>These four views cover the four daily PM workflows: individual task focus, team coordination, bug queue, and release tracking — without proliferating context-specific views.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use issueSearch with server-side filters rather than fetching issues and filtering client-side — server-side filtering is 10x faster on large workspaces.</statement>
+        <rationale>Client-side filtering on 5000+ issues requires fetching all pages then discarding most results; server-side filters push this work to Linear's query engine.</rationale>
+      </rule>
+    </section>
+
+    <section name="linear-agent-integration-and-gotchas">
+      <p>Agent-driven issue creation from SDD tasks, GraphQL pagination, cycle ID resolution, webhook security, and recommended subagents.</p>
+
+      <rule testable="true">
+        <statement>Convert SDD implementation-plan.md TASK_ blocks to Linear issues: map task complexity (Low → NoPriority=0, Medium → Medium=3, High → High=2, Critical → Urgent=1); validate acceptance criteria non-empty before calling issueCreate mutation.</statement>
+        <rationale>Linear's issueCreate mutation does not validate acceptance criteria completeness; the agent must enforce this before calling the API, otherwise issues enter the backlog without enough information for developers.</rationale>
+      </rule>
+
+      <reference path="templates/prompt-sdd-to-issues.txt">Prompt for converting SDD task blocks to Linear issue payloads</reference>
+
+      <rule testable="true">
+        <statement>Implement cursor-based pagination for all issues queries; Linear GraphQL returns max 250 items per page by default. Pass after: cursor argument with endCursor from previous response until hasNextPage is false.</statement>
+        <rationale>Agents that fetch only the first page silently miss issues beyond the page size; partial results produce incorrect velocity counts and incomplete blockers lists.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always resolve the active cycle by querying team.activeCycle at runtime; never hardcode a cycle ID in agent configuration or prompts.</statement>
+        <rationale>Cycle IDs rotate every 2 weeks; hardcoded IDs break silently after the cycle advances, causing all cycle-assignment mutations to fail without an obvious error.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Verify Linear webhook HMAC signature on every incoming request; reject requests without valid signatures — an agent endpoint without HMAC validation is an injection vector.</statement>
+        <rationale>Linear sends webhooks with an X-Linear-Signature header containing an HMAC-SHA256 signature; without validation any caller can inject fake events into the agent pipeline.</rationale>
+      </rule>
+
+      <reference path="templates/create-issue.sh">Bash script to create a Linear issue via GraphQL mutation</reference>
+
+      <section name="recommended-subagents">
+        <list>
+          <item>faion-sdd-executor-agent: converts SDD task blocks into Linear issue drafts, validates acceptance criteria completeness before API submission.</item>
+          <item>linear-cycle-hygiene: nightly; detects issues in "In Progress" for more than 3 cycle days with no comments; posts Slack digest of stalled issues.</item>
+          <item>linear-release-reporter: queries project issues for a release, posts milestone completion percentage as a cycle summary comment.</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always set teamId explicitly — workspace-level mutations silently pick wrong team on multi-team orgs</item>
+        <item>Use Linear's attachmentCreate mutation to link external docs (Figma, Notion) instead of pasting raw URLs in description</item>
+        <item>Prefer labelIds over creating labels in automation; maintain a label registry document to avoid drift</item>
+        <item>Cycle assignment via API should only target nextCycle or futureCycle, never the active cycle, to protect scope</item>
+        <item>Store the Linear issue identifier (e.g., BAK-123) in git branch names and PR titles to enable bidirectional traceability</item>
+        <item>Use issueSearch with filters rather than issues with client-side filtering — server-side filtering is 10x faster on large workspaces</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Linear's issueCreate mutation does not validate that acceptance criteria are non-empty — agent must enforce this before calling the API</item>
+        <item>GraphQL cursor-based pagination (after argument) must be implemented; agents that fetch only the first page silently miss issues</item>
+        <item>Cycle IDs rotate every cycle; hardcoding a cycle ID in an agent breaks after 2 weeks — always resolve by querying team.activeCycle first</item>
+        <item>Priority field is an integer enum (0–4), not a string; agents receiving natural-language priority must map explicitly</item>
+        <item>Human-in-the-loop required before bulk-closing or bulk-reassigning issues — irreversible at scale and Linear has no batch undo</item>
+        <item>Webhook secret verification is not optional; an agent endpoint without HMAC validation is an injection vector</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/issue-bug.md" purpose="Bug report issue template with environment, steps to reproduce, severity"/>
+      <template path="templates/issue-feature.md" purpose="Feature request issue template with problem statement and success metrics"/>
+      <template path="templates/create-issue.sh" purpose="Bash script to create a Linear issue via GraphQL mutation"/>
+      <template path="templates/prompt-sdd-to-issues.txt" purpose="Prompt for agent to convert SDD task blocks to Linear issue payloads"/>
+    </templates>
+
+    <see-also>
+      <link href="https://developers.linear.app/docs/graphql/working-with-the-graphql-api"/>
+      <link href="https://linear.app/method"/>
+      <link href="https://linear.app/docs/keyboard-shortcuts"/>
+      <link href="https://developers.linear.app/docs/webhooks"/>
+      <link href="https://linear.app/integrations/github"/>
+    </see-also>
+  </content>
+</methodology>
