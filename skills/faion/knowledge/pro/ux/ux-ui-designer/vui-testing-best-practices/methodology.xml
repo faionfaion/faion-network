@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vui-testing-best-practices">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>Four-layer VUI test strategy: unit, integration, user, stress. Bucket accuracy by accent/age/gender to surface subgroup failures hidden in overall metrics.</summary>
+    <tags>
+      <tag>voice-ui</tag>
+      <tag>testing</tag>
+      <tag>usability-testing</tag>
+      <tag>voice-interfaces</tag>
+      <tag>vui</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>VUI Testing Best Practices</title>
+    <summary>A four-layer VUI test strategy: unit (intent accuracy), integration (dialog flow completion), user (moderated session with 5+ real users), stress (noise, accents, interruptions). Bucket accuracy by accent/age/gender — overall percentage hides subgroup failures of 15–30 points. Track "completion at attempt N" not just "completion" — N=2 is acceptable, N=4 is a failure. Lock LLM voice agent seeds for deterministic regression.</summary>
+    <why>
+      <p>Synthetic test utterances from internal teams correlate poorly with real-world speech distributions; 100% accuracy on a clean test set still hides field failures. Short studies miss long-context retention bugs (5+ turns). Auto-graded scoring underweights tone and empathy, which are the primary drivers of user satisfaction scores in voice products.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Pre-launch validation of an Alexa skill, Google Action, custom IVR, or LLM voice agent.</item>
+        <item>Regression testing after NLU model updates or prompt changes.</item>
+        <item>Measuring intent accuracy, task completion, and error rate against a baseline.</item>
+        <item>Stress-testing under realistic noise and accent diversity before scaling.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>TTS-only output (read-aloud, screen readers) — that is a11y testing, not VUI testing.</item>
+        <item>Pure copy review without runtime testing — covered by content design heuristics.</item>
+        <item>Latency or load tuning of the speech stack — use load testing tooling instead.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Four Test Layers">
+      <rule>
+        <statement>Test voice interfaces across four layers: unit (intent accuracy per utterance), integration (dialog flow completion across multiple turns), user (moderated session with 5+ real participants), stress (noise, accents, interruptions, long conversations). All four layers are required before launch.</statement>
+        <rationale>Each layer catches a distinct failure class. Unit tests miss dialog-state bugs. Integration tests miss real-world speech distribution failures. User tests miss accent and long-tail coverage. Stress tests miss edge cases that only appear under real-world conditions.</rationale>
+      </rule>
+      <section name="Layer Definitions">
+        <p>Unit: send each training utterance through the platform CLI (ask-cli simulate, gactions test, rasa test). Measure per-intent accuracy. Threshold: no intent below 85% on clean corpus.</p>
+        <p>Integration: run dialog stories end-to-end. Measure task completion rate. Test multi-turn paths including error recovery. Lock LLM agent seeds for deterministic comparison.</p>
+        <p>User: 5+ moderated sessions minimum. Capture audio and transcript. Note frustration moments (user repeats louder, says "never mind", abandons). Pair with quantitative metrics.</p>
+        <p>Stress: inject background noise (TV, traffic), use participants with diverse accents, test interruptions mid-conversation, test conversations exceeding 5 turns, test long pauses and silence.</p>
+      </section>
+    </section>
+    <section name="Key Metrics">
+      <p>Intent accuracy: correct intent detection percentage. Track per-intent, not only overall — overall hides subgroup failures.</p>
+      <p>Task completion at attempt N: record N for each completion. N=1 (first try) is ideal; N=2 is acceptable; N=4+ is failure regardless of eventual completion.</p>
+      <p>Error rate: failures per conversation (no-input + no-match + ambiguous + system).</p>
+      <p>User satisfaction: post-interaction survey (1–5 Likert). Ask specifically about perceived system understanding, not general satisfaction.</p>
+    </section>
+    <section name="Subgroup Accuracy Rule">
+      <rule>
+        <statement>Bucket intent accuracy by accent, age group, and gender. Report per-bucket accuracy in every test report. Overall accuracy that hides a 15–30 point subgroup gap is not acceptable for launch.</statement>
+        <rationale>NLU models trained on narrow speaker populations systematically underperform for accented speakers, older adults, and users with speech differences. The subgroup gap is typically 15–30 percentage points, invisible in aggregated metrics.</rationale>
+      </rule>
+    </section>
+    <section name="Real-World Testing Checklist">
+      <list>
+        <item>Background noise: TV, traffic, ambient conversation at 65 dB</item>
+        <item>Diverse accents: at minimum 3 regional accent groups represented</item>
+        <item>Interruptions mid-conversation: test barge-in handling</item>
+        <item>Multi-user scenarios: two people speaking in the same room</item>
+        <item>Long conversations: test context retention beyond 5 turns</item>
+        <item>Telephony channel: test at 8 kHz mu-law codec, not only device mic</item>
+        <item>Edge cases and error recovery: test all three re-prompt rungs</item>
+      </list>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Use Claude to scaffold a four-layer test plan per intent, then generate adversarial utterance batches with nlpaug (synonym substitution, back-translation, noise injection) and run them through the platform CLI. A second agent ingests the resulting transcripts and computes per-intent accuracy, error-rate, and time-to-complete tables. Human-in-loop reviews escalation paths and recordings flagged as "user frustration" by sentiment scoring.</p>
+      <p>Utterance generation schema: 50 utterances per intent — 10 clean, 20 noisy (background noise annotation), 10 accented (accent label), 10 adversarial (off-topic, code-switch, partial). Include expected intent and expected slots. Output as JSONL for batch CLI runner.</p>
+    </section>
+    <section name="Antipatterns">
+      <antipattern>
+        <description>Reporting "100% intent accuracy on test set" as launch-ready without real-world participant testing.</description>
+        <reason>Synthetic test utterances correlate poorly with real-world speech distributions. Internal-team test sets over-represent the model's own training distribution. Require at least one device-loop test with external participants before launch.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using auto-graded scoring as the sole success criterion without a human review pass.</description>
+        <reason>Auto-graded scoring underweights tone, empathy, and dialog naturalness. Use a separate sentiment pass before declaring "pass", and hand 20 random failures to a designer for root-cause categorization.</reason>
+      </antipattern>
+      <antipattern>
+        <description>PII redaction happening after transcripts are passed to the agent.</description>
+        <reason>Voice IP/PII redaction must happen BEFORE transcripts reach any LLM. Bake redaction into the runner as a mandatory pre-step, not a post-step. Audio files often contain names, phone numbers, and account details.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Simulator success declared as device success without device-loop validation.</description>
+        <reason>Endpointing differences between simulator and physical device mean simulator success does not guarantee device success. Require at least one full device-loop test per major release.</reason>
+      </antipattern>
+    </section>
+    <section name="LLM Agent Best Practices">
+      <rule>
+        <statement>Lock LLM voice agent seeds during regression runs. Non-deterministic agents cannot be regression-tested; a "passing run" one day may fail the next with identical inputs.</statement>
+        <rationale>LLM voice agents drift across runs due to temperature and sampling variance. Fixed seeds produce comparable runs; even then, transcripts (not audio) are the correct regression artifact.</rationale>
+      </rule>
+      <rule>
+        <statement>Track "completion at attempt N" separately from "eventual completion rate". Report both metrics. Treat N=4+ as a failure even if the user ultimately succeeded.</statement>
+        <rationale>Users who succeed on the fourth attempt do not return. Attempt-count distribution is the signal that identifies systemic re-prompt failures invisible in flat completion rate.</rationale>
+      </rule>
+    </section>
+    <templates>
+      <template path="templates/vui-batch-runner.py" purpose="Batch intent-accuracy runner against ask-cli simulate; outputs per-intent accuracy table"/>
+    </templates>
+    <see-also>
+      <link href="https://www.nngroup.com/articles/testing-voice-usability/"/>
+      <link href="https://designguidelines.withgoogle.com/conversation"/>
+      <link href="https://voiceflow.com/blog/voice-prototype-testing"/>
+      <link href="https://bespoken.io"/>
+    </see-also>
+  </content>
+</methodology>
