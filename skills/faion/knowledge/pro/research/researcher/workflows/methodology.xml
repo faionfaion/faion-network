@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="workflows">
+  <metadata>
+    <tier>pro</tier>
+    <group>research</group>
+    <domain>researcher</domain>
+    <summary>Three sequential research workflows: Idea Discovery, Product Research, Project Naming. Agents run one-by-one, output to .aidocs/product_docs/, verified before advancing.</summary>
+    <tags>
+      <tag>research</tag>
+      <tag>workflows</tag>
+      <tag>orchestration</tag>
+      <tag>sequential</tag>
+      <tag>idea-validation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Research Workflows</title>
+    <summary>Sequential research state machines for Idea Discovery, Product Research, and Project Naming. Each workflow runs research agents one by one, writes outputs to .aidocs/product_docs/, and advances only after verifying non-empty output files.</summary>
+    <why>
+      <p>Solopreneurs need an LLM to act as their entire research team in pre-spec phases. Sequential execution is mandatory (not parallel) to avoid rate limits, ensure data quality, and prevent cross-module contamination. The key failure mode is the agent completing steps without writing the output files — the orchestrator must read the file and verify non-empty before advancing.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Pre-spec stage where market-research.md, competitive-analysis.md, or idea-validation.md are missing</item>
+        <item>Solopreneur flow where an LLM acts as the entire research team</item>
+        <item>Naming and domain validation before reserving a brand and writing constitution.md</item>
+        <item>Refresh of stale research artifacts over 6 months old before a major roadmap revision</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Inside an active SDD task — research belongs in backlog discovery, not execution</item>
+        <item>When the team has signed enterprise market data contracts (Gartner, IDC, Statista paid) — feed those reports directly to faion-sdd instead</item>
+        <item>Tactical decisions inside a 30-minute window — sequential execution makes this multi-minute work</item>
+        <item>After spec freeze — findings contradicting signed-off spec must go through change management</item>
+      </list>
+    </when-not-to-use>
+    <section name="Sequential Execution">
+      <rule>
+        <statement>Run research agents one by one, not in parallel. Each agent must complete and write its output file before the next agent starts. The orchestrator must Read the output file and verify non-empty before advancing.</statement>
+        <rationale>Parallel execution in Deep mode (8-12 searches per module) hits rate limits and generates cross-module contradictions. Sequential execution prevents both. Agents lie about completion — only a non-empty file confirms the step is done.</rationale>
+      </rule>
+      <rule>
+        <statement>Cap searches per module at the declared budget: 3-5 for Quick mode, 8-12 for Deep mode. Track the count in the orchestrator, not in the subagent — subagents undercount their own usage.</statement>
+        <rationale>Without a hard cap, Deep mode in WebSearch-only environments exhausts context before synthesis. The orchestrator tracks because subagents do not reliably self-limit.</rationale>
+      </rule>
+    </section>
+    <section name="Source Citation">
+      <rule>
+        <statement>Every claim must have a source URL. If data is not found, write "Data not available" — do not infer, estimate, or synthesize a plausible answer.</statement>
+        <rationale>LLMs fabricate market sizes, statistics, and competitor features confidently. The "Data not available" policy is the only mechanical check that prevents hallucination from entering the research artifacts.</rationale>
+      </rule>
+      <rule>
+        <statement>Reject any source older than 24 months for pricing, market data, or competitor features without an explicit override.</statement>
+        <rationale>Web search returns 2-3-year-old blog posts as if current. Stale data for pricing or market size misleads go/no-go decisions. Date-based rejection is the filter; human override is the exception.</rationale>
+      </rule>
+    </section>
+    <section name="Loop Guard">
+      <rule>
+        <statement>Wrap every loop-back step with max_iterations=3 (idea rejection, name rejection). If the user rejects twice, escalate to a different prompt or framework rather than re-rolling the same generator.</statement>
+        <rationale>The workflows have loop-back steps with no exit condition. Without a guard, the orchestrator can loop indefinitely when user keeps rejecting. Three iterations is the practical limit before the approach needs to change.</rationale>
+      </rule>
+    </section>
+    <section name="State Persistence">
+      <rule>
+        <statement>Write workflow state to .aidocs/product_docs/_workflow-state.json after every module completion. On resume, read the state file and skip completed modules.</statement>
+        <rationale>Deep mode research runs involve 30-60 tool calls. Session crashes mid-run waste all prior API spend. State persistence enables resume without re-running completed modules.</rationale>
+      </rule>
+      <antipattern>
+        <description>Claude Code eagerly batches tool calls in parallel even when sequential execution is instructed.</description>
+        <reason>Enforce sequential by chaining Task calls in a single orchestrator turn and awaiting each. Parallel batching violates the rate-limit protection and cross-contamination prevention that sequential execution provides.</reason>
+      </antipattern>
+      <antipattern>
+        <description>AskUserQuestion is ignored in headless or cron contexts, stalling the workflow.</description>
+        <reason>Idea Discovery and Naming workflows assume an interactive user. Automated pipelines (n8n, cron) require a non-interactive mode that picks pre-configured defaults without user prompts.</reason>
+      </antipattern>
+    </section>
+    <section name="Idea Discovery Workflow">
+      <p>Sequential workflow for generating and validating startup or product ideas. Output: idea-validation.md.</p>
+      <list>
+        <item>Step 1 — Gather context: skills, interests, resources (AskUserQuestion)</item>
+        <item>Step 2 — Generate 5-10 ideas using 7 Ps framework and other methods (mode: ideas)</item>
+        <item>Step 3 — User selects 3-5 ideas to research (AskUserQuestion, multiSelect)</item>
+        <item>Step 4 — Pain point research: Reddit, forums, reviews mining (mode: pains)</item>
+        <item>Step 5 — Niche evaluation: market size, competition, barriers (mode: niche)</item>
+        <item>Step 6 — User selects idea or loops back to Step 2 (max 3 iterations)</item>
+        <item>Output — Write to .aidocs/product_docs/idea-validation.md</item>
+      </list>
+      <rule>
+        <statement>Context questions must cover three dimensions: skills/experience, motivation (solve own problem / market opportunity / passion / side income), and available time investment.</statement>
+        <rationale>Ideas generated without this context are generic and unlikely to match the founder's actual constraints, leading to selection of ideas they cannot execute.</rationale>
+      </rule>
+    </section>
+    <section name="Product Research Workflow">
+      <p>Comprehensive research workflow for existing product concepts. Output: executive-summary.md plus per-module files.</p>
+      <list>
+        <item>Step 1 — Parse project from ARGUMENTS</item>
+        <item>Step 2 — Read: constitution.md, roadmap.md</item>
+        <item>Step 3 — Ask user for modules and mode (quick/deep)</item>
+        <item>Step 4 — Run selected research agents sequentially (not parallel)</item>
+        <item>Step 5 — Write executive-summary.md with TL;DR, top-3 risks, top-3 opportunities, recommended next step</item>
+      </list>
+      <section name="Module Options">
+        <list>
+          <item>Market Research — TAM/SAM/SOM, trends → market-research.md</item>
+          <item>Competitors — features, pricing, positioning → competitive-analysis.md</item>
+          <item>Personas — pain points, JTBD → user-personas.md</item>
+          <item>Validation — problem evidence → problem-validation.md</item>
+          <item>Pricing — benchmarks → pricing-research.md</item>
+        </list>
+      </section>
+      <rule>
+        <statement>Run faion-marketing-manager before faion-sdd when go-to-market unknowns dominate; run faion-sdd first when feasibility is the larger risk. Do not treat them as parallel options.</statement>
+        <rationale>The two downstream consumers have different inputs. Marketing-manager needs market data; sdd needs technical feasibility. The order determines which blockers get resolved first.</rationale>
+      </rule>
+    </section>
+    <section name="Project Naming Workflow">
+      <p>Generate and validate project or product names with domain availability. Output: update to constitution.md.</p>
+      <list>
+        <item>Step 1 — Gather concept: description, tone (Professional/Playful/Technical/Premium)</item>
+        <item>Step 2 — Generate 20 candidates using naming strategies (mode: names)</item>
+        <item>Step 3 — User selects favorites or requests more (AskUserQuestion, multiSelect)</item>
+        <item>Step 4 — Filter to 5 with cheap whois/HEAD checks, then run faion-domain-checker-agent on top 5 only</item>
+        <item>Step 5 — User selects final name or loops back to Step 2 (max 3 iterations)</item>
+        <item>Output — Update constitution.md with selected name</item>
+      </list>
+      <rule>
+        <statement>Run cheap availability checks (whois, HTTP HEAD) on all 20 candidates first; call faion-domain-checker-agent only on the top 5. Do not run the full domain checker on all 20.</statement>
+        <rationale>Running the full domain checker (Namecheap API, registrar calls) on 20 candidates burns quota. Two-pass filtering reduces API spend by 75% with negligible accuracy loss.</rationale>
+      </rule>
+      <section name="Naming Strategies">
+        <list>
+          <item>Descriptive — what it does (DropBox)</item>
+          <item>Invented — made-up word (Spotify)</item>
+          <item>Compound — two words joined (Facebook)</item>
+          <item>Metaphor — symbolic meaning (Amazon)</item>
+          <item>Portmanteau — blended words (Pinterest)</item>
+          <item>Alliteration — same sound (PayPal)</item>
+          <item>Acronym — letter combination (IBM)</item>
+        </list>
+      </section>
+    </section>
+    <section name="Agent Integration">
+      <p>Methodology covers three sequential research workflows orchestrated by the faion-researcher skill: Idea Discovery, Product Research, Project Naming. The workflows are state machines: gather context → run research agents one-by-one → write outputs to .aidocs/product_docs/. This guides concrete subagents, CLI tools and SaaS APIs an LLM agent can drive.</p>
+      <section name="Agentic Workflow">
+        <p>Drive each workflow as a deterministic state machine in the orchestrator subagent. Use AskUserQuestion for the three branching points (context gathering, idea selection, mode selection). Spawn one research subagent per module via the Task tool, wait for completion, then move to the next. Persist intermediate state to .aidocs/product_docs/&lt;module&gt;.md after every step so a session crash resumes cleanly. Feed the final executive-summary.md to downstream agents (faion-sdd, faion-marketing-manager) as input.</p>
+        <section name="Recommended Subagents">
+          <list>
+            <item>faion-research-agent — Research orchestrator with 9 modes (ideas/market/competitors/pricing/niche/personas/pains/validate/names). One invocation per mode, sequential.</item>
+            <item>faion-domain-checker-agent — Verifies .com/.io/.co/GitHub/Twitter availability for naming workflow. Must have network + registrar API access.</item>
+            <item>faion-marketing-manager — Downstream consumer: turns executive-summary.md into a GTM Manifest.</item>
+            <item>faion-sdd — Downstream consumer: turns executive-summary.md + idea-validation.md into spec.md.</item>
+            <item>faion-software-developer — Final downstream node when research-to-build handoff is approved.</item>
+            <item>General-purpose Task subagent — Use when no specialized research-agent is registered; pass the methodology's llm-prompts.md as system context.</item>
+          </list>
+        </section>
+        <section name="Prompt Pattern">
+          <p>Orchestrator dispatch (Idea Discovery, step 4):</p>
+          <code lang="text"><![CDATA[Run faion-research-agent in mode=pains for ideas: [<list>].
+Constraints: cite every claim with URL. Output to .aidocs/product_docs/pain-points.md.
+If a Reddit/forum/review claim cannot be sourced, write "Data not available" — do not infer.
+Return only the file path on completion.]]></code>
+          <p>Synthesis prompt (after all modules complete):</p>
+          <code lang="text"><![CDATA[Read .aidocs/product_docs/{market-research,competitive-analysis,user-personas,problem-validation,pricing-research}.md.
+Produce executive-summary.md with: 1-paragraph TL;DR, top-3 risks, top-3 opportunities, recommended-next-step ∈ {gtm, spec, kill}.
+Quote at least one source URL per section. Max 600 words.]]></code>
+        </section>
+      </section>
+      <section name="CLI Tools">
+        <list>
+          <item>claude (Claude Code CLI) — Run subagents, AskUserQuestion, Task tool. https://docs.anthropic.com/en/docs/claude-code</item>
+          <item>gh — GitHub org/repo name availability for naming. apt install gh / https://cli.github.com</item>
+          <item>whois — Domain availability fallback when registrar API down. apt install whois</item>
+          <item>dig / host — DNS resolution check (taken vs parked vs registered). bundled in dnsutils</item>
+          <item>curl + Cloudflare/Namecheap API — Real-time domain availability + price. https://api.namecheap.com/xml.response</item>
+          <item>python-google-trends (pytrends) — Trend signals for niche evaluation. pip install pytrends</item>
+          <item>redditwarp / praw — Pain-point mining from subreddits. pip install praw</item>
+          <item>searxng (self-hosted, port 8888) — Aggregated web search without API quotas. Already running on nero-prod</item>
+          <item>firecrawl CLI — Crawl competitor sites + pricing pages, return markdown. npm i -g firecrawl-cli</item>
+          <item>lynx -dump — Cheap fallback for fetching landing pages when HTML clean. apt install lynx</item>
+        </list>
+      </section>
+      <section name="Services &amp; APIs">
+        <list>
+          <item>Anthropic Web Search — API tool inside Claude. Yes — native WebSearch tool. Default for Quick mode, 3-5 calls</item>
+          <item>Tavily — Search-as-API tuned for agents. Yes — REST + Python SDK. Best for Deep mode, returns LLM-ready summaries</item>
+          <item>Exa (formerly Metaphor) — Semantic search API. Yes — REST. Better than Tavily for academic / niche topics</item>
+          <item>Perplexity API — Cited answer engine. Yes — REST. Returns citations inline, saves a synthesis step</item>
+          <item>Firecrawl — Crawl + scrape API. Yes — REST + MCP server. Use to extract competitor pricing tables</item>
+          <item>Reddit API (OAuth) — Pain-point mining. Yes — REST, rate-limited 60/min. Critical for mode=pains</item>
+          <item>ProductHunt API — Competitor discovery. Yes — GraphQL. Free tier, good signal for mode=competitors</item>
+          <item>G2 / Capterra — Reviews + competitor matrix. Partially — no public API, scrape. Firecrawl works; respect ToS</item>
+          <item>SimilarWeb / Ahrefs — Traffic + keyword data. Paid API, agent-friendly. Use only when budget allocated</item>
+          <item>Statista — Market sizing. Paid, no usable API. Manual export only</item>
+          <item>Namecheap API — Domain availability + buy. Yes — XML API. Used by faion-domain-checker-agent</item>
+          <item>Cloudflare Registrar API — Domain registration. Yes — REST. At-cost domains, agent-driven buy</item>
+          <item>GitHub API — Org/repo handle availability. Yes — REST via gh. Required by naming workflow</item>
+          <item>Twitter/X API — Handle availability. Limited — paid tier needed since 2023. gh-style HEAD check on https://x.com/&lt;handle&gt; is the cheap fallback</item>
+          <item>Google Trends (pytrends) — Trend evaluation. Yes — unofficial Python. Brittle, throttled — cache results</item>
+          <item>Hacker News Algolia API — Tech-trend mining. Yes — REST, no auth. Cheap signal for B2B-dev niches</item>
+        </list>
+      </section>
+      <section name="Best Practices">
+        <list>
+          <item>Write state before each step. Persist _workflow-state.json after every module finishes; on resume, read it and skip done modules. Crash recovery without re-running paid API calls.</item>
+          <item>Cap searches per module. Hard-stop at the README budgets (3-5 quick, 8-12 deep). Track count in the orchestrator, not the subagent — subagents lie about their own usage.</item>
+          <item>Pin source URLs in a separate sources.md. Keep the synthesis files clean; an auditor or spec writer wants a flat URL list, not inline footnotes scattered across 5 files.</item>
+          <item>Force an "evidence row" for every claim: | Claim | Source URL | Quote | Date accessed |. Validates the "no speculation" rule mechanically.</item>
+          <item>Cache web fetches by URL hash for the duration of a workflow run — Deep mode often re-fetches the same competitor page across modes.</item>
+          <item>Two-pass naming. Generate 20 candidates → filter to 5 with cheap whois/HEAD checks → run faion-domain-checker-agent only on the 5. README's all-at-once approach burns API quota.</item>
+          <item>Run faion-marketing-manager before faion-sdd when go-to-market unknowns dominate; run faion-sdd first when feasibility is the larger risk. README presents them as parallel options — they are not.</item>
+          <item>Reject loop-back &gt; 2 iterations. If user rejects ideas twice, escalate (different prompt, different framework) rather than re-rolling the same generator.</item>
+        </list>
+      </section>
+      <section name="AI-Agent Gotchas">
+        <list>
+          <item>Hallucinated TAM/SAM/SOM. LLMs fabricate market sizes confidently. Always require ≥3 independent URLs for any number or write "Data not available".</item>
+          <item>Stale data. Web search returns 2-3-year-old blog posts as if current. Reject any source older than 24 months for pricing/market data without explicit override.</item>
+          <item>Sequential rule violated by parallelism-loving agents. Claude Code will eagerly batch tool calls. Enforce sequential by chaining Task calls in a single orchestrator turn, awaiting each.</item>
+          <item>AskUserQuestion ignored in headless / cron contexts. The Idea Discovery and Naming workflows assume an interactive user. In automated pipelines (n8n, cron) the workflow stalls. Provide non-interactive mode that picks defaults.</item>
+          <item>Naming workflow false positives. A 200 OK on github.com/&lt;name&gt; does not mean taken (could be an org page); a 404 does not mean free (could be reserved/squatted). Cross-check with gh api users/&lt;name&gt; and whois.</item>
+          <item>Domain registrar caching. Namecheap returns "available" for ~5 minutes after a registration in some TLDs. Always re-check directly before the buy.</item>
+          <item>Loop without termination guard. README's "loop back to step 2" has no exit. Wrap orchestrator with max_iterations=3 or auto-exit to "kill" recommendation.</item>
+          <item>Agents lie about completion. Subagents return "done" before writing the file. Orchestrator must Read the output file and check non-empty before advancing.</item>
+          <item>Cross-module contradictions. market-research.md says TAM $2B; competitive-analysis.md quotes a competitor's $50M revenue claiming 60% share. Run a final consistency-check step before executive-summary.md.</item>
+          <item>Token blow-up at synthesis. 5 modules × deep mode = 30-50k tokens. The summary subagent must be a separate session with only the 5 files in context, not the full search history.</item>
+        </list>
+      </section>
+    </section>
+    <scripts>
+      <script path="scripts/check-names.sh" purpose="Domain and handle availability batch check (whois + HTTP HEAD)"/>
+    </scripts>
+    <see-also>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/sub-agents"/>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/skills"/>
+      <link href="https://docs.tavily.com"/>
+      <link href="https://docs.exa.ai"/>
+      <link href="https://docs.firecrawl.dev"/>
+      <link href="https://docs.perplexity.ai"/>
+      <link href="https://praw.readthedocs.io"/>
+      <link href="https://www.namecheap.com/support/api/intro/"/>
+      <link href="https://developers.cloudflare.com/registrar/"/>
+      <link href="https://api.producthunt.com/v2/docs"/>
+      <link href="https://hn.algolia.com/api"/>
+    </see-also>
+  </content>
+</methodology>
