@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/multimodal-ai methodologies → methodology.xml (video-gen-tools, vision-applications, vision-basics; feature-045 batch 274)
 - migrate: 3/3 geek/ai/multimodal-ai methodologies → methodology.xml (tts-basics, tts-implementation, video-gen-basics; feature-045 batch 273)
 - migrate: 3/3 geek/ai/multimodal-ai methodologies → methodology.xml (img-gen-tools, speech-to-text-advanced, speech-to-text-basics; feature-045 batch 272)
 - migrate: 3/3 geek/ai/ml-ops methodologies → methodology.xml (finetuning-basics, finetuning-datasets, llm-cost-basics; feature-045 batch 270)

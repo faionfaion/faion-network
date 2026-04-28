@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="video-gen-tools">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>multimodal-ai</domain>
+    <summary>API client implementations for Runway Gen-3, Luma Dream Machine, and Replicate video models with production async VideoGenerationService including multi-provider fallback and retry logic.</summary>
+    <tags>
+      <tag>video-generation</tag>
+      <tag>runway</tag>
+      <tag>luma</tag>
+      <tag>replicate</tag>
+      <tag>async</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Video Generation Tools</title>
+    <summary>API client implementations for Runway Gen-3, Luma Dream Machine, and Replicate video models (SVD, AnimateDiff, Zeroscope). Includes a production async VideoGenerationService with multi-provider fallback, retry logic, and a stub for image upload that must be implemented per storage backend.</summary>
+    <why>
+      <p>Each provider has incompatible API shapes, async polling semantics, and URL expiry windows (30–60 min). A unified service layer with provider-specific adapters and immediate post-generation download prevents the most common production failures (expired URLs, missing timeouts, OOM from full-file-in-memory downloads).</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Integrating Runway, Luma, or Replicate into an automated content pipeline</item>
+        <item>Building multi-provider fallback logic for resilience</item>
+        <item>Extending an existing video by appending new AI-generated segments</item>
+        <item>Wrapping async generation in retry/timeout logic for production reliability</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single one-off clip — use the web UI directly; API setup overhead is not justified</item>
+        <item>Synchronous request/response architectures — all video APIs are async polling; this pattern will block</item>
+        <item>When video quality is untested — validate provider outputs manually before automating at scale</item>
+        <item>Latency-sensitive user flows (sub-2s response expected)</item>
+      </list>
+    </when-not-to-use>
+    <section name="runway-gen-3">
+      <p>Runway provides an official Python SDK. Tasks are async — poll with _wait_for_completion. Video URLs are pre-signed and expire in 30-60 minutes; download immediately after SUCCEEDED.</p>
+      <example type="good" title="RunwayVideoGenerator implementation">
+        <code lang="python"><![CDATA[
+class RunwayVideoGenerator:
+    def __init__(self):
+        self.client = runwayml.RunwayML()
+
+    def generate_from_text(self, prompt: str, duration: int = 5,
+                           aspect_ratio: str = "16:9") -> dict:
+        task = self.client.image_to_video.create(
+            model="gen3a_turbo", prompt_text=prompt,
+            duration=duration, ratio=aspect_ratio)
+        return self._wait_for_completion(task.id)
+
+    def _wait_for_completion(self, task_id: str, timeout: int = 300) -> dict:
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            task = self.client.tasks.retrieve(task_id)
+            if task.status == "SUCCEEDED":
+                return {"status": "success", "video_url": task.output[0], "task_id": task_id}
+            elif task.status == "FAILED":
+                return {"status": "failed", "error": task.failure, "task_id": task_id}
+            time.sleep(5)
+        return {"status": "timeout", "task_id": task_id}
+        ]]></code>
+        <note>Runway content policy violations return FAILED with no useful error message. Do not retry without modifying the prompt.</note>
+      </example>
+    </section>
+    <section name="luma-dream-machine">
+      <p>Luma has no official Python SDK — use httpx REST calls. The original _wait_for_completion has no timeout; a fixed version is required for production.</p>
+      <example type="good" title="LumaVideoGenerator with timeout fix">
+        <code lang="python"><![CDATA[
+def _wait_for_completion(self, generation_id: str, timeout: int = 300) -> dict:
+    """Fixed version with timeout — original loops infinitely."""
+    start = time.time()
+    while time.time() - start < timeout:
+        response = requests.get(
+            f"{self.base_url}/generations/{generation_id}",
+            headers={"Authorization": f"Bearer {self.api_key}"}
+        )
+        gen = response.json()
+        if gen["state"] == "completed":
+            return {"status": "success",
+                    "video_url": gen["assets"]["video"], "id": generation_id}
+        elif gen["state"] == "failed":
+            return {"status": "failed",
+                    "error": gen.get("failure_reason"), "id": generation_id}
+        time.sleep(5)
+    return {"status": "timeout", "id": generation_id}
+        ]]></code>
+        <note>Luma video extension uses generation IDs (not video URLs) in keyframes.frame0. Agents must track IDs, not just URLs.</note>
+      </example>
+    </section>
+    <section name="replicate-models">
+      <p>Replicate returns an iterator or URL depending on model and output type. output[0] fails if output is not a list. Pin model version hashes in config — they go stale as providers update.</p>
+      <example type="good" title="Stable Video Diffusion via Replicate">
+        <code lang="python"><![CDATA[
+def generate_stable_video(self, image_path: str, motion_bucket_id: int = 127) -> str:
+    output = replicate.run(
+        # Pin hash — update intentionally, not automatically
+        "stability-ai/stable-video-diffusion:3f0457e4619daac51203dedb472816fd4af51f3149fa7a9e0b5ffcf1b8172438",
+        input={"input_image": open(image_path, "rb"),
+               "motion_bucket_id": motion_bucket_id, "fps": 7, "num_frames": 25}
+    )
+    return output  # returns URL string for SVD
+        ]]></code>
+      </example>
+      <antipattern>
+        <description>Assuming output[0] works for all Replicate models.</description>
+        <reason>Replicate returns an iterator or a URL string depending on the model. Calling [0] on a string iterator returns the first character.</reason>
+      </antipattern>
+    </section>
+    <section name="video-generation-service">
+      <p>VideoGenerationService abstracts provider selection, retry logic, and post-generation download into a single async generate() call. The _upload_image method is a stub — must be implemented per storage backend before image-to-video works.</p>
+      <example type="good" title="VideoGenerationService with multi-provider routing">
+        <code lang="python"><![CDATA[
+@dataclass
+class VideoGenerationConfig:
+    provider: VideoProvider = VideoProvider.REPLICATE
+    default_duration: int = 5
+    default_aspect_ratio: str = "16:9"
+    max_retries: int = 3
+    timeout: int = 600
+    output_dir: str = "./generated_videos"
+
+class VideoGenerationService:
+    async def generate(self, prompt: str,
+                       provider: Optional[VideoProvider] = None, **kwargs) -> dict:
+        provider = provider or self.config.provider
+        for attempt in range(self.config.max_retries):
+            try:
+                result = await self._dispatch(provider, prompt, **kwargs)
+                if result["status"] == "success":
+                    output_path = await self._download_video(result["video_url"], prompt[:50])
+                    result["local_path"] = output_path
+                return result
+            except Exception as e:
+                if attempt == self.config.max_retries - 1:
+                    return {"status": "failed", "error": str(e)}
+        ]]></code>
+      </example>
+    </section>
+    <section name="production-rules">
+      <rule>
+        <statement>Download videos immediately after SUCCEEDED status. Pre-signed URLs from Runway and Luma expire in 30-60 minutes.</statement>
+        <rationale>An archival agent that sweeps output_dir hours later will receive 404 on all cached provider URLs. Download on success, then serve from local storage.</rationale>
+      </rule>
+      <rule>
+        <statement>Use streaming HTTP download for video files to avoid loading entire files into memory.</statement>
+        <rationale>httpx async download that reads response.content buffers the full video before writing. A 100MB file breaks on memory-constrained hosts.</rationale>
+      </rule>
+      <rule>
+        <statement>Log submitted prompt and task ID together at generation time. Store provider, model version, and seed for reproducibility.</statement>
+        <rationale>Re-querying a failed task requires the task ID. Debugging quality issues requires knowing exactly which model version and seed produced the output.</rationale>
+      </rule>
+      <rule>
+        <statement>Validate output file exists and size is greater than 0 before returning success from the service.</statement>
+        <rationale>APIs can return SUCCEEDED status with empty output. Propagating an empty file path causes silent failures in downstream processing.</rationale>
+      </rule>
+      <antipattern>
+        <description>Passing a Runway task ID to a Luma polling endpoint or vice versa.</description>
+        <reason>Task IDs and generation IDs are provider-specific and non-portable. Keep provider context alongside each ID.</reason>
+      </antipattern>
+    </section>
+    <section name="agentic-workflow">
+      <p>An agent receives a generation request with provider preference and prompt. It instantiates VideoGenerationService, calls generate(), awaits the async result, verifies the local path exists, then returns structured output with {status, local_path, video_url}. For multi-provider fallback, agents iterate providers list in order and stop on first success. A separate archival agent periodically sweeps output_dir and uploads to permanent storage (S3), since pre-signed video URLs expire.</p>
+      <example type="good" title="Multi-provider selection pattern">
+        <code lang="python"><![CDATA[
+PROVIDER_MAP = {
+    "photorealistic": VideoProvider.LUMA,
+    "cinematic": VideoProvider.RUNWAY,
+    "animated": VideoProvider.REPLICATE,
+}
+provider = PROVIDER_MAP.get(style_tag, VideoProvider.REPLICATE)
+        ]]></code>
+      </example>
+      <example type="good" title="Agent prompt pattern">
+        <code lang="text"><![CDATA[
+<task>
+Generate a video clip.
+Provider: {{PROVIDER}}
+Prompt: {{PROMPT}}
+Duration: {{DURATION}}s
+Aspect ratio: {{ASPECT_RATIO}}
+Output dir: {{OUTPUT_DIR}}
+
+Return JSON:
+{"status": "success"|"failed", "local_path": "...", "error": "..."}
+</task>
+        ]]></code>
+      </example>
+    </section>
+    <templates>
+      <template path="templates/runway-generator.py" purpose="RunwayVideoGenerator: text-to-video and image-to-video via SDK"/>
+      <template path="templates/luma-generator.py" purpose="LumaVideoGenerator: generate, extend, image-to-video via REST"/>
+      <template path="templates/replicate-generator.py" purpose="ReplicateVideoGenerator: SVD, AnimateDiff, Zeroscope"/>
+      <template path="templates/video-service.py" purpose="VideoGenerationService with async multi-provider routing"/>
+      <template path="templates/prompt-generate.txt" purpose="Agent prompt pattern for dispatching and polling a generation job"/>
+    </templates>
+    <section name="tools-and-cli">
+      <p>The following CLI tools and SDKs are essential for video generation workflows:</p>
+      <list>
+        <item>runwayml (Python SDK) — Runway Gen-3 API client. Install: pip install runwayml. Docs: docs.runwayml.com</item>
+        <item>replicate (Python SDK) — Replicate model runner. Install: pip install replicate. Docs: replicate.com/docs</item>
+        <item>httpx — Async HTTP for Luma API and video download. Install: pip install httpx</item>
+        <item>ffmpeg — Post-processing: concat, trim, resize. Install: apt install ffmpeg</item>
+        <item>boto3 — S3 upload for permanent video storage. Install: pip install boto3</item>
+      </list>
+    </section>
+    <section name="services-and-providers">
+      <p>Production-grade video generation services: Runway Gen-3 (SaaS, official Python SDK, best structured API), Luma Dream Machine (SaaS, REST API, keyframe control for extend/chaining), Replicate (SaaS model marketplace, pin versions via hash, lowest cost), Zeroscope v2 XL (OSS on Replicate, good baseline, 576x320 max), AnimateDiff (OSS on Replicate, better for animated/stylized content), Stable Video Diffusion (OSS on Replicate, img2video with motion_bucket_id control), Cloudinary (SaaS video storage/transform/CDN for serving generated clips).</p>
+    </section>
+    <section name="best-practices">
+      <rule>
+        <statement>Always download videos immediately after SUCCEEDED — pre-signed URLs expire in 30–60 minutes depending on provider.</statement>
+        <rationale>Provider URLs are time-bound. Caching without download will fail hours later.</rationale>
+      </rule>
+      <rule>
+        <statement>Pin Replicate model hashes to a known-good version; record them in a config file, not inline in code.</statement>
+        <rationale>Model versions go stale and produce different outputs. Explicit pinning ensures reproducibility.</rationale>
+      </rule>
+      <rule>
+        <statement>Implement provider-level rate limiting (Runway: 10 concurrent tasks; Luma: varies by plan).</statement>
+        <rationale>Each provider enforces quotas. Exceeding them returns errors that block the pipeline.</rationale>
+      </rule>
+      <rule>
+        <statement>Use streaming download for large files (httpx stream mode or requests with stream=True) to avoid OOM.</statement>
+        <rationale>Full-file-in-memory buffering breaks on constrained hosts and large video files.</rationale>
+      </rule>
+      <rule>
+        <statement>Log both the submitted prompt and the task ID together; re-querying failed tasks requires the task ID.</statement>
+        <rationale>Without structured logging, failed jobs cannot be re-queried or debugged.</rationale>
+      </rule>
+      <rule>
+        <statement>Store provider, model version, prompt, seed, and output path in a generation log for reproducibility.</statement>
+        <rationale>Debugging quality issues requires knowing exactly which model version and seed produced the output.</rationale>
+      </rule>
+      <rule>
+        <statement>Use separate output directories per provider to simplify debugging and cost attribution.</statement>
+        <rationale>Mixed output directories make it hard to trace which provider produced which clip.</rationale>
+      </rule>
+    </section>
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>Runway SDK image_to_video.create requires an image URL even for text-only generation on some model versions.</description>
+        <reason>Have a fallback blank image URL ready; verify endpoint with current SDK docs before use.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Replicate returns an iterator or a URL depending on model and output type; output[0] fails if output is not a list.</description>
+        <reason>Each model has different output shapes. Check type before indexing.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Luma keyframes.frame0.type = "generation" for extension requires the source generation ID, not the video URL.</description>
+        <reason>Agents must track IDs, not just URLs, for chaining operations across the same provider.</reason>
+      </antipattern>
+      <antipattern>
+        <description>VideoGenerationService.extend_video extracts frames from a local file then re-uploads; if the source clip was generated by a different provider, seams are visible.</description>
+        <reason>Cross-provider stitching produces discontinuities in motion and color.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Async _upload_image is a stub in VideoGenerationService.</description>
+        <reason>Any agent that calls generate_from_image(image_path=...) will hit NotImplementedError until implemented per storage backend.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Task IDs and generation IDs are provider-specific and non-portable; never pass a Runway task ID to a Luma polling call.</description>
+        <reason>Provider contexts are incompatible. Keep provider alongside ID.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Error messages from Runway on content policy violations are terse ("FAILED") with no explanation.</description>
+        <reason>Agent must not retry without modifying the prompt when FAILED is returned.</reason>
+      </antipattern>
+    </section>
+    <section name="subagent-roles">
+      <p>Recommended subagent specialization: Haiku executes generation calls, polls, downloads, and returns structured result. Sonnet selects provider based on prompt type (photorealistic → Luma; anime → Replicate/AnimateDiff; commercial → Runway). Haiku performs video URL archival: sweeps output dir, uploads to S3, updates metadata store.</p>
+    </section>
+    <see-also>
+      <link href="https://docs.runwayml.com"/>
+      <link href="https://lumalabs.ai/dream-machine/api/docs"/>
+      <link href="https://replicate.com/docs/reference/http"/>
+      <link href="https://replicate.com/stability-ai/stable-video-diffusion"/>
+      <link href="https://replicate.com/lucataco/animate-diff"/>
+    </see-also>
+  </content>
+</methodology>
