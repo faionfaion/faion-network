@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="statistics-application">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>growth-marketer</domain>
+    <summary>Significance testing for A/B tests: raw-count templates, power analysis, worked examples, and automated Python helper.</summary>
+    <tags>
+      <tag>statistics</tag>
+      <tag>significance</tag>
+      <tag>a-b-testing</tag>
+      <tag>power-analysis</tag>
+      <tag>experiments</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Statistical Significance: Application</title>
+    <summary>Practical tools for applying significance testing: raw-count templates, power analysis template, three worked examples (significant result, insufficient data, underpowered test), and Python helpers. Requires raw counts (n1, x1, n2, x2) — never run from headline percentages alone.</summary>
+    <why>
+      <p>Growth teams waste traffic by running underpowered tests and make wrong decisions by analyzing results before the pre-registered sample size is reached. Standardized templates force pre-registration of hypothesis, primary metric, and sample size before launch — preventing post-hoc metric selection and peeking.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Analyzing a finished A/B test and needing a defensible significance and CI verdict.</item>
+        <item>Sizing an experiment up-front (power analysis) so you do not waste traffic.</item>
+        <item>Suspecting an "underpowered win" and needing to compute actual achieved power.</item>
+        <item>Standardizing stat reporting across many small tests so results are comparable over time.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Causal inference from observational data (no random assignment) — significance tests over-claim.</item>
+        <item>Multi-armed or sequential or bandit experiments — z-tests inflate false positives; use SPRT, group sequential, or Bayesian.</item>
+        <item>Fewer than 30 events per variant — use Fisher's exact test.</item>
+        <item>Highly skewed continuous metrics (revenue, session length) — use bootstrapping or t-test on log-transformed data.</item>
+      </list>
+    </when-not-to-use>
+    <section name="worked-examples">
+      <p>Three A/B Test Analysis Examples: significant result, insufficient data (needs more), and underpowered test.</p>
+      <example type="good" title="Example 1: Significant Result — Ship">
+        <code lang="text"><![CDATA[
+Test: New checkout button color (gray → green)
+
+Data:
+  A (gray):  n1=15,000, x1=450  → p1=3.00%
+  B (green): n2=15,000, x2=525  → p2=3.50%
+
+Calculation:
+  p_pooled = 975/30000 = 0.0325
+  SE = sqrt(0.0325 * 0.9675 * (1/15000 + 1/15000)) = 0.00129
+  z  = (0.035 - 0.030) / 0.00129 = 3.88
+  p-value = 0.0001
+
+Result:
+  p < 0.05 → Statistically significant
+  95% CI: [+0.25%, +0.75%] — zero not in interval
+  Decision: SHIP green button
+        ]]></code>
+      </example>
+      <example type="bad" title="Example 2: Not Significant — Need More Data">
+        <code lang="text"><![CDATA[
+Test: Headline copy change
+
+Data:
+  A: n1=2,000, x1=100  → p1=5.0%
+  B: n2=2,000, x2=110  → p2=5.5%
+
+Calculation:
+  p_pooled = 0.0525
+  SE = 0.00158
+  z  = 0.317
+  p-value = 0.75
+
+Result:
+  p > 0.05 → NOT significant
+  95% CI: [-2.6%, +3.6%] — interval includes zero
+  Decision: Need ~10,000 per variant to detect this 0.5% absolute difference
+        ]]></code>
+        <note>Do not report as "no effect". It means "insufficient evidence". The true lift could be anywhere in the CI range.</note>
+      </example>
+      <example type="bad" title="Example 3: Underpowered Test — Useless Result">
+        <code lang="text"><![CDATA[
+Setup:
+  Baseline: 10%, MDE: 5% relative (0.5% absolute)
+  Actual sample: 500 per variant
+
+Required sample calculation:
+  n = 16 * 0.10 * 0.90 / 0.005^2 = 57,600 per variant
+
+Actual power:
+  ~6% (only 6% chance of detecting the real effect)
+
+Conclusion:
+  This test was essentially useless. Even if B is genuinely better,
+  there was a 94% chance of missing it with this sample.
+        ]]></code>
+        <note>Running this test wasted 1,000 user-exposures and produced an untrustworthy null result. Always compute required sample size before launch.</note>
+      </example>
+    </section>
+    <section name="input-requirements">
+      <rule>
+        <statement>Always require raw counts (n1, x1, n2, x2) before computing significance; refuse to calculate from headline percentages alone.</statement>
+        <rationale>LLMs confidently compute p-values from percentages without knowing sample sizes, producing meaningless results. Raw counts are the only defensible input.</rationale>
+      </rule>
+      <rule>
+        <statement>Pre-register primary metric, sample size, and end date BEFORE launch; refuse to analyze a test where these were not fixed in advance.</statement>
+        <rationale>Post-hoc metric selection and peeking invalidate p-values. Tests without pre-registration are exploratory at best — report them as such.</rationale>
+      </rule>
+    </section>
+    <section name="reporting-rules">
+      <rule>
+        <statement>Always report 95% CI alongside p-value; output a binary significant_at_0.05 field rather than reporting "almost significant" (p=0.06).</statement>
+        <rationale>"Almost significant" is not a statistical concept. p=0.06 is not significant at alpha=0.05. CI gives the range of plausible effects — report both.</rationale>
+      </rule>
+      <rule>
+        <statement>Apply Bonferroni correction (alpha/k) when checking more than 3 metrics; designate one primary metric and treat the rest as guardrails.</statement>
+        <rationale>With 10 independent metrics at alpha=0.05, expected false positives = 0.5 per test. Bonferroni correction divides alpha by the number of comparisons.</rationale>
+      </rule>
+    </section>
+    <section name="limitations-and-gotchas">
+      <p>Two-proportion z-test assumes independence; clustered users (multiple sessions) violate this and inflate significance. Peeking and early stopping silently breaks p-values; agents must refuse to compute on incomplete tests unless explicitly told it is a sequential design. Multiple comparisons (10 metrics, 5 segments) need Bonferroni or FDR; default scipy.stats.proportions_ztest does not correct. Frequentist p-values get mistaken for "probability B is better"; agents should report Bayesian posterior or CI alongside. MDE relative-vs-absolute confusion is the #1 source of wrong sample sizes. Asymmetric traffic split (90/10) breaks the simplified formula; use statsmodels or evan-miller calculator instead. When test has 0 conversions in one variant, z-test breaks; fall back to Fisher's exact and tell the agent to detect this case.</p>
+      <p>When to Escalate:</p>
+      <list>
+        <item>Asymmetric traffic split (90/10): use statsmodels, not the simplified formula</item>
+        <item>Revenue or AOV metric: use bootstrapping (10k resamples), not proportions z-test</item>
+        <item>0 conversions in one variant: use Fisher's exact test; z-test breaks</item>
+        <item>Multi-armed or sequential design: use SPRT or Bayesian — standard z-test inflates FPR</item>
+      </list>
+    </section>
+    <section name="agentic-workflow">
+      <p>A sonnet analyst agent ingests raw counts (n1, x1, n2, x2), runs the test, and emits a structured verdict (p, CI, power, decision). For sizing, it accepts (baseline, MDE, alpha, power) and returns sample-per-variant and duration estimate. An opus reviewer agent sanity-checks the test design before launch (correct primary metric, no peeking plan, no proxy metric). A haiku agent can pull counts daily for monitoring but must NOT report significance until pre-registered sample size is hit.</p>
+      <p>Recommended Subagents: faion-growth-agent (sonnet for analysis, opus for design review), generic stats subagent with scipy and statsmodels access, review subagent (opus) for pre-launch hypothesis and metric audit.</p>
+      <p>CLI Tools: Python scipy.stats with proportions_ztest, chi2_contingency, fisher_exact. Statsmodels for power analysis with NormalIndPower().solve_power(). R pwr package for reference power calcs. Evan Miller calculators as web UI sanity-check at https://www.evanmiller.org/ab-testing/. Abracadabra (Square OSS) for Bayesian and frequentist A/B in Python. Expan (Zalando OSS) for experimentation analysis.</p>
+      <p>Services and Apps: Statsig (SaaS, REST and SDK) for sequential testing and CUPED variance reduction. Eppo (SaaS, REST) for warehouse-native stats engine. GrowthBook (OSS, REST and self-host) with Bayesian by default. Optimizely Stats Engine (SaaS) with sequential testing built-in. VWO SmartStats (SaaS) Bayesian, agent reads results via API.</p>
+    </section>
+    <section name="best-practices">
+      <p>Pre-register the primary metric, sample size, and end date BEFORE launch; agents should refuse to analyze tests where these were not fixed. Always report CI alongside p-value; "significant" with CI [0.01%, 4%] is barely actionable. Convert MDE to absolute terms in the prompt explicitly to dodge the relative-absolute trap. Use one-sided tests only when a regression would never be shipped — otherwise default to two-sided. For revenue and AOV use bootstrapping (10k resamples) — proportions math is wrong. Apply Bonferroni when checking more than 3 metrics; better, pick one primary and treat the rest as guardrails.</p>
+    </section>
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>LLMs confidently compute p-values from headline percentages without raw counts.</description>
+        <reason>Always force n1, x1, n2, x2 as explicit inputs; percentages without sample sizes are meaningless.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents will report "p=0.06, almost significant".</description>
+        <reason>No, it is not. Force a binary significant_at_alpha field; there is no "almost significant" in frequentist stats.</reason>
+      </antipattern>
+      <antipattern>
+        <description>"95% CI does not cross 0" is misinterpreted as "95% chance B is better".</description>
+        <reason>That is Bayesian. Frequentist: "If H0 is true, there is a 5% chance of seeing this data." Report CI: "We are 95% confident the true lift is between X% and Y%."</reason>
+      </antipattern>
+      <antipattern>
+        <description>Sample-size prompts drop alpha and power assumptions silently.</description>
+        <reason>Sample size is meaningless without alpha and power. Require them in output: alpha=0.05, power=0.80 (or whatever was used).</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/significance-check.md" purpose="Template for recording raw data, z-test, CI, and decision."/>
+      <template path="templates/power-analysis.md" purpose="Template for pre-test sample size calculation with MDE notation."/>
+    </templates>
+    <see-also>
+      <link href="https://www.evanmiller.org/ab-testing/"/>
+      <link href="https://www.exp-platform.com/"/>
+      <link href="https://docs.statsig.com/"/>
+    </see-also>
+  </content>
+</methodology>

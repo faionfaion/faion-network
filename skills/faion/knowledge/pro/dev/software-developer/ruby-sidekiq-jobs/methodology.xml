@@ -167,6 +167,17 @@ end
         <reason>Sidekiq worker timeout kills the job mid-run. Without chunking, the job restarts from the beginning on retry, re-processing already-completed records (idempotency risk) or exceeding the retry window. Split into chunks of ≤1000 records per job.</reason>
       </antipattern>
     </section>
+    <section name="agent-integration-guidelines">
+      <p>A subagent generates the job class with explicit sidekiq_options (queue, retry policy, dead set), an idempotency check at the top of perform, and an RSpec test using Sidekiq::Testing.inline! (or fake! + Sidekiq::Worker.drain for enqueue-order testing). The agent must also wire app/jobs/application_job.rb if missing, register the queue in config/sidekiq.yml with concurrency, and confirm the worker process is supervised by systemd or another process manager. Quality gates: bundle exec rspec, bundle exec rubocop, bundle exec brakeman for security on any newly serialized arguments. Use faion-sdd-executor-agent to drive RSpec / RuboCop / Brakeman as blocking quality gates.</p>
+      <rule>
+        <statement>Pass IDs only into perform. Reload AR objects inside the job with explicit find_by and short-circuit if missing. Use after_commit :enqueue_job, on: :create inside the model to defer job dispatch until the transaction commits.</statement>
+        <rationale>Transactional safety: the worker picks up the job only after the row exists. Idempotent: short-circuit if the work is already done.</rationale>
+      </rule>
+      <rule>
+        <statement>Make every job idempotent: check already_done? first; use a unique key + Redis SET NX EX for in-flight dedupe if needed (Sidekiq Pro feature or sidekiq-unique-jobs gem). Set per-queue priorities in sidekiq.yml; never run all queues at the same weight.</statement>
+        <rationale>Sidekiq is at-least-once, not exactly-once. Idempotent jobs survive re-execution. Priority queues ensure critical jobs (user auth, payments) run before bulk exports.</rationale>
+      </rule>
+    </section>
     <templates>
       <template path="templates/job.rb" purpose="ProcessOrderJob with idempotency, retry backoff, error handling"/>
       <template path="templates/sidekiq.yml" purpose="Queue priorities and concurrency configuration"/>

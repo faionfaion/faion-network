@@ -27,7 +27,7 @@
   </metadata>
   <content>
     <title>Rails Patterns (Service Objects)</title>
-    <summary>Rails service object pattern: extract multi-step business workflows from fat controllers/models into `app/services/<BoundedContext>/<Action>Service` classes with a single `call` method that returns a `ServiceResult` (success/failure). Keeps controllers as pure HTTP adapters; business logic and transaction management live in services. This enforces a single responsibility, makes transaction boundaries explicit, and lets RSpec test business logic in isolation without loading the full HTTP stack.</summary>
+    <summary>Rails service object pattern: extract multi-step business workflows from fat controllers into app/services/BoundedContext/ActionService classes with a single call method that returns a ServiceResult (success/failure).</summary>
     <why>
       <p>Rails controllers balloon when they own database writes, mailer calls, audit logging, and job enqueuing. ActiveRecord callbacks create unmaintainable side-effect chains. Service objects enforce a single responsibility, make transaction boundaries explicit, and let RSpec test business logic in isolation without loading the full HTTP stack.</p>
     </why>
@@ -152,25 +152,38 @@ end
     <section name="antipatterns">
       <antipattern>
         <description>Service has multiple public methods (call, create, update) or no call method at all.</description>
-        <reason>Breaks single-responsibility; unclear which method is the entry point; harder to compose with organizers.</reason>
+        <reason>Breaks single-responsibility; unclear which method is the entry point; harder to compose with organizers. A service is a command object with exactly one entry point.</reason>
       </antipattern>
       <antipattern>
         <description>rescue StandardError inside the service, swallowing all exceptions into ServiceResult.failure.</description>
-        <reason>Hides real bugs (NoMethodError, TypeError) as domain failures. Only catch documented domain exceptions.</reason>
+        <reason>Hides real bugs (NoMethodError, TypeError) as domain failures. Only catch documented domain exceptions like ActiveRecord::RecordInvalid or custom exceptions.</reason>
       </antipattern>
       <antipattern>
         <description>Service returns raw ActiveRecord object on success, exception on failure — two divergent paths.</description>
         <reason>Controllers must handle both paths differently; ServiceResult enforces a uniform interface.</reason>
       </antipattern>
+      <antipattern>
+        <description>Services reference params.require(...) or params.permit(...) from the controller. The service couples to Rails ActionController::Parameters.</description>
+        <reason>Couples the service to Rails and prevents unit testing without mocking params. Services accept already-permitted plain hashes from the controller, not ActionController::Parameters.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Services call deliver_now or perform_now for mailer/job dispatch, causing service specs to send real emails or run jobs synchronously.</description>
+        <reason>Synchronous dispatch makes tests slow, side-effect-prone, and brittle. Always use deliver_later / perform_later so the mailer/job is enqueued, not executed immediately.</reason>
+      </antipattern>
     </section>
-    <section name="agent-gotchas">
-      <rule testable="false">
-        <statement>Reject services that reference params.require(...) or params.permit(...). The service accepts already-permitted plain hashes from the controller.</statement>
-        <rationale>ActionController::Parameters inside a service couples it to Rails and prevents unit testing.</rationale>
+    <section name="agentic-workflow-and-best-practices">
+      <p>Treat a Rails service as a unit of work with a single public call method. A subagent should generate the service, the matching ServiceResult / Dry-Monads return type, the controller wiring, and an RSpec request + service spec in one pass. For larger refactors (extracting from a fat controller), use a planner subagent to map controller actions to services first, then a code subagent per service. Always require the diff include the spec file alongside the service. Quality gates: bundle exec rspec, bundle exec rubocop.</p>
+      <rule>
+        <statement>Use keyword args (params:, current_user:) for explicitness; positional args become hard to mock. Keep services free of HTTP/Rails concerns; the controller maps ServiceResult to HTTP status codes.</statement>
+        <rationale>Self-documenting, safe from argument-order mistakes. Separating HTTP from domain logic keeps services unit-testable.</rationale>
       </rule>
-      <rule testable="false">
-        <statement>Reject services that call deliver_now or perform_now for mailer/job dispatch. Use deliver_later / perform_later so service specs don't send real emails or run jobs synchronously.</statement>
-        <rationale>Synchronous dispatch in a service makes tests slow, side-effect-prone, and brittle.</rationale>
+      <rule>
+        <statement>For multi-step workflows, prefer composing small services via an Organizer rather than one 400-line service. Lock ActiveRecord::Base.transaction blocks to a single aggregate to avoid distributed-transaction bugs.</statement>
+        <rationale>Small, focused services are easier to test and reuse. Organizers (Interactor pattern) chain services together. Transactions on a single aggregate maintain ACID guarantees.</rationale>
+      </rule>
+      <rule>
+        <statement>Human-in-loop checkpoint: review namespace/folder choice (app/services/users/ vs. app/operations/users/) before generation — renaming after the fact is painful due to constant autoload paths.</statement>
+        <rationale>Different Rails teams use different conventions; pin it in the project's AGENTS.md ahead of time.</rationale>
       </rule>
     </section>
     <templates>
