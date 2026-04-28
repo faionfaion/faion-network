@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/comms/hr-recruiter methodologies → methodology.xml (onboarding-30-day, onboarding-60-90-day, recruiting-process; feature-045 batch)
+- migrate: 3/3 pro/comms/hr-recruiter methodologies → methodology.xml (star-interview-framework, star-interview-method, structured-interview-design; feature-045 batch)
 - migrate: 3/3 pro/ba/business-analyst methodologies → methodology.xml (solution-assessment, stakeholder-analysis, use-case-modeling; feature-045 batch)
 - migrate: 3/3 pro/ba/business-analyst methodologies → methodology.xml (requirements-lifecycle, requirements-traceability, requirements-validation; feature-045 batch)
 - migrate: 3/3 pro/ba/ba-core methodologies → methodology.xml (requirements-lifecycle, requirements-prioritization, requirements-traceability; feature-045 batch)
