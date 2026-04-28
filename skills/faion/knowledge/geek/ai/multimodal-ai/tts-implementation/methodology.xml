@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tts-implementation">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>multimodal-ai</domain>
+    <summary>Production TTS service with multi-provider support, content-hash caching, long-text chunking, real-time streaming, and voice cloning via ElevenLabs.</summary>
+    <tags>
+      <tag>tts</tag>
+      <tag>audio-production</tag>
+      <tag>streaming</tag>
+      <tag>voice-cloning</tag>
+      <tag>multi-provider</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Text-to-Speech Implementation</title>
+    <summary>Production TTS service with multi-provider support (OpenAI, ElevenLabs, Google Cloud), content-hash caching, long-text chunking via LongTextTTS, real-time streaming via async PCM, and voice cloning via ElevenLabs. Use when tts-basics patterns are insufficient — this layer adds TTSService, cache eviction, and streaming delivery.</summary>
+    <why>
+      <p>Single-call TTS fails for pipeline audio generation: no caching means repeated phrases re-bill on every pipeline run, no chunking means articles and episodes error out at 4096 chars, no streaming means high-latency first-audio delivery. TTSService centralizes these concerns with SHA-256 content hashing, transparent chunking, and async generator streaming.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Long-form content (articles, podcast episodes) exceeding 4096-char API limits.</item>
+        <item>Production TTS service needing content-hash caching, retry, and multi-provider support.</item>
+        <item>Real-time streaming TTS to a speaker or WebSocket client.</item>
+        <item>Voice cloning from audio samples via ElevenLabs.</item>
+        <item>Multilingual synthesis where Google Neural2 outperforms OpenAI on specific languages.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Simple one-off audio generation — use tts-basics direct API call; TTSService setup adds overhead.</item>
+        <item>Voice cloning of persons without explicit consent — ElevenLabs ToS requires consent documentation.</item>
+        <item>Sub-200ms first-audio-byte latency in telephony — streaming helps but cannot reach &lt;50ms.</item>
+        <item>Languages not covered by OpenAI TTS — use Google Cloud or Azure TTS directly.</item>
+      </list>
+    </when-not-to-use>
+    <section name="TTSService Architecture">
+      <rule>
+        <statement>Cache key must include provider value: sha256(text + "|" + voice + "|" + str(speed) + "|" + provider). Switching providers invalidates the cache even for identical text+voice combos — document this behavior.</statement>
+        <rationale>Different providers produce different audio for identical inputs. Without provider in the key, a cached OpenAI file could be served as a Google TTS file.</rationale>
+      </rule>
+      <rule>
+        <statement>Implement cache eviction by age (max_age_days) and total size (max_size_mb). Production services accumulate gigabytes of audio over time if eviction is absent.</statement>
+        <rationale>TTSService does not evict by default. Long-running pipelines fill disk silently until the service fails with ENOSPC.</rationale>
+      </rule>
+      <example type="good">
+        <note>Cache eviction function — run on a cron or before each synthesis session.</note>
+        <code lang="python"><![CDATA[
+import time
+from pathlib import Path
+
+def evict_tts_cache(cache_dir: str, max_age_days: int = 30, max_size_mb: int = 500):
+    cache = Path(cache_dir)
+    entries = sorted(cache.glob("*.mp3"), key=lambda p: p.stat().st_mtime)
+    total_mb = sum(p.stat().st_size for p in entries) / (1024 * 1024)
+    now = time.time()
+    for entry in entries:
+        age_days = (now - entry.stat().st_mtime) / 86400
+        if age_days > max_age_days or total_mb > max_size_mb:
+            total_mb -= entry.stat().st_size / (1024 * 1024)
+            entry.unlink()
+]]></code>
+      </example>
+    </section>
+    <section name="Return shape consistency">
+      <rule>
+        <statement>TTSService.synthesize() and TTSService._synthesize_long() both return dicts but use different path keys: synthesize uses "path", _synthesize_long also uses "path". Callers must always access result["path"] not result["audio_path"].</statement>
+        <rationale>The inconsistency appears only if the code is extended. Documenting the canonical key prevents future callers from using a wrong key that silently returns None.</rationale>
+      </rule>
+    </section>
+    <section name="Duration measurement">
+      <rule>
+        <statement>TTSService._get_duration silently returns 0.0 on pydub exceptions. Check for 0.0 duration in callers and treat it as a generation failure, not valid zero-length audio.</statement>
+        <rationale>A synthesized audio file with 0-second reported duration is almost always invalid or missing. Silently accepting 0.0 propagates errors downstream.</rationale>
+      </rule>
+    </section>
+    <section name="LongTextTTS Chunking">
+      <rule>
+        <statement>Use tempfile.mkdtemp() for chunk temp files instead of predictable paths like /tmp/chunk_0.mp3. Concurrent agent instances writing to the same paths will corrupt each other's output.</statement>
+        <rationale>LongTextTTS is called from parallel agents in batch synthesis pipelines. A unique temp directory per call makes chunk paths non-overlapping by construction.</rationale>
+      </rule>
+      <example type="bad">
+        <code lang="python"><![CDATA[
+# BAD: /tmp/chunk_0.mp3 conflicts across concurrent agents
+temp_path = f"/tmp/chunk_{i}.mp3"
+]]></code>
+      </example>
+      <example type="good">
+        <code lang="python"><![CDATA[
+import tempfile
+from pathlib import Path
+
+tmpdir = tempfile.mkdtemp()
+temp_path = str(Path(tmpdir) / f"chunk_{i}.mp3")
+# ... synthesize, then cleanup:
+import shutil
+shutil.rmtree(tmpdir, ignore_errors=True)
+]]></code>
+      </example>
+      <rule>
+        <statement>LongTextTTS._split_text splits on sentence-ending punctuation (.!?). Text with no sentence punctuation (code blocks, bullet lists, data dumps) produces one giant chunk that exceeds the API limit. Pre-process such text into sentences before calling.</statement>
+        <rationale>The regex r'(?&lt;=[.!?])\s+' finds no splits in code or list text. The entire input becomes one chunk and the API call fails at 4096+ chars.</rationale>
+      </rule>
+      <rule>
+        <statement>For long-form content (articles, book chapters), split at semantic boundaries (paragraphs, headings) rather than arbitrary sentence counts. Chapter-level splits produce more natural prosody than mid-paragraph splits.</statement>
+        <rationale>Splitting mid-paragraph at a character limit creates unnatural pauses in the audio and can break the semantic flow that listeners follow.</rationale>
+      </rule>
+    </section>
+    <section name="Real-Time TTS Streaming">
+      <rule>
+        <statement>stream_tts is an async generator. Calling it from a synchronous context requires asyncio.run(collect_stream(text)) wrapper. Direct iteration in sync code raises TypeError.</statement>
+        <rationale>Async generators can only be iterated inside async coroutines. Most agent frameworks provide a sync entry point that must explicitly bridge the async boundary.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+import asyncio
+
+async def collect_stream(text: str, voice: str = "alloy") -> bytes:
+    chunks = []
+    async for chunk in stream_tts(text, voice=voice):
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+# Sync entry point:
+audio_bytes = asyncio.run(collect_stream("Hello world"))
+]]></code>
+      </example>
+      <section name="WebSocket delivery">
+        <example type="good">
+          <note>Stream TTS directly to WebSocket client — forward PCM chunks without buffering.</note>
+          <code lang="python"><![CDATA[
+async def ws_tts_handler(websocket, text: str, voice: str = "alloy"):
+    async for chunk in stream_tts(text, voice=voice):
+        await websocket.send_bytes(chunk)
+]]></code>
+        </example>
+      </section>
+      <rule>
+        <statement>pyaudio requires the portaudio system library. Verify at import time in service startup, not at first runtime use. Silent install failure in container images causes hard-to-diagnose runtime errors.</statement>
+        <rationale>pyaudio fails to import if portaudio is missing, but the error only surfaces when stream_to_speaker is actually called — potentially deep in a pipeline run after other work has completed.</rationale>
+      </rule>
+      <p>PCM format for pyaudio speaker output: paInt16, 1 channel, 24000 Hz sample rate. This matches OpenAI's PCM output format.</p>
+    </section>
+    <section name="ElevenLabs TTS and Voice Cloning">
+      <rule>
+        <statement>Voice cloning requires explicit consent from the person whose voice is cloned. ElevenLabs ToS requires consent documentation. Do not clone a voice without it.</statement>
+        <rationale>Unauthorized voice cloning violates ElevenLabs ToS and in many jurisdictions is legally actionable as unauthorized use of likeness.</rationale>
+      </rule>
+      <rule>
+        <statement>Collect 3+ audio samples of 30-60 seconds each for clone_voice. Normalize audio levels and minimize background noise before uploading.</statement>
+        <rationale>ElevenLabs requires minimum sample duration for model training. Low-quality samples (noise, inconsistent levels) degrade clone quality; re-cloning wastes API credits.</rationale>
+      </rule>
+      <rule>
+        <statement>Run clone_voice once per voice and store the returned voice_id. Never call clone_voice on every synthesis run — it takes 10-30 seconds and re-uploads the samples.</statement>
+        <rationale>clone_voice is a model training call, not a fast lookup. Treating it as a per-request step makes the pipeline 10-30 seconds slower per synthesis with no benefit.</rationale>
+      </rule>
+      <rule>
+        <statement>clone_voice accepts file paths (absolute), not file handles. Paths must point to existing .mp3 or .wav files of at least 30 seconds each.</statement>
+        <rationale>The ElevenLabs SDK opens files by path internally. Passing file handles or relative paths raises TypeError or FileNotFoundError with unhelpful error messages.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+from elevenlabs import ElevenLabs, Voice, VoiceSettings
+
+def elevenlabs_tts(text: str, output_path: str, voice_id: str,
+                   stability: float = 0.5, similarity_boost: float = 0.75) -> str:
+    client = ElevenLabs()
+    audio = client.generate(
+        text=text,
+        voice=Voice(
+            voice_id=voice_id,
+            settings=VoiceSettings(
+                stability=stability,
+                similarity_boost=similarity_boost,
+                style=0.5,
+                use_speaker_boost=True,
+            )
+        ),
+        model="eleven_multilingual_v2",
+    )
+    with open(output_path, "wb") as f:
+        for chunk in audio:
+            f.write(chunk)
+    return output_path
+]]></code>
+      </example>
+      <rule>
+        <statement>Google TTS voice_name format is locale-specific (en-US-Neural2-D). Picking the wrong locale for a given language_code silently generates wrong-accent audio.</statement>
+        <rationale>Google does not error on mismatched locale+voice combinations — it falls back silently to a default voice. Always validate voice_name against the language_code using the list endpoint.</rationale>
+      </rule>
+    </section>
+    <section name="Agentic workflow">
+      <p>An agent receives text, voice parameters, and an output path. It calls TTSService.synthesize() which handles caching, length validation, and chunking transparently. For streaming use cases, an agent calls stream_tts() as an async generator and forwards bytes to a WebSocket or audio output stream. For voice cloning pipelines, a prep agent validates and uploads sample audio, calls clone_voice, stores the returned voice_id, then uses it in subsequent elevenlabs_tts calls.</p>
+      <section name="Recommended subagents">
+        <list>
+          <item>haiku — Execute TTSService.synthesize(): receive text + params, return {success, path, duration, cached}</item>
+          <item>haiku — Streaming audio delivery: call stream_tts(), chunk bytes to WebSocket or pyaudio stream</item>
+          <item>sonnet — Long text preprocessing: split into chapters/sections, generate per-section audio, assemble with chapter markers</item>
+          <item>sonnet — Voice clone setup: validate sample files (duration, format, quality), call clone_voice, register voice_id in config</item>
+        </list>
+      </section>
+      <section name="Prompt pattern">
+        <code lang="xml"><![CDATA[
+<task>
+Synthesize speech for production use.
+Text length: {{CHAR_COUNT}} chars
+Provider: {{PROVIDER}}  (openai|elevenlabs|google)
+Voice: {{VOICE_ID_OR_NAME}}
+Speed: {{SPEED}}
+Output: {{OUTPUT_PATH}}
+Cache: enabled
+
+Use TTSService. If text > 4000 chars, chunking is automatic.
+Return: {"success": true, "path": "...", "duration": N, "cached": false}
+</task>
+]]></code>
+        <code lang="python"><![CDATA[
+# Streaming TTS to WebSocket (agent pattern)
+async def ws_tts_handler(websocket, text: str, voice: str = "alloy"):
+    async for chunk in stream_tts(text, voice=voice):
+        await websocket.send_bytes(chunk)
+]]></code>
+      </section>
+    </section>
+    <section name="CLI tools and services">
+      <p>Tools: openai (Python SDK, pip install openai), elevenlabs (pip install elevenlabs for TTS and voice cloning), google-cloud-texttospeech (pip install google-cloud-texttospeech for Google Neural2 voices), pydub (pip install pydub for long audio assembly and duration check), pyaudio (pip install pyaudio for direct speaker output, requires portaudio), fastapi and websockets (pip install fastapi websockets uvicorn for WebSocket TTS server).</p>
+      <p>Services: OpenAI TTS SaaS with Python SDK, tts-1/tts-1-hd, streaming PCM, no SSML, best for English. ElevenLabs SaaS with voice cloning and multilingual support via eleven_multilingual_v2, best quality overall. Google Cloud TTS SaaS with SSML support, Neural2 and Studio tiers, 400+ voices, best multilingual breadth. Azure Cognitive Services TTS SaaS with SSML and neural voices, good latency in EU regions. AWS Polly SaaS with neural voices, SSML, async synthesis for long text via S3. Coqui TTS OSS with self-hosted support and XTTS for cloning, GPU recommended. Kokoro OSS with 80MB model, CPU-viable, MIT license, English-focused.</p>
+    </section>
+    <section name="Best practices">
+      <list>
+        <item>Use content-hash caching at the service level — identical text+voice+speed combos are common in pipelines; caching cuts costs significantly.</item>
+        <item>For long content: split on semantic boundaries (paragraphs, headings), not arbitrary character counts; chapter-level splits produce more natural prosody than mid-sentence splits.</item>
+        <item>Use response_format="pcm" for streaming to reduce decode overhead in the playback chain.</item>
+        <item>Implement cache eviction by age and total size — production services accumulate gigabytes of cached audio over time.</item>
+        <item>For ElevenLabs voice cloning: collect 3+ audio samples of 30-60s each in the target voice; minimize background noise; normalize audio levels before uploading.</item>
+        <item>Test streaming latency by measuring time-to-first-byte; OpenAI streaming typically delivers first chunk in 200-400ms.</item>
+        <item>Log provider, voice, character count, and cached status for every synthesis call to track costs and debug quality issues.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/tts_service.py" purpose="TTSService, TTSConfig, TTSProvider with cache eviction included"/>
+      <template path="templates/long_text_tts.py" purpose="LongTextTTS with tempfile.mkdtemp() fix for concurrent agent safety"/>
+      <template path="templates/stream_tts.py" purpose="stream_tts async generator + WebSocket handler pattern"/>
+      <template path="templates/elevenlabs_tts.py" purpose="elevenlabs_tts + clone_voice with sample validation"/>
+      <template path="templates/prompt-tts-prod.txt" purpose="Agent task prompt for production TTS synthesis with cache semantics"/>
+    </templates>
+  </content>
+</methodology>
