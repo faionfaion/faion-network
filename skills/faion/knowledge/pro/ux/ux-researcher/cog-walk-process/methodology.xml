@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cog-walk-process">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-researcher</domain>
+    <summary>Full structured process for running cognitive walkthroughs: prerequisites, evaluator assembly, per-step forms, issue documentation with fixes, and prioritized summary reports with delta tracking.</summary>
+    <category>evaluation</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>cognitive-walkthrough</tag>
+      <tag>process</tag>
+      <tag>multi-evaluator</tag>
+      <tag>structured</tag>
+      <tag>reporting</tag>
+    </tags>
+    <applies-to>both</applies-to>
+  </metadata>
+
+  <content>
+    <title>Cognitive Walkthrough: Process</title>
+
+    <summary>The full structured process for running a cognitive walkthrough: defining prerequisites (persona, task, correct action sequence, interface), assembling 2-4 evaluators, completing per-step evaluation forms for all four questions, documenting issues with concrete fixes, and synthesizing findings into a prioritized summary report. Lock the action sequence before any evaluation begins — mid-walk changes invalidate per-step JSON.</summary>
+
+    <why>
+      <p>Ad-hoc walkthrough without consistent templates produces inconsistent outputs that cannot be merged across evaluators or tracked across releases. The structured process — planner → per-step evaluation forms → summary report — ensures every issue cites a step number, a question (Q1-Q4), and a one-line fix. Tracking resolved/new/regressed issues per release proves whether the walk is paying off.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Running a structured, multi-evaluator cognitive walkthrough where outputs must be produced consistently.</item>
+        <item>CI-integrated walkthroughs: every preview deploy of a critical flow (signup, checkout, onboarding) gets an automated walk and the report attached to the PR.</item>
+        <item>Cross-evaluator aggregation: two human evaluators + one agent fill forms independently; a reconciler merges results.</item>
+        <item>Re-evaluation after fixes — agent re-runs the full process artifact-by-artifact and produces a delta report.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Ad-hoc one-screen reviews — use cog-walk-basics, not the full process. Process overhead isn't worth it.</item>
+        <item>When task sequence is not yet stable (changing daily). Lock the action sequence first, then walk.</item>
+        <item>Studies where stakeholders need real user voice — process produces inspection findings, not user evidence.</item>
+        <item>Multi-app journeys spanning systems the agent can't render (native installer + email + browser) without orchestration.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="process-overview">
+      <p>Treat the process as a small SDD pipeline. Step 1: a planner agent fills the Walkthrough Planning Template from a PRD or feature spec. Step 2: a screen-capture script (Playwright) produces one screenshot per step with metadata. Step 3: a stateless evaluator agent fills the Evaluation Form per step. Step 4: a reporter agent merges all forms into the Summary Report Template and prioritizes. Step 5: file each High/Medium issue as a tracked ticket. Human-in-loop checkpoints: after Step 1 (persona/sequence sanity check) and after Step 4 (severity calibration).</p>
+    </section>
+
+    <section name="step-1-define-prerequisites">
+      <rule>
+        <statement>Lock the correct action sequence before any evaluation begins. Mid-walk changes to the sequence invalidate per-step evaluation JSON and make cross-evaluator results incommensurable.</statement>
+        <rationale>Action sequence changes mean evaluators evaluated different flows. Per-step issue counts become meaningless because "step 3" refers to different actions across evaluators who used different sequences.</rationale>
+      </rule>
+
+      <p>Prerequisites to define:</p>
+
+      <list>
+        <item>Persona: concrete first-time user with specified tech-savviness, prior tools, and product knowledge level.</item>
+        <item>Task: a single clear task statement with success criteria.</item>
+        <item>Correct action sequence: minimum-clicks happy path, numbered, one action per step.</item>
+        <item>Interface: URL or prototype link accessible to all evaluators.</item>
+        <item>Scope: explicit list of screens included and excluded.</item>
+      </list>
+    </section>
+
+    <section name="step-2-assemble-evaluators">
+      <rule>
+        <statement>Use 2-4 evaluators mixing human and agent roles. Single-evaluator walks miss approximately 40% of issues. Make agent evaluators stateless and independent — do not feed earlier step evaluations into later step prompts.</statement>
+        <rationale>Multiple evaluators increase coverage through different perspectives. Agent context window drift (contamination from earlier step findings) inflates false Q2 failures on steps evaluated later in the sequence.</rationale>
+      </rule>
+
+      <p>Recommended evaluator roles:</p>
+
+      <list>
+        <item>UX designers: bring pattern-library knowledge and interaction design expertise.</item>
+        <item>Product managers: bring user-goal and business-context knowledge.</item>
+        <item>Developers: bring technical feasibility for fix suggestions.</item>
+        <item>Agent evaluator: brings consistent Q1-Q4 application and exhaustive step coverage.</item>
+      </list>
+    </section>
+
+    <section name="step-3-walk-through-each-step">
+      <rule>
+        <statement>Capture the screen before the action (for Q1-Q3) and after the action (for Q4). Screenshot-only walks without post-action states systematically miss Q4 failures.</statement>
+        <rationale>Q4 evaluates the system's response after an action. Evaluating only the pre-action state produces false positives ("progress is shown") when the actual post-action state shows no feedback.</rationale>
+      </rule>
+
+      <p>Prototypes with broken interactions cause Q4 false positives. Mark "interaction limitation, ignored" explicitly in eval JSON. When reconciling humans + agent, agent confidence sounds higher than humans'; weight human-only findings by 1.5x in tie-break. Exec summary contamination: if the planner agent saw a hypothesis ("we think users get stuck on step 3"), the reporter will confirm it. Strip hypotheses from planner prompt.</p>
+    </section>
+
+    <section name="step-4-document-issues">
+      <rule>
+        <statement>For every "No" answer: describe the problem, cite the specific UI element, explain why it is an issue for this persona, and provide a concrete fix suggestion. Do not file issues without fixes.</statement>
+        <rationale>Issues without fixes stall in triage because the team must first understand the issue before estimating effort. Issues with concrete fixes get resolved in the next sprint.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Every "No" must include a concrete fix in the same JSON output. Reports without fixes don't drive change. Tag each finding with the affected screen + component name so devs can map issues to code.</statement>
+        <rationale>Tagged findings enable developers to map issues directly to code without reading the full report, reducing triage time and increasing the likelihood that findings are acted on promptly.</rationale>
+      </rule>
+    </section>
+
+    <section name="step-5-summarize-findings">
+      <rule>
+        <statement>Cap the summary report at 3 High-severity issues. Every issue must cite step number, question (Q1-Q4), and a one-line fix. Include at least 3 positive findings — steps that passed — to prevent inadvertent regression.</statement>
+        <rationale>Severity inflation (everything rated Medium) makes reports useless for prioritization. Forcing a maximum of 3 High issues requires the reporter agent to differentiate. Positive findings protect successful elements from being "improved" away in redesigns.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Force the exec summary to 5 bullets or fewer. The reporter agent must operate under a token budget for the executive summary section — unconstrained agents produce 15-20 bullet summaries that stakeholders skip.</statement>
+        <rationale>Executive summaries are read; appendices are referenced. The entire value of the walkthrough depends on the exec summary being read. A 5-bullet hard cap forces prioritization and makes the report actually useful.</rationale>
+      </rule>
+    </section>
+
+    <section name="severity-calibration">
+      <rule>
+        <statement>Constrain severity distribution: at most 20% High, 50% Medium, 30% Low. Agents default to Medium for everything — enforce the distribution via prompt constraint.</statement>
+        <rationale>Without distribution constraints, severity ratings are meaningless. An issue list where 90% of items are Medium provides no prioritization signal. The constrained distribution forces the evaluator to differentiate by frequency and task criticality.</rationale>
+      </rule>
+
+      <rule>
+        <statement>High severity: Q2 or Q3 failure on a step required to complete the primary task, or Q4 failure that produces data loss. Medium severity: Q1/Q2/Q3 failures on secondary steps. Low severity: Q4 failures where success is still communicated, or steps on rarely-taken paths.</statement>
+        <rationale>Severity must correlate with user impact, not with how interesting the finding is. Tying severity to task criticality and data integrity gives stakeholders a defensible prioritization basis.</rationale>
+      </rule>
+    </section>
+
+    <section name="delta-tracking">
+      <rule>
+        <statement>Track resolved, new, and regressed issues across each re-evaluation run. Report the delta, not just the absolute issue count. The delta is the only metric that proves the walkthrough is paying off.</statement>
+        <rationale>A report showing "12 issues found" every sprint provides no value. A report showing "8 resolved, 2 new, 1 regressed" demonstrates that the process is driving improvement and catches regressions before release.</rationale>
+      </rule>
+    </section>
+
+    <section name="multi-evaluator-reconciliation">
+      <rule>
+        <statement>When reconciling human and agent evaluators, weight human-only findings 1.5x in tie-breaks. Agent confidence language is uniformly high regardless of certainty — humans express genuine uncertainty.</statement>
+        <rationale>Agents produce consistently assertive language even when Q3 evidence is thin. Humans who rate a finding as No but hedge their confidence are expressing genuine uncertainty about edge cases. That hedging is signal, not noise.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Mark consensus findings (all evaluators agree) separately from disputed findings (evaluators disagree). Disputed findings require human review before being filed as tickets.</statement>
+        <rationale>Disputed findings often reflect ambiguous step definitions or evaluator expertise differences, not genuine Q1-Q4 failures. Auto-filing disputed findings as tickets creates noise that erodes developer trust in the walkthrough process.</rationale>
+      </rule>
+    </section>
+
+    <section name="report-structure">
+      <p>Executive summary: steps evaluated, issues found, critical issue count, key finding (1 sentence). Task overview: persona description, goal, optimal path step count. Findings by step: each step with issues, affected question (Q1-Q4), impact, recommendation. Issues summary table: step, issue, question, severity (H/M/L), status (open/fixed). Priority recommendations: Critical (fix before launch), Important (fix soon), Nice to have. Positive findings: at least 3 steps that worked — do not change these in future revisions.</p>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Recommended subagents: walk-planner (converts spec → Walkthrough Planning Template with persona, task, action sequence, scope). walk-evaluator (per-step Q1-Q4 evaluator with vision; same as cog-walk-basics evaluator but bound to the locked step sequence). walk-reporter (aggregates evaluation JSON into the Summary Report Template; produces issue table with severity). walk-reconciler (merges N independent evaluators; marks consensus vs disputed findings). faion-sdd-executor-agent (wraps the whole pipeline as an SDD task with the report as the deliverable).</p>
+
+      <example type="good" title="Planner Agent Prompt Pattern">
+        <code lang="text"><![CDATA[
+Input: feature spec at <path>, target persona <persona.md>.
+Produce: filled Walkthrough Planning Template (markdown).
+Action sequence MUST be the minimum-clicks happy path. Number each step.
+Out of scope: any branch, error path, or expert shortcut.
+        ]]></code>
+      </example>
+
+      <example type="good" title="Reporter Agent Prompt Pattern">
+        <code lang="text"><![CDATA[
+Inputs: <step_*.eval.json> files, planning template.
+Produce: filled Summary Report Template.
+Rules: at most 3 High issues. Every issue cites step number + Q1/Q2/Q3/Q4 + one-line fix.
+Positive findings section: list at least 3 things that worked (anti-fixation).
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <rule>
+        <statement>Lock the action sequence before any evaluation runs. Mid-walk changes invalidate per-step JSON.</statement>
+        <rationale>Consistency across evaluators and across releases depends on a fixed action sequence.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use 2-4 evaluators (mix of agent + human). Single-evaluator walks miss ~40% of issues per Nielsen heuristics literature.</statement>
+        <rationale>Multiple perspectives catch different failure classes and increase coverage.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Make agent evaluators independent: do not feed earlier step evaluations into later ones, or theme contamination explodes.</statement>
+        <rationale>Context drift causes agents to over-flag later steps based on earlier findings, inflating false Q2 failures.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Keep the report's executive summary to ≤5 bullets; force the agent into a token budget.</statement>
+        <rationale>Unconstrained reports become verbose; stakeholders skim them.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Track re-evaluation deltas (resolved / new / regressed) per release; this is the only metric that proves the walk is paying off.</statement>
+        <rationale>Absolute issue counts tell nothing; deltas show impact and catch regressions.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Tickets filed by agent should be labeled `auto-cog-walk` and reviewed in batch — do not auto-assign engineers.</statement>
+        <rationale>Agents over-flag minor issues; batch review catches false positives before they create alert fatigue.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Action-sequence drift: agents like to "improve" the sequence mid-walk.</description>
+        <reason>Pin it as immutable input in every prompt. Sequence changes invalidate all per-step comparisons across evaluators.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Severity calibration is biased: agents over-mark Medium.</description>
+        <reason>Constrain to a fixed distribution (e.g., max 20% High, 50% Medium, 30% Low).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Q4 (progress) requires the post-action screen. Capture both before+after; static-only walks systematically miss missing-feedback issues.</description>
+        <reason>Single screenshots cannot show UI state changes or presence/absence of feedback indicators.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/walkthrough-plan.md" purpose="Planning template: persona, task, correct action sequence table, interface link, scope"/>
+      <template path="templates/evaluation-form.md" purpose="Per-step form: Q1-Q4 with Yes/No/Partial + notes, issues table with severity and suggestion"/>
+      <template path="templates/cw-findings.md" purpose="Walkthrough findings: executive summary, step issues, priority recommendations, positive findings"/>
+      <template path="templates/run-cog-walk.sh" purpose="Shell pipeline driver: planner → Playwright captures → evaluators → reporter"/>
+    </templates>
+
+    <see-also>
+      <ref slug="cog-walk-basics"/>
+      <ref slug="heuristic-evaluation"/>
+      <ref slug="usability-testing-basics"/>
+      <link href="https://www.nngroup.com/workshops/cognitive-walkthrough/"/>
+      <link href="https://www.usability.gov/how-to-and-tools/methods/cognitive-walkthrough.html"/>
+    </see-also>
+
+  </content>
+</methodology>
