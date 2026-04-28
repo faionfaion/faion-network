@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ruby-sidekiq-jobs">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>Durable async job processing for Rails using Sidekiq + Redis. Every job must be idempotent, accept IDs not records, and declare explicit retry/dead settings.</summary>
+    <tags>
+      <tag>ruby</tag>
+      <tag>sidekiq</tag>
+      <tag>background-jobs</tag>
+      <tag>async</tag>
+      <tag>redis</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Sidekiq Background Jobs</title>
+    <summary>Durable async job processing for Rails using Sidekiq + Redis. Every job must be idempotent (at-least-once delivery), accept IDs not ActiveRecord objects, declare explicit sidekiq_options retry: N, dead: true, implement custom sidekiq_retry_in for known transient errors, and handle ActiveRecord::RecordNotFound gracefully. Keep job classes thin — perform delegates to a service object for unit testability.</summary>
+    <why>
+      <p>Sidekiq is at-least-once; retries are the default, not the exception. Passing IDs avoids stale-model bugs and works with Sidekiq 7 strict args mode which rejects non-JSON-serializable objects. Custom sidekiq_retry_in gives linear backoff for rate-limit errors (payment gateways) and exponential for transient failures — the default 25-retry curve rarely matches real SLA needs. Thin job classes let the service object be unit-tested without Sidekiq's testing module.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Rails app needing durable async work: emails, webhooks, file processing, third-party API fan-out.</item>
+        <item>Bulk processing with find_each chunking and per-chunk jobs.</item>
+        <item>Reliable retry/backoff for flaky external integrations (payment gateways, email providers).</item>
+        <item>Cron-like scheduling via sidekiq-cron or sidekiq-scheduler.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Sub-second latency between action and effect — Sidekiq pickup latency is 50-500ms even idle.</item>
+        <item>Cross-language consumers — Sidekiq conventions are Ruby-specific even though payload is JSON.</item>
+        <item>Strict global ordering — Sidekiq is parallel; use a single-thread queue or Kafka with partition keys.</item>
+        <item>Exactly-once semantics — Sidekiq is at-least-once; design for idempotency or use sidekiq-unique-jobs carefully.</item>
+      </list>
+    </when-not-to-use>
+    <section name="idempotency-payload">
+      <rule testable="true">
+        <statement>Every job must be idempotent: check record.processed? or equivalent at the start of perform and return early if true.</statement>
+        <rationale>Sidekiq delivers at-least-once; network partitions and worker crashes trigger retries. Without a guard, a payment job may charge twice or an email may send twice.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Pass record IDs not ActiveRecord objects to perform; re-fetch inside perform with Model.find(id).</statement>
+        <rationale>Sidekiq 7 strict args mode raises on non-JSON-serializable objects. Even when tolerated, the record may be stale or deleted by the time the job runs. ID re-fetch is always current.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Enable Sidekiq.strict_args!(true) in the initializer to catch non-serializable arguments at enqueue time.</statement>
+        <rationale>Without strict mode, passing an ActiveRecord object serializes silently in legacy versions and raises cryptically in newer ones. Fail fast at enqueue rather than at dequeue.</rationale>
+      </rule>
+    </section>
+    <section name="retry-configuration">
+      <rule testable="true">
+        <statement>Set sidekiq_options retry: N, dead: true explicitly on every job class; never rely on the default of 25 retries.</statement>
+        <rationale>25 retries over 21 days is rarely correct for user-facing jobs. Explicit retry: 3 or retry: 5 matches real SLA expectations and keeps the dead set from filling with stale jobs.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Define sidekiq_retry_in per exception class: linear backoff for rate-limit errors, exponential for transient failures.</statement>
+        <rationale>A payment gateway rate-limiting error needs shorter, linear retries to clear the rate limit window; a generic network error benefits from exponential backoff to avoid hammering a recovering service.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Rescue only ActiveRecord::RecordNotFound (log and return) and known transient errors (re-raise). Let all other exceptions propagate to trigger Sidekiq retry.</statement>
+        <rationale>Swallowing StandardError defeats the retry mechanism. Sidekiq retries on exception; a rescued, swallowed error looks like a successful job.</rationale>
+      </rule>
+    </section>
+    <section name="job-structure">
+      <rule testable="true">
+        <statement>Keep job classes thin: perform calls a service object that holds the logic and is unit-testable without Sidekiq.</statement>
+        <rationale>Service objects can be tested with plain RSpec + Mockery without Sidekiq::Testing infrastructure, making unit tests faster and more isolated.</rationale>
+      </rule>
+    </section>
+    <section name="standard-job">
+      <example type="good" title="ProcessOrderJob with per-exception retry curve">
+        <code lang="ruby"><![CDATA[
+class ProcessOrderJob
+  include Sidekiq::Job
+
+  sidekiq_options queue: :default, retry: 3, dead: true
+
+  sidekiq_retry_in do |count, exception|
+    case exception
+    when PaymentGatewayError
+      (count + 1) * 60     # linear: 60s, 120s, 180s
+    else
+      (count ** 4) + 15    # exponential: 16s, 31s, 96s
+    end
+  end
+
+  def perform(order_id)
+    order = Order.find(order_id)
+    return if order.processed?          # idempotency guard
+
+    OrderProcessor.new(order).process!
+    NotifyCustomerJob.perform_async(order_id)
+  rescue ActiveRecord::RecordNotFound
+    Sidekiq.logger.warn "Order #{order_id} not found — skipping"
+  rescue PaymentGatewayError
+    raise  # let Sidekiq retry with custom backoff
+  rescue StandardError => e
+    ErrorTracker.capture(e, order_id: order_id)
+    raise  # re-raise to trigger retry
+  end
+end
+]]></code>
+        <note>ID-only arg. Idempotency check. Per-exception retry curve. RecordNotFound handled gracefully. All others re-raised.</note>
+      </example>
+      <example type="bad" title="Missing sidekiq_options, ActiveRecord arg, swallowed exception">
+        <code lang="ruby"><![CDATA[
+class ProcessOrderJob
+  include Sidekiq::Job
+  # no sidekiq_options — defaults to 25 retries
+
+  def perform(order) # ActiveRecord object — fails in strict mode
+    begin
+      OrderProcessor.new(order).process!
+    rescue StandardError => e
+      # swallowed — retry never fires
+      Rails.logger.error e.message
+    end
+  end
+end
+]]></code>
+        <note>ActiveRecord arg, swallowed exception, default retry count.</note>
+      </example>
+    </section>
+    <section name="batch-export-job">
+      <example type="good" title="BatchExportJob with find_each chunking">
+        <code lang="ruby"><![CDATA[
+class BatchExportJob
+  include Sidekiq::Job
+
+  sidekiq_options queue: :exports, retry: 1
+
+  def perform(export_id)
+    export = Export.find(export_id)
+    export.update!(status: :processing)
+
+    CSV.open(export.file_path, 'wb') do |csv|
+      csv << export.headers
+      export.query_records.find_each(batch_size: 1000) do |record|
+        csv << export.row_for(record)
+      end
+    end
+
+    export.update!(status: :completed, completed_at: Time.current)
+    ExportMailer.ready(export).deliver_later
+  rescue StandardError => e
+    export&.update!(status: :failed, error_message: e.message)
+    raise
+  end
+end
+]]></code>
+        <note>find_each(batch_size: 1000) avoids loading all records into memory. Status updated on success and failure. Exception re-raised.</note>
+      </example>
+    </section>
+    <section name="spec-with-testing">
+      <example type="good" title="Spec with Sidekiq Testing">
+        <code lang="ruby"><![CDATA[
+RSpec.describe ProcessOrderJob do
+  describe '#perform' do
+    let(:order) { create(:order) }
+
+    context 'with a valid unprocessed order' do
+      it 'processes the order and enqueues notification' do
+        Sidekiq::Testing.inline! do
+          expect { described_class.perform_async(order.id) }
+            .to change { order.reload.status }.to('processed')
+        end
+      end
+    end
+
+    context 'when order is already processed' do
+      before { order.update!(status: 'processed') }
+
+      it 'returns without reprocessing' do
+        expect(OrderProcessor).not_to receive(:new)
+        described_class.new.perform(order.id)
+      end
+    end
+  end
+end
+]]></code>
+        <note>Sidekiq::Testing.inline! for integration path. Plain perform() for unit path. No perform_now (that is ActiveJob API).</note>
+      </example>
+    </section>
+    <section name="worker-memory-limits">
+      <p>Memory-bound workers leak over time; use MAX_THREADS + MAX_MEMORY_MB + restart hooks (sidekiq-worker-killer). sidekiq_options retry: true defaults to 25 retries over ~21 days — rarely what you want for user-facing jobs. Set explicit retry: 3 or retry: 5. Dead-letter queue (dead) is bounded (10k jobs / 6 months by default) — silent loss past that. Argument serialization is JSON, not Marshal — ActiveRecord::Base instances are coerced to GlobalID strings; arbitrary objects break. perform_in / perform_at with timestamps in the past run immediately, not "never" — common bug. Sidekiq::Cron jobs share global Redis — multi-tenant apps need namespaced keys. Long jobs blocking a thread starve the rest of the queue; split with find_each + re-enqueue.</p>
+    </section>
+    <section name="agentic-workflow">
+      <p>A coding subagent should: (1) generate the job class with include Sidekiq::Job, explicit sidekiq_options queue: …, retry: N, dead: true, custom sidekiq_retry_in for known transient errors, (2) parameterize on IDs not records, (3) implement idempotency check (return if record.processed?), (4) handle ActiveRecord::RecordNotFound for deleted records, (5) write a request spec using Sidekiq::Testing.fake! for dispatch and inline! for end-to-end, (6) add the job to the appropriate config/sidekiq.yml queue weighting. Pause for human review before: changing retry/dead settings on existing jobs, modifying Sidekiq::Cron schedules, or touching failed/dead queues in production.</p>
+    </section>
+    <section name="cli-tools">
+      <p>bundle exec sidekiq -C config/sidekiq.yml: Run worker. bundle exec sidekiq-monitor: TUI for queues (community). redis-cli MONITOR: See raw job push/pop in dev. bundle exec rake sidekiq:stats: Quick CLI stats (custom rake). bundle exec sidekiqmon: Built-in console monitor (Sidekiq 7+).</p>
+    </section>
+    <section name="services-and-apps">
+      <p>Sidekiq Web UI (OSS): Mount at /sidekiq (auth-protected); JSON via Sidekiq::Stats API. Sidekiq Pro / Enterprise (Commercial): Batches, super-fetch (lossless), unique jobs, periodic jobs. Redis (Valkey, OSS): Required broker; size for 5 KB × max_jobs_in_flight. Sentry / Rollbar / Honeybadger (SaaS): error handlers via configuration. Datadog APM (SaaS): dd-trace-rb auto-instruments Sidekiq jobs. sidekiq-cron / sidekiq-scheduler (OSS): Cron-style recurring jobs without Sidekiq Enterprise. sidekiq-unique-jobs (OSS, Caution): Adds dedupe; complex semantics, easy to mis-configure.</p>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Every job must be idempotent. Treat retries as the default, not the exception.</item>
+        <item>Pass IDs, not records. Re-fetch in perform.</item>
+        <item>Set explicit retry: and dead: true on every job. Default 25 retries is rarely correct.</item>
+        <item>Wrap external API calls with circuit breakers (stoplight, circuitbox) — Sidekiq retry alone is not enough during outages.</item>
+        <item>Custom sidekiq_retry_in per-exception for cleaner retry curves (linear for rate-limit, exponential for transient).</item>
+        <item>Use Sidekiq::Limiter (Enterprise) or sidekiq-rate-limiter for third-party rate limits.</item>
+        <item>Set Sidekiq.strict_args!(true) in initializer — fails loudly on non-JSON-serializable args.</item>
+        <item>Keep job classes thin: perform calls a service object that holds the logic and is unit-testable without Sidekiq.</item>
+      </list>
+    </section>
+    <section name="antipatterns">
+      <antipattern>
+        <description>Passing ActiveRecord model instances as perform arguments: Sidekiq 7 strict mode raises on enqueue; legacy versions serialize via GlobalID but the object may be stale on dequeue.</description>
+        <reason>JSON-only serialization is Sidekiq's contract; GlobalID round-trips re-fetch on dequeue but fail on soft-deleted or destroyed records. Always pass the ID.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Rescuing StandardError inside perform and not re-raising: the job always appears to succeed, retry never fires, and failures are invisible in the dead set.</description>
+        <reason>Sidekiq retries a job when perform raises. Swallowing the exception removes the signal. Only rescue exceptions you intend to recover from; always re-raise the rest.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using perform_now or queue_as from the ActiveJob API instead of perform_async or sidekiq_options from the native Sidekiq API.</description>
+        <reason>ActiveJob wraps Sidekiq; its adapter serializes differently, adds adapter overhead, and has different retry semantics. For non-trivial Sidekiq use, the native API gives full control of queue weighting, retry curves, and dead-set behavior.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Omitting sidekiq_options retry: N and dead: true, relying on the default 25 retries over 21 days.</description>
+        <reason>21 days of retries is meaningless for an order confirmation email; it fills the retry set and makes monitoring noisy. Always declare intent explicitly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using WithoutOverlapping as if it were a Sidekiq built-in; it is a Laravel term — Sidekiq requires sidekiq-unique-jobs or a hand-rolled Redis lock for deduplication.</description>
+        <reason>LLMs cargo-cult Laravel queue middleware syntax into Sidekiq code; WithoutOverlapping does not exist in Sidekiq core and will raise a NoMethodError.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Assuming perform_in with a past timestamp defers the job to "never" — it runs immediately.</description>
+        <reason>Sidekiq executes jobs scheduled in the past immediately on the next worker poll. Only future timestamps create a deferral; past timestamps are treated as "run ASAP."</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/process_order_job.rb" purpose="Job skeleton: include Sidekiq::Job, sidekiq_options, custom sidekiq_retry_in, idempotency check."/>
+      <template path="templates/sidekiq.yml" purpose="Production Sidekiq config: concurrency, weighted queues, retry cap, dead-set limits."/>
+      <template path="templates/sidekiq.service" purpose="systemd unit with WatchdogSec, TSTP reload, KillMode=mixed."/>
+    </templates>
+    <see-also>
+      <link href="https://github.com/sidekiq/sidekiq/wiki"/>
+      <link href="https://github.com/sidekiq/sidekiq/wiki/Best-Practices"/>
+      <link href="https://github.com/sidekiq/sidekiq/wiki/Error-Handling"/>
+      <link href="https://github.com/sidekiq/sidekiq/wiki/Pro"/>
+    </see-also>
+  </content>
+</methodology>
