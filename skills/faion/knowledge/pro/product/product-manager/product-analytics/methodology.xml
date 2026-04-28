@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="product-analytics">
+  <metadata>
+    <tier>pro</tier>
+    <group>product</group>
+    <domain>product-manager</domain>
+    <summary>Decision-first tracking plan: define which decisions each event informs before implementing. Structure analytics as plan → implement → monitor → analyze pipeline.</summary>
+    <tags>
+      <tag>analytics</tag>
+      <tag>tracking</tag>
+      <tag>metrics</tag>
+      <tag>decision-first</tag>
+      <tag>aarrr</tag>
+    </tags>
+    <category>analytics</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Product Analytics</title>
+    <summary>Product analytics is measuring and analyzing user behavior to make better product decisions. The key discipline: define which decisions each event will inform before implementing tracking. Freeze the event taxonomy in git (tracking-plan.md as source of truth); runtime catalogs drift toward it via PR, never the other way. Structure analytics as a four-stage agent pipeline: plan → implement → monitor → analyze.</summary>
+    <why>
+      <p>Teams that track everything understand nothing. The failure mode is vanity metrics (total signups, DAU) that move with marketing spend but don't inform product decisions. Decision-first tracking — every event must state which decision it informs — stops the sprawl. Agents replicate the vanity-metric pattern by default; the event taxonomy and tracking plan must be in the system prompt as constraints.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Pre-launch: drafting the tracking plan from a feature spec so day-1 events ship with the code.</item>
+        <item>Activation diagnosis: funnel drop + cohort data → pinpoint highest-leakage step → propose experiments.</item>
+        <item>Weekly product-health digest: scheduled agent reads BI source, writes markdown summary with anomalies.</item>
+        <item>Post-experiment readout: merge A/B exposure logs with metric tables, flag Simpson's-paradox segments.</item>
+        <item>Tracking-plan audit before a vendor migration (GA4 → PostHog).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pre-PMF with fewer than 100 weekly active users — sample sizes are too small; talk to users instead.</item>
+        <item>Causal claims with only observational data — funnels answer "what," not "why."</item>
+        <item>Exec one-pagers needing judgment — let the agent prep data, a human writes the recommendation.</item>
+        <item>High-cardinality PII queries without aggregation/scrubbing.</item>
+        <item>Replacing a tracking plan review with a one-shot LLM call.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Analytics Maturity Levels">
+      <rule>
+        <statement>Start at Level 2 (user segmentation) minimum; Level 1 (page views, signups) produces only vanity metrics that move with marketing spend.</statement>
+        <rationale>Level 1 metrics answer "did something happen?" but not "who did it and why?"; product decisions require at minimum user-level segmentation to be actionable.</rationale>
+      </rule>
+      <p>Maturity levels: Level 1 Basic (what happened — page views, signups); Level 2 Intermediate (who did what — user segmentation); Level 3 Advanced (why and what if — funnels, cohorts); Level 4 Predictive (what will happen — ML, forecasting). Start at Level 2.</p>
+    </section>
+    <section name="AARRR Metric Categories">
+      <p>Acquisition: visitors, signups, sources, conversion rates, cost per acquisition. Activation: onboarding completion, time to value, first key action. Engagement: DAU/WAU/MAU, session frequency, feature usage. Retention: D1/D7/D30 retention, cohort retention curves, churn rate. Revenue: MRR, ARPU, LTV, upgrade/downgrade rates, revenue per cohort.</p>
+    </section>
+    <section name="5-Step Implementation Process">
+      <rule>
+        <statement>Step 1 — Define key questions before touching instrumentation: what decisions will this data inform, what behavior are we trying to understand, and what is the minimum we need to track?</statement>
+        <rationale>"Track everything" creates a data warehouse full of events nobody queries; decision-first tracking ensures every event has a named decision it will inform.</rationale>
+      </rule>
+      <rule>
+        <statement>Step 2 — Create a tracking plan for each event: event name (standardized object_action format), trigger condition, properties captured, and named owner.</statement>
+        <rationale>Events without named owners are unowned; "Product team" owns everything means nobody owns anything, and naming drift creates variant event names for the same action.</rationale>
+      </rule>
+      <rule>
+        <statement>Step 3 — Use server-side tracking for critical events (payments, auth); client-side for UX insights. Encode this rule in the tracking plan per event, not in tribal memory.</statement>
+        <rationale>Client-side tracking is unreliable for critical events (ad blockers, JS errors, offline); server-side tracking ensures payment and auth events are never lost. Hybrid tracking without per-event side assignment causes double-counting.</rationale>
+      </rule>
+      <rule>
+        <statement>Step 4 — Build dashboards by audience: exec summary (health at a glance), product health (core metrics for product team), feature deep-dive (per-feature owner), experiment (test results).</statement>
+        <rationale>One dashboard for all audiences produces a dashboard nobody uses; audience-specific dashboards optimize for the decision the reader needs to make.</rationale>
+      </rule>
+      <rule>
+        <statement>Step 5 — Establish review rituals: daily glance at key metrics, weekly dashboard review with anomaly notes, monthly deep-dive, quarterly goal vs. actual planning.</statement>
+        <rationale>Without a review cadence, dashboards accumulate without driving decisions — they become the "graveyard" the anti-patterns section documents.</rationale>
+      </rule>
+    </section>
+    <section name="Event Naming and Taxonomy">
+      <rule>
+        <statement>Use object_action format in snake_case for all event names (e.g., account_created, feature_used, upgrade_started); reject any event name that does not follow this pattern.</statement>
+        <rationale>Without a strict naming convention, teams end up with signup_done, account_created, and user_registered all meaning the same thing; the funnel fragments silently across three tables.</rationale>
+      </rule>
+      <rule>
+        <statement>Freeze the event taxonomy in git (tracking-plan.md); runtime catalogs drift toward it via PR, never the other way. Run a weekly cron drift-linter comparing the live event catalog against tracking-plan.md.</statement>
+        <rationale>Engineers ship new events without updating the tracking plan; the cron linter is the only sustainable fix — agents that are not constrained to the taxonomy in their system prompt invent event names that fragment the funnel.</rationale>
+      </rule>
+      <rule>
+        <statement>Every event row must state which decision it informs; reject any event without a stated decision at tracking plan review time.</statement>
+        <rationale>"Track everything" sprawl is the primary driver of analysis paralysis and dashboard graveyards; decision-first requirements eliminate events nobody will ever query.</rationale>
+      </rule>
+    </section>
+    <section name="Cohort Comparison Rules">
+      <rule>
+        <statement>Compare D7-of-cohort-A to D7-of-cohort-B (fixed window); never compare D30 vs D7 across cohorts.</statement>
+        <rationale>Comparing D30 retention of a 6-week-old cohort to D7 of a 1-week-old cohort makes the older cohort look worse by design; readers misread it as a retention regression.</rationale>
+      </rule>
+      <rule>
+        <statement>Exclude cohorts that have not yet aged to the measurement window from retention calculations; survivorship bias systematically over-states retention for fast-growing products.</statement>
+        <rationale>An agent computing D30 retention for all users including those who signed up less than 30 days ago will produce a number that looks like retention but is actually just "users who have had time to churn."</rationale>
+      </rule>
+    </section>
+    <section name="Dashboard Lifecycle">
+      <rule>
+        <statement>Apply a kill-criterion to every dashboard: archive if no opens in 30 days; enforce via an agent-driven cron check.</statement>
+        <rationale>Agents create dashboards easily and never archive them; without a kill-criterion the dashboard inventory grows monotonically until no PM can find the one they actually need.</rationale>
+      </rule>
+    </section>
+    <section name="Limitations and Failure Modes">
+      <p>Vanity-metric trap: the AARRR buckets are easy to fill with totals (signups, DAU) that move with marketing spend, not product. Agents replicate this by default — they pick the metric that has data, not the one that drives a decision.</p>
+      <p>Naming entropy: without a strict schema (snake_case, object_action, frozen taxonomy), agents and humans both invent variants — signup_done, account_created, user_registered — and your funnel quietly fragments.</p>
+      <p>Server vs. client confusion: agents will mirror the same event in both places, double-counting without an explicit decision tree per event.</p>
+      <p>Cohort drift: agent-built cohort charts compare a 6-week-old cohort to a 1-week-old one; readers misread it as a retention regression. Always force fixed-window comparison.</p>
+      <p>Dashboard graveyard: agents are great at producing 14 charts; they are terrible at retiring 12. Without a kill-criterion ("if no one opened this in 30 days, archive it") dashboards accumulate forever.</p>
+      <p>PII and consent boundary: product-analytics events leak PII (emails in URLs, free-text inputs) — most LLM agent loops do not enforce a redaction layer between warehouse and prompt.</p>
+      <p>Survivorship bias in retention curves: D7 / D30 retention computed only on users who signed up >30 days ago systematically over-states retention for fast-growing products. Agents miss this unless prompted.</p>
+      <p>No causal inference: funnels and cohorts answer "what" and "where," never "why." Agents tend to confabulate causes from correlation; product analytics is descriptive by design.</p>
+    </section>
+    <section name="Four-Stage Agentic Workflow">
+      <p>Drive product analytics as a four-stage agent pipeline: (1) Plan — a planner agent ingests the feature spec and emits a tracking plan diff against the canonical event catalog (.product/tracking-plan.md); (2) Implement — faion-sdd-executor-agent converts new events into typed wrappers (TS/Python) with property contracts and PR-ready code; (3) Monitor — a scheduled BI agent reads the warehouse hourly/daily, writes anomaly notes into .product/analytics/digest-YYYY-MM-DD.md, and pings the team only on threshold breach; (4) Analyze — on demand, a reporting agent runs parameterized SQL/JQL, fills the Analysis Report Template, and surfaces hypotheses for the next experiment. Persist the tracking plan and dashboard specs in git so agents diff before changing — never let agents mutate live dashboards without a PR.</p>
+      <section name="Recommended Subagents">
+        <list>
+          <item>faion-market-researcher-agent — fits the planning stage: benchmarks competitor metric definitions and surfaces category norms for retention / activation targets.</item>
+          <item>faion-sdd-executor-agent — converts new tracking-plan rows into typed event-emitter code + tests as SDD tasks.</item>
+          <item>password-scrubber-agent — mandatory pre-step before any prompt that includes raw event payloads; product events leak emails, tokens, vendor names.</item>
+          <item>analytics-reporter agent (purpose-built, not yet in repo, worth creating): runs the warehouse queries with read-only DB credentials; output consumed by Analysis Report Template.</item>
+          <item>tracking-plan linter agent (cron, weekly): diffs the runtime event catalog (PostHog /event_definitions, Amplitude /api/2/taxonomy/event, GA4 admin API) against tracking-plan.md; opens a GitHub issue per drift.</item>
+        </list>
+      </section>
+      <section name="Prompt Patterns">
+        <code lang="text"><![CDATA[You are a product analyst. Read the feature spec in <spec> and the
+canonical event catalog in <tracking-plan.md>. Output the diff:
+new events to add, existing events to reuse, properties to extend.
+Use the schema [object]_[action] in snake_case. For every event
+specify: trigger condition, server|client, owner, properties (name,
+type, example, required). Reject any event without a stated decision
+it will inform. Output as a markdown table compatible with the
+Tracking Plan template in product-analytics/README.md.]]></code>
+        <code lang="text"><![CDATA[Given the SQL results in <data> for the last 7 days vs the prior
+4-week baseline, list metrics whose 7-day mean is >2 sigma from
+baseline. For each: state direction, magnitude, candidate cause
+(deploy diff, marketing campaign, seasonality, instrumentation
+change), and the next query that would disambiguate. No causal
+claims without a stated experiment or natural experiment.]]></code>
+      </section>
+    </section>
+    <section name="Tools and Services">
+      <section name="CLI Tools">
+        <list>
+          <item>PostHog CLI (posthog) — Manage event definitions, run HogQL from CI</item>
+          <item>Amplitude Taxonomy API + httpie — Pull live event/property catalog for drift checks</item>
+          <item>Mixpanel JQL / Query API + mixpanel-cli (community) — Scriptable funnel + retention queries</item>
+          <item>dbt — Warehouse-side metric definitions (single source of truth)</item>
+          <item>metricflow / cube — Headless metrics layer agents can query without re-deriving</item>
+          <item>sqlfluff — Lint analyst SQL before agents run it (catch fanout joins)</item>
+          <item>great_expectations / dbt test — Data-quality gates on event tables (null user_id, future timestamps)</item>
+          <item>evidence (Evidence.dev) — Markdown-as-code BI; agent-friendly because reports are git-versioned</item>
+          <item>gh CLI — Open tracking-drift / experiment-readout issues from agents</item>
+          <item>claude (Anthropic CLI) — Run digest + readout prompts headless on cron</item>
+        </list>
+      </section>
+      <section name="Services and Apps">
+        <list>
+          <item>PostHog (OSS + SaaS, agent-friendly): Full REST + HogQL; best agent integration; self-host avoids PII boundary issues.</item>
+          <item>Amplitude (SaaS, agent-friendly): Taxonomy + Dashboard REST APIs; strong cohort + funnel APIs; rate-limited.</item>
+          <item>Mixpanel (SaaS, agent-friendly): JQL + Query API; JS DSL easy for LLMs to write; expensive at scale.</item>
+          <item>GA4 (SaaS, partial): Data API + Admin API; sampling + cardinality limits hurt agent reliability.</item>
+          <item>Heap (SaaS, agent-friendly): Snapshot + REST APIs; auto-capture is double-edged.</item>
+          <item>Snowplow (OSS, agent-friendly): Schema-first, ideal for agents.</item>
+          <item>Segment / RudderStack (SaaS / OSS, agent-friendly): Tracking Plan + Protocols APIs; ideal pipe-and-router.</item>
+          <item>BigQuery / Snowflake / DuckDB (Warehouse, agent-friendly): SQL APIs; pair with dbt + metrics layer.</item>
+          <item>Metabase / Lightdash / Evidence (OSS BI, agent-friendly): APIs / git; markdown/git-driven BI.</item>
+          <item>LaunchDarkly / Statsig / GrowthBook (SaaS / OSS, agent-friendly): REST + SDKs; couple flag exposure events to analytics.</item>
+          <item>Notion / Linear (SaaS, agent-friendly): Tracking plan + analytics-question backlog live here.</item>
+        </list>
+      </section>
+    </section>
+    <section name="Agent Gotchas">
+      <antipattern>
+        <description>Hallucinated event names: agent invents user_signed_up when the codebase uses signup_completed.</description>
+        <reason>Always pass the canonical taxonomy in the system prompt and reject novel event names without an ADD-event task.</reason>
+      </antipattern>
+      <antipattern>
+        <description>SQL fanout from naive joins: agent joins events to users to sessions and triple-counts.</description>
+        <reason>Require count(distinct ...) and gate via sqlfluff rules, or use a metrics layer (dbt-metrics, Cube) so agents can't write raw fanout SQL.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Confabulated causes: asked "why did retention drop?" the LLM produces a confident, plausible, wrong story.</description>
+        <reason>Force the agent to list 3+ candidate causes and the disambiguating query, never a single explanation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Window mismatch in cohort comparisons: agent compares partial-cohort retention to mature-cohort retention.</description>
+        <reason>Pin window length explicitly in every prompt and chart.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Recency bias in anomaly detection: Z-score against last 7 days flags every product launch as an anomaly.</description>
+        <reason>Use a 4-week trailing baseline with seasonal adjustment.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Token bombs from raw event tables: pasting 50k rows into context.</description>
+        <reason>Pre-aggregate to ≤200 rows or use tool-use (function calling) to query the warehouse directly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Privacy leak via prompt: event payloads include emails, IPs, free-text.</description>
+        <reason>Always run through a redactor before any LLM call; log the redaction.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Drift between code and plan: engineers ship new events without updating tracking-plan.md.</description>
+        <reason>The cron drift-linter is the only sustainable fix; agents themselves drift if not constrained.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Dashboard hallucination: asked to "build a dashboard," agents emit chart specs against tables that do not exist.</description>
+        <reason>Pass the schema (or better, a metrics-layer manifest) in the prompt and reject any chart referencing an unknown column.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Premature causal claims in readouts: A/B readouts drop confidence intervals and SRM checks.</description>
+        <reason>Template the readout and require explicit p, n, CI, and SRM-pass fields, or fail the report.</reason>
+      </antipattern>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Decision-first events: reject any event whose row does not state which decision it informs. Stops "track everything" sprawl.</item>
+        <item>Freeze the taxonomy in git: tracking-plan.md is the source of truth; runtime catalogs drift toward it via PR, not the other way around.</item>
+        <item>One owner per event, named: "Product team" is unowned. Add a GitHub handle column.</item>
+        <item>Server-side for money + auth, client-side for UX: encode this rule in the tracking plan, not in tribal memory.</item>
+        <item>Cohort fixed-window or it lies: compare D7-of-cohort-A to D7-of-cohort-B, never D30 vs D7.</item>
+        <item>Kill-criterion on every dashboard: "Archive if zero opens in 30 days" — let an agent enforce it.</item>
+        <item>Separate descriptive from causal: funnels/cohorts answer "what." Causal claims require flag-gated experiments with pre-registered hypotheses.</item>
+        <item>PII redaction at the warehouse boundary: do not let agent prompts touch raw event payloads; aggregate or hash first.</item>
+        <item>Diff event catalogs across releases: new event + removed event = changelog row, just like API changes.</item>
+        <item>Tie metrics to the OKR they roll up to: orphan metrics get cut. The pyramid: company KPI → product north star → team metric → event.</item>
+      </list>
+    </section>
+    <section name="References">
+      <list>
+        <item>McClure, D. — "AARRR / Pirate Metrics." https://500hats.typepad.com/500blogs/2007/09/startup-metrics.html</item>
+        <item>Amplitude — "Mastering Retention" + Taxonomy API docs. https://amplitude.com/blog and https://amplitude.com/docs/apis/taxonomy-api</item>
+        <item>Mixpanel — "Implementation Best Practices" + JQL. https://docs.mixpanel.com</item>
+        <item>PostHog — "Tracking events: Best practices" + HogQL. https://posthog.com/docs/product-analytics</item>
+        <item>Reichheld, F. — Net Promoter / retention foundations. https://www.bain.com/insights/topics/net-promoter-system</item>
+        <item>Hubbard, D. (2014). "How to Measure Anything." Wiley. (Calibration vs. vanity metrics.)</item>
+        <item>Kohavi, R., Tang, D., Xu, Y. (2020). "Trustworthy Online Controlled Experiments." Cambridge. (SRM, peeking, Simpson's paradox.)</item>
+        <item>Reforge — "Metrics frameworks for product growth." https://www.reforge.com/blog</item>
+        <item>Sibling methodologies: solo/product/product-operations/product-analytics/, pro/product/product-manager/success-metrics-definition/, pro/product/product-manager/aarrr-pirate-metrics/, pro/product/product-manager/cohort-analysis/, pro/product/product-manager/funnel-optimization/, pro/product/product-manager/ab-testing-framework/.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/tracking-plan.md" purpose="Tracking plan template: user properties, onboarding events, core feature events, conversion events"/>
+      <template path="templates/tracking-plan-lint.sh" purpose="Enforce snake_case naming and required fields on the tracking plan markdown"/>
+    </templates>
+    <see-also>
+      <ref slug="mlp-planning"/>
+      <ref slug="portfolio-strategy"/>
+    </see-also>
+  </content>
+</methodology>
