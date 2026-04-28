@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="google-pmax">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>ppc-manager</domain>
+    <summary>Google AI automatically optimizes campaigns across all inventory: Search, Display, YouTube, Gmail, Discover, Maps. Requires conversion tracking, diverse assets, and optional audience signals.</summary>
+    <tags>
+      <tag>google-ads</tag>
+      <tag>pmax</tag>
+      <tag>ai-optimization</tag>
+      <tag>asset-groups</tag>
+      <tag>performance-max</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Google Performance Max (PMax)</title>
+    <summary>Performance Max uses Google AI to automatically optimize across all Google inventory (Search, Display, YouTube, Gmail, Discover, Maps). Requires conversion tracking, diverse asset groups, and optional audience signals. The AI learns from conversion data and automatically allocates spend to best-performing placements.</summary>
+    <why>
+      <p>Performance Max eliminates manual bid management and placement selection. Google's machine learning automatically discovers and allocates spend to the best-converting audience segments, placements, and creative combinations across its entire network. For advertisers running multiple campaigns or lacking time for detailed optimization, this automation can improve ROAS by 20% or more.</p>
+      <p>The system requires minimal targeting setup—just conversion data and asset diversity—and learns continuously. As conversion volume grows, the algorithm refines its understanding of which audience segments and placements convert best, shifting budget away from low-performers automatically.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Advertising across Google's full network (Search, Display, YouTube, Discover) with one unified budget and objective.</item>
+        <item>Campaigns with sufficient conversion volume (30+ monthly conversions recommended for learning) to let the algorithm optimize.</item>
+        <item>Brands or products with high-quality creative assets (images, videos) to provide asset diversity for testing.</item>
+        <item>Goals centered on conversions or conversion value rather than impressions or clicks.</item>
+        <item>Teams lacking time for granular keyword and placement management who benefit from automation.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Campaigns with low conversion volume (under 10/month)—the algorithm needs data to learn; manual optimization is more effective.</item>
+        <item>Search-only campaigns—Search campaigns with keywords and match types offer more control and often better ROI.</item>
+        <item>Brand protection critical—PMax may show ads on placements or audiences you'd normally exclude; conversion data is the only feedback mechanism.</item>
+        <item>Limited creative assets—the algorithm needs diverse images, videos, and copy variations to test; single static ad performs poorly.</item>
+        <item>New accounts under 30 days history—algorithmic variance dominates treatment effect; wait for conversion history first.</item>
+      </list>
+    </when-not-to-use>
+    <section name="campaign-creation">
+      <p>Create a Performance Max campaign with Python Google Ads API:</p>
+      <code lang="python"><![CDATA[
+def create_performance_max_campaign(client, customer_id, budget_micros):
+    """Create a Performance Max campaign."""
+    campaign_service = client.get_service("CampaignService")
+
+    # Budget
+    budget_resource = create_campaign_budget(client, customer_id, budget_micros)
+
+    # Campaign
+    operation = client.get_type("CampaignOperation")
+    campaign = operation.create
+    campaign.name = f"PMax Campaign {uuid.uuid4()}"
+    campaign.campaign_budget = budget_resource
+    campaign.advertising_channel_type = (
+        client.enums.AdvertisingChannelTypeEnum.PERFORMANCE_MAX
+    )
+    campaign.status = client.enums.CampaignStatusEnum.PAUSED
+
+    # PMax requires Maximize Conversions or Maximize Conversion Value
+    campaign.maximize_conversions.target_cpa_micros = 0  # Let Google optimize
+
+    # Alternative: Target ROAS
+    # campaign.maximize_conversion_value.target_roas = 3.5  # 350% ROAS
+
+    # URL expansion (recommended: enabled)
+    campaign.url_expansion_opt_out = False
+
+    # Start/end dates
+    campaign.start_date = "2026-02-01"
+    campaign.end_date = "2026-12-31"
+
+    response = campaign_service.mutate_campaigns(
+        customer_id=customer_id,
+        operations=[operation]
+    )
+
+    return response.results[0].resource_name
+]]></code>
+      <note>PMax requires either Maximize Conversions or Maximize Conversion Value as the bidding strategy. Set target_cpa_micros to 0 initially to let Google optimize; after 30+ conversions, switch to Target CPA or Target ROAS.</note>
+    </section>
+    <section name="asset-groups">
+      <p>Asset groups contain all creative assets (headlines, descriptions, images, videos, business name) for a PMax campaign. Each asset group can have multiple variations; Google tests combinations to find the best performers.</p>
+      <code lang="python"><![CDATA[
+def create_asset_group(client, customer_id, campaign_id, assets):
+    """Create asset group for Performance Max campaign.
+
+    Args:
+        assets: Dict with headlines, descriptions, images, videos, etc.
+    """
+    asset_group_service = client.get_service("AssetGroupService")
+
+    operation = client.get_type("AssetGroupOperation")
+    asset_group = operation.create
+    asset_group.campaign = f"customers/{customer_id}/campaigns/{campaign_id}"
+    asset_group.name = f"Asset Group {uuid.uuid4()}"
+    asset_group.status = client.enums.AssetGroupStatusEnum.ENABLED
+
+    # Final URLs (required)
+    asset_group.final_urls.append(assets["final_url"])
+
+    # Path fields (optional, displayed in URL)
+    if "path1" in assets:
+        asset_group.path1 = assets["path1"]
+    if "path2" in assets:
+        asset_group.path2 = assets["path2"]
+
+    response = asset_group_service.mutate_asset_groups(
+        customer_id=customer_id,
+        operations=[operation]
+    )
+
+    return response.results[0].resource_name
+]]></code>
+    </section>
+    <section name="asset-requirements">
+      <p>PMax asset group composition requirements and best practices:</p>
+      <p><term name="Headlines">3-5 required, maximum 30 characters each. Provide 5 different variations for testing.</term></p>
+      <p><term name="Long Headlines">1-5 required, maximum 90 characters each. Used on desktop and in YouTube placements.</term></p>
+      <p><term name="Descriptions">2-5 required, maximum 90 characters each. Provide 3-5 variations with different messaging angles.</term></p>
+      <p><term name="Images">Minimum 3-5 different high-quality images. Avoid logos or text-heavy images; focus on product shots and lifestyle imagery.</term></p>
+      <p><term name="Videos">Optional but recommended. YouTube video IDs for YouTube placements; at least one 16:9 video asset.</term></p>
+      <p><term name="Business Name">Required. 25 characters maximum. Your brand or business name.</term></p>
+      <p>Key principle: Provide maximum asset diversity so Google's system can test combinations and learn which resonate with each audience segment and placement.</p>
+    </section>
+    <section name="adding-assets">
+      <code lang="python"><![CDATA[
+def add_asset_group_assets(client, customer_id, asset_group_resource, assets):
+    """Add text, image, and video assets to asset group.
+
+    Args:
+        assets: Dict with headlines, long_headlines, descriptions, images,
+                videos (YouTube IDs), business_name.
+    """
+    asset_group_asset_service = client.get_service("AssetGroupAssetService")
+    operations = []
+
+    # Headlines (3-5 required)
+    for headline in assets["headlines"]:
+        headline_asset = create_text_asset(client, customer_id, headline)
+        operations.append(
+            create_asset_group_asset_operation(
+                client,
+                asset_group_resource,
+                headline_asset,
+                client.enums.AssetFieldTypeEnum.HEADLINE
+            )
+        )
+
+    # Long headlines (1-5 required)
+    for long_headline in assets["long_headlines"]:
+        long_headline_asset = create_text_asset(client, customer_id, long_headline)
+        operations.append(
+            create_asset_group_asset_operation(
+                client,
+                asset_group_resource,
+                long_headline_asset,
+                client.enums.AssetFieldTypeEnum.LONG_HEADLINE
+            )
+        )
+
+    # Descriptions (2-5 required)
+    for description in assets["descriptions"]:
+        desc_asset = create_text_asset(client, customer_id, description)
+        operations.append(
+            create_asset_group_asset_operation(
+                client,
+                asset_group_resource,
+                desc_asset,
+                client.enums.AssetFieldTypeEnum.DESCRIPTION
+            )
+        )
+
+    # Images (use existing asset resource names)
+    for image_resource in assets["images"]:
+        operations.append(
+            create_asset_group_asset_operation(
+                client,
+                asset_group_resource,
+                image_resource,
+                client.enums.AssetFieldTypeEnum.MARKETING_IMAGE
+            )
+        )
+
+    # Business name (required)
+    business_name_asset = create_text_asset(
+        client,
+        customer_id,
+        assets["business_name"]
+    )
+    operations.append(
+        create_asset_group_asset_operation(
+            client,
+            asset_group_resource,
+            business_name_asset,
+            client.enums.AssetFieldTypeEnum.BUSINESS_NAME
+        )
+    )
+
+    response = asset_group_asset_service.mutate_asset_group_assets(
+        customer_id=customer_id,
+        operations=operations
+    )
+
+    return [r.resource_name for r in response.results]
+]]></code>
+    </section>
+    <section name="audience-signals">
+      <p>Audience signals guide Google's AI toward your target audience without blocking non-target users. They are optional but recommended for better performance.</p>
+      <code lang="python"><![CDATA[
+def add_audience_signals(client, customer_id, asset_group_resource, signals):
+    """Add audience signals to asset group.
+
+    Args:
+        signals: Dict with demographics, interests, remarketing lists.
+    """
+    asset_group_signal_service = client.get_service("AssetGroupSignalService")
+
+    operation = client.get_type("AssetGroupSignalOperation")
+    signal = operation.create
+    signal.asset_group = asset_group_resource
+
+    # Add audience (combine all signals)
+    audience = signal.audience
+
+    # User interests
+    if "interests" in signals:
+        for interest_id in signals["interests"]:
+            user_interest = client.get_type("UserInterestInfo")
+            user_interest.user_interest_category = (
+                f"customers/{customer_id}/userInterests/{interest_id}"
+            )
+            audience.user_interests.append(user_interest)
+
+    # User lists (remarketing)
+    if "remarketing" in signals:
+        for list_id in signals["remarketing"]:
+            user_list = client.get_type("UserListInfo")
+            user_list.user_list = (
+                f"customers/{customer_id}/userLists/{list_id}"
+            )
+            audience.user_lists.append(user_list)
+
+    response = asset_group_signal_service.mutate_asset_group_signals(
+        customer_id=customer_id,
+        operations=[operation]
+    )
+
+    return response.results[0].resource_name
+]]></code>
+      <note>Signals are hints, not filters. The algorithm uses them to prioritize budget allocation but does not restrict who sees your ads. Wide signals + conversion data work better than overly narrow demographic targeting.</note>
+    </section>
+    <section name="bidding-strategy">
+      <p>PMax bidding evolves with campaign maturity:</p>
+      <p><term name="Phase 1 (first 30 days)">Maximize Conversions without a target CPA. Let Google discover the best placements and audiences without constraint.</term></p>
+      <p><term name="Phase 2 (30+ conversions)">Switch to Target CPA or Target ROAS based on business goal. Target CPA = cost-per-acquisition objective; Target ROAS = return-on-ad-spend objective.</term></p>
+      <p>Allow 4-6 weeks of learning phase after setting target CPA or ROAS. The algorithm needs time to refine bids across placements.</p>
+    </section>
+    <section name="optimization">
+      <p>Ongoing PMax optimization focuses on asset performance and budget management:</p>
+      <p><term name="Weekly">Review the asset performance report. Identify low-performing image/video/headline combinations. Replace underperformers with new variations.</term></p>
+      <p><term name="Regular">Add new asset variations (images, videos, copy) at least biweekly. The system tests new combinations continuously.</term></p>
+      <p><term name="Monthly">Review placement exclusions and any unwanted placements. Pause or reduce budget if ads appear in brand-harmful contexts.</term></p>
+      <p><term name="Never">Do not pause and restart campaigns frequently. This resets the learning algorithm and forces it to rebuild audience and placement understanding.</term></p>
+    </section>
+    <section name="best-practices">
+      <rule testable="true">
+        <statement>Always provide maximum asset diversity: 5 headlines, 5 long headlines, 4+ descriptions, 3-5 distinct images, and at least one video.</statement>
+        <rationale>Google's algorithm learns by testing combinations. Few assets limit its ability to optimize.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Start with broad audience signals and let conversion data refine over 4-6 weeks. Do not apply strict demographic filters upfront.</statement>
+        <rationale>Overly narrow targeting constrains the algorithm's ability to discover high-converting audiences it would not have found manually.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Allocate budget conservatively at campaign start. PMax needs 3x the target CPA as daily budget for a proper learning phase.</statement>
+        <rationale>Insufficient budget prevents the algorithm from gathering enough data to optimize effectively.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Never pause and restart a campaign frequently. Allow at least 2-3 weeks between major changes to avoid resetting learning.</statement>
+        <rationale>The algorithm requires stability to optimize; constant restarts prevent convergence.</rationale>
+      </rule>
+      <antipattern>
+        <description>Launching PMax with minimal assets (1-2 images, 2 headlines). The algorithm has little to test.</description>
+        <reason>Asset diversity is how the system learns; few variations mean few hypotheses to test and slow learning.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Switching bidding strategies too frequently (daily CPA target changes, constant bid adjustments). Prevents convergence.</description>
+        <reason>The algorithm needs stability to learn; constant parameter changes restart its understanding.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/asset-audit.py" purpose="Python script to audit asset group completeness: verify minimum asset counts, check image dimensions, validate copy length."/>
+      <template path="templates/asset-spec.md" purpose="Asset specification template: headlines, descriptions, image guidelines, video requirements."/>
+    </templates>
+    <see-also>
+      <link href="https://support.google.com/google-ads/answer/10724817"/>
+      <link href="https://support.google.com/google-ads/answer/11513956"/>
+      <link href="https://support.google.com/google-ads/answer/11004764"/>
+      <link href="https://support.google.com/google-ads/answer/11221673"/>
+      <ref slug="ads-conversion-tracking"/>
+      <ref slug="ads-budget-optimization"/>
+    </see-also>
+  </content>
+</methodology>
