@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (design-system-success-factors, design-tokens-fundamentals, diary-studies; feature-045 batch 227)
 - migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (ar-design-patterns, cognitive-inclusion-design, cognitive-walkthrough; feature-045 batch 225)
 - migrate: 3/3 pro/ux/ux-researcher VUI methodologies → methodology.xml (vui-conversation-design, vui-market-context, vui-testing-best-practices; feature-045 batch 223)
 - migrate: 3/3 pro/ux/ux-researcher methodologies → methodology.xml (personas, surveys, tree-testing; feature-045 batch 222)
