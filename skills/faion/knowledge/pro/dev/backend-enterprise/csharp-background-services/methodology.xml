@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="csharp-background-services">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>BackgroundService + Channel&lt;T&gt; for in-process async work: queue consumers, periodic tasks. Bound channels, scoped DI per-item, try/catch per-item, PeriodicTimer not Task.Delay.</summary>
+    <tags>
+      <tag>background-service</tag>
+      <tag>aspnet-core</tag>
+      <tag>csharp</tag>
+      <tag>hosted-service</tag>
+      <tag>async</tag>
+    </tags>
+    <category>patterns</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tools>
+      <tool>claude-code</tool>
+      <tool>cursor</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>C# Background Services</title>
+
+    <summary>Implement in-process background work via BackgroundService and Channel&lt;T&gt;. Pattern covers two patterns: (1) queue consumers that bridge HTTP requests to async post-processing, and (2) periodic tasks running at fixed intervals. Always use bounded channels with explicit capacity and FullMode to prevent memory leaks. Resolve scoped dependencies (DbContext, repositories) inside ExecuteAsync via IServiceProvider.CreateScope(), never injected directly. Wrap per-item processing in try/catch and use PeriodicTimer for fixed-interval work, never Task.Delay loops.</summary>
+
+    <why>
+      <p>IHostedService / BackgroundService is the idiomatic .NET way to run in-process background work without a separate process or external scheduler. Channel&lt;T&gt; gives a thread-safe, backpressure-aware queue. PeriodicTimer fires at fixed intervals and cancels cleanly on host shutdown — unlike Task.Delay loops, which leak on SIGTERM.</p>
+      <p>Creating scopes per work item ensures scoped services (DbContext) are disposed after each operation, preventing connection pool exhaustion and stale entity tracking. Wrapping each item in try/catch prevents one transient exception from terminating the entire background service.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>In-process queue consumer that bridges an HTTP request to async post-processing.</item>
+        <item>Periodic cleanup or sync job running every few minutes on a single replica (no leader election needed).</item>
+        <item>Lightweight scheduled work where Hangfire/Quartz overhead is not justified.</item>
+        <item>Wiring IHostApplicationLifetime, structured logging, and OpenTelemetry around background work.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Distributed scheduling across multiple replicas — use Hangfire, Quartz.NET, or a platform CronJob (requires leader election).</item>
+        <item>Durable, retry-able jobs — use Hangfire, MassTransit, or a real message queue (RabbitMQ, SQS, Service Bus).</item>
+        <item>Long-running CPU-bound work that should not share the host thread pool — deploy a separate Worker Service.</item>
+        <item>Cron-style "every Tuesday at 3 AM" — PeriodicTimer is fixed-interval only; use Quartz.NET or a platform scheduler.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="queue-consumer-pattern">
+      <p>A bounded Channel&lt;T&gt; acts as an in-memory queue. Producers (e.g., HTTP controllers) write items asynchronously; a BackgroundService consumer processes them with scoped DI and error handling. Backpressure (the bounded capacity) forces producers to respect limits instead of silently growing the heap.</p>
+
+      <rule testable="true">
+        <statement>Always use a bounded Channel&lt;T&gt; with an explicit FullMode; never use Channel.CreateUnbounded.</statement>
+        <rationale>Unbounded channels build up memory without limit under load. Explicit capacity + FullMode (Wait, DropOldest, or DropWrite) forces the producer to handle backpressure instead of silently growing the heap.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Resolve scoped services inside ExecuteAsync via IServiceProvider.CreateScope() per item; never inject scoped services directly into the singleton BackgroundService.</statement>
+        <rationale>BackgroundService is registered as a singleton. Injecting a scoped service (DbContext, repository) directly causes a scope-mismatch exception at runtime on first access.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Wrap per-item processing in try/catch inside the ReadAllAsync loop; rethrow OperationCanceledException only when stoppingToken is cancelled.</statement>
+        <rationale>An unhandled exception inside ExecuteAsync terminates the hosted service silently in .NET 6+ (the host logs but keeps running). One bad item must not kill the consumer loop.</rationale>
+      </rule>
+
+      <example type="good" title="Queue abstraction with bounded Channel">
+        <code lang="csharp"><![CDATA[
+// IOrderQueue.cs + OrderQueue.cs
+public interface IOrderQueue
+{
+    ValueTask QueueOrderAsync(int orderId, CancellationToken ct = default);
+}
+
+public class OrderQueue : IOrderQueue
+{
+    private readonly Channel<int> _channel;
+    public OrderQueue(Channel<int> channel) => _channel = channel;
+
+    public async ValueTask QueueOrderAsync(int orderId, CancellationToken ct = default)
+        => await _channel.Writer.WriteAsync(orderId, ct);
+}
+]]></code>
+      </example>
+
+      <example type="good" title="BackgroundService with per-item scoped DI and error handling">
+        <code lang="csharp"><![CDATA[
+public class BackgroundOrderProcessor : BackgroundService
+{
+    private readonly IServiceProvider _sp;
+    private readonly ILogger<BackgroundOrderProcessor> _logger;
+    private readonly Channel<int> _channel;
+
+    public BackgroundOrderProcessor(
+        IServiceProvider sp,
+        ILogger<BackgroundOrderProcessor> logger,
+        Channel<int> channel)
+    {
+        _sp = sp;
+        _logger = logger;
+        _channel = channel;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        await foreach (var orderId in _channel.Reader.ReadAllAsync(stoppingToken))
+        {
+            try
+            {
+                using var scope = _sp.CreateScope();
+                var svc = scope.ServiceProvider.GetRequiredService<IOrderService>();
+                await svc.ProcessAsync(orderId, stoppingToken);
+                _logger.LogInformation("Order {OrderId} processed", orderId);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Order {OrderId} failed", orderId);
+            }
+        }
+    }
+}
+]]></code>
+        <note>ReadAllAsync exits cleanly when the channel is completed or the token is cancelled — no manual while loop needed.</note>
+      </example>
+    </section>
+
+    <section name="periodic-timer-pattern">
+      <p>For fixed-interval background work (cleanup jobs, syncs, periodic reports), use PeriodicTimer with WaitForNextTickAsync(stoppingToken). This integrates with the host lifetime cleanly and cancels at tick boundaries, unlike Task.Delay loops which can leak on shutdown.</p>
+
+      <rule testable="true">
+        <statement>Use PeriodicTimer.WaitForNextTickAsync(stoppingToken) for fixed-interval work; never use Task.Delay in a loop as a timer.</statement>
+        <rationale>Task.Delay ignores the cancellation token after the delay starts if not forwarded explicitly, and loops can leak on shutdown. PeriodicTimer cancels at the next tick boundary cleanly.</rationale>
+      </rule>
+
+      <example type="good" title="PeriodicTimer-based cleanup service">
+        <code lang="csharp"><![CDATA[
+public class CleanupService : BackgroundService
+{
+    private readonly IServiceProvider _sp;
+    private readonly ILogger<CleanupService> _logger;
+    private readonly TimeSpan _period = TimeSpan.FromHours(1);
+
+    public CleanupService(IServiceProvider sp, ILogger<CleanupService> logger)
+    {
+        _sp = sp;
+        _logger = logger;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        using var timer = new PeriodicTimer(_period);
+
+        while (!stoppingToken.IsCancellationRequested &&
+               await timer.WaitForNextTickAsync(stoppingToken))
+        {
+            try
+            {
+                await DoCleanupAsync(stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Cleanup failed");
+            }
+        }
+    }
+
+    private async Task DoCleanupAsync(CancellationToken ct)
+    {
+        using var scope = _sp.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var cutoff = DateTime.UtcNow.AddDays(-30);
+        var deleted = await context.AuditLogs
+            .Where(a => a.CreatedAt < cutoff)
+            .ExecuteDeleteAsync(ct);
+        _logger.LogInformation("Deleted {Count} old audit logs", deleted);
+    }
+}
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Task.Delay loop used as a timer substitute.</description>
+        <reason>Task.Delay does not integrate with the host lifetime cleanly; cancellation after Delay starts requires careful token forwarding. PeriodicTimer is the idiomatic replacement in .NET 6+.</reason>
+      </antipattern>
+    </section>
+
+    <section name="registration-and-rules">
+      <p>BackgroundService and Channel&lt;T&gt; must be registered in Program.cs. Forgetting AddHostedService&lt;T&gt;() is a common gotcha: the service compiles and injects fine but never starts.</p>
+
+      <example type="good" title="Program.cs registration">
+        <code lang="csharp"><![CDATA[
+// Program.cs
+builder.Services.AddSingleton(_ => Channel.CreateBounded<int>(
+    new BoundedChannelOptions(1024) { FullMode = BoundedChannelFullMode.Wait }));
+builder.Services.AddSingleton<IOrderQueue, OrderQueue>();
+builder.Services.AddHostedService<BackgroundOrderProcessor>();
+builder.Services.AddHostedService<CleanupService>();
+]]></code>
+        <note>Channel and the queue abstraction are singletons. The BackgroundService is registered via AddHostedService — forgetting this is common; the service compiles but never starts.</note>
+      </example>
+
+      <rule testable="true">
+        <statement>Log structured fields per item ({OrderId}) and use ILogger.BeginScope per item for distributed trace correlation.</statement>
+        <rationale>Background service logs without correlation IDs make triage in production impossible; structured fields enable filtering by entity ID.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations-and-when-to-escalate">
+      <p>Channel&lt;T&gt; is in-memory only; if the host crashes, queued work is lost. Agents miss this and treat it as durable. Singletons resolving scoped services panics at runtime — agents forget the IServiceProvider.CreateScope() pattern inside BackgroundService. Unhandled exceptions in ExecuteAsync silently terminate the service in older runtimes; .NET 6+ logs but still stops. Agents skip the try/catch around the inner loop. PeriodicTimer.WaitForNextTickAsync(stoppingToken) cancellation is correct, but agents often Task.Delay instead, which leaks on shutdown. Channel.Writer.WriteAsync blocks when the channel is bounded and full — agents pick Channel.CreateUnbounded "to avoid blocking" and create memory leaks. Logging from background services without correlation IDs makes triage impossible; OpenTelemetry must be wired explicitly.</p>
+      <p>Long-term escalation: If requirements gain durability or distribution (multiple replicas needing leader election), migrate to Hangfire/Quartz/MassTransit rather than evolving the in-process service. Hangfire provides durability, retries, UI dashboards, and clustering. Quartz.NET adds cron-style scheduling. MassTransit + RabbitMQ/Service Bus enables real distributed processing with durable message storage.</p>
+    </section>
+
+    <section name="tools-and-services">
+      <p>Hangfire (OSS, paid Pro) replaces in-process when durability and retries are needed. Quartz.NET handles cron expressions and clustering. MassTransit + RabbitMQ/Azure Service Bus enables distributed processing. Azure Functions Timer and AWS Lambda + EventBridge replace PeriodicTimer on cloud platforms. Application Insights and Datadog .NET APM auto-instrument BackgroundService. dotnet-counters and dotnet-trace help diagnose queue stalls and performance issues. Host.CreateDefaultBuilder and TestServer enable integration tests that verify queue→handler flow.</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Channel.CreateUnbounded&lt;T&gt;() used to "avoid blocking".</description>
+        <reason>Creates a silent memory leak under load. Always use Channel.CreateBounded with an explicit capacity and FullMode.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>DbContext or other scoped service injected directly into BackgroundService constructor.</description>
+        <reason>BackgroundService is a singleton; scoped services throw at runtime on first use. Resolve per-item inside ExecuteAsync via CreateScope.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>ExecuteAsync without try/catch around the loop body.</description>
+        <reason>One transient exception terminates the consumer loop; subsequent items are never processed.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>AddHostedService&lt;T&gt;() omitted from Program.cs.</description>
+        <reason>Service compiles and injects fine but never starts — silent runtime bug.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Multi-replica deploy running BackgroundService on every pod.</description>
+        <reason>Leads to double-processing. Gate with leader election or migrate to Hangfire/MassTransit.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/queue-consumer.cs" purpose="BackgroundService + Channel&lt;T&gt; producer/consumer skeleton with bounded channel, scoped DI, and per-item try/catch."/>
+      <template path="templates/registration.cs" purpose="Program.cs registration snippet for channel, queue abstraction, and hosted services."/>
+    </templates>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/en-us/dotnet/core/extensions/workers"/>
+      <link href="https://learn.microsoft.com/en-us/dotnet/core/extensions/channels"/>
+      <link href="https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.hosting.ihostapplicationlifetime"/>
+      <link href="https://www.hangfire.io"/>
+      <link href="https://www.quartz-scheduler.net"/>
+      <link href="https://masstransit.io"/>
+      <link href="https://opentelemetry.io/docs/instrumentation/net/"/>
+    </see-also>
+  </content>
+</methodology>
