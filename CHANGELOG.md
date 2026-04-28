@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/ux/ui-designer methodologies → methodology.xml (error-handling-in-vui, semantic-tokens-and-modes, spatial-computing-overview; feature-045 batch 214)
 - migrate: 3/3 pro/ux/ui-designer methodologies → methodology.xml (cross-platform-token-distribution, design-system-success-factors, enterprise-xr-applications; feature-045 batch 213)
 - migrate: 3/3 pro/ux/accessibility-specialist methodologies → methodology.xml (cognitive-inclusion-design, immersive-design-principles, regulatory-compliance-2026; feature-045 batch 210)
 - migrate: 3/3 pro/ux/accessibility-specialist methodologies → methodology.xml (spatial-accessibility, testing-with-assistive-technology, vr-design-patterns; feature-045 batch 211)
