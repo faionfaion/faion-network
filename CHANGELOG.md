@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 solo/ux/accessibility-specialist methodologies → methodology.xml (help-documentation, match-real-world, recognition-over-recall)
 - migrate: 3/3 solo/sdd/sdd-planning methodologies → methodology.xml (template-task, templates, workflow-design-phase)
 - migrate: 3/3 batch 2 methodologies → methodology.xml (value-proposition-design, sdd/templates, api-first-development)
 - migrate: 3/3 solo/research methodologies → methodology.xml (pricing-research, feature-discovery, idea-generation)
