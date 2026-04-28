@@ -1,0 +1,486 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="db-weaviate">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Vector database with knowledge graph capabilities and hybrid search. Excels at knowledge graphs and hybrid search (semantic + keyword). GraphQL native.</summary>
+    <tags>
+      <tag>vector-database</tag>
+      <tag>knowledge-graphs</tag>
+      <tag>hybrid-search</tag>
+      <tag>graphql</tag>
+      <tag>rag</tag>
+    </tags>
+    <category>vector-db</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-24</created>
+  </metadata>
+
+  <content>
+    <title>Weaviate Vector Database</title>
+
+    <summary>Vector database with knowledge graph capabilities and hybrid search. Weaviate excels at knowledge graphs and hybrid search (semantic + keyword). GraphQL native. Best for knowledge graphs at 10M+ vector scale with self or cloud hosting.</summary>
+
+    <why>
+      <p>Weaviate (oxsecurity, fork of GitHub Super-Linter) is the only one-call surface that covers knowledge graph relationships and native hybrid search (vector + BM25) without client-side fusion code. The parallel Python multiprocessing engine is meaningfully faster than sequential alternatives and produces results that integrate with the agent's existing GraphQL tooling.</p>
+      <p>The "knowledge graph + native hybrid search" combination prevents the well-known anti-pattern of managing semantic and keyword search as separate retrieval paths while still giving the agent a unified query interface to search from.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Knowledge graph capabilities are needed: entities with cross-references (Author → Document → Topic).</item>
+        <item>Native hybrid search (vector + BM25) is required without client-side fusion code.</item>
+        <item>GraphQL-based querying fits the team's existing tooling or API gateway.</item>
+        <item>Corpus contains multi-modal data (text + images) — Weaviate supports multi-vector objects.</item>
+        <item>Self-hosted deployment on Kubernetes at 10M–100M vector scale.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple RAG prototype with no graph relationships — Chroma or Qdrant are simpler to set up.</item>
+        <item>Team is unfamiliar with GraphQL; prefer Qdrant (REST/gRPC) for API simplicity.</item>
+        <item>Payload filtering at high cardinality is the primary concern — Qdrant's payload filter performance exceeds Weaviate's at scale.</item>
+        <item>Cost-sensitive managed deployment at 1B+ vectors — Pinecone or Milvus have lower per-vector managed pricing.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="installation">
+      <p>Weaviate can be deployed via Docker for local development or as a managed cloud service (Weaviate Cloud, WCS). The Python client provides the standard interface for programmatic access.</p>
+
+      <rule testable="true">
+        <statement>Installation MUST use Docker for local development and the official Weaviate Cloud service for production deployments. The Python client MUST be pinned to v4 or later for compatibility with the latest API.</statement>
+        <rationale>Docker provides reproducible, version-controlled local environments. Weaviate Cloud offers managed infrastructure with SLA uptime. The v4 Python client is incompatible with v3; mixing versions breaks code at runtime.</rationale>
+      </rule>
+
+      <example type="good" title="Docker setup with persistence">
+        <code lang="bash"><![CDATA[
+docker run -p 8080:8080 -p 50051:50051 \
+  -e QUERY_DEFAULTS_LIMIT=25 \
+  -e AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true \
+  -e PERSISTENCE_DATA_PATH=/var/lib/weaviate \
+  -e DEFAULT_VECTORIZER_MODULE=none \
+  -v weaviate_data:/var/lib/weaviate \
+  semitechnologies/weaviate:latest
+]]></code>
+        <note>Sets anonymous access (dev only), disables auto-vectorization, and mounts a volume for persistence.</note>
+      </example>
+
+      <example type="good" title="Python client installation">
+        <code lang="bash"><![CDATA[
+pip install weaviate-client
+]]></code>
+        <note>Installs v4.x client with async support and batch API.</note>
+      </example>
+
+      <antipattern>
+        <description>Mixing weaviate-client v3 and v4 code in the same project because "the old integration still works".</description>
+        <reason>v3 and v4 APIs are incompatible; integrations written for v3 (common in older LangChain/LlamaIndex versions) will fail silently or crash when called against v4 client objects.</reason>
+      </antipattern>
+    </section>
+
+    <section name="schema-design">
+      <p>Weaviate collections are defined by a schema that specifies properties, data types, vectorization settings, and HNSW index parameters. Collections can reference other collections via cross-references, enabling knowledge graph relationships.</p>
+
+      <rule testable="true">
+        <statement>Every collection MUST define a schema with explicit properties, MUST set vectorizer_config to none() to manage embeddings externally, and MUST skip_vectorization on metadata fields (category, date, IDs). HNSW parameters MUST be set at collection creation time (ef=100, max_connections=16 as safe production defaults).</statement>
+        <rationale>Explicit schema prevents schema drift and silent data loss. External vectorization avoids vendor coupling and unpredictable latency from auto-vectorizer modules. Skipping non-semantic fields saves compute and keeps the vector space meaningful. HNSW parameters affect recall and query latency; tuning after index construction is expensive.</rationale>
+      </rule>
+
+      <example type="good" title="Collection schema with cross-references">
+        <code lang="python"><![CDATA[
+import weaviate
+from weaviate.classes.config import Configure, Property, DataType
+
+client = weaviate.connect_to_local()
+
+# Create Document collection
+documents = client.collections.create(
+    name="Document",
+    vectorizer_config=Configure.Vectorizer.none(),
+    properties=[
+        Property(name="text", data_type=DataType.TEXT),
+        Property(name="source", data_type=DataType.TEXT),
+        Property(name="page", data_type=DataType.INT),
+        Property(name="category", data_type=DataType.TEXT,
+                 skip_vectorization=True),
+    ],
+    vector_index_config=Configure.VectorIndex.hnsw(
+        ef=100,
+        max_connections=16,
+        distance_metric=Configure.VectorDistances.COSINE,
+    ),
+)
+
+# Create Author collection
+client.collections.create(
+    name="Author",
+    properties=[
+        Property(name="name", data_type=DataType.TEXT),
+        Property(name="email", data_type=DataType.TEXT),
+    ],
+)
+
+# Add cross-reference from Document to Author
+documents = client.collections.get("Document")
+documents.config.add_reference(
+    weaviate.classes.config.ReferenceProperty(
+        name="hasAuthor",
+        target_collection="Author"
+    )
+)
+]]></code>
+        <note>Separates semantic fields (text) from metadata (category), sets HNSW tuning, and creates knowledge graph links.</note>
+      </example>
+
+      <antipattern>
+        <description>Using Weaviate's auto-vectorizer modules (text2vec-openai, text2vec-cohere) because "it saves one step" in the pipeline.</description>
+        <reason>Auto-vectorizer modules add latency at index time, couple the schema to external API keys, and make it impossible to experiment with different embedding models without dropping and re-creating the collection. Schema changes require collection drop in Weaviate v4 — a costly operation for large indices.</reason>
+      </antipattern>
+    </section>
+
+    <section name="inserting-data">
+      <p>Data insertion in Weaviate uses batch operations for throughput. The batch.dynamic() context manager auto-adjusts batch size based on server response time to maximize insert throughput.</p>
+
+      <rule testable="true">
+        <statement>All data insertion MUST use batch.dynamic() for throughput optimization. Single inserts MUST only be used in development or testing. Cross-reference inserts MUST insert target objects before source objects (insertion order matters for referential integrity).</statement>
+        <rationale>Dynamic batching maximizes throughput by tuning batch size to server capacity. Single inserts serialize requests and are 10x slower at scale. Cross-reference ordering prevents reference errors when target objects do not yet exist.</rationale>
+      </rule>
+
+      <example type="good" title="Batch insert with vectors">
+        <code lang="python"><![CDATA[
+documents = client.collections.get("Document")
+
+with documents.batch.dynamic() as batch:
+    for doc in documents_list:
+        batch.add_object(
+            properties={
+                "text": doc["text"],
+                "source": doc["source"],
+                "page": doc["page"],
+                "category": doc["category"],
+            },
+            vector=doc["embedding"],
+        )
+]]></code>
+        <note>Dynamic batching adjusts batch size based on server latency; external vectors are pre-computed.</note>
+      </example>
+
+      <example type="bad" title="Serial single inserts">
+        <code lang="python"><![CDATA[
+documents = client.collections.get("Document")
+
+for doc in documents_list:
+    uuid = documents.data.insert(
+        properties={...},
+        vector=embedding_vector,
+    )
+]]></code>
+        <note>Serializes each insert, creating network round-trips for every document. This is 10x slower than batch.dynamic().</note>
+      </example>
+
+      <antipattern>
+        <description>Skipping batch.dynamic() in production because "we only insert once a day".</description>
+        <reason>Insert throughput is still measured in documents per second; serial inserts block the application during the entire ingestion window. Using batch.dynamic() costs nothing and provides a 10x speedup as a free benefit of the API design.</reason>
+      </antipattern>
+    </section>
+
+    <section name="searching">
+      <p>Weaviate supports multiple search modes: vector search (nearVector), hybrid search (vector + BM25), and filtered search. Results include metadata (certainty, score) that inform re-ranking and result fusion.</p>
+
+      <rule testable="true">
+        <statement>Vector search MUST use near_vector with return_metadata=MetadataQuery(certainty=True) for confidence scoring. Hybrid search MUST set alpha explicitly (alpha=0.5 default for balanced semantic/keyword, tune based on query classification). Filtered search MUST apply filters before ANN search using Filter.by_property().</statement>
+        <rationale>Certainty metadata enables confidence-based reranking and filtering at the application level. Alpha tuning affects result relevance; explicit tuning prevents silent surprises when query type changes. Pre-filters reduce the search space before ANN and improve latency; post-filters (applied after ANN) are slower and less accurate.</rationale>
+      </rule>
+
+      <example type="good" title="Vector search with metadata">
+        <code lang="python"><![CDATA[
+documents = client.collections.get("Document")
+
+response = documents.query.near_vector(
+    near_vector=query_embedding,
+    limit=10,
+    return_metadata=weaviate.classes.query.MetadataQuery(certainty=True)
+)
+
+for obj in response.objects:
+    print(f"ID: {obj.uuid}")
+    print(f"Certainty: {obj.metadata.certainty}")
+    print(f"Text: {obj.properties['text'][:100]}")
+]]></code>
+        <note>Returns certainty metadata for each result, enabling confidence-based filtering at application level.</note>
+      </example>
+
+      <example type="good" title="Hybrid search with alpha tuning">
+        <code lang="python"><![CDATA[
+response = documents.query.hybrid(
+    query="search keywords",
+    vector=query_embedding,
+    alpha=0.6,  # 60% semantic, 40% keyword
+    limit=10,
+    return_metadata=MetadataQuery(score=True, explain_score=True)
+)
+
+for obj in response.objects:
+    print(f"Score: {obj.metadata.score:.3f}")
+    print(f"Text: {obj.properties['text'][:200]}")
+]]></code>
+        <note>Alpha tunes the semantic/keyword balance. score and explain_score help debug why a result was ranked.</note>
+      </example>
+
+      <example type="good" title="Filtered vector search">
+        <code lang="python"><![CDATA[
+from weaviate.classes.query import Filter
+
+response = documents.query.near_vector(
+    near_vector=query_embedding,
+    filters=Filter.by_property("category").equal("technical"),
+    limit=10,
+)
+]]></code>
+        <note>Filter applied before ANN search, reducing the index space before similarity computation.</note>
+      </example>
+
+      <antipattern>
+        <description>Using alpha=0.5 for all queries without classifying the query type (keyword vs. semantic).</description>
+        <reason>Query intent varies: "quick reference lookups" (user typed exact keywords) need alpha near 0 (BM25-heavy); "conceptual exploration" queries need alpha near 1 (semantic-heavy). Static alpha discards this signal and produces mediocre results for both cases.</reason>
+      </antipattern>
+    </section>
+
+    <section name="graphql-queries">
+      <p>GraphQL is Weaviate's native query language. Raw GraphQL queries enable cross-reference traversal and aggregations that are not available through the Python client's method-chaining API.</p>
+
+      <rule testable="true">
+        <statement>GraphQL MUST only be used for advanced patterns: cross-reference traversal, aggregations, or metrics that the Python client does not expose. Common operations (near_vector, hybrid, filters) MUST use the Python client methods, not raw GraphQL, for type safety and error handling.</statement>
+        <rationale>The Python client provides type-safe method chaining and automatic error translation. Raw GraphQL strings are prone to syntax errors and harder to debug. The client covers 95% of use cases; GraphQL is for the 5% edge case (e.g., multi-hop cross-references or monthly aggregate counts).</rationale>
+      </rule>
+
+      <example type="good" title="Cross-reference traversal in GraphQL">
+        <code lang="python"><![CDATA[
+result = client.graphql_raw_query("""
+{
+  Get {
+    Document(
+      nearVector: {vector: [...], certainty: 0.75}
+      limit: 5
+    ) {
+      text source
+      hasAuthor { ... on Author { name email } }
+      _additional { certainty }
+    }
+  }
+}
+""")
+]]></code>
+        <note>Traverses the hasAuthor cross-reference to enrich documents with author metadata in a single query.</note>
+      </example>
+
+      <example type="good" title="Aggregate queries for metrics">
+        <code lang="python"><![CDATA[
+result = client.graphql_raw_query("""
+{
+  Aggregate {
+    Document {
+      meta {count}
+      category {
+        count
+        topOccurrences {value occurs}
+      }
+    }
+  }
+}
+""")
+]]></code>
+        <note>Computes aggregate statistics (count per category) at query time, useful for monitoring and reporting.</note>
+      </example>
+
+      <antipattern>
+        <description>Using raw GraphQL for simple vector searches because "it gives me more control".</description>
+        <reason>Raw GraphQL requires string concatenation, is harder to test, loses type safety, and has no error handling. The Python client's near_vector() method produces the same result with better UX and easier debugging.</reason>
+      </antipattern>
+    </section>
+
+    <section name="knowledge-graph-patterns">
+      <p>Weaviate's knowledge graph features enable multi-hop relationships, entity enrichment, and semantic navigation. An agentic workflow uses subagents for indexing, retrieval, graph traversal, and generation.</p>
+
+      <rule testable="true">
+        <statement>Knowledge graph implementations MUST use subagent separation: indexer subagent creates cross-references at write time (Document → Author, Document → Topic), retriever subagent executes hybrid queries, graph-enricher subagent traverses cross-references to enrich results, and generator subagent synthesizes answers. Cross-references MUST be established at schema time, not queried as post-processing.</statement>
+        <rationale>Subagent separation isolates concerns and enables concurrent indexing/retrieval without lock contention. Establishing cross-references at schema time (not querying for them) keeps the graph explicit and traceable. This pattern scales to 10M+ vectors with predictable latency.</rationale>
+      </rule>
+
+      <example type="good" title="Agentic workflow with subagent separation">
+        <code lang="python"><![CDATA[
+import weaviate
+from weaviate.classes.query import MetadataQuery
+
+# Indexer subagent: batch-insert documents and cross-references
+documents = client.collections.get("Document")
+with documents.batch.dynamic() as batch:
+    for doc in document_batch:
+        uuid = batch.add_object(
+            properties={
+                "text": doc["text"],
+                "source": doc["source"],
+            },
+            vector=doc["embedding"],
+        )
+        # Store uuid for later cross-reference linking
+
+# Retriever subagent: execute hybrid queries
+response = documents.query.hybrid(
+    query=user_query,
+    vector=query_embedding,
+    alpha=0.6,
+    limit=10,
+    return_metadata=MetadataQuery(score=True)
+)
+
+# Graph-enricher subagent: traverse cross-references
+enriched_results = []
+for obj in response.objects:
+    result = client.graphql_raw_query(f"""
+    {{
+      Get {{
+        Document(
+          where: {{path: ["_id"], operator: Equal, valueString: "{obj.uuid}"}}
+          limit: 1
+        ) {{
+          text source
+          hasAuthor {{ ... on Author {{ name email }} }}
+          _additional {{ certainty }}
+        }}
+      }}
+    }}
+    """)
+    enriched_results.append(result)
+
+# Generator subagent: synthesize grounded answer from enriched results
+]]></code>
+        <note>Separates indexing, retrieval, enrichment, and generation into distinct subagent responsibilities.</note>
+      </example>
+
+      <antipattern>
+        <description>Storing cross-references as denormalized text fields ("author_name: John Smith") to avoid schema setup overhead.</description>
+        <reason>Denormalization creates duplicates, breaks updates (if Author.email changes, all Document copies are stale), and prevents graph traversal queries. The schema overhead is one-time; the maintenance cost of denormalization is unbounded.</reason>
+      </antipattern>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p>Weaviate has known limitations around schema mutability, client compatibility, and production configuration that can trap agents and humans alike.</p>
+
+      <rule testable="true">
+        <statement>GraphQL schema changes MUST NOT be attempted on live collections; collection MUST be dropped and re-created. The Python client MUST be pinned to v4 (not v3 mixed with v4). AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED MUST NOT be true in production; API key or OIDC auth MUST be configured. BM25 index rebuild on large collections blocks reads; rebuild operations MUST be scheduled during maintenance windows.</statement>
+        <rationale>Weaviate v4 has no in-place schema migration; dropping and re-indexing is the only path forward. v3/v4 client incompatibility is a runtime trap: code silently fails or crashes. Anonymous access is a security liability in production. BM25 rebuilds are synchronous and block the entire collection.</rationale>
+      </rule>
+
+      <example type="good" title="Production configuration with OIDC auth">
+        <code lang="bash"><![CDATA[
+docker run -p 8080:8080 -p 50051:50051 \
+  -e AUTHENTICATION_OIDC_ENABLED=true \
+  -e AUTHENTICATION_OIDC_CLIENT_ID=your-client-id \
+  -e AUTHENTICATION_OIDC_ISSUER=https://your-issuer.example.com \
+  -e AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=false \
+  semitechnologies/weaviate:latest
+]]></code>
+        <note>Uses OIDC for authentication; anonymous access is disabled.</note>
+      </example>
+
+      <example type="bad" title="Development config left in production">
+        <code lang="bash"><![CDATA[
+docker run -p 8080:8080 \
+  -e AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true \
+  semitechnologies/weaviate:latest
+]]></code>
+        <note>Anonymous access is a security hole in production; anyone can read/write the entire database.</note>
+      </example>
+
+      <antipattern>
+        <description>Assuming Weaviate v4 is backward-compatible with v3 client code because "the API looks similar".</description>
+        <reason>v4 is a rewrite; object initialization, method signatures, and error types are incompatible. Code written for v3 will import wrong modules or crash at runtime with cryptic errors (e.g., "AttributeError: module 'weaviate' has no attribute 'connect_to_local'").</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Storing frequently-updated data (user session state, time-series metrics) in Weaviate because "we already have it up".</description>
+        <reason>Weaviate is optimized for static/append-only vector indices, not high-churn transactional data. Update operations require recomputation of vector indices; frequent updates degrade query performance and cause BM25 rebuild storms.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <p>Production Weaviate deployments follow specific patterns for connection management, vectorization, indexing, and monitoring.</p>
+
+      <rule testable="true">
+        <statement>Connections MUST use context managers (with weaviate.connect_to_local() as client:) or explicit close() calls; unclosed gRPC connections leak file descriptors. Vectorizer config MUST be set to none() and embeddings managed externally; vendor modules add latency and coupling. Metadata properties MUST have skip_vectorization=True; non-semantic fields waste vector space. HNSW parameters MUST be set at collection creation time: ef=100, max_connections=16 is safe for production; tune based on latency and recall SLAs. Filter predicates MUST be applied before vector search, not after; post-filters are slower and less accurate.</statement>
+        <rationale>gRPC resource leaks cause file descriptor exhaustion and connection timeouts over hours. External vectorization decouples embedding strategy from the index schema and enables model experimentation. Non-vectorized metadata fields reduce noise in the embedding space and improve recall. HNSW tuning is a one-time cost at collection creation; post-hoc changes require re-indexing. Pre-filtering shrinks the ANN search space and improves latency by 2-5x.</rationale>
+      </rule>
+
+      <example type="good" title="Connection management with context manager">
+        <code lang="python"><![CDATA[
+with weaviate.connect_to_local() as client:
+    documents = client.collections.get("Document")
+    response = documents.query.near_vector(...)
+    # Connection auto-closes when exiting context
+]]></code>
+        <note>Automatic connection cleanup avoids gRPC resource leaks.</note>
+      </example>
+
+      <example type="good" title="Health check using /v1/meta endpoint">
+        <code lang="python"><![CDATA[
+import requests
+
+response = requests.get("http://localhost:8080/v1/meta")
+if response.status_code == 200:
+    meta = response.json()
+    print(f"Nodes: {meta['nodes']}")
+    print(f"Shards ready: {all(s['status'] == 'READY' for s in meta['shards'])}")
+]]></code>
+        <note>Monitors shard health and node status at application startup and in periodic health checks.</note>
+      </example>
+
+      <antipattern>
+        <description>Setting ef=10 (low) for "faster queries" without measuring latency trade-offs.</description>
+        <reason>ef controls the search depth in HNSW; low values (ef &lt; 50) reduce recall to below 80% at scale. The latency gain is minimal (a few milliseconds) compared to the recall loss (often 10-20% fewer relevant results). Tune based on measured SLAs, not guesses.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Reusing the same client across async tasks without synchronization because "Weaviate's thread-safe".</description>
+        <reason>Weaviate's Python client is thread-safe for concurrent queries but NOT for concurrent schema changes or batch inserts to the same collection. Concurrent writes require external locking or connection pooling.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-selection">
+      <p>Model selection for Weaviate-related tasks depends on task type and complexity.</p>
+
+      <rule testable="true">
+        <statement>Sonnet model MUST be used for analysis, assessment, evaluation, planning, quality assurance, and code review tasks. Haiku model MUST be used for execution, pattern application, performance tuning, and documentation. Opus model MUST be reserved for novel scenarios, strategic decisions, and multi-step reasoning tasks that defy established patterns.</statement>
+        <rationale>Sonnet provides a good balance of reasoning depth and cost for evaluation and planning. Haiku is cost-efficient for routine execution and documentation. Opus is justified only when the task cannot be decomposed into established patterns.</rationale>
+      </rule>
+    </section>
+
+    <section name="external-references">
+      <p>Comprehensive documentation and community resources for Weaviate:</p>
+
+      <rule testable="true">
+        <statement>All design and integration decisions SHOULD reference official Weaviate documentation first, then community examples. ChatGPT/Claude responses about Weaviate are often outdated (they confuse v3 and v4 APIs); always verify against the official docs.</statement>
+        <rationale>Weaviate's API has evolved significantly between v3 and v4; LLM training data does not reflect these breaking changes. Official docs are the source of truth.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates.md" purpose="Reusable code patterns for setup, configuration, error handling, and common operations."/>
+    </templates>
+
+    <see-also>
+      <ref slug="db-qdrant"/>
+      <ref slug="db-chroma"/>
+      <ref slug="embedding-generation"/>
+      <ref slug="hybrid-search-basics"/>
+      <ref slug="rag-architecture"/>
+      <link href="https://weaviate.io/developers/weaviate"/>
+      <link href="https://weaviate.io/developers/weaviate/client-libraries/python"/>
+      <link href="https://weaviate.io/developers/wcs"/>
+      <link href="https://weaviate.io/blog/knowledge-graphs"/>
+      <link href="https://weaviate.io/developers/weaviate/search/hybrid"/>
+    </see-also>
+  </content>
+</methodology>
