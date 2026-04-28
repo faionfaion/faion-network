@@ -4,16 +4,16 @@
     <tier>solo</tier>
     <group>ux</group>
     <domain>ux-ui-designer</domain>
-    <summary>Nielsen Heuristic #1: every user action must produce visible feedback within appropriate time thresholds — spinner for 1-3s, progress bar for 3-10s, progress bar with percentage and cancel for >10s. Every interactive element needs loading, success, and error states.</summary>
+    <summary>Nielsen Heuristic #1: every action needs feedback within 100ms. Spinner 1-3s, progress bar 3-10s, progress+percentage+cancel over 10s. Three states per interactive element: loading, success, error.</summary>
     <tags>
-      <tag>heuristics</tag>
+      <tag>ux</tag>
+      <tag>accessibility</tag>
       <tag>feedback</tag>
       <tag>loading-states</tag>
-      <tag>accessibility</tag>
-      <tag>usability</tag>
+      <tag>nielsen</tag>
     </tags>
-    <difficulty>intermediate</difficulty>
-    <created>2026-04-26</created>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-28</created>
   </metadata>
 
   <content>
@@ -38,7 +38,7 @@
     <when-not-to-use>
       <list>
         <item>Static informational pages with no interactive elements — nothing to communicate</item>
-        <item>Background operations the user does not need to know about (cache refresh completing in &lt;100ms)</item>
+        <item>Background operations the user does not need to know about (cache refresh completing in under 100ms)</item>
         <item>Micro-interactions already covered by platform defaults (OS-level progress bars for file transfers)</item>
         <item>When audit findings for this heuristic are already documented and tracked — fix, don't re-audit</item>
       </list>
@@ -79,8 +79,8 @@ Error:   error message appears near form with [Retry]
       <example type="good">
         <note>Document auto-save status (continuous operation)</note>
         <code lang="text"><![CDATA[
-"Draft"           — unsaved changes exist
-"Saving..."       — write in progress
+"Draft"             — unsaved changes exist
+"Saving..."         — write in progress
 "All changes saved" — current state persisted
         ]]></code>
       </example>
@@ -108,7 +108,7 @@ Red dot:    Offline — [Retry] [Work Offline]
       </rule>
     </section>
 
-    <section name="good-examples">
+    <section name="file-upload-example">
       <example type="good">
         <note>File upload — complete status lifecycle</note>
         <code lang="text"><![CDATA[
@@ -140,7 +140,7 @@ Click "Submit":
         <reason>Duration-free, content-free status messages give users no information to judge whether the wait is acceptable. "Uploading 3 of 5 files" is infinitely more useful than "Processing..."</reason>
       </antipattern>
       <antipattern>
-        <description>Progress bar showing fake/frozen progress (0% → 100% in one jump, or stuck at 99%)</description>
+        <description>Progress bar showing fake/frozen progress (0% to 100% in one jump, or stuck at 99%)</description>
         <reason>Progress bars showing inaccurate progress erode trust more than no progress bar at all. Only use determinate progress bars when the backend provides real progress events. Otherwise use an indeterminate spinner.</reason>
       </antipattern>
       <antipattern>
@@ -160,21 +160,219 @@ Click "Submit":
       </rule>
     </section>
 
-    <section name="best-practices">
-      <p>Every clickable element must give visible feedback within 100ms of the click — if the operation takes longer, show a loading state immediately, then update when complete. Disable the trigger element (button, link) during async operations to prevent double-submission — re-enable on success or error. Distinguish between skeleton screens (known layout, loading content) and spinners (unknown layout or very short wait) — use the right pattern for the context. Document auto-dismiss timing for toast notifications: 3-5 seconds for success, indefinite for errors (user must dismiss manually). "All changes saved" document status is more reassuring than a save button — continuous auto-save with status text outperforms explicit save actions for documents. Connection status indicators (online/offline/reconnecting) are required for any real-time feature — users need to know if their actions are being persisted. Provide a cancel option for operations that take over 10 seconds — users should not be trapped waiting.</p>
+    <section name="limitations">
+      <p>Where this methodology fails or requires human validation:</p>
+      <list>
+        <item>Agents can detect missing loading states in component code but cannot verify that the state is visually perceivable (contrast, animation speed, placement on screen)</item>
+        <item>Toast notifications and banners are easy to miss — position, timing, and contrast must be validated visually, not just by code inspection</item>
+        <item>Real-time status (WebSocket, SSE) requires testing under actual network conditions — static analysis cannot simulate latency or disconnection</item>
+        <item>ARIA live region correctness requires screen reader testing; agents can add the attribute but cannot verify the announcement behavior</item>
+        <item>Progress bar accuracy depends on backend progress events — if the backend sends no progress updates, the bar becomes indeterminate regardless of design intent</item>
+      </list>
     </section>
 
-    <templates>
-      <template path="templates/status-audit.md" purpose="Audit table: action, feedback present, feedback type, timing, gaps, severity"/>
-      <template path="templates/loading-state.spec.ts" purpose="Playwright test: verify loading state appears on form submit and file upload"/>
-    </templates>
+    <section name="agentic-workflow">
+      <p>An agent can systematically review component files for interactive elements (buttons, forms, links) and verify that each has at minimum: a loading state (disabled + spinner or text change), a success state (confirmation), and an error state (error message). It produces a gap report sorted by severity. The agent should also check ARIA attributes (aria-busy, aria-live, role="status") for accessibility compliance. Human visual verification of timing and placement is the required checkpoint before marking issues as resolved.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-usability-agent — full heuristic review with heuristic #1 as primary focus</item>
+        <item>general code agent — scans component library for all interactive elements and maps them to their implemented states</item>
+      </list>
+      <example type="prompt">
+        <note>Component audit prompt — checks each interactive element for all three states and ARIA attributes</note>
+        <code lang="text"><![CDATA[
+Review the following React/HTML component. For each interactive element (button, form, link, input):
+1. Does it have a loading state? (disabled + visual indicator)
+2. Does it have a success state? (confirmation message or visual change)
+3. Does it have an error state? (error message with recovery action)
+4. Is there an ARIA attribute for dynamic state (aria-busy, aria-live, role="status")?
+Report missing states as: MISSING | PARTIAL | PRESENT
+Include file:line for each finding.
+        ]]></code>
+      </example>
+      <example type="prompt">
+        <note>Response time → loading indicator type mapping prompt</note>
+        <code lang="text"><![CDATA[
+Given the following response time data for API endpoints (endpoint, p50_ms, p95_ms, p99_ms),
+recommend the appropriate loading indicator type for each endpoint:
+- <100ms: no indicator needed
+- 100ms-1s: spinner or button state change
+- 1s-10s: progress bar or skeleton screen
+- >10s: progress bar with percentage + cancel option
+        ]]></code>
+      </example>
+    </section>
 
-    <see-also>
-      <link href="https://www.nngroup.com/articles/visibility-system-status/"/>
-      <link href="https://m3.material.io/components/progress-indicators/overview"/>
-      <link href="https://developer.apple.com/design/human-interface-guidelines/progress-indicators"/>
-      <link href="https://webaim.org/articles/usable/"/>
-      <link href="https://www.nngroup.com/articles/response-times-3-important-limits/"/>
-    </see-also>
+    <section name="cli-tools-and-services">
+      <p>CLI tools:</p>
+      <list>
+        <item>axe-core CLI — detects ARIA live region and status role violations; npm i -g @axe-core/cli</item>
+        <item>playwright CLI — automates interaction flows and asserts UI state changes after async operations; npm i -D @playwright/test</item>
+        <item>lighthouse CLI — detects missing button disabled states and interaction-blocking patterns; npm i -g lighthouse</item>
+        <item>eslint-plugin-jsx-a11y — static lint for ARIA attributes; catches missing aria-live on dynamic regions; npm i -D eslint-plugin-jsx-a11y</item>
+      </list>
+      <p>Services and apps:</p>
+      <list>
+        <item>LogRocket (SaaS, REST API) — session recordings; agent can query sessions with rage-clicks to find unresponsive elements</item>
+        <item>FullStory (SaaS, REST API) — rage-click and dead-click detection; surfaces elements that lack visible feedback</item>
+        <item>Hotjar (SaaS, partial) — rage-click heatmaps; visual review required</item>
+        <item>Sentry (SaaS, REST API) — pairs error events with user interactions; shows which actions produce silent errors</item>
+        <item>Datadog RUM (SaaS, API) — real user monitoring with interaction timing; agent can query p95 interaction response times</item>
+        <item>Checkly (SaaS, CLI) — synthetic monitoring; can assert that loading states appear and resolve within SLA</item>
+      </list>
+    </section>
+
+    <section name="playwright-test-template">
+      <example type="code">
+        <note>loading-state.spec.ts — Playwright tests for system status visibility. Tests: submit button loading state, file upload progress indicator, error state persistence.</note>
+        <code lang="typescript"><![CDATA[
+// loading-state.spec.ts — Playwright tests for system status visibility
+// Tests: submit button loading state, file upload progress indicator
+// Usage: npx playwright test loading-state.spec.ts
+
+import { test, expect } from '@playwright/test';
+
+test('submit button shows loading state during async operation', async ({ page }) => {
+  await page.goto('/checkout');
+  await page.fill('[name="email"]', 'test@example.com');
+
+  const submitButton = page.locator('button[type="submit"]');
+
+  // Click and immediately verify loading state appears within 100ms
+  const [_] = await Promise.all([
+    submitButton.click(),
+    expect(submitButton).toHaveAttribute('aria-busy', 'true', { timeout: 100 }),
+  ]);
+
+  // Button must be disabled during async operation (prevents double-submit)
+  await expect(submitButton).toBeDisabled();
+
+  // Wait for completion and verify status region appears
+  await expect(page.locator('[role="status"]')).toBeVisible({ timeout: 10_000 });
+});
+
+test('submit button re-enables after success', async ({ page }) => {
+  await page.goto('/checkout');
+  const submitButton = page.locator('button[type="submit"]');
+  await submitButton.click();
+
+  // After operation completes, button should not remain disabled indefinitely
+  await expect(submitButton).not.toHaveAttribute('aria-busy', 'true', { timeout: 15_000 });
+});
+
+test('file upload shows progress indicator within 500ms', async ({ page }) => {
+  await page.goto('/upload');
+
+  const [fileChooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    page.click('[data-testid="upload-trigger"]'),
+  ]);
+
+  await fileChooser.setFiles('tests/fixtures/sample.pdf');
+
+  // Progress bar must appear quickly — skeleton screen or progress indicator
+  await expect(page.locator('[role="progressbar"]')).toBeVisible({ timeout: 500 });
+});
+
+test('error state appears and does not auto-dismiss', async ({ page }) => {
+  // Simulate network failure
+  await page.route('**/api/submit', (route) => route.abort('failed'));
+  await page.goto('/checkout');
+
+  const submitButton = page.locator('button[type="submit"]');
+  await submitButton.click();
+
+  const errorMessage = page.locator('[role="alert"]');
+  await expect(errorMessage).toBeVisible({ timeout: 5_000 });
+
+  // Error must not auto-dismiss — wait 6 seconds and verify still visible
+  await page.waitForTimeout(6_000);
+  await expect(errorMessage).toBeVisible();
+});
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="status-audit-template">
+      <example type="template">
+        <note>status-audit.md — audit table for reviewing interactive elements against the three required states</note>
+        <code lang="markdown"><![CDATA[
+# System Status Audit: [Feature / Page]
+
+**Date:** [Date]
+**Reviewer:** [Name]
+**Scope:** [Which screens / user flows]
+
+## Actions Reviewed
+
+| Action | Feedback Present | Feedback Type | Timing | ARIA | Notes |
+|--------|-----------------|---------------|--------|------|-------|
+| [Button click] | Y/N | [spinner / toast / banner] | [<100ms / <1s / <3s] | Present/Missing | |
+| [Form submit] | Y/N | [disabled + spinner] | [immediate] | aria-busy? | |
+| [File upload] | Y/N | [progress bar] | [% shown?] | role="progressbar"? | |
+
+## State Coverage
+
+| Interactive Element | Loading State | Success State | Error State |
+|--------------------|--------------|--------------|-------------|
+| [Submit button] | Present/Missing | Present/Missing | Present/Missing |
+| [Upload trigger] | Present/Missing | Present/Missing | Present/Missing |
+
+## Gaps Identified
+
+| Issue | Severity | Recommendation |
+|-------|----------|----------------|
+| [No loading state on checkout submit] | 3 (Major) | [Disable button + show spinner on click] |
+| [Success toast auto-dismisses error] | 3 (Major) | [Remove auto-dismiss from error states] |
+| [No progress on file upload > 3s] | 2 (Minor) | [Add progress bar with percentage] |
+
+## Accessibility
+
+| Element | ARIA Required | ARIA Present | Fix |
+|---------|--------------|--------------|-----|
+| [Loading region] | aria-busy="true" | Missing | Add to button during async |
+| [Status updates] | aria-live="polite" | Missing | Add role="status" to toast container |
+| [Error messages] | aria-live="assertive" | Present | OK |
+
+## Priority Recommendations
+
+1. [Severity 4/3: most critical missing state]
+2. [Severity 3: second priority]
+3. [Severity 2: minor gap]
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Every clickable element must give visible feedback within 100ms of the click — if the operation takes longer, show a loading state immediately, then update when complete</item>
+        <item>Disable the trigger element (button, link) during async operations to prevent double-submission — re-enable on success or error</item>
+        <item>Distinguish between skeleton screens (known layout, loading content) and spinners (unknown layout or very short wait) — use the right pattern for the context</item>
+        <item>Document auto-dismiss timing for toast notifications: 3-5 seconds for success, indefinite for errors (user must dismiss manually)</item>
+        <item>"All changes saved" document status is more reassuring than a save button — continuous auto-save with status text outperforms explicit save actions for documents</item>
+        <item>Connection status indicators (online/offline/reconnecting) are required for any real-time feature — users need to know if their actions are being persisted</item>
+        <item>Provide a cancel option for operations that take over 10 seconds — users should not be trapped waiting</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents can add loading state code but cannot verify that the spinner animation actually runs (CSS animation may be disabled by OS "Reduce Motion" setting — must be handled separately)</item>
+        <item>Static analysis of components misses loading states that are implemented at the page/container level rather than the component level — audit must trace data flow, not just component props</item>
+        <item>ARIA aria-live="polite" and aria-live="assertive" have different screen reader behaviors; agents often use "assertive" where "polite" is correct, causing disruptive announcements</item>
+        <item>Rage-click detection from analytics tools requires a minimum traffic volume to surface patterns — on low-traffic products, manual testing with session replay is more effective</item>
+        <item>Progress bar completeness percentage is only meaningful if the backend provides real progress events; agents must check if the backend actually supports progress reporting before designing a percentage bar</item>
+      </list>
+    </section>
+
+    <section name="references">
+      <list>
+        <item>https://www.nngroup.com/articles/visibility-system-status/</item>
+        <item>https://m3.material.io/components/progress-indicators/overview</item>
+        <item>https://developer.apple.com/design/human-interface-guidelines/progress-indicators</item>
+        <item>https://webaim.org/articles/usable/</item>
+        <item>https://www.nngroup.com/articles/response-times-3-important-limits/ (Miller/Card/Newell response time thresholds)</item>
+      </list>
+    </section>
   </content>
 </methodology>
