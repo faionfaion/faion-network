@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="google-ads-reporting">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>ppc-manager</domain>
+    <summary>GAQL reporting, automation, and error handling patterns for Google Ads accounts. search_stream for large queries, cost_micros division, rate limiting, and guardrails for auto-pause agents.</summary>
+    <tags>
+      <tag>google-ads</tag>
+      <tag>gaql</tag>
+      <tag>reporting</tag>
+      <tag>automation</tag>
+      <tag>api</tag>
+    </tags>
+    <category>reporting</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Google Ads Reporting and Automation — GAQL, Batch Ops, Error Handling</title>
+
+    <summary>GAQL-based reporting, scheduled automation, and error handling patterns for Google Ads accounts. Use search_stream for large queries, always include segments.date, divide cost_micros by 1,000,000 before presenting, and pin the API version. Read-only reporting agents feed a warehouse; mutation agents (auto-pause, bid change) require strict guardrails and human approval before executing.</summary>
+
+    <why>
+      <p>Google Ads generates more data than any human can review manually across multiple accounts. Automated reporting catches CPA spikes, CTR drops, and budget pacing issues within hours. Without this layer, problems compound for days before detection. The API's quirks — micros units, timezone mismatches, version deprecation every ~9 months — are a persistent source of silent bugs that only disciplined patterns prevent.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Scheduled daily or weekly performance reports across multiple Google Ads accounts (MCC)</item>
+        <item>Threshold-based alerting: high CPA, low CTR, paused-by-mistake, budget pacing exceptions</item>
+        <item>Bulk read pipelines feeding a warehouse, Looker Studio, or Slack from raw GAQL</item>
+        <item>Auto-pausing low performers with strict guardrails and a per-run paused-list log</item>
+        <item>Change-history monitoring for compliance via change_event</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>A single dashboard the team already opens in Looker — agent overhead not justified</item>
+        <item>Features requiring the UI only (some recommendations, brand-suitability controls)</item>
+        <item>Smart Bidding interventions during the learning phase — threshold-based agents can sabotage learning</item>
+        <item>Real-time intra-day decisions — conversion data lags 1-3 hours and stabilizes after ~3 days</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="gaql-structure">
+      <p>GAQL follows SQL-like syntax: SELECT fields FROM resource WHERE conditions ORDER BY field LIMIT n. Every query must specify a resource as the main entity.</p>
+      <list>
+        <item>campaign — campaign-level data</item>
+        <item>ad_group — ad group-level data</item>
+        <item>ad_group_ad — ad-level data</item>
+        <item>keyword_view — keyword performance</item>
+        <item>search_term_view — actual searches triggering ads</item>
+        <item>geographic_view — performance by location</item>
+        <item>change_event — account change history (30-day retention)</item>
+      </list>
+    </section>
+
+    <section name="key-metrics">
+      <list>
+        <item>metrics.impressions — ad impressions</item>
+        <item>metrics.clicks — ad clicks</item>
+        <item>metrics.cost_micros — cost in micros; divide by 1,000,000 for currency value</item>
+        <item>metrics.ctr — click-through rate (fraction, not percentage; multiply by 100 for display)</item>
+        <item>metrics.average_cpc — average cost per click (also in micros)</item>
+        <item>metrics.conversions — conversion count (double, not int; can be 0.5 for fractional attribution)</item>
+        <item>metrics.cost_per_conversion — cost per conversion (in micros; divide by 1,000,000)</item>
+        <item>metrics.conversions_value — conversion revenue value</item>
+        <item>metrics.search_impression_share — fraction 0-1; multiply by 100 for percentage</item>
+      </list>
+      <rule testable="true">
+        <statement>Divide cost_micros and cost_per_conversion by 1,000,000 close to the data source in the ETL layer; never pass raw micros to downstream consumers.</statement>
+        <rationale>Every layer that receives raw micros is a potential off-by-1,000,000 bug. Converting once at the source eliminates the entire class of error.</rationale>
+      </rule>
+    </section>
+
+    <section name="search-vs-search-stream">
+      <rule testable="true">
+        <statement>Use search_stream for any query that could return more than 10,000 rows; use search (unary) only for small bounded result sets.</statement>
+        <rationale>The search endpoint has a response size cap and paginates; large queries time out. search_stream returns batches and handles large data sets without pagination.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Always include segments.date in the WHERE clause; omitting it returns lifetime totals, not the period you intend.</statement>
+        <rationale>Without segments.date, GAQL returns all-time aggregates. Agents summing "daily" data on lifetime totals will produce wildly inflated reports.</rationale>
+      </rule>
+      <antipattern>
+        <description>Using OFFSET for pagination in GAQL.</description>
+        <reason>GAQL supports LIMIT but not OFFSET. Attempting offset-based pagination will fail or silently return wrong data. Use search_stream instead.</reason>
+      </antipattern>
+    </section>
+
+    <section name="version-and-timezone">
+      <rule testable="true">
+        <statement>Pin api_version in client config and bump on a calendar schedule every 9 months or fewer; subscribe to Google Ads API release notes.</statement>
+        <rationale>Google deprecates API versions every ~9 months. Hardcoded version strings break silently on rollover without any warning in the response.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>segments.date uses the account timezone; normalize to UTC manually when joining with GA4 or server logs that use a different timezone.</statement>
+        <rationale>Multi-account agents computing a single "today" across accounts in different timezones will produce off-by-one date gaps in reports.</rationale>
+      </rule>
+    </section>
+
+    <section name="batch-operations">
+      <rule testable="true">
+        <statement>Process mutations in batches of up to 5,000 operations per request; never issue one API call per row.</statement>
+        <rationale>The Google Ads API allows up to 5,000 operations per mutate call. Single-operation loops exhaust quota and are orders of magnitude slower than batching.</rationale>
+      </rule>
+    </section>
+
+    <section name="auto-pause-guardrails">
+      <rule testable="true">
+        <statement>Before auto-pausing any keyword or ad group: enforce a minimum impression threshold (5,000+), minimum spend threshold, minimum age (7+ days), account allow-list, and emit a paused-list log per run.</statement>
+        <rationale>Auto-pause agents that trip on day-1 of a fresh campaign or on low-data keywords kill momentum without evidence. Each guardrail prevents a distinct failure mode.</rationale>
+      </rule>
+      <antipattern>
+        <description>Running an auto-pause agent that fires within the first 7 days of campaign launch or without an impression floor.</description>
+        <reason>New campaigns need time to accumulate data. Pausing too early based on low-sample statistics produces false negatives and disrupts Smart Bidding learning.</reason>
+      </antipattern>
+    </section>
+
+    <section name="change-history-monitoring">
+      <rule testable="true">
+        <statement>Build a change_event archive job from day one; run it daily because change_event only retains 30 days of history.</statement>
+        <rationale>When something unexpectedly breaks, the first diagnostic question is "who changed what and when." Missing even a single day of change_event creates permanent audit gaps.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Filter the change_event query to the specific resource type needed; broad queries on large accounts return thousands of rows and burn quota.</statement>
+        <rationale>change_event queries without a resource_type filter return all changes across all entity types. On large accounts this easily exceeds result limits and wastes daily quota.</rationale>
+      </rule>
+    </section>
+
+    <section name="scheduled-runner-pattern">
+      <rule testable="true">
+        <statement>One agent run equals one query batch equals one sink write; do not multiplex tasks in a single API session.</statement>
+        <rationale>Multiplexed sessions complicate retry logic, make partial-failure handling ambiguous, and produce inconsistent snapshots when one query succeeds and another fails.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Include account-level filters (customer.status = ENABLED) when iterating MCC trees; cancelled accounts return malformed shapes.</statement>
+        <rationale>MCC trees contain accounts in various states. Cancelled or suspended accounts return partial data that breaks downstream aggregations without obvious errors.</rationale>
+      </rule>
+    </section>
+
+    <section name="common-error-codes">
+      <list>
+        <item>AUTHENTICATION_ERROR — invalid credentials; check tokens, refresh OAuth</item>
+        <item>AUTHORIZATION_ERROR — insufficient permissions; verify account access</item>
+        <item>REQUEST_ERROR — malformed request; check request structure</item>
+        <item>QUOTA_ERROR — rate limit exceeded; implement exponential backoff</item>
+        <item>INTERNAL_ERROR — server error; retry with backoff</item>
+        <item>RESOURCE_NOT_FOUND — invalid resource name; verify resource exists before mutating</item>
+      </list>
+    </section>
+
+    <section name="retry-policy">
+      <rule testable="true">
+        <statement>Retry QUOTA_ERROR and INTERNAL_ERROR with exponential backoff (initial delay 1s, multiply by 2, max 3 attempts); never retry AUTHENTICATION_ERROR or AUTHORIZATION_ERROR.</statement>
+        <rationale>Quota and internal errors are transient. Auth errors will not resolve without intervention and retrying them wastes quota and delays diagnosis.</rationale>
+      </rule>
+      <antipattern>
+        <description>Retrying quota errors in a tight loop without backoff delay.</description>
+        <reason>Tight-loop retries on quota errors hammer the limit further, guaranteeing that all subsequent calls in the same window also fail.</reason>
+      </antipattern>
+    </section>
+
+    <section name="rate-limiting">
+      <rule testable="true">
+        <statement>Track API calls with a per-day token bucket (max 15,000 operations/day for Basic Access); share the bucket across all workers for the same account.</statement>
+        <rationale>Basic Access tier has a 15,000 operations/day limit per account. Reporting agents pulling data hourly can consume the daily limit before mutation agents can execute.</rationale>
+      </rule>
+    </section>
+
+    <section name="read-only-reporting-rule">
+      <rule testable="true">
+        <statement>Reporting agents must be read-only; mutations (pause, budget change, status flip) require a separate agent with explicit human approval before execution.</statement>
+        <rationale>Mixing read and write in one agent increases blast radius. A reporting bug that accidentally triggers a mutation can pause campaigns or deplete budgets before anyone notices.</rationale>
+      </rule>
+    </section>
+
+    <section name="human-in-loop-checkpoints">
+      <list>
+        <item>Any auto-mutation (pause, budget change, status flip) — even threshold-based — requires human notification before execution</item>
+        <item>Bid strategy change on any campaign</item>
+        <item>Adding/removing keywords with spend impact above a defined threshold</item>
+        <item>Any change that touches more than 10% of active campaigns in one run</item>
+      </list>
+    </section>
+
+    <section name="ai-gotchas">
+      <antipattern>
+        <description>Agent writes cost_micros / 1_000 instead of cost_micros / 1_000_000.</description>
+        <reason>Results in costs reported as 1,000x the actual value. Alerts fire on every campaign, budgets appear exhausted, and the bug is not immediately obvious in large number output.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent uses metrics.all_conversions where metrics.conversions is correct.</description>
+        <reason>all_conversions includes every conversion action (including micro-conversions); conversions only counts actions marked "include in Conversions." The first inflates ROAS calculations.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent presents impression share as a percentage without multiplying by 100 first.</description>
+        <reason>metrics.search_impression_share is a fraction (0.45 = 45%). Displaying the raw value as "45%" is correct; displaying it as "0.45%" is wrong and will cause alarm where none is warranted.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent hallucinates GAQL field names not present in the API (e.g., metrics.spend instead of metrics.cost_micros).</description>
+        <reason>The Google Ads API returns a generic error for unknown field names. Agents must validate field names against the API reference before running queries in production.</reason>
+      </antipattern>
+      <rule testable="true">
+        <statement>Always store raw GAQL output to BigQuery or disk before transformation; Google occasionally backfills metrics retroactively and raw snapshots are needed to reproduce historical reports.</statement>
+        <rationale>Without raw snapshots, retroactive metric changes produce unexplained discrepancies between current reports and cached dashboards, destroying trust in the data.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/daily-runner.py" purpose="Guarded daily report job with retry and dry-run flag using search_stream"/>
+      <template path="templates/rate-limiter.py" purpose="Thread-safe per-day token bucket rate limiter for Google Ads API"/>
+    </templates>
+
+    <see-also>
+      <ref slug="google-ads-optimization"/>
+      <link href="https://developers.google.com/google-ads/api"/>
+      <link href="https://developers.google.com/google-ads/api/fields/v18/overview"/>
+      <link href="https://cloud.google.com/bigquery/docs/google-ads-transfer"/>
+      <link href="https://developers.google.com/google-ads/api/docs/reporting/best-practices"/>
+    </see-also>
+  </content>
+</methodology>
