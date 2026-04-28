@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tts-basics">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>multimodal-ai</domain>
+    <summary>Convert text to natural speech using OpenAI TTS, ElevenLabs, or Google Cloud TTS. Covers voice selection, SSML control, caching, and provider differences.</summary>
+    <tags>
+      <tag>tts</tag>
+      <tag>audio-generation</tag>
+      <tag>voice-synthesis</tag>
+      <tag>openai-tts</tag>
+      <tag>caching</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Text-to-Speech Basics</title>
+    <summary>Convert text to natural speech using OpenAI TTS, ElevenLabs, or Google Cloud TTS. Covers voice selection, SSML control for Google/Azure, caching by content hash, and the provider differences every agent must know before routing a TTS call.</summary>
+    <why>
+      <p>TTS providers have incompatible interfaces, rate limits, and SSML support. A call that works with Google Cloud will produce literal angle-bracket noise in OpenAI TTS. Caching by sha256(text + voice + speed + model) eliminates cost for repeated phrases — omitting it wastes money on every pipeline replay.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Converting article, news, or notification text to audio in an agent pipeline.</item>
+        <item>Generating narration tracks for video content automation.</item>
+        <item>Adding voice output to a chatbot or assistant interface.</item>
+        <item>Creating audio previews of generated text for human review.</item>
+        <item>Any single-pass synthesis where text fits under 4000 characters.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Text exceeds 4000 characters — use tts-implementation which provides LongTextTTS chunking.</item>
+        <item>Sub-200ms latency required — OpenAI TTS adds 300-800ms minimum; cache known phrases instead.</item>
+        <item>A specific person's voice is required — use ElevenLabs voice cloning (tts-implementation).</item>
+        <item>SSML markup (pauses, prosody, say-as) is needed with OpenAI TTS — OpenAI does not support SSML; route SSML to Google Cloud or Azure only.</item>
+        <item>Text contains heavy domain abbreviations (API, ETA, DB) without preprocessing — they are read literally and sound odd to listeners.</item>
+      </list>
+    </when-not-to-use>
+    <section name="OpenAI TTS">
+      <rule>
+        <statement>Use tts-1 for draft/preview generation; switch to tts-1-hd only for final production assets. tts-1-hd has ~2x latency.</statement>
+        <rationale>tts-1-hd quality gain is audible only in final delivery; using it during iteration wastes latency and doubles cost.</rationale>
+      </rule>
+      <p>Available voices: alloy (balanced), echo (male), fable (storytelling), onyx (authoritative male), nova (friendly female), shimmer (soft/gentle). Speed range: 0.25-4.0. Output formats: mp3, opus, aac, flac, wav, pcm. Cost: $0.015/1k chars (tts-1), $0.030/1k chars (tts-1-hd). Rate limit: 50 RPM on tier 1. Does NOT support SSML.</p>
+      <example type="good">
+        <note>Minimal OpenAI TTS call with voice and model selection.</note>
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+client = OpenAI()
+
+response = client.audio.speech.create(
+    model="tts-1",        # tts-1-hd for production
+    voice="nova",         # alloy|echo|fable|onyx|nova|shimmer
+    input="Hello world",
+    speed=1.0,            # 0.25-4.0
+    response_format="mp3" # mp3|opus|aac|flac|wav|pcm
+)
+response.stream_to_file("output.mp3")
+]]></code>
+      </example>
+    </section>
+    <section name="ElevenLabs">
+      <p>Best overall voice quality and cloning. Model: eleven_multilingual_v2. Supports custom voice cloning from audio samples. Agent-friendly via Python SDK. Higher cost than OpenAI; multilingual breadth superior to OpenAI.</p>
+    </section>
+    <section name="Google Cloud TTS">
+      <rule>
+        <statement>Route SSML markup (prosody, say-as, breaks) to Google Cloud or Azure TTS only; never pass SSML to OpenAI TTS.</statement>
+        <rationale>OpenAI TTS reads SSML tags verbatim as literal text — the listener hears angle brackets and attribute names.</rationale>
+      </rule>
+      <p>Voices: 400+ across Standard, Neural2, and Studio tiers. SSML fully supported. Cost scales with voice tier; Studio voices have usage caps. Neural2 voices are recommended default for quality-conscious pipelines.</p>
+    </section>
+    <section name="Self-hosted alternatives">
+      <p>Coqui TTS (OSS, Python, GPU recommended) and Kokoro TTS (OSS, ~80MB model, CPU-viable, MIT license) are viable for zero-API-cost scenarios. Quality is lower than cloud providers but acceptable for internal tooling.</p>
+    </section>
+    <section name="Caching">
+      <rule>
+        <statement>Cache TTS output keyed on sha256(text + voice + speed + model). Never re-generate audio for identical inputs.</statement>
+        <rationale>TTS output is deterministic per input. Caching eliminates cost on pipeline replays and repeated phrases. Without it, every run bills the same audio.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+import hashlib, shutil
+from pathlib import Path
+
+def get_cache_key(text: str, voice: str, speed: float, model: str) -> str:
+    content = f"{text}|{voice}|{speed}|{model}"
+    return hashlib.sha256(content.encode()).hexdigest()
+
+def cached_path(cache_dir: str, key: str, fmt: str = "mp3") -> str | None:
+    p = Path(cache_dir) / f"{key}.{fmt}"
+    return str(p) if p.exists() else None
+]]></code>
+      </example>
+    </section>
+    <section name="Text preprocessing">
+      <rule>
+        <statement>Preprocess text before TTS: expand abbreviations, replace symbols, strip Markdown/HTML, insert explicit pauses at paragraph breaks.</statement>
+        <rationale>Symbols (*, #, &lt;, &gt;) and abbreviations (API, ETA, DB) are read literally. Raw Markdown output from LLMs sounds unnatural and confusing to listeners.</rationale>
+      </rule>
+      <example type="bad">
+        <note>Passing raw LLM output with Markdown directly to TTS.</note>
+        <code lang="python"><![CDATA[
+# BAD: asterisks, hashes, and angle brackets read literally
+text_to_speech("## Introduction\n**Key point**: use *italics* carefully")
+]]></code>
+      </example>
+      <example type="good">
+        <code lang="python"><![CDATA[
+import re
+
+def preprocess_for_tts(text: str) -> str:
+    text = re.sub(r'#{1,6}\s+', '', text)      # strip Markdown headings
+    text = re.sub(r'\*+([^*]+)\*+', r'\1', text)  # strip bold/italic
+    text = re.sub(r'<[^>]+>', '', text)         # strip HTML
+    text = text.replace('$', ' dollars ')
+    text = text.replace('%', ' percent ')
+    text = text.replace('API', 'A-P-I')
+    return text.strip()
+]]></code>
+      </example>
+    </section>
+    <section name="Format selection">
+      <rule>
+        <statement>Use response_format="pcm" for streaming playback (lower decode latency); use "mp3" for storage and file delivery.</statement>
+        <rationale>PCM is raw uncompressed audio — no decode step in the playback chain. For storage, mp3 is universally compatible and smaller.</rationale>
+      </rule>
+    </section>
+    <section name="Rate limits and chunking">
+      <rule>
+        <statement>Cap single OpenAI TTS call at 4000 characters (not 4096) to avoid off-by-one truncation. For longer text, use LongTextTTS from tts-implementation.</statement>
+        <rationale>Some client versions truncate at exactly 4096 bytes, cutting the last few words. Using 4000 as the soft cap provides a safe margin.</rationale>
+      </rule>
+      <rule>
+        <statement>Add a 1.2-second delay between rapid TTS calls on OpenAI tier 1 (50 RPM limit) to avoid rate limit errors in batch generation.</statement>
+        <rationale>100 short audio clips generated without delay will hit the 50 RPM limit mid-batch, causing failures and requiring retry logic.</rationale>
+      </rule>
+    </section>
+    <section name="Agent gotchas">
+      <list>
+        <item>stream_to_file is synchronous and blocks the event loop — wrap in asyncio.to_thread() for async pipelines.</item>
+        <item>OpenAI TTS does not return audio duration — measure locally with pydub after generation.</item>
+        <item>Voice names are provider-specific and non-portable: "nova" (OpenAI) is not "en-US-Neural2-D" (Google). Parameterize by semantic label (news/assistant/narrator) not provider name.</item>
+        <item>Generated audio files written to /tmp may hit space limits in containerized environments with long audio — use explicit output paths.</item>
+      </list>
+      <reference path="templates/voice-map.py">Semantic voice routing by content type</reference>
+      <reference path="templates/tts_basic.py">OpenAI TTS wrapper and SSMLBuilder</reference>
+      <reference path="templates/prompt-tts.txt">Agent task prompt for TTS subagent</reference>
+    </section>
+    <section name="Agentic workflow">
+      <p>A Claude subagent receives text content and voice/format requirements, calls text_to_speech(), and returns the audio file path. For content pipelines, an orchestrator agent preprocesses text (expand abbreviations, normalize numbers, add pauses at paragraph breaks) before passing to TTS. Voice selection is handled by a routing rule: nova for conversational, onyx for formal narration, alloy as neutral default. Generated audio is cached by content hash to avoid regenerating identical phrases.</p>
+      <section name="Recommended subagents">
+        <list>
+          <item>haiku — Execute TTS API call: receive text + voice params, return file path</item>
+          <item>sonnet — Text preprocessing: expand abbreviations, normalize numbers, insert SSML-style pause markers for Google TTS</item>
+          <item>haiku — Cache lookup: hash text+voice+speed → check cache dir → return cached path or None</item>
+        </list>
+      </section>
+      <section name="Prompt pattern">
+        <code lang="xml"><![CDATA[
+<task>
+Convert text to speech.
+Text: {{TEXT}}
+Voice: {{VOICE}}  (alloy|echo|fable|onyx|nova|shimmer)
+Model: {{MODEL}}  (tts-1 for speed, tts-1-hd for quality)
+Speed: {{SPEED}}  (0.25–4.0, default 1.0)
+Output: {{OUTPUT_PATH}}
+
+Return: {"path": "...", "duration_estimate_s": N}
+On error: {"error": "..."}
+</task>
+]]></code>
+        <code lang="python"><![CDATA[
+# Voice selection rule for agents
+VOICE_MAP = {
+    "news": "onyx",          # authoritative male
+    "assistant": "nova",     # friendly female
+    "narrator": "fable",     # storytelling
+    "neutral": "alloy",      # balanced, default
+    "whisper": "shimmer",    # soft, gentle
+}
+voice = VOICE_MAP.get(content_type, "alloy")
+]]></code>
+      </section>
+    </section>
+    <section name="CLI tools and services">
+      <p>Tools: openai (Python SDK, pip install openai, platform.openai.com/docs/guides/text-to-speech), google-cloud-texttospeech (pip install google-cloud-texttospeech), pydub (pip install pydub for audio duration check and format conversion), ffmpeg (apt install ffmpeg for format conversion and audio normalization), elevenlabs (pip install elevenlabs).</p>
+      <p>Services: OpenAI TTS (tts-1, tts-1-hd) SaaS with Python SDK, fastest setup, 6 voices, no SSML, $0.015/1k chars (HD: $0.030), 50 RPM on tier 1. ElevenLabs SaaS with best voice quality and cloning, multilingual, higher cost. Google Cloud TTS SaaS with 400+ voices, SSML support, Neural2 and Studio tiers. Azure Cognitive Services TTS with SSML and neural voices. Coqui TTS OSS Python self-hosted, quality lower than cloud. Kokoro TTS OSS local ~80MB model, CPU-viable, MIT license. Amazon Polly AWS-native SSML support, Neural voices, pay-per-char.</p>
+    </section>
+    <section name="Best practices">
+      <list>
+        <item>Cache by sha256(text + voice + speed + model) — TTS output is deterministic; caching eliminates cost for repeated phrases.</item>
+        <item>Preprocess text before TTS: expand contractions, replace symbols ($→ dollars, % → percent), spell out abbreviations (API → A-P-I or "API").</item>
+        <item>Use response_format="pcm" for streaming playback (lower latency); use mp3 for storage.</item>
+        <item>For narration of structured content: insert explicit pause markers between sections by splitting text and concatenating audio segments with pydub silence.</item>
+        <item>Test all 6 OpenAI voices against your content type before committing — voice-content mismatch is jarring to listeners.</item>
+        <item>Use tts-1 for draft/preview generation; switch to tts-1-hd only for final production assets.</item>
+        <item>Limit single API call to 4000 chars max (not 4096) to avoid off-by-one truncation on some client versions.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/tts_basic.py" purpose="OpenAI TTS wrapper and SSMLBuilder for Google/Azure"/>
+      <template path="templates/voice-map.py" purpose="Semantic voice routing by content type"/>
+      <template path="templates/prompt-tts.txt" purpose="Agent task prompt for TTS subagent (structured input/output)"/>
+    </templates>
+  </content>
+</methodology>
