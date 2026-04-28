@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="text-to-speech">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Convert text to natural audio using TTS APIs. ElevenLabs leads latency (75ms Flash v2.5). Normalize abbreviations, cache by content hash, chunk at sentence boundaries.</summary>
+    <tags>
+      <tag>text-to-speech</tag>
+      <tag>audio-synthesis</tag>
+      <tag>voice-cloning</tag>
+      <tag>streaming-audio</tag>
+      <tag>voice-pipeline</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Text-to-Speech</title>
+    <summary>Convert text to natural-sounding audio using TTS APIs. ElevenLabs is the quality and latency leader (75ms Flash v2.5, voice cloning); Google/Azure are the cost leaders for high-volume production; OpenAI TTS integrates natively in OpenAI stacks. Always normalize abbreviations before synthesis and cache by content hash to avoid redundant API calls.</summary>
+    <why>
+      <p>TTS enables automated audio pipelines (podcasts, audiobooks, video narration, accessibility, IVR) that scale without human voice actors. The market inflection point is 2025-2026 as latency drops below 100ms for real-time voice apps. Key failure modes — mispronounced abbreviations, long-text chunking artifacts, inconsistent cloned voices — are entirely preventable with text normalization and proper chunking at sentence boundaries.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Automated podcast/audiobook generation from text content pipelines</item>
+        <item>Voice narration for video generation workflows</item>
+        <item>Accessibility layer for web or app content</item>
+        <item>IVR or conversational voice bot responses requiring low-latency audio</item>
+        <item>Agent workflows that produce audio reports or briefings</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>One-off manual narration where a human voice actor produces higher perceived quality</item>
+        <item>Real-time &lt;75ms latency required and ElevenLabs Flash is not in budget</item>
+        <item>Languages with less than 5% coverage in target voice model</item>
+        <item>High-volume pipelines where ElevenLabs cost per character exceeds budget ceiling (use Google/Azure)</item>
+        <item>Voice consistency across sessions is critical but cloning samples are unavailable</item>
+      </list>
+    </when-not-to-use>
+    <section name="Provider Selection">
+      <rule>
+        <statement>Use ElevenLabs Flash v2.5 for production applications requiring both quality and low latency (75ms TTFB). Use OpenAI TTS-1-HD when already inside the OpenAI ecosystem and quality is prioritized over cost. Use Kokoro (open source) for offline, privacy-sensitive, or budget-critical deployments.</statement>
+        <rationale>ElevenLabs Flash v2.5 achieves 75ms time-to-first-byte with quality matching older non-flash models. OpenAI TTS-1-HD is simpler to integrate when already calling OpenAI APIs but costs $30/1M chars vs ElevenLabs' $11/1M chars at scale. Kokoro (Apache 2.0) runs locally with no API cost, acceptable for batch generation where latency is not critical.</rationale>
+      </rule>
+      <list>
+        <item>ElevenLabs Flash v2.5: 75ms TTFB, $11/1M chars, 29 languages, best quality+speed trade-off</item>
+        <item>ElevenLabs Turbo v2.5: 110ms TTFB, $11/1M chars, 32 languages, slightly better naturalness than Flash</item>
+        <item>OpenAI TTS-1: 200ms TTFB, $15/1M chars, 57 languages, good for multilingual apps</item>
+        <item>OpenAI TTS-1-HD: 300ms TTFB, $30/1M chars, highest OpenAI quality, use for podcast/narration</item>
+        <item>Google Cloud TTS (WaveNet): 250ms TTFB, $16/1M chars, 220+ voices, strong multilingual</item>
+        <item>Azure Neural TTS: 150ms TTFB, $15/1M chars, 400+ voices, SSML support, enterprise SLAs</item>
+        <item>Kokoro (local): 50ms TTFB on GPU, $0 API cost, English only (v0.19), Apache 2.0</item>
+      </list>
+    </section>
+    <section name="Streaming vs Non-Streaming">
+      <rule>
+        <statement>Always use streaming TTS for voice agents and interactive applications. Request audio chunks in 50-100ms chunks and begin playback on the first chunk. Do not wait for the full audio to be generated before playback begins.</statement>
+        <rationale>Full-audio-wait adds 1-5 seconds of silence before the user hears anything. Streaming TTS with 75ms TTFB means the user hears the first syllable within 75ms+network latency. For voice agent conversations, this is the difference between natural conversation flow and an awkward pause.</rationale>
+      </rule>
+      <example type="good" title="ElevenLabs streaming TTS">
+        <code lang="python"><![CDATA[from elevenlabs.client import ElevenLabs
+from elevenlabs import stream
+
+client = ElevenLabs()
+
+def speak_streaming(text: str, voice_id: str = "JBFqnCBsd6RMkjVDRZzb") -> None:
+    """Stream audio directly to speakers with minimal latency."""
+    audio_stream = client.text_to_speech.stream(
+        voice_id=voice_id,
+        text=text,
+        model_id="eleven_flash_v2_5",
+        output_format="mp3_44100_128",
+    )
+    stream(audio_stream)]]></code>
+      </example>
+    </section>
+    <section name="Voice Cloning">
+      <rule>
+        <statement>Instant Voice Cloning requires 1-5 minutes of clean audio. Professional Voice Cloning requires 30+ minutes. Do not use instant cloning for production voices — the quality degrades on edge pronunciations and emotional range. Use professional cloning for production, instant cloning for demos and prototyping.</statement>
+        <rationale>Instant cloning captures timbre and basic cadence but not the full expressiveness of the speaker. On non-standard pronunciations (proper nouns, technical terms) instant clones produce artifacts. Professional cloning with 30+ minutes captures prosody patterns that make the voice indistinguishable from the original across diverse text.</rationale>
+      </rule>
+      <antipattern>
+        <description>Cloning voices without explicit written consent from the voice owner.</description>
+        <reason>Voice cloning without consent violates GDPR Article 9 (biometric data), CCPA biometric provisions, and most major platform terms of service. ElevenLabs and other providers require voice owner consent verification. Always obtain and store written consent with timestamp before cloning any voice for production use.</reason>
+      </antipattern>
+    </section>
+    <section name="Cost Management">
+      <rule>
+        <statement>Cache TTS outputs by content hash. A typical application re-generates the same phrases (greetings, confirmations, error messages) thousands of times per day. Cache the audio file, serve it from storage — never call the TTS API for identical text twice.</statement>
+        <rationale>TTS cost is proportional to character count. A "Hello, how can I help you today?" greeting re-generated 10,000 times per month costs $0.33/month at ElevenLabs pricing. A content-hash cache eliminates 40-70% of TTS API calls in production applications with predictable response patterns.</rationale>
+      </rule>
+    </section>
+    <section name="Text Normalization">
+      <rule>
+        <statement>Normalize text before sending to TTS: expand abbreviations, convert numbers to words, spell out acronyms, remove markdown formatting. Do not send raw LLM output directly to TTS — markdown asterisks, code blocks, and URL fragments produce audible artifacts.</statement>
+        <rationale>TTS models convert text to phonemes. Symbols like *, #, `, and [] have no phoneme mapping — the model either skips them silently or reads them as "asterisk", "hashtag", "backtick". URLs read as individual characters. Normalization produces natural speech from any text source.</rationale>
+      </rule>
+      <example type="good" title="LLM output normalization for TTS">
+        <code lang="python"><![CDATA[import re
+
+def normalize_for_tts(text: str) -> str:
+    """Clean LLM output for TTS consumption."""
+    # Strip markdown formatting
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  # **bold**
+    text = re.sub(r'\*(.*?)\*', r'\1', text)        # *italic*
+    text = re.sub(r'`[^`]+`', '', text)             # `code`
+    text = re.sub(r'```[\s\S]*?```', '', text)       # code blocks
+    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)  # [text](url)
+
+    # Expand common abbreviations
+    abbreviations = {
+        "e.g.": "for example",
+        "i.e.": "that is",
+        "vs.": "versus",
+        "API": "A P I",
+        "URL": "U R L",
+    }
+    for abbr, expansion in abbreviations.items():
+        text = text.replace(abbr, expansion)
+
+    # Collapse multiple spaces/newlines
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text]]></code>
+      </example>
+    </section>
+    <section name="Chunking for Streaming">
+      <rule>
+        <statement>Chunk text at sentence boundaries for streaming TTS. Send chunks of 1-3 sentences to the TTS API. Do not send the entire response as one string — this blocks audio output until the full request is processed. Do not chunk mid-word or mid-number — it causes pronunciation artifacts.</statement>
+        <rationale>TTS APIs buffer the full input before generating audio for the first chunk. Sending a 500-word response as one request results in 2-5 seconds of processing before the first audio byte. Sentence-level chunking starts audio within 100-200ms while the rest continues processing. Mid-word chunking creates split-phoneme artifacts that sound robotic.</rationale>
+      </rule>
+      <example type="good" title="Sentence-boundary chunking">
+        <code lang="python"><![CDATA[import re
+from typing import Generator
+
+def split_into_chunks(text: str, max_sentences: int = 2) -> Generator[str, None, None]:
+    """Split text at sentence boundaries for streaming TTS."""
+    sentence_pattern = re.compile(r'(?<=[.!?])\s+')
+    sentences = sentence_pattern.split(text.strip())
+
+    buffer = []
+    for sentence in sentences:
+        buffer.append(sentence)
+        if len(buffer) >= max_sentences:
+            yield ' '.join(buffer)
+            buffer = []
+    if buffer:
+        yield ' '.join(buffer)]]></code>
+      </example>
+    </section>
+    <section name="Audio Format Selection">
+      <rule>
+        <statement>Use mp3_44100_128 for web/browser playback, pcm_16000 for telephony/voice agents (8kHz for PSTN), and mp3_44100_192 for podcast/narration archiving. Never use wav for streaming — uncompressed audio at 44100Hz requires 10x more bandwidth than mp3.</statement>
+        <rationale>Browser Audio API plays MP3 natively. Telephony systems (Twilio, SIP) expect PCM at 8000Hz or 16000Hz — sending MP3 requires transcoding that adds latency. Podcast archives benefit from 192kbps for long-term quality preservation.</rationale>
+      </rule>
+    </section>
+    <section name="SSML Usage">
+      <rule>
+        <statement>Use SSML only when default prosody is insufficient for the use case (e.g., reading phone numbers, adding pauses for slide transitions). For conversational voice agents, SSML adds complexity without quality benefit — modern neural TTS models infer prosody from punctuation.</statement>
+        <rationale>SSML adds markup overhead and complicates text normalization. Modern TTS models (ElevenLabs, OpenAI) are trained on natural text and infer pauses from periods, emphasis from word choice. SSML is most useful for structured content (phone numbers, addresses, dates) where explicit prosody control produces clearer speech.</rationale>
+      </rule>
+      <note>ElevenLabs does not support SSML. Use Azure Neural TTS or Google Cloud TTS when SSML is required.</note>
+    </section>
+    <section name="Caching Architecture">
+      <rule>
+        <statement>Cache TTS outputs with key = sha256(text + voice_id + model_id + output_format). Store audio in object storage (S3, GCS). Cache TTL: permanent for static phrases (UI strings, error messages), 24h for dynamic content. Serve from CDN to minimize latency on cache hits.</statement>
+        <rationale>TTS caching eliminates the most expensive and latency-sensitive part of the pipeline for repeated phrases. A CDN-served cached audio file has sub-50ms latency vs 75-300ms for a live TTS API call. For UI strings and error messages that never change, permanent caching is safe and eliminates 100% of those API calls.</rationale>
+      </rule>
+    </section>
+    <section name="Agent Integration">
+      <p>An agent receives a text article or script, normalizes abbreviations and special characters, chunks the text at sentence boundaries, calls the TTS API in sequence (or parallel for long documents), assembles audio segments in order, and uploads the final file. For real-time applications, the agent streams PCM chunks directly to the audio sink without assembly. Caching by content hash prevents redundant API calls for repeated phrases.</p>
+      <note>Recommended subagents: faion-sdd-executor-agent (suitable for batch audio generation tasks in media pipelines)</note>
+    </section>
+    <section name="Tools and Services">
+      <list>
+        <item>elevenlabs Python SDK: ElevenLabs API (streaming, voice cloning, projects) (pip install elevenlabs / elevenlabs.io/docs)</item>
+        <item>openai Python SDK: OpenAI TTS (tts-1, tts-1-hd) (pip install openai / platform.openai.com/docs/guides/text-to-speech)</item>
+        <item>google-cloud-texttospeech: Google TTS (Neural2, WaveNet, SSML) (pip install google-cloud-texttospeech / cloud.google.com/text-to-speech)</item>
+        <item>azure-cognitiveservices-speech: Azure TTS (500+ voices, SSML, viseme) (pip install azure-cognitiveservices-speech / azure.microsoft.com)</item>
+        <item>TTS (Coqui): Self-hosted open-source TTS (XTTS v2) (pip install TTS / github.com/coqui-ai/TTS)</item>
+        <item>ffmpeg: Audio format conversion, concatenation (system package / ffmpeg.org)</item>
+        <item>pydub: Python audio manipulation (split, join, normalize) (pip install pydub / github.com/jiaaro/pydub)</item>
+      </list>
+      <list>
+        <item>ElevenLabs: SaaS; REST API + Python SDK; streaming supported; Flash v2.5 for &lt;100ms</item>
+        <item>OpenAI TTS: SaaS; Simple REST API; 6 voices; steer tone via prompt</item>
+        <item>Google Cloud TTS: SaaS; SSML support; cheapest per-char for high volume; 400+ voices</item>
+        <item>Azure Cognitive Speech: SaaS; Widest language coverage (140+); SSML + viseme for lip-sync</item>
+        <item>PlayHT: SaaS; 900+ voices; REST API; voice cloning; 142 languages</item>
+        <item>Deepgram Aura: SaaS; Lowest latency for English; 12 voices; suited for real-time</item>
+        <item>Coqui XTTS v2: OSS; Self-hosted; no per-char cost; GPU required for real-time</item>
+      </list>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Normalize all abbreviations before synthesis — maintain a domain-specific replacement dict</item>
+        <item>Use content-hash-based caching: same text + voice + params always yields same audio</item>
+        <item>Choose PCM format for streaming (lowest overhead); mp3 for stored files (smallest size)</item>
+        <item>Buffer 2-3 audio chunks before starting playback to absorb network jitter</item>
+        <item>For cloned voices: always obtain written consent and store it alongside the voice ID</item>
+        <item>Test voices with actual production content, not generic demo text — quality varies by domain</item>
+        <item>Use ElevenLabs Projects for long-form content (audiobooks, courses) — handles chapter management natively</item>
+        <item>TTS APIs are synchronous for short text but some providers (ElevenLabs Projects) are async — agent must poll for completion</item>
+        <item>ElevenLabs character limits differ by tier; agent must check remaining characters before submitting a batch job</item>
+        <item>Parallel TTS calls to ElevenLabs may hit rate limits (tier-dependent); implement exponential backoff</item>
+        <item>Audio file paths in agent outputs must be absolute or presigned URLs — relative paths break when caller is on different host</item>
+        <item>Coqui XTTS requires GPU; agent running on CPU-only infra must delegate to a GPU worker</item>
+        <item>Human review required before publishing cloned voice content — verify consent records exist</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/tts-cached.py" purpose="ElevenLabs TTS with content-hash cache and text normalizer"/>
+      <template path="templates/chunk-text.py" purpose="Sentence-boundary text chunker for long documents"/>
+    </templates>
+    <see-also>
+      <link href="https://elevenlabs.io/docs/api-reference/text-to-speech/convert">ElevenLabs API Reference</link>
+      <link href="https://platform.openai.com/docs/guides/text-to-speech">OpenAI Text-to-Speech docs</link>
+      <link href="https://cloud.google.com/text-to-speech/docs/ssml">Google Cloud TTS SSML</link>
+      <link href="https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/">Azure Cognitive Speech Service</link>
+      <link href="https://github.com/coqui-ai/TTS">Coqui TTS GitHub</link>
+    </see-also>
+  </content>
+</methodology>
