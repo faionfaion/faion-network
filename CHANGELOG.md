@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/product/product-operations methodologies → methodology.xml (product-led-growth, product-operations, stakeholder-management; feature-045 batch 198)
 - migrate: 3/3 pro/product/product-operations methodologies → methodology.xml (experimentation-at-scale, learning-speed-competitive-moat, product-explainability; feature-045 batch 197)
 - migrate: 3/3 pro/product/product-manager methodologies → methodology.xml (product-explainability, product-led-growth, product-lifecycle; feature-045 batch 194)
 - migrate: 3/3 pro/product methodologies → methodology.xml (technical-debt-management, workflows, blurred-roles-team-evolution; feature-045 batch 196)
