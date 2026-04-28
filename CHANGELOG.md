@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (ads-twitter-ads, facebook-ads, google-ads-basics; feature-045 batch)
 - migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (ads-linkedin-ads, ads-meta-campaign-setup, ads-meta-creative; feature-045 batch)
 - migrate: 3/3 pro/marketing/gtm-strategist methodologies → methodology.xml (growth-brand-positioning, growth-gtm-strategy, growth-influencer-marketing; feature-045 batch)
 - migrate: 3/3 pro/marketing/gtm-strategist methodologies → methodology.xml (growth-press-coverage, ops-annual-planning-process, ops-annual-planning-templates; feature-045 batch)
