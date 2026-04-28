@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/llm-integration methodologies → methodology.xml (openai-chat-completions, openai-embeddings, openai-function-calling; feature-045 batch 257)
 - migrate: 3/3 geek/ai/llm-integration methodologies → methodology.xml (gemini-api-integration, gemini-basics, gemini-function-calling; feature-045 batch 254)
 - migrate: 3/3 geek/ai/llm-integration methodologies → methodology.xml (gemini-multimodal, guardrails-basics, guardrails-implementation; feature-045 batch 255)
 - migrate: 3/3 geek/ai/llm-integration methodologies → methodology.xml (cot-basics, cot-techniques, function-calling-patterns; feature-045 batch 253)

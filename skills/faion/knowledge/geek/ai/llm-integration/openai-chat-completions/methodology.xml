@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="openai-chat-completions">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Chat Completions endpoint guide: request structure, model selection, parameters, streaming, vision, error handling, rate limits, cost tracking via tiktoken.</summary>
+    <tags>
+      <tag>openai</tag>
+      <tag>chat-completions</tag>
+      <tag>api</tag>
+      <tag>streaming</tag>
+      <tag>vision</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+
+  <content>
+    <title>OpenAI Chat Completions</title>
+
+    <summary>Complete guide to the OpenAI Chat Completions endpoint (`/v1/chat/completions`): request structure, model selection, parameters (temperature, max_tokens, response_format), streaming, vision (URL and base64), error handling with exponential backoff, rate limit headers, and cost tracking via tiktoken. The core rule: always read `stop_reason` — `"max_tokens"` means silent truncation; never parse JSON from a truncated response.</summary>
+
+    <why>
+      <p>Chat Completions is the primary OpenAI inference endpoint. Without proper parameter discipline (temperature for task type, response_format for JSON extraction) and retry logic, pipelines produce inconsistent outputs and fail silently under rate limiting. Vision token cost varies 85–1105 tokens per image depending on detail level — untracked, this blows budgets on multimodal pipelines.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building agent pipelines calling OpenAI models (gpt-4o, gpt-4o-mini, o1, o3-mini)</item>
+        <item>Streaming partial outputs to users or downstream pipeline steps in real time</item>
+        <item>Generating structured JSON via `response_format={"type": "json_object"}`</item>
+        <item>Multi-image or screenshot analysis inside an automated workflow</item>
+        <item>Cost-sensitive pipelines where gpt-4o-mini quality is acceptable</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>When persistent conversation state is needed across sessions — use Assistants API</item>
+        <item>When guaranteed schema compliance is required — use Structured Outputs (`beta.parse`) not JSON Mode</item>
+        <item>Tasks requiring more than 128K context — use Claude 200K or Gemini 2M</item>
+        <item>When Anthropic Claude is available and task quality matters more than vendor diversity</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="request-structure-models-and-response-parsing">
+      <p>Chat Completions request structure, model table with pricing, parameters reference, response parsing, and message roles.</p>
+
+      <section name="basic-request">
+        <example type="good">
+          <code lang="python"><![CDATA[
+from openai import OpenAI
+
+client = OpenAI()  # uses OPENAI_API_KEY env var
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": "You are a technical writer specializing in AI."},
+        {"role": "user", "content": "Write a 200-word introduction about AI for developers."}
+    ],
+    temperature=0.7,
+    max_tokens=4096,
+    response_format={"type": "json_object"},  # force JSON output
+    seed=42
+)
+print(response.choices[0].message.content)
+]]></code>
+        </example>
+      </section>
+
+      <section name="model-selection">
+        <list>
+          <item>gpt-4o: 128K ctx, $2.50/$10.00 per M tokens — general purpose, best quality</item>
+          <item>gpt-4o-mini: 128K ctx, $0.15/$0.60 per M tokens — cost-effective inner loops</item>
+          <item>o1: 128K ctx, $15.00/$60.00 per M — complex reasoning</item>
+          <item>o3-mini: 200K ctx, $1.10/$4.40 per M — latest reasoning model</item>
+        </list>
+        <rule>
+          <statement>Use gpt-4o-mini for agent inner loops (cheap, fast); escalate to gpt-4o only for quality gates. Never use gpt-4-turbo for new code — replaced by gpt-4o.</statement>
+          <rationale>Cost difference between gpt-4o-mini and gpt-4o is 16x on input tokens. Inner loops typically run thousands of times per pipeline run.</rationale>
+        </rule>
+      </section>
+
+      <section name="response-parsing">
+        <rule>
+          <statement>Always check finish_reason — "length" means the output was truncated by max_tokens; never parse truncated JSON blindly, detect and retry with larger max_tokens.</statement>
+          <rationale>Truncated JSON silently corrupts downstream pipeline stages; the error appears in the consumer, not at the generation site.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+response = client.chat.completions.create(model="gpt-4o", messages=[...])
+
+choice = response.choices[0]
+if choice.finish_reason == "length":
+    raise ValueError("Response truncated — increase max_tokens")
+
+content = choice.message.content
+usage = response.usage
+print(f"Tokens: {usage.prompt_tokens} in, {usage.completion_tokens} out")
+]]></code>
+        </example>
+      </section>
+
+      <section name="message-roles">
+        <list>
+          <item>system: set behavior, persona, and output format instructions</item>
+          <item>user: user input or pipeline-injected content</item>
+          <item>assistant: model responses to include for multi-turn context</item>
+          <item>tool: tool/function results in function calling workflows</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="streaming-and-async-parallel-requests">
+      <p>Streaming with stream=True for real-time output; AsyncOpenAI with asyncio.gather for parallel pipeline calls.</p>
+
+      <section name="basic-streaming">
+        <example type="good">
+          <code lang="python"><![CDATA[
+stream = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Write a poem"}],
+    stream=True
+)
+
+for chunk in stream:
+    delta = chunk.choices[0].delta
+    if delta.content:
+        print(delta.content, end="", flush=True)
+]]></code>
+        </example>
+      </section>
+
+      <section name="async-parallel-completions">
+        <rule>
+          <statement>Use AsyncOpenAI for any pipeline that spawns more than 2 parallel LLM calls; parallel async calls count toward the same TPM budget — throttle with a semaphore for large batches.</statement>
+          <rationale>Sequential calls at Tier 1 (500 RPM) can saturate the rate limit; async gather distributes the same calls within the time window, not beyond it.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+import asyncio
+from openai import AsyncOpenAI
+
+async_client = AsyncOpenAI()
+
+async def parallel_completions(prompts: list[str]) -> list[str]:
+    async def get_completion(prompt: str) -> str:
+        response = await async_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.choices[0].message.content
+
+    return await asyncio.gather(*[get_completion(p) for p in prompts])
+
+results = asyncio.run(parallel_completions(["Hello", "World", "!"]))
+]]></code>
+        </example>
+      </section>
+    </section>
+
+    <section name="vision-api">
+      <p>Image understanding via URL or base64 encoding; detail level controls token cost (85–1105 tokens per image); max 20MB, formats PNG/JPEG/GIF/WebP.</p>
+
+      <section name="image-from-url">
+        <example type="good">
+          <code lang="python"><![CDATA[
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What's in this image?"},
+            {"type": "image_url", "image_url": {
+                "url": "https://example.com/image.jpg",
+                "detail": "high"  # "low" | "high" | "auto"
+            }}
+        ]
+    }]
+)
+]]></code>
+        </example>
+      </section>
+
+      <section name="image-from-base64">
+        <reference path="templates/encode-image.py">encode_image() base64 helper</reference>
+        <example type="good">
+          <code lang="python"><![CDATA[
+import base64
+
+def encode_image(image_path: str) -> str:
+    with open(image_path, "rb") as f:
+        return base64.standard_b64encode(f.read()).decode("utf-8")
+
+image_data = encode_image("screenshot.png")
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "Describe this screenshot"},
+            {"type": "image_url", "image_url": {
+                "url": f"data:image/png;base64,{image_data}"
+            }}
+        ]
+    }]
+)
+]]></code>
+        </example>
+      </section>
+
+      <section name="detail-levels-and-limitations">
+        <list>
+          <item>low: 85 tokens — quick overview, thumbnails, no fine details</item>
+          <item>high: 85-1105+ tokens — OCR, detailed analysis, full resolution</item>
+          <item>auto: model decides based on image content</item>
+        </list>
+        <rule>
+          <statement>Profile image token cost before shipping multimodal pipelines; high-detail images add up to 1105 tokens each, multiplying costs on batches.</statement>
+          <rationale>Vision token cost is proportional to image size and detail level; untracked, it dominates pipeline cost for image-heavy workloads.</rationale>
+        </rule>
+        <list>
+          <item>Vision limitations: struggles with rotated text, small text, spatial reasoning, animated GIFs</item>
+          <item>Max 20 images per message; no video (extract frames manually)</item>
+          <item>Supported formats: PNG, JPEG, GIF, WebP</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="error-handling-rate-limits-and-cost-tracking">
+      <p>Common error types and HTTP codes, exponential backoff with tenacity, rate limit headers for proactive throttling, and token cost tracking with tiktoken.</p>
+
+      <section name="common-errors">
+        <list>
+          <item>invalid_api_key (401): bad OPENAI_API_KEY — check env var</item>
+          <item>rate_limit_exceeded (429): too many requests or quota — implement backoff</item>
+          <item>insufficient_quota (429): billing limit reached — add credits or wait for reset</item>
+          <item>model_not_found (404): invalid model name — check available models</item>
+          <item>context_length_exceeded (400): input too long — chunk or use larger context model</item>
+          <item>server_error (500): OpenAI issue — retry with backoff</item>
+        </list>
+      </section>
+
+      <section name="retry-with-tenacity">
+        <reference path="templates/retry-client.py">OpenAI client wrapper with tenacity retry</reference>
+        <example type="good">
+          <code lang="python"><![CDATA[
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from openai import RateLimitError, APIError
+
+@retry(
+    retry=retry_if_exception_type((RateLimitError, APIError)),
+    wait=wait_exponential(multiplier=1, min=1, max=60),
+    stop=stop_after_attempt(5)
+)
+def make_request(messages: list, model="gpt-4o-mini", temperature=0.2):
+    response = client.chat.completions.create(
+        model=model, messages=messages, temperature=temperature
+    )
+    return response.choices[0].message.content, response.usage
+]]></code>
+        </example>
+      </section>
+
+      <section name="rate-limit-headers">
+        <rule>
+          <statement>Check x-ratelimit-remaining-requests before dispatching large batches; rate limits are per-model, not global — hitting gpt-4o limits does not affect gpt-4o-mini.</statement>
+          <rationale>A Tier 1 account has 500 RPM for gpt-4o but higher limits for gpt-4o-mini; checking the header prevents rejected requests on the first call of a large batch.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+response = client.chat.completions.with_raw_response.create(
+    model="gpt-4o", messages=[{"role": "user", "content": "Hi"}]
+)
+remaining = response.headers.get("x-ratelimit-remaining-requests")
+reset_in = response.headers.get("x-ratelimit-reset-requests")
+]]></code>
+        </example>
+      </section>
+
+      <section name="cost-tracking">
+        <example type="good">
+          <code lang="python"><![CDATA[
+import tiktoken
+
+def count_tokens(text: str, model: str = "gpt-4o") -> int:
+    encoding = tiktoken.encoding_for_model(model)
+    return len(encoding.encode(text))
+
+usage = response.usage
+input_cost = usage.prompt_tokens * 2.50 / 1_000_000   # gpt-4o pricing
+output_cost = usage.completion_tokens * 10.00 / 1_000_000
+print(f"Cost: ${input_cost + output_cost:.6f}")
+]]></code>
+          <note>tiktoken counts are approximate for multimodal messages — images add 85–1105 tokens depending on detail level, not counted by tiktoken.</note>
+        </example>
+      </section>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A Claude subagent can drive Chat Completions by constructing message arrays, calling the OpenAI SDK, parsing the response, and routing the output to the next pipeline stage. For batch parallelism, use `AsyncOpenAI` with `asyncio.gather`. Always extract `usage` tokens and log them per call to detect cost anomalies. Stop sequences and `n=1` keep outputs predictable in automated pipelines.</p>
+
+      <section name="recommended-subagents">
+        <list>
+          <item>faion-sdd-executor-agent — executes code-generation or review tasks using Chat Completions as the inference backend</item>
+          <item>nero-sdd-executor-agent — same pattern for NERO platform pipelines</item>
+        </list>
+      </section>
+
+      <section name="prompt-pattern">
+        <example type="good" title="Minimal agentic call with structured-ish output">
+          <code lang="python"><![CDATA[
+# Minimal agentic call with structured-ish output
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "system", "content": "Return only valid JSON."},
+        {"role": "user", "content": task_prompt}
+    ],
+    response_format={"type": "json_object"},
+    temperature=0.2
+)
+result = json.loads(response.choices[0].message.content)
+]]></code>
+        </example>
+
+        <example type="good" title="Async parallel — N prompts in one pass">
+          <code lang="python"><![CDATA[
+# Async parallel — N prompts in one pass
+import asyncio
+from openai import AsyncOpenAI
+client = AsyncOpenAI()
+
+async def batch(prompts):
+    tasks = [client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": p}]
+    ) for p in prompts]
+    return await asyncio.gather(*tasks)
+]]></code>
+        </example>
+      </section>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Use `gpt-4o-mini` for agent inner loops (cheap, fast); escalate to `gpt-4o` only for quality gates</item>
+        <item>Always read `response.usage` and accumulate token counts per pipeline run</item>
+        <item>Set `temperature=0.0-0.2` for deterministic extraction tasks; `0.7+` only for creative generation</item>
+        <item>Use `stop=["```"]` or similar when extracting code blocks to prevent runaway outputs</item>
+        <item>Prefer `AsyncOpenAI` for any pipeline that spawns > 2 parallel LLM calls</item>
+        <item>Check `x-ratelimit-remaining-requests` header before dispatching large batches</item>
+        <item>Do not mix JSON Mode with ambiguous system prompts — be explicit: "Return only valid JSON"</item>
+        <item>Log `model`, `usage`, and `stop_reason` for every call; `max_tokens` stop reason silently truncates output</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>`stop_reason == "max_tokens"` means output is truncated — never parse truncated JSON blindly; detect and retry with larger `max_tokens`</item>
+        <item>Token counting with `tiktoken` is approximate for multimodal (images add 85–1105 tokens depending on detail level)</item>
+        <item>`seed` does not guarantee identical outputs across API versions or after model updates</item>
+        <item>JSON Mode can return `{}` or minimal JSON when model is confused — always validate schema before passing to next step</item>
+        <item>Rate limit headers are per-model, not global — a Tier 1 account can hit limits on gpt-4o while gpt-4o-mini is free</item>
+        <item>Parallel async calls all count toward the same TPM budget — throttle with a semaphore for large batches</item>
+        <item>Vision + long text in one message inflates context significantly; profile token cost before shipping</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/retry-client.py" purpose="OpenAI client wrapper with tenacity retry on RateLimitError and APIError"/>
+      <template path="templates/encode-image.py" purpose="Base64 image encoding helper for vision requests"/>
+    </templates>
+
+    <see-also>
+      <link href="https://platform.openai.com/docs/guides/chat-completions"/>
+      <link href="https://platform.openai.com/docs/guides/vision"/>
+      <link href="https://platform.openai.com/docs/guides/rate-limits"/>
+      <link href="https://platform.openai.com/docs/guides/prompt-engineering"/>
+      <link href="https://github.com/openai/openai-python"/>
+    </see-also>
+  </content>
+</methodology>
