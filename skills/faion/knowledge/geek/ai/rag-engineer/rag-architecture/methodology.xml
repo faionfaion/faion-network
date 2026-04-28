@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rag-architecture">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>RAG combines retrieval with LLM generation for grounded responses. Covers patterns, chunking, retrieval, context, vectors, metrics.</summary>
+    <category>rag</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>rag</tag>
+      <tag>architecture</tag>
+      <tag>design-patterns</tag>
+      <tag>vector-db</tag>
+      <tag>system-design</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>RAG Architecture</title>
+
+    <summary>Retrieval Augmented Generation (RAG) combines information retrieval with LLM generation to produce accurate, grounded responses. This guide covers architecture patterns and design decisions: indexing pipeline (documents → chunking → embedding → vector store), query pipeline (query → embedding → retrieval → context → LLM → response), chunking strategies (fixed-size, sentence-based, paragraph-based, semantic, header-based), retrieval strategies (basic, hybrid, reranking, query enhancement), context management, vector database selection, quality metrics, best practices, and common pitfalls.</summary>
+
+    <why>
+      <p>Proper RAG architecture separates concerns that commonly fail: chunking strategy, vector database performance, retrieval quality, context window management, and prompt design. Understanding the tradeoffs between fixed-size and semantic chunking, hybrid vs. pure vector search, and context ordering enables teams to make informed architectural decisions that scale from prototypes to production systems.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Question answering over custom documents, deciding between chunking strategies and vector database selection.</item>
+        <item>Chatbots with domain-specific knowledge where architecture patterns (agentic, graph, multi-index) determine quality.</item>
+        <item>Evaluating whether RAG is the right approach vs. fine-tuning or long-context LLM.</item>
+        <item>Diagnosing production RAG quality problems (low faithfulness, hallucinations, slow retrieval).</item>
+        <item>Designing multi-index or agentic RAG variants that go beyond a single vector store.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Data is static and small enough to fit in a single LLM context window — skip RAG, use long-context prompting.</item>
+        <item>Questions require real-time web data — use tool-calling with search APIs instead.</item>
+        <item>Fine-tuning already achieved acceptable accuracy on a stable, closed corpus.</item>
+        <item>Team has no infrastructure for a vector database — consider pgvector extension on existing Postgres before introducing a new service.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="architecture-patterns">
+      <p>Basic flow, pipeline stages, and design decisions for RAG systems.</p>
+
+      <rule testable="true">
+        <statement>Understand the two-phase RAG pipeline: indexing (documents → chunking → embedding → vector store) and query (query → embedding → retrieval → context → LLM → response).</statement>
+        <rationale>This separation enables independent scaling and debugging of ingestion vs. retrieval. Chunking decisions affect retrieval quality; embedding model selection affects search precision; vector database choice affects latency and cost.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Pipeline stages are: ingestion (load documents), chunking (split into pieces), embedding (vectorize chunks), indexing (store vectors), retrieval (find relevant chunks), generation (produce response). Each stage has key decisions: file types/sources, strategy/size/overlap, model/dimensions, index type, top-k/filtering, model/prompt design.</statement>
+        <rationale>Documenting key decisions at each stage enables teams to reason about tradeoffs and communicate constraints.</rationale>
+      </rule>
+
+      <example type="good" title="Two-phase RAG pipeline">
+        <code lang="text"><![CDATA[
+INDEXING PIPELINE
+Documents → Chunking → Embedding → Vector Store
+
+QUERY PIPELINE
+Query → Embedding → Retrieval → Context → LLM → Response
+
+Pipeline Stages
+| Stage | Purpose | Key Decisions |
+|-------|---------|---------------|
+| Ingestion | Load documents | File types, sources |
+| Chunking | Split into pieces | Strategy, size, overlap |
+| Embedding | Vectorize chunks | Model, dimensions |
+| Indexing | Store vectors | Vector DB, index type |
+| Retrieval | Find relevant chunks | Top-k, filtering |
+| Generation | Produce response | Model, prompt design |
+        ]]></code>
+        <note>Each stage is independently tunable. Diagram shows the logical flow; actual implementations may parallelize or combine stages.</note>
+      </example>
+    </section>
+
+    <section name="chunking-strategies">
+      <p>Five chunking approaches, each with pros, cons, and recommended settings.</p>
+
+      <rule testable="true">
+        <statement>Fixed-size chunking: use for general text, mixed content. Pros: simple, predictable. Cons: may split context. Settings: 500 chars, 50 overlap.</statement>
+        <rationale>Fixed-size is the easiest to implement and understand, but produces arbitrary boundaries that can split semantic units.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Sentence-based chunking: use for narrative text, articles. Pros: natural boundaries. Cons: variable size. Settings: max 500 chars, min 100 chars.</statement>
+        <rationale>Sentences are natural semantic units. Size variance can lead to context overflow if queries retrieve many small chunks.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Paragraph-based chunking: use for structured documents. Pros: semantic units. Cons: large variance. Settings: max 1000 chars.</statement>
+        <rationale>Paragraphs are intentional semantic units written by authors; larger chunks reduce variance but may exceed context limits.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Semantic chunking: use for high-quality retrieval. Pros: context-aware splits. Cons: slow, expensive. Settings: 0.8 similarity threshold.</statement>
+        <rationale>Semantic chunking uses embeddings to find natural boundaries, but requires encoding each document during indexing, doubling compute cost.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Header-based (Markdown) chunking: use for documentation, structured MD. Pros: preserves structure. Cons: size variance. Settings: split by #, ##, ###.</statement>
+        <rationale>Markdown headers are explicit structure; respecting them preserves the author's intended chunking.</rationale>
+      </rule>
+    </section>
+
+    <section name="retrieval-strategies">
+      <p>Five retrieval approaches from basic vector search to advanced query enhancement.</p>
+
+      <rule testable="true">
+        <statement>Basic retrieval: embed query, find top-k similar chunks. Settings: top_k=5, cosine similarity.</statement>
+        <rationale>Simple and fast. Suitable for high-recall queries or small corpora where top-k is sufficient.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Hybrid search: combine vector + keyword search. Best for exact match + semantic. Settings: 70% vector, 30% BM25.</statement>
+        <rationale>Vector search misses exact technical terms; BM25 catches them. Hybrid balances recall for both semantic and exact queries.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Reranking: retrieve top-20, rerank, return top-5. Best for high precision needs. Models: Cohere rerank, cross-encoders.</statement>
+        <rationale>Vector search similarity is calibrated for recall. A cross-encoder reranks for precision, improving the quality of the final context.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Query enhancement methods: query expansion (vague questions → better recall), HyDE/hypothetical answer (abstract questions → better semantic match), query rewriting (ambiguous questions → clarity).</statement>
+        <rationale>Reformulating the query can improve retrieval when the original phrasing is too different from the corpus language.</rationale>
+      </rule>
+    </section>
+
+    <section name="context-management">
+      <p>Context window strategies, ordering, and pitfalls.</p>
+
+      <rule testable="true">
+        <statement>Context window strategies: minimal (3 chunks, 1500 tokens; simple Q&amp;A), standard (5 chunks, 2500 tokens; general RAG), rich (10 chunks, 5000 tokens; complex reasoning), extended (20 chunks, 10000 tokens; research).</statement>
+        <rationale>Larger context windows improve coverage but risk context overflow. Tailor to query complexity and model limits.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Context ordering: by relevance (most relevant first, default), by recency (newest first for time-sensitive), by source (group by document for navigation).</statement>
+        <rationale>Relevance-first aligns with model attention patterns. Recency can override relevance for time-sensitive queries. Source grouping helps humans navigate retrieved content.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Avoid context overflow: top_k * avg_chunk_tokens must stay well below context limit after system prompt and examples.</statement>
+        <rationale>Context overflow causes the model to drop earlier chunks, likely losing important context.</rationale>
+      </rule>
+    </section>
+
+    <section name="vector-database-selection">
+      <p>Comparison of vector databases for different deployment scenarios.</p>
+
+      <rule testable="true">
+        <statement>Qdrant: recommended for production self-hosted. High performance, cloud-native, rich filtering, Docker deployment, free and open-source.</statement>
+        <rationale>Qdrant offers the best balance of performance, filtering, and self-hosting flexibility. Recommended for production systems with control requirements.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Weaviate: knowledge graphs, strong for multi-tenancy. Free and open-source. Kubernetes deployable. Built-in hybrid search and BM25.</statement>
+        <rationale>Weaviate's knowledge graph model fits systems where relationships between documents matter. Multi-tenancy support aids SaaS deployments.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Chroma: best for local dev, prototyping. Embedded database, no external dependencies, persistent or in-memory, free and open-source.</statement>
+        <rationale>Chroma's embedded model eliminates DevOps burden during prototyping. Perfect for notebook-based development.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>pgvector: add vector search to existing Postgres. Free and open-source. Avoids new infrastructure. Uses psycopg2 or asyncpg.</statement>
+        <rationale>If Postgres is already in the stack, pgvector avoids adding a new service. Trade-off: less powerful filtering than specialized vector DBs.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Pinecone: fully managed, serverless tier, no self-hosting. SaaS with cost at scale. Supports 1B+ vectors.</statement>
+        <rationale>Pinecone eliminates operational overhead but costs more at scale. Best for teams without DevOps resources or with bursty query patterns.</rationale>
+      </rule>
+    </section>
+
+    <section name="quality-metrics">
+      <p>Metrics to evaluate retrieval quality, generation quality, and end-to-end system health.</p>
+
+      <rule testable="true">
+        <statement>Retrieval quality: recall@k (relevant docs in top-k), precision@k (top-k are relevant), MRR (mean reciprocal rank), NDCG (normalized discounted cumulative gain).</statement>
+        <rationale>Separate retrieval quality from generation to identify where the pipeline breaks. Recall measures coverage; precision measures accuracy.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Generation quality: faithfulness (response grounded in context), relevance (answers the question), completeness (covers key points), conciseness (not overly verbose).</statement>
+        <rationale>Good generation cannot compensate for poor retrieval. Measure faithfulness to catch hallucinations.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>End-to-end: accuracy (correct answers), latency (response time), cost (API + DB costs), user satisfaction (feedback scores).</statement>
+        <rationale>These metrics tie back to user experience and business goals.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <p>Essential practices derived from production RAG experience.</p>
+
+      <rule testable="true">
+        <statement>Chunking: match chunk size to question complexity. Use overlap (10-20%) to maintain context. Consider document structure. Test different strategies.</statement>
+        <rationale>Empirical tuning is required; no one-size-fits-all defaults exist.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Retrieval: start with more chunks (top-k=10), filter down. Use hybrid search (vector + keyword). Implement reranking for precision. Cache embeddings for performance.</statement>
+        <rationale>This progression moves from recall to precision while maintaining performance.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Context: don't overwhelm LLM with too much context. Order chunks by relevance. Include source metadata. Remove duplicate information.</statement>
+        <rationale>Excessive context hurts generation quality. Metadata enables citations. Duplicates waste context budget.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Prompts: be explicit about using only provided context. Include instructions for handling missing info. Request citations when needed. Test with diverse questions.</statement>
+        <rationale>Explicit constraints prevent hallucination. Citations enable verification. Diverse tests expose failures.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Evaluation: test with diverse questions. Measure retrieval and generation separately. Track faithfulness and relevance. Iterate based on metrics.</statement>
+        <rationale>Separate measurement enables root-cause analysis. Iteration based on data beats guessing.</rationale>
+      </rule>
+    </section>
+
+    <section name="common-pitfalls">
+      <p>Failure modes and their solutions.</p>
+
+      <rule testable="true">
+        <statement>Chunks too large: LLM can't focus. Solution: reduce to 500 chars. Chunks too small: loss of context. Solution: increase to 300+ chars.</statement>
+        <rationale>Optimal size is corpus-dependent. Iterative tuning is required.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Wrong embedding model: poor retrieval. Solution: match embedding model to use case. No overlap: split information. Solution: add 10-20% overlap.</statement>
+        <rationale>Embedding model choice affects all downstream retrieval. Overlap preserves context across chunk boundaries.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Ignoring metadata: missing filters. Solution: add source, date, type. Static top-k: over/under retrieval. Solution: adapt per query type.</statement>
+        <rationale>Metadata enables intelligent filtering. Adaptive retrieval balances recall vs. precision per query.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>No reranking: low precision. Solution: add reranking step. Index goes stale without incremental updates: answers reference outdated information. Solution: design streaming update strategy.</statement>
+        <rationale>Reranking is essential for production. Stale indexes are a silent failure mode; proactive update design prevents it.</rationale>
+      </rule>
+    </section>
+
+    <section name="advanced-patterns">
+      <p>Beyond single-index RAG: agentic, graph-based, and multi-index approaches.</p>
+
+      <rule testable="true">
+        <statement>Agentic RAG: agent decides when to retrieve. Multiple retrieval rounds. Dynamic query formulation.</statement>
+        <rationale>For multi-hop reasoning, a single retrieval round is insufficient. Agents can iterate, refining queries based on intermediate results.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Graph RAG: combine vector + knowledge graph. Entity relationships. Multi-hop reasoning.</statement>
+        <rationale>Knowledge graphs capture relationships that vector search alone misses, enabling structured reasoning.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Multi-index RAG: separate indexes per domain. Route queries to appropriate index. Combine results from multiple sources.</statement>
+        <rationale>Domain-specific indexes can use different chunking strategies and embedding models, optimizing each independently.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p>Known failure modes and architectural constraints.</p>
+
+      <rule testable="true">
+        <statement>Faithfulness breaks when retrieval returns off-topic chunks and LLM generates from prior knowledge instead. Static top-k retrieval causes both over-retrieval (noisy context) and under-retrieval (missing key chunks) for queries of varying complexity.</statement>
+        <rationale>These are architectural, not just prompt-engineering, issues. Require iterative retrieval or adaptive top-k.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Context ordering matters but is often ignored. Most relevant chunk should appear first; LLMs show recency bias. Hybrid search requires both vector and keyword index; schema changes must be synchronized across both.</statement>
+        <rationale>LLM attention patterns are empirical facts. Hybrid indexing doubles operational complexity; only use if hybrid retrieval is necessary.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Prompt templates that don't explicitly forbid hallucination produce grounded-sounding but invented answers. Latency budget must account for embedding + vector search + (optional rerank) + LLM generation — each stage can independently spike.</statement>
+        <rationale>Hallucination is hard to detect; explicit constraints + post-checks are required. Latency is multi-stage; measure end-to-end, not just LLM generation.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-selection">
+      <p>Model selection guidance for RAG architecture tasks.</p>
+
+      <rule testable="true">
+        <statement>Analyze and assess: Sonnet (evaluation and planning). Execute implementation: Haiku (apply established patterns). Review and validate: Sonnet (quality assurance). Strategic decision: Opus (novel scenarios). Optimize and refine: Haiku (performance tuning). Document approach: Haiku (create documentation).</statement>
+        <rationale>Sonnet balances reasoning and cost for planning and review. Haiku is efficient for routine execution and documentation. Opus handles novel decisions.</rationale>
+      </rule>
+    </section>
+
+    <section name="prompt-templates">
+      <p>Reusable system prompts for different RAG use cases.</p>
+
+      <rule testable="true">
+        <statement>Default system prompt: "You are a helpful assistant that answers questions based on context. Rules: Answer based ONLY on provided context. If context doesn't contain answer, say 'I don't have enough information'. Be concise and accurate."</statement>
+        <rationale>This default balances clarity, constraint enforcement, and fallback messaging. Suitable for most Q&amp;A scenarios.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Technical documentation prompt: "You are a technical documentation assistant. Rules: Provide accurate, detailed technical answers. Include code examples when relevant. Reference specific documentation sections. Explain technical concepts clearly."</statement>
+        <rationale>Technical contexts benefit from explicit instruction to cite sections and provide examples.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Citation style prompt: "You are a research assistant that provides cited answers. Rules: Always cite sources using [Source: X] format. Quote relevant passages when helpful. Distinguish between direct quotes and paraphrasing. Note when sources conflict."</statement>
+        <rationale>Citation-focused prompts enable compliance and user verification. Distinction between quotes and paraphrasing maintains research integrity.</rationale>
+      </rule>
+
+      <example type="good" title="Prompt template variation">
+        <code lang="text"><![CDATA[
+You are a helpful assistant that answers questions based on context.
+
+Rules:
+- Answer based ONLY on provided context
+- If context doesn't contain answer, say "I don't have enough information"
+- Be concise and accurate
+
+(Variations for specific use cases)
+
+Technical docs: "Include code examples when relevant. Reference specific sections."
+Citation-heavy: "Always cite sources as [Source: X]. Quote passages when helpful."
+Structured data: "For counts/dates/names, cite the exact source chunk."
+        ]]></code>
+        <note>Each variant extends the default prompt with domain-specific instructions. Keep base constraints consistent.</note>
+      </example>
+    </section>
+
+    <section name="context-window-planning">
+      <p>Detailed guidance for planning token budgets and context window allocation.</p>
+
+      <rule testable="true">
+        <statement>Calculate token budget: reserve system prompt (500-1000 tokens), few-shot examples if any (500-2000 tokens), user query (100-500 tokens), retrieved context (remaining budget). Reserve 20% for generation headroom.</statement>
+        <rationale>Explicit budgeting prevents context overflow and ensures space for the model's response.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For Opus (200k context): standard RAG with 10-20 chunks (2500-5000 tokens), rich context with multiple evidence strands. For Sonnet (200k context): same as Opus. For Haiku (200k context): focus on precision; rerank aggressively to top 3-5 chunks.</statement>
+        <rationale>All three Claude models have large context windows, but latency and cost tradeoffs suggest aggressive filtering for Haiku.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Token counting: use tiktoken library to count prompt + context tokens before inference. If total exceeds model limit minus 2000 (safety margin), reduce top_k or rerank more aggressively.</statement>
+        <rationale>Actual token counts vary by model; tiktoken provides accuracy. Safety margin prevents spillover to truncation.</rationale>
+      </rule>
+    </section>
+
+    <section name="embedding-model-selection">
+      <p>Guidance for choosing embedding models aligned with retrieval tasks.</p>
+
+      <rule testable="true">
+        <statement>OpenAI text-embedding-3-large (3072-dim): industry standard for general Q&amp;A, strong on semantic search, 2M token batch limit, $0.13 per 1M tokens. For cost-sensitive: text-embedding-3-small (1536-dim), 25% cheaper.</statement>
+        <rationale>text-embedding-3-large is the default choice unless cost is a constraint. Smaller model trades quality for latency and cost.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Voyage AI voyage-3 (1024-dim): strong alternative, specialized for domain-specific corpora, similar cost. For open-source: sentence-transformers/all-MiniLM-L6-v2 (384-dim), free, good for small corpora, weaker on long documents.</statement>
+        <rationale>Voyage's specialization helps on niche domains. Open-source options reduce API dependency but lower retrieval quality.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Match embedding model to retrieval task: semantic Q&amp;A → large (3072-dim). Factual lookups → hybrid (vector + BM25) with smaller model. Code search → specialized embeddings or BM25 only.</statement>
+        <rationale>Embedding quality directly affects all downstream retrieval. Tailor model to query type.</rationale>
+      </rule>
+    </section>
+
+    <section name="indexing-and-incremental-updates">
+      <p>Strategies for building and maintaining vector indexes at scale.</p>
+
+      <rule testable="true">
+        <statement>Initial indexing: batch embed documents in chunks of 50-100 (respect API rate limits). Store chunk metadata: source, chunk_index, page, ingestion_date, source_id. Use a staging index during ingestion, flip to production after validation.</statement>
+        <rationale>Batching respects rate limits and reduces API cost. Metadata enables filtering and citations. Staging prevents index corruption.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Incremental updates: track document hash (MD5 or SHA256 of source file). On update, compare hash. If different, soft-delete old chunks (mark is_deleted=true, don't physically remove) and insert new chunks with updated chunk indices.</statement>
+        <rationale>Hash comparison identifies changed files in O(n). Soft-delete enables rollback. New chunk indices maintain referential integrity.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Index freshness: for frequently-changing corpora (news, documentation), schedule daily re-indexing. For static corpora, re-index on explicit updates only. Monitor index age in retrieval responses; alert if age exceeds SLA.</statement>
+        <rationale>Index age affects answer recency. Monitoring prevents silent staleness.</rationale>
+      </rule>
+    </section>
+
+    <see-also>
+      <link href="https://arxiv.org/abs/2005.11401"/>
+      <link href="https://python.langchain.com/docs/tutorials/rag/"/>
+      <link href="https://docs.llamaindex.ai/"/>
+      <link href="https://www.pinecone.io/learn/advanced-rag-techniques/"/>
+      <link href="https://blog.llamaindex.ai/a-cheat-sheet-and-some-recipes-for-building-advanced-rag-803a9d94c41b"/>
+    </see-also>
+  </content>
+</methodology>
