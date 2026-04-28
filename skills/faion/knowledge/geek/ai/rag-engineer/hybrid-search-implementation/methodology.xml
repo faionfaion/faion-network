@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="hybrid-search-implementation">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Implementation guide for hybrid search combining dense and sparse BM25 retrieval. Covers Weaviate, Qdrant, Pinecone, Elasticsearch, and backend-agnostic HybridSearchService with RRF or linear fusion.</summary>
+    <category>retrieval</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>hybrid-search</tag>
+      <tag>implementation</tag>
+      <tag>vector-db</tag>
+      <tag>bm25</tag>
+      <tag>retrieval</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <requires>
+      <ref slug="hybrid-search-basics"/>
+    </requires>
+    <related>
+      <ref slug="embedding-models"/>
+      <ref slug="reranking-basics"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Hybrid Search Implementation</title>
+
+    <summary>Combines dense vector retrieval (semantic similarity) with sparse BM25 keyword retrieval, then fuses results using Reciprocal Rank Fusion (RRF) or linear alpha-weighted combination. Covered implementations: Weaviate built-in hybrid, Qdrant prefetch+FusionQuery, Pinecone sparse-dense, Elasticsearch script_score, and a backend-agnostic HybridSearchService with dynamic alpha selection.</summary>
+
+    <why>
+      <p>Pure dense retrieval underperforms on short queries, exact identifiers (function names, error codes), and queries where term frequency signals matter. BM25 is complementary: it excels at exact-match but misses semantic synonyms. Hybrid search achieves higher NDCG than either method alone across most benchmark corpora, particularly for technical and domain-specific content.</p>
+      <p>Each vector database has different APIs and capabilities. Weaviate offers built-in native hybrid with a single alpha parameter. Qdrant uses prefetch + FusionQuery for server-side RRF. Pinecone requires pre-trained BM25Encoder. Elasticsearch requires manual script_score setup. A backend-agnostic service abstracts these differences for rapid prototyping and testing.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>RAG over technical documentation where exact identifiers matter alongside semantic meaning</item>
+        <item>Legal, medical, or compliance corpora where specific terminology must match exactly</item>
+        <item>Short queries (1-3 words) where semantic vectors alone underperform BM25</item>
+        <item>Multilingual corpora where query and document languages may differ</item>
+        <item>Upgrading a keyword-only search system to add semantic understanding without full replacement</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Purely conversational or conceptual queries with no exact-match requirements — dense-only is simpler</item>
+        <item>Very small corpora (&lt;5K documents) where BM25 overhead is not justified</item>
+        <item>Real-time indexing of streaming documents where BM25 corpus statistics must be constantly rebuilt</item>
+        <item>Latency-critical paths where running two retrieval pipelines doubles P99 latency beyond SLA</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="database-specific-implementations">
+      <p>Each vector database has different APIs for hybrid search. Choose based on your stack.</p>
+
+      <section name="weaviate">
+        <p>Weaviate offers the simplest native hybrid API with built-in BM25 tokenization and configurable fusion.</p>
+
+        <rule testable="true">
+          <statement>Use Weaviate's hybrid() query method with alpha parameter for clean, built-in hybrid search.</statement>
+          <rationale>Weaviate handles BM25 preprocessing internally, reducing implementation complexity vs other databases.</rationale>
+        </rule>
+
+        <example type="good" title="Weaviate hybrid search">
+          <code lang="python"><![CDATA[
+import weaviate
+from weaviate.classes.query import HybridFusion
+
+client = weaviate.connect_to_local()
+
+def weaviate_hybrid(collection_name: str, query: str, alpha: float = 0.5, limit: int = 10):
+    """alpha: 0 = pure BM25, 1 = pure vector."""
+    col = client.collections.get(collection_name)
+    r = col.query.hybrid(query=query, alpha=alpha, limit=limit,
+                         fusion_type=HybridFusion.RELATIVE_SCORE)
+    return [{"content": obj.properties, "score": obj.metadata.score} for obj in r.objects]
+]]></code>
+          <note>Weaviate handles BM25 tokenization internally; the simplest built-in option for new projects.</note>
+        </example>
+      </section>
+
+      <section name="qdrant">
+        <p>Qdrant uses prefetch and FusionQuery for server-side RRF, but requires pre-computed sparse vectors.</p>
+
+        <rule testable="true">
+          <statement>Pre-compute sparse vectors outside Qdrant; the DB stores (indices, values) but has no built-in tokenizer.</statement>
+          <rationale>Qdrant's sparse vector format requires application-layer tokenization. Raw text cannot be passed to the sparse vector field.</rationale>
+        </rule>
+
+        <example type="good" title="Qdrant hybrid with prefetch and RRF">
+          <code lang="python"><![CDATA[
+from qdrant_client import QdrantClient
+from qdrant_client.models import Prefetch, FusionQuery, Fusion
+
+client = QdrantClient(path="./qdrant_db")
+
+def qdrant_hybrid(collection_name: str, dense_query, sparse_query, limit: int = 10):
+    return client.query_points(
+        collection_name=collection_name,
+        prefetch=[
+            Prefetch(query=dense_query, using="", limit=20),
+            Prefetch(query=sparse_query, using="bm25", limit=20),
+        ],
+        query=FusionQuery(fusion=Fusion.RRF),
+        limit=limit,
+    )
+]]></code>
+        </example>
+      </section>
+
+      <section name="pinecone">
+        <p>Pinecone uses a pre-trained BM25Encoder that must be fitted on the full corpus before indexing.</p>
+
+        <rule testable="true">
+          <statement>Train BM25Encoder on the full corpus before ingestion; corpus changes invalidate the encoder and require retraining.</statement>
+          <rationale>Pinecone's BM25Encoder learns corpus-level IDF statistics. If the corpus changes significantly, the encoder's IDF weights become stale.</rationale>
+        </rule>
+
+        <example type="good" title="Pinecone sparse-dense hybrid">
+          <code lang="python"><![CDATA[
+from pinecone import Pinecone
+from pinecone_text.sparse import BM25Encoder
+
+pc = Pinecone(api_key="...")
+index = pc.Index("hybrid-index")
+bm25 = BM25Encoder()
+bm25.fit(corpus_documents)  # must be run before indexing
+
+def pinecone_hybrid(query: str, dense_emb: list, alpha: float = 0.5, top_k: int = 10):
+    sparse = bm25.encode_queries(query)
+    return index.query(vector=dense_emb, sparse_vector=sparse, top_k=top_k, include_metadata=True).matches
+
+def upsert_hybrid(doc_id: str, text: str, dense: list):
+    sparse = bm25.encode_documents(text)
+    index.upsert(vectors=[{"id": doc_id, "values": dense, "sparse_values": sparse, "metadata": {"content": text}}])
+]]></code>
+        </example>
+      </section>
+
+      <section name="elasticsearch">
+        <p>Elasticsearch uses script_score to combine BM25 and KNN scores. Requires manual score normalization.</p>
+
+        <example type="good" title="Elasticsearch hybrid with script_score">
+          <code lang="python"><![CDATA[
+from elasticsearch import Elasticsearch
+es = Elasticsearch(["http://localhost:9200"])
+
+def es_hybrid(index: str, text: str, vector: list, alpha: float = 0.5, size: int = 10):
+    query = {"query": {"script_score": {
+        "query": {"bool": {"should": [{"match": {"content": {"query": text, "boost": 1 - alpha}}}]}},
+        "script": {"source": f"{alpha} * cosineSimilarity(params.q, 'embedding') + (1-{alpha}) * _score/10",
+                   "params": {"q": vector}},
+    }}, "size": size}
+    return es.search(index=index, body=query)["hits"]["hits"]
+]]></code>
+          <note>Elasticsearch linear hybrid requires per-corpus score normalization; the /10 divisor above is an approximation that must be tuned.</note>
+        </example>
+      </section>
+    </section>
+
+    <section name="fusion-methods">
+      <p>Two main fusion approaches exist: Reciprocal Rank Fusion and linear score combination.</p>
+
+      <rule testable="true">
+        <statement>Prefer RRF over linear combination when the two search methods return scores on different scales (e.g., BM25 vs cosine similarity).</statement>
+        <rationale>RRF uses rank position, not raw scores, so it is immune to score scale mismatches. Linear combination requires explicit per-corpus normalization to avoid one signal dominating the other.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Measure alpha on a labeled eval set before deploying; wrong alpha degrades results worse than using a single search method alone.</statement>
+        <rationale>Alpha is data-dependent. A value tuned for one corpus can invert the quality ordering on a different corpus.</rationale>
+      </rule>
+
+      <example type="good" title="Dynamic alpha selection">
+        <code lang="python"><![CDATA[
+def determine_alpha(query: str) -> float:
+    """Heuristic alpha selection based on query characteristics."""
+    has_quotes = '"' in query
+    has_codes = any(c.isdigit() for c in query)
+    is_short = len(query.split()) <= 3
+    if has_quotes:
+        return 0.3   # favor keyword
+    if has_codes:
+        return 0.4   # lean keyword
+    if is_short:
+        return 0.5   # balanced
+    return 0.7       # favor semantic for longer queries
+]]></code>
+        <note>This is a heuristic; always validate against a labeled eval set before shipping.</note>
+      </example>
+    </section>
+
+    <section name="pitfalls-and-gotchas">
+      <p>Common mistakes when implementing hybrid search across different databases.</p>
+
+      <antipattern>
+        <description>Alpha tuning (dense vs sparse weight) is data-dependent; wrong alpha degrades results worse than single-method search — must be measured on a labeled eval set.</description>
+        <reason>Alpha is corpus- and query-set-dependent. Generic defaults almost never match production data.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>BM25 tokenization is language-specific; the default English tokenizer produces poor scores for CJK, Arabic, or other non-whitespace-delimited languages.</description>
+        <reason>Whitespace tokenization produces single-character or meaningless tokens for CJK text, leading to near-zero BM25 scores. Use a language-appropriate tokenizer.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>RRF (Reciprocal Rank Fusion) discards absolute scores, which can surface low-confidence results from both methods at the same rank.</description>
+        <reason>RRF normalizes all documents to their rank position. A document ranked 5th in both methods gets the same RRF score as one that is clearly top-1 in both. Apply a minimum per-method score filter before fusion.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Pinecone's sparse-dense hybrid requires training BM25Encoder on the full corpus before ingestion; corpus size changes invalidate the encoder.</description>
+        <reason>BM25Encoder learns corpus-level IDF statistics. If the corpus changes, the encoder's IDF weights become stale and must be retrained.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Qdrant's native hybrid (prefetch + FusionQuery) requires sparse vectors to be pre-computed outside Qdrant — there is no built-in BM25 tokenizer.</description>
+        <reason>Qdrant stores sparse vectors as (indices, values) tuples but does not tokenize text. Tokenization must happen in application code.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Elasticsearch hybrid scoring is sensitive to BM25 score scale vs cosine similarity scale; naive linear combination requires per-corpus normalization.</description>
+        <reason>BM25 scores are unbounded and corpus-dependent. Cosine similarity is bounded [0, 1]. Directly adding them produces meaningless results. Normalize BM25 scores before combination.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <p>Production hybrid search follows proven patterns for quality and reliability.</p>
+
+      <rule testable="true">
+        <statement>Default to RRF over linear combination: RRF is robust to scale differences between BM25 and cosine scores, requires no normalization.</statement>
+        <rationale>RRF eliminates the need for per-corpus score normalization.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always fetch 2-3x more candidates from each method than the final top-K before fusion — fusion can promote documents not in top-10 of either method alone.</statement>
+        <rationale>Fusion can surface documents that rank moderately in both methods but not in the top-10 of either alone. Pre-fetching more candidates allows this promotion.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Build a labeled evaluation set (50-200 query/relevant-doc pairs) before tuning alpha — intuition about the right alpha is usually wrong.</statement>
+        <rationale>Alpha tuning requires empirical data. Intuition is unreliable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For Weaviate, HybridFusion.RELATIVE_SCORE generally outperforms RANKED for corpora with high score variance.</statement>
+        <rationale>RELATIVE_SCORE is more robust to outlier scores.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use the determine_alpha pattern (detect quotes, codes, query length) to route query types automatically rather than one global alpha.</statement>
+        <rationale>Dynamic alpha improves quality on mixed query sets.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For Elasticsearch, normalize BM25 scores with `/max(bm25_scores)` and cosine similarity is already [0,1] before linear combination.</statement>
+        <rationale>Score normalization is essential for linear combination in Elasticsearch.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Pitfalls specific to agents building or using hybrid search systems.</p>
+
+      <antipattern>
+        <description>Agents must fit the BM25Encoder on the full corpus before any ingestion — fitting after partial ingestion produces incorrect IDF weights.</description>
+        <reason>Fitting on a partial corpus produces IDF weights that are stale once the corpus grows. This requires retraining.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Pinecone sparse vector format is {"indices": [...], "values": [...]} — agents must not confuse it with Qdrant's SparseVector(indices=..., values=...).</description>
+        <reason>The two APIs use different Python types and conventions. Mixing them produces type errors.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Weaviate's alpha=0 is pure BM25, alpha=1 is pure vector — the opposite convention from some papers where alpha=0 means full semantic; always verify the client's convention.</description>
+        <reason>Conventions vary. Verify the client library's convention before shipping.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>RRF k=60 is a heuristic that works well for document search; for code search with hundreds of results, k=30 may be better — agents should expose k as a config param.</description>
+        <reason>The optimal k value depends on the result set size and domain.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Multi-language corpora need per-language tokenizers in BM25; a single English BM25 tokenizer on a mixed corpus degrades non-English recall.</description>
+        <reason>BM25 tokenization is language-specific.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Running two retrieval paths has additive latency in serial mode; agents should use asyncio.gather or thread-pool to parallelize dense and sparse searches.</description>
+        <reason>Parallelization reduces P99 latency vs serial execution.</reason>
+      </antipattern>
+    </section>
+
+    <section name="backend-agnostic-service">
+      <p>For rapid prototyping and testing, a backend-agnostic HybridSearchService abstracts away database-specific APIs.</p>
+
+      <example type="good" title="Backend-agnostic hybrid search service">
+        <code lang="python"><![CDATA[
+from collections import defaultdict
+from dataclasses import dataclass
+from enum import Enum
+
+class FusionMethod(Enum):
+    RRF = "rrf"
+    LINEAR = "linear"
+
+@dataclass
+class HybridSearchConfig:
+    alpha: float = 0.5
+    fusion_method: FusionMethod = FusionMethod.RRF
+    rrf_k: int = 60
+
+class HybridSearchService:
+    def __init__(self, documents, embedding_service, config=None):
+        self.documents = documents
+        self.embedding_service = embedding_service
+        self.config = config or HybridSearchConfig()
+        self._build_indices()
+
+    def _build_indices(self):
+        from rank_bm25 import BM25Okapi
+        tokenized = [d["content"].lower().split() for d in self.documents]
+        self.bm25 = BM25Okapi(tokenized)
+        self.embeddings = self.embedding_service.embed_batch([d["content"] for d in self.documents])
+
+    def search(self, query: str, top_k: int = 10, alpha: float = None) -> list:
+        alpha = alpha or self.config.alpha
+        vec_ranking = self._vector_search(query, top_k * 2)
+        kw_ranking = self._keyword_search(query, top_k * 2)
+
+        if self.config.fusion_method == FusionMethod.RRF:
+            fused = self._rrf(vec_ranking, kw_ranking)
+        else:
+            fused = self._linear(vec_ranking, kw_ranking, alpha)
+
+        return fused[:top_k]
+]]></code>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/hybrid_search_service.py" purpose="Backend-agnostic HybridSearchService with RRF + linear fusion and dynamic alpha"/>
+    </templates>
+
+    <see-also>
+      <link href="https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf"/>
+      <link href="https://weaviate.io/developers/weaviate/search/hybrid"/>
+      <link href="https://docs.pinecone.io/docs/hybrid-search"/>
+      <link href="https://qdrant.tech/articles/hybrid-search/"/>
+      <link href="https://www.elastic.co/guide/en/elasticsearch/reference/current/knn-search.html"/>
+      <ref slug="hybrid-search-basics"/>
+      <ref slug="embedding-models"/>
+      <ref slug="reranking-basics"/>
+    </see-also>
+  </content>
+</methodology>
