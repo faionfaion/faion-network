@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="core-vui-design-principles">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>Three foundational principles for voice user interfaces that apply to all voice runtimes from Alexa Skills to LLM-powered Realtime API agents: simplicity, natural conversation, and context awareness.</summary>
+    <tags>
+      <tag>voice-ui</tag>
+      <tag>vui</tag>
+      <tag>principles</tag>
+      <tag>conversational-design</tag>
+      <tag>latency</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>Core VUI Design Principles</title>
+    <summary>Three foundational principles for voice user interfaces — simplicity (short, single-idea responses), natural conversation (follow-up awareness, human turn-taking), and context awareness (remembering prior turns, adapting to preferences) — that apply to all voice runtimes from Alexa Skills to LLM-powered Realtime API agents.</summary>
+    <why>
+      <p>Voice interfaces fail when designed like visual interfaces: verbose confirmations inflate latency past the 1.5 s tolerance threshold, robotic phrasing triggers negative user affect, and lack of context forces repetition that users associate with IVR hell. These three principles are the minimal contract any VUI must satisfy before adding features; violating any one is the primary cause of abandoned voice experiences.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing a new voice agent or LLM-powered voice interface (Alexa, Google Action, OpenAI Realtime).</item>
+        <item>Auditing transcripts of an existing voice product for verbosity or missing context handling.</item>
+        <item>Writing the system prompt and dialog policy for a Realtime API or Vapi voice agent.</item>
+        <item>Defining acceptance criteria for voice flows in a spec or design doc.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Visual UI or chat — these principles produce over-terse copy when applied to text interfaces.</item>
+        <item>IVR with regulatory scripts (banking disclosures, healthcare consent) — mandatory verbosity overrides.</item>
+        <item>Rapid voice prototype before basic ASR is confirmed working — premature optimization.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Principle 1: Simplicity and Clarity">
+      <p>The first and most fundamental principle of VUI design is simplicity and clarity. Voice interactions do not allow re-reading or scanning like visual interfaces. Users must process information in real-time while holding prior context in working memory. This creates a severe constraint on information density per turn.</p>
+      <rule>
+        <statement>Every agent turn must convey one piece of information or request one piece of input; split compound responses across turns. This is the single most critical rule for VUI design.</statement>
+        <rationale>Listening comprehension is harder than reading; users cannot re-read a voice response, so each turn must be immediately parseable in working memory. Complex multi-step instructions or stacked information requests overwhelm cognitive capacity and lead to errors, clarification requests, and abandonment.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[System: "Your order is confirmed for delivery tomorrow."]]></code>
+      </example>
+      <example type="bad">
+        <code lang="text"><![CDATA[System: "Your order has been successfully processed and scheduled for
+delivery on January 20th at a time between 9 AM and 5 PM in your
+local timezone. You will receive a confirmation email shortly."]]></code>
+        <note>Too much information in a single turn; the user cannot retain all of it and cannot re-listen.</note>
+      </example>
+    </section>
+    <section name="Principle 2: Natural Conversation">
+      <p>The second principle ensures that voice interactions feel like conversations between humans, not database readouts. Natural turn-taking, tone calibration, and responsive acknowledgment are key to maintaining user engagement and reducing errors.</p>
+      <rule>
+        <statement>Design agent turns to follow natural conversational turn-taking: acknowledge the user's input briefly, then provide the response or request, without robotic enumerations. Mimic how humans respond in conversation, not how systems enumerate data.</statement>
+        <rationale>Users calibrate their interaction style to the agent's tone; robotic responses trigger a robotic, stilted interaction from the user, increasing ASR errors and perception of system incompetence. Conversational tone builds trust and encourages natural speech patterns.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[User: "What's the weather?"
+VUI:  "It's 72 and sunny. Want to know about tomorrow?"]]></code>
+      </example>
+      <example type="bad">
+        <code lang="text"><![CDATA[User: "What's the weather?"
+VUI:  "The current temperature is 72 degrees Fahrenheit with sunny
+conditions. Humidity is 45 percent. Wind speed is 8 miles per hour."]]></code>
+        <note>Reciting all available data fields is a database-readout pattern, not a conversation.</note>
+      </example>
+      <antipattern>
+        <description>LLM over-acknowledgment: "Sure! I can absolutely do that for you! Let me check that right away!"</description>
+        <reason>Filler acknowledgment inflates latency — every word adds approximately 50ms TTS overhead — and feels sycophantic. One-word acknowledgment ("Got it.") or no acknowledgment before the answer is preferred.</reason>
+      </antipattern>
+    </section>
+    <section name="Principle 3: Context Awareness">
+      <p>The third principle addresses the stateful nature of conversation. Voice interactions happen in a sequence; users expect the agent to remember prior turns, understand implicit references, and adapt to preferences stated earlier. Without context awareness, the interaction devolves into repetitive questioning that users associate with inferior systems.</p>
+      <rule>
+        <statement>The agent must correctly resolve pronoun references from the immediately preceding user turn without asking for clarification more than once per session. Maintain state across the entire conversation session and reference it naturally.</statement>
+        <rationale>Users expect the agent to understand "it", "that", "the one I mentioned" — repeated clarification requests signal that the agent forgot context and are perceived as system failure. In human conversation, asking for repetition is acceptable once; after that, it signals incompetence.</rationale>
+      </rule>
+      <list>
+        <item>Remember previous conversation turns within the session to resolve follow-up questions and avoid repeating information the user already provided.</item>
+        <item>Understand ellipsis and pronoun references ("And tomorrow?" after a weather query) by maintaining conversation history and referring to the most recent relevant entity.</item>
+        <item>Adapt to stated user preferences within the session (e.g., user said "I prefer Celsius" — use Celsius for all subsequent queries without being told again).</item>
+      </list>
+      <antipattern>
+        <description>Context window exhaustion causes the agent to ask the user to repeat information already provided earlier in the session.</description>
+        <reason>Context limits (approximately 30k tokens for Realtime API) are a design constraint; the session structure must proactively summarize and compress prior context before limits are hit.</reason>
+      </antipattern>
+    </section>
+    <section name="Testable Rules Derived from the Three Principles">
+      <p>The three foundational principles must be operationalized into testable rules that can be applied during design and evaluated during review. These rules provide concrete gates for quality.</p>
+      <rule>
+        <statement>No agent turn may exceed 25 words unless the content is a required legal disclosure; flag any turn over 25 words for simplification review. This is a hard gate, not a guideline.</statement>
+        <rationale>25 words is approximately the working memory capacity for spoken information. Listening requires holding words in memory while parsing meaning. Longer turns cause information loss and user re-prompting, which then requires re-listening and compounds the cognitive load.</rationale>
+      </rule>
+      <rule>
+        <statement>Do not include more than one proactive offer per turn. For example, "Want to know about tomorrow?" is one offer. Adding "Shall I also check traffic?" in the same turn is too many simultaneous choices and violates this rule.</statement>
+        <rationale>Multiple simultaneous offers force the user to hold all options in working memory at once while also considering which option to select. One clear offer per turn keeps the conversation linear and avoids overload. Multiple offers can be presented sequentially, but not simultaneously.</rationale>
+      </rule>
+      <rule>
+        <statement>Write acceptance criteria for voice flows that include a latency gate: total round-trip must be under 1.5 seconds; streams must produce first audio within 0.8 seconds. Latency must be tested explicitly, not assumed.</statement>
+        <rationale>Users interpret gaps beyond 1.5 s as system failure. Silence longer than 1.5 seconds in conversation is interpreted as a disconnect, a failure to understand, or a dropped call. Without a latency gate in acceptance criteria, the constraint is never tested in code review and inevitably fails in production.</rationale>
+      </rule>
+    </section>
+    <section name="LLM-Specific Failure Modes and Gotchas">
+      <p>When implementing these principles with LLM-powered voice agents, specific failure modes emerge that are not present in traditional scripted VUIs. LLMs can violate the principles in ways that are difficult to catch without explicit guardrails.</p>
+      <antipattern>
+        <description>LLM over-acknowledges every user input with affirmations like "Great!", "Of course!", "Sure thing!", "Absolutely!", "I'd be happy to help!".</description>
+        <reason>Each filler word adds approximately 50 milliseconds of TTS overhead. When these accumulate across a session, latency quickly exceeds the 1.5 second threshold. Additionally, excessive affirmations signal non-human origin and feel performative rather than natural. The solution is explicit instruction in the system prompt to omit acknowledgment and go directly to answering the question.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Simplicity principle applied indiscriminately to chat interfaces or visual UI copy, producing text that is too terse for reading contexts.</description>
+        <reason>VUI simplicity rules are calibrated specifically for audio processing with auditory working memory constraints. Those constraints do not apply to text. A 10-word sentence that is ideal for voice can be insufficient for a UI button label or form instruction. Apply the principles only to voice interactions.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Developers apply these VUI principles to mandatory regulatory disclosure scripts (banking disclosures, healthcare consent forms, tax warnings).</description>
+        <reason>Regulatory disclosures must be verbatim per legal requirements. The principles of "natural conversation" and "simplicity" cannot override legal text requirements. When regulatory text is required, disable the VUI principles for that segment and read the legal text as-is, even if it violates the rules.</reason>
+      </antipattern>
+    </section>
+    <section name="Cultural and Linguistic Scope">
+      <p>These principles are derived from US English voice UX research. Conversational norms, turn-taking conventions, and acceptable response lengths vary significantly across languages and cultures. Apply only after localization review for non-English deployments.</p>
+    </section>
+  </content>
+</methodology>
