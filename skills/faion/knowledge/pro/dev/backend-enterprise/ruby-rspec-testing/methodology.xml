@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ruby-rspec-testing">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>Layered RSpec testing for Rails: model specs, service specs, request specs, system specs. BDD structure with factory_bot, shoulda-matchers, SimpleCov.</summary>
+    <tags>
+      <tag>rspec</tag>
+      <tag>testing</tag>
+      <tag>rails</tag>
+      <tag>bdd</tag>
+      <tag>coverage</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>RSpec Testing for Rails Applications</title>
+
+    <summary>Build comprehensive Rails test suites using layered RSpec strategies: model specs test validations and scopes, service specs test business logic, request specs test HTTP contracts, and system specs test browser behavior. Use factory_bot for test data, shoulda-matchers for one-liners, and SimpleCov branch tracking to find uncovered paths. BDD structure (describe/context/it) enforces one behavior per test block and produces diagnostic failure messages.</summary>
+
+    <why>
+      <p>RSpec's BDD structure enforces a single behavior per it block, making failure messages diagnostic without reading the test body. build_stubbed eliminates DB writes for model unit tests (10-100x faster). Layer isolation — model specs test validations, service specs test business logic, request specs test HTTP contracts — means agent edits to one layer do not invalidate tests for another. SimpleCov branch tracking finds uncovered conditional paths that line coverage misses.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Rails app with layered behavior: models with validations, PORO services, REST endpoints.</item>
+        <item>TDD or red/green/refactor cycles with LLM agents — RSpec DSL maps to agent prompts well.</item>
+        <item>Codebases enforcing coverage gates (simplecov ≥80% for services).</item>
+        <item>Multi-developer teams using shared examples and shared contexts to reduce duplication.</item>
+        <item>Refactor-heavy phases where fast model + service specs are the safety net.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Greenfield Hanami/Roda/Sinatra apps — rails_helper and Rails matchers do not apply.</item>
+        <item>Pure CLI gems — spec_helper only; rails_helper is overkill.</item>
+        <item>Codebases standardized on Minitest — mixing creates two test infrastructures.</item>
+        <item>Performance benchmarks — use benchmark/ips, not RSpec.</item>
+        <item>Visual regression — use Percy/Chromatic via Capybara, but the value is in the visual-diff service, not RSpec itself.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="rspec-rules">
+      <p>Core rules for organizing and writing RSpec tests in Rails.</p>
+
+      <rule testable="true">
+        <statement>One describe per public method, one context per branch, one it per assertion.</statement>
+        <rationale>Keeps failure messages diagnostic: "Users::CreateService#call with invalid params does not create a user" pinpoints the failing behavior without reading the test body.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Name subject explicitly: subject(:service) { described_class.new(params: params) }.</statement>
+        <rationale>Unnamed subject { described_class.new } is unreadable when nested three contexts deep.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use instance_double not double for service/repository fakes.</statement>
+        <rationale>instance_double verifies the method actually exists on the class; double lets agents stub nonexistent methods silently.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Prefer build_stubbed over create whenever no DB write is required.</statement>
+        <rationale>build_stubbed skips the database entirely; model unit tests are 10-100x faster with no schema dependency.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Avoid let! unless setup must run regardless of reference; prefer lazy let.</statement>
+        <rationale>let! triggers a DB write unconditionally; lazy let only writes when the variable is referenced, keeping tests that do not need the record fast.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Mirror the source-tree structure in spec/: spec/services/users/create_service_spec.rb for app/services/users/create_service.rb.</statement>
+        <rationale>SimpleCov groups coverage by file path; mismatched paths break per-file gap reporting.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use :transaction strategy for all non-JS specs; use :truncation only for Capybara JS specs.</statement>
+        <rationale>Transaction rollback is the fastest cleanup; Capybara JS specs spawn a browser thread that cannot share the DB transaction, so truncation is required.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Standardize the strategy per spec type via RSpec.configure, never per individual spec.</statement>
+        <rationale>Per-spec overrides create inconsistency; agents copying the nearest before block apply the wrong strategy and introduce intermittent failures.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Pin time via ActiveSupport::Testing::TimeHelpers travel_to with the block form; always travel_back after.</statement>
+        <rationale>Without the block form, time stays frozen for subsequent specs. travel_to { ... } guarantees cleanup automatically.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Stub external HTTP with WebMock; record cassettes with VCR against staging; review cassette diffs on every API update.</statement>
+        <rationale>VCR replays old cassettes silently even when the API contract changed; periodic VCR_RECORD_MODE=all reruns expose drift.</rationale>
+      </rule>
+    </section>
+
+    <section name="rspec-examples">
+      <p>Worked examples of model, service, and request specs following best practices.</p>
+
+      <example type="good" title="Model Spec with Shoulda-Matchers">
+        <code lang="ruby"><![CDATA[
+RSpec.describe User, type: :model do
+  describe 'validations' do
+    it { is_expected.to validate_presence_of(:email) }
+    it { is_expected.to validate_uniqueness_of(:email).case_insensitive }
+    it { is_expected.to validate_length_of(:name).is_at_least(2).is_at_most(100) }
+  end
+
+  describe 'associations' do
+    it { is_expected.to have_one(:profile).dependent(:destroy) }
+    it { is_expected.to have_many(:orders).dependent(:nullify) }
+  end
+
+  describe '.active' do
+    let!(:active_user)   { create(:user, active: true) }
+    let!(:inactive_user) { create(:user, active: false) }
+
+    it 'returns only active users' do
+      expect(User.active).to contain_exactly(active_user)
+    end
+  end
+
+  describe '#full_name' do
+    let(:user) { build(:user, first_name: 'John', last_name: 'Doe') }
+
+    it 'returns combined first and last name' do
+      expect(user.full_name).to eq('John Doe')
+    end
+  end
+end
+        ]]></code>
+        <note>build(:user) not create(:user) for the full_name test — no DB write needed.</note>
+      </example>
+
+      <example type="good" title="Service Spec with AAA Structure">
+        <code lang="ruby"><![CDATA[
+RSpec.describe Users::CreateService do
+  describe '#call' do
+    subject(:service) { described_class.new(params: params) }
+
+    context 'with valid params' do
+      let(:params) { { name: 'John', email: 'john@example.com', password: 'secret123' } }
+
+      it 'creates a user' do
+        expect { service.call }.to change(User, :count).by(1)
+      end
+
+      it 'returns a success result' do
+        result = service.call
+        expect(result).to be_success
+        expect(result.data).to be_a(User)
+      end
+
+      it 'enqueues the welcome email' do
+        expect { service.call }.to have_enqueued_mail(UserMailer, :welcome)
+      end
+    end
+
+    context 'with invalid params' do
+      let(:params) { { name: '', email: 'not-an-email' } }
+
+      it 'does not create a user' do
+        expect { service.call }.not_to change(User, :count)
+      end
+
+      it 'returns a failure result with errors' do
+        result = service.call
+        expect(result).to be_failure
+        expect(result.errors).to include(/Email/)
+      end
+    end
+  end
+end
+        ]]></code>
+        <note>named subject, explicit contexts, one assertion per it block.</note>
+      </example>
+
+      <example type="good" title="Request Spec">
+        <code lang="ruby"><![CDATA[
+RSpec.describe 'POST /api/v1/users', type: :request do
+  let(:valid_params) { { name: 'Alice', email: 'alice@example.com', password: 'secret' } }
+
+  context 'with valid params' do
+    it 'creates the user and returns 201' do
+      post '/api/v1/users', params: valid_params, as: :json
+      expect(response).to have_http_status(:created)
+      expect(json_body.dig('data', 'email')).to eq('alice@example.com')
+    end
+  end
+
+  context 'with invalid email' do
+    it 'returns 422 with validation errors' do
+      post '/api/v1/users', params: valid_params.merge(email: 'bad'), as: :json
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(json_body.dig('errors', 'email')).to be_present
+    end
+  end
+end
+        ]]></code>
+        <note>type: :request uses Rack::Test — no browser; fast HTTP-layer tests.</note>
+      </example>
+    </section>
+
+    <section name="database-and-time-strategies">
+      <p>Critical strategies for avoiding test flakes and performance cliffs.</p>
+
+      <rule testable="true">
+        <statement>Use :transaction strategy for all non-JS specs; use :truncation only for Capybara JS specs.</statement>
+        <rationale>Transaction rollback is the fastest cleanup. Capybara JS specs spawn a browser thread that cannot share the DB transaction.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Standardize the strategy per spec type via RSpec.configure, never per individual spec.</statement>
+        <rationale>Per-spec overrides create inconsistency. Agents copying the nearest before block apply the wrong strategy and introduce intermittent failures.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Pin time via ActiveSupport::Testing::TimeHelpers travel_to with the block form; always travel_back after.</statement>
+        <rationale>Without the block form, time stays frozen for subsequent specs. travel_to { ... } guarantees cleanup automatically.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Stub external HTTP with WebMock; record cassettes with VCR against staging; review cassette diffs on every API update.</statement>
+        <rationale>VCR replays old cassettes silently even when the API contract changed. Periodic VCR_RECORD_MODE=all reruns expose drift.</rationale>
+      </rule>
+    </section>
+
+    <section name="rspec-antipatterns">
+      <p>Common failure modes in LLM-generated RSpec specs: stubbing the SUT, let shadowing, before(:all) mistakes, database cleaner mismatches, and time-dependent bugs.</p>
+
+      <antipattern>
+        <description>Stubbing the method under test: agent stubs the very service method being spec'd — spec always passes regardless of the implementation.</description>
+        <reason>Stubbing the SUT detaches the test from the real code path. Force prompts to explicitly name what is mocked vs real before generating the spec.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>let shadowing: inner context redefines let(:user) with different attributes; outer spec examples silently use the wrong user.</description>
+        <reason>RSpec resolves let from the nearest enclosing scope, not the outermost. Lint via rubocop-rspec ContextLeakCheck to catch redefined lets.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>before(:all) for DB setup: seed records created before the suite but within a transactional spec — transaction rolls back the seed, second run finds nothing.</description>
+        <reason>before(:all) runs outside the per-example transaction. Use before(:each) or let! for records that must exist per example. Use shared_context for reusable setup.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>build_stubbed with AR associations queried via count: user.posts.count issues a SQL query; build_stubbed does not persist to DB, so count returns 0 or errors.</description>
+        <reason>build_stubbed stubs AR persistence methods but not all query interfaces. For association assertions, allow(user).to receive(:posts).and_return([post]) or use create.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>travel_to without the block form: time freezes and never resets; subsequent specs run with stale frozen time.</description>
+        <reason>Without travel_back or the block form, ActiveSupport::Testing::TimeHelpers leaves time pinned globally for the rest of the suite.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Factory cascade bloat: create(:order) triggers user → profile → avatar creation; one spec inserts 5 records, slowing the suite by an order of magnitude.</description>
+        <reason>Factory traits and associations compose automatically; agents copy the nearest factory call. Use build_stubbed or define traits without auto-associations.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Shoulda-matchers on uncalled validators: validate_uniqueness_of(:email) passes even without a DB unique index, giving false confidence.</description>
+        <reason>Shoulda-matchers check model validations in memory; they do not probe the DB constraint. Pair with a request spec that hits the actual constraint.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>VCR cassette drift: cassettes recorded against staging, replayed in CI, miss new fields; specs pass while integration is broken.</description>
+        <reason>Cassettes capture a snapshot of the response. When API contracts change, cassettes are stale but tests pass. Periodically re-record and review diffs.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Shared contexts hide behavior. A shared_context "as admin" mutates state in 8 ways; agent reading the spec sees only 1 line.</description>
+        <reason>Hidden setup makes debugging failures harder. Use shared examples for cross-cutting behavior assertions, shared contexts for reusable setup.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>should-style matchers mixed with expect-style: codebases end up bilingual. RSpec disabled should for new specs but legacy lingers.</description>
+        <reason>Inconsistent style makes it harder for agents to generate matching code. Enforce expect-style only.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Slow suite drift: naïve let! + before(:each) patterns rebuild the world per spec; suite hits 10+ min after a few hundred specs.</description>
+        <reason>Eager setup with let! creates DB writes per spec. Lazy let and build_stubbed keep suites under 1 min.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mock-heavy specs that pass when refactored wrong. Agents stub everything; tests assert on stubs, not behavior. Mutation testing exposes.</description>
+        <reason>Stubbing the SUT detaches tests from real code paths. Mock at boundaries, not internals. Verify real behavior not stubbed behavior.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices-summary">
+      <rule testable="true">
+        <statement>Prefer build_stubbed over create whenever possible. No DB write; specs are 10-100x faster for model unit tests.</statement>
+        <rationale>Schema dependencies and DB latency are the primary scaling bottleneck in test suites.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>One describe per public method, context per branch, it per assertion. Keeps failure messages diagnostic.</statement>
+        <rationale>Diagnostic output reduces debugging friction.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Avoid let! unless setup must run regardless of usage. Lazy let is the default; eager triggers DB writes you do not need.</statement>
+        <rationale>Unnecessary DB writes slow the suite without improving test isolation.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>subject named (subject(:service)); unnamed subject makes specs unreadable when nested.</statement>
+        <rationale>Readability improves debugging and agent spec generation.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use instance_double not double. Verifies the method actually exists on the SUT.</statement>
+        <rationale>Agents can stub nonexistent methods with double, creating false-positive tests.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Mock at the boundary, not internals. Mock the HTTP gateway, not the service that calls the gateway. Otherwise refactor breaks tests.</statement>
+        <rationale>Tests should verify behavior contracts, not implementation details.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use shared examples for cross-cutting behavior (auth, pagination); use shared contexts for setup blocks. Do not mix.</statement>
+        <rationale>Semantic separation keeps intent clear and reduces copy-paste.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>System specs use Cuprite headless Chrome. Selenium is historical default — slower and flakier.</statement>
+        <rationale>Cuprite uses Chrome DevTools Protocol directly, eliminating WebDriver overhead.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run bundle exec rspec --bisect after any flake. Order-dependence is debt that compounds.</statement>
+        <rationale>Test ordering bugs are exponentially harder to debug as the suite grows.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Mutation testing on critical services (auth, billing). Coverage alone hides assertion-free specs.</statement>
+        <rationale>Coverage metrics count lines executed, not assertions verified. Mutation testing forces true test quality.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Tag specs with metadata (:slow, :integration, :flaky_known); CI selects subsets per stage.</statement>
+        <rationale>Allows fast feedback loops (run fast specs) without sacrificing comprehensive CI.</rationale>
+      </rule>
+    </section>
+
+    <see-also>
+      <link href="https://relishapp.com/rspec"/>
+      <link href="https://www.betterspecs.org"/>
+      <link href="https://thoughtbot.com/blog/tags/testing"/>
+      <link href="https://github.com/thoughtbot/factory_bot"/>
+      <link href="https://github.com/thoughtbot/shoulda-matchers"/>
+      <link href="https://github.com/vcr/vcr"/>
+      <link href="https://github.com/mbj/mutant"/>
+    </see-also>
+  </content>
+</methodology>
