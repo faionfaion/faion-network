@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/dev/software-developer methodologies → methodology.xml (php-phpunit-testing, ruby-activerecord, ruby-rails; feature-045 batch 166)
 
 ### Changed
 - migrate: 3/3 pro/pm/pm-agile methodologies → methodology.xml (predictive-analytics-pm, raci-matrix, reporting-basics; feature-045 batch 164)
