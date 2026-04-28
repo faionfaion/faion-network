@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/research/researcher methodologies → methodology.xml (persona-building, product-development-trends, product-development-trends-2026; feature-045 batch 206)
 - migrate: 3/3 pro/research/researcher methodologies → methodology.xml (distribution-channel-research, frameworks, market-research-tam-sam-som; feature-045 batch 204)
 - migrate: 3/3 pro/research/researcher methodologies → methodology.xml (competitive-intelligence, competitor-analysis, continuous-discovery; feature-045 batch 203)
 - migrate: 3/3 pro/research/researcher methodologies → methodology.xml (agent-invocation, audience-segmentation, business-model-research; feature-045 batch 202)
