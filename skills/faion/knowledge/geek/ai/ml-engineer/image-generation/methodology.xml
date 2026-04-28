@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="image-generation">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Generate images from text prompts using DALL-E 3, Flux, or Stable Diffusion. Covers model selection, prompt engineering, and automated pipeline patterns.</summary>
+    <tags>
+      <tag>image-generation</tag>
+      <tag>dall-e</tag>
+      <tag>flux</tag>
+      <tag>stable-diffusion</tag>
+      <tag>multimodal</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+  <content>
+    <title>AI Image Generation: Model Selection and Pipeline Automation</title>
+    <summary>AI image generation from text prompts using DALL-E 3, Flux (Black Forest Labs), Stable Diffusion, and related APIs. Covers model selection, prompt engineering formula ([Subject] + [Style] + [Lighting] + [Composition] + [Details] + [Technical]), API integration patterns, and pipeline automation for content at scale.</summary>
+    <why>
+      <p>Each model has a distinct strength profile: DALL-E 3 and GPT-4o lead on text rendering and prompt adherence; Flux leads on photorealism and anatomy; Stable Diffusion + LoRA is the only option for brand-specific fine-tuned assets; Flux schnell (Apache 2.0) is the cost-effective choice for high-volume batch generation. Selecting the wrong model wastes cost or produces unusable output.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Generating marketing visuals, social media graphics, or product mockups as part of an automated content pipeline</item>
+        <item>Producing custom illustrations for articles, blog posts, or newsletters where stock photography is inadequate</item>
+        <item>Rapid UI/UX prototyping: visualizing interface concepts before implementation</item>
+        <item>Generating variation sets (A/B test creatives) at scale for advertising campaigns</item>
+        <item>Brand asset generation with consistent style through fine-tuned models or style references</item>
+        <item>AI news pipelines where each article requires a unique header image generated from the article summary</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Legal/medical/financial documents where image hallucinations create liability</item>
+        <item>Photorealistic images of real named people — content policy violations plus legal risk (likeness rights)</item>
+        <item>Logo design requiring precise vector output — generative models produce raster; use a designer or vector tools</item>
+        <item>High-volume generation where per-image cost matters at scale — self-host Flux schnell (Apache 2.0) instead of paying per API call</item>
+        <item>Consistent character generation across many images without Flux Kontext or LoRA — models don't preserve identity by default</item>
+        <item>Anything requiring exact pixel-level control (infographics with precise data, technical diagrams)</item>
+      </list>
+    </when-not-to-use>
+    <section name="model-selection">
+      <p>Different image generation models excel at different tasks. Understanding their strengths and limitations is critical for cost efficiency and output quality.</p>
+      <rule testable="true">
+        <statement>Use DALL-E 3 or GPT-4o when the image must contain readable text; no other model reliably renders strings under 25 characters.</statement>
+        <rationale>Text rendering is unreliable across all generative models for strings longer than 25 characters. DALL-E 3 and GPT-4o have the highest text accuracy but still fail on longer strings.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use Flux schnell (Apache 2.0, self-hosted) for high-volume bulk generation where per-API-call cost matters; use Flux Dev or Pro for quality-critical photorealistic output.</statement>
+        <rationale>At scale, $0.014+ per image compounds quickly. Flux schnell is Apache 2.0 licensed, runs in 1-4 steps, and is suitable for social media post images and bulk pipeline output.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use Stable Diffusion + LoRA for brand-specific assets requiring consistent visual identity that cannot be achieved through prompt keywords alone.</statement>
+        <rationale>Standard API models produce visually different results on identical prompts. Only fine-tuned models (LoRA) or reference-image workflows (Flux Kontext) preserve brand identity reliably.</rationale>
+      </rule>
+      <p>Model profiles: DALL-E 3 — best prompt adherence, text rendering, structured JSON response. Flux Dev/Pro — best photorealism, anatomy, character consistency. Flux schnell — fastest (1-4 steps), Apache 2.0 for self-hosting. Midjourney — most artistic; no official API, not suitable for automation.</p>
+    </section>
+    <section name="prompt-engineering">
+      <p>Structured prompt engineering produces consistent, high-quality output across regenerations and models.</p>
+      <rule testable="true">
+        <statement>Always use the structured prompt formula: [Subject] + [Style] + [Lighting] + [Composition] + [Details] + [Technical]; vague prompts produce inconsistent results across regenerations.</statement>
+        <rationale>Each dimension controls a different visual aspect. Missing lighting or composition often produces flat, uninteresting images that require expensive retry cycles.</rationale>
+      </rule>
+      <example type="good" title="Structured prompt following the 6-element formula">
+        <code lang="text"><![CDATA[
+A futuristic city skyline at sunset,
+digital art style with vibrant colors,
+golden hour lighting with warm tones,
+wide angle composition,
+flying cars and glass buildings,
+8K resolution, cinematic film grain
+        ]]></code>
+      </example>
+    </section>
+    <section name="pipeline-and-automation">
+      <p>Production image generation requires a multi-stage pipeline to handle prompt quality, model selection, and output validation.</p>
+      <rule testable="true">
+        <statement>Use a three-stage pipeline: prompt-engineer subagent transforms brief → image-generator selects model and calls API → quality-checker VLM verifies output matches requirements.</statement>
+        <rationale>Separating concerns prevents the generator from making prompt quality decisions and the prompt engineer from handling API errors. Each stage has a clear, testable responsibility.</rationale>
+      </rule>
+      <p>Quality-checker uses a vision model (Claude or GPT-4o) to verify subject present, style correct, no obvious artifacts. On failure, loop retries with revised prompt up to 3 times before escalating.</p>
+      <rule testable="true">
+        <statement>Pre-filter prompts through a content-policy checker before hitting the API; rejected requests still consume latency and may count against rate limits.</statement>
+        <rationale>Content policy rejections are unpredictable on borderline prompts. Pre-filtering with a lightweight classifier reduces API 400 errors and improves pipeline throughput.</rationale>
+      </rule>
+    </section>
+    <section name="cost-model">
+      <p>Image generation costs vary significantly by model and quality level. Planning for scale requires understanding the cost structure.</p>
+      <p>DALL-E 3: $0.04-0.08/image (standard), $0.08-0.12/image (HD). Flux Pro via API: $0.014+/image. Flux schnell self-hosted: GPU rental cost only. Midjourney: $10-60/month subscription.</p>
+      <rule testable="true">
+        <statement>Cache all generated images immediately using prompt+parameters hash as the cache key; identical prompts sent twice waste money and API rate limits.</statement>
+        <rationale>Image generation APIs are expensive relative to text. Regenerating the same image in a pipeline retry loop compounds costs without benefit.</rationale>
+      </rule>
+    </section>
+    <section name="failure-modes-and-gotchas">
+      <p>Common mistakes in image generation pipelines can waste significant budget or produce unusable output.</p>
+      <antipattern>
+        <description>Text rendering in images is unreliable for strings longer than 25 characters even with GPT-4o/DALL-E 3.</description>
+        <reason>Never use image generation for text-heavy content. If text is required, use DALL-E 3 and keep text under 25 characters.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Consistent character appearance across a series requires seeds (SD) or reference image support (Flux Kontext).</description>
+        <reason>Standard API calls produce visually different people each time. Plan for this in character-driven content pipelines.</reason>
+      </antipattern>
+      <antipattern>
+        <description>DALL-E 3's `revised_prompt` silently modifies your prompt for safety.</description>
+        <reason>The generated image may not match the input prompt; log `revised_prompt` for debugging and base quality checks on the actual revised prompt.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Content policy rejections are unpredictable on borderline prompts.</description>
+        <reason>Implement retry with softened prompt and exponential backoff.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Aspect ratio must match intended use case at generation time.</description>
+        <reason>Upscaling or cropping after the fact degrades quality significantly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Storing OpenAI image URLs without immediately downloading the image.</description>
+        <reason>Image URLs from the OpenAI API expire after 1 hour. An agent that logs the URL for later retrieval will receive a 404 when the pipeline processes it.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Asserting the generated image matches the input prompt without checking `revised_prompt`.</description>
+        <reason>DALL-E 3 silently modifies prompts for safety. The `revised_prompt` field shows what was actually generated; quality checks must be based on this, not the original prompt.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Submitting batch generation jobs without rate limit throttling.</description>
+        <reason>DALL-E 3 is rate-limited to 5 images/minute on Tier 1. Agent batch jobs without throttling exhaust the rate limit in the first batch and stall all subsequent requests.</reason>
+      </antipattern>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Always cache generated images — identical prompts sent twice waste money; hash the prompt + parameters as cache key</item>
+        <item>Log `revised_prompt` from DALL-E 3 alongside the output — it shows what the model actually generated vs. what you requested; essential for debugging drift</item>
+        <item>Use negative prompts in Stable Diffusion (`blurry, deformed, ugly, watermark`) to filter common artifacts; negative prompts don't exist in DALL-E API</item>
+        <item>For consistent brand style, use Flux Kontext with a reference image rather than trying to engineer style consistency through prompt keywords alone</item>
+        <item>Match the generation model's strength to the task: `dall-e-3` for editorial/conceptual, `flux-1-schnell` for bulk social posts, `sdxl + LoRA` for brand-specific assets</item>
+        <item>For regulated industries (HIPAA/SOC2), use AWS Bedrock + Stability AI SD 3.5 Enterprise</item>
+        <item>Human approval checkpoint: for paid advertising channels, require human review before publishing — automated quality checks miss brand guideline violations</item>
+      </list>
+    </section>
+    <section name="agentic-workflow">
+      <p>A structured workflow for integrating image generation into multi-agent systems:</p>
+      <rule testable="true">
+        <statement>Use a prompt-engineer subagent to transform a raw content brief into a structured image prompt using the formula [Subject] + [Style] + [Lighting] + [Composition] + [Details] + [Technical], then pass the structured prompt to an image-generator subagent.</statement>
+        <rationale>This separation of concerns ensures high-quality prompts and proper error handling.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>The image-generator subagent selects the model based on requirements (artistic → Midjourney-style prompts for Flux Dev; OCR text in image → DALL-E 3/GPT-4o; high-volume batch → Flux schnell self-hosted) and calls the API.</statement>
+        <rationale>Model selection must be automated based on task requirements, not guessed.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>A quality-checker subagent uses a vision model to verify the generated image matches key requirements before accepting it; on failure, the loop retries with a revised prompt up to 3 times.</statement>
+        <rationale>Automated quality checking catches obvious failures early without human intervention, but should not replace human review for high-stakes content.</rationale>
+      </rule>
+      <list>
+        <item>Query classifier subagent — detects if query contains exact terms (codes, quoted phrases, names) and returns {type: "semantic"|"keyword"|"hybrid", alpha: float}</item>
+        <item>Batch-scheduler subagent — manages concurrent generation requests within rate limits; queues and retries</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/prompt-engineer.txt" purpose="Prompt to transform a content brief into a structured generation prompt"/>
+      <template path="templates/generate-with-retry.py" purpose="DALL-E 3 batch generation with content-policy retry and URL expiry handling"/>
+    </templates>
+    <see-also>
+      <link href="https://platform.openai.com/docs/guides/images">OpenAI Images API</link>
+      <link href="https://bfl.ai/">Flux models (Black Forest Labs)</link>
+      <link href="https://stability.ai/stable-image">Stable Diffusion 3.5 (Stability AI)</link>
+      <link href="https://replicate.com/black-forest-labs/flux-1.1-pro">Replicate Flux inference</link>
+      <link href="https://huggingface.co/docs/diffusers/index">HuggingFace Diffusers</link>
+      <link href="https://platform.openai.com/docs/guides/prompt-engineering">Prompt engineering guide (OpenAI)</link>
+    </see-also>
+  </content>
+</methodology>
