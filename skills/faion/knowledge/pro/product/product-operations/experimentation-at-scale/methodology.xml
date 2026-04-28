@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="experimentation-at-scale">
+  <metadata>
+    <tier>pro</tier>
+    <group>product</group>
+    <domain>product-operations</domain>
+    <summary>Disciplined platform for enterprise A/B testing with hypothesis intake, pre-registered metrics, guardrails, and SRM checks. Scales from Level 1 (ad-hoc) to Level 4 (culture-driven).</summary>
+    <tags>
+      <tag>a-b-testing</tag>
+      <tag>experimentation</tag>
+      <tag>statistics</tag>
+      <tag>agent-ops</tag>
+      <tag>feature-flags</tag>
+    </tags>
+    <category>product</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Experimentation at Scale</title>
+    <summary>Enterprise experimentation is a disciplined platform — not ad-hoc A/B testing — with defined hypothesis intake, pre-registered metrics, guardrails, SRM checks, and a learning-extraction step. Maturity runs from Level 1 (ad-hoc, no standards) to Level 4 (every decision backed by an experiment). The full agentic loop covers: hypothesis authoring → sample-size math → flag deployment → hourly SRM watch → daily metric watch → readout → cross-cutting learnings memo.</summary>
+    <why>
+      <p>Ad-hoc A/B testing does not build organizational learning. Without statistical rigor (pre-registered primary metrics, guardrails, SRM checks, multiple-comparison correction) teams ship false winners at high rates: peeking inflates false-positive rate from 5% to 30%+; SRM breaks ~6% of experiments silently. Scale benchmarks: Microsoft 100k/yr, enterprise avg 500-1k/yr. Agents can operate the mechanical layers (collection, flag ops, SRM watch) cheaply, freeing humans for decision sign-off.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Product orgs running 50+ live A/B tests per quarter where coordination has outgrown spreadsheets</item>
+        <item>Maturity-level transitions: when formalizing hypothesis intake, sample-size math, and guardrails</item>
+        <item>Feature-flag rollouts tied to experiment readouts requiring automated SRM checks</item>
+        <item>Warehouse-native shops (Snowflake/BigQuery) driving Eppo/Statsig from dbt models</item>
+        <item>Solopreneur / small team needing an agent to generate hypotheses, monitor results, and emit readouts</item>
+        <item>Post-launch "what did we learn?" synthesis across an experiment registry</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pre-PMF with &lt;1k weekly active users — sample-size math demands months per test; use qualitative discovery instead</item>
+        <item>Single-shot launches where a holdout is impossible or unethical</item>
+        <item>High-stakes irreversible decisions (pricing rebrand, contract terms, safety-critical UX) — use multi-method evidence, not a single A/B</item>
+        <item>Enterprise B2B with &lt;50 accounts — sample size makes A/B impractical; use cohort analysis</item>
+        <item>Teams without a metrics governance owner (single source of truth for metric definitions)</item>
+        <item>Compliance-bound surfaces (HIPAA, payment flows, KYC) where variants must clear legal before ship</item>
+      </list>
+    </when-not-to-use>
+    <section name="maturity-model">
+      <p>Level 1 (Ad-hoc): individual experiments, no standardization. Level 2 (Structured): defined process, shared tools. Level 3 (Scaled): 100+ experiments/year, statistical rigor. Level 4 (Culture): every decision backed by an experiment. Scale benchmarks: Microsoft ~100k/yr, GoDaddy 1,700+, enterprise average 500-1,000/yr.</p>
+    </section>
+    <section name="pre-registration-requirements">
+      <rule>
+        <statement>Pre-register the primary metric, MDE, and decision rule before traffic flips. Agents must reject any experiment doc missing these fields.</statement>
+        <rationale>Post-hoc metric selection is the primary driver of false positives. Pre-registration reduces the false-positive rate from 30%+ (peeking) to the intended 5%.</rationale>
+      </rule>
+      <rule>
+        <statement>Never declare a winner without: lift, two-sided CI, p-value (or posterior), pre-registered primary metric, and a passed SRM check.</statement>
+        <rationale>Each missing element introduces a separate failure mode. An LLM that paraphrases vendor statistics rather than copying them verbatim will misread CIs as posterior probabilities.</rationale>
+      </rule>
+    </section>
+    <section name="statistical-requirements">
+      <rule>
+        <statement>Implement SRM (Sample Ratio Mismatch) as a hard gate on every experiment. Chi-square check (p &lt; 0.001) on assignment counts must pass before any readout.</statement>
+        <rationale>~6% of experiments have SRM silently. An experiment with SRM produces bogus winner declarations that persist in institutional memory even after the bug is found.</rationale>
+      </rule>
+      <rule>
+        <statement>Apply multiple-comparison correction (Bonferroni or Benjamini-Hochberg) whenever more than one primary metric is analyzed. Document the correction in the decision record.</statement>
+        <rationale>10 metrics at alpha=0.05 produces ~1 false win by chance per experiment. At scale (500/yr), this compounds to hundreds of false ships per year without correction.</rationale>
+      </rule>
+      <rule>
+        <statement>Use CUPED for variance reduction on high-variance metrics. This cuts required sample size 30–50%. Confirm your platform supports it before planning runtime.</statement>
+        <rationale>Without variance reduction, experiments take longer, fewer run per quarter, and the learning rate is throttled. GrowthBook, Statsig, and Eppo all support CUPED natively.</rationale>
+      </rule>
+      <rule>
+        <statement>Set a minimum runtime of 14 days for engagement metrics and at least one full business cycle for revenue metrics. Block winner calls before the minimum.</statement>
+        <rationale>Novelty and primacy effects inflate early positive signals. 7-day reads systematically over-estimate long-run impact on habit-forming features.</rationale>
+      </rule>
+    </section>
+    <section name="guardrail-requirements">
+      <rule>
+        <statement>Always include latency, error rate, and a revenue or retention metric in guardrails. Engineering wins that tank infra are common silent failures.</statement>
+        <rationale>A variant that improves conversion by 2% while increasing p95 latency by 40% is not a ship. Without guardrails the team ships the conversion win and opens a follow-up incident.</rationale>
+      </rule>
+    </section>
+    <section name="learning-extraction">
+      <rule>
+        <statement>After ship, leave a holdout (1–5%) running for 4–8 weeks to catch novelty decay. Document the result in the experiment registry.</statement>
+        <rationale>Novelty effects decay. A holdout is the only way to distinguish a real sustained lift from a spike that reverts to baseline after the novelty period.</rationale>
+      </rule>
+      <antipattern>
+        <description>Experimentation graveyards: large experiment counts with no learning-extraction step.</description>
+        <reason>100k tests per year without a weekly learning-extraction pass produces a write-only registry. The organizational value of experimentation is in the applied learnings, not the count.</reason>
+      </antipattern>
+    </section>
+    <section name="agentic-workflow">
+      <p>Intake: hypothesis-author (sonnet) → experiment-doc.md + JSON spec. Pre-flight: sample-size-calculator (haiku) + guardrail-mapper (sonnet). Launch: flag-deployer (haiku, gated). Monitor: srm-watcher (haiku, hourly) + metric-watcher (haiku, daily). Readout: analyst-agent (opus). Library: learning-extractor (opus, weekly). Governance: metric-registry-keeper (sonnet).</p>
+      <rule>
+        <statement>Use cheap models (haiku) for collection, hourly checks, and flag operations. Use sonnet for structured authoring. Reserve opus for synthesis and decision recommendations. Never run opus on hourly SRM checks.</statement>
+        <rationale>Opus on hourly SRM watch burns 10x tokens for a chi-square computation haiku handles deterministically. Model-cost tiering applies throughout the pipeline.</rationale>
+      </rule>
+    </section>
+    <section name="recommended-subagents">
+      <p>Subagent table for the full agentic loop:</p>
+      <list>
+        <item>hypothesis-author (sonnet, on intake): Opportunity-solution-tree node, prior data → experiment-doc.md (hypothesis, primary, guardrail, MDE)</item>
+        <item>sample-size-calculator (haiku, pre-flight): Baseline rate, MDE, α, power → Required N, expected runtime, traffic-split</item>
+        <item>guardrail-mapper (sonnet, pre-flight): Surface (checkout, signup, etc.), metric registry → Guardrail metrics + degradation thresholds</item>
+        <item>flag-deployer (haiku, on approval): Vendor (LaunchDarkly/Statsig/GrowthBook), variant config → API call result, flag URL</item>
+        <item>srm-watcher (haiku, hourly): Assignment table, expected ratio → Pass/fail + chi-square p-value</item>
+        <item>metric-watcher (haiku, daily): Warehouse query (dbt model), running window → Daily delta + CI; flags on guardrail breach</item>
+        <item>analyst-agent (opus, at decision point): All experiment data, segment cuts → Readout: ship/iterate/kill + caveats</item>
+        <item>learning-extractor (opus, weekly): Closed experiments since last run → Cross-cutting learnings memo</item>
+        <item>metric-registry-keeper (sonnet, on metric change): dbt models, semantic layer → Diff alert if metric SQL changes mid-flight</item>
+      </list>
+      <p>Cheap models (haiku) for collection, hourly checks, and flag operations. Sonnet for structured authoring (docs, mappings). Opus only for synthesis and decision recommendations. Never run opus on hourly SRM watch — it burns tokens for a chi-square test.</p>
+    </section>
+    <section name="prompt-pattern">
+      <example type="good">
+        <code lang="xml"><![CDATA[<role>You are the {agent}. Experimentation at scale (Kohavi/Tang/Xu).</role>
+<inputs>
+  <experiment_id>{exp_yyyy-NN-slug}</experiment_id>
+  <doc>{path to experiment-doc.md}</doc>
+  <metrics>{path to metric-catalog.yaml}</metrics>
+  <data>{warehouse SQL or vendor API result}</data>
+  <prior>{related experiments registry slice}</prior>
+</inputs>
+<rules>
+  - Never declare a winner without: lift, CI, p-value, pre-registered primary metric, SRM passed.
+  - Surface novelty risk if runtime < 14 days or primary metric is engagement.
+  - Reject solution-shaped hypotheses. Require: if X then metric M moves by delta.
+  - Never compute on >1 primary metric without Bonferroni correction.
+  - Output JSON to schema {schema_path}; markdown digest <= 80 lines.
+  - Flag interference risk (marketplace, social, viral) and block decision if cluster randomization is required but unavailable.
+</rules>
+<task>{cadence-specific instruction}</task>]]></code>
+      </example>
+    </section>
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>Agent paraphrasing confidence intervals as "95% chance of winning."</description>
+        <reason>That is a Bayesian posterior, not a frequentist CI. Force the agent to copy vendor-emitted statistics verbatim; never let it re-state them in its own words.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hypothesis-author producing "we should redesign onboarding" instead of a behavioral prediction.</description>
+        <reason>Solution-shaped hypotheses cannot be falsified. Constrain to Hypothesis-If-Then-Because schema with a numeric MDE field.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Metric-watcher posting "trending positive" messages that humans interpret as ship signals.</description>
+        <reason>Label every non-decisional daily update explicitly: "Non-decisional; sequential testing not enabled. Minimum runtime not reached." Prevents premature ships.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Learning-extractor emitting a learning bullet from a single null result.</description>
+        <reason>Require N &gt;= 5 closed experiments sharing a theme before emitting a learning bullet. Single results are evidence, not learnings.</reason>
+      </antipattern>
+      <antipattern>
+        <description>API keys for LaunchDarkly/Statsig inlined in the model context.</description>
+        <reason>Route credentials through the host environment, never into the model context window. Credentials in context leak to logs, caches, and prompt libraries.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Flag-deployer creating duplicate experiments on retry.</description>
+        <reason>Require an idempotency key (hash of experiment-id) on every vendor API call. Retries without idempotency keys create double-counted exposure events.</reason>
+      </antipattern>
+    </section>
+    <section name="limitations-and-failure-modes">
+      <p>Sample Ratio Mismatch (SRM) is the silent killer; without an automated chi-square check on assignment counts, ~6% of experiments will report bogus winners. Peeking and early stopping inflate false-positive rate from 5% to 30%+; sequential tests (Always-Valid Inference, mSPRT) require careful framework support — most ad-hoc setups don't have it. Multiple-comparison explosion: 10 metrics × 50 variants/quarter ≈ 500 tests at α=0.05 ⇒ 25 false wins by chance. Need Bonferroni/BH or pre-registered primary metrics. Novelty + primacy effects: 7-day tests miss 4-week behavior change; agents that auto-call winners at day 7 will systematically misjudge habit-forming features. Metric definition drift: same name, different SQL, different tools — agents synthesizing across Amplitude + Snowflake will silently double-count. Network and interference effects (marketplaces, social features) break SUTVA; A/B becomes biased. Need cluster randomization or switchback designs that most tools don't support. LLMs hallucinate "statistical significance" from CI overlap or p-value misreads — never let an agent declare a winner without explicit framework output (lift, CI, p-value, power, SRM-check). Experimentation graveyards: 100k tests/year sounds heroic but most generate no learning; without a learning-extraction step the registry becomes write-only.</p>
+    </section>
+    <section name="services-and-platforms">
+      <p>GrowthBook: OSS + cloud, yes (full REST + SDK). Developer-first, OSS self-host, warehouse-native, supports CUPED + sequential testing. Statsig: SaaS, yes (Console API). Enterprise scale 1T+ events/day, generous free tier, built-in CUPED + Pulse readouts. Eppo: SaaS, yes (REST). Warehouse-native, statistical rigor, dbt-first, no in-app SDK overhead. Amplitude Experiment: SaaS, yes (REST). Tight coupling with Amplitude analytics; weak as standalone flag system. Optimizely: SaaS, yes (REST). Legacy enterprise; expensive; agent integration ok but verbose. LaunchDarkly: SaaS, yes (REST + Terraform provider). Best-in-class flag management; experimentation as add-on. PostHog: OSS + cloud, yes (REST). All-in-one OSS analytics + flags + experiments; weakest stats engine of the set. Split.io: SaaS, yes (REST). Enterprise flags + experimentation; data-streams to warehouse. Convert.com: SaaS, partial. Marketing-A/B; weaker programmatic API. VWO: SaaS, partial. Marketing-A/B; client-side bias. Mixpanel Experiments: SaaS, yes (REST). Tied to Mixpanel analytics. Snowflake / BigQuery / Databricks: DW, yes (SQL). Source of truth; warehouse-native tools (Eppo, Statsig Warehouse Native) read directly. dbt: Modeling, yes (CLI + Cloud API). Define dim_experiment_exposure + metric models once, reused by all agents. Cube / MetricFlow: Semantic layer, yes (REST + GraphQL). Single metric definition; agents query here, not raw warehouse.</p>
+    </section>
+    <section name="cli-tools">
+      <p>growthbook CLI (@growthbook/cli): Manage experiments, features, definitions as code — npm i -g @growthbook/cli. statsig CLI / Console API: Feature gates, experiments, metrics via REST — docs.statsig.com/console-api. ldcli (LaunchDarkly): Feature flags, segments, env management — docs.launchdarkly.com/home/getting-started/ldcli. eppo API (no first-class CLI): Warehouse-native experiment readouts — docs.geteppo.com/reference/api. optimizely CLI/REST: Legacy A/B + flags — docs.developers.optimizely.com. dbt: Define metrics + experiment exposure tables once, reuse everywhere — getdbt.com. cube / metricflow: Semantic layer for metric governance — cube.dev / docs.getdbt.com/docs/build/about-metricflow. posthog CLI: OSS feature flags + experiments + analytics — posthog.com/docs/api. amplitude-cli: Pull cohort + funnel deltas as JSON — amplitude.com/docs/apis. gh: Treat experiment-doc.md as PR; review gate before launch — cli.github.com. cron / systemd timers: Drive hourly/daily watchers — system. slack webhook / tg-send: Alert SRM and guardrail breaches — NERO ~/bin/tg-send.</p>
+    </section>
+    <section name="best-practices">
+      <p>Pre-register the primary metric, MDE, and decision rule before traffic flips — agents must reject any experiment-doc lacking these fields. Run an A/A test on the platform quarterly; if false-positive rate ≠ ~5%, fix the platform before shipping verdicts from it. Use CUPED (Controlled-experiment Using Pre-Existing Data) for variance reduction — cuts sample size 30–50% on heavy-tailed metrics; supported by GrowthBook, Statsig, Eppo. Always include latency, error rate, and a revenue/retention metric in guardrails — engineering wins that tank infra are common silent failures. Stratify randomization on known high-variance dimensions (device, country, plan tier) to control for imbalance. Use a metric registry (dbt + Cube/MetricFlow) so "conversion" has one SQL definition; agents must read from registry, never re-derive. Lock the analysis plan; freeze metrics + segments at launch; new cuts after launch are exploratory only and must be tagged as such. Treat sequential testing as opt-in and document the procedure (mSPRT, group-sequential); ad-hoc peeking is the dominant cause of bad ship decisions. After ship, leave a holdout (1–5%) on for 4–8 weeks to catch novelty decay. Quarterly: publish a "tests we got wrong" memo; tracking false ships is the single highest-leverage learning loop. Token budget: cap analyst-agent at 50k tokens per readout; if it needs more, the experiment has too many variants — split it.</p>
+    </section>
+    <section name="experiment-doc-schema">
+      <p>Experiment spec schema (experiment-doc.yaml): id (exp_2026-04-checkout-cta), status (draft | review | running | analyzing | shipped | killed), hypothesis (If-Then-Because structure with numeric MDE), primary_metric (checkout_completion_rate), guardrail_metrics (with threshold descriptions), secondary_metrics (exploratory), mde_relative (e.g. 0.02 for 2% lift), power (0.8), alpha (0.05), required_n_per_arm, expected_runtime_days, traffic_split ({control: 0.5, variant: 0.5}), randomization_unit (user_id), exposure_event (viewed_checkout), exclusions (bot_traffic, internal_ip), segment_cuts (device, country, paid_vs_organic), sequential_test (false), cluster_randomization (false), related_experiments, owner, reviewer.</p>
+    </section>
+    <section name="sample-size-calculator">
+      <p>Two-proportion z-test sample size helper: calculates required N per arm given baseline rate, minimum detectable effect (MDE), alpha, and power. Also computes expected runtime in days: ceil(n_per_arm / (daily_traffic * split)). Uses statsmodels.stats.power NormalIndPower solver. Runtime is a function of traffic volume and randomization split — warehouse-native shops running Eppo/Statsig can pre-compute runtime estimates before launch.</p>
+    </section>
+    <section name="srm-check-validation">
+      <p>Chi-square Sample Ratio Mismatch validation: observed counts vs expected split. Passes if p &gt; 0.001. SRM is a hard gate that must complete before analyst-agent runs. ~6% of experiments have SRM silently without automated checks. An experiment with SRM produces bogus winner declarations that persist in institutional memory.</p>
+    </section>
+    <section name="integration-patterns">
+      <p>All agents read/write under .aidocs/product_docs/experiments/ with a per-experiment folder (exp_yyyy-NN-slug/). Human-in-the-loop gates: hypothesis approval, flag deployment, decision sign-off. Wire through Claude Agent SDK with structured outputs (Pydantic/Zod). Pin model output to vendor-emitted statistics — do not let the LLM compute p-values; have it read them from GrowthBook/Statsig/Eppo APIs. Cron schedule for the loop: */15 * * * * for SRM watch, 0 */6 * * * for metric watch, 0 8 * * 1 for weekly readout, 0 9 1 * * for learning memo.</p>
+    </section>
+    <section name="references">
+      <p>Ron Kohavi, Diane Tang, Ya Xu — Trustworthy Online Controlled Experiments (2020), the canonical reference. Microsoft Experimentation Platform (ExP) — public papers on SRM, CUPED, organizational scaling. GrowthBook docs — docs.growthbook.io (CUPED, sequential testing, warehouse mode). Statsig Pulse + Warehouse Native — docs.statsig.com. Eppo — docs.geteppo.com (warehouse-native, dbt-first). LaunchDarkly Experimentation — docs.launchdarkly.com/home/about-experimentation. Booking.com, Airbnb, Spotify, LinkedIn experimentation engineering blogs (2022–2026). Anthropic Claude Agent SDK — agents, structured outputs, scheduled triggers. Always Valid Inference (Optimizely 2015), Peeking at A/B Tests (Johari et al, 2017) — sequential-testing foundations.</p>
+    </section>
+    <templates>
+      <template path="templates/experiment-doc.yaml" purpose="Per-experiment spec: hypothesis, primary metric, guardrails, MDE, traffic split"/>
+      <template path="templates/sample_size.py" purpose="Two-proportion z-test sample size + runtime calculator"/>
+      <template path="templates/srm_check.py" purpose="Chi-square SRM check (pass if p &gt; 0.001)"/>
+    </templates>
+    <see-also>
+      <link href="https://www.microsoft.com/en-us/research/group/experimentation-platform-exp/">Microsoft ExP research</link>
+      <link href="https://docs.growthbook.io/">GrowthBook documentation</link>
+      <link href="https://docs.statsig.com/">Statsig documentation</link>
+      <link href="https://docs.geteppo.com/">Eppo documentation</link>
+      <link href="https://www.trustworthy-online-controlled-experiments.org/">Kohavi/Tang/Xu book</link>
+    </see-also>
+  </content>
+</methodology>
