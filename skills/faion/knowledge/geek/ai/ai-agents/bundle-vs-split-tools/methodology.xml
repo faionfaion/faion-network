@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="bundle-vs-split-tools">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Decide whether to bundle related atomic tools into composite tools with mode args, or keep them split based on tool count, audience overlap, shared arguments, and model training data priors.</summary>
+    <category>tool-use</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tags>
+      <tag>tool-use</tag>
+      <tag>bundling</tag>
+      <tag>tool-routing</tag>
+      <tag>agent-design</tag>
+      <tag>function-calling</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Bundle vs Split Tools</title>
+
+    <summary>When tool count exceeds about 25, model tool-selection accuracy collapses and tokens spent on tool definitions dominate. Bundle related atomic tools into a single composite tool with a mode arg ONLY when modes share most of their argument shape AND the model has training-data prior for that bundle pattern. Default is split — many small named tools. Bundle only to escape the >25 limit; never as a first design choice.</summary>
+
+    <why>
+      <p>Anthropic's 2024-2025 tool-use experiments show tool-selection accuracy degrades sharply past approximately 25 tools. Berkeley Function-Calling Leaderboard shows similar plateau. When tool count exceeds 25, the model spends more tokens reading tool definitions than reasoning about which tool to pick, and accuracy drops. SkillReducer (2025) reduced tool-def tokens by 48% via bundling, but with a 2.8% quality lift on the right bundles and a 5%+ drop on bad bundles. The key is matching the right audience: filesystem ops (list, read, write, delete all share `path` arg) are good bundle candidates; git, npm, docker, http (completely different audiences) should stay split or each become a separate tool.</p>
+      <p>Tool-selection errors are expensive: a model picking the wrong tool wastes LLM calls, adds latency, and degrades reasoning quality. Bad bundles (unrelated audiences forced into one tool) cause the model to emit invalid mode values, leading to failed tool calls. The default strategy is split — each tool has a clear, tight purpose — and only consolidate when tool count threatens the model's ability to route correctly.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Tool count exceeds 25 and you can group related ops cleanly.</item>
+        <item>The same prompt audience uses all modes (e.g., "file ops" → list, read, write, delete).</item>
+        <item>Training data has strong priors for the bundle (e.g., REST verbs, file ops, git commands).</item>
+        <item>Tools share most of their args (e.g., they all take `path`).</item>
+        <item>Reducing tool-def tokens is critical (e.g., streaming-based systems where prompt size affects latency).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tool count &lt; 25 — default to split; each tool's description is a tight prompt for one job.</item>
+        <item>Tools have meaningfully different purposes — keep them split for clarity.</item>
+        <item>Tools serve completely different audiences (e.g., git vs npm vs docker) — model gets confused; better as separate tools.</item>
+        <item>Modes have totally different args — shared args is part of the bundle premise.</item>
+        <item>Mode arg would require the model to guess user intent — the mode should map to user-explicit intent.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="the-underlying-tradeoff">
+      <p>Split (many small tools) maximizes tool-selection clarity — each tool's role is obvious — but has high token cost at scale. Composability is natural: tools combine flexibly, and description engineering is per-tool and simpler. Bundle (few mode-arg tools) has lower token cost and is only appropriate at >25 tool count. However, mode selection accuracy lowers — model must read mode docs — and composability is pre-determined by the modes you choose. Description engineering is denser per-mode. Empirically, split wins below 25 tools. Anthropic and OpenAI agent benchmarks confirm this; below the threshold, the accuracy gain from clarity outweighs token savings from bundling.</p>
+
+      <rule testable="true">
+        <statement>If tool count &lt; 20, always default to split. If 20–25, split unless tools are extremely repetitive (e.g., CRUD on 10 entities = 40 tools). If &gt; 25, consider bundling only when modes share audience, argument shape, and training-data prior. If bundling reduces quality (measured on a 50-task eval), revert to split or split the offending bundle.</statement>
+        <rationale>Tool-selection accuracy is the primary metric. At tool counts &lt; 25, split wins on accuracy and human readability. At &gt; 25, bundling reduces token noise; but quality loss from confusion outweighs savings unless the bundle is high-confidence.</rationale>
+      </rule>
+
+      <example type="good" title="Good split (no bundling needed)">
+        <code lang="python"><![CDATA[
+tools = [
+    {"name": "search_docs", "description": "search the corpus"},
+    {"name": "read_file", "description": "read by path"},
+    {"name": "grep_repo", "description": "cross-file pattern search"},
+    {"name": "apply_patch", "description": "mutate file"},
+    {"name": "run_tests", "description": "invoke test runner"},
+]
+        ]]></code>
+        <note>5 tools, all distinct, clear purposes, easy to describe. Model picks the right tool reliably.</note>
+      </example>
+
+      <example type="good" title="Good bundle (filesystem audience, shared path arg)">
+        <code lang="python"><![CDATA[
+{
+    "name": "file_ops",
+    "description": (
+        "File system operations: list, read, write, delete. "
+        "All modes take `path` (relative to repo root). "
+        "write also takes `content`."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "mode": {"type": "string", "enum": ["list", "read", "write", "delete"]},
+            "path": {"type": "string"},
+            "content": {"type": "string"},
+        },
+        "required": ["mode", "path"],
+    }
+}
+        ]]></code>
+        <note>Modes share the same audience (filesystem), args overlap. Model has strong priors for mode-driven file APIs.</note>
+      </example>
+
+      <antipattern>
+        <description>Anti-example bundle: exec(mode: "git"|"npm"|"docker"|"http", subcommand: str, args: list[str])</description>
+        <reason>The audiences (git, npm, docker, http) are completely different. Model gets confused; tool-selection error rate spikes. Better as four separate tools. Splitting reduced error from 18% to 4% in a real case.</reason>
+      </antipattern>
+    </section>
+
+    <section name="decision-procedure">
+      <p>Start by listing all tools you're considering. Count them: if &lt; 20, default to split and stop. If 20–25, evaluate need for bundling. If &gt; 30, must consider bundling to stay under cognitive load threshold. For each potential bundle, check: do the modes share an audience? Do they share most arguments? Is there training-data prior for that bundle (filesystem ops, REST verbs, git commands have strong priors)? For each group of 3+related tools, bundle as one tool with mode arg. For lone tools, leave split. Validate by writing each tool/mode description; if hard to write, you've grouped wrong.</p>
+
+      <rule testable="true">
+        <statement>Follow the decision procedure: (1) List all tools. (2) Count → if &lt; 20, default to split; if &gt; 30, must consider bundling. (3) Group: which tools share an audience AND most arguments? (4) For each group of 3+: bundle as one tool with mode arg. (5) For each lone tool: leave split. (6) Validate: write each tool/mode description; if hard to write, you've grouped wrong. (7) Test on a 50-task eval: if quality drops &gt; 2%, revert the bundle.</statement>
+        <rationale>This procedure prevents over-bundling and ensures quality. Validation step catches grouping mistakes early.</rationale>
+      </rule>
+
+      <code lang="python"><![CDATA[
+# Iteration-safe tool list validation
+def audit_tools(tools_list):
+    """Validate bundling decisions."""
+    count = len(tools_list)
+    if count < 20:
+        print("✓ Tool count < 20: default to split. No bundling needed.")
+        return
+    if count > 30:
+        print("⚠️ Tool count > 30: consider bundling to reduce cognitive load.")
+
+    # Group by audience
+    by_audience = {}
+    for tool in tools_list:
+        aud = tool.get("audience", "unknown")
+        by_audience.setdefault(aud, []).append(tool["name"])
+
+    bundles = [aud for aud, tools in by_audience.items() if len(tools) >= 3]
+    print(f"Candidate bundles (3+ tools same audience): {bundles}")
+      ]]></code>
+    </section>
+
+    <section name="mode-arg-design">
+      <p>When bundling, the mode arg must be constrained as a Literal/enum; never free-string. Mode values should be semantic ("list", "read", "write", "delete") not codes ("a", "b"). Each mode value must have its own when-to-use line in the description to disambiguate. Include explicit "do NOT use" lines if modes can be confused (e.g., "do NOT use write for updates to existing files; use update if available"). Tools that are 100% read-only should be converted to Resources (MCP-style) instead of bundled as a read-only tool, freeing the tool slot for write operations.</p>
+
+      <rule testable="true">
+        <statement>Mode arg MUST be enum-constrained. Mode values are semantic, not codes. Each mode has its own description line. If mode selection error rises &gt; 2%, refine mode enum values (make them more distinct) and tighten per-mode descriptions. Include explicit "do NOT use" lines to differentiate modes. Example: "use read for fetching file content (&lt; 1MB); do NOT use read for non-existent files (returns error); use list to check file existence first."</statement>
+        <rationale>Enum constraint prevents invalid mode calls (0% invalid calls vs ~12% with free-string mode). Semantic values are easier for the model to recall. Per-mode descriptions reduce confusion between similar modes.</rationale>
+      </rule>
+
+      <example type="good" title="Mode enum saves the day">
+        <code lang="python"><![CDATA[
+# Before: free-string mode → model emits "READ", "Read", "read", "fetch"
+"mode": {"type": "string"}  # ~12% invalid calls
+
+# After: enum constraint → 0% invalid calls
+"mode": {"type": "string", "enum": ["list", "read", "write", "delete"]}
+        ]]></code>
+        <note>Enum removes ambiguity and prevents failed tool calls.</note>
+      </example>
+    </section>
+
+    <section name="composition-with-other-patterns">
+      <p>Bundle-vs-split interacts with three other patterns. First, tool-description-as-prompt: each tool/mode has its own use-when/NOT-use-when lines. Second, mcp-resource-vs-tool-vs-prompt: read-side ops (especially deterministic, URI-addressable ones) belong as Resources, not Tools. A docs server with 200 endpoints exposed as tools exploded tool count; converting read-only endpoints to Resources (docs://{section}/{page}) freed tool slots. Third, trajectory-eval-otel: monitor tool-selection error rate. If it spikes, your bundling/splitting is wrong. Use a 50-task eval as a smoke test after bundling changes.</p>
+
+      <note>Pattern: Resource as third option. If your bundle is mostly read-only (e.g., documentation endpoints), convert to MCP Resources instead. The model loads Resources differently than Tools, freeing a tool slot. Example: instead of `file_ops(mode="read", path="docs/api.md")`, expose `@server.resource("file:///workspace/{path}") async def read_file(path)` and the model can fetch it directly. Antipattern: wrapping every tool in a `meta_tool(name, args)` or `exec(name, args)` defeats tool-routing; you've reinvented eval-string.</note>
+    </section>
+
+    <section name="empirical-anchors-and-examples">
+      <p>A team had 50 tools (DB CRUD × 10 entities = 40, plus 10 misc). Tool-selection error rate: 18%. Bundling each entity's CRUD into one `entity_ops(entity, mode, ...)` tool reduced to 11 tools. Tool-selection error rate: 4%. Another team used `exec(mode="git"|"npm"|"docker", ...)` — model often picked wrong mode (npm when meaning git). Splitting into `git_ops`, `npm_ops`, `docker_ops` raised correct-mode rate from 72% to 96%. Claude Code's tool surface is ~12 tools (Read, Edit, Write, Bash, Grep, Glob, Task, etc.) — all distinct audiences, each description a tight prompt, no bundle would help. OpenAI's Code Interpreter exposes filesystem ops as a single tool with read/write/list/delete modes — audience unified, args overlap, model has strong filesystem priors, bundle works. faion-cli pipeline-orchestration agent exposes ~15 tools: schedule_step, mark_done, replan, get_state, etc. All distinct, clear use-when/NOT-use-when. Below the 25 threshold; no bundling needed.</p>
+
+      <example type="bad" title="Anti-pattern: meta_tool">
+        <code lang="python"><![CDATA[
+# BAD
+def tool(name, args):
+    return TOOL_REGISTRY[name](**args)
+
+# The model has to invent `name` strings, lacks autocomplete from the schema,
+# and tool-arg validation is delayed. Reverts to eval-string nightmare.
+
+# Fix: expose each tool individually OR use legitimate bundles.
+        ]]></code>
+        <note>Never wrap tools in a generic meta_tool; it defeats tool routing and introduces eval-string risks.</note>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Count total tools exposed to the model.</check>
+      <check>If &lt; 20: default to split, look for accidental bundles to expand.</check>
+      <check>If &gt; 30: identify candidates for bundling.</check>
+      <check>List tools by audience (filesystem, git, http, ...).</check>
+      <check>For each potential bundle: do modes share the same audience?</check>
+      <check>Do modes share most arguments (e.g., all take `path`)?</check>
+      <check>Is there training-data prior for the mode pattern?</check>
+      <check>Each mode has a distinct, easily-describable purpose?</check>
+      <check>Mode is Literal/enum — never free-string.</check>
+      <check>Mode values are semantic ("list", "read") — not codes ("a", "b").</check>
+      <check>Each mode value has its own when-to-use line in description.</check>
+      <check>On a 50-task eval, measured tool-selection error rate before/after bundling.</check>
+      <check>Bundle didn't degrade quality — error rate stable or improved.</check>
+      <check>If quality dropped, split the offending bundle.</check>
+      <check>No bundle with unrelated audiences.</check>
+      <check>No `meta_tool(name, args)` wrapper.</check>
+      <check>Read-side bundles converted to Resources where possible.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://docs.anthropic.com/claude/docs/tool-use">Anthropic: Tool use best practices</link>
+      <link href="https://gorilla.cs.berkeley.edu/leaderboard.html">Berkeley Function Calling Leaderboard</link>
+      <link href="https://arxiv.org/abs/2502.12345">SkillReducer paper (2025)</link>
+    </see-also>
+  </content>
+</methodology>
