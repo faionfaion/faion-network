@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vui-conversation-design">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>Design dialog flows for voice assistants: intent-entity routing, prompt design, error handling, state management, and multi-turn conversation patterns for Alexa, Google, and LLM-powered agents.</summary>
+    <tags>
+      <tag>vui</tag>
+      <tag>conversation-design</tag>
+      <tag>dialog</tag>
+      <tag>voice-agent</tag>
+      <tag>intent-routing</tag>
+    </tags>
+    <category>vui</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>VUI Conversation Design</title>
+    <summary>Design multi-turn voice conversations as state machines with explicit intents, entities, and prompts. Structure dialog flows for happy paths and edge cases (missing entity, ambiguous input, no match), cap reprompts at 3, and ground every prompt in ≤12 spoken words. Separate voice scripts from screen prompts; test in realistic environments (kitchen noise, traffic).</summary>
+    <why>
+      <p>Voice conversations are stateful. Unlike text chat, users forget long prompts after ~15 seconds of TTS; ASR error compounds across turns, dropping end-to-end success below 70% in noisy environments by turn 3. Commercial voice platforms (Alexa, Google Assistant) succeeded because they treat dialog as a deterministic state machine with slot-filling and clear recovery. LLM-powered agents that pile context into prompts instead of managing state explicitly fake competence and drop entities mid-conversation.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building Alexa Skills, Google Actions, Siri shortcuts, or custom voice assistants on top of LLMs.</item>
+        <item>Designing IVR replacements with intent + entity routing (banking, support, scheduling).</item>
+        <item>Hands-busy / eyes-busy contexts: cooking, driving, factory floor, surgery, accessibility.</item>
+        <item>Adding a voice channel to an existing chatbot — the dialog model differs significantly from text.</item>
+        <item>LLM-powered conversational agents that need a deterministic dialog skeleton on top of free-form generation.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Privacy-sensitive flows (passwords, medical results) where overheard speech is unacceptable.</item>
+        <item>High-precision input (URLs, codes, IDs longer than ~6 chars) — voice degrades sharply.</item>
+        <item>Markets with low ambient assistant adoption — discovery and habit formation cost outpaces value.</item>
+        <item>Tasks requiring visual scanning (tables, comparison shopping, long lists).</item>
+      </list>
+    </when-not-to-use>
+    <section name="Conversation Components">
+      <p>Every voice interaction combines these layers:</p>
+      <rule>
+        <statement>Define a wake word (activation phrase). Make it short, phonetically distinct, and region-appropriate.</statement>
+        <rationale>Wake word recognition must be unambiguous. Long or common phrases trigger false positives and drain battery (on-device) or privacy (cloud).</rationale>
+      </rule>
+      <rule>
+        <statement>Map user intents (goals) to entities (parameters). Each intent must have a list of expected entity slots and validation rules.</statement>
+        <rationale>Intent + entity pair is the semantic core. Without explicit slot maps, dialog state becomes implicit and fragile.</rationale>
+      </rule>
+      <rule>
+        <statement>Design prompts (system questions) that are ≤12 spoken words and grammar-simple. Use directed prompts ("What city?") over open prompts ("How can I help?") after the first turn.</statement>
+        <rationale>Users process spoken language slower than text. Long prompts (>15 seconds TTS) cause abandonment and task-switching. After turn 1, users have context; open prompts waste a turn.</rationale>
+      </rule>
+      <rule>
+        <statement>Always include a confirmation step. Use implicit confirmation for low-consequence actions ("5-minute timer started") and explicit confirmation for high-consequence actions ("Confirm delete all messages? Yes or no?").</statement>
+        <rationale>Voice has no visual undo. Confirmation prevents silent failures and user frustration.</rationale>
+      </rule>
+      <rule>
+        <statement>Define error-handling paths: missing entity, ambiguous value, no input (3-reprompt max then graceful exit), no match (escalate after 2 failed intents).</statement>
+        <rationale>Without explicit error paths, agents loop endlessly or drop to a silent error state.</rationale>
+      </rule>
+    </section>
+    <section name="Dialog Flow Design">
+      <p>Model each intent as a state machine with labeled paths for happy cases and exceptions.</p>
+      <example type="good" title="Timer Intent with Paths">
+        <code lang="text"><![CDATA[Happy Path:
+User: "Set a timer for 5 minutes"
+VUI: "5-minute timer started"
+
+Missing Entity:
+User: "Set a timer"
+VUI: "For how long?"
+User: "5 minutes"
+VUI: "5-minute timer started"
+
+Clarification:
+User: "Set a timer for five"
+VUI: "5 minutes or 5 hours?"
+User: "Minutes"
+VUI: "5-minute timer started"
+
+No Input (after 1st prompt):
+User: [silence]
+VUI: "I didn't hear anything. For how long?" (reprompt 1)
+User: [silence]
+VUI: "How many minutes?" (reprompt 2, simplified)
+User: [silence]
+VUI: "I'll set a 5-minute timer. (action) Say 'cancel timer' to stop it." (graceful default)]]></code>
+      </example>
+      <example type="bad" title="Unbounded Dialog Without Recovery">
+        <code lang="text"><![CDATA[User: "Set timer"
+VUI: "I didn't catch that. Could you please provide more details about the timer you'd like to set, including the duration and optional name?"
+User: "Five"
+VUI: "Hmm, I still need more information. Is that 5 minutes, 5 hours, or something else?"
+User: [gives up]
+
+Issues:
+- No reprompt cap
+- Prompts too long; user tunes out
+- No graceful default fallback]]></code>
+      </example>
+    </section>
+    <section name="Prompt Design Guidelines">
+      <rule>
+        <statement>Open prompts ("How can I help?") only on first turn. After turn 1, use directed prompts ("What city?") or option prompts ("Red, blue, or green?").</statement>
+        <rationale>Open prompts after turn 1 waste context and invite off-topic requests. Users have already narrowed intent; guide them.</rationale>
+      </rule>
+      <rule>
+        <statement>Confirmation prompts MUST be closed-ended. Ask "Is that correct?" (yes/no) instead of "Does that work?" (ambiguous). Force binary choice.</statement>
+        <rationale>Ambiguous confirmations trigger clarification loops.</rationale>
+      </rule>
+      <rule>
+        <statement>Variable prompts beat fixed prompts after turn 2. Avoid repeating the same phrase; reorder words or use synonyms.</statement>
+        <rationale>Repetition kills perceived intelligence and feels robotic.</rationale>
+      </rule>
+    </section>
+    <section name="Handling Edge Cases">
+      <rule>
+        <statement>Missing entity: ask one targeted follow-up. If the user still doesn't provide it, offer a reasonable default or escalate ("I'll need that information. Let me transfer you to an agent.").</statement>
+        <rationale>Multi-turn clarification degrades UX. Three reprompts is the industry standard limit before exit.</rationale>
+      </rule>
+      <rule>
+        <statement>Ambiguous value: offer two-three concrete options, not an open re-ask. "Did you mean 5 minutes or 5 hours?" beats "Please clarify."</statement>
+        <rationale>Explicit options reduce misinterpretation and speed resolution.</rationale>
+      </rule>
+      <rule>
+        <statement>No input: reprompt twice with progressively simplified language, then use a safe default or offer a channel-switch ("I'll text you a link").</statement>
+        <rationale>Silent users often have network latency, hearing difficulty, or have walked away. More reprompts waste time.</rationale>
+      </rule>
+      <rule>
+        <statement>No match (user utterance doesn't fit any intent): offer a help menu ("I can set timers, play music, or read the news") or escalate after 2 failures.</statement>
+        <rationale>Repeated no-match loops frustrate users. Explicit menu is better than open re-ask.</rationale>
+      </rule>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Treat conversation design as a state machine the agent both authors and tests. Subagents draft intents/entities/prompts, generate dialog flow YAML, simulate user variants (terse/verbose/non-native/interrupted), and produce regression turns. A human owns voice-and-tone style and the final TTS samples — agents can't hear cadence.</p>
+      <rule>
+        <statement>Dialog state MUST be explicit (slot-filling frame), never "in the prompt." Do not rely on long-context LLM to remember entities across turns without a structured state object.</statement>
+        <rationale>Long-context models fake competence and drop entities at turn 5+. Explicit slot-filling is the only reliable pattern.</rationale>
+      </rule>
+      <example type="good" title="Agent Workflow for Dialog Spec">
+        <code lang="text"><![CDATA[Draft a dialog spec for intent: set_timer.
+Output YAML:
+  intent: set_timer
+  entities:
+    - name: duration_value
+      type: integer
+      prompt: "For how long?"
+      reprompt: "How many minutes?"
+      confirmation: false
+    - name: duration_unit
+      type: enum [minutes|hours|seconds]
+      prompt: "Minutes or hours?"
+      reprompt: (none; default to minutes)
+      confirmation: false
+  happy_path:
+    - User: "Set timer for 5 minutes"
+    - VUI: "5-minute timer started"
+  edge_cases:
+    missing_entity: [missing_value, missing_unit]
+    ambiguous_value: "5 minutes or 5 hours?"
+    no_input: [reprompt_1, reprompt_2, graceful_default]
+    no_match: [help_menu, escalate]
+  confirmation_strategy: implicit
+  max_turns: 5
+  timeout_seconds: 3 (after end-of-speech)
+Ground every prompt ≤12 spoken words. No invented entities.]]></code>
+      </example>
+      <example type="good" title="Paraphrase Generation for Training Data">
+        <code lang="text"><![CDATA[Generate 20 paraphrases per intent for training.
+Vary: formality, dialect, interruption style, partial utterances.
+Mark: {clean | with_filler | corrected_self}.
+
+Examples for "set_timer":
+clean: "set a timer for 5 minutes"
+with_filler: "um, can you set like a timer for maybe 5 minutes"
+corrected_self: "set a timer for, uh, 5 minutes, actually no, 10 minutes"
+partial: "set timer five" (omit unit, assume minutes)
+dialect: "set me a five-minute timer" (British english ordering)]]></code>
+      </example>
+    </section>
+    <section name="Multi-Modal Flows (Voice + Screen)">
+      <rule>
+        <statement>Voice scripts and screen prompts MUST be separate. A great voice prompt (short, idiomatic, conversational) is a terrible screen prompt (verbose, formal, visually scanned).</statement>
+        <rationale>Spoken and written language have different constraints and conventions.</rationale>
+      </rule>
+      <example type="good">
+        <note>Voice: "What city?" / Screen: "Enter your city name" (plus city picker, geolocation button)</note>
+      </example>
+      <example type="bad">
+        <note>Reusing the same text ("What city?") for both voice and screen. Screen users expect a more formal label and visual context.</note>
+      </example>
+    </section>
+    <section name="Testing and Validation">
+      <rule>
+        <statement>Test in realistic environments: kitchen noise (LKFS -23 to -18), traffic (LKFS -15 to -10), and a partner talking nearby. Silent-room ASR scores are vanity metrics.</statement>
+        <rationale>Real-world ASR error rates are 2-3x higher than lab numbers.</rationale>
+      </rule>
+      <rule>
+        <statement>Design for barge-in: users will interrupt long TTS. If your platform can't handle it, shorten every prompt to ≤8 words.</statement>
+        <rationale>User control and flow matter more than perfect TTS playback.</rationale>
+      </rule>
+      <rule>
+        <statement>Validate dialog state with a linter: no unbounded loops, every branch has a max_turns cap, every entity slot has a reprompt, every intent has no_input and no_match handlers.</statement>
+        <rationale>Human review misses loops and missing branches; automated checks are mandatory.</rationale>
+      </rule>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <antipattern>
+        <description>LLMs over-confirm. Every "Just to confirm…" turn is a tax; force the agent to justify each one.</description>
+        <reason>Confirmation turns delay goal completion and increase abandonment. Only confirm high-consequence actions.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Generated paraphrase corpora cluster around the LLM's own register, missing dialect and code-switching.</description>
+        <reason>LLM paraphrases are over-formal and lack regional variation. Augment with real voice logs or crowdsourced examples.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LLMs generate the wake word or branded voice persona unsupervised.</description>
+        <reason>TTS pronunciation lands wrong on syllable stress and prosody. Human voice talent and TTS tuning are non-negotiable.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Dialog state is implicit ("in the prompt"). Long-context models fake competence and then drop entities at turn 5.</description>
+        <reason>Only explicit slot-filling frames are reliable. Never use context-window depth as a substitute for state management.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Privacy ignored: raw user audio piped into a cloud LLM without redaction.</description>
+        <reason>Regulatory exposure (GDPR, HIPAA, CCPA). Strip names, account numbers, and PHI before logging.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Streaming ASR partial results trigger premature LLM responses.</description>
+        <reason>Partial results cause early action and jarring UX. Gate on `is_final` flag and pin a stability threshold (e.g., 500ms silence).</reason>
+      </antipattern>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Implicit confirmation beats explicit. "5-minute timer started" beats "Did you want a 5-minute timer? Yes or no?"</item>
+        <item>Cap reprompts at 3, then graceful exit with channel-switch offer ("I'll text you a link").</item>
+        <item>Variable prompts beat fixed prompts after turn 2 — repetition kills perceived intelligence.</item>
+        <item>Design for barge-in: users will interrupt long TTS; if your stack can't handle it, shorten everything.</item>
+        <item>Voice + visual (multi-modal) flows need separate scripts. A great voice prompt is a terrible screen prompt.</item>
+        <item>Test with kitchen-noise, traffic, and a partner-talking-nearby — silent-room ASR scores are vanity numbers.</item>
+      </list>
+    </section>
+    <section name="Limitations and Constraints">
+      <p>ASR error rate compounds across turns; after 3 turns, end-to-end success can drop below 70% in noisy environments. Long prompts and confirmations destroy conversational flow; users tune out after ~15 seconds of TTS. Cultural/accent bias in commercial ASR (Google, Whisper, Deepgram) silently degrades non-mainstream-English speakers. Wake word false positives leak audio to cloud — privacy/regulatory concern in EU and healthcare. Multi-turn LLM dialog forgets entities mid-conversation when context window is naive — you need explicit state, not "the model will remember."</p>
+    </section>
+    <see-also>
+      <ref slug="vui-accessibility-inclusivity"/>
+      <link href="https://developers.google.com/assistant/conversation-design/welcome">Google Conversation Design Principles</link>
+      <link href="https://developer.amazon.com/en-US/docs/alexa/alexa-design/get-started.html">Amazon Alexa Design Guide</link>
+      <link href="https://www.nngroup.com/articles/voice-interaction/">Nielsen Norman Group: Voice Interaction</link>
+    </see-also>
+  </content>
+</methodology>

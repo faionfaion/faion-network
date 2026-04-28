@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="voice-ui">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>Design voice interfaces by writing dialogues first, then defining intents, slots, prompts, and error-recovery before NLU training. Prevents robotic, unhelpful voice experiences.</summary>
+    <category>voice-design</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>voice-ui</tag>
+      <tag>conversational-design</tag>
+      <tag>nlu</tag>
+      <tag>dialogue-design</tag>
+      <tag>accessibility</tag>
+    </tags>
+    <tools>
+      <tool>alexa-sdk</tool>
+      <tool>dialogflow</tool>
+      <tool>rasa</tool>
+      <tool>openai-realtime</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Voice UI Design: Dialogue-First Methodology for Voice Assistants and Commands</title>
+
+    <summary>A methodology for designing speech-controlled interfaces — voice assistants, app voice commands, IVR systems — by writing sample dialogues first, then defining intents/slots, authoring prompts, and designing a 3-tier error-recovery ladder before any NLU training begins. Voice interfaces fail when copied from visual UI patterns: users do not know what to say, prompts are robotic, errors are dead ends. Writing dialogues before code forces natural language and exposes missing intents early. Error ladders (rephrase → examples → fallback) reduce abandonment; explicit confirmation strategy prevents irreversible actions without user awareness.</summary>
+
+    <why>
+      <p>Voice interfaces fail when copied from visual UI patterns: users do not know what to say, prompts are robotic, errors are dead ends. Writing dialogues before code forces natural language and exposes missing intents early. Error ladders (rephrase → examples → fallback) reduce abandonment; explicit confirmation strategy prevents irreversible actions without user awareness.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Designing a voice assistant, Alexa/Google skill, or IVR flow end-to-end.</item>
+        <item>Adding voice commands to an existing app for hands-free or accessibility use.</item>
+        <item>Migrating a legacy NLU bot (Dialogflow, Lex) to an LLM-powered runtime.</item>
+        <item>Defining acceptance criteria for a voice feature in a spec or design doc.</item>
+        <item>Auditing transcripts of an existing voice product for verbosity or missing error paths.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Visual UI work where voice is cosmetic — invest in the core visual flow first.</item>
+        <item>Highly private data entry (financial account numbers, medical detail) without strong auth design.</item>
+        <item>Noisy or shared environments where ASR reliability cannot be guaranteed.</item>
+        <item>Browsing or exploratory tasks — visual lists outperform voice for discovery.</item>
+        <item>Rapid prototype stage before basic ASR integration is confirmed working.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-vui-components">
+      <rule testable="true">
+        <statement>Define all six VUI components before writing any dialogue or NLU config.</statement>
+        <rationale>Shared vocabulary prevents intent/slot confusion during team handoff and NLU training.</rationale>
+      </rule>
+      <list>
+        <item>Wake word — activates the listener (e.g., "Alexa", "Hey Google").</item>
+        <item>Intent — the action the user wants to perform (e.g., SetTimer, OrderFood).</item>
+        <item>Slot — a typed variable within an intent (e.g., duration="15 minutes", room="living room").</item>
+        <item>Utterance — one of the many natural-language phrasings a user might say to trigger an intent.</item>
+        <item>Prompt — what the system says to the user; may be initial, confirmation, or error.</item>
+        <item>Confirmation — explicit ("Shall I place the order?") or implicit ("Adding milk to your list.") verification before action.</item>
+      </list>
+    </section>
+
+    <section name="voice-suitability-matrix">
+      <rule testable="true">
+        <statement>Choose voice only for tasks in the left column; route all right-column tasks to visual UI.</statement>
+        <rationale>ASR accuracy, privacy, and discovery constraints make voice unsuitable for complex or sensitive tasks.</rationale>
+      </rule>
+      <list>
+        <item>Good for voice: hands-busy tasks, quick single-intent commands, simple queries, accessibility alternatives, multitasking contexts.</item>
+        <item>Not good for voice: complex data entry, private information, noisy environments, browsing or exploring, detailed comparison.</item>
+      </list>
+    </section>
+
+    <section name="step-1-define-voice-appropriate-use-cases">
+      <rule testable="true">
+        <statement>Identify tasks where hands-free or eyes-free operation provides measurable value before touching dialogue design.</statement>
+        <rationale>Designing voice for unsuitable tasks wastes NLU budget and produces frustrated users.</rationale>
+      </rule>
+    </section>
+
+    <section name="step-2-write-sample-dialogues-first">
+      <rule testable="true">
+        <statement>Write natural-language happy-path and error dialogues before defining intents, slots, or NLU configs.</statement>
+        <rationale>Dialogue-first design catches unnatural phrasing and missing recovery paths before any code is written.</rationale>
+      </rule>
+      <example type="good" title="Natural happy-path dialogues">
+        <code lang="text"><![CDATA[User: "Set a timer for 15 minutes"
+System: "Timer set for 15 minutes, starting now."
+
+User: "Add milk to my shopping list"
+System: "I've added milk to your shopping list."]]></code>
+      </example>
+    </section>
+
+    <section name="step-3-define-intents-and-slots">
+      <rule testable="true">
+        <statement>Each intent must have at least 5 sample utterances covering natural phrasing variations.</statement>
+        <rationale>NLU models underfit without phrasing diversity; users say the same thing dozens of different ways.</rationale>
+      </rule>
+      <example type="good" title="Intent definition with slot coverage">
+        <code lang="text"><![CDATA[Intent: ControlLight
+Slots:
+  - room (required): "living room", "kitchen"
+  - action (required): "on", "off", "dim"
+
+Sample utterances:
+- "Turn off the living room lights"
+- "Lights off in the living room"
+- "Living room lights off"
+- "Switch off the living room lights"
+- "Kill the lights in the living room"]]></code>
+      </example>
+    </section>
+
+    <section name="step-4-author-prompts">
+      <rule testable="true">
+        <statement>Write initial prompts as single questions; keep error prompts to one sentence plus one example.</statement>
+        <rationale>Long prompts force users to remember too much audio; concision reduces cognitive load and re-prompting.</rationale>
+      </rule>
+      <example type="good" title="Concise, focused prompts">
+        <code lang="text"><![CDATA[Initial: "What would you like to order?"
+Error:   "I didn't catch that. Try saying a size like 'medium' or 'large'."
+Confirm: "That's a large pepperoni for pickup at noon. Should I place the order?"]]></code>
+      </example>
+      <example type="bad" title="Verbose robotic prompts">
+        <code lang="text"><![CDATA["Hello! Welcome to Pizza Palace, the best pizza in town!
+We have so many great options! What can I get for you today?"]]></code>
+        <note>Verbose initial prompts increase time-to-first-response and are perceived as robotic.</note>
+      </example>
+    </section>
+
+    <section name="step-5-design-a-three-tier-error-ladder">
+      <rule testable="true">
+        <statement>Every intent must have a three-tier error strategy: rephrase → examples → fallback (agent or visual).</statement>
+        <rationale>Single-tier error handling ("Please try again") is the primary cause of user abandonment in voice.</rationale>
+      </rule>
+      <list>
+        <item>1st error: rephrase the original prompt more concisely.</item>
+        <item>2nd error: rephrase with concrete examples of valid input.</item>
+        <item>3rd error: offer a human agent transfer or visual alternative.</item>
+      </list>
+    </section>
+
+    <section name="step-6-test-with-users">
+      <rule testable="true">
+        <statement>Run Wizard-of-Oz testing (human plays the system) before any NLU training begins.</statement>
+        <rationale>WoZ reveals what users actually say — which is often different from every utterance the team wrote.</rationale>
+      </rule>
+    </section>
+
+    <section name="confirmation-strategy">
+      <rule testable="true">
+        <statement>Use implicit confirmation for low-risk actions; use explicit confirmation for irreversible or high-cost actions.</statement>
+        <rationale>Explicit confirmation for every action creates confirmation fatigue; skipping it for irreversible actions causes errors users cannot undo.</rationale>
+      </rule>
+      <list>
+        <item>Low-risk reversible (add to list, set reminder) → implicit: "Adding milk to your list."</item>
+        <item>High-risk or costly (place order, delete account) → explicit: "That's $18.50. Should I place the order?"</item>
+        <item>Irreversible and high-value → explicit + repeat details before confirmation.</item>
+      </list>
+    </section>
+
+    <section name="prompt-quality-rules">
+      <rule testable="true">
+        <statement>Every prompt must contain exactly one question or one instruction, never both.</statement>
+        <rationale>Dual-purpose prompts force users to choose which part to answer, causing intent mismatch.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Reprompts must be shorter than the original prompt and progress in specificity: shorter → with examples → with fallback offer.</statement>
+        <rationale>Identical reprompts produce the same ASR error; each tier must change the information available to the user.</rationale>
+      </rule>
+    </section>
+
+    <section name="asr-and-llm-gotchas">
+      <antipattern>
+        <description>LLM-based VUI confirms an action ("Done!") without verifying the back-end succeeded.</description>
+        <reason>Latency and API errors mean the action may have failed; hallucinated confirmations erode trust irreparably.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Total round-trip latency over 1.5 seconds without streaming audio.</description>
+        <reason>Users interpret gaps beyond 1.5 s as system failure and start speaking again, causing overlapping ASR input.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Utterance logs retained without a privacy/PII policy defined in the design phase.</description>
+        <reason>Voice utterances contain sensitive context; retention policy must be a design constraint, not an afterthought.</reason>
+      </antipattern>
+      <antipattern>
+        <description>No "endpointing" visual cue — the user cannot see if the system is listening.</description>
+        <reason>Without a visible or auditory listening indicator, users do not know when to speak, causing silence timeouts.</reason>
+      </antipattern>
+    </section>
+
+    <section name="limitations">
+      <list>
+        <item>ASR (speech recognition) accuracy degrades with non-native accents, kids, elderly voices.</item>
+        <item>LLM-based VUIs hallucinate confirmations ("Done!") without verifying the back-end action.</item>
+        <item>Latency budget: total round-trip &gt; 1.5s feels broken; LLMs typically push past it without streaming.</item>
+        <item>Reprompts pile up if the user is interrupted by a noise — design needs barge-in handling.</item>
+        <item>Privacy: utterance logs contain PII; retention policy must be in design, not an afterthought.</item>
+        <item>Without a visible "ear", users don't know if the system is listening — endpointing UX is critical.</item>
+      </list>
+    </section>
+
+    <section name="metrics">
+      <list>
+        <item>Task completion rate — did the user accomplish their goal without fallback?</item>
+        <item>Turns to complete — how many exchanges were needed? (target: 1-2 for simple commands)</item>
+        <item>Error rate — % of turns that triggered a reprompt.</item>
+        <item>Fallback rate — % of sessions that hit the 3rd-tier error fallback.</item>
+        <item>CSAT — post-interaction satisfaction score.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Use a subagent to author sample dialogues from a use-case spec, then expand each dialogue into intents, slots, primary prompts, reprompt ladders, and confirmation strategy. A second agent runs Wizard-of-Oz simulation by reading typed user inputs and replying with prompt outputs, generating realistic transcripts to stress-test the design. Human review for any irreversible action prompts.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-usability-agent — drafts dialogues, prompts, error reprompts, confirmation matrix.</item>
+        <item>faion-ux-researcher-agent — runs Wizard-of-Oz testing, accent diversity recruitment.</item>
+        <item>faion-sdd-executor-agent — implements on Alexa SDK / Dialogflow CX / Rasa / OpenAI Realtime.</item>
+      </list>
+    </section>
+
+    <section name="prompt-patterns">
+      <code lang="text"><![CDATA[For feature <feature>, write 3 happy-path dialogues, 2 error
+dialogues, and 1 fallback dialogue. Use natural English, no
+marketing tone. Mark each system turn with intent + slot table.]]></code>
+      <code lang="text"><![CDATA[Given intent <name> with slots <slot list>, generate 8 utterance
+variants spanning command, polite, terse, and conversational
+register. List any utterance that would collide with intent <other>.]]></code>
+    </section>
+
+    <section name="cli-tools-and-platforms">
+      <list>
+        <item>ask-cli — Alexa Skill lifecycle. Install: `npm i -g ask-cli`. https://developer.amazon.com/alexa</item>
+        <item>gactions — Google Conversational Actions. https://developers.google.com/assistant/conversational/gactions</item>
+        <item>dialogflow (gcloud component) — Dialogflow CX agents. https://cloud.google.com/dialogflow/cx/docs</item>
+        <item>rasa — OSS dialogue framework. Install: `pip install rasa`. https://rasa.com</item>
+        <item>voice2json — Offline NLU prototyping. https://voice2json.org</item>
+        <item>OpenAI Realtime / Whisper CLI — Streaming ASR + LLM voice. https://platform.openai.com/docs/guides/realtime</item>
+        <item>pipecat — Voice-agent pipeline framework. https://github.com/pipecat-ai/pipecat</item>
+      </list>
+    </section>
+
+    <section name="services-and-platforms">
+      <list>
+        <item>Alexa Skills Kit (SaaS) — Yes, ASK SDK + CLI. Certification still human-gated.</item>
+        <item>Dialogflow CX / ES (SaaS) — Yes, REST + CLI. Strong slot filling.</item>
+        <item>Amazon Lex v2 (SaaS) — Yes, CLI + CloudFormation. Ties to AWS infra.</item>
+        <item>Rasa (OSS) — Yes, fully scriptable. Best for self-hosted, on-prem.</item>
+        <item>Microsoft Copilot Studio (SaaS) — Partial, REST API. Power Platform tie-in.</item>
+        <item>LiveKit Agents (OSS) — Yes, Python SDK. Best for real-time voice agents.</item>
+        <item>ElevenLabs / OpenAI TTS (SaaS) — Yes, REST. Voice synthesis quality bench.</item>
+        <item>Vapi / Retell AI (SaaS) — Yes, REST. Phone-based voice agents.</item>
+      </list>
+    </section>
+
+    <section name="minimal-rasa-example">
+      <code lang="yaml"><![CDATA[version: "3.1"
+nlu:
+  - intent: set_timer
+    examples: |
+      - set a timer for [15 minutes](duration)
+      - set a [15 minute](duration) timer
+      - timer [15 min](duration)
+      - start a [pasta](name) timer for [10 minutes](duration)
+      - countdown [90 seconds](duration)
+responses:
+  utter_timer_confirm:
+    - text: "Timer set for {duration}, starting now."
+  utter_timer_reprompt_no_input:
+    - text: "How long should the timer run?"
+  utter_timer_fallback:
+    - text: "I didn't catch that. Try saying '15 minutes' or 'half an hour'."]]></code>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Write dialogues before intents — design follows speech, not the other way around.</item>
+        <item>Cap a single prompt at ~14 words; long prompts get interrupted.</item>
+        <item>Implicit confirmation ("Adding milk to your list") for low-risk; explicit for high-risk + irreversible.</item>
+        <item>Reprompt ladder: 1) rephrase, 2) examples, 3) fallback (visual / human / alternative).</item>
+        <item>Always include a `cancel` / `nevermind` intent at every turn.</item>
+        <item>Stream TTS as soon as the first phrase is decided — do not wait for full response.</item>
+        <item>Test with at least 5 accents and 2 age groups before launch.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>LLMs hallucinate "Done." without verifying the action; require the agent to call the tool first, then narrate.</item>
+        <item>Agents under-generate utterance variants — force minimum 5 across registers.</item>
+        <item>Slot validation: agents accept anything; require a typed schema (duration: ISO8601, currency: ISO4217).</item>
+        <item>Endpointing in LLM voice agents: agent must support barge-in or users will talk over it.</item>
+        <item>Privacy: agent must redact PII in logged transcripts before storing.</item>
+        <item>Confirmation drift: an LLM rephrases "place the order" softer each turn — pin the wording.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/voice-flow.md" purpose="Voice flow doc: overview, happy-path dialogue, intent definitions, error handling, fallbacks."/>
+      <template path="templates/prompt-spec.md" purpose="Per-prompt spec: primary text, short/long variants, reprompts 1-3, A/B variants."/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.oreilly.com/library/view/designing-voice-user/9781491977606/"/>
+      <link href="https://www.abookapart.com/products/conversational-design"/>
+      <link href="https://designguidelines.withgoogle.com/conversation/"/>
+      <link href="https://developer.amazon.com/en-US/docs/alexa/alexa-design/get-started.html"/>
+      <link href="https://www.nngroup.com/articles/voice-first/"/>
+      <link href="https://platform.openai.com/docs/guides/realtime"/>
+      <link href="https://docs.livekit.io/agents/"/>
+    </see-also>
+  </content>
+</methodology>

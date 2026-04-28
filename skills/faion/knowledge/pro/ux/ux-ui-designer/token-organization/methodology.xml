@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="token-organization">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>A three-tier hierarchy for design tokens — primitives, semantic, component — with self-documenting naming convention that prevents bloat and enables theming.</summary>
+    <category>design-systems</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>design-tokens</tag>
+      <tag>design-systems</tag>
+      <tag>naming-convention</tag>
+      <tag>hierarchy</tag>
+      <tag>theming</tag>
+    </tags>
+    <tools>
+      <tool>figma</tool>
+      <tool>style-dictionary</tool>
+      <tool>tokens-studio</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Token Organization: Three-Tier Hierarchy and Naming Convention</title>
+
+    <summary>A three-tier hierarchy for design tokens — primitives (raw values), semantic tokens (role-based aliases), and component tokens (scoped overrides) — combined with a `{category}.{property}.{variant}.{state}` naming convention that makes tokens self-documenting and prevents bloat.</summary>
+
+    <why>
+      <p>Token sets without hierarchy create two failure modes: engineers reference raw `blue-1` values directly (bypassing theming), or component-level tokens explode as every developer adds `button.primary.padding.left.hover.large`. A clear three-tier contract ensures primitives are never referenced in components, semantic tokens carry intent, and component tokens are used only when a component genuinely deviates from the semantic layer.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a new design system: establishing hierarchy before writing the first token.</item>
+        <item>Auditing a sprawling token set (500+ tokens) to collapse aliases, kill duplicates, rename raw-value tokens.</item>
+        <item>Onboarding a second platform (mobile after web) where existing names leak platform assumptions.</item>
+        <item>Preparing for theming (light/dark/brand) — the semantic layer is mandatory before mode switching.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-page marketing site with 8 colors and 3 font sizes — CSS variables in one file suffice.</item>
+        <item>Mid-flight design system rewrite when engineers are blocked — global rename without deprecation destroys velocity.</item>
+        <item>Without buy-in from at least one designer and one engineer — naming conventions abandoned without authority.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="three-tier-model">
+      <rule testable="true">
+        <statement>Organize all tokens into exactly three tiers; never reference a primitive token directly from a component.</statement>
+        <rationale>Skipping the semantic layer collapses theming into a global search-and-replace; the semantic tier is the only place where "meaning" lives and can be swapped per theme.</rationale>
+      </rule>
+      <list>
+        <item>Primitives — raw values with no semantic meaning: `color.primitive.blue-500`, `spacing.4`, `font-size.16`. Never consumed directly by components.</item>
+        <item>Semantic — role-based aliases that point to primitives: `color.surface.primary`, `color.text.danger`, `spacing.component.button`. Used in component styles.</item>
+        <item>Component — scoped overrides for components that genuinely deviate from the semantic layer: `button.padding.vertical`. Use sparingly; most components should consume only semantic tokens.</item>
+      </list>
+    </section>
+
+    <section name="naming-convention">
+      <rule testable="true">
+        <statement>Name tokens using the pattern `{category}.{property}.{variant}.{state}` with all segments in kebab-case.</statement>
+        <rationale>Self-documenting names eliminate the need for external lookup; `color.surface.primary.hover` conveys category, property, variant, and state without a legend.</rationale>
+      </rule>
+      <example type="good" title="Clear self-documenting token names">
+        <code lang="text"><![CDATA[color.background.primary
+color.background.primary.hover
+color.text.danger
+spacing.component.button
+typography.heading.xl]]></code>
+      </example>
+      <example type="bad" title="Raw values and obscure names prevent theming">
+        <code lang="text"><![CDATA[blue-1
+btn-bg
+hoverState
+16px-text
+primaryBtnPaddingLeftHoverLarge]]></code>
+        <note>Raw-value names and camelCase break discovery and theming; component-plus-property-plus-state names in a single token cause component-token bloat.</note>
+      </example>
+    </section>
+
+    <section name="lean-token-discipline">
+      <rule testable="true">
+        <statement>Start with the minimum token set required to implement the design system; add tokens only when a genuine gap exists, not speculatively.</statement>
+        <rationale>Token bloat reduces discoverability and defeats the systematization purpose; every token without a consumer is maintenance debt.</rationale>
+      </rule>
+      <list>
+        <item>Audit for duplicates before adding: does a token with the same value and role already exist?</item>
+        <item>Document why each token exists in its `$description`; tokens without documented purpose are candidates for deletion.</item>
+        <item>Version-control token changes and communicate renames with deprecation aliases before removal.</item>
+      </list>
+    </section>
+
+    <section name="governance-rules">
+      <rule testable="true">
+        <statement>Require at least one designer and one engineer to approve any new token before it enters the source-of-truth file.</statement>
+        <rationale>Token conventions collapse into forks when individual contributors add tokens unilaterally; dual approval enforces naming and tier discipline without a bottleneck.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Provide a deprecation alias for any renamed token for at least one release cycle before removal.</statement>
+        <rationale>Instant removal of renamed tokens breaks builds silently across every consuming codebase; deprecation aliases give teams time to migrate.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Before any global token rename, produce a migration plan with codemods — do not do a bulk rename mid-flight when engineers are blocked.</statement>
+        <rationale>Mass rename without codemod support destroys team velocity and erodes trust in the design system.</rationale>
+      </rule>
+    </section>
+
+    <section name="tooling-drift-risk">
+      <antipattern>
+        <description>Tailwind config and CSS custom properties maintained separately from the JSON token source-of-truth.</description>
+        <reason>Manual synchronization drifts silently; a pipeline from JSON → Tailwind config → CSS variables must be automated or the three will diverge.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Component tokens created for every component property variation without governance review.</description>
+        <reason>Ungoverned component tokens explode; `button.primary.padding.left.hover.large` is a canonical failure mode that signals the semantic layer was bypassed.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-specific-guidance">
+      <rule testable="true">
+        <statement>When auditing an existing token set, output a diff plan (rename map + deprecation aliases) for human approval before making any bulk writes.</statement>
+        <rationale>Automated bulk renames without human review risk breaking all consuming codebases; the diff plan separates analysis from execution.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>When classifying tokens into tiers, flag tokens that share the same value but appear in different tiers as candidates for deduplication.</statement>
+        <rationale>Duplicate values across tiers indicate missing aliases; the tier system only works when primitives are referenced by aliases, not duplicated.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Use one subagent to inventory existing tokens (regex scan of CSS/SCSS, Tailwind config, Figma export), a second to cluster them by role using the three-tier hierarchy, and a third to emit a migration plan with deprecations, codemods, and a renamed token map. Force the agent to output a diff plan, not the new file directly — humans must approve the rename map before bulk rewrite.</p>
+      <list>
+        <item>token-auditor — counts tokens, finds duplicates, extracts naming patterns.</item>
+        <item>token-classifier — assigns each token to primitive/semantic/component tier and proposes renames.</item>
+        <item>token-migration-planner — outputs codemod + deprecation alias plan.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools-and-services">
+      <list>
+        <item>style-dictionary — Resolve aliases, build outputs. Install: `npm i -D style-dictionary@4`</item>
+        <item>theo — Salesforce token transformer (legacy). Install: `npm i -g theo`</item>
+        <item>tokens-cli (`@tokens-studio/sd-transforms`) — Tokens Studio bridge. https://docs.tokens.studio</item>
+        <item>ts-prune / knip — Find unused token exports in TS. Install: `npm i -D knip`</item>
+        <item>jq — Inspect/transform token JSON. Install: `apt install jq`</item>
+        <item>eslint-plugin-design-tokens — Lint hard-coded values vs tokens. https://github.com/zeroheight/eslint-plugin-design-tokens</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>Tokens Studio for Figma (SaaS) — Best UX for organizing tiers visually. Agent-friendly: Yes (sync to GitHub).</item>
+        <item>Specify (SaaS) — Great for multi-source consolidation. Agent-friendly: Yes (CLI/API).</item>
+        <item>Supernova (SaaS) — Good UI for hierarchies, weaker headless. Agent-friendly: Partial.</item>
+        <item>Zeroheight (SaaS) — Documents tokens, doesn't enforce hierarchy. Agent-friendly: Limited.</item>
+        <item>Penpot (OSS) — Newer token model, fewer integrations. Agent-friendly: Partial.</item>
+      </list>
+    </section>
+
+    <section name="templates-and-scripts">
+      <p>Inline classifier (≤40 lines) — heuristic but useful as a first pass before LLM review.</p>
+      <code lang="javascript"><![CDATA[// classify-tokens.mjs
+import fs from "node:fs";
+const data = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const flat = [];
+const walk = (n, p = []) => {
+  if (n && typeof n === "object") {
+    if ("$value" in n) flat.push({ name: p.join("."), value: n.$value });
+    else for (const [k, v] of Object.entries(n)) walk(v, [...p, k]);
+  }
+};
+walk(data);
+const isAlias = v => typeof v === "string" && /^\{.+\}$/.test(v);
+const primitiveLike = /(^|\.)(blue|red|green|gray|neutral)-?\d+/i;
+const componentLike = /^(button|input|card|modal|nav|chip|badge|tooltip)\./;
+for (const t of flat) {
+  let tier = "primitive";
+  if (isAlias(t.value)) tier = "semantic";
+  if (componentLike.test(t.name)) tier = "component";
+  if (primitiveLike.test(t.name)) tier = "primitive";
+  console.log(`${tier}\t${t.name}\t${typeof t.value === "string" ? t.value : "[obj]"}`);
+}]]></code>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Forbid raw color names in semantic and component tiers via lint rule, not convention.</item>
+        <item>Reserve component tokens for genuine asymmetries (button-only padding overrides). If three components share a value, it belongs in semantic.</item>
+        <item>Version aliases for migrations: keep `color.brand.primary` as alias of `color.action.primary` for one release cycle, then delete.</item>
+        <item>Document every semantic token's intent in the value of `$description`, not in a separate wiki — wiki rots.</item>
+        <item>Ship a Storybook page that lists tokens by tier with live values; agents can scrape it as a source of truth.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Models love to over-classify into "component" tier because the names are concrete; force tier assignment to be justified with a written reason.</item>
+        <item>LLM-generated semantic names often collide (`color.action.primary` vs `color.button.primary`) — require a global uniqueness check.</item>
+        <item>Agents will suggest renames that look better but break consumers; demand a migration plan with codemod, not a unilateral rename.</item>
+        <item>Multi-mode (light/dark) confuses agents into duplicating tokens per mode at the primitive tier; correct hierarchy keeps modes at semantic only.</item>
+        <item>Human checkpoint: a designer must approve the semantic name list before any code rewrite. This is the single most leveraged review in the whole pipeline.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://bradfrost.com/blog/post/the-many-faces-of-design-tokens/"/>
+      <link href="https://medium.com/eightshapes-llc/naming-tokens-in-design-systems-9e86c7444676"/>
+      <link href="https://m3.material.io/foundations/design-tokens"/>
+      <link href="https://www.lightningdesignsystem.com/design-tokens/"/>
+      <link href="https://carbondesignsystem.com/elements/tokens/overview/"/>
+    </see-also>
+  </content>
+</methodology>
