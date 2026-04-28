@@ -164,6 +164,51 @@ Key differentiators vs. {competitor}: {differentiators}
         <description>"Gain" and "feature" are conflated by agents — a gain is a customer outcome ("feel in control"), not a product feature ("dashboard").</description>
         <reason>Without the distinction, agents mix product description with customer value. Gain = outcome; feature = mechanism.</reason>
       </antipattern>
+      <antipattern>
+        <description>Agents filling pains without interview data will anchor on the most common SaaS pains (pricing, onboarding, support) regardless of the actual product — always provide raw quotes as input.</description>
+        <reason>Without constraints, agents generate plausible but hypothetical pains. Raw quotes ground analysis in reality.</reason>
+      </antipattern>
+      <antipattern>
+        <description>VP statement generation tends to be generic when the differentiator is not explicitly named; force the agent to name the specific feature that makes the claim true.</description>
+        <reason>Without specificity, the statement could apply to any competitor. Example: "best support" is generic; "support in under 2 hours" is specific.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Fit assessment by agents is optimistic by default; require the agent to identify the one extreme pain that the product does NOT address well.</description>
+        <reason>Agents tend to rate fit as "Strong" across the board. Forcing the agent to name the gap reveals honesty about trade-offs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Human checkpoint required before VP statement is used in marketing — agents cannot evaluate whether the claim is legally defensible or culturally appropriate.</description>
+        <reason>LLMs can produce statements that sound compelling but violate FTC guidelines or offend target audience. Human review is non-negotiable.</reason>
+      </antipattern>
+    </section>
+    <section name="inline-fit-scorer">
+      <p>Python helper to score fit between customer profile and value map</p>
+      <code lang="python"><![CDATA[
+def score_fit(pains: list[dict], pain_relievers: list[dict],
+              gains: list[dict], gain_creators: list[dict]) -> dict:
+    """
+    Each pain/gain: {"label": str, "severity": "Extreme"|"Moderate"|"Minor"}
+    Each reliever/creator: {"addresses": str, "relief_level": "Complete"|"Partial"}
+    """
+    addressed_pains = {r["addresses"] for r in pain_relievers}
+    addressed_gains = {c["addresses"] for c in gain_creators}
+
+    extreme_pains = [p for p in pains if p["severity"] == "Extreme"]
+    covered_extreme = [p for p in extreme_pains if p["label"] in addressed_pains]
+
+    required_gains = [g for g in gains if g["severity"] == "Required"]
+    covered_required = [g for g in required_gains if g["label"] in addressed_gains]
+
+    return {
+        "pain_coverage": len(addressed_pains) / max(len(pains), 1),
+        "extreme_pain_coverage": len(covered_extreme) / max(len(extreme_pains), 1),
+        "required_gain_coverage": len(covered_required) / max(len(required_gains), 1),
+        "overall_fit": "Strong" if len(covered_extreme) == len(extreme_pains) else "Partial",
+    }
+]]></code>
+    </section>
+    <section name="value-proposition-canvas-definition">
+      <p>The Value Proposition Canvas has two halves separated by the "fit" dimension. The Customer Profile side (left) contains Jobs, Pains, and Gains. The Value Map side (right) contains Products &amp; Services, Pain Relievers, and Gain Creators. Jobs are what customers are trying to accomplish: functional (file taxes, manage projects), emotional (feel in control, reduce stress), or social (look competent, gain status). Pains are obstacles, undesired outcomes, or risks. Gains are outcomes the customer would like to achieve, categorized as Required (minimum), Expected (standard), Desired (aspirational), or Unexpected (delightful). The pain relievers show how the product solves each pain; gain creators show how the product creates desired outcomes. Fit is achieved when the Value Map comprehensively addresses the Customer Profile — high fit means every extreme pain is relieved and every required gain is created. The canvas is a snapshot; it does not model how gains and pains shift as customers mature. Agents filling the canvas without real user research data will hallucinate plausible-sounding pains that do not reflect the actual market. "Fit" assessment is qualitative — the canvas does not calculate fit, it prompts structured thinking. The formula-based value proposition statement (For/Who/Is/That/Unlike/We) produces mechanical copy; requires copywriter refinement for actual marketing use. Pain severity ratings are subjective without explicit scoring methodology; teams disagree on what "extreme" means.</p>
     </section>
     <section name="process-steps">
       <step>Map Customer Jobs: Functional, Emotional, Social. For each job, note when it arises, frequency, and desired outcome.</step>
