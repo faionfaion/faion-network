@@ -1,0 +1,402 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="claude-tool-use">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Tool use patterns for Claude: defining JSON Schema tools, detecting tool_use stops, canonical agentic loop, forcing structured JSON output, and custom MCP servers for Desktop agents.</summary>
+    <tags>
+      <tag>claude</tag>
+      <tag>tool-use</tag>
+      <tag>function-calling</tag>
+      <tag>agent-loop</tag>
+      <tag>mcp</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Claude Tool Use</title>
+    <summary>Patterns for Claude's tool use (function calling): defining tools with JSON Schema `input_schema`, detecting `stop_reason == "tool_use"`, running the canonical agentic loop, forcing structured JSON output via `tool_choice`, and building custom MCP servers. The core rule: always append the full `response.content` list (not just text) as the assistant turn — omitting tool_use blocks from history causes API errors on the next turn.</summary>
+    <why>
+      <p>Tool use is the primary mechanism for giving Claude access to external APIs, databases, and search. The forced-tool-call pattern (`tool_choice={"type": "tool", "name": "..."}`) is the most reliable way to get typed JSON output from Claude without prompt engineering tricks. Without the agentic loop pattern and a max-iterations guard, agents exit early on tool_use stops or loop indefinitely.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Agent loops where Claude must call external functions and incorporate results.</item>
+        <item>Forcing typed structured JSON output from Claude (tool-choice trick).</item>
+        <item>Extracting typed data from unstructured text using a schema-constrained call.</item>
+        <item>Parallel tool dispatch — Claude can request multiple tools in one response.</item>
+        <item>MCP server integration for Claude Desktop agents needing filesystem, GitHub, or DB access.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Simple text generation with no external data needs — tool definitions inflate prompt and cost tokens.</item>
+        <item>When OpenAI Structured Outputs or Gemini `response_schema` are already in use — mixing SDKs adds complexity.</item>
+        <item>Real-time streaming responses — tool use requires a complete response before the loop can continue.</item>
+        <item>Tool set larger than ~20 tools — Claude may pick the wrong tool; use tool routing to reduce the visible set.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="tool-schema-structure">
+      <p>Tool definitions consist of a name, description, and JSON Schema input_schema.</p>
+      <rule testable="true">
+        <statement>Write tool descriptions as if explaining to a colleague who has never seen your codebase — specificity prevents wrong tool selection; vague descriptions lead to wrong tool calls with no error.</statement>
+        <rationale>Tool descriptions are the primary signal for tool selection. The model has no other context for choosing between tools.</rationale>
+      </rule>
+      <example type="good" title="Well-designed tool definition">
+        <code lang="python"><![CDATA[
+tools = [
+    {
+        "name": "get_weather",
+        "description": "Get current weather for a location. Call this when the user asks about weather conditions.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "City name, e.g., 'Kyiv, Ukraine'"
+                },
+                "unit": {
+                    "type": "string",
+                    "enum": ["celsius", "fahrenheit"],
+                    "description": "Temperature unit"
+                }
+            },
+            "required": ["location"]
+        }
+    }
+]
+        ]]></code>
+      </example>
+      <antipattern>
+        <description>Tool schemas with more than 3 levels of nesting.</description>
+        <reason>Deep nesting increases tool-call errors. Keep input schemas flat (2 levels max) for highest reliability.</reason>
+      </antipattern>
+    </section>
+
+    <section name="tool-choice-options">
+      <p>The tool_choice parameter controls whether Claude must call a tool and which one.</p>
+      <list>
+        <item>auto (default): model decides whether to use a tool and which one.</item>
+        <item>any: model must call at least one tool, picks which.</item>
+        <item>tool + name: model must call the specified tool — use for forced structured output.</item>
+      </list>
+      <example type="good" title="Forcing a specific tool for structured output">
+        <code lang="python"><![CDATA[
+# Force a specific tool for structured output extraction
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    tools=[json_tool],
+    tool_choice={"type": "tool", "name": "output_json"},
+    messages=[{"role": "user", "content": "Extract: John Doe, 30, john@example.com"}]
+)
+tool_use = next(b for b in message.content if b.type == "tool_use")
+data = tool_use.input  # typed dict matching the schema
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="request-and-stop-reason-detection">
+      <p>The stop_reason field indicates whether Claude is calling a tool or finishing normally.</p>
+      <rule testable="true">
+        <statement>Check stop_reason == "tool_use" explicitly on every response; missing this check causes the agent loop to exit early on tool requests.</statement>
+        <rationale>tool_use is a stop, not an error. The API returns stop_reason="tool_use" whenever Claude wants to call a tool; the caller must handle it.</rationale>
+      </rule>
+      <example type="good" title="Detecting tool_use in responses">
+        <code lang="python"><![CDATA[
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    tools=tools,
+    messages=[{"role": "user", "content": "What's the weather in Kyiv?"}]
+)
+if response.stop_reason == "tool_use":
+    for block in response.content:
+        if block.type == "tool_use":
+            print(f"Tool: {block.name}, ID: {block.id}, Input: {block.input}")
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="canonical-agentic-loop">
+      <p>The standard loop structure for multi-turn agent conversations with tools.</p>
+      <rule testable="true">
+        <statement>Set a max-iterations guard (10–20 turns); tool loops without a limit run indefinitely when a tool returns a consistently unhelpful result.</statement>
+        <rationale>Infinite loops burn quota and can be triggered by a single broken tool implementation that always returns the same response.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Append response.content (the full list including tool_use blocks) as the assistant message, not just the text. Omitting tool_use blocks breaks conversation history and causes API errors on the next turn.</statement>
+        <rationale>The API requires complete message history including tool_use and tool_result blocks to reconstruct the conversation state.</rationale>
+      </rule>
+      <example type="good" title="Complete agentic loop with max-turns guard">
+        <code lang="python"><![CDATA[
+MAX_TURNS = 15
+messages = [{"role": "user", "content": user_input}]
+
+for _ in range(MAX_TURNS):
+    response = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=4096,
+        tools=tools,
+        messages=messages
+    )
+    messages.append({"role": "assistant", "content": response.content})
+
+    if response.stop_reason != "tool_use":
+        break
+
+    results = [
+        {"type": "tool_result", "tool_use_id": b.id,
+         "content": execute_tool(b.name, b.input)}
+        for b in response.content if b.type == "tool_use"
+    ]
+    messages.append({"role": "user", "content": results})
+
+final_text = response.content[0].text
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="parallel-tool-execution">
+      <p>Claude can request multiple tools in a single response. Execute them concurrently for maximum efficiency.</p>
+      <rule testable="true">
+        <statement>Execute all tool_use blocks from a single response concurrently — do not serialize what Claude dispatched in parallel; return all results in one user message.</statement>
+        <rationale>Claude requests parallel tools to reduce round-trips; serializing them defeats the optimization and increases latency.</rationale>
+      </rule>
+      <example type="good" title="Parallel tool execution with ThreadPoolExecutor">
+        <code lang="python"><![CDATA[
+from concurrent.futures import ThreadPoolExecutor
+
+tool_uses = [b for b in response.content if b.type == "tool_use"]
+
+with ThreadPoolExecutor() as executor:
+    futures = {b.id: executor.submit(execute_tool, b.name, b.input) for b in tool_uses}
+
+results = [
+    {"type": "tool_result", "tool_use_id": bid, "content": f.result()}
+    for bid, f in futures.items()
+]
+messages.append({"role": "user", "content": results})
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="tool-error-handling">
+      <p>Return tool errors as content for Claude to see and recover from, unless the error is truly unrecoverable.</p>
+      <rule testable="true">
+        <statement>Return tool errors as content (not is_error=True) unless the error should terminate the loop — Claude can often recover from tool errors when they're returned as data.</statement>
+        <rationale>is_error=True signals an unrecoverable error; most tool failures (timeouts, not-found) are recoverable if Claude sees the error message as data.</rationale>
+      </rule>
+      <example type="good" title="Tool error handling pattern">
+        <code lang="python"><![CDATA[
+import json
+
+def execute_tool(name: str, input_data: dict) -> str:
+    try:
+        if name == "get_weather":
+            return json.dumps({"temperature": 15, "condition": "cloudy"})
+        return json.dumps({"error": f"Unknown tool: {name}"})
+    except Exception as e:
+        return json.dumps({"error": str(e), "tool": name})
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="forced-tool-call-pattern">
+      <p>Forcing a tool call is the most reliable way to get guaranteed typed JSON output from Claude.</p>
+      <rule testable="true">
+        <statement>To get guaranteed typed output, define a single extraction tool and force it with tool_choice={"type": "tool", "name": "..."}; access the result from tool_use.input.</statement>
+        <rationale>Prompt engineering ("return only JSON") fails occasionally even with temperature=0. The forced tool call routes through the tool use pathway which is more reliable for structured data.</rationale>
+      </rule>
+      <example type="good" title="Structured output via forced tool">
+        <code lang="python"><![CDATA[
+json_tool = {
+    "name": "output_json",
+    "description": "Output the result as structured JSON",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "age": {"type": "integer"},
+            "email": {"type": "string", "format": "email"}
+        },
+        "required": ["name", "age"]
+    }
+}
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    tools=[json_tool],
+    tool_choice={"type": "tool", "name": "output_json"},
+    messages=[{"role": "user", "content": "Extract: John Doe, 30, john@example.com"}]
+)
+
+tool_use = next(b for b in message.content if b.type == "tool_use")
+data = tool_use.input  # {"name": "John Doe", "age": 30, "email": "john@example.com"}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="array-extraction-schema">
+      <p>Extract arrays of structured objects with nested schemas.</p>
+      <example type="good" title="Extracting arrays of objects">
+        <code lang="python"><![CDATA[
+extraction_tool = {
+    "name": "extract_users",
+    "description": "Extract user records from text",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "users": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "role": {"type": "string"},
+                        "skills": {"type": "array", "items": {"type": "string"}}
+                    },
+                    "required": ["name", "role"]
+                }
+            }
+        },
+        "required": ["users"]
+    }
+}
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514", max_tokens=2048,
+    tools=[extraction_tool],
+    tool_choice={"type": "tool", "name": "extract_users"},
+    messages=[{"role": "user", "content": "Parse: John - Developer (Python, JS)\nSara - Designer (Figma)"}]
+)
+users = next(b for b in message.content if b.type == "tool_use").input["users"]
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="mcp-overview">
+      <p>Model Context Protocol (MCP) connects Claude Desktop to external tools, resources, and prompts.</p>
+      <rule testable="true">
+        <statement>MCP is primarily designed for Claude Desktop (stdio transport); programmatic API usage should use standard tool use, not MCP.</statement>
+        <rationale>MCP servers communicate via stdio by default and require subprocess lifecycle management; standard tool use is stateless and easier to operationalize in servers.</rationale>
+      </rule>
+      <p>MCP uses three primitives: Tools (actions), Resources (read-only data), Prompts (reusable templates).</p>
+    </section>
+
+    <section name="claude-desktop-config">
+      <p>Configure MCP servers in Claude Desktop via the config.json file.</p>
+      <example type="good" title="Claude Desktop MCP configuration">
+        <code lang="json"><![CDATA[
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/files"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {"GITHUB_TOKEN": "..."}
+    }
+  }
+}
+        ]]></code>
+        <note>Available official servers: filesystem, github, postgres, sqlite, puppeteer, google-drive, slack, brave-search.</note>
+      </example>
+    </section>
+
+    <section name="custom-mcp-server">
+      <p>Build custom MCP servers with tools, resources, and prompts.</p>
+      <example type="good" title="Custom MCP server with tools and resources">
+        <code lang="python"><![CDATA[
+from mcp.server import Server
+import asyncio
+
+server = Server("my-mcp-server")
+
+@server.tool()
+async def search_docs(query: str) -> str:
+    """Search documentation for query"""
+    return f"Results for: {query}"
+
+@server.resource("docs://readme")
+async def get_readme() -> str:
+    """Project README"""
+    with open("README.md") as f:
+        return f.read()
+
+@server.prompt("analyze-code")
+def analyze_code_prompt(language: str = "python") -> str:
+    """Code analysis prompt template"""
+    return f"Analyze the {language} code for bugs, security issues, and performance."
+
+if __name__ == "__main__":
+    asyncio.run(server.run())
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>The canonical agentic workflow: send message with tools → check `stop_reason` → if `tool_use`, execute all tool calls → append assistant message + tool results → repeat until `stop_reason == "end_turn"`. Agents should set a max-iterations guard (10–20 turns) to prevent infinite loops. Tool execution should be parallelized when Claude requests multiple tools simultaneously — do not serialize what Claude dispatched in parallel.</p>
+      <note>Recommended subagents: faion-sdd-executor-agent (implements a multi-step tool loop for SDD task execution), custom subagents that wrap domain tool sets (search, code execution, DB queries).</note>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Write tool descriptions as if explaining to a colleague who has never seen your codebase — specificity prevents wrong tool selection.</item>
+        <item>Use `tool_choice={"type": "auto"}` by default; only force specific tools when structured output is the goal.</item>
+        <item>Always return a result for every `tool_use` block — missing tool results cause API errors on the next turn.</item>
+        <item>For parallel tool calls, use `asyncio.gather()` or `ThreadPoolExecutor` to execute them concurrently, then collect all results before the next message.</item>
+        <item>Keep tool input schemas as flat as possible — nested objects with 3+ levels increase tool-call errors.</item>
+        <item>Include a `reasoning` string field in extraction tool schemas — Claude documents why it chose values, which helps debugging.</item>
+        <item>Use `is_error=True` in tool results only for unrecoverable errors; otherwise let Claude see the error and try to fix it.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common failure modes when integrating tool use into agent systems.</p>
+      <antipattern>
+        <description>Agents that append only the assistant message (not `response.content` which includes tool_use blocks) break the conversation history format and get API errors.</description>
+        <reason>Tool use blocks must be preserved in message history. Append the full response.content list.</reason>
+      </antipattern>
+      <antipattern>
+        <description>`response.content` is a list of mixed `TextBlock` and `ToolUseBlock` objects — iterate and type-check, never index blindly.</description>
+        <reason>Content blocks are polymorphic. Always check type before accessing fields.</reason>
+      </antipattern>
+      <antipattern>
+        <description>An infinite tool loop (Claude keeps calling the same tool) indicates a broken tool implementation that returns the same unhelpful result — implement result caching to detect and break cycles.</description>
+        <reason>Set a max-iterations guard. If the guard is reached, break the loop rather than running forever.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Tool schemas with `additionalProperties: false` can cause Claude to fail on edge cases; allow additional properties unless strict validation is needed.</description>
+        <reason>Overly strict schemas cause tool use failures. Allow flexibility unless you have a specific reason not to.</reason>
+      </antipattern>
+      <antipattern>
+        <description>MCP servers communicate via stdio by default — spawning them as subprocesses requires the agent to manage their lifecycle (start, health check, shutdown).</description>
+        <reason>For programmatic use, prefer standard tool use over MCP. MCP is optimized for Claude Desktop.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Extended Thinking + tool use: thinking blocks appear in `response.content` before tool_use blocks; filter them out when building tool_result messages.</description>
+        <reason>Tool result messages should only contain tool_result blocks, not thinking blocks. Filter appropriately.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/agent-loop.py" purpose="Complete agentic loop with max turns, parallel tool execution, and error handling."/>
+      <template path="templates/tool-definition.json" purpose="Example tool definition with input_schema showing required properties and enum values."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/tool-use"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/tool-use/parallel-tool-use"/>
+      <link href="https://modelcontextprotocol.io/introduction"/>
+      <link href="https://github.com/modelcontextprotocol/servers"/>
+      <link href="https://docs.anthropic.com/en/api/messages"/>
+    </see-also>
+  </content>
+</methodology>
