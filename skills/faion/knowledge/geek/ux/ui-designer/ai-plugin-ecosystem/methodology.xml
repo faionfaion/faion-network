@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ai-plugin-ecosystem">
+  <metadata>
+    <tier>geek</tier>
+    <group>ux</group>
+    <domain>ui-designer</domain>
+    <summary>Figma AI plugins automate repetitive design tasks, but agents cannot trigger them. The Figma REST API is the actual agent integration surface for automated pipelines.</summary>
+    <tags>
+      <tag>figma-plugins</tag>
+      <tag>figma-automation</tag>
+      <tag>accessibility-audit</tag>
+      <tag>design-automation</tag>
+      <tag>rest-api</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>AI Plugin Ecosystem</title>
+    <summary>Figma AI plugins (Magician, Automator, Content Reel, Stark, Similayer, Diagram) automate repetitive design tasks within the Figma canvas. Critically, agents cannot trigger plugin runs programmatically — the Figma REST API is the actual agent integration surface. Use plugins for human-driven workflows; use the REST API for automated pipelines.</summary>
+    <why>
+      <p>Most Figma AI plugins have no CLI or webhook interface; they operate only inside the Figma desktop/browser UI. An agent that "runs a plugin" always requires a human at the keyboard. The REST API offers a deterministic, repeatable integration surface for accessibility audits, content injection, and style extraction — the tasks designers most want to automate.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Automating repetitive Figma operations (renaming layers, bulk style changes, exporting assets) via Figma REST API</item>
+        <item>Running accessibility audits across a design file before handoff (contrast ratio computation from REST API data)</item>
+        <item>Generating placeholder content at scale and pushing it via Figma REST `PATCH /v1/files/{key}/nodes`</item>
+        <item>Evaluating which plugin combination covers a team's workflow gaps before investing in custom UXP development</item>
+        <item>Running WCAG contrast checks externally without requiring the Stark plugin</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Plugin output must be reproducible without human intervention — most AI plugins are not deterministic</item>
+        <item>Design decisions require brand or strategic judgment — plugins are automation tools, not decision-makers</item>
+        <item>A plugin relies on a third-party AI API that could expose proprietary design data to external servers</item>
+        <item>The design system is unstable — plugins that reference tokens/styles break when foundations change</item>
+      </list>
+    </when-not-to-use>
+    <section name="Plugin Catalog">
+      <list>
+        <item>Magician — AI-powered icon/image generation (UI-only, no API)</item>
+        <item>Automator — batch operations with AI (UI-only, no external API)</item>
+        <item>Content Reel — AI text and image placeholders (UI-only; use REST write API as alternative)</item>
+        <item>Similayer — smart layer selection helper (no external API surface)</item>
+        <item>Diagram — AI diagramming (UI-only)</item>
+        <item>Stark — accessibility checking (standalone CLI for HTML audits; Figma integration is UI-only)</item>
+      </list>
+    </section>
+    <section name="Agent Integration Boundary">
+      <rule>
+        <statement>Treat Figma plugins as human-operated tools and the Figma REST API as the agent integration boundary.</statement>
+        <rationale>No Figma plugin exposes a programmatic invocation endpoint. Any workflow described as "agent runs plugin" requires a human at the keyboard. The REST API is repeatable and deterministic.</rationale>
+      </rule>
+      <rule>
+        <statement>Maintain a curated plugin list per project in AGENTS.md to prevent unauthorized plugin installations.</statement>
+        <rationale>Plugin sandbox does not prevent plugins from calling external APIs. Unreviewed plugins may send proprietary design data to third-party servers. Review plugin source or privacy policy before use with proprietary designs.</rationale>
+      </rule>
+      <rule>
+        <statement>For batch operations that agents could handle, prefer the Figma REST API over plugin-based automation.</statement>
+        <rationale>REST API calls are version-controlled, auditable, and reproducible. Plugin outputs depend on AI model state and change across plugin updates without notice.</rationale>
+      </rule>
+    </section>
+    <section name="REST API Constraints">
+      <antipattern>
+        <description>Assuming REST write access can create new frames.</description>
+        <reason>Figma REST API write access is restricted: agents cannot create new frames, only update existing node properties. Design-from-scratch automation requires a human setup step.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Fetching the full file JSON for large files.</description>
+        <reason>File JSON exports can be 10–200 MB for complex files. Always scope requests to specific node IDs with the `?ids=node_id` parameter to avoid memory issues and rate limit exhaustion.</reason>
+      </antipattern>
+    </section>
+    <section name="Dual-Layer Audit Rule">
+      <rule>
+        <statement>Run both a plugin (Stark, during design) and an automated axe-core scan (post-handoff on rendered HTML) — neither alone is sufficient.</statement>
+        <rationale>Figma plugin audits catch design-phase issues; axe-core catches implementation-phase regressions. Accessibility plugins flag issues but cannot auto-fix them; a human must apply remediations.</rationale>
+      </rule>
+    </section>
+    <section name="Agent Contrast Check Pattern">
+      <rule>
+        <statement>Extract color fills from Figma REST API and compute WCAG contrast ratios in code, without requiring the Stark plugin.</statement>
+        <rationale>Agents cannot trigger plugin runs. Computing contrast ratios from the REST API node data achieves the same result deterministically and without a human Figma session.</rationale>
+      </rule>
+      <example type="good">
+        <note>Fetch file styles via REST, extract text/background fill pairs, compute relative luminance, flag pairs below WCAG thresholds.</note>
+        <code lang="bash"><![CDATA[curl -H "X-Figma-Token: $FIGMA_TOKEN" \
+  "https://api.figma.com/v1/files/$FILE_KEY/styles"]]></code>
+      </example>
+    </section>
+    <section name="Gotchas">
+      <antipattern>
+        <description>Using a read-only Figma token for write operations.</description>
+        <reason>A read-only token silently fails write operations. Token scopes (read vs. write) must be set correctly per operation type.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Logging plugin version alongside design outputs.</description>
+        <reason>AI plugin outputs change with model updates. Without version logging, it is impossible to reproduce or audit which model state produced a given design artifact.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Agents cannot directly invoke Figma plugins — the plugin ecosystem operates inside the Figma canvas and requires a human-initiated session. The practical agentic pattern is to use the Figma REST API to read/write file data (nodes, styles, components), then post-process results externally with Claude. For accessibility, an agent can extract color contrast pairs via the API and run WCAG checks in code without needing the Stark plugin. For content generation (placeholders, copy), an agent produces content externally and pushes it via the Figma API's `PATCH /v1/files/{key}/nodes` endpoint. Reserve actual plugin use for human-driven workflows and use the REST API as the agent integration surface.</p>
+    </section>
+    <section name="Recommended Subagents">
+      <list>
+        <item>faion-sdd-executor-agent — executes Figma API calls as part of a design-system audit task</item>
+        <item>Custom accessibility-check agent — reads Figma fills/strokes via REST, computes WCAG contrast ratios, returns a violation report</item>
+      </list>
+    </section>
+    <section name="Prompt Patterns">
+      <p>Accessibility audit prompt:</p>
+      <code lang="text"><![CDATA[You have access to a Figma file JSON export. Audit all text layers for:
+1. Contrast ratio < 4.5:1 (normal text) or < 3:1 (large text)
+2. Missing semantic role (decorative vs. informational not flagged)
+
+Return a JSON array: [{node_id, name, issue, current_ratio, required_ratio}]]]></code>
+      <p>Figma REST: fetch file styles</p>
+      <code lang="bash"><![CDATA[curl -H "X-Figma-Token: $FIGMA_TOKEN" \
+  "https://api.figma.com/v1/files/$FILE_KEY/styles"]]></code>
+    </section>
+    <section name="CLI Tools">
+      <list>
+        <item>figma-export (community) — Export Figma frames/components to SVG/PNG via CLI; github.com/lucaorio/figma-export</item>
+        <item>figma-api (Node SDK) — Programmatic read/write to Figma REST API; npm i @figma/rest-api-spec</item>
+        <item>axe-core — WCAG accessibility audit on rendered HTML (post-handoff); npm i axe-core</item>
+        <item>color-contrast-checker (npm) — Compute WCAG contrast ratios offline; npm i color-contrast-checker</item>
+        <item>svg-to-ts — Convert exported SVG icons to typed TS components; npm i svg-to-ts</item>
+      </list>
+    </section>
+    <section name="Services &amp; Apps">
+      <list>
+        <item>Figma REST API — SaaS, agent-friendly (REST); full read; limited write (nodes, styles, components). No plugin execution.</item>
+        <item>Magician — SaaS plugin, not agent-friendly; UI-only; no API or webhook. Agent cannot trigger.</item>
+        <item>Automator (Figma plugin) — SaaS plugin, not agent-friendly; UI-only batch ops; cannot be scripted externally.</item>
+        <item>Stark (accessibility) — SaaS plugin + standalone, partial agent-friendly; standalone Stark CLI available for HTML audits; Figma integration is UI-only.</item>
+        <item>Content Reel — SaaS plugin, not agent-friendly; content injection UI-only; use Figma REST write API as alternative.</item>
+        <item>Similayer — OSS plugin, not agent-friendly; layer-selection helper; no external API surface.</item>
+      </list>
+    </section>
+    <section name="Figma Accessibility Contrast Checker Example">
+      <p>Figma accessibility contrast checker (Python, ~40 lines):</p>
+      <code lang="python"><![CDATA[import os, requests, math
+
+TOKEN = os.environ["FIGMA_TOKEN"]
+FILE_KEY = os.environ["FIGMA_FILE_KEY"]
+
+def luminance(r, g, b):
+    def c(v):
+        v /= 255
+        return v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4
+    return 0.2126 * c(r) + 0.7152 * c(g) + 0.0722 * c(b)
+
+def contrast(c1, c2):
+    l1, l2 = luminance(*c1), luminance(*c2)
+    if l1 < l2:
+        l1, l2 = l2, l1
+    return (l1 + 0.05) / (l2 + 0.05)
+
+def hex_to_rgb(h):
+    h = h.lstrip("#")
+    return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+nodes = requests.get(
+    f"https://api.figma.com/v1/files/{FILE_KEY}",
+    headers={"X-Figma-Token": TOKEN},
+).json()
+
+# Extract and check text fills vs backgrounds — simplified
+print("Fetched file; implement node traversal per design structure.")]]></code>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Treat Figma plugins as human-operated tools and the Figma REST API as the agent integration boundary</item>
+        <item>Maintain a curated plugin list per project in AGENTS.md to prevent team members from installing unreviewed plugins that could leak design IP</item>
+        <item>For accessibility, run both a plugin (Stark, during design) and an automated axe-core scan (post-handoff, on rendered HTML) — neither alone is sufficient</item>
+        <item>When evaluating a new AI plugin, test on a disposable copy of the file, not the main design system</item>
+        <item>Log which plugin version produced which design output for auditability — AI plugin outputs change with model updates</item>
+        <item>For batch operations that agents could handle, prefer the Figma REST API over plugin-based automation to maintain repeatability</item>
+      </list>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <list>
+        <item>There is no way for an agent to trigger a Figma plugin run; any workflow described as "agent runs plugin" requires a human at the keyboard</item>
+        <item>Figma REST API write access is restricted: you cannot create new frames, only update existing node properties</item>
+        <item>File JSON exports from Figma REST can be large (10–200 MB for complex files); agents must paginate or scope requests to specific node IDs</item>
+        <item>Plugin sandbox isolates execution — plugins cannot call external APIs unless the plugin author has set up a proxy; proprietary prompts in plugin fields may be sent to third-party servers</item>
+        <item>Figma token scopes (read vs. write) must be set correctly; a read-only token will silently fail write operations</item>
+        <item>The Figma Community plugin listing does not indicate whether a plugin sends data externally; review plugin source code or privacy policy before use with proprietary designs</item>
+      </list>
+    </section>
+    <section name="When NOT to use">
+      <list>
+        <item>When plugin output must be reproducible without human intervention — most AI plugins are not deterministic</item>
+        <item>When the team lacks a Figma Organization or Professional plan (some plugins require paid tiers)</item>
+        <item>When design decisions require brand or strategic judgment — plugins are automation tools, not decision-makers</item>
+        <item>When a plugin relies on a third-party AI API that could expose proprietary design data to external servers</item>
+        <item>When the design system is unstable — plugins that reference tokens/styles break when foundations change</item>
+      </list>
+    </section>
+    <section name="Where It Fails / Limitations">
+      <list>
+        <item>Figma REST API does not expose a plugin execution endpoint; agents cannot trigger plugin runs programmatically from outside Figma</item>
+        <item>AI content generated by plugins (Magician, etc.) is non-deterministic — same prompt yields different results across runs</item>
+        <item>Most Figma AI plugins have no CLI or webhook interface; they only operate within the Figma desktop/browser UI</item>
+        <item>Plugin data access is sandboxed — they can read/write the current file but cannot batch-process multiple files</item>
+        <item>Accessibility plugins (Stark) flag issues but cannot auto-fix them; a human must apply remediations</item>
+        <item>Plugin API rate limits and quota resets are opaque; heavily automated usage risks account suspension</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/contrast-check.py" purpose="WCAG contrast ratio computation from Figma REST API data"/>
+      <template path="templates/accessibility-audit-prompt.txt" purpose="Claude prompt for auditing Figma file JSON for contrast violations"/>
+    </templates>
+    <see-also>
+      <link href="https://www.figma.com/developers/api"/>
+      <link href="https://www.figma.com/community/plugins"/>
+      <link href="https://www.getstark.co/"/>
+      <link href="https://magician.design/"/>
+      <link href="https://uxdesign.cc/best-figma-ai-plugins-2026"/>
+      <link href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html"/>
+    </see-also>
+  </content>
+</methodology>
