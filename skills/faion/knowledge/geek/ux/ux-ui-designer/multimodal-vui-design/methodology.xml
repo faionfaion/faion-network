@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="multimodal-vui-design">
+  <metadata>
+    <tier>geek</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>Design methodology for interfaces that combine voice input with visual display, pattern-matching voice commands to card/carousel output while maintaining touch fallbacks for every voice state.</summary>
+    <tags>
+      <tag>voice-ui</tag>
+      <tag>multimodal</tag>
+      <tag>smart-display</tag>
+      <tag>accessibility</tag>
+      <tag>dialogue-design</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Multimodal VUI Design</title>
+    <summary>Design methodology for interfaces that combine voice input with visual display — pattern-matching voice commands to on-screen card/carousel output while maintaining touch fallbacks for every voice state. Every dialogue turn must declare: voice prompt, visual state (max 5 items), valid touch actions, and silence fallback.</summary>
+    <why>
+      <p>Voice-only interfaces cannot display structured data; screen-only interfaces add friction for hands-free or glanceable contexts. Multimodal design bridges them, but amplifies errors when done poorly — missing touch fallbacks strand users who switch modalities mid-task. The per-turn structure enforces completeness before prototyping.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Smart TV, smart display, kiosk, or automotive HMI combining voice with a screen</item>
+        <item>Voice assistants surfacing structured data (product cards, search results, maps)</item>
+        <item>Accessibility-first products where users alternate between touch and voice</item>
+        <item>Conversational commerce (search → carousel → voice-confirm purchase)</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Audio-only environments (earbuds, phone IVR) — no screen; use pure VUI</item>
+        <item>Text-heavy B2B tools (dashboards, IDEs) — voice adds friction with no multimodal benefit</item>
+        <item>Products where latency >2s is unacceptable — ASR + LLM + TTS chain is inherently slow</item>
+        <item>Teams without dedicated voice UX expertise — multimodal amplifies design errors</item>
+      </list>
+    </when-not-to-use>
+    <section name="Multimodal Patterns">
+      <list>
+        <item>Voice-initiated, screen-completed — user speaks a query; screen displays structured results (cards, carousels); voice summarizes aloud.</item>
+        <item>Screen-initiated, voice-completed — user taps a form field or list item; voice confirms or elaborates.</item>
+        <item>Voice + visual feedback — confirmations and progress states shown on screen while TTS reads them.</item>
+        <item>Voice navigation + visual content — user says "next" or "go back" while screen renders the content.</item>
+      </list>
+    </section>
+    <section name="Dialogue Turn Structure">
+      <rule>
+        <statement>Every dialogue turn must declare four fields: voice_prompt (what the assistant says, max 15 words for smart display), visual_state (component type + content, max 5 items), user_actions (valid voice inputs AND touch actions), and fallback (what happens after 5 seconds of silence).</statement>
+        <rationale>Incomplete turns produce states reachable only by voice — users who switch to touch are stranded. The structure enforces completeness at design time.</rationale>
+      </rule>
+      <rule>
+        <statement>Every voice state must have a touch equivalent. If a user cannot complete the task using touch alone, the design is not multimodal — it is voice-only with a broken screen.</statement>
+        <rationale>Users switch modalities mid-session constantly: privacy concerns, noisy environment, screen reader mode. Modal lock-in is a usability and accessibility failure.</rationale>
+      </rule>
+      <rule>
+        <statement>Limit visual card content to 5 items maximum per screen state. For lists longer than 5, paginate and surface navigation affordances for both voice ("say 'next' for more") and touch.</statement>
+        <rationale>Smart display screens are small (7-10 inches). Card patterns that work on phones break on small displays. Cognitive overload from dense lists degrades task completion rates.</rationale>
+      </rule>
+    </section>
+    <section name="Fallback Strategy">
+      <rule>
+        <statement>Define three input tiers: Primary (voice), Secondary (touch/tap), Tertiary (keyboard). No interaction should require voice as the only completion path.</statement>
+        <rationale>ASR accuracy varies by accent, noise, and microphone quality. A fallback-free voice-only path fails in the real environments where multimodal devices are deployed.</rationale>
+      </rule>
+      <rule>
+        <statement>Display streaming visual feedback (waveform animation, typing indicator, partial content) during ASR processing and LLM response generation. Silence of more than 1 second during processing feels broken to users.</statement>
+        <rationale>LLM + TTS chain latency is 1-3 seconds. Without visual feedback, users repeat their command or abandon the interaction.</rationale>
+      </rule>
+    </section>
+    <section name="Antipatterns">
+      <antipattern>
+        <description>Designing dialogue flows on a phone emulator before testing on target hardware</description>
+        <reason>Emulators do not reproduce touch + voice timing, screen size constraints, or microphone quality. Test on actual device hardware before usability testing.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Writing voice prompts without defining the persona voice first</description>
+        <reason>Tone inconsistency across turns destroys user trust in the product's identity. Define persona before writing a single prompt.</reason>
+      </antipattern>
+    </section>
+    <section name="CLI Tools">
+      <list>
+        <item>gcloud (Google Cloud SDK) — access Dialogflow CX, Speech-to-Text, Text-to-Speech APIs; cloud.google.com/sdk</item>
+        <item>aws CLI — Amazon Alexa Skills Kit, Polly TTS, Transcribe; aws.amazon.com/cli</item>
+        <item>az CLI — Azure Cognitive Services (Speech SDK, LUIS); learn.microsoft.com/en-us/cli/azure</item>
+        <item>ffmpeg — audio processing and format conversion for TTS output validation; ffmpeg.org</item>
+      </list>
+    </section>
+    <section name="Key Services">
+      <list>
+        <item>Dialogflow CX (Google SaaS) — industry standard for multimodal flows; supports rich responses (cards, chips); REST API agent-friendly</item>
+        <item>Amazon Alexa Skills Kit — multimodal templates for Echo Show; APL for visual layer; REST/SDK</item>
+        <item>Voiceflow (SaaS) — visual dialogue builder with REST API export; good for rapid prototyping</item>
+        <item>ElevenLabs (SaaS) — high-quality TTS; agent can generate voice previews for design review; REST API</item>
+        <item>Rasa (OSS) — self-hosted NLU + dialogue management; Python API</item>
+      </list>
+    </section>
+    <section name="Agent Workflow">
+      <rule>
+        <statement>A Claude subagent can generate a multimodal dialogue script (voice_prompt, visual_state, user_actions, fallback) and validate it programmatically. Visual implementation (actual screen layouts, component assembly) requires human designer review.</statement>
+        <rationale>Agents cannot validate touch target sizing, card visual hierarchy, or readability at target screen size without a rendering environment.</rationale>
+      </rule>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <antipattern>
+        <description>Agent-generated dialogue defaults to formal register regardless of persona brief</description>
+        <reason>Prompt explicitly for the target persona tone (e.g., "casual, helpful, under 12 words per turn"). Without explicit constraints, LLMs default to formal assistant register.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent assumes instant LLM response with no latency design</description>
+        <reason>LLM response latency in a live voice chain is user-visible (1-3s). Agents must design streaming visual feedback for every turn involving an LLM call.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent generates a dialogue tree referencing visual card components without verifying they exist in the design system</description>
+        <reason>Always cross-reference generated component types against the actual component library. Non-existent components produce broken screens.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent assumes high ASR accuracy in dialogue design</description>
+        <reason>ASR accuracy varies significantly by accent and environment. Designs must include disambiguation turns and robust "I didn't understand" fallbacks for all critical paths.</reason>
+      </antipattern>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Design every voice state to have a touch equivalent — users switch modalities mid-session constantly</item>
+        <item>Keep voice prompts under 15 words for smart display; longer prompts lose users before visual renders</item>
+        <item>Use streaming visual feedback (e.g., waveform animation) during ASR processing — silence feels broken</item>
+        <item>Test on actual device hardware before usability testing — emulators do not reproduce touch + voice timing accurately</item>
+        <item>Define a clear persona voice before writing any prompts — tone inconsistency across turns destroys trust</item>
+        <item>Version control dialogue scripts separately from visual assets; they have different change cadences</item>
+      </list>
+    </section>
+    <section name="References">
+      <list>
+        <item>Google Conversation Design documentation — developers.google.com/assistant/conversation-design</item>
+        <item>Amazon Alexa Multimodal Design Guidelines — developer.amazon.com/en-US/alexa/alexa-skills-kit/design</item>
+        <item>Designing Voice User Interfaces — Cathy Pearl, O'Reilly 2017</item>
+        <item>Voiceflow Multimodal Design Guide — voiceflow.com/docs</item>
+        <item>Nielsen Norman Group — Voice Interfaces research — nngroup.com</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/dialogue-turn-schema.json" purpose="JSON schema for a single multimodal dialogue turn"/>
+      <template path="templates/validate-turns.py" purpose="Script to validate a dialogue tree for structural completeness and missing touch fallbacks"/>
+      <template path="templates/prompt-design-dialogue.txt" purpose="Agent prompt: generate multimodal dialogue script for a given task and device"/>
+    </templates>
+  </content>
+</methodology>
