@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vector-databases">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>High-dimensional vector similarity search systems. Database selection, indexing (HNSW/IVF), quantization, hybrid search, and production configuration for RAG pipelines.</summary>
+    <tags>
+      <tag>vector-databases</tag>
+      <tag>rag</tag>
+      <tag>semantic-search</tag>
+      <tag>embeddings</tag>
+      <tag>similarity-search</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Vector Databases</title>
+    <summary>Vector databases solve approximate nearest neighbor (ANN) search at scale — finding semantically similar items without exact keyword matching. The choice of database, index type, and quantization strategy determines recall accuracy, query latency, memory usage, and operational complexity. Wrong choices are expensive to migrate later.</summary>
+    <why>
+      <p>Vector databases solve approximate nearest neighbor (ANN) search at scale — finding semantically similar items without exact keyword matching. The choice of database, index type, and quantization strategy determines recall accuracy, query latency, memory usage, and operational complexity. Wrong choices are expensive to migrate later.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building a RAG pipeline that needs semantic similarity search</item>
+        <item>Storing and querying document embeddings at scale (10K+ documents)</item>
+        <item>Implementing multi-tenant knowledge bases with namespace isolation</item>
+        <item>Replacing keyword-only search with semantic or hybrid search</item>
+        <item>Benchmarking or migrating between vector DB providers</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Dataset fits in memory and has fewer than ~1,000 documents — use in-process numpy similarity instead</item>
+        <item>Requirement is pure exact-match lookup — a relational DB or Redis suffices</item>
+        <item>The application already uses Elasticsearch with kNN and a rewrite is not justified</item>
+        <item>Prototyping a single-user tool with no persistence requirement — Chroma in-memory is enough</item>
+      </list>
+    </when-not-to-use>
+    <section name="Vector Database Selection">
+      <rule>
+        <statement>Choose the database by primary constraint first; do not default to the most popular option without matching constraints.</statement>
+        <rationale>Each database has a structural trade-off. Pinecone has zero ops burden but vendor lock-in. Chroma is trivial to start but fails in production. pgvector fits existing PostgreSQL but degrades above 10M vectors.</rationale>
+      </rule>
+      <list>
+        <item>Need managed service, zero ops → Pinecone (serverless, predictable pricing)</item>
+        <item>Have existing PostgreSQL infrastructure → pgvector (SQL integration, familiar tooling, ACID)</item>
+        <item>Rapid prototyping / local development → Chroma (simple API, in-memory)</item>
+        <item>Production self-hosted, complex filtering + moderate scale → Qdrant (Rust perf, excellent filters)</item>
+        <item>Production self-hosted, knowledge graph features → Weaviate (GraphQL, cross-references)</item>
+        <item>Extreme scale 1B+ vectors → Milvus (distributed, GPU support, CNCF)</item>
+        <item>Enterprise compliance (HIPAA, SOC2) → Milvus/Zilliz or Weaviate Cloud</item>
+      </list>
+      <p>Qdrant: Rust-based, excellent payload filtering, native hybrid search (dense + sparse), binary quantization (32x memory reduction), strong multi-tenancy. Best for production RAG with complex metadata filtering.</p>
+      <p>Weaviate: GraphQL API, native knowledge graph with cross-references, built-in vectorizers (text2vec modules), BM25 + vector hybrid. Best for document relationship modeling.</p>
+      <p>Milvus: highest throughput (100K+ QPS), most indexing strategies (IVF, HNSW, DiskANN, GPU), distributed architecture, tiered storage. Best for enterprise scale and billion-vector datasets.</p>
+      <p>Pinecone: true serverless, zero ops, consistent low latency, simple SDK. Best for teams without DevOps resources. Weakness: vendor lock-in, no self-hosting, limited filtering.</p>
+      <p>pgvector: existing PostgreSQL infrastructure, full SQL (JOINs, transactions), ACID, Django/Rails ORM support. Degrades significantly above ~100M vectors without sharding.</p>
+      <p>Chroma: simplest API, in-process, no network overhead. Not suitable for production multi-user workloads or datasets above ~1M vectors.</p>
+      <p>Use-case routing: RAG chatbot → Qdrant or Weaviate (hybrid search, metadata filtering). E-commerce similarity → Milvus or Pinecone (scale, real-time updates). Existing Django/Rails app → pgvector (no new infrastructure). MVP / hackathon → Chroma (zero setup). Multi-tenant SaaS → Qdrant (namespace isolation per collection or payload filtering). Image/video similarity → Milvus (GPU acceleration, large vectors).</p>
+    </section>
+    <section name="Indexing Strategies and Hybrid Search">
+      <rule>
+        <statement>Always use HNSW over IVFFlat in production; IVFFlat requires tuning nprobe for recall-speed trade-off that HNSW manages automatically.</statement>
+        <rationale>HNSW provides superior recall/speed balance at production scale. IVFFlat is faster to build but requires careful nprobe tuning that shifts as the dataset grows.</rationale>
+      </rule>
+      <p>Key HNSW parameters: M (connections per node, default 16, range 12-48; higher = better recall + more memory), ef_construction (build quality, default 100, range 100-500; higher = better index, slower build), ef_search (query quality, default 40, range 50-200; higher = better recall, slower queries).</p>
+      <rule>
+        <statement>For pgvector: always run `VACUUM ANALYZE` after bulk inserts and set `hnsw.ef_search` based on recall target before querying.</statement>
+        <rationale>pgvector does not auto-update statistics after bulk inserts. Without `VACUUM ANALYZE`, the query planner uses stale statistics and may skip the vector index entirely.</rationale>
+      </rule>
+      <rule>
+        <statement>Enable scalar quantization (INT8) by default in Qdrant production deployments; only use binary quantization when memory cost is critical and 5-10% recall loss is acceptable.</statement>
+        <rationale>Scalar quantization provides 4x memory reduction with 1-2% recall loss. Binary quantization provides 32x reduction with 5-10% recall loss — suitable only for cost-critical bulk workloads.</rationale>
+      </rule>
+      <p>Quantization options: None (baseline, full accuracy), Scalar INT8 (4x memory reduction, 1-2% recall loss), Product PQ (8-32x, 3-5% loss), Binary (32x, 5-10% loss). Start with scalar + rescoring for production.</p>
+      <rule>
+        <statement>Before switching a production collection to binary quantization, run an offline recall evaluation against your query set and require explicit approval.</statement>
+        <rationale>Binary quantization's 5-10% recall loss is not uniform — it may disproportionately affect certain query types or topic domains in your dataset.</rationale>
+      </rule>
+      <rule>
+        <statement>Start with hybrid search alpha=0.7 (favor vectors over BM25) and tune based on evaluation; do not default to pure vector search for RAG production pipelines.</statement>
+        <rationale>Vector search handles semantic similarity but misses exact entity names, acronyms, and rare terms. BM25 handles exact matches. Hybrid consistently outperforms either alone for technical queries.</rationale>
+      </rule>
+      <p>Alpha parameter (Weaviate): 0 = pure BM25, 0.5 = balanced, 1 = pure vector. For Qdrant, use native sparse + dense vector hybrid with RRF fusion.</p>
+      <list>
+        <item>Always create payload indexes on fields used in filters BEFORE bulk upsert, not after</item>
+        <item>Use batch upserts of 100-500 points; single-point inserts are 10-50x slower at scale</item>
+        <item>Prefer gRPC over HTTP for Qdrant when inserting or querying at &gt;1,000 QPS</item>
+        <item>Set score_threshold on queries to avoid injecting low-relevance chunks into LLM context</item>
+        <item>For multi-tenancy: use Qdrant named collections per tenant for full isolation</item>
+      </list>
+    </section>
+    <section name="Vector DB Operations and Agent Gotchas">
+      <rule>
+        <statement>Agent retrieval pattern: embed query → query top-20 with score_threshold → rerank to top-5 → pass to LLM. Always implement the fallback path for empty results.</statement>
+        <rationale>Retrieve broad (top-20) then rerank to top-5 consistently outperforms top-5 direct retrieval by 15-20% precision. Without a fallback, empty results cause the LLM to hallucinate rather than saying "no information."</rationale>
+      </rule>
+      <example type="good" title="Qdrant retrieval with score threshold and tenant isolation">
+        <code lang="python"><![CDATA[results = client.search(
+    collection_name="docs",
+    query_vector=embed(query),
+    limit=20,
+    score_threshold=0.6,
+    query_filter=Filter(
+        must=[FieldCondition(key="tenant_id", match=MatchValue(value=tenant))]
+    )
+)
+if not results:
+    return structured_no_information_response()
+# rerank to top-5 before passing to LLM]]></code>
+      </example>
+      <antipattern>
+        <description>Using a different embedding model at query time than at ingestion time.</description>
+        <reason>Embedding model mismatch makes similarity scores meaningless. The distances computed between incompatible embedding spaces have no semantic interpretation. Store the model name as collection metadata and validate on startup.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Querying a Qdrant or Weaviate collection immediately after a large bulk upsert.</description>
+        <reason>Both databases optimize indexes asynchronously. Queries immediately after a large upsert may hit partially-indexed data and return degraded recall. Add a ready-check before querying post-upsert.</reason>
+      </antipattern>
+      <rule>
+        <statement>Each retrieved chunk consumes LLM context; top-k=20 queries with 512-token chunks use 10,240 tokens before generation — always rerank to top-5.</statement>
+        <rationale>Without reranking, a large top-k saturates the LLM context with low-relevance chunks, reducing generation quality and increasing cost.</rationale>
+      </rule>
+      <rule>
+        <statement>Build a fallback for out-of-distribution queries: if score_threshold is not met, rewrite the query by adding synonyms and retry once, then escalate to web search or structured "no information" response.</statement>
+        <rationale>A score threshold that works for in-distribution queries causes empty results for out-of-distribution queries. Without a fallback, the agent receives empty context and hallucinates.</rationale>
+      </rule>
+    </section>
+    <section name="Agentic Workflow">
+      <p>An agent receives a user query, embeds it using the configured embedding model, then calls the vector DB client to retrieve top-k semantically similar chunks. The agent can branch on score thresholds: if no result exceeds `score_threshold`, it rewrites the query or escalates to a web search tool. For multi-tenant SaaS, the agent injects the tenant namespace/collection before every query, preventing cross-tenant data leakage.</p>
+      <p>Recommended subagents: `faion-sdd-executor-agent` — orchestrates setup tasks (collection creation, index config, bulk upsert) from an implementation plan. Custom retrieval subagent — wraps vector DB client + reranker; called by the main reasoning agent as a tool.</p>
+      <p>Prompt pattern: You are a retrieval agent. Given &lt;query&gt;, call the vector_search tool with collection, query_text, top_k=20, score_threshold=0.6. If fewer than 3 results are returned, rewrite the query by adding synonyms and retry once. Return the top 5 results after applying the reranker.</p>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Always create payload indexes on fields used in filters before bulk upsert, not after</item>
+        <item>Use batch upserts of 100–500 points; single-point inserts are 10–50x slower at scale</item>
+        <item>Enable scalar quantization (INT8) by default in production; only use binary quantization when memory is critical and 5-10% recall loss is acceptable</item>
+        <item>Prefer gRPC over HTTP for Qdrant when inserting or querying at &gt; 1,000 QPS</item>
+        <item>Set `score_threshold` on queries to avoid injecting low-relevance chunks into LLM context</item>
+        <item>For pgvector: always create HNSW index (not IVFFlat) for production; run `VACUUM ANALYZE` after bulk inserts; set `hnsw.ef_search` based on recall target</item>
+        <item>Multi-tenancy: use Qdrant named collections per tenant for full isolation, or payload filtering for shared collections with strict index enforcement</item>
+      </list>
+    </section>
+    <section name="Tools and Services">
+      <list>
+        <item>Qdrant (Docker): `docker pull qdrant/qdrant` — [qdrant.tech/documentation](https://qdrant.tech/documentation/)</item>
+        <item>qdrant-client (Python): `pip install qdrant-client`</item>
+        <item>weaviate-client (Python): `pip install weaviate-client`</item>
+        <item>pymilvus: `pip install pymilvus`</item>
+        <item>pinecone: `pip install pinecone`</item>
+        <item>chromadb: `pip install chromadb`</item>
+        <item>psycopg2 + pgvector: `pip install pgvector psycopg2-binary`</item>
+      </list>
+      <p>Qdrant Cloud: SaaS + OSS, REST + gRPC, Free 1GB tier, Python/TS/Go SDKs.</p>
+      <p>Pinecone: SaaS, REST SDK, Serverless billing, simple API, no self-host.</p>
+      <p>Weaviate Cloud: SaaS + OSS, GraphQL + REST, Built-in hybrid search, text2vec modules.</p>
+      <p>Milvus / Zilliz: OSS + SaaS, pymilvus SDK, Best for 1B+ vectors, CNCF project.</p>
+      <p>pgvector: OSS (PostgreSQL ext), SQL/ORM, Familiar, ACID, degrades &gt; 100M vectors.</p>
+      <p>Chroma: OSS, Python SDK, Local dev only, no production scale.</p>
+      <p>Elasticsearch kNN: SaaS + OSS, REST API, Good for existing ES infra, heavier footprint.</p>
+    </section>
+    <templates>
+      <template path="templates/qdrant-setup.py" purpose="Qdrant collection creation with HNSW + scalar quantization + payload index"/>
+    </templates>
+    <see-also>
+      <link href="https://qdrant.tech/documentation/"/>
+      <link href="https://ann-benchmarks.com/"/>
+      <link href="https://qdrant.tech/benchmarks/"/>
+      <link href="https://github.com/pgvector/pgvector"/>
+      <link href="https://weaviate.io/developers/weaviate/search/hybrid"/>
+      <link href="https://www.pinecone.io/learn/"/>
+      <link href="https://www.zenml.io/blog/vector-databases-for-rag"/>
+    </see-also>
+  </content>
+</methodology>
