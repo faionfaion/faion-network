@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="workflow-design-phase">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd-planning</domain>
+    <summary>Step-by-step procedures for the SDD design phase: writing design documents, implementation plans, TASK_NNN.md files, and parallelization analysis.</summary>
+    <tags>
+      <tag>sdd</tag>
+      <tag>workflow</tag>
+      <tag>design</tag>
+      <tag>planning</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Workflow: Design Phase</title>
+
+    <summary>Step-by-step procedures for the SDD design phase: writing design documents (spec → AD-X → file table → data models → API contracts → testing strategy), writing implementation plans (context load → complexity analysis → work units → 100k rule → dependency graph → wave analysis), creating TASK_NNN.md files from the plan, and running parallelization analysis. Prerequisite: spec.md must be approved before starting.</summary>
+
+    <why>
+      <p>Design phase without explicit procedures produces design docs where AD choices are made without listing alternatives, file tables include files not required by any FR, and implementation plans have incorrect wave assignments because the dependency graph was not built first. The procedure enforces: research before decisions, files-first before task descriptions, reviewer gate before approval.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Approved spec.md exists and the feature needs a technical blueprint before coding starts.</item>
+        <item>Choosing between 2+ architecture options with real trade-offs.</item>
+        <item>Codebase has existing patterns that new work must follow — design phase surfaces them.</item>
+        <item>Feature spans multiple services or data models requiring explicit data flow.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Spec is still Draft or unapproved — design decisions will be based on shifting requirements.</item>
+        <item>Tiny bugfixes or single-file changes where a full design doc adds zero value.</item>
+        <item>Pure infrastructure changes (server config, CI tweaks) that do not affect application architecture.</item>
+        <item>Greenfield spikes where the goal is learning, not committing to an approach.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="design-doc-workflow">
+      <p>11-phase procedure for writing design.md from approved spec through reviewer approval, with agent-specific instructions for each phase.</p>
+
+      <section name="prerequisites">
+        <rule>
+          <statement>Verify spec.md status is Approved before starting any design work; design on a Draft spec produces decisions based on shifting requirements.</statement>
+          <rationale>FR-X IDs must be stable before design starts. A spec revision after design is begun invalidates the coverage matrix and requires a full redesign of the FR → AD-X mapping.</rationale>
+        </rule>
+        <list>
+          <item>spec.md exists with status: Approved</item>
+          <item>constitution.md exists at .aidocs/constitution.md</item>
+          <item>contracts.md exists (for API features — reference it, never redefine endpoints in design)</item>
+        </list>
+      </section>
+
+      <section name="phase-1-to-3-extract-research">
+        <list>
+          <item>Phase 1 (Read Spec): extract all FR-X, NFR-X, user stories, out-of-scope, preliminary data models</item>
+          <item>Phase 2 (Read Constitution): extract architecture patterns, code standards, testing requirements</item>
+          <item>Phase 3 (Read Contracts): reference contracts.md for API endpoints — do not redefine them in design.md</item>
+        </list>
+        <rule>
+          <statement>Run codebase research as a separate subagent call before making AD decisions — mixing discovery and decision-making in one pass produces worse decisions.</statement>
+          <rationale>Research and decision-making use different cognitive modes. A research agent reports findings without committing to approaches; a decision agent receives complete findings and evaluates options. Merging these phases produces decisions made with incomplete information.</rationale>
+        </rule>
+        <list>
+          <item>Phase 4 (Research Codebase): use Grep/Glob to find similar models, services, views, existing patterns; determine reusable components and code placement</item>
+        </list>
+      </section>
+
+      <section name="phase-5-to-7-architecture-technical">
+        <list>
+          <item>Phase 5 (AD-X): for each key decision — define context, list 2+ alternatives with pros/cons, choose, document rationale</item>
+          <item>Phase 6 (Technical Approach): components, data flow (inputs → transformations → outputs), file change list (CREATE/MODIFY)</item>
+          <item>Phase 7 (Testing Strategy): unit test targets, integration test flows, test data/fixtures, quality gate coverage targets</item>
+        </list>
+        <rule>
+          <statement>Write the file change table after AD-X entries, not before; files are derived from decisions.</statement>
+          <rationale>File tables written before decisions include speculative files not justified by any FR. Every file in the table must be explainable by an AD-X decision that implements a specific FR.</rationale>
+        </rule>
+      </section>
+
+      <section name="phase-8-to-11-risks-review-save">
+        <list>
+          <item>Phase 8 (Risks): for each risk — description, impact (High/Med/Low), mitigation strategy (concrete action)</item>
+          <item>Phase 9 (User Review): present AD-X alternatives and technical approach — human checkpoint, cannot be automated</item>
+          <item>Phase 10 (Agent Review): call faion-sdd-reviewer-agent (mode: design) — checks FR coverage, AD structure, constitution compliance</item>
+          <item>Phase 11 (Save): write to {feature_path}/design.md with status: Review (human sets to Approved)</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="impl-plan-workflow">
+      <p>8-phase procedure for creating implementation-plan.md from approved design.md, with the 100k rule, wave algorithm, and quality gate.</p>
+
+      <section name="phase-1-load-context">
+        <list>
+          <item>Read constitution.md — principles and tech stack standards</item>
+          <item>Read spec.md — extract all FR-X IDs to verify coverage</item>
+          <item>Read design.md — extract all AD-X and full file change table (this is the task input)</item>
+          <item>Review features/done/ — find pattern examples from completed implementations</item>
+        </list>
+      </section>
+
+      <section name="phase-2-to-3-complexity-work-units">
+        <list>
+          <item>Phase 2 (Complexity): for each file in design.md — estimate tokens (LOC + deps + business logic + tests); flag &gt;60k single-file estimates for decomposition</item>
+          <item>Phase 3 (Work Units): group related files into logical work units (high cohesion, low coupling); apply 8-80 rule — not too many files, not too few</item>
+        </list>
+      </section>
+
+      <section name="phase-4-100k-rule">
+        <rule>
+          <statement>Every task must fit within 100k token context window: research ~20k + task file ~5k + implementation ~50k + buffer ~25k = total &lt; 100k.</statement>
+          <rationale>Tasks exceeding 100k tokens force the executor to truncate context, producing incomplete or inconsistent implementations. Split on logical boundaries before writing the plan; splitting during execution is more costly.</rationale>
+        </rule>
+        <list>
+          <item>If any work unit estimate &gt; 75k: split into two tasks with a clear boundary</item>
+          <item>Boundary options: model vs service layer, happy-path vs error-handling, core logic vs tests</item>
+        </list>
+      </section>
+
+      <section name="phase-5-dependency-mapping">
+        <list>
+          <item>Map Finish-to-Start dependencies between tasks (most common: task B reads output file of task A)</item>
+          <item>Check implicit dependencies: shared files, module imports, schema order, API producer before consumer</item>
+          <item>Run tsort validation — no cycles allowed before wave analysis</item>
+          <item>Document why each dependency exists</item>
+        </list>
+      </section>
+
+      <section name="phase-6-to-8-draft-review-save">
+        <list>
+          <item>Phase 6 (Draft): overview (total tasks, critical path, est. tokens), wave analysis table, per-task entries</item>
+          <item>Phase 7 (Review): call faion-sdd-reviewer-agent (mode: plan) — checks 100k compliance, dependency correctness, FR/AD coverage</item>
+          <item>Phase 8 (Save): write to .aidocs/features/{feature}/implementation-plan.md with status: Draft (human/reviewer sets to Approved)</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="task-creation-workflow">
+      <p>Workflow for generating TASK_NNN.md files from an approved implementation plan.</p>
+      <list>
+        <item>Step 1: Verify spec.md and design.md both have status Approved</item>
+        <item>Step 2: Verify implementation-plan.md exists and is Approved</item>
+        <item>Step 3: For each task row in the plan — call faion-task-creator-agent with task info + SDD path</item>
+        <item>Step 4: Run faion-sdd-reviewer-agent (mode: tasks) — 4-pass review (completeness, consistency, coverage, executability)</item>
+        <item>Step 5: Move approved tasks to todo/ folder</item>
+      </list>
+      <rule>
+        <statement>Pass 4 (Executability) is the critical review pass: can each task run standalone within 100k tokens without reading the full codebase?</statement>
+        <rationale>Tasks that fail the executability check produce executor agents that stall mid-execution trying to discover missing context. Executability failures are cheaper to fix in the planning phase than during execution.</rationale>
+      </rule>
+      <example type="good" title="Task Creator Prompt Pattern">
+        <code lang="text"><![CDATA[PROJECT: {project}. FEATURE: {feature}. TASK_INFO: {task row from implementation-plan.md}. SDD_PATH: .aidocs/features/{status}/{feature}/. Read dependency task summaries. Create TASK_{NNN}.md following the v2.0 template. Token estimate must be <100k. AC in Given-When-Then. Include full dependency tree.]]></code>
+      </example>
+      <example type="good" title="4-pass Reviewer Prompt Pattern">
+        <code lang="text"><![CDATA[MODE: tasks. Review all TASK_*.md files for feature {feature}. Pass 1: completeness — all plan rows covered? Pass 2: consistency — no contradictions between tasks? Pass 3: coverage — every FR and AD referenced? Pass 4: executability — can each task run standalone within 100k tokens?]]></code>
+      </example>
+    </section>
+
+    <section name="parallelization-analysis-workflow">
+      <p>Detecting task dependencies and building wave plan for parallel execution.</p>
+      <list>
+        <item>Step 1: Read all TASK_*.md files in the feature</item>
+        <item>Step 2: Extract explicit dependencies from each task's Dependencies section</item>
+        <item>Step 3: Detect implicit dependencies — use find-shared-files.py for file-level conflicts</item>
+        <item>Step 4: Build complete dependency graph</item>
+        <item>Step 5: Group into waves (independent tasks together)</item>
+        <item>Step 6: Add checkpoints between waves (merge, verify, review, sync)</item>
+        <item>Step 7: Calculate theoretical speedup: sequential / max-path-per-wave</item>
+      </list>
+      <rule>
+        <statement>Real parallelization speedup is 30-50% of theoretical due to coordination overhead; do not commit to a speedup estimate in planning documents.</statement>
+        <rationale>I/O-bound tasks, merge conflicts, and checkpoint overhead consume the theoretical speedup. Overpromising on speedup creates false timeline expectations.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p>Known constraints and failure modes of the design phase workflow.</p>
+      <antipattern>
+        <description>Architecture decisions made without running existing code can contradict hidden constraints.</description>
+        <reason>Require agents to test assumptions against the actual codebase during the research phase.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Phase 9 (user review) is a synchronous human checkpoint — async agent pipelines stall here.</description>
+        <reason>Build queuing for human review gates; do not block agent pipeline.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Codebase research via Grep/Glob misses runtime behavior (dynamic imports, factory patterns).</description>
+        <reason>Ask research agents to also check git log for recent changes and test files for runtime patterns.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Wave analysis speedup estimates are theoretical; I/O-bound tasks rarely parallelize as predicted.</description>
+        <reason>Apply a 0.5x multiplier to theoretical speedup when reporting timelines.</reason>
+      </antipattern>
+      <antipattern>
+        <description>The reviewer agent checks structure but cannot validate that AD choices are technically correct.</description>
+        <reason>Include a domain expert (or a second Opus agent) in Phase 10 review for non-trivial architectures.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Run codebase research as a separate subagent call before making AD decisions — mixing discovery and decision-making in one pass produces worse decisions</item>
+        <item>Write the Files table (CREATE/MODIFY) before writing task descriptions — files are the ground truth of scope</item>
+        <item>For API features, reference contracts.md rather than redefining endpoints in design — prevents drift</item>
+        <item>Each AD must document at least one rejected alternative; this is the most valuable part for future agents</item>
+        <item>Mark the critical path in the implementation plan before wave analysis — it determines which tasks block everything else</item>
+        <item>Keep design.md under 800 lines; split into sub-docs if larger (agents lose coherence on very long docs)</item>
+        <item>After reviewer approval, freeze design.md — changes after task creation cause cascading inconsistencies</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Opus is required for AD decisions; Sonnet will produce plausible-sounding but shallow trade-off analysis</item>
+        <item>Codebase research via Glob/Grep only finds static patterns; ask agent to also check git log for recent changes</item>
+        <item>The "review with user" phase (Phase 9) is a hard human-in-the-loop checkpoint — design pipelines must pause here; do not auto-approve</item>
+        <item>Wave analysis speedup calculations assume zero inter-task coordination cost; real speedup is 30-50% of theoretical</item>
+        <item>Agents frequently omit the "Consequences" subsection from ADRs — enforce via reviewer checklist</item>
+        <item>File change lists become stale when design is revised post-approval; version the design doc or lock it</item>
+        <item>Do not parallelize the research and AD-decision phases — AD quality depends on complete research input</item>
+      </list>
+    </section>
+
+    <scripts>
+      <script path="scripts/find-shared-files.py" purpose="Detect files touched by multiple tasks — creates implicit FS dependencies"/>
+    </scripts>
+
+    <see-also>
+      <ref slug="template-task"/>
+      <ref slug="templates"/>
+      <ref slug="writing-implementation-plans"/>
+      <link href="https://github.com/oxsecurity/megalinter"/>
+    </see-also>
+  </content>
+</methodology>
