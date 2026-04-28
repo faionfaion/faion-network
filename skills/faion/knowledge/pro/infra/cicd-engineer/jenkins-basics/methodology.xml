@@ -1,0 +1,431 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="jenkins-basics">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Open-source automation server with Declarative pipelines and Kubernetes agents. Use Declarative for new pipelines — they support restart-from-stage and validation. Never run builds on controller.</summary>
+    <tags>
+      <tag>jenkins</tag>
+      <tag>pipeline</tag>
+      <tag>cicd</tag>
+      <tag>declarative</tag>
+      <tag>kubernetes</tag>
+    </tags>
+    <category>cicd</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+
+  <content>
+    <title>Jenkins Basics</title>
+
+    <summary>Jenkins is an open-source automation server with Groovy-based Declarative (recommended) and Scripted pipeline syntax defined in Jenkinsfiles. Use Declarative pipelines for all new pipelines — they support restart-from-stage and syntax validation at load time. Use Shared Libraries to share pipeline code across projects. Use the Kubernetes agent for dynamic build agents — never run builds on the controller node.</summary>
+
+    <why>
+      <p>Jenkins excels in enterprise environments with complex, multi-step builds, legacy integrations, or strict on-premises security requirements. Its plugin ecosystem (1800+ plugins) covers virtually every integration need. Configuration as Code (JCasC) plugin enables reproducible Jenkins setups — critical for disaster recovery and multi-instance rollouts.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Enterprise environments with existing Jenkins infrastructure and established pipelines</item>
+        <item>On-premises deployments with strict network isolation or compliance requirements</item>
+        <item>Pipelines requiring heavy customization via plugins not available in GitLab CI or GitHub Actions</item>
+        <item>Multi-branch projects with complex branching strategies (Organization Folder + Multibranch Pipeline)</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>New projects on GitHub — GitHub Actions is simpler and has zero infrastructure cost</item>
+        <item>New projects on GitLab — GitLab CI is integrated and eliminates a separate server</item>
+        <item>Small teams or solo projects — Jenkins administration overhead is not justified</item>
+        <item>Projects that need serverless/ephemeral CI — prefer cloud-native CI tools</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pipeline-types">
+      <p>Pipeline type comparison (Declarative vs Scripted), agent types, essential plugins, and JCasC requirement.</p>
+
+      <rule>
+        <statement>Use Declarative Pipeline syntax for all new Jenkinsfiles; use Scripted only when Declarative cannot express the required logic (rare).</statement>
+        <rationale>Declarative pipelines support syntax validation at load time, restart-from-stage, and the `post` section for structured cleanup. Scripted pipelines offer more flexibility but provide no static validation — errors appear only at runtime, making debugging harder.</rationale>
+      </rule>
+
+      <example type="good" title="Minimal Declarative pipeline skeleton">
+        <note>Minimal Declarative pipeline skeleton with required sections.</note>
+        <code lang="groovy"><![CDATA[
+pipeline {
+    agent { label 'linux' }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        stage('Build') {
+            steps {
+                sh 'make build'
+            }
+        }
+    }
+
+    post {
+        always { cleanWs() }
+        failure {
+            slackSend channel: '#ci', color: 'danger',
+                message: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+        }
+    }
+}
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using Scripted Pipeline for a standard build-test-deploy workflow.</description>
+        <reason>Declarative covers 95% of use cases with better tooling support. Scripted pipelines are harder to read, have no syntax validation, and cannot restart from a failed stage.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-types">
+      <rule>
+        <statement>Never run builds on the Jenkins controller node; set controller executors to 0 and run all material work (clone, build, test) on agents.</statement>
+        <rationale>Builds on the controller consume resources needed for scheduling and plugin processing, causing job queue delays and potential OOM kills of Jenkins itself. Security-wise, builds should never have direct access to the controller filesystem where credentials are stored.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use Kubernetes agents for dynamic, ephemeral build environments; they scale to zero when idle and provide isolation via pod-level resource limits.</statement>
+        <rationale>Kubernetes agents are created on demand and destroyed after the build, eliminating the stale-state problem of long-lived agents. Each build gets a clean environment with no pollution from previous builds.</rationale>
+      </rule>
+    </section>
+
+    <section name="configuration-as-code">
+      <rule>
+        <statement>Manage all Jenkins configuration (security realm, authorization, node definitions, shared libraries, credentials) via the JCasC plugin from a YAML file stored in source control.</statement>
+        <rationale>Manual Jenkins configuration is not reproducible. After a disaster recovery restore, JCasC re-applies the entire configuration from YAML, restoring Jenkins to its exact state in minutes. Without JCasC, rebuilding a Jenkins controller requires hours of manual UI configuration.</rationale>
+      </rule>
+    </section>
+
+    <section name="essential-plugins">
+      <p>Essential plugins for a functional Jenkins CI/CD environment:</p>
+      <list>
+        <item>Pipeline — core pipeline functionality</item>
+        <item>Kubernetes — dynamic K8s agents</item>
+        <item>Configuration as Code (JCasC) — reproducible Jenkins configuration</item>
+        <item>Credentials Binding — secure credential injection without echoing to logs</item>
+        <item>Git + GitHub Branch Source — SCM integration and multibranch pipeline</item>
+        <item>Prometheus Metrics — metrics export for Grafana dashboards</item>
+        <item>Pipeline Utility Steps — JSON/YAML parsing, file operations in pipelines</item>
+      </list>
+    </section>
+
+    <section name="jenkinsfile-rules">
+      <rule>
+        <statement>Store the Jenkinsfile in the root of the repository with exact case (`Jenkinsfile`) and define pipeline timeouts and build discarder in the `options` section.</statement>
+        <rationale>Pipelines without timeouts can hang indefinitely on stuck processes, consuming executor slots. Build discarder limits disk usage from accumulated build artifacts and logs. Without these, Jenkins can run out of disk and memory on busy controllers.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Never hardcode credentials in Jenkinsfiles; always use the Credentials plugin with `withCredentials` or `credentials()` binding.</statement>
+        <rationale>Hardcoded credentials are committed to Git and visible in build logs. The Credentials plugin stores credentials encrypted in Jenkins and injects them as environment variables at runtime without printing to logs.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use `parallel` stages for independent tasks (lint, unit tests, security scan) to reduce total pipeline duration.</statement>
+        <rationale>Sequential stages run each task after the previous one completes. Parallel stages run simultaneously, reducing pipeline duration from the sum of all tasks to the duration of the slowest task.</rationale>
+      </rule>
+    </section>
+
+    <section name="shared-libraries">
+      <rule>
+        <statement>Extract common pipeline logic (notification, Docker build, Helm deploy) into a Shared Library stored in a dedicated repository; version with Git tags and reference specific tags in Jenkinsfiles.</statement>
+        <rationale>Code duplicated across dozens of Jenkinsfiles requires coordinated updates when requirements change. A Shared Library centralizes the logic — fixing a deployment bug or adding a security check propagates to all pipelines that use the library.</rationale>
+      </rule>
+
+      <example type="good" title="Shared Library call with pinned version">
+        <note>Shared Library call from a Jenkinsfile using a pinned version tag.</note>
+        <code lang="groovy"><![CDATA[
+@Library('my-shared-library@v2.3.1') _
+
+standardPipeline(
+    dockerImage: 'node:20-alpine',
+    testCommand: 'npm run test:coverage',
+    deployBranch: 'main',
+    slackChannel: '#deployments'
+)
+]]></code>
+      </example>
+    </section>
+
+    <section name="multibranch-pipelines">
+      <rule>
+        <statement>Use Organization Folders for GitHub or GitLab organizations to auto-discover all repositories with Jenkinsfiles; use Multibranch Pipelines for single repositories with multiple branches.</statement>
+        <rationale>Organization Folders scan the entire organization periodically, automatically creating pipeline jobs for new repositories and removing jobs for deleted ones. This eliminates the manual work of registering each new project in Jenkins.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Prefer webhooks over SCM polling for triggering builds; polling adds latency and wastes Jenkins CPU scanning repositories every N minutes.</statement>
+        <rationale>Webhooks push change events from GitHub/GitLab to Jenkins immediately on push. Polling checks all repositories on a fixed schedule, consuming bandwidth and CPU even when nothing changed, and adding up to N minutes of trigger latency.</rationale>
+      </rule>
+    </section>
+
+    <section name="examples">
+      <p>Declarative pipeline skeleton, Kubernetes agent example, Shared Library definition, parallel test execution.</p>
+
+      <example type="good" title="Node.js pipeline with Docker agent">
+        <note>Node.js Declarative pipeline using Docker agent with parallel lint and test stages.</note>
+        <code lang="groovy"><![CDATA[
+pipeline {
+    agent {
+        docker {
+            image 'node:20-alpine'
+            args '-v $HOME/.npm:/root/.npm'
+        }
+    }
+
+    environment {
+        CI = 'true'
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        stage('Install') {
+            steps { sh 'npm ci' }
+        }
+
+        stage('Validate') {
+            parallel {
+                stage('Lint') {
+                    steps { sh 'npm run lint' }
+                }
+                stage('Type Check') {
+                    steps { sh 'npm run typecheck' }
+                }
+            }
+        }
+
+        stage('Test') {
+            steps { sh 'npm test -- --coverage' }
+            post {
+                always { junit 'junit.xml' }
+            }
+        }
+
+        stage('Build') {
+            steps { sh 'npm run build' }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'dist/**', fingerprint: true
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when { branch 'main' }
+            input { message 'Deploy to production?'; ok 'Deploy' }
+            steps { sh './scripts/deploy.sh production' }
+        }
+    }
+
+    post {
+        always { cleanWs() }
+        failure {
+            slackSend channel: '#ci', color: 'danger',
+                message: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
+        }
+    }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Kubernetes agent with multi-container pod">
+        <note>Kubernetes pod template with separate containers for build and deployment tools.</note>
+        <code lang="groovy"><![CDATA[
+pipeline {
+    agent {
+        kubernetes {
+            yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: node
+    image: node:20-alpine
+    command: [cat]
+    tty: true
+    resources:
+      requests: { cpu: "500m", memory: "512Mi" }
+      limits:   { cpu: "1",    memory: "1Gi"  }
+  - name: helm
+    image: alpine/helm:3.14
+    command: [cat]
+    tty: true
+'''
+        }
+    }
+
+    stages {
+        stage('Build') {
+            steps {
+                container('node') {
+                    sh 'npm ci && npm run build'
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                container('helm') {
+                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                        sh 'helm upgrade --install myapp ./charts/myapp --wait --timeout 5m'
+                    }
+                }
+            }
+        }
+    }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Shared Library var definition">
+        <note>Shared Library var definition (vars/standardPipeline.groovy) encapsulating common pipeline logic.</note>
+        <code lang="groovy"><![CDATA[
+// vars/standardPipeline.groovy
+def call(Map config) {
+    pipeline {
+        agent { docker { image config.get('image', 'node:20-alpine') } }
+
+        options {
+            timeout(time: config.get('timeout', 30), unit: 'MINUTES')
+            buildDiscarder(logRotator(numToKeepStr: '10'))
+        }
+
+        stages {
+            stage('Install') {
+                steps { sh config.get('installCmd', 'npm ci') }
+            }
+            stage('Test') {
+                steps { sh config.get('testCmd', 'npm test') }
+            }
+            stage('Build') {
+                steps { sh config.get('buildCmd', 'npm run build') }
+            }
+            stage('Deploy') {
+                when { branch config.get('deployBranch', 'main') }
+                steps { sh config.get('deployCmd', 'echo No deploy configured') }
+            }
+        }
+
+        post {
+            always { cleanWs() }
+            failure {
+                script {
+                    if (config.slackChannel) {
+                        slackSend channel: config.slackChannel, color: 'danger',
+                            message: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+                    }
+                }
+            }
+        }
+    }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Treat Jenkins as a programmable platform with a real ops surface. Have one agent generate the Jenkinsfile (always Declarative unless there's a documented reason for Scripted), with `agent { kubernetes { ... } }` or `agent { docker { ... } }` — never `agent any`. A second agent maintains JCasC + `plugins.txt` + Dockerfile for the controller. A reviewer agent runs `jenkins-pipeline-linter` against the Jenkinsfile and `groovy:checkstyle` against shared library code. For shared library changes, force a versioned `@Library('mylib@v1.4.2')` ref and tag the library — agents must never use `@Library('mylib@main')` in production pipelines.</p>
+
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-sdd-executor-agent — quality gate: linter + dry-run against a parallel "review" controller (or a `jenkinsfile-runner` container).</item>
+        <item>password-scrubber-agent — Jenkinsfiles attract `withCredentials` plus inline `curl -u user:pass` patterns.</item>
+        <item>A custom `jcasc-validator` (Sonnet, read-only) — diffs proposed JCasC against running controller via API and lists destructive changes.</item>
+        <item>A custom `plugin-cve-watcher` — pulls Jenkins security advisories, flags any installed plugin with open CVE.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <p>Essential CLI tools for Jenkins automation and management:</p>
+      <list>
+        <item>jenkins-cli.jar — Run jobs, get logs, install plugins from CLI at `$JENKINS_URL/jnlpJars/jenkins-cli.jar`</item>
+        <item>jenkins-plugin-cli — Install plugins from `plugins.txt` reproducibly at https://github.com/jenkinsci/plugin-installation-manager-tool</item>
+        <item>jenkinsfile-runner — Run a Jenkinsfile locally without a server at https://github.com/jenkinsci/jenkinsfile-runner</item>
+        <item>Pipeline Linter (REST) — `POST /pipeline-model-converter/validate` validates Declarative syntax (built-in)</item>
+        <item>jcasc-export (REST) — Dump current config as YAML for diff at https://www.jenkins.io/projects/jcasc/</item>
+        <item>jenkinsapi (Python) / python-jenkins — Programmatic SDK at https://python-jenkins.readthedocs.io</item>
+        <item>groovylint / npm-groovy-lint — Lint Jenkinsfile + shared lib Groovy at https://nvuillam.github.io/npm-groovy-lint/</item>
+        <item>hadolint — Lint controller/agent Dockerfiles at https://github.com/hadolint/hadolint</item>
+        <item>trivy / grype — Scan controller image for plugin/JVM CVEs at https://github.com/aquasecurity/trivy</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <p>Related services and applications for Jenkins:</p>
+      <list>
+        <item>Jenkins (self-hosted) — OSS, Programmable but plugin churn + restart cycles slow agentic loops.</item>
+        <item>CloudBees CI — Commercial, Multi-controller, RBAC, bundled JCasC; agents get a stable target.</item>
+        <item>Jenkins X — OSS, Declarative, K8s-native — but largely superseded by Tekton/Argo.</item>
+        <item>Kubernetes plugin — OSS, Pod-per-build agents; the only sane way to run Jenkins at scale.</item>
+        <item>Configuration-as-Code (JCasC) plugin — OSS, Controller config in YAML; agents diff/apply via Git.</item>
+        <item>Job DSL plugin — OSS, Generate jobs from Groovy seed; agents prefer Multibranch + JCasC.</item>
+        <item>Blue Ocean — OSS, UI only; agents don't need it.</item>
+        <item>Tekton / Argo Workflows — OSS, Common K8s-native replacements when migrating off Jenkins.</item>
+        <item>HashiCorp Vault — OSS / SaaS, Vault plugin issues short-lived creds; replace static credentials.</item>
+        <item>Slack / PagerDuty plugins — SaaS, Standard `post { failure }` notifications.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always Declarative over Scripted; reach for Scripted only inside a Shared Library `vars/*.groovy` if Declarative truly cannot express the logic.</item>
+        <item>Pin plugin versions (`plugins.txt`), pin shared library versions (`@Library('lib@v1.2.3')`), pin agent images by digest.</item>
+        <item>Controller has zero executors; all builds on labeled K8s pods or Docker agents.</item>
+        <item>JCasC + Groovy `init.groovy.d` is the only way to mutate controller config. UI-driven changes are forbidden — they are unreviewable.</item>
+        <item>Use `withCredentials` for every secret; never store plaintext in environment, NEVER `echo` secrets even masked.</item>
+        <item>`options { timeout(time: 30, unit: 'MINUTES'); buildDiscarder(logRotator(numToKeepStr: '50')); disableConcurrentBuilds() }` on every pipeline. Unbounded pipelines = fillable disk + races.</item>
+        <item>Multibranch with `excludeBranches` filter — never index a 5000-branch monorepo without filters.</item>
+        <item>`cleanWs()` in `post { always }` everywhere.</item>
+        <item>Audit `Authorize Project` plugin or equivalent: jobs run as a project-bound identity, not the global agent.</item>
+        <item>Maintenance window: weekly controller restart + plugin update sweep; track CVE feed.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common pitfalls when AI agents generate Jenkins configurations:</p>
+      <list>
+        <item>Groovy CPS sandbox: agents call `Files.list()` or `new URL(...).text` — these are not whitelisted; first run requires admin approval that never comes in CI. Always use plugin-provided steps (`readFile`, `httpRequest`) instead.</item>
+        <item>Closures + iteration: `list.each { ... }` is non-CPS-friendly under heavy iteration; use plain `for` loops in shared libraries.</item>
+        <item>`def` variables across stages disappear. Agents declare `def x = 1` in stage A and reference in stage B — fails with `MissingPropertyException`. Use environment block or `script { }` with explicit binding.</item>
+        <item>Parallel + `failFast: true` plus `unstable` results — agents misread non-zero stage exits as build failures and trigger duplicate alerts.</item>
+        <item>`try/catch` in Declarative requires a `script {}` block. Agents copy try/catch from Scripted samples; pipeline fails to parse.</item>
+        <item>Shared library breaking change with no version pin → fleet-wide pipeline outage. Force tagged refs and a "library compat" check in the library's own pipeline.</item>
+        <item>Human-in-loop checkpoints: any change to JCasC role assignments, credentialsId definitions, or controller plugin set MUST require human approval. These touch the trust boundary of every job on the controller.</item>
+        <item>Plugin install mid-build occasionally restarts the controller; agents that auto-upgrade plugins during a deploy window cause production stalls.</item>
+        <item>Groovy `String` interpolation inside `sh "..."` is a shell-injection footgun: agents emit `sh "echo ${userInput}"` — always use single-quoted `sh '''echo "$USER_INPUT"'''` + env var binding.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/Jenkinsfile" purpose="Declarative pipeline template with build/test/deploy stages and post-actions"/>
+      <template path="templates/kubernetes-agent.groovy" purpose="Kubernetes pod template for dynamic Jenkins agents"/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.jenkins.io/doc/book/pipeline/pipeline-best-practices/"/>
+      <link href="https://www.jenkins.io/doc/book/pipeline/syntax/"/>
+      <link href="https://www.jenkins.io/projects/jcasc/"/>
+      <link href="https://plugins.jenkins.io/kubernetes/"/>
+      <link href="https://github.com/jenkinsci/jenkinsfile-runner"/>
+      <link href="https://www.jenkins.io/security/advisories/"/>
+      <link href="https://www.jenkins.io/doc/book/pipeline/shared-libraries/"/>
+      <link href="https://www.jenkins.io/doc/book/pipeline/development/#linter"/>
+    </see-also>
+  </content>
+</methodology>
