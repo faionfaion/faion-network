@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vision-basics">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>multimodal-ai</domain>
+    <summary>VLM fundamentals: single-image analysis, multi-image comparison, structured JSON extraction via Pydantic, and stateful visual Q&amp;A with input methods, token cost control, and failure modes.</summary>
+    <tags>
+      <tag>vision</tag>
+      <tag>vlm</tag>
+      <tag>structured-extraction</tag>
+      <tag>pydantic</tag>
+      <tag>image-analysis</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Vision Basics</title>
+    <summary>Analyze images with VLM APIs (GPT-4o, Claude Sonnet, Gemini Flash): single-image analysis, multi-image comparison, structured JSON extraction via Pydantic, and stateful visual Q&amp;A. Covers input methods (URL vs. base64), detail settings, token cost control, and the failure modes that make VLMs unsuitable for precision tasks.</summary>
+    <why>
+      <p>VLM API calls fail silently when images exceed provider size caps, base64-encode unexpectedly large requests, or produce unvalidated JSON that breaks downstream agents. Resize images to 1024px before sending (50-70% token reduction), enforce structured output via response_format, and cache by SHA-256 of image bytes to avoid re-scanning identical images.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Agents need to read content from screenshots, diagrams, or scanned forms.</item>
+        <item>Pipeline receives images as intermediate outputs (web scraping returns screenshot; agent reads the page).</item>
+        <item>Generating alt-text or captions for images at scale.</item>
+        <item>Classifying images (safe/unsafe, relevant/irrelevant) as a routing step.</item>
+        <item>Extracting text from images when dedicated OCR is unavailable or layout is complex.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Real-time video analysis at &gt;2 FPS — VLM API latency (500ms-2s) is too high; use YOLOv11 or GroundingDINO locally.</item>
+        <item>High-volume barcode/QR decoding — use zxing or python-qrcode; 100x cheaper and deterministic.</item>
+        <item>Pixel-level measurement — VLM outputs are statistical estimates, not precise values.</item>
+        <item>Privacy-sensitive images that must not leave the local environment — use Qwen2.5-VL or LLaVA via Ollama.</item>
+        <item>Tasks reducible to image metadata (EXIF, creation date) — VLMs cannot see metadata; use Pillow or ExifTool.</item>
+        <item>Medical, legal, or forensic images where model content policies may silently reject inputs.</item>
+      </list>
+    </when-not-to-use>
+    <section name="input-methods-comparison">
+      <rule>
+        <statement>Send images as base64 for sensitive content. URL-based images are fetched by the provider's servers and may be logged or cached externally.</statement>
+        <rationale>Providers that accept URLs retrieve the image from an external server that they control. Base64 encodes the image inline in the request, keeping it within the API call itself.</rationale>
+      </rule>
+      <rule>
+        <statement>Resize images to 1024px on the long edge before sending. This reduces token cost by 50-70% with minimal quality loss for text, diagram, and screenshot tasks.</statement>
+        <rationale>VLMs charge by image tokens, which scale with resolution. At 1024px, most documents and screenshots remain fully legible. Going higher rarely improves extraction accuracy.</rationale>
+      </rule>
+    </section>
+    <section name="provider-size-limits">
+      <rule>
+        <statement>Check image file size before making API calls: Anthropic limit is 5MB per image, OpenAI is 20MB. Exceeding these limits causes silent or unhelpful errors if not pre-checked.</statement>
+        <rationale>Provider size caps are per-image, not per-request. A 10-image request with 4.9MB images each can still fail if the provider enforces a total payload cap.</rationale>
+      </rule>
+      <example type="good" title="Resize and encode helper">
+        <code lang="python"><![CDATA[
+from PIL import Image
+import base64, io
+
+def prepare_image(path: str, max_px: int = 1024) -> tuple[str, str]:
+    """Resize to max_px on long edge, return (base64_data, media_type)."""
+    img = Image.open(path)
+    img.thumbnail((max_px, max_px), Image.LANCZOS)
+    buf = io.BytesIO()
+    fmt = img.format or "PNG"
+    img.save(buf, format=fmt)
+    data = base64.standard_b64encode(buf.getvalue()).decode()
+    mt = {"JPEG": "image/jpeg", "PNG": "image/png",
+          "WEBP": "image/webp", "GIF": "image/gif"}.get(fmt, "image/png")
+    return data, mt
+        ]]></code>
+        <note>Prevents oversized requests that fail silently at the provider.</note>
+      </example>
+    </section>
+    <section name="multi-image-labeling">
+      <rule>
+        <statement>Label each image explicitly in multi-image prompts: "Image 1:", "Image 2:". VLMs lose track of which image they are describing without explicit labels.</statement>
+        <rationale>Without labels, VLMs conflate images or describe them out of order in comparisons. Explicit numbering anchors each reference in the model's response.</rationale>
+      </rule>
+    </section>
+    <section name="structured-output-enforcement">
+      <rule>
+        <statement>Always enforce structured output via response_format={"type": "json_object"} when downstream agents consume vision results. Prompt-only schema requests drift under real production load.</statement>
+        <rationale>VLM JSON output without format enforcement occasionally adds prose before the JSON, uses wrong field names, or omits required fields. response_format eliminates these cases for OpenAI; Anthropic requires explicit JSON-in-prompt instruction and parse-with-retry.</rationale>
+      </rule>
+      <rule>
+        <statement>Wrap JSON parse in try/except and re-prompt with the specific parse error on failure. Do not silently drop failed extractions.</statement>
+        <rationale>Even with response_format, edge cases can produce malformed JSON. A re-prompt with the error message typically produces valid JSON on the second attempt.</rationale>
+      </rule>
+      <example type="good" title="Pydantic schema with retry pattern">
+        <code lang="python"><![CDATA[
+from pydantic import BaseModel
+from typing import Optional
+import json
+
+class ImageResult(BaseModel):
+    description: str
+    text_content: Optional[str]
+    confidence: str  # "high" | "low"
+
+def extract_with_retry(client, image_data: str, task: str, max_retries: int = 2) -> ImageResult:
+    prompt = f"{task}\nReturn JSON: {{description, text_content, confidence}}"
+    for attempt in range(max_retries):
+        resp = client.chat.completions.create(
+            model="gpt-4o",
+            response_format={"type": "json_object"},
+            messages=[{"role": "user", "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_data}"}}
+            ]}]
+        )
+        try:
+            return ImageResult(**json.loads(resp.choices[0].message.content))
+        except Exception as e:
+            prompt = f"Previous response caused: {e}. Return valid JSON: {{description, text_content, confidence}}"
+    raise ValueError("Extraction failed after retries")
+        ]]></code>
+      </example>
+    </section>
+    <section name="stateful-visual-qa">
+      <rule>
+        <statement>Include the image only in the first message of a multi-turn visual Q&amp;A conversation. Subsequent turns are text-only with conversation history.</statement>
+        <rationale>Including the image in every turn re-consumes image tokens on each message, multiplying cost by the number of turns. The model retains image context from the first message.</rationale>
+      </rule>
+    </section>
+    <section name="vlm-limitations-for-numbers">
+      <rule>
+        <statement>Always cross-validate numbers extracted from charts with a second VLM pass or a deterministic chart parser. VLMs frequently hallucinate chart values.</statement>
+        <rationale>Chart values are interpolated, not read precisely. VLMs produce confident-sounding but inaccurate numbers for bar heights, axis values, and table cells in charts.</rationale>
+      </rule>
+    </section>
+    <section name="detail-settings">
+      <rule>
+        <statement>Use detail="low" for quick image classification; use detail="high" for layout-heavy documents. Mismatching costs 4x tokens unnecessarily.</statement>
+        <rationale>OpenAI's detail setting controls how many 512px tiles are processed. "low" uses a single fixed tile (85 tokens); "high" tiles the full image (up to ~1700 tokens for a 1024px image). Using "high" for a simple yes/no classification quadruples cost with no accuracy benefit.</rationale>
+      </rule>
+    </section>
+    <section name="caching">
+      <rule>
+        <statement>Cache extraction results keyed on SHA-256 of the image bytes, not the filename. Re-scanning the same image should never re-call the API.</statement>
+        <rationale>Filenames are reused across pipeline runs. A content hash is stable regardless of how the file is named or moved.</rationale>
+      </rule>
+    </section>
+    <section name="metadata-limitation">
+      <rule>
+        <statement>VLMs cannot read image metadata (EXIF, PDF author, creation date). Extract metadata with Pillow or PyMuPDF in a separate step; do not ask the VLM for it.</statement>
+        <rationale>VLMs see only the rendered pixel content of an image. EXIF data, file creation timestamps, and PDF document properties are invisible to them.</rationale>
+      </rule>
+    </section>
+    <section name="handwritten-and-small-text">
+      <rule testable="true">
+        <statement>Treat handwritten text extraction as low-confidence and always require human review. Printed text below ~100px height also degrades significantly.</statement>
+        <rationale>VLMs are not fine-tuned as OCR engines. Handwriting accuracy varies widely; small printed text below 100px can be misread character by character.</rationale>
+      </rule>
+    </section>
+    <section name="agentic-workflow">
+      <p>A vision agent receives an image (URL or base64) and a task description, calls the appropriate VLM (Claude Sonnet for complex layouts, Gemini Flash for high volume, GPT-4o for general QA), and returns a structured Pydantic object. Upstream, a routing subagent classifies the image type (document, photo, screenshot, chart) and selects the VLM and prompt variant. For multi-image workflows, a fan-out pattern works well: spawn parallel vision subagents per image, then merge results in a reduction step.</p>
+      <example type="good" title="Minimal Claude vision extraction">
+        <code lang="python"><![CDATA[
+import anthropic, base64, json
+from pydantic import BaseModel
+
+class ImageResult(BaseModel):
+    description: str
+    text_content: str | None
+    confidence: str  # "high" | "low"
+
+def extract_image(image_path: str, task: str) -> ImageResult:
+    client = anthropic.Anthropic()
+    with open(image_path, "rb") as f:
+        data = base64.standard_b64encode(f.read()).decode()
+    resp = client.messages.create(
+        model="claude-sonnet-4-5",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": [
+            {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": data}},
+            {"type": "text", "text": f"{task}\nReturn JSON: {{description, text_content, confidence}}"},
+        ]}],
+    )
+    return ImageResult(**json.loads(resp.content[0].text))
+        ]]></code>
+      </example>
+      <example type="good" title="Prompt pattern for structured extraction">
+        <code lang="text"><![CDATA[
+Analyze this image and return JSON matching the schema below.
+- If a field is not visible or ambiguous, set it to null.
+- Do not infer values not present in the image.
+- Set confidence to "low" if any field required significant interpretation.
+
+Schema: {schema_json}
+        ]]></code>
+      </example>
+    </section>
+    <section name="subagent-roles">
+      <p>vision-router: classifies image type (document/photo/chart/screenshot) and selects VLM + detail setting. vision-extractor: calls VLM API, enforces structured output schema (Pydantic + response_format), returns typed result. vision-qa: stateful Q&amp;A over a single image across multiple questions (maintains conversation history with image in first turn only). vision-validator: second-pass VLM call to verify specific extracted fields against the source image.</p>
+    </section>
+    <section name="cli-tools">
+      <list>
+        <item>anthropic — Claude Vision API (Sonnet, Haiku). Install: pip install anthropic. Docs: docs.anthropic.com/en/docs/vision</item>
+        <item>openai — GPT-4o Vision API. Install: pip install openai. Docs: platform.openai.com/docs/guides/vision</item>
+        <item>google-generativeai — Gemini Vision API. Install: pip install google-generativeai. Docs: ai.google.dev/gemini-api/docs/image-understanding</item>
+        <item>Pillow — Image preprocessing: resize, compress, convert before API call. Install: pip install Pillow</item>
+        <item>pdf2image — Convert PDF pages to images for vision pipeline ingestion. Install: pip install pdf2image</item>
+        <item>pytesseract — Local OCR fallback for printed text (Tesseract). Install: pip install pytesseract. Docs: github.com/tesseract-ocr/tesseract</item>
+      </list>
+    </section>
+    <section name="services-and-platforms">
+      <p>Anthropic API (SaaS, best for complex layouts and long-context documents). OpenAI API (SaaS, best structured JSON extraction via response_format; 20MB image limit). Google AI Studio / Vertex AI (SaaS, Gemini Flash for high-volume batch; Gemini Pro for multimodal reasoning). Replicate (SaaS, host Qwen2.5-VL, LLaVA, and other open-source VLMs with REST API). Ollama (OSS, run LLaVA, Qwen2.5-VL locally; no data leaves machine; use via REST). AWS Bedrock (SaaS, Claude + Titan on-prem-ish; enterprise compliance). Roboflow (SaaS, fine-tuned detection models, not general VLM; good for classification tasks).</p>
+    </section>
+    <section name="best-practices">
+      <rule>
+        <statement>Resize images to 1024px long edge before sending to reduce token cost by 50–70% with minimal quality loss for text/diagram tasks.</statement>
+        <rationale>Token reduction directly lowers API costs and latency.</rationale>
+      </rule>
+      <rule>
+        <statement>Send images as base64 for sensitive content; URL-based images are fetched by the provider's servers and may be logged.</statement>
+        <rationale>Base64 keeps image data within the request body, avoiding external fetches.</rationale>
+      </rule>
+      <rule>
+        <statement>Use GPT-4o detail: "low" for quick classification; detail: "high" for layout-heavy documents — mismatching costs 4x tokens.</statement>
+        <rationale>Detail setting directly controls token consumption and cost.</rationale>
+      </rule>
+      <rule>
+        <statement>For stateful visual Q&amp;A, include the image only in the first message of the conversation; subsequent turns are text-only.</statement>
+        <rationale>Reduces image token re-consumption and cost per turn.</rationale>
+      </rule>
+      <rule>
+        <statement>Cache extraction results keyed on a SHA-256 of the image bytes — re-scanning the same image should not re-call the API.</statement>
+        <rationale>Prevents redundant API calls and reduces costs.</rationale>
+      </rule>
+      <rule>
+        <statement>For batch classification, use structured output (Pydantic + response_format) so downstream agents always receive typed results.</statement>
+        <rationale>Type-safe downstream processing prevents silent failures.</rationale>
+      </rule>
+    </section>
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>VLMs cannot read file metadata (EXIF, PDF author, creation date).</description>
+        <reason>If your agent needs metadata, extract it with Pillow or PyMuPDF in a separate step before or after the VLM call.</reason>
+      </antipattern>
+      <antipattern>
+        <description>JSON schema compliance via prompt alone is unreliable.</description>
+        <reason>Always parse with try/except and re-prompt with the specific parse error if validation fails.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Image size limits are per-image, not per-request.</description>
+        <reason>A request with 10 images at 4.9MB each can still fail if the provider enforces a total payload cap.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Base64 encoding of a 5MB JPEG becomes ~7MB of text — request size bloats.</description>
+        <reason>Monitor request size to avoid payload cap failures.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Anthropic API image size cap is 5MB (not 20MB like OpenAI).</description>
+        <reason>Pre-check before routing to Claude models.</reason>
+      </antipattern>
+      <antipattern>
+        <description>For financial or legal document extraction, not requiring human review on low confidence.</description>
+        <reason>Require human review when confidence is "low" or extracted amounts exceed a business threshold before writing to any system of record.</reason>
+      </antipattern>
+      <antipattern>
+        <description>When comparing multiple images (e.g., before/after, product variants), not labeling them explicitly.</description>
+        <reason>Label each image explicitly in the prompt ("Image 1:", "Image 2:") — VLMs lose track without explicit labels.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/vision_extract.py" purpose="analyze_image_url, analyze_local_image, structured_analysis, VisualQA with Pydantic"/>
+      <template path="templates/prepare_image.py" purpose="Resize + base64 encode helper (1024px cap, returns media_type)"/>
+      <template path="templates/prompt-vision.txt" purpose="Agent prompt for structured vision extraction with null-on-ambiguity rule"/>
+    </templates>
+    <see-also>
+      <link href="https://docs.anthropic.com/en/docs/vision"/>
+      <link href="https://platform.openai.com/docs/guides/vision"/>
+      <link href="https://ai.google.dev/gemini-api/docs/image-understanding"/>
+      <link href="https://huggingface.co/Qwen/Qwen2.5-VL-72B-Instruct"/>
+      <link href="https://github.com/tesseract-ocr/tesseract"/>
+    </see-also>
+  </content>
+</methodology>
