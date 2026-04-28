@@ -1,0 +1,419 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="llamaindex-agents-eval">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>LlamaIndex agents with ReAct and OpenAI patterns, evaluation frameworks (faithfulness, relevancy, correctness), production patterns (caching, streaming, async), and LlamaCloud integration.</summary>
+    <tags>
+      <tag>llamaindex</tag>
+      <tag>agents</tag>
+      <tag>evaluation</tag>
+      <tag>rag</tag>
+      <tag>production-patterns</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-01-25</created>
+  </metadata>
+
+  <content>
+    <title>LlamaIndex: Agents &amp; Evaluation</title>
+
+    <summary>LlamaIndex agents provide autonomous reasoning with tool use (ReAct, OpenAI styles). Evaluation frameworks measure retrieval and response quality. Production patterns include caching, streaming, async execution, and observability. LlamaCloud offers managed parsing and indexing.</summary>
+
+    <why>
+      <p>RAG systems often fail in silent ways: retrievers surface irrelevant chunks, LLMs hallucinate facts not in context, or responses miss important nuances. LlamaIndex evaluation frameworks (faithfulness, relevancy, correctness, hit rate, MRR) quantify these failure modes and enable iterative improvement. Agents layer tool use (query engines, calculators, APIs) on top of retrieval so the model can reason about which tools to call and how to combine results. Production patterns (caching embeddings, streaming token-level output, async retrieval for latency) make RAG systems practical at scale.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building autonomous agents that reason over multi-source data (documents, APIs, databases)</item>
+        <item>Measuring retrieval quality with metrics like hit rate, MRR, or faithfulness scores</item>
+        <item>Evaluating response correctness against ground truth answers</item>
+        <item>Streaming responses to users in real-time</item>
+        <item>Caching expensive embedding or indexing operations</item>
+        <item>Running async retrieval and LLM calls for latency reduction</item>
+        <item>Integrating LlamaCloud for managed document parsing and indexing</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple single-question retrieval without multi-step reasoning — use query engines directly</item>
+        <item>Stateless, non-contextual LLM generation — agents add memory and state overhead</item>
+        <item>Offline batch evaluation where latency does not matter — streaming and async add complexity</item>
+        <item>Fully controlled workflows where branching is known upfront — LangGraph is more explicit for fixed control flow</item>
+        <item>Small datasets where evaluation overhead exceeds value — evaluation is most useful at scale</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="agents">
+      <p>LlamaIndex agents provide autonomous reasoning with tool use. ReAct agents use reasoning and action loops; OpenAI agents leverage function calling.</p>
+
+      <rule testable="true">
+        <statement>Use ReActAgent for agentic reasoning over query engines and custom tools. ReAct loops enable transparent reasoning before each action.</statement>
+        <rationale>ReAct provides interpretable reasoning traces; each "Thought," "Action," and "Observation" are logged for debugging.</rationale>
+      </rule>
+
+      <example type="good" title="ReAct Agent">
+        <code lang="python"><![CDATA[from llama_index.core.agent import ReActAgent
+from llama_index.core.tools import QueryEngineTool, FunctionTool
+
+# Query engine tool
+query_tool = QueryEngineTool.from_defaults(
+    query_engine=index.as_query_engine(),
+    name="knowledge_base",
+    description="Search the knowledge base for information",
+)
+
+# Custom function tool
+def calculate_sum(a: int, b: int) -> int:
+    """Add two numbers together."""
+    return a + b
+
+calc_tool = FunctionTool.from_defaults(fn=calculate_sum)
+
+# Create agent
+agent = ReActAgent.from_tools(
+    tools=[query_tool, calc_tool],
+    llm=llm,
+    verbose=True,
+)
+
+response = agent.chat("What is the total if I add the revenue numbers?")]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use OpenAIAgent for faster, cheaper reasoning via function calling. OpenAI agents delegate reasoning to the model's built-in function-calling logic.</statement>
+        <rationale>Function calling is faster and cheaper than explicit ReAct loops; trade transparency for latency and cost.</rationale>
+      </rule>
+
+      <example type="good" title="OpenAI Agent">
+        <code lang="python"><![CDATA[from llama_index.agent.openai import OpenAIAgent
+
+agent = OpenAIAgent.from_tools(
+    tools=[query_tool, calc_tool],
+    llm=OpenAI(model="gpt-4o"),
+    verbose=True,
+    system_prompt="You are a helpful financial analyst.",
+)
+
+response = agent.chat("Summarize Q1 performance and calculate growth rate")]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Add memory to agents using ChatMemoryBuffer. Agents then recall prior conversations within the token limit.</statement>
+        <rationale>Explicit memory (not part of the tools) enables multi-turn conversations with context recall.</rationale>
+      </rule>
+
+      <example type="good" title="Agent with Memory">
+        <code lang="python"><![CDATA[from llama_index.core.memory import ChatMemoryBuffer
+
+memory = ChatMemoryBuffer.from_defaults(token_limit=4096)
+
+agent = ReActAgent.from_tools(
+    tools=[query_tool],
+    memory=memory,
+    verbose=True,
+)
+
+# Maintains conversation history
+agent.chat("Tell me about RAG")
+agent.chat("How does it compare to fine-tuning?")  # Has context]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use MultiAgentRunner for orchestrating multiple specialized agents. Route queries to the appropriate agent based on the orchestrator prompt.</statement>
+        <rationale>Specialization improves performance; a research agent queries facts, an analysis agent runs calculations.</rationale>
+      </rule>
+
+      <example type="good" title="Multi-Agent Orchestration">
+        <code lang="python"><![CDATA[from llama_index.core.agent import FunctionCallingAgentWorker
+from llama_index.core.agent import MultiAgentRunner
+
+# Worker 1: Research
+research_worker = FunctionCallingAgentWorker.from_tools(
+    tools=[research_query_tool],
+    llm=llm,
+)
+
+# Worker 2: Analysis
+analysis_worker = FunctionCallingAgentWorker.from_tools(
+    tools=[analysis_query_tool, calc_tool],
+    llm=llm,
+)
+
+# Orchestrator
+runner = MultiAgentRunner(
+    workers={
+        "research": research_worker,
+        "analysis": analysis_worker,
+    },
+    orchestrator_prompt="Route research questions to research agent, analytical questions to analysis agent.",
+)
+
+response = runner.chat("Research market trends and analyze growth potential")]]></code>
+      </example>
+    </section>
+
+    <section name="evaluation">
+      <p>Measure retrieval quality, response faithfulness, relevancy, and correctness. Evaluation enables iterative improvement of RAG systems.</p>
+
+      <rule testable="true">
+        <statement>Use RetrieverEvaluator with metrics (hit_rate, MRR, NDCG) to measure retrieval quality. Generate synthetic Q&amp;A pairs from documents using LLM then evaluate the retriever against them.</statement>
+        <rationale>Retrieval metrics reveal whether the right context is being surfaced. Hit rate (did top-K include correct document?) and MRR (mean reciprocal rank of first correct document) are standard IR metrics.</rationale>
+      </rule>
+
+      <example type="good" title="Retrieval Evaluation">
+        <code lang="python"><![CDATA[from llama_index.core.evaluation import (
+    RetrieverEvaluator,
+    generate_question_context_pairs,
+)
+
+# Generate evaluation dataset
+qa_dataset = generate_question_context_pairs(
+    nodes=nodes[:50],
+    llm=llm,
+    num_questions_per_chunk=2,
+)
+
+# Evaluate retriever
+retriever = index.as_retriever(similarity_top_k=5)
+evaluator = RetrieverEvaluator.from_metric_names(
+    ["mrr", "hit_rate"],
+    retriever=retriever,
+)
+
+results = await evaluator.aevaluate_dataset(qa_dataset)
+print(f"MRR: {results.mean_mrr}")
+print(f"Hit Rate: {results.mean_hit_rate}")]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use FaithfulnessEvaluator to measure whether responses are grounded in retrieved context. RelevancyEvaluator measures whether answers address the question. CorrectnessEvaluator compares against ground truth.</statement>
+        <rationale>These evaluators quantify hallucination, off-topic responses, and factual errors. Use them to detect degradation as the system evolves.</rationale>
+      </rule>
+
+      <example type="good" title="Response Evaluation">
+        <code lang="python"><![CDATA[from llama_index.core.evaluation import (
+    FaithfulnessEvaluator,
+    RelevancyEvaluator,
+    CorrectnessEvaluator,
+)
+
+# Faithfulness: Is answer grounded in context?
+faithfulness_evaluator = FaithfulnessEvaluator(llm=llm)
+
+# Relevancy: Is answer relevant to question?
+relevancy_evaluator = RelevancyEvaluator(llm=llm)
+
+# Correctness: Is answer correct? (needs ground truth)
+correctness_evaluator = CorrectnessEvaluator(llm=llm)
+
+# Evaluate single response
+query_engine = index.as_query_engine()
+response = query_engine.query("What is RAG?")
+
+faithfulness_result = faithfulness_evaluator.evaluate_response(
+    query="What is RAG?",
+    response=response,
+)
+print(f"Faithful: {faithfulness_result.passing}")
+print(f"Score: {faithfulness_result.score}")
+print(f"Feedback: {faithfulness_result.feedback}")]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use BatchEvalRunner for batch evaluation of multiple responses. Evaluators run in parallel; collect results and compute aggregate metrics.</statement>
+        <rationale>Batch evaluation scales to hundreds of queries. Aggregate metrics (mean score, pass rate) reveal system-wide quality trends.</rationale>
+      </rule>
+
+      <example type="good" title="Batch Evaluation">
+        <code lang="python"><![CDATA[from llama_index.core.evaluation import BatchEvalRunner
+
+# Prepare test questions
+eval_questions = [
+    "What is RAG?",
+    "How do embeddings work?",
+    "What is a vector store?",
+]
+
+# Run evaluation
+runner = BatchEvalRunner(
+    evaluators=[faithfulness_evaluator, relevancy_evaluator],
+    batch_size=4,
+)
+
+results = await runner.aevaluate_responses(
+    queries=eval_questions,
+    responses=[query_engine.query(q) for q in eval_questions],
+)
+
+print(f"Faithfulness mean: {results['faithfulness'].mean()}")
+print(f"Relevancy mean: {results['relevancy'].mean()}")]]></code>
+      </example>
+    </section>
+
+    <section name="production-patterns">
+      <p>Caching, streaming, async execution, and observability for production RAG systems.</p>
+
+      <rule testable="true">
+        <statement>Cache embedding operations to avoid recomputing embeddings for unchanged documents. Use EmbeddingCache or built-in caching in LlamaIndex.</statement>
+        <rationale>Embeddings are expensive; caching significantly reduces latency and cost for large document sets.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use streaming to return responses token-by-token. LLMs typically support streaming; stream from the LLM, not just the retriever.</statement>
+        <rationale>Streaming reduces perceived latency — users see partial responses immediately instead of waiting for complete responses.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use async retrieval (aget_relevant_documents or aquery) to retrieve from multiple sources in parallel. Await all retrievals before passing context to the LLM.</statement>
+        <rationale>Parallel async calls reduce latency. Example: query three vector stores and a keyword index simultaneously, then aggregate results.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Enable observability via LangSmith or LlamaIndex Observability. Log queries, retrieved context, LLM inputs/outputs, and evaluation metrics to a centralized trace store.</statement>
+        <rationale>Observability reveals bottlenecks, failure modes, and drift over time. Traces are essential for debugging production issues.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use LlamaCloud for managed document parsing and indexing. Upload documents; LlamaCloud parses, chunks, and indexes them. Retrieve via the managed index API.</statement>
+        <rationale>Managed parsing handles complex document formats (PDFs, Office, HTML). Eliminates custom parsing code and its maintenance burden.</rationale>
+      </rule>
+
+      <note>Critical gotchas. Agents without memory grow unbounded in token usage as the conversation lengthens; set a token_limit on ChatMemoryBuffer. Streaming responses prevent early stopping — partial responses have already been returned even if an error occurs mid-stream. Async retrieval adds complexity; ensure proper error handling for failed concurrent calls. LlamaCloud parsing is asynchronous; verify job completion before querying the index. Evaluation is computationally expensive (each eval calls an LLM); batch and cache results. Evaluation metrics are model-dependent; evaluator results vary with LLM choice.</note>
+    </section>
+
+    <section name="agent-integration-llamaindex">
+      <p>Agentic workflows, recommended subagents, and integration patterns for LlamaIndex agents.</p>
+
+      <rule testable="true">
+        <statement>An orchestrating agent uses LlamaIndex agents as tools. Route queries to specialized agents (research, analysis, calculation) based on query intent.</statement>
+        <rationale>Specialization improves accuracy; a single generalist agent is less reliable than multiple focused agents.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Wrap LlamaIndex agent.chat() calls in error handling. Agents can fail to parse tool outputs or route incorrectly; catch and retry or escalate.</statement>
+        <rationale>Explicit error handling prevents silent failures. Retries with different prompts or models often succeed.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Log agent reasoning traces (Thought/Action/Observation from ReAct agents) for debugging and auditing. Use LangSmith or LlamaIndex Observability to centralize logs.</statement>
+        <rationale>Reasoning traces reveal where agents make mistakes and enable iterative prompt refinement.</rationale>
+      </rule>
+
+      <note>Recommended subagents. Research agent — uses QueryEngineTool to surface facts from documents; uses gpt-4o-mini. Analysis agent — uses FunctionTool for calculations and QueryEngineTool for context; uses gpt-4o. Evaluation agent — runs BatchEvalRunner on query responses and reports metrics; uses gpt-4o-mini for faithfulness/relevancy checks. Prompt pattern: "You are a research agent. Use the knowledge_base tool to search for facts. Return a structured summary: key_findings, sources, confidence_score."</note>
+
+      <note>Tools and services. llama-index (core agentic framework). llama-index-core (memory, evaluation, agent base classes). langsmith (observability, trace storage). Llama Cloud (managed document parsing and indexing). Chroma (local vector store). Pinecone (managed vector store). Qdrant (self-hosted vector store). Elasticsearch (keyword search fallback). Redis (caching backend for embeddings). PostgreSQL (persistent checkpoint store for agents with memory).</note>
+
+      <note>Critical gotchas and limitations. MemorySaver stores agent memory in process memory and does not survive restarts — use PostgreSQL or Redis for production. Parallel async retrieval adds complexity; ensure proper error handling for concurrent failures. Evaluation is expensive; batch evaluations and cache results to avoid running evaluations per query. Evaluation metrics vary with LLM choice; use same evaluator model for reproducibility. LlamaCloud parsing is asynchronous; must verify job completion before querying index. Streaming responses prevent early stopping; partial responses already returned even on mid-stream errors. Agents without memory grow unbounded in token usage; set explicit token_limit on ChatMemoryBuffer. OpenAI agents are faster than ReAct but less transparent; tradeoff speed versus explainability. Multi-agent systems add orchestration complexity; single generalist agent may be sufficient for simpler tasks. Evaluation dataset generation requires good seed documents; low-quality Q&amp;A pairs yield unreliable metrics.</note>
+    </section>
+
+    <section name="advanced-patterns-llamaindex">
+      <p>Advanced techniques: caching strategies, observability configuration, evaluation optimization, and LlamaCloud integration.</p>
+
+      <rule testable="true">
+        <statement>Cache embedding results to avoid recomputing embeddings for identical or similar documents. Use LlamaIndex's built-in embedding cache or Redis backend.</statement>
+        <rationale>Embeddings are expensive (API calls, latency). Caching reduces both cost and latency for repeated queries over the same documents.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Stream token-level output from LLM responses. Use query_engine.query(..., stream=True) or agent.stream_chat() where available.</statement>
+        <rationale>Token-level streaming reduces perceived latency. Users see partial responses immediately instead of waiting for complete generation.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Convert retrieval to async (aget_relevant_documents, aquery) to parallelize multiple document lookups. Retrieve from vector store, keyword index, and database concurrently, then aggregate.</statement>
+        <rationale>Parallel async retrieval significantly reduces latency. Requires proper error handling for partial failures.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Configure LangSmith observability: set LANGSMITH_API_KEY and LANGSMITH_PROJECT to trace every agent.chat() call, every tool invocation, and every evaluation run.</statement>
+        <rationale>Centralized observability reveals performance bottlenecks, error patterns, and drift in evaluation metrics. Essential for production debugging.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use LlamaCloud for document ingestion. Upload documents; LlamaCloud handles parsing, chunking, and metadata extraction. Query via managed indices.</statement>
+        <rationale>Managed parsing supports complex formats (PDFs, Word, HTML, images with OCR). Eliminates custom parsing code and its maintenance.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Evaluation dataset quality directly impacts metric reliability. Use LLM to generate 2-5 Q&amp;A pairs per document chunk. Validate a sample manually before running full evaluation.</statement>
+        <rationale>Low-quality synthetic Q&amp;A pairs produce misleading metrics. Manual validation catches generation errors early.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For iterative improvement, track evaluation metrics over time. Store results (hit rate, faithfulness, relevancy) in a database. Monitor for degradation.</statement>
+        <rationale>Metrics trending downward indicate the system is degrading as documents are added or prompts change. Early detection enables rapid fixes.</rationale>
+      </rule>
+
+      <note>When to use each agent type. ReActAgent for transparent, auditable reasoning where trace inspection is important; use for complex multi-step tasks. OpenAIAgent for faster, cheaper reasoning where latency and cost matter more than interpretability; use for simple, clear-cut tasks. MultiAgentRunner for delegating to specialists; route research questions to research agent, calculations to analysis agent. For most production systems, start with OpenAIAgent, then switch to ReActAgent if reasoning transparency becomes critical.</note>
+
+      <rule testable="true">
+        <statement>Batch evaluation saves costs and enables parallel metric computation. Prepare 50-200 test questions; run BatchEvalRunner with multiple evaluators (faithfulness, relevancy, correctness); aggregate results.</statement>
+        <rationale>Batch evaluation reduces per-query overhead and enables statistical analysis of system behavior. Aggregate metrics reveal system-wide quality trends, not just individual response quality.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>When evaluation shows low hit_rate, the retriever is missing relevant documents. Investigate: improve chunk size, add more documents, or re-train embeddings. When faithfulness is low, the LLM is hallucinating; use stronger models or better prompts.</statement>
+        <rationale>Each metric pinpoints a specific failure mode. Root cause analysis enables targeted fixes rather than blind system tuning.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Never skip manual validation of synthetic Q&amp;A datasets. Review a random sample of generated questions; if more than 10% are low-quality (ambiguous, unanswerable, off-topic), regenerate with a stronger LLM.</statement>
+        <rationale>Garbage input produces garbage metrics. Manual spot-checks catch generation issues before wasting time on evaluation runs.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For production, enable LangSmith tracing on every agent.chat() call. Set LANGSMITH_API_KEY and LANGSMITH_PROJECT environment variables. Traces should include: query, tool calls, tool outputs, LLM inputs, LLM outputs, final response.</statement>
+        <rationale>Production systems require observability. Traces enable rapid debugging of agent failures and performance analysis.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use MemorySaver for development only. For production, use PostgreSQL (AsyncPostgresSaver) or Redis checkpointing so agent conversations survive process restarts and can be resumed.</statement>
+        <rationale>In-process memory is lost on crashes. Durable storage enables reliable agent state persistence.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Test agents with adversarial queries: questions outside the domain, contradictory statements, requests for harmful information. Agents should gracefully acknowledge limits rather than hallucinate answers.</statement>
+        <rationale>Agents often fail gracefully under distribution shift. Adversarial testing reveals these failure modes before production deployment.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Version your agents and evaluation datasets. Tag semantic versions (e.g., agent-v1.2.0, eval-dataset-v2.1.0). Tie metric improvements to specific agent/dataset versions for reproducibility and rollback.</statement>
+        <rationale>Version control enables A/B testing and rollback on regressions. Without versions, it's impossible to correlate metric changes to specific changes.</rationale>
+      </rule>
+
+      <note>Agent design best practices. Always provide tool descriptions that clearly explain when to use each tool. Use descriptive parameter names and type hints so the agent understands what inputs tools accept. Keep tools focused on a single responsibility; avoid tools that do multiple things. Log all tool calls with inputs and outputs for debugging and observability. Implement timeout and retry logic for tool calls to external APIs. For QueryEngineTool, include semantic metadata (e.g., "Use this to search financial reports") to help the agent route correctly. For FunctionTool wrapping Python functions, ensure functions are stateless and pure where possible to enable safe retries on transient failures. Consider implementing tool cost estimation; expensive tools should be called sparingly or with approval.</note>
+    </section>
+
+    <checklist>
+      <check>Define tools (QueryEngineTool, FunctionTool) for agent</check>
+      <check>Create ReActAgent or OpenAIAgent with tools</check>
+      <check>Add ChatMemoryBuffer for multi-turn conversations</check>
+      <check>Test agent.chat() with diverse queries</check>
+      <check>Generate evaluation dataset (Q&amp;A pairs)</check>
+      <check>Run RetrieverEvaluator and report hit_rate and MRR</check>
+      <check>Run FaithfulnessEvaluator and RelevancyEvaluator</check>
+      <check>Collect results with BatchEvalRunner</check>
+      <check>Set up caching for embeddings</check>
+      <check>Enable streaming for response output</check>
+      <check>Convert retrieval calls to async</check>
+      <check>Configure LangSmith observability</check>
+      <check>Integrate LlamaCloud for document parsing</check>
+      <check>Load test with production-scale queries</check>
+      <check>Monitor evaluation metrics for drift</check>
+      <check>Document prompt engineering decisions</check>
+      <check>Deploy to staging before production</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://docs.llamaindex.ai/en/stable/modules/agents/"/>
+      <link href="https://docs.llamaindex.ai/en/stable/modules/evaluation/"/>
+      <link href="https://docs.llamaindex.ai/en/stable/module_guides/querying/retriever/"/>
+      <link href="https://www.llamaindex.ai/blog/llamacloud"/>
+      <link href="https://docs.smith.langchain.com/"/>
+    </see-also>
+  </content>
+</methodology>
