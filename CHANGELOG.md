@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- chore: re-migrate 6 incomplete methodology.xml paths (django-base-model, plg-metrics, plg-optimization-tactics, viral-loops, viral-optimization, visibility-of-system-status; feature-045 sonnet-retry-C)
 - fix: trim methodology summary funnel-tactics-basics
 - fix: trim methodology summary event-driven-architecture
 - fix: trim methodology summary microservices-design

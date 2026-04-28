@@ -4,7 +4,7 @@
     <tier>free</tier>
     <group>dev</group>
     <domain>python-developer</domain>
-    <summary>Consistent foundation for Django models with UUIDs, timestamps, soft delete, audit trails. Abstract models, mixins, managers for production Django 5.x+.</summary>
+    <summary>Consistent foundation for Django models with UUIDs, timestamps, soft delete, audit trails. Abstract models, mixins, managers for production Django 5.x.</summary>
     <tags>
       <tag>django</tag>
       <tag>models</tag>
@@ -25,16 +25,23 @@
   <content>
     <title>Django Base Model Pattern</title>
 
-    <summary>The Base Model pattern provides a consistent foundation for all Django models with common fields (UUID, timestamps) and behaviors. This methodology covers abstract base models, mixins, custom managers, and advanced patterns for production Django applications.</summary>
+    <summary>The Base Model pattern provides a consistent foundation for all Django models with common fields (UUID, timestamps) and behaviors. This methodology covers abstract base models, mixins, custom managers, and advanced patterns for production Django applications. Complexity: Intermediate. Django Version: 5.0+ (with 5.2 LTS features). Key Libraries: django-model-utils, django-simple-history, django-tenants.</summary>
 
     <why>
+      <p>Consistency: All models share common fields and behaviors. DRY: No repeated code for timestamps, UUIDs, soft delete. Security: UUID exposure prevents ID enumeration attacks. Audit Trail: Built-in tracking of creation/modification. Maintainability: Single place to modify common behavior.</p>
       <p>All models need a consistent approach to common concerns: unique identifiers for external exposure (UUID vs integer ID), creation/modification timestamps, soft deletes for data preservation, and audit trails for compliance. Building these patterns once and reusing them prevents reimplementation bugs, ensures consistency across your application, and makes it easier to reason about data lifecycle and security implications (like UUID preventing ID enumeration attacks).</p>
-      <p>The Base Model pattern solves fundamental problems that appear in every Django project. Without a base model, every developer invents timestamps independently, some expose integer IDs in APIs, some use CASCADE when PROTECT is safer. The costs accumulate: inconsistency across the app, repeated bugs, and security gaps.</p>
-      <p>A single base model enforces standards: UUID for external exposure (preventing enumeration), indexed timestamps (enabling efficient time-range queries), consistent `__str__` representation, and DRY manager patterns. This methodology covers not just building the base, but combining it with mixins for soft delete, audit trails, and multi-tenant row scoping.</p>
+      <p>The Base Model pattern solves fundamental problems that appear in every Django project. Without a base model, every developer invents timestamps independently, some expose integer IDs in APIs, some use CASCADE when PROTECT is safer. The costs accumulate: inconsistency across the app, repeated bugs, and security gaps. A single base model enforces standards: UUID for external exposure (preventing enumeration), indexed timestamps (enabling efficient time-range queries), consistent __str__ representation, and DRY manager patterns.</p>
     </why>
 
     <when-to-use>
       <list>
+        <item>Bootstrapping a new Django project: define BaseModel, TimestampMixin, SoftDeleteMixin, manager/queryset patterns once at the start.</item>
+        <item>Refactoring a legacy Django app where every model duplicates created_at, updated_at, ad-hoc soft-delete flags, or auto-increment IDs leak through APIs.</item>
+        <item>Adding UUIDs to public APIs without rewriting primary keys (the uid separate-field pattern).</item>
+        <item>Introducing soft-delete to a domain that needs an "undo" (orders, posts, accounts) — done as one migration plus manager swap.</item>
+        <item>Adding audit trail (django-simple-history) to compliance-relevant models.</item>
+        <item>Multi-tenant SaaS migration: introducing TenantAwareModel + middleware-driven tenant scoping.</item>
+        <item>Code review of new models: ensuring they inherit from the right base, use the right on_delete, and don't reinvent timestamps.</item>
         <item>Starting a new Django project.</item>
         <item>Refactoring legacy models to a consistent base structure.</item>
         <item>Building APIs that expose external IDs (never expose auto-increment integers).</item>
@@ -45,61 +52,29 @@
 
     <when-not-to-use>
       <list>
-        <item>Internal-only models with no external API exposure — base patterns add overhead for minimal benefit.</item>
-        <item>Throwaway prototype code — the cost of the pattern setup exceeds single-use value.</item>
-        <item>Legacy monolith with thousands of existing models — migration cost is prohibitive without a feature branch strategy.</item>
+        <item>Tiny one-off scripts or admin commands that don't define new models.</item>
+        <item>Models for ephemeral data (cache, signed tokens, throwaway joins) where timestamps and soft delete add noise.</item>
+        <item>Tables managed outside Django (managed = False for legacy DB views) — the base model's Meta.abstract = True doesn't combine cleanly with managed = False.</item>
+        <item>Performance-critical analytical tables where every byte counts; adding a 16-byte UUID + indexes per row is wasteful.</item>
+        <item>When introducing PostgreSQL UUID v7 / k-sortable IDs — the UUID v4 advice is partially obsolete; reassess before applying.</item>
+        <item>Mixing this pattern in a repo that already standardised on django-model-utils's TimeStampedModel etc. — pick one set of bases.</item>
       </list>
     </when-not-to-use>
 
-    <section name="overview-and-benefits">
-      <p>The Base Model pattern solves fundamental problems that appear in every Django project. Key benefits include:</p>
-      <list>
-        <item>Consistency: All models share common fields and behaviors across the entire application.</item>
-        <item>DRY: No repeated code for timestamps, UUIDs, soft delete — write once, inherit everywhere.</item>
-        <item>Security: UUID exposure prevents ID enumeration attacks (endpoints like /orders/1 leak competitive info).</item>
-        <item>Audit Trail: Built-in tracking of creation and modification for compliance and debugging.</item>
-        <item>Maintainability: Single place to modify common behavior; changes cascade to all models.</item>
-        <item>Compliance: Audit trail supports regulatory requirements (SOX, HIPAA, GDPR).</item>
-      </list>
-      <p>Key Decision: UUID as Separate Field vs Primary Key — Use UUID as a separate uid field (recommended) for better FK performance and integer clustering. Keep integer id as primary key. UUID v4 PKs cause index fragmentation; integer keys cluster related inserts and improve FK join performance. The uid field handles external API exposure and prevents ID enumeration.</p>
-    </section>
-
-    <section name="requirements-analysis">
-      <p>Before implementing a base model, identify your application's needs. Not all projects need all features.</p>
-      <rule testable="false">
-        <statement>Document: Do all models need timestamps? Do you need external UUIDs? Do you need soft delete? Audit trail? Multi-tenant scoping? Optimistic locking?</statement>
-        <rationale>Understanding requirements prevents over-engineering and unnecessary complexity. A simple TimestampMixin may suffice for internal microservices; a full FullFeaturedModel is overkill if you don't need soft delete.</rationale>
-      </rule>
-      <checklist>
-        <check>Do all models need timestamps (created_at, updated_at)?</check>
-        <check>Do you need external-facing UUIDs (API exposure)?</check>
-        <check>Do you need soft delete functionality (enable trash/recovery)?</check>
-        <check>Do you need audit trail (track who changed what, when)?</check>
-        <check>Is this a multi-tenant application?</check>
-        <check>Do you need optimistic locking (version field)?</check>
-        <check>Determine UUID strategy: Option A: Integer PK + separate uid field (recommended) OR Option B: UUID as primary key (distributed systems)</check>
-      </checklist>
-    </section>
-
     <section name="abstract-base-model">
-      <p>The foundation pattern provides UUID and timestamps to all models using abstract inheritance.</p>
+      <p>The foundation pattern — provides UUID and timestamps to all models.</p>
 
-      <rule testable="true">
+      <rule>
         <statement>Define an abstract BaseModel with UUID (uid field), created_at, and updated_at fields. Set class Meta.abstract = True and ordering = ['-created_at'].</statement>
         <rationale>Abstract models don't create database tables; they are inherited by concrete models. This provides a single source of truth for common fields and ensures all models have consistent timestamp and UUID behavior. Default ordering makes queries consistent.</rationale>
       </rule>
 
-      <rule testable="true">
-        <statement>Index created_at field (db_index=True) for efficient time-range queries. Default ordering = ['-created_at'] ensures newest first.</statement>
-        <rationale>Most list views filter or sort by creation time. An indexed created_at prevents full table scans. Setting default ordering makes queries consistent and predictable.</rationale>
+      <rule>
+        <statement>Index created_at field (db_index=True) for efficient time-range queries. Mark uid field as editable=False and unique=True with db_index=True. Never allow direct UUID modification.</statement>
+        <rationale>Most list views filter or sort by creation time. An indexed created_at prevents full table scans. UIDs should be immutable identifiers — editable=False prevents accidental changes in admin, unique=True and db_index=True ensure they can be efficiently looked up.</rationale>
       </rule>
 
-      <rule testable="true">
-        <statement>Mark uid field as editable=False and unique=True with db_index=True. Never allow direct UUID modification.</statement>
-        <rationale>UIDs should be immutable identifiers. editable=False prevents accidental changes in admin. unique=True and db_index=True ensure they can be efficiently looked up and prevent duplicates.</rationale>
-      </rule>
-
-      <rule testable="true">
+      <rule>
         <statement>Implement __str__ method to return class name and uid. Never expose integer ID in string representations.</statement>
         <rationale>String representation appears in Django admin, logs, and error messages. Exposing UUID is safe; integer IDs leak enumeration information.</rationale>
       </rule>
@@ -132,162 +107,64 @@ class BaseModel(models.Model):
 ]]></code>
       </example>
 
-      <rule testable="true">
+      <p>Key Decision: UUID as Separate Field vs Primary Key. For most applications, keeping integer id as PK and adding uid for external exposure is the optimal pattern.</p>
+      <list>
+        <item>UUID as uid field (recommended): Better FK performance, integer clustering. Cons: Extra column.</item>
+        <item>UUID as pk: Simpler model, no extra column. Cons: Poor insert performance at scale.</item>
+      </list>
+
+      <rule>
         <statement>Use UUID as a separate uid field, not as primary key. Keep integer id as primary key for better FK performance and index clustering.</statement>
-        <rationale>UUID v4 primary keys cause index fragmentation at scale because inserts are random, not sequential. An integer PK clusters related inserts and improves FK join performance. For truly distributed systems needing UUID PKs, consider UUID v7 (timestamp-based) or clustering strategies.</rationale>
+        <rationale>UUID v4 primary keys cause index fragmentation at scale because inserts are random, not sequential. An integer PK clusters related inserts and improves FK join performance. For truly distributed systems needing UUID PKs, consider UUID v7 (timestamp-based) or clustering strategies. UUID v4 primary keys cause index fragmentation. Consider: UUID v7 (timestamp-based, coming in Postgres 18); Clustering on created_at column; Keeping integer PK with separate UUID field.</rationale>
       </rule>
     </section>
 
     <section name="timestamp-mixin">
-      <p>For projects that don't need UUID, a lightweight TimestampMixin provides only created_at and updated_at.</p>
-
-      <rule testable="true">
-        <statement>Define TimestampMixin with created_at (auto_now_add=True) and updated_at (auto_now=True), both indexed. Set abstract=True and default ordering.</statement>
-        <rationale>auto_now_add=True sets created_at once at creation; auto_now=True updates updated_at on every save. Both should be indexed for efficient querying. Default ordering by -created_at makes queries consistent.</rationale>
-      </rule>
+      <p>Lightweight mixin for projects that don't need UUID.</p>
 
       <example type="good" title="Lightweight timestamp mixin">
         <code lang="python"><![CDATA[
 class TimestampMixin(models.Model):
     """Adds created_at and updated_at fields."""
 
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        db_index=True,
-        help_text="When this record was created",
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        help_text="When this record was last updated",
-    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         abstract = True
-        ordering = ['-created_at']
-]]></code>
-      </example>
-    </section>
-
-    <section name="custom-managers-and-querysets">
-      <p>Custom managers and querysets allow filtering and querying patterns to be reusable and testable across views and selectors.</p>
-
-      <rule testable="true">
-        <statement>Implement custom managers for filtered querysets: ActiveManager, PublishedManager, etc. Use the QuerySet.as_manager() pattern to reduce boilerplate and keep logic in one place.</statement>
-        <rationale>Managers encapsulate filter logic so it's not repeated across views and selectors. QuerySet.as_manager() chains custom queryset methods into the manager itself, eliminating duplicate code between manager and queryset classes.</rationale>
-      </rule>
-
-      <rule testable="true">
-        <statement>Override get_queryset() in Manager to apply default filters. Provide alternative managers (e.g., all_objects) for unfiltered access when needed.</statement>
-        <rationale>The default manager's get_queryset() ensures all queries include desired filters automatically. Alternative managers provide escapes for admin and special operations without repeating filter logic.</rationale>
-      </rule>
-
-      <example type="good" title="Manager pattern with custom filtering and QuerySet">
-        <code lang="python"><![CDATA[
-from django.db import models
-
-
-class ArticleQuerySet(models.QuerySet):
-    """Custom queryset for articles."""
-
-    def published(self):
-        return self.filter(status='published')
-
-    def draft(self):
-        return self.filter(status='draft')
-
-    def by_author(self, author):
-        return self.filter(author=author)
-
-    def recent(self, days=30):
-        from django.utils import timezone
-        from datetime import timedelta
-        cutoff = timezone.now() - timedelta(days=days)
-        return self.filter(created_at__gte=cutoff)
-
-
-class ArticleManager(models.Manager):
-    """Manager using ArticleQuerySet."""
-
-    def get_queryset(self):
-        return ArticleQuerySet(self.model, using=self._db)
-
-    def published(self):
-        return self.get_queryset().published()
-
-    def recent(self, days=30):
-        return self.get_queryset().recent(days)
-
-
-# Alternative DRY pattern: Manager from QuerySet
-# No need to duplicate methods
-ArticleManager = ArticleQuerySet.as_manager()
 ]]></code>
       </example>
     </section>
 
     <section name="soft-delete-pattern">
-      <p>Soft delete enables "trash" functionality without permanent data loss, allowing restoration of accidentally deleted records and preservation of historical data.</p>
+      <p>Enables "trash" functionality without permanent data loss.</p>
 
-      <rule testable="true">
+      <rule>
         <statement>Implement soft delete with a deleted_at DateTimeField. Create a SoftDeleteManager that filters deleted_at__isnull=True by default. Provide AllObjectsManager for admin and audit access.</statement>
         <rationale>The default manager should return only active records, preventing accidental exposure of deleted data. The all_objects manager allows admins and audits to access deleted records when needed without having to write custom queries.</rationale>
       </rule>
 
-      <rule testable="true">
+      <rule>
         <statement>Override the delete() method on SoftDeleteMixin to set deleted_at instead of hard deleting. Provide hard_delete() and restore() methods for explicit permanent and recovery operations.</statement>
         <rationale>Overriding delete() makes soft delete the default behavior for all calls. Explicit hard_delete() and restore() methods make intentions clear and prevent accidental permanent deletion.</rationale>
       </rule>
 
-      <example type="good" title="Soft delete mixin with managers and queryset methods">
+      <example type="good" title="Soft delete mixin with managers and queryset">
         <code lang="python"><![CDATA[
 from django.db import models
 from django.utils import timezone
 
 
-class SoftDeleteQuerySet(models.QuerySet):
-    """QuerySet that supports soft delete operations."""
-
-    def delete(self):
-        """Soft delete all objects in queryset."""
-        return self.update(deleted_at=timezone.now())
-
-    def hard_delete(self):
-        """Permanently delete all objects in queryset."""
-        return super().delete()
-
-    def restore(self):
-        """Restore all soft-deleted objects in queryset."""
-        return self.update(deleted_at=None)
-
-    def active(self):
-        """Return only non-deleted objects."""
-        return self.filter(deleted_at__isnull=True)
-
-    def deleted(self):
-        """Return only deleted objects."""
-        return self.filter(deleted_at__isnull=False)
-
-
 class SoftDeleteManager(models.Manager):
-    """Manager that excludes soft-deleted records by default."""
+    """Excludes soft-deleted records by default."""
 
     def get_queryset(self):
-        return SoftDeleteQuerySet(self.model, using=self._db).active()
-
-    def with_deleted(self):
-        """Include soft-deleted records."""
-        return SoftDeleteQuerySet(self.model, using=self._db)
-
-    def deleted_only(self):
-        """Return only soft-deleted records."""
-        return SoftDeleteQuerySet(self.model, using=self._db).deleted()
+        return super().get_queryset().filter(deleted_at__isnull=True)
 
 
 class AllObjectsManager(models.Manager):
-    """Manager that includes all records (deleted and active)."""
-
-    def get_queryset(self):
-        return SoftDeleteQuerySet(self.model, using=self._db)
+    """Includes all records (deleted and active)."""
+    pass
 
 
 class SoftDeleteMixin(models.Model):
@@ -322,15 +199,109 @@ class SoftDeleteMixin(models.Model):
       </example>
     </section>
 
-    <section name="django-5-features">
-      <p>Django 5.x introduces GeneratedField for computed columns and db_default for database-level defaults.</p>
+    <section name="uuid-primary-key">
+      <p>For distributed systems or when you truly need UUID as PK.</p>
 
-      <rule testable="true">
+      <example type="good" title="UUID primary key model">
+        <code lang="python"><![CDATA[
+import uuid
+from django.db import models
+
+
+class UUIDPrimaryKeyModel(models.Model):
+    """Model with UUID as primary key."""
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+]]></code>
+      </example>
+    </section>
+
+    <section name="custom-managers-and-querysets">
+      <p>Custom managers and querysets allow filtering and querying patterns to be reusable and testable.</p>
+
+      <rule>
+        <statement>Implement custom managers for filtered querysets. Use the QuerySet.as_manager() pattern to reduce boilerplate and keep logic in one place.</statement>
+        <rationale>Managers encapsulate filter logic so it's not repeated across views and selectors. QuerySet.as_manager() chains custom queryset methods into the manager itself, eliminating duplicate code.</rationale>
+      </rule>
+
+      <example type="good" title="Manager pattern with custom filtering and QuerySet">
+        <code lang="python"><![CDATA[
+from django.db import models
+
+
+class ActiveManager(models.Manager):
+    """Returns only active records."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(is_active=True)
+
+
+class PublishedManager(models.Manager):
+    """Returns only published records."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(
+            status='published',
+            published_at__isnull=False,
+        )
+
+
+class ArticleQuerySet(models.QuerySet):
+    """Custom queryset for articles."""
+
+    def published(self):
+        return self.filter(status='published')
+
+    def draft(self):
+        return self.filter(status='draft')
+
+    def by_author(self, author):
+        return self.filter(author=author)
+
+    def recent(self, days=30):
+        from django.utils import timezone
+        from datetime import timedelta
+        cutoff = timezone.now() - timedelta(days=days)
+        return self.filter(created_at__gte=cutoff)
+
+
+class ArticleManager(models.Manager):
+    """Manager using ArticleQuerySet."""
+
+    def get_queryset(self):
+        return ArticleQuerySet(self.model, using=self._db)
+
+    def published(self):
+        return self.get_queryset().published()
+
+    def recent(self, days=30):
+        return self.get_queryset().recent(days)
+
+
+# Alternative: Manager from QuerySet
+ArticleManager = ArticleQuerySet.as_manager()
+]]></code>
+      </example>
+    </section>
+
+    <section name="django-5-features">
+      <p>Django 5.x introduces db_default (Database-Level Defaults) and GeneratedField (Computed Columns).</p>
+
+      <rule>
         <statement>Use db_default with Now() for database-computed timestamps instead of Python auto_now when database truth is needed.</statement>
         <rationale>Database-computed defaults ensure consistency regardless of timezone settings and prevent timestamp skew between application servers in distributed setups.</rationale>
       </rule>
 
-      <rule testable="true">
+      <rule>
         <statement>Use GeneratedField for computed columns like full_name or total_amount that should always be in sync with source fields. Set db_persist=True on PostgreSQL to store the value.</statement>
         <rationale>Computed columns stored in the database ensure the value is always up-to-date and can be indexed. Without db_persist=True on PostgreSQL, the field is virtual only and cannot be reliably indexed.</rationale>
       </rule>
@@ -386,15 +357,53 @@ class Order(models.Model):
       </example>
     </section>
 
+    <section name="audit-trail-with-django-simple-history">
+      <p>Audit trails track all changes to important data for compliance, debugging, and forensics.</p>
+
+      <rule>
+        <statement>Use django-simple-history or django-auditlog for audit trail tracking. Add HistoricalRecords to models needing change tracking. Configure user tracking middleware to capture who made changes.</statement>
+        <rationale>Library-based solutions are battle-tested and handle edge cases like bulk operations, partial updates, and transaction rollbacks. Hand-rolled audit trails almost always have blind spots and miss important change scenarios.</rationale>
+      </rule>
+
+      <example type="good" title="Audit trail with django-simple-history">
+        <code lang="python"><![CDATA[
+from django.db import models
+from simple_history.models import HistoricalRecords
+
+
+class AuditedModel(models.Model):
+    """Base model with audit trail."""
+
+    history = HistoricalRecords(inherit=True)
+
+    class Meta:
+        abstract = True
+
+
+class Contract(AuditedModel):
+    """Contract with full change history."""
+
+    title = models.CharField(max_length=200)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    status = models.CharField(max_length=20)
+
+    # Access history:
+    # contract.history.all()  # All versions
+    # contract.history.most_recent()  # Latest
+    # contract.history.as_of(some_datetime)  # Version at time
+]]></code>
+      </example>
+    </section>
+
     <section name="multi-tenant-models">
       <p>Multi-tenant models require tenant scoping to ensure data isolation between customers.</p>
 
-      <rule testable="true">
+      <rule>
         <statement>For shared-schema multi-tenant, add a tenant ForeignKey to every tenant-scoped model. Use a TenantManager that filters by current tenant via middleware or context. Provide unscoped manager for admin access.</statement>
         <rationale>Row-level filtering via the default manager ensures accidental queries return only the current tenant's data. The unscoped manager is restricted to admin operations to prevent data leaks. Shared schema is the recommended approach for most SaaS.</rationale>
       </rule>
 
-      <example type="good" title="Tenant-aware model with scoped manager">
+      <example type="good" title="Shared schema pattern (recommended)">
         <code lang="python"><![CDATA[
 from django.db import models
 from django.conf import settings
@@ -435,103 +444,9 @@ class TenantAwareModel(models.Model):
       </example>
     </section>
 
-    <section name="audit-trail">
-      <p>Audit trails track all changes to important data for compliance, debugging, and forensics.</p>
-
-      <rule testable="true">
-        <statement>Use django-simple-history or django-auditlog for audit trail tracking. Add HistoricalRecords to models needing change tracking. Configure user tracking middleware to capture who made changes.</statement>
-        <rationale>Library-based solutions are battle-tested and handle edge cases like bulk operations, partial updates, and transaction rollbacks. Hand-rolled audit trails almost always have blind spots and miss important change scenarios.</rationale>
-      </rule>
-
-      <example type="good" title="Audit trail with django-simple-history">
-        <code lang="python"><![CDATA[
-from django.db import models
-from simple_history.models import HistoricalRecords
-
-
-class AuditedModel(models.Model):
-    """Base model with audit trail."""
-
-    history = HistoricalRecords(inherit=True)
-
-    class Meta:
-        abstract = True
-
-
-class Contract(AuditedModel):
-    """Contract with full change history."""
-
-    title = models.CharField(max_length=200)
-    amount = models.DecimalField(max_digits=12, decimal_places=2)
-    status = models.CharField(max_length=20)
-
-    # Access history:
-    # contract.history.all()  # All versions
-    # contract.history.most_recent()  # Latest
-    # contract.history.as_of(some_datetime)  # Version at time
-]]></code>
-      </example>
-    </section>
-
-    <section name="foreignkey-best-practices">
-      <p>ForeignKey on_delete behavior determines what happens when a related object is deleted. Choose carefully.</p>
-
-      <rule testable="true">
-        <statement>Choose on_delete based on relationship semantics: CASCADE for composition (Order→OrderItem), PROTECT for ownership of history (User→Order), SET_NULL for optional references (Task→assigned_user).</statement>
-        <rationale>Wrong on_delete behavior causes silent data loss (CASCADE without intent) or cryptic errors (PROTECT without planning). Align the database rule with the business model to prevent accidents.</rationale>
-      </rule>
-
-      <example type="good" title="ForeignKey on_delete selection">
-        <code lang="python"><![CDATA[
-from django.db import models
-
-
-class Order(models.Model):
-    """Ownership relationship: orders shouldn't cascade-delete when user leaves."""
-    user = models.ForeignKey(User, on_delete=models.PROTECT)
-
-
-class OrderItem(models.Model):
-    """Composition: items are part of order and meaningless without it."""
-    order = models.ForeignKey(Order, on_delete=models.CASCADE)
-
-
-class Task(models.Model):
-    """Assignment: task survives when user leaves, assignment cleared."""
-    assigned_to = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
-    )
-
-
-class Comment(models.Model):
-    """Attribution: preserve comment, clear author when user deleted."""
-    author = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
-    )
-]]></code>
-      </example>
-    </section>
-
     <section name="combining-mixins">
-      <p>Mixins can be combined to create feature-rich base models.</p>
-
-      <rule testable="true">
-        <statement>Combine mixins (TimestampMixin, SoftDeleteMixin, TenantAwareModel) in order: TimestampMixin, SoftDeleteMixin, TenantAwareModel, then inherit from models.Model. This ordering ensures MRO (Method Resolution Order) is correct.</statement>
-        <rationale>Python's MRO processes parent classes left-to-right. Correct ordering ensures super() calls work as expected and prevents AttributeError from missing methods.</rationale>
-      </rule>
-
       <example type="good" title="Full-featured model combining all patterns">
         <code lang="python"><![CDATA[
-import uuid
-from django.db import models
-
-
 class FullFeaturedModel(
     TimestampMixin,
     SoftDeleteMixin,
@@ -552,70 +467,779 @@ class FullFeaturedModel(
       </example>
     </section>
 
-    <section name="common-mistakes">
-      <p>Avoid these patterns that introduce bugs into base models:</p>
+    <section name="foreignkey-best-practices">
+      <p>ForeignKey on_delete behavior determines what happens when a related object is deleted. Choose carefully based on relationship semantics.</p>
 
+      <list>
+        <item>User owns Order: on_delete=PROTECT — Don't lose order history</item>
+        <item>Order has Items: on_delete=CASCADE — Items meaningless without order</item>
+        <item>Task assigned to User: on_delete=SET_NULL — Task survives user deletion</item>
+        <item>Comment by User: on_delete=SET_NULL — Preserve content, clear author</item>
+        <item>Config belongs to Tenant: on_delete=CASCADE — Config meaningless without tenant</item>
+      </list>
+
+      <rule>
+        <statement>Choose on_delete based on relationship semantics: CASCADE for composition (Order→OrderItem), PROTECT for ownership of history (User→Order), SET_NULL for optional references (Task→assigned_user).</statement>
+        <rationale>Wrong on_delete behavior causes silent data loss (CASCADE without intent) or cryptic errors (PROTECT without planning). Align the database rule with the business model to prevent accidents.</rationale>
+      </rule>
+    </section>
+
+    <section name="full-example-complete-base-model-with-mixins">
+      <p>A full-featured base model system for a SaaS application. File structure: core/__init__.py, core/models/__init__.py, core/models/base.py, core/models/mixins.py, core/models/managers.py, core/utils.py.</p>
+
+      <example type="good" title="core/models/managers.py — Custom managers for base models">
+        <code lang="python"><![CDATA[
+"""Custom managers for base models."""
+from django.db import models
+from django.db.models import QuerySet
+
+
+class SoftDeleteQuerySet(QuerySet):
+    """QuerySet that supports soft delete operations."""
+
+    def delete(self):
+        """Soft delete all objects in queryset."""
+        from django.utils import timezone
+        return self.update(deleted_at=timezone.now())
+
+    def hard_delete(self):
+        """Permanently delete all objects in queryset."""
+        return super().delete()
+
+    def restore(self):
+        """Restore all soft-deleted objects in queryset."""
+        return self.update(deleted_at=None)
+
+    def active(self):
+        """Return only non-deleted objects."""
+        return self.filter(deleted_at__isnull=True)
+
+    def deleted(self):
+        """Return only deleted objects."""
+        return self.filter(deleted_at__isnull=False)
+
+
+class SoftDeleteManager(models.Manager):
+    """Manager that excludes soft-deleted records by default."""
+
+    def get_queryset(self):
+        return SoftDeleteQuerySet(self.model, using=self._db).active()
+
+    def with_deleted(self):
+        """Include soft-deleted records."""
+        return SoftDeleteQuerySet(self.model, using=self._db)
+
+    def deleted_only(self):
+        """Return only soft-deleted records."""
+        return SoftDeleteQuerySet(self.model, using=self._db).deleted()
+
+
+class AllObjectsManager(models.Manager):
+    """Manager that includes all records (deleted and active)."""
+
+    def get_queryset(self):
+        return SoftDeleteQuerySet(self.model, using=self._db)
+]]></code>
+      </example>
+
+      <example type="good" title="core/models/mixins.py — Reusable model mixins">
+        <code lang="python"><![CDATA[
+"""Reusable model mixins."""
+import uuid
+from django.db import models
+from django.utils import timezone
+
+from .managers import SoftDeleteManager, AllObjectsManager
+
+
+class UUIDMixin(models.Model):
+    """Adds UUID field for external identification."""
+
+    uid = models.UUIDField(
+        default=uuid.uuid4,
+        editable=False,
+        unique=True,
+        db_index=True,
+        help_text="Public identifier for external use",
+    )
+
+    class Meta:
+        abstract = True
+
+
+class TimestampMixin(models.Model):
+    """Adds created_at and updated_at timestamps."""
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        help_text="When this record was created",
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="When this record was last updated",
+    )
+
+    class Meta:
+        abstract = True
+        ordering = ['-created_at']
+
+
+class SoftDeleteMixin(models.Model):
+    """Adds soft delete capability."""
+
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="When this record was soft deleted",
+    )
+
+    objects = SoftDeleteManager()
+    all_objects = AllObjectsManager()
+
+    class Meta:
+        abstract = True
+
+    def delete(self, using=None, keep_parents=False):
+        """Soft delete: mark as deleted instead of removing."""
+        self.deleted_at = timezone.now()
+        self.save(update_fields=['deleted_at', 'updated_at'])
+
+    def hard_delete(self, using=None, keep_parents=False):
+        """Permanently delete from database."""
+        super().delete(using=using, keep_parents=keep_parents)
+
+    def restore(self):
+        """Restore a soft-deleted record."""
+        self.deleted_at = None
+        self.save(update_fields=['deleted_at', 'updated_at'])
+
+    @property
+    def is_deleted(self) -> bool:
+        """Check if record is soft deleted."""
+        return self.deleted_at is not None
+
+
+class VersionMixin(models.Model):
+    """Adds optimistic locking via version field."""
+
+    version = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            self.version += 1
+        super().save(*args, **kwargs)
+]]></code>
+      </example>
+
+      <example type="good" title="core/models/base.py — Base model classes">
+        <code lang="python"><![CDATA[
+"""Base model classes."""
+from django.db import models
+
+from .mixins import UUIDMixin, TimestampMixin, SoftDeleteMixin
+
+
+class BaseModel(UUIDMixin, TimestampMixin, models.Model):
+    """
+    Standard base model with UUID and timestamps.
+
+    Use for most domain models that need:
+    - External UUID for API exposure
+    - Automatic timestamp tracking
+    """
+
+    class Meta:
+        abstract = True
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}({self.uid})"
+
+
+class SoftDeleteModel(UUIDMixin, TimestampMixin, SoftDeleteMixin, models.Model):
+    """
+    Base model with soft delete support.
+
+    Use for models where data should be recoverable:
+    - User accounts
+    - Important business data
+    - Audit-sensitive records
+    """
+
+    class Meta:
+        abstract = True
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        status = " [DELETED]" if self.is_deleted else ""
+        return f"{self.__class__.__name__}({self.uid}){status}"
+]]></code>
+      </example>
+    </section>
+
+    <section name="full-example-ecommerce-models">
+      <p>Production e-commerce models using base patterns.</p>
+
+      <example type="good" title="apps/products/models.py — Product models with custom queryset">
+        <code lang="python"><![CDATA[
+"""Product models."""
+from decimal import Decimal
+from django.db import models
+from django.db.models import F
+from core.models import SoftDeleteModel
+
+
+class ProductQuerySet(models.QuerySet):
+    """Custom queryset for products."""
+
+    def active(self):
+        """Return only active, in-stock products."""
+        return self.filter(
+            is_active=True,
+            stock__gt=0,
+            deleted_at__isnull=True,
+        )
+
+    def in_category(self, category):
+        """Filter by category or its children."""
+        categories = [category.id]
+        categories.extend(
+            category.children.values_list('id', flat=True)
+        )
+        return self.filter(category_id__in=categories)
+
+    def price_range(self, min_price=None, max_price=None):
+        """Filter by price range."""
+        qs = self
+        if min_price is not None:
+            qs = qs.filter(price__gte=min_price)
+        if max_price is not None:
+            qs = qs.filter(price__lte=max_price)
+        return qs
+
+    def with_discount(self):
+        """Return products with active discount."""
+        return self.filter(discount_percent__gt=0)
+
+
+class ProductManager(models.Manager):
+    """Custom manager for products."""
+
+    def get_queryset(self):
+        return ProductQuerySet(self.model, using=self._db).filter(
+            deleted_at__isnull=True
+        )
+
+    def active(self):
+        return self.get_queryset().active()
+
+
+class Product(SoftDeleteModel):
+    """Product with pricing and inventory."""
+
+    name = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=200, unique=True)
+    description = models.TextField()
+    category = models.ForeignKey(
+        'Category',
+        on_delete=models.PROTECT,
+        related_name='products',
+    )
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    discount_percent = models.PositiveSmallIntegerField(default=0)
+    # Computed field (Django 5.x)
+    final_price = models.GeneratedField(
+        expression=F('price') * (100 - F('discount_percent')) / 100,
+        output_field=models.DecimalField(max_digits=10, decimal_places=2),
+        db_persist=True,
+    )
+    stock = models.PositiveIntegerField(default=0)
+    sku = models.CharField(max_length=50, unique=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    is_featured = models.BooleanField(default=False, db_index=True)
+
+    objects = ProductManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        db_table = 'products'
+        indexes = [
+            models.Index(fields=['category', 'is_active']),
+            models.Index(fields=['price']),
+            models.Index(fields=['-created_at']),
+        ]
+]]></code>
+      </example>
+
+      <example type="good" title="apps/orders/models.py — Order models with proper FK patterns">
+        <code lang="python"><![CDATA[
+"""Order models with proper FK patterns."""
+from decimal import Decimal
+from django.db import models
+from django.conf import settings
+from core.models import BaseModel
+
+
+class OrderStatus(models.TextChoices):
+    """Order status choices."""
+    PENDING = 'pending', 'Pending'
+    CONFIRMED = 'confirmed', 'Confirmed'
+    PROCESSING = 'processing', 'Processing'
+    SHIPPED = 'shipped', 'Shipped'
+    DELIVERED = 'delivered', 'Delivered'
+    CANCELLED = 'cancelled', 'Cancelled'
+    REFUNDED = 'refunded', 'Refunded'
+
+
+class Order(BaseModel):
+    """Customer order."""
+
+    # Customer - PROTECT prevents accidental user deletion
+    customer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='orders',
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=OrderStatus.choices,
+        default=OrderStatus.PENDING,
+        db_index=True,
+    )
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    tax = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    shipping_address = models.TextField()
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    shipped_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    # Soft reference - order survives if handler deleted
+    handled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='handled_orders',
+    )
+
+    class Meta:
+        db_table = 'orders'
+        indexes = [
+            models.Index(fields=['customer', 'status']),
+            models.Index(fields=['status', '-created_at']),
+        ]
+
+    def __str__(self) -> str:
+        return f"Order {self.uid} - {self.status}"
+
+
+class OrderItem(BaseModel):
+    """Line item in an order."""
+
+    # CASCADE - items have no meaning without order
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
+    # PROTECT - preserve product info even if product deleted
+    product = models.ForeignKey(
+        'products.Product',
+        on_delete=models.PROTECT,
+        related_name='order_items',
+    )
+    # Snapshot at time of purchase (prices may change)
+    product_name = models.CharField(max_length=200)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    quantity = models.PositiveIntegerField(default=1)
+    # Computed total
+    total = models.GeneratedField(
+        expression=models.F('unit_price') * models.F('quantity'),
+        output_field=models.DecimalField(max_digits=12, decimal_places=2),
+        db_persist=True,
+    )
+
+    class Meta:
+        db_table = 'order_items'
+]]></code>
+      </example>
+    </section>
+
+    <section name="full-example-multi-tenant-saas">
+      <p>Complete multi-tenant implementation.</p>
+
+      <example type="good" title="tenants/middleware.py — Tenant middleware">
+        <code lang="python"><![CDATA[
+"""Tenant middleware for multi-tenant support."""
+import threading
+from django.http import Http404
+from .models import Tenant
+
+_thread_locals = threading.local()
+
+
+def get_current_tenant():
+    """Get the current tenant from thread-local storage."""
+    return getattr(_thread_locals, 'tenant', None)
+
+
+def set_current_tenant(tenant):
+    """Set the current tenant in thread-local storage."""
+    _thread_locals.tenant = tenant
+
+
+class TenantMiddleware:
+    """
+    Middleware to extract tenant from request.
+
+    Supports:
+    - Subdomain: acme.app.com
+    - Header: X-Tenant-ID
+    - URL prefix: /t/acme/
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        tenant = self._get_tenant_from_request(request)
+        set_current_tenant(tenant)
+        request.tenant = tenant
+        response = self.get_response(request)
+        set_current_tenant(None)
+        return response
+
+    def _get_tenant_from_request(self, request):
+        """Extract tenant from subdomain or header."""
+        tenant_id = request.headers.get('X-Tenant-ID')
+        if tenant_id:
+            try:
+                return Tenant.objects.get(uid=tenant_id, is_active=True)
+            except Tenant.DoesNotExist:
+                raise Http404("Tenant not found")
+        host = request.get_host().split(':')[0]
+        subdomain = host.split('.')[0]
+        if subdomain and subdomain not in ['www', 'app', 'api']:
+            try:
+                return Tenant.objects.get(slug=subdomain, is_active=True)
+            except Tenant.DoesNotExist:
+                raise Http404("Tenant not found")
+        return None
+]]></code>
+      </example>
+
+      <example type="good" title="tenants/mixins.py — Tenant-aware model mixin">
+        <code lang="python"><![CDATA[
+"""Tenant-aware model mixin."""
+from django.db import models
+from .managers import TenantManager, UnscopedManager
+from .middleware import get_current_tenant
+
+
+class TenantAwareMixin(models.Model):
+    """
+    Mixin that adds tenant scoping to models.
+
+    Usage:
+        class Project(TenantAwareMixin, BaseModel):
+            name = models.CharField(max_length=100)
+    """
+
+    tenant = models.ForeignKey(
+        'tenants.Tenant',
+        on_delete=models.CASCADE,
+        related_name='%(app_label)s_%(class)s_set',
+        db_index=True,
+    )
+
+    objects = TenantManager()
+    unscoped = UnscopedManager()
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        if not self.tenant_id:
+            tenant = get_current_tenant()
+            if tenant:
+                self.tenant = tenant
+            else:
+                raise ValueError("Cannot save without tenant context")
+        super().save(*args, **kwargs)
+]]></code>
+      </example>
+    </section>
+
+    <section name="full-example-audit-trail">
+      <example type="good" title="apps/contracts/models.py — Contract with full change history">
+        <code lang="python"><![CDATA[
+"""Contract models with audit trail."""
+from decimal import Decimal
+from django.db import models
+from django.conf import settings
+from simple_history.models import HistoricalRecords
+from core.models import BaseModel
+
+
+class ContractStatus(models.TextChoices):
+    DRAFT = 'draft', 'Draft'
+    PENDING = 'pending', 'Pending Approval'
+    ACTIVE = 'active', 'Active'
+    EXPIRED = 'expired', 'Expired'
+    TERMINATED = 'terminated', 'Terminated'
+
+
+class Contract(BaseModel):
+    """Contract with full change history."""
+
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    client = models.ForeignKey(
+        'clients.Client',
+        on_delete=models.PROTECT,
+        related_name='contracts',
+    )
+    value = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    currency = models.CharField(max_length=3, default='USD')
+    start_date = models.DateField()
+    end_date = models.DateField()
+    status = models.CharField(
+        max_length=20,
+        choices=ContractStatus.choices,
+        default=ContractStatus.DRAFT,
+    )
+    # Audit trail - tracks all changes
+    history = HistoricalRecords(
+        excluded_fields=['updated_at'],
+        history_change_reason_field=models.TextField(null=True),
+    )
+
+    class Meta:
+        db_table = 'contracts'
+        indexes = [
+            models.Index(fields=['client', 'status']),
+            models.Index(fields=['status', 'end_date']),
+        ]
+
+    # Usage:
+    # contract.history.all()  # All versions
+    # contract.history.as_of(some_datetime)  # Version at time
+    # contract.history.most_recent()  # Latest change
+    # contract.history.filter(history_date__range=(start, end))
+]]></code>
+      </example>
+    </section>
+
+    <section name="full-example-django-model-utils">
+      <p>Leveraging built-in base models from django-model-utils.</p>
+
+      <example type="good" title="Models using django-model-utils">
+        <code lang="python"><![CDATA[
+"""Models using django-model-utils."""
+from django.db import models
+from model_utils.models import (
+    TimeStampedModel,
+    SoftDeletableModel,
+    StatusModel,
+    UUIDModel,
+)
+from model_utils import Choices
+
+
+class Article(TimeStampedModel, SoftDeletableModel):
+    """
+    Article using django-model-utils base models.
+
+    Inherits:
+    - created, modified (from TimeStampedModel)
+    - is_removed (from SoftDeletableModel)
+    """
+
+    STATUS = Choices('draft', 'published', 'archived')
+
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS,
+        default=STATUS.draft,
+    )
+
+    class Meta:
+        db_table = 'articles'
+
+
+class Subscription(UUIDModel, TimeStampedModel, StatusModel):
+    """
+    Subscription using multiple model-utils mixins.
+
+    Inherits:
+    - id (UUID primary key from UUIDModel)
+    - created, modified (from TimeStampedModel)
+    - status, status_changed (from StatusModel)
+    """
+
+    STATUS = Choices(
+        ('active', 'Active'),
+        ('paused', 'Paused'),
+        ('cancelled', 'Cancelled'),
+    )
+
+    user = models.ForeignKey(
+        'auth.User',
+        on_delete=models.CASCADE,
+        related_name='subscriptions',
+    )
+    plan = models.CharField(max_length=50)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        db_table = 'subscriptions'
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-integration-and-agentic-workflow">
+      <p>Drive base-model adoption as a sequence of typed migrations: (1) introduce BaseModel and mixins under core/models.py, (2) migrate one app at a time, generating add_uid + backfill_uid + make_uid_unique migrations, (3) flip APIs to expose uid instead of id, (4) finally introduce soft-delete only where there's a product-level "undo" requirement. Validate every step with python manage.py check, makemigrations --dry-run, and a regression test that loads via fixture and checks public API surface. The agent never rewrites a model in place — always migrate via a Django data migration with a backfill.</p>
+
+      <p>Recommended subagents: faion-python-developer — owns Django model code; produces core/models.py, mixins, manager classes, and per-app migrations. faion-software-architect — decides which mixins apply per domain. faion-backend-developer — validates ORM behaviour, FK cascades, query plans (EXPLAIN), and partial-index design for soft-delete uniqueness. faion-sdd-executor-agent — runs the migration sequence as SDD tasks with explicit gates. faion-code-quality — ensures new models inherit the chosen base; flags rogue created_at = DateTimeField(auto_now_add=True) duplications at review.</p>
+    </section>
+
+    <section name="data-migration-template">
+      <p>Inline data-migration template for adding uid to an existing table:</p>
+
+      <example type="good" title="Data migration: add uid to existing table">
+        <code lang="python"><![CDATA[
+# apps/<app>/migrations/00XX_add_uid.py
+from django.db import migrations, models
+import uuid
+
+def gen_uids(apps, schema_editor):
+    Model = apps.get_model("<app>", "<Model>")
+    batch = []
+    for obj in Model.objects.filter(uid__isnull=True).iterator(chunk_size=2000):
+        obj.uid = uuid.uuid4()
+        batch.append(obj)
+        if len(batch) >= 2000:
+            Model.objects.bulk_update(batch, ["uid"])
+            batch.clear()
+    if batch:
+        Model.objects.bulk_update(batch, ["uid"])
+
+class Migration(migrations.Migration):
+    dependencies = [("<app>", "00XX_prev")]
+    operations = [
+        migrations.AddField("<Model>", "uid",
+            models.UUIDField(default=uuid.uuid4, null=True, editable=False)),
+        migrations.RunPython(gen_uids, migrations.RunPython.noop),
+        migrations.AlterField("<Model>", "uid",
+            models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)),
+    ]
+]]></code>
+      </example>
+
+      <example type="good" title="Soft-delete partial unique index (PostgreSQL)">
+        <code lang="python"><![CDATA[
+class Meta:
+    constraints = [
+        models.UniqueConstraint(
+            fields=["tenant", "slug"],
+            condition=models.Q(deleted_at__isnull=True),
+            name="uq_<model>_slug_alive",
+        ),
+    ]
+]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Keep id (BigAutoField) as PK; expose uid (UUIDField) externally. Faster joins, smaller indexes, hides enumeration. Only switch to UUID PK with a measured reason.</item>
+        <item>Index uid explicitly (db_index=True or unique). Lookups by uid without an index force seq scans on large tables.</item>
+        <item>All admin/list views must use all_objects if soft-delete is enabled — surface deleted rows to admins, hide from public managers.</item>
+        <item>Replace every unique=True on a soft-deletable model with a partial UniqueConstraint(condition=Q(deleted_at__isnull=True)).</item>
+        <item>Mixin order: behaviour-overriding mixins first (SoftDeleteMixin before TimestampMixin). Document the order in core/models.py.</item>
+        <item>on_delete defaults: PROTECT for parent rows you don't want to lose, CASCADE only when child has no meaning without parent, SET_NULL for surviving content with detached author.</item>
+        <item>Generate migrations per app even when the change spans many — keeps deploy ordering and rollback options open.</item>
+        <item>Backfill in chunks (iterator(chunk_size=2000), bulk_update) inside RunPython; never load full table to memory.</item>
+        <item>HistoricalRecords selectively. Audit only models needed for compliance; not every entity. Otherwise you double the table count.</item>
+        <item>Tenant scoping is a property of the manager, not the model alone. Always pair TenantAwareModel with explicit with tenant_context(...) in tasks/cron.</item>
+        <item>Document base-model contract in core/AGENTS.md: what every model must inherit and what optional mixins exist.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
       <antipattern>
-        <description>Using UUID as primary key without understanding performance impact. UUID v4 keys cause index fragmentation because inserts are random, not sequential.</description>
-        <reason>At scale (millions of rows), UUID PKs degrade query performance, increase storage, and waste memory on B-tree nodes. Keep integer PK, expose uid field for external use.</reason>
+        <description>Switching PK to UUID retroactively — pretends to be a 5-line change, is actually destructive.</description>
+        <reason>Reject any migration that drops/recreates id. Always go via separate uid column with backfill.</reason>
       </antipattern>
-
       <antipattern>
-        <description>Forgetting to index the uid field. UUIDs are unique but not indexed by default in all configurations.</description>
-        <reason>Unindexed uid lookups are full table scans. Always add db_index=True to uid fields that will be searched or used in APIs.</reason>
+        <description>Agents add unique=True and forget partial-index requirement when soft-delete is enabled.</description>
+        <reason>Leads to IntegrityError after restore. Replace every unique=True on a soft-deletable model with UniqueConstraint(condition=Q(deleted_at__isnull=True)).</reason>
       </antipattern>
-
       <antipattern>
-        <description>Using CASCADE when PROTECT is safer for ownership relationships like User→Order.</description>
-        <reason>CASCADE silently deletes historical order data when a user is deleted. PROTECT forces explicit handling, preventing accidental data loss and preserving audit trails.</reason>
+        <description>Default objects shadowing. Agents put objects = SoftDeleteManager() first and lose access to deleted rows everywhere — including admin and loaddata.</description>
+        <reason>Always preserve all_objects and update admin to use it.</reason>
       </antipattern>
-
       <antipattern>
-        <description>Not considering soft delete for important data. Hard deletes cannot be undone.</description>
-        <reason>Soft delete is cheap (one DateTimeField, one index) and prevents losing data to user mistakes, bugs, or accidental database manipulations.</reason>
+        <description>CASCADE through soft-delete silently hard-deletes children.</description>
+        <reason>Force a checklist: list every reverse relation and decide CASCADE/PROTECT/SET_NULL per edge.</reason>
       </antipattern>
-
       <antipattern>
-        <description>Exposing auto-increment IDs in APIs. Integer IDs leak information about system size and enable enumeration attacks.</description>
-        <reason>Endpoints like /orders/1, /orders/2 reveal competitor data patterns and enable bots to crawl all your data. UUIDs are opaque and prevent enumeration.</reason>
+        <description>Tenant context leaks in Celery tasks because get_current_tenant() reads thread-local set by middleware.</description>
+        <reason>Agents that "just call Model.objects.all()" return cross-tenant rows. Force explicit context with tenant_context(tenant).</reason>
       </antipattern>
-
       <antipattern>
-        <description>Not handling cascading soft deletes. When a parent is soft deleted, related children remain active.</description>
-        <reason>A soft-deleted order with active order items creates inconsistent state. Implement cascading soft deletes or use SET_NULL for optional relationships.</reason>
+        <description>db_default=Now() confused with auto_now_add=True. They behave differently for bulk_create, update, raw SQL.</description>
+        <reason>Pick one and document in the base model.</reason>
+      </antipattern>
+      <antipattern>
+        <description>GeneratedField(db_persist=True) generates SQL that errors on SQLite.</description>
+        <reason>Agents that ship SQLite-targeted dev DBs will see migration errors only in CI. Test on the prod DB engine.</reason>
+      </antipattern>
+      <antipattern>
+        <description>HistoricalRecords(inherit=True) combined with abstract base + 100 child models silently creates 100 extra tables.</description>
+        <reason>Reviewers should always count migrations. Use HistoricalRecords selectively on compliance-required models only.</reason>
+      </antipattern>
+      <antipattern>
+        <description>.delete() semantic flip. Once SoftDeleteMixin is in, Model.objects.filter(...).delete() no longer hits the row-level override (Django QuerySet delete() bypasses it).</description>
+        <reason>Agents must override the QuerySet too. Use SoftDeleteQuerySet that overrides delete() at the queryset level.</reason>
+      </antipattern>
+      <antipattern>
+        <description>objects.update() bypasses signals and save() — soft-delete logic that lives in delete() won't run.</description>
+        <reason>Agents who write "set deleted_at via update" miss that the queryset path needs its own override.</reason>
+      </antipattern>
+      <antipattern>
+        <description>uid as URL param without a length-validating regex lets /users/&lt;uid:uuid&gt;/ accept any string.</description>
+        <reason>Use Django's uuid path converter, not &lt;str:uid&gt;.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Mass-rename of id references to uid in templates/serializers without migration creates dead URL routes.</description>
+        <reason>Migrate views + URL conf in the same PR as the model change.</reason>
       </antipattern>
     </section>
 
-    <section name="implementation-checklist">
-      <p>Step-by-step checklist for designing and implementing base models in Django projects.</p>
-      <checklist>
-        <check>Identify common fields needed (timestamps, UUID, soft delete, audit trail, version).</check>
-        <check>Determine UUID strategy (separate uid field or UUID PK).</check>
-        <check>Identify inheritance pattern (abstract base, multi-table, proxy).</check>
-        <check>Create core BaseModel with UUID, created_at, updated_at fields.</check>
-        <check>Design mixin hierarchy (TimestampMixin, UUIDMixin, SoftDeleteMixin, AuditMixin, TenantMixin).</check>
-        <check>Define custom managers (default active manager, all_objects for admin).</check>
-        <check>Implement soft delete manager and queryset methods (delete, hard_delete, restore, active, deleted).</check>
-        <check>Configure soft delete model with deleted_at field and override delete() method.</check>
-        <check>Set up audit trail (choose library: django-simple-history or django-auditlog).</check>
-        <check>Add HistoricalRecords to models needing change tracking.</check>
-        <check>Implement user tracking middleware for audit trail user capture.</check>
-        <check>Create TenantAwareModel for multi-tenant with tenant FK and TenantManager.</check>
-        <check>Implement TenantManager with get_current_tenant() filtering via middleware.</check>
-        <check>Create unique constraints with soft delete (include deleted_at in uniqueness).</check>
-        <check>Define ForeignKey on_delete behavior (CASCADE, PROTECT, SET_NULL) per relationship type.</check>
-        <check>Combine mixins in correct order for MRO (Method Resolution Order).</check>
-        <check>Test model inheritance and manager behavior with all managers.</check>
-        <check>Verify admin integration shows deleted records and restore actions.</check>
-        <check>Run migrations and verify database structure matches design.</check>
-        <check>Test soft delete cascading behavior for related models.</check>
-      </checklist>
+    <section name="cli-tools">
+      <list>
+        <item>python manage.py makemigrations — Generate schema/data migrations (bundled with Django)</item>
+        <item>python manage.py migrate --plan — Validate migration order before applying (bundled)</item>
+        <item>python manage.py sqlmigrate — Inspect generated SQL before running (bundled)</item>
+        <item>django-extensions (shell_plus, graph_models) — Visualize the inheritance + relations (https://django-extensions.readthedocs.io)</item>
+        <item>django-model-utils — Battle-tested mixins (TimeStamped, SoftDeletable, StatusModel) (https://django-model-utils.readthedocs.io)</item>
+        <item>django-simple-history — Auto history tables for audit trail (https://django-simple-history.readthedocs.io)</item>
+        <item>django-soft-delete — Drop-in soft-delete utilities (https://pypi.org/project/django-soft-delete/)</item>
+        <item>django-tenants — PostgreSQL schema-per-tenant multi-tenancy (https://django-tenants.readthedocs.io)</item>
+        <item>pgcli — Inspect partial indexes / constraints for soft-delete (https://www.pgcli.com)</item>
+        <item>django-stubs — Type-check the inheritance chain (https://github.com/typeddjango/django-stubs)</item>
+        <item>django-upgrade — Modernise old patterns when migrating to new bases (https://github.com/adamchainz/django-upgrade)</item>
+        <item>factory-boy — Test factories that respect base-model defaults (https://factoryboy.readthedocs.io)</item>
+      </list>
     </section>
 
-    <section name="llm-prompts-for-base-models">
-      <p>Effective prompts for AI-assisted Django base model design and implementation.</p>
-
-      <prompt purpose="Initial base model system design">
+    <section name="llm-prompts">
+      <prompt purpose="Initial base model system design"><![CDATA[
 I'm starting a new Django project. Help me design a base model system.
 
 Project context:
@@ -632,9 +1256,9 @@ Please recommend:
 2. Manager/QuerySet patterns
 3. UUID strategy (separate field vs PK)
 4. Any Django 5.x features to leverage
-      </prompt>
+]]></prompt>
 
-      <prompt purpose="Soft delete implementation">
+      <prompt purpose="Soft delete implementation"><![CDATA[
 Implement a production-ready soft delete system for Django with:
 
 Requirements:
@@ -648,9 +1272,9 @@ Requirements:
 8. Consider unique constraints with deleted records
 
 Provide complete, copy-paste ready code.
-      </prompt>
+]]></prompt>
 
-      <prompt purpose="Multi-tenant model design">
+      <prompt purpose="Multi-tenant model design"><![CDATA[
 I need to implement multi-tenancy in Django. Help me choose and implement the right approach.
 
 Context:
@@ -670,9 +1294,9 @@ Then implement the recommended approach with:
 - Tenant-aware base mixin
 - Middleware for tenant resolution
 - Manager that auto-filters by tenant
-      </prompt>
+]]></prompt>
 
-      <prompt purpose="Audit trail library selection">
+      <prompt purpose="Audit trail library selection"><![CDATA[
 I need to implement audit trail for Django models. Compare these options for my use case:
 
 Requirements:
@@ -687,15 +1311,10 @@ Compare:
 3. django-reversion
 4. pghistory (PostgreSQL only)
 
-Recommend one and explain why, then show implementation with:
-- Installation and setup
-- Model configuration with HistoricalRecords
-- Middleware for user tracking
-- Example queries (get history, as_of, diff)
-- Admin integration
-      </prompt>
+Recommend one and explain why, then show implementation.
+]]></prompt>
 
-      <prompt purpose="Custom manager and queryset design">
+      <prompt purpose="Custom manager and queryset design"><![CDATA[
 Design a custom Manager/QuerySet system for a Django model.
 
 Model: [ModelName]
@@ -712,15 +1331,17 @@ Requirements:
 - Support for filtering on related models
 
 Generate the complete implementation with examples of chaining.
-      </prompt>
+]]></prompt>
 
-      <prompt purpose="Django 5.x GeneratedField">
+      <prompt purpose="Django 5.x GeneratedField"><![CDATA[
 I want to use Django 5.x GeneratedField for computed columns.
 
 Use cases:
 1. Full name from first_name + last_name
 2. Order total from quantity * unit_price
 3. Discount price from price * (1 - discount_percent/100)
+4. Age from date_of_birth
+5. Status boolean from status enum
 
 For each:
 - Show the GeneratedField definition
@@ -728,40 +1349,1014 @@ For each:
 - Note database compatibility
 - Show how to query/filter on generated fields
 - Migration considerations
-      </prompt>
+]]></prompt>
+
+      <prompt purpose="ForeignKey strategy decision"><![CDATA[
+Help me decide on_delete strategy for my Django models.
+
+Models and relationships:
+1. User -> Order (user places orders)
+2. Order -> OrderItem (order contains items)
+3. OrderItem -> Product (item references product)
+4. Task -> User (task assigned to user)
+5. Comment -> User (comment author)
+6. Comment -> Post (comment on post)
+7. [Add your specific relationships]
+
+For each, recommend:
+- on_delete choice
+- Reasoning
+- Alternative if business rules change
+- Any null/blank settings needed
+]]></prompt>
     </section>
 
-    <section name="performance-and-scale">
-      <p>Considerations for base models at scale and with large datasets.</p>
-
-      <rule testable="false">
-        <statement>For models with millions of rows, ensure created_at and updated_at fields are indexed. Add db_index=True to any frequently queried timestamp field.</statement>
-        <rationale>Unindexed time-range queries (e.g., get orders from last 30 days) become full table scans at scale. Indexes make these queries efficient and O(log n).</rationale>
-      </rule>
-
-      <rule testable="false">
-        <statement>When using soft delete with unique constraints, consider adding deleted_at to the uniqueness constraint so deleted records don't block new records with the same value (e.g., email).</statement>
-        <rationale>A deleted user with email alice@example.com blocks new registration with that email if the unique constraint doesn't include deleted_at. Use UniqueConstraint with Q(deleted_at__isnull=True).</rationale>
-      </rule>
-
-      <rule testable="false">
-        <statement>In multi-tenant systems, add indexes to (tenant_id, created_at) composite keys for efficient tenant + time queries. This is more efficient than separate indexes.</statement>
-        <rationale>Composite indexes allow the database to filter by tenant first, then by time, in a single index traversal. Separate indexes force index merges.</rationale>
-      </rule>
+    <section name="implementation-checklist">
+      <checklist>
+        <check>Do all models need timestamps (created_at, updated_at)?</check>
+        <check>Do you need external-facing UUIDs (API exposure)?</check>
+        <check>Do you need soft delete functionality?</check>
+        <check>Do you need audit trail (who changed what, when)?</check>
+        <check>Is this a multi-tenant application?</check>
+        <check>Do you need optimistic locking (version field)?</check>
+        <check>Determine UUID strategy: Integer PK + separate uid field (recommended) or UUID as primary key (distributed systems)</check>
+        <check>Identify inheritance pattern: abstract base class, multi-table inheritance, or proxy model</check>
+        <check>Create core/models.py or common/models.py</check>
+        <check>Define BaseModel with UUID field, created_at, updated_at, abstract=True, default ordering, __str__ method</check>
+        <check>Design mixin hierarchy: TimestampMixin, UUIDMixin, SoftDeleteMixin, AuditMixin, TenantMixin</check>
+        <check>Define custom managers: default manager, AllObjects manager. Consider QuerySet.as_manager() pattern</check>
+        <check>Create SoftDeleteManager extending models.Manager, override get_queryset() to filter deleted_at__isnull=True</check>
+        <check>Create AllObjectsManager for admin access</check>
+        <check>Add deleted_at field (DateTimeField, null=True, indexed), override delete() method, implement hard_delete() and restore(), add is_deleted property</check>
+        <check>Handle cascading soft deletes (related models)</check>
+        <check>Update unique constraints to include deleted_at condition</check>
+        <check>Update admin interface to show deleted items</check>
+        <check>Choose audit library: django-simple-history, django-auditlog, django-reversion, or pghistory</check>
+        <check>Install chosen library, add to INSTALLED_APPS, run migrations, add HistoricalRecords to models, configure user tracking middleware</check>
+        <check>For each ForeignKey, decide: PROTECT, CASCADE, SET_NULL, SET_DEFAULT, or DO_NOTHING</check>
+        <check>Use descriptive related_name, use %(class)s_set pattern for abstract models</check>
+        <check>Index FK fields, add composite indexes for common queries</check>
+        <check>Test UUID generation, auto timestamps, __str__ method, default ordering</check>
+        <check>Test delete() performs soft delete, hard_delete() removes from DB, restore() works, default manager excludes deleted, all_objects includes deleted</check>
+        <check>Test custom queryset methods, manager methods, chaining works, inheritance behavior</check>
+        <check>Backup database, test migrations on copy of prod data, plan for downtime, document rollback procedure</check>
+        <check>Apply migrations in order, verify indexes created, verify constraints applied, run data migrations</check>
+        <check>Verify all models work correctly, run full test suite, check query performance, monitor for errors</check>
+      </checklist>
     </section>
 
-    <templates>
-      <template path="templates/" purpose="Real-world implementation examples and patterns."/>
-    </templates>
+    <section name="template-standard-base-model">
+      <p>Template 1: Standard Base Model — The most common pattern - UUID + timestamps.</p>
+
+      <example type="good" title="core/models/base.py — Standard BaseModel template">
+        <code lang="python"><![CDATA[
+# core/models/base.py
+"""Base model classes for the application."""
+import uuid
+from django.db import models
+
+
+class BaseModel(models.Model):
+    """
+    Abstract base model with UUID and timestamps.
+
+    All domain models should inherit from this class.
+
+    Fields:
+        uid: Public UUID for external use (API, URLs)
+        created_at: When record was created
+        updated_at: When record was last modified
+
+    Usage:
+        class Product(BaseModel):
+            name = models.CharField(max_length=100)
+    """
+
+    uid = models.UUIDField(
+        default=uuid.uuid4,
+        editable=False,
+        unique=True,
+        db_index=True,
+        help_text="Public identifier for external use",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        abstract = True
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}({self.uid})"
+]]></code>
+      </example>
+    </section>
+
+    <section name="template-complete-soft-delete-system">
+      <p>Template 2: Complete Soft Delete System — Full soft delete with managers and queryset.</p>
+
+      <example type="good" title="core/models/soft_delete.py — Complete soft delete system">
+        <code lang="python"><![CDATA[
+# core/models/soft_delete.py
+"""Soft delete base model and managers."""
+from django.db import models
+from django.db.models import QuerySet
+from django.utils import timezone
+
+
+class SoftDeleteQuerySet(QuerySet):
+    """QuerySet supporting soft delete operations."""
+
+    def delete(self):
+        """Soft delete all objects in queryset."""
+        return self.update(deleted_at=timezone.now())
+
+    def hard_delete(self):
+        """Permanently delete all objects."""
+        return super().delete()
+
+    def restore(self):
+        """Restore all soft-deleted objects."""
+        return self.update(deleted_at=None)
+
+    def active(self):
+        """Return only non-deleted objects."""
+        return self.filter(deleted_at__isnull=True)
+
+    def deleted(self):
+        """Return only soft-deleted objects."""
+        return self.filter(deleted_at__isnull=False)
+
+
+class SoftDeleteManager(models.Manager):
+    """Manager that excludes soft-deleted records by default."""
+
+    def get_queryset(self):
+        return SoftDeleteQuerySet(
+            self.model, using=self._db
+        ).filter(deleted_at__isnull=True)
+
+    def with_deleted(self):
+        """Include soft-deleted records."""
+        return SoftDeleteQuerySet(self.model, using=self._db)
+
+    def deleted_only(self):
+        """Return only soft-deleted records."""
+        return SoftDeleteQuerySet(self.model, using=self._db).deleted()
+
+
+class AllObjectsManager(models.Manager):
+    """Manager that includes all records."""
+
+    def get_queryset(self):
+        return SoftDeleteQuerySet(self.model, using=self._db)
+
+
+class SoftDeleteModel(models.Model):
+    """
+    Base model with soft delete support.
+
+    Instead of deleting records from the database,
+    marks them as deleted with a timestamp.
+
+    Managers:
+        objects: Default manager (excludes deleted)
+        all_objects: Includes deleted records
+
+    Methods:
+        delete(): Soft delete (sets deleted_at)
+        hard_delete(): Permanently remove
+        restore(): Undelete record
+
+    Usage:
+        class Document(SoftDeleteModel):
+            title = models.CharField(max_length=100)
+
+        # Soft delete
+        doc.delete()
+
+        # Check if deleted
+        doc.is_deleted  # True
+
+        # Restore
+        doc.restore()
+
+        # Include deleted in query
+        Document.all_objects.all()
+    """
+
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="When this record was soft deleted",
+    )
+
+    objects = SoftDeleteManager()
+    all_objects = AllObjectsManager()
+
+    class Meta:
+        abstract = True
+
+    def delete(self, using=None, keep_parents=False):
+        """Soft delete: mark as deleted."""
+        self.deleted_at = timezone.now()
+        self.save(update_fields=['deleted_at'])
+
+    def hard_delete(self, using=None, keep_parents=False):
+        """Permanently delete from database."""
+        super().delete(using=using, keep_parents=keep_parents)
+
+    def restore(self):
+        """Restore soft-deleted record."""
+        self.deleted_at = None
+        self.save(update_fields=['deleted_at'])
+
+    @property
+    def is_deleted(self) -> bool:
+        """Check if record is soft deleted."""
+        return self.deleted_at is not None
+]]></code>
+      </example>
+    </section>
+
+    <section name="template-combined-base-models">
+      <p>Template 3: Combined Base with Soft Delete — Full-featured base model combining UUID, timestamps, and soft delete.</p>
+
+      <example type="good" title="core/models/__init__.py — Combined base models export">
+        <code lang="python"><![CDATA[
+# core/models/__init__.py
+"""Core model exports."""
+import uuid
+from django.db import models
+from django.db.models import QuerySet
+from django.utils import timezone
+
+
+# --- Managers ---
+
+class SoftDeleteQuerySet(QuerySet):
+    def delete(self):
+        return self.update(deleted_at=timezone.now())
+
+    def hard_delete(self):
+        return super().delete()
+
+    def restore(self):
+        return self.update(deleted_at=None)
+
+
+class SoftDeleteManager(models.Manager):
+    def get_queryset(self):
+        return SoftDeleteQuerySet(
+            self.model, using=self._db
+        ).filter(deleted_at__isnull=True)
+
+    def with_deleted(self):
+        return SoftDeleteQuerySet(self.model, using=self._db)
+
+
+class AllObjectsManager(models.Manager):
+    def get_queryset(self):
+        return SoftDeleteQuerySet(self.model, using=self._db)
+
+
+# --- Base Models ---
+
+class BaseModel(models.Model):
+    """Standard base: UUID + timestamps."""
+
+    uid = models.UUIDField(
+        default=uuid.uuid4,
+        editable=False,
+        unique=True,
+        db_index=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}({self.uid})"
+
+
+class SoftDeleteModel(BaseModel):
+    """Base with soft delete: UUID + timestamps + soft delete."""
+
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    objects = SoftDeleteManager()
+    all_objects = AllObjectsManager()
+
+    class Meta:
+        abstract = True
+        ordering = ['-created_at']
+
+    def delete(self, using=None, keep_parents=False):
+        self.deleted_at = timezone.now()
+        self.save(update_fields=['deleted_at', 'updated_at'])
+
+    def hard_delete(self, using=None, keep_parents=False):
+        super().delete(using=using, keep_parents=keep_parents)
+
+    def restore(self):
+        self.deleted_at = None
+        self.save(update_fields=['deleted_at', 'updated_at'])
+
+    @property
+    def is_deleted(self) -> bool:
+        return self.deleted_at is not None
+]]></code>
+      </example>
+    </section>
+
+    <section name="template-multi-tenant-base-model">
+      <p>Template 4: Multi-Tenant Base Model — Complete multi-tenant system with middleware.</p>
+
+      <example type="good" title="tenants/models.py — Tenant model">
+        <code lang="python"><![CDATA[
+"""Tenant model."""
+import uuid
+from django.db import models
+
+
+class Tenant(models.Model):
+    """Organization in multi-tenant system."""
+
+    uid = models.UUIDField(
+        default=uuid.uuid4,
+        editable=False,
+        unique=True,
+        db_index=True,
+    )
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=100, unique=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'tenants'
+
+    def __str__(self) -> str:
+        return self.name
+]]></code>
+      </example>
+
+      <example type="good" title="tenants/middleware.py — Tenant middleware">
+        <code lang="python"><![CDATA[
+"""Tenant middleware."""
+import threading
+from django.http import Http404
+
+_thread_locals = threading.local()
+
+
+def get_current_tenant():
+    """Get tenant from thread-local storage."""
+    return getattr(_thread_locals, 'tenant', None)
+
+
+def set_current_tenant(tenant):
+    """Set tenant in thread-local storage."""
+    _thread_locals.tenant = tenant
+
+
+class TenantMiddleware:
+    """
+    Extract tenant from request.
+
+    Supports:
+    - Header: X-Tenant-ID (UUID)
+    - Subdomain: acme.app.com
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from .models import Tenant
+
+        tenant = None
+
+        # Try header first
+        tenant_uid = request.headers.get('X-Tenant-ID')
+        if tenant_uid:
+            try:
+                tenant = Tenant.objects.get(uid=tenant_uid, is_active=True)
+            except Tenant.DoesNotExist:
+                raise Http404("Tenant not found")
+
+        # Try subdomain
+        if not tenant:
+            host = request.get_host().split(':')[0]
+            subdomain = host.split('.')[0]
+            if subdomain not in ['www', 'app', 'api', 'localhost']:
+                try:
+                    tenant = Tenant.objects.get(
+                        slug=subdomain, is_active=True
+                    )
+                except Tenant.DoesNotExist:
+                    pass
+
+        set_current_tenant(tenant)
+        request.tenant = tenant
+
+        response = self.get_response(request)
+
+        set_current_tenant(None)
+        return response
+]]></code>
+      </example>
+
+      <example type="good" title="tenants/mixins.py — Tenant-aware model mixin (Template 4)">
+        <code lang="python"><![CDATA[
+"""Tenant-aware model mixin."""
+from django.db import models
+from .middleware import get_current_tenant
+
+
+class TenantManager(models.Manager):
+    """Auto-filters by current tenant."""
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        tenant = get_current_tenant()
+        if tenant:
+            return qs.filter(tenant=tenant)
+        return qs
+
+
+class TenantAwareMixin(models.Model):
+    """
+    Add tenant scoping to any model.
+
+    Usage:
+        class Project(TenantAwareMixin, BaseModel):
+            name = models.CharField(max_length=100)
+
+    Notes:
+        - Tenant auto-assigned on save if not set
+        - queries filtered by current tenant
+        - Use .unscoped for admin access
+    """
+
+    tenant = models.ForeignKey(
+        'tenants.Tenant',
+        on_delete=models.CASCADE,
+        related_name='%(app_label)s_%(class)s_set',
+        db_index=True,
+    )
+
+    objects = TenantManager()
+    unscoped = models.Manager()
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        if not self.tenant_id:
+            tenant = get_current_tenant()
+            if tenant:
+                self.tenant = tenant
+            else:
+                raise ValueError("No tenant context")
+        super().save(*args, **kwargs)
+]]></code>
+      </example>
+    </section>
+
+    <section name="template-audit-trail-model">
+      <p>Template 5: Audit Trail Model — Base model with django-simple-history.</p>
+
+      <example type="good" title="core/models/audited.py — Audited base model with full change history">
+        <code lang="python"><![CDATA[
+# core/models/audited.py
+"""Audited base model with full change history."""
+import uuid
+from django.db import models
+from simple_history.models import HistoricalRecords
+
+
+class AuditedModel(models.Model):
+    """
+    Base model with automatic audit trail.
+
+    Every create, update, delete is tracked with:
+    - Who made the change (user)
+    - When it happened (timestamp)
+    - What changed (field values)
+
+    Requires: pip install django-simple-history
+
+    Usage:
+        class Contract(AuditedModel):
+            title = models.CharField(max_length=100)
+            value = models.DecimalField(...)
+
+        # View history
+        contract.history.all()
+
+        # Version at specific time
+        contract.history.as_of(datetime)
+
+        # Revert to previous
+        old = contract.history.first()
+        old.instance.save()
+    """
+
+    uid = models.UUIDField(
+        default=uuid.uuid4,
+        editable=False,
+        unique=True,
+        db_index=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    history = HistoricalRecords(
+        inherit=True,
+        excluded_fields=['updated_at'],
+    )
+
+    class Meta:
+        abstract = True
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}({self.uid})"
+]]></code>
+      </example>
+    </section>
+
+    <section name="template-custom-manager-queryset">
+      <p>Template 6: Custom Manager + QuerySet Pattern — Reusable pattern for custom queries.</p>
+
+      <example type="good" title="core/managers.py — Custom manager pattern template">
+        <code lang="python"><![CDATA[
+# core/managers.py
+"""Custom manager pattern template."""
+from django.db import models
+from django.db.models import QuerySet
+
+
+class BaseQuerySet(QuerySet):
+    """
+    Base queryset with common methods.
+
+    Extend this for model-specific queries.
+    """
+
+    def active(self):
+        """Return only active records."""
+        return self.filter(is_active=True)
+
+    def inactive(self):
+        """Return only inactive records."""
+        return self.filter(is_active=False)
+
+
+class BaseManager(models.Manager):
+    """Base manager using BaseQuerySet."""
+
+    queryset_class = BaseQuerySet
+
+    def get_queryset(self):
+        return self.queryset_class(self.model, using=self._db)
+
+    def active(self):
+        return self.get_queryset().active()
+
+
+# --- Example: Article QuerySet/Manager ---
+
+class ArticleQuerySet(BaseQuerySet):
+    """Article-specific queries."""
+
+    def published(self):
+        return self.filter(status='published')
+
+    def draft(self):
+        return self.filter(status='draft')
+
+    def by_author(self, author):
+        return self.filter(author=author)
+
+    def featured(self):
+        return self.filter(is_featured=True)
+
+    def recent(self, days=30):
+        from django.utils import timezone
+        from datetime import timedelta
+        cutoff = timezone.now() - timedelta(days=days)
+        return self.filter(created_at__gte=cutoff)
+
+
+class ArticleManager(BaseManager):
+    """Article manager with custom methods."""
+
+    queryset_class = ArticleQuerySet
+
+    def published(self):
+        return self.get_queryset().published()
+
+    def featured(self):
+        return self.get_queryset().featured()
+
+    def recent(self, days=30):
+        return self.get_queryset().recent(days)
+
+
+# Usage in model:
+# class Article(BaseModel):
+#     objects = ArticleManager()
+]]></code>
+      </example>
+    </section>
+
+    <section name="template-django5x-features">
+      <p>Template 7: Django 5.x Features — Using GeneratedField and db_default.</p>
+
+      <example type="good" title="models/django5_features.py — Django 5.x model features template">
+        <code lang="python"><![CDATA[
+# models/django5_features.py
+"""Django 5.x model features template."""
+from django.db import models
+from django.db.models import F, Value, Q
+from django.db.models.functions import Concat, Now, Lower
+
+
+class Person(models.Model):
+    """Example using GeneratedField for computed columns."""
+
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+
+    # Computed column: stored in database
+    full_name = models.GeneratedField(
+        expression=Concat(
+            F('first_name'),
+            Value(' '),
+            F('last_name'),
+        ),
+        output_field=models.CharField(max_length=201),
+        db_persist=True,  # Required for PostgreSQL
+    )
+
+    # db_default: database computes default
+    created_at = models.DateTimeField(db_default=Now())
+
+
+class Order(models.Model):
+    """Example with computed total."""
+
+    quantity = models.PositiveIntegerField()
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    discount_percent = models.PositiveSmallIntegerField(default=0)
+
+    # Computed subtotal
+    subtotal = models.GeneratedField(
+        expression=F('quantity') * F('unit_price'),
+        output_field=models.DecimalField(max_digits=12, decimal_places=2),
+        db_persist=True,
+    )
+
+    # Computed total with discount
+    total = models.GeneratedField(
+        expression=(
+            F('quantity') * F('unit_price') *
+            (100 - F('discount_percent')) / 100
+        ),
+        output_field=models.DecimalField(max_digits=12, decimal_places=2),
+        db_persist=True,
+    )
+]]></code>
+      </example>
+    </section>
+
+    <section name="template-api-serializer">
+      <p>Template 8: API Serializer Pattern — Serializers that use uid instead of id.</p>
+
+      <example type="good" title="api/serializers/base.py — Base serializers for consistent API responses">
+        <code lang="python"><![CDATA[
+# api/serializers/base.py
+"""Base serializers for consistent API responses."""
+from rest_framework import serializers
+
+
+class BaseModelSerializer(serializers.ModelSerializer):
+    """
+    Base serializer that uses uid for identification.
+
+    Never expose internal integer IDs in API responses.
+    """
+
+    # Always include uid
+    uid = serializers.UUIDField(read_only=True)
+
+    class Meta:
+        # Subclasses define model and fields
+        abstract = True
+
+    def to_representation(self, instance):
+        """Ensure uid is always present."""
+        data = super().to_representation(instance)
+        # Remove 'id' if accidentally included
+        data.pop('id', None)
+        return data
+
+
+class TimestampSerializer(BaseModelSerializer):
+    """Serializer with timestamps."""
+
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
+
+
+# --- Example Usage ---
+
+class ProductSerializer(TimestampSerializer):
+    """Product API serializer."""
+
+    class Meta:
+        model = None  # Set in subclass
+        fields = [
+            'uid',  # Not 'id'
+            'name',
+            'price',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['uid', 'created_at', 'updated_at']
+
+
+# View example:
+# class ProductDetailView(APIView):
+#     def get(self, request, uid):  # Use uid in URL
+#         product = get_object_or_404(Product, uid=uid)
+#         return Response(ProductSerializer(product).data)
+]]></code>
+      </example>
+    </section>
+
+    <section name="template-version-mixin">
+      <p>Template 9: Version Mixin (Optimistic Locking) — For concurrent update protection.</p>
+
+      <example type="good" title="core/models/version.py — Optimistic locking mixin">
+        <code lang="python"><![CDATA[
+# core/models/version.py
+"""Optimistic locking mixin."""
+from django.db import models
+from django.core.exceptions import ValidationError
+
+
+class ConcurrencyError(Exception):
+    """Raised when concurrent update detected."""
+    pass
+
+
+class VersionMixin(models.Model):
+    """
+    Adds optimistic locking via version field.
+
+    Prevents lost updates in concurrent scenarios.
+
+    Usage:
+        class Document(VersionMixin, BaseModel):
+            content = models.TextField()
+
+        # In view:
+        doc = Document.objects.get(uid=uid)
+        doc.content = new_content
+        doc.save()  # Version auto-incremented
+
+        # In API with version check:
+        if request_version != doc.version:
+            raise ConcurrencyError("Document modified")
+    """
+
+    version = models.PositiveIntegerField(default=1, editable=False)
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            # Update: increment version
+            self.version += 1
+        super().save(*args, **kwargs)
+
+    def save_with_version_check(self, expected_version: int):
+        """
+        Save only if version matches.
+
+        Raises ConcurrencyError if version mismatch.
+        """
+        if self.version != expected_version:
+            raise ConcurrencyError(
+                f"Version mismatch: expected {expected_version}, "
+                f"got {self.version}"
+            )
+        self.save()
+]]></code>
+      </example>
+    </section>
+
+    <section name="llm-prompts-advanced">
+      <prompt purpose="Soft delete with cascading and unique constraints"><![CDATA[
+Extend the soft delete implementation to handle:
+
+1. Cascading soft deletes (when parent deleted, soft delete children)
+2. Unique constraints that allow same value if one is deleted
+   Example: email unique among active users, but deleted users
+   can have same email
+3. Admin integration showing deleted records with restore action
+4. Automatic hard delete after X days via management command
+
+Include all code and migration considerations.
+]]></prompt>
+
+      <prompt purpose="Add multi-tenancy to existing model"><![CDATA[
+I have an existing Django app that I need to convert to multi-tenant.
+
+Current state:
+- [X] models without tenant awareness
+- [Database type]
+- [Number of existing records]
+
+Provide:
+1. Step-by-step migration plan
+2. Data migration scripts
+3. Code changes needed
+4. Testing strategy for tenant isolation
+5. Rollback plan
+]]></prompt>
+
+      <prompt purpose="Model refactoring legacy to modern"><![CDATA[
+Refactor this legacy Django model to use modern patterns:
+
+```python
+[Paste legacy model code here]
+```
+
+Apply these improvements:
+1. Add UUID for external identification
+2. Add timestamps (created_at, updated_at)
+3. Convert to proper FK on_delete
+4. Add appropriate indexes
+5. Improve field choices using TextChoices
+6. Add type hints and docstrings
+7. Extract common fields to base/mixin
+8. Add custom manager if beneficial
+
+Show before/after with explanation of changes.
+]]></prompt>
+
+      <prompt purpose="Test generation for base models"><![CDATA[
+Generate comprehensive tests for this base model system:
+
+```python
+[Paste base model code here]
+```
+
+Include tests for:
+1. UUID generation (unique, immutable)
+2. Timestamp auto-population
+3. Soft delete (delete, hard_delete, restore)
+4. Manager filtering (objects vs all_objects)
+5. QuerySet operations (bulk delete, restore)
+6. Inheritance works correctly
+7. String representation
+8. Edge cases (delete already deleted, restore not deleted)
+
+Use pytest with Django fixtures.
+]]></prompt>
+
+      <prompt purpose="Multi-tenant isolation tests"><![CDATA[
+Generate tests for tenant isolation:
+
+```python
+[Paste tenant-aware model code here]
+```
+
+Test scenarios:
+1. Query returns only current tenant's data
+2. Cannot access other tenant's data
+3. Create auto-assigns current tenant
+4. Admin can access all tenants
+5. No tenant context raises error
+6. Unique constraints work within tenant
+]]></prompt>
+
+      <prompt purpose="Complete project setup"><![CDATA[
+Set up a complete base model system for a new Django project.
+
+Project type: [SaaS with user workspaces]
+Django: 5.2 LTS
+Database: PostgreSQL
+Features needed:
+- UUID for external IDs
+- Automatic timestamps
+- Soft delete for user data
+- Audit trail for sensitive models
+- Multi-tenant by workspace
+
+Generate:
+1. File structure (core/models/, etc.)
+2. All base models and mixins
+3. All managers and querysets
+4. Middleware for tenant/user context
+5. Example domain model using all features
+6. Tests
+7. settings.py configuration
+8. Initial migration notes
+]]></prompt>
+
+      <p>Quick Reference Prompt Patterns. Design decision: "Compare X vs Y for my use case: [context]". Implementation: "Generate production-ready code for [feature]". Refactoring: "Improve this code: [paste], apply [patterns]". Testing: "Generate tests for [code], covering [scenarios]". Migration: "Convert [old pattern] to [new pattern], with migration". Troubleshooting: "Debug this issue: [error], code: [paste]".</p>
+
+      <p>Context Variables to Include. Always provide these when asking for model design help: Django version: [4.2 / 5.0 / 5.1 / 5.2]. Database: [PostgreSQL / MySQL / SQLite]. Project type: [SaaS / E-commerce / API / Internal]. Scale: [Small / Medium / Large]. Existing codebase: [Greenfield / Legacy]. Multi-tenant: [Yes / No]. Soft delete: [Yes / No]. Audit trail: [Yes / No]. API type: [REST / GraphQL / None]. Testing framework: [pytest / unittest].</p>
+    </section>
+
+    <section name="agent-selection-and-index">
+      <p>Agent Selection for base model tasks. Analyze and assess: sonnet — Evaluation and planning. Execute implementation: haiku — Apply established patterns. Review and validate: sonnet — Quality assurance. Strategic decision: opus — Novel scenarios. Optimize and refine: haiku — Performance tuning. Document approach: haiku — Create documentation.</p>
+
+      <p>External Resources — Official Documentation: Django Model Field Reference (https://docs.djangoproject.com/en/5.2/ref/models/fields/); Django Model Meta Options (https://docs.djangoproject.com/en/5.2/ref/models/options/); Django 5.2 Release Notes (https://docs.djangoproject.com/en/5.2/releases/5.2/); Django Managers (https://docs.djangoproject.com/en/6.0/topics/db/managers/).</p>
+
+      <p>Libraries: django-model-utils (https://django-model-utils.readthedocs.io/) — TimeStampedModel, SoftDeletableModel, StatusModel; django-simple-history (https://django-simple-history.readthedocs.io/) — Audit trail; django-tenants (https://django-tenants.readthedocs.io/) — Multi-tenant PostgreSQL schemas; django-soft-delete (https://pypi.org/project/django-soft-delete/) — Soft delete utilities.</p>
+
+      <p>Articles: Django Best Practices - Models (https://mshaeri.com/blog/django-best-practices-part-1/); Implementing Soft Delete in Django (https://www.tomisin.dev/blog/implementing-soft-delete-in-django-an-intuitive-guide); Django Multi-Tenant Architectures (https://medium.com/simform-engineering/mastering-multi-tenant-architectures-in-django-three-powerful-approaches-178ff527c03f); UUID Primary Keys Performance (https://andyatkinson.com/avoid-uuid-version-4-primary-keys); Building Multi-Tenant SaaS in Django 2026 (https://medium.com/@yogeshkrishnanseeniraj/building-a-multi-tenant-saas-in-django-complete-2026-architecture-e956e9f5086a); Django Audit Logging Libraries (https://medium.com/@mariliabontempo/django-audit-logging-the-best-libraries-for-tracking-model-changes-with-postgresql-2c7396564e97).</p>
+    </section>
+
+    <section name="quick-reference-tables">
+      <p>Quick Reference: Model Selection by Scenario</p>
+      <list>
+        <item>Standard CRUD: BaseModel, no extra mixins</item>
+        <item>User data (recoverable): SoftDeleteModel, no extra mixins</item>
+        <item>Multi-tenant: BaseModel + TenantAwareMixin</item>
+        <item>Financial records: BaseModel + HistoricalRecords</item>
+        <item>Multi-tenant + recoverable: SoftDeleteModel + TenantAwareMixin</item>
+        <item>Using model-utils: TimeStampedModel + SoftDeletableModel</item>
+      </list>
+
+      <p>Common Mistakes Decision Matrix</p>
+      <list>
+        <item>UUID as PK at scale → Use integer PK + separate uid field</item>
+        <item>No index on uid → Always add db_index=True</item>
+        <item>CASCADE on important data → Use PROTECT for orders, users</item>
+        <item>Exposing integer IDs → Always use uid in API serializers</item>
+        <item>Forgetting soft delete in unique → Add deleted_at to unique_together (use UniqueConstraint with condition)</item>
+        <item>No manager for deleted → Always provide all_objects manager</item>
+        <item>Tenant leak → Always test cross-tenant isolation</item>
+      </list>
+
+      <p>Quick Reference for Requirements</p>
+      <list>
+        <item>External IDs for API → Add uid UUIDField (not as PK)</item>
+        <item>Track changes → django-simple-history or django-auditlog</item>
+        <item>Recoverable delete → SoftDeleteMixin with deleted_at</item>
+        <item>Multi-tenant → TenantAwareModel with FK</item>
+        <item>Computed columns → Django 5.x GeneratedField</item>
+        <item>Timestamp audit → auto_now_add + auto_now</item>
+        <item>FK protection → on_delete=PROTECT for important data</item>
+      </list>
+
+      <p>Services and database compatibility</p>
+      <list>
+        <item>PostgreSQL (RDS / Cloud SQL / Neon / Supabase): SaaS — Required for db_default, GeneratedField(db_persist=True), partial unique indexes</item>
+        <item>MySQL 8+ (Cloud SQL / RDS / PlanetScale): SaaS — Slightly different GeneratedField semantics; verify before adopting</item>
+        <item>SQLite + Litestream: OSS — Avoid db_persist=True; db_default=Now() works in SQLite 3.38+</item>
+        <item>AWS DMS / pg_dump / pg_restore: SaaS/OSS — For large backfills (uid columns on big tables, off-peak)</item>
+        <item>Sentry: SaaS — Watch for IntegrityError spikes during backfill rollout</item>
+        <item>Datadog APM: SaaS — Catch query-plan regressions after partial-index additions</item>
+        <item>Postgres pg_repack (RDS / Cloud SQL extension): OSS — Rebuild large tables after adding uid + index without long locks</item>
+        <item>pgaudit / RDS Performance Insights: SaaS — Validate that soft-delete partial indexes are being used</item>
+      </list>
+    </section>
 
     <see-also>
       <link href="https://docs.djangoproject.com/en/5.2/ref/models/fields/"/>
       <link href="https://docs.djangoproject.com/en/5.2/ref/models/options/"/>
+      <link href="https://docs.djangoproject.com/en/5.2/ref/models/constraints/"/>
       <link href="https://docs.djangoproject.com/en/5.2/releases/5.2/"/>
       <link href="https://docs.djangoproject.com/en/6.0/topics/db/managers/"/>
       <link href="https://django-model-utils.readthedocs.io/"/>
       <link href="https://django-simple-history.readthedocs.io/"/>
       <link href="https://django-tenants.readthedocs.io/"/>
+      <link href="https://django-soft-delete.pypi.org/"/>
+      <link href="https://github.com/typeddjango/django-stubs"/>
+      <link href="https://factoryboy.readthedocs.io/"/>
+      <link href="https://datatracker.ietf.org/doc/html/rfc9562"/>
+      <link href="https://reorg.github.io/pg_repack/"/>
+      <link href="https://andyatkinson.com/avoid-uuid-version-4-primary-keys"/>
+      <link href="https://mshaeri.com/blog/django-best-practices-part-1/"/>
+      <link href="https://www.tomisin.dev/blog/implementing-soft-delete-in-django-an-intuitive-guide"/>
     </see-also>
   </content>
 </methodology>
