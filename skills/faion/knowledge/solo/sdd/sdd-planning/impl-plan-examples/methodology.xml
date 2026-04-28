@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="impl-plan-examples">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd-planning</domain>
+    <summary>Plan examples: 3-task simple, 7-task medium, 12-task complex, plus task-split. Shows wave analysis, dependency graphs, critical path, task breakdowns.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>implementation-plan</tag>
+      <tag>examples</tag>
+      <tag>wave-analysis</tag>
+      <tag>critical-path</tag>
+      <tag>task-splitting</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Implementation Plan Examples</title>
+
+    <summary>Three scaled implementation plan examples (3-task simple, 7-task medium, 12-task complex) plus a task-split example for oversized tasks exceeding the 100k token budget. Each example shows wave analysis tables, dependency graphs (text/table format), critical path chains, and per-task breakdowns with AC and file lists. Used as structural references when generating or reviewing real implementation plans.</summary>
+
+    <why>
+      <p>Agents generating implementation plans without a concrete reference produce inconsistent wave counts, miss dependency chains, and underestimate parallelization opportunities. These examples calibrate structure and scale: simple/medium/complex examples set expectations for wave count, task count, and checkpoint frequency; the refactoring split example shows exactly where and how to divide a task that exceeds 100k tokens.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a new implementation plan for a feature of known complexity (simple/medium/complex).</item>
+        <item>Validating a generated plan against a known-good structural reference.</item>
+        <item>Teaching wave analysis and critical path before an agent attempts it on a real feature.</item>
+        <item>Identifying the split point for tasks that exceed the 100k token budget (use the refactoring split example).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Copying example task names, file paths, or effort estimates into a real plan — examples are structural references only.</item>
+        <item>Referencing hour-based effort estimates from examples — project rules prohibit time estimates; use token estimates only.</item>
+        <item>For plans with more than 20 tasks — examples top out at 12; very large features need a custom approach.</item>
+        <item>Using ASCII wave diagrams from the examples — project rules prohibit ASCII art; use tables only.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="scale-selection">
+      <rule>
+        <statement>Choose example scale before generating a plan: simple (1-4 tasks), medium (5-8 tasks), complex (9-15 tasks). Use the matching example as a structural reference only — do not copy task names, file paths, or effort estimates.</statement>
+        <rationale>Agents generate exactly as many waves and tasks as the example shows, regardless of the actual feature complexity. Explicit scale selection prevents this anchoring.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Replace all hour-based effort estimates from examples with token estimates. The project rule prohibits time estimates.</statement>
+        <rationale>Agents copy "3h", "5h" verbatim from examples into real plans, violating the no-time-estimates policy.</rationale>
+      </rule>
+    </section>
+
+    <section name="simple-example-email-verification">
+      <p>Simple 3-task email verification example showing wave analysis tables, dependency notation, and per-task detail format as structural references.</p>
+
+      <example type="good" title="Wave analysis table — table format, not ASCII diagram">
+        <code lang="markdown"><![CDATA[
+## Wave Analysis
+
+| Wave | Tasks         | Parallel | Dependencies | Token Est |
+|------|---------------|----------|--------------|-----------|
+| 1    | TASK-001      | No       | None         | ~40k      |
+| 2    | TASK-002, TASK-003 | Yes | Wave 1      | ~60k      |
+
+## Dependency Graph
+
+TASK-001 (email service) blocks TASK-002 (verification handler)
+TASK-001 (email service) blocks TASK-003 (registration integration)
+TASK-002 and TASK-003 are parallel in Wave 2
+]]></code>
+      </example>
+
+      <example type="good" title="Per-task detail format — shows required fields">
+        <code lang="markdown"><![CDATA[
+### TASK-001: Create email verification service
+
+**Wave:** 1
+**Complexity:** normal
+**Context:** ~40k tokens
+
+**Description:**
+Create service to generate verification tokens, send emails, and validate tokens. JWT tokens with 24h expiry.
+
+**Traces to:** AD-001 (Email verification), FR-003 (User activation)
+
+**Depends on:** None
+**Blocks:** TASK-002, TASK-003
+
+**Acceptance Criteria:**
+- [ ] generateToken() creates JWT with user ID and 24h expiry
+- [ ] sendVerificationEmail() sends email via configured provider
+- [ ] validateToken() verifies JWT and returns user ID
+- [ ] Tokens expire after 24 hours
+
+**Files:**
+| Action | File                                    | Purpose                     |
+|--------|-----------------------------------------|-----------------------------|
+| CREATE | src/services/emailVerification.ts       | Email verification logic    |
+| MODIFY | src/services/email.ts                   | Add verification template   |
+]]></code>
+      </example>
+    </section>
+
+    <section name="medium-example-payment-system">
+      <p>Medium 7-task payment system example showing wave analysis for medium-scale features with multiple phases.</p>
+
+      <example type="good" title="Wave analysis table for medium-scale feature">
+        <code lang="markdown"><![CDATA[
+## Wave Analysis
+
+| Wave | Tasks               | Parallel | Dependencies | Token Est |
+|------|---------------------|----------|--------------|-----------|
+| 1    | TASK-001, TASK-002  | Yes      | None         | ~75k      |
+| 2    | TASK-003, TASK-004  | Yes      | Wave 1       | ~95k      |
+| 3    | TASK-005, TASK-006, TASK-007 | Yes | Wave 2  | ~130k     |
+
+## Critical Path
+
+TASK-001 → TASK-003 → TASK-005 → done
+]]></code>
+      </example>
+
+      <example type="good" title="Phase structure for medium example">
+        <code lang="markdown"><![CDATA[
+## Phase 1: Infrastructure
+
+### TASK-001: Payment database schema (~30k tokens)
+- CREATE payments table
+- CREATE payment_methods table
+- Add indexes and constraints
+- Traces to: AD-001, FR-001
+
+### TASK-002: Payment provider integration service (~45k tokens)
+- Create provider client wrapper
+- Implement payment intent creation
+- Add webhook handling
+- Traces to: AD-002, FR-002
+
+## Phase 2: Core Logic
+
+### TASK-003: Payment processing service (~55k tokens)
+- Create payment service
+- Implement charge and refund logic
+- Error handling and retries
+- Depends on: TASK-001, TASK-002
+]]></code>
+      </example>
+    </section>
+
+    <section name="complex-example-critical-path">
+      <p>Critical path chain for a 12-task complex feature and 5-wave analysis showing deep dependency structure.</p>
+
+      <example type="good" title="Critical path as explicit chain — table format, not ASCII diagram">
+        <code lang="markdown"><![CDATA[
+## Critical Path
+
+TASK-001 → TASK-003 → TASK-005 → TASK-008 → TASK-011 → TASK-012
+
+Token estimates on critical path:
+TASK-001 (~40k) → TASK-003 (~50k) → TASK-005 (~40k) → TASK-008 (~30k) → TASK-011 (~40k) → TASK-012 (~20k)
+
+## Wave Analysis (complex 5-wave example)
+
+| Wave | Tasks                          | Parallel | Dependencies     |
+|------|--------------------------------|----------|------------------|
+| 1    | TASK-001, TASK-002             | Yes      | None             |
+| 2    | TASK-003, TASK-004             | Yes      | Wave 1           |
+| 3    | TASK-005, TASK-006, TASK-007   | Yes      | Wave 2           |
+| 4    | TASK-008, TASK-009, TASK-010   | Yes      | Wave 3           |
+| 5    | TASK-011, TASK-012             | No (seq) | Wave 4           |
+]]></code>
+      </example>
+
+      <rule>
+        <statement>Write wave analysis as a table (Wave, Tasks, Parallel, Dependencies) rather than as a diagram. Text tables are machine-parseable and comply with the no-ASCII-art rule.</statement>
+        <rationale>Agents reproduce ASCII box-and-arrow diagrams from examples. Table format produces the same information without prohibited formatting.</rationale>
+      </rule>
+    </section>
+
+    <section name="task-split-oversized">
+      <p>When a task estimate exceeds 100k tokens, split at natural code boundaries: interface → implementation → API layer. The refactoring example shows this pattern.</p>
+
+      <example type="bad" title="Before split — single task exceeds 100k budget">
+        <code lang="markdown"><![CDATA[
+### TASK-001: Refactor user service to use repository pattern
+**Context Estimate:** ~160k tokens
+
+Files to modify:
+- src/services/UserService.ts (800 lines)
+- src/api/users/*.ts (12 endpoints)
+- tests/services/UserService.test.ts (300 lines)
+- tests/api/users/*.test.ts (10 files)
+
+Problem: exceeds 100k context budget
+]]></code>
+      </example>
+
+      <example type="good" title="After split into 3 tasks at natural boundaries">
+        <code lang="markdown"><![CDATA[
+### TASK-001: Create user repository interface (~50k tokens)
+Files:
+- CREATE src/repositories/UserRepository.ts
+- CREATE src/repositories/interfaces/IUserRepository.ts
+- CREATE tests/repositories/UserRepository.test.ts
+Depends on: None
+
+### TASK-002: Migrate user service to repository (~55k tokens)
+Files:
+- MODIFY src/services/UserService.ts
+- CREATE tests/services/UserService.integration.test.ts
+Depends on: TASK-001
+
+### TASK-003: Update user API endpoints (~60k tokens)
+Files:
+- MODIFY src/api/users/*.ts (12 files)
+- MODIFY tests/api/users/*.test.ts (10 files)
+Depends on: TASK-002
+]]></code>
+      </example>
+    </section>
+
+    <section name="quality-checklist">
+      <p>Quality checklist for implementation plans covering completeness, structure, parallelization, and traceability.</p>
+
+      <section name="completeness">
+        <list>
+          <item>All AD-X from design have corresponding tasks.</item>
+          <item>All file changes from design are assigned to tasks.</item>
+          <item>Prerequisites fully documented (with version numbers for external deps).</item>
+          <item>Testing plan covers all phases.</item>
+        </list>
+      </section>
+
+      <section name="structure">
+        <list>
+          <item>Tasks follow INVEST criteria.</item>
+          <item>Dependencies clearly documented (FS — Finish-to-Start notation).</item>
+          <item>Token estimates provided per task (no time estimates).</item>
+          <item>Context budget &lt; 100k per task.</item>
+        </list>
+      </section>
+
+      <section name="parallelization">
+        <list>
+          <item>Dependency graph documented as table.</item>
+          <item>Waves identified.</item>
+          <item>Critical path calculated as explicit task chain.</item>
+          <item>Test tasks placed in waves AFTER the implementation they test.</item>
+        </list>
+      </section>
+
+      <section name="traceability">
+        <list>
+          <item>Each task traces to at least one AD-X.</item>
+          <item>Each task traces to at least one FR-X.</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="anti-patterns-using-examples">
+      <antipattern>
+        <description>Copying wave analysis speedup factors (1.8x, 3.5x) from examples verbatim.</description>
+        <reason>Speedup calculations depend on the actual dependency structure. The example numbers are illustrative and will be wrong for different dependency graphs.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Generating exactly 3 waves because the simple example has 3 waves.</description>
+        <reason>Complex features may need 5+ waves. Wave count must derive from the actual dependency graph, not the example.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Parallelizing test tasks with implementation tasks.</description>
+        <reason>Test tasks depend on the implementation they test. Tests cannot run in the same wave as the implementation they cover.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/dep-graph-validator.py" purpose="Topological sort to detect cycles in task dependency graph."/>
+    </templates>
+  </content>
+</methodology>

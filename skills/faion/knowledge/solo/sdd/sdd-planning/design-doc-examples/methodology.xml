@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="design-doc-examples">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd-planning</domain>
+    <summary>Worked design doc examples for authentication features, showing AD format with FR traceability tables and file change tables for structural reference when generating design.md.</summary>
+    <tags>
+      <tag>design</tag>
+      <tag>architecture-decision</tag>
+      <tag>examples</tag>
+      <tag>authentication</tag>
+      <tag>sdd</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Design Document Examples</title>
+
+    <summary>Concrete, worked design document examples for user authentication and related features. Provides a reference AD (Architecture Decision) format with FR traceability tables, file change tables, and component breakdowns that agents use as few-shot structural references when generating or reviewing design.md files.</summary>
+
+    <why>
+      <p>Abstract templates alone do not calibrate output quality. Agents injected with a correctly structured example produce designs that match the expected AD format, FR coverage table, and file change table. The authentication example also demonstrates the decision-making narrative: alternatives table with explicit rejection reasons, consequences with trade-offs, and traceability to FR/NFR identifiers.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Generating a new design.md for a user-identity or auth-related feature — inject the auth example as few-shot context.</item>
+        <item>Reviewing a generated design.md for structural gaps — compare AD format, FR coverage, and file table against the example.</item>
+        <item>Onboarding a new design-writing agent that needs a calibration reference before its first real feature.</item>
+        <item>Teaching the AD alternatives-and-rejection pattern when an agent produces shallow "alternatives" sections.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Copying example task names, file paths, or technology choices (JWT, bcrypt cost 12) into a real project without checking the constitution — examples encode defaults, not decisions.</item>
+        <item>Frontend component hierarchy examples (RegisterForm props) in backend-only or non-React projects.</item>
+        <item>Treating example file structures as required layouts rather than illustrative patterns.</item>
+        <item>Running examples through automated tooling that expects live code — they are documentation artifacts, not executable code.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="fr-coverage-and-ad-structure">
+      <p>Each design.md must include a FR coverage table that maps each requirement to the AD(s) that implement it. This table must be present in every design.md and must be generated last — after all ADs are written — to catch missing coverage.</p>
+
+      <example type="good" title="FR coverage table from the authentication example">
+        <code lang="markdown"><![CDATA[
+| FR     | Requirement Summary                          | Implemented By    |
+|--------|----------------------------------------------|-------------------|
+| FR-001 | User registration with email/password        | AD-001, AD-002, AD-003 |
+| FR-002 | Email validation required                    | AD-001            |
+| FR-003 | Password strength (8+ chars, 1 upper, 1 num) | AD-002            |
+| FR-004 | User login with JWT token                    | AD-004            |
+| FR-005 | User logout                                  | AD-004            |
+| FR-006 | Protected routes middleware                  | AD-004            |
+| NFR-001| Response time < 500ms p95                    | AD-005            |
+| NFR-002| bcrypt password hashing                      | AD-002            |
+| NFR-003| HTTP-only cookies for tokens                 | AD-003            |
+]]></code>
+      </example>
+    </section>
+
+    <section name="ad-001-email-validation">
+      <p>Architecture Decision 001: Email Validation Strategy. Shows full ADR format with Context/Decision/Rationale/Alternatives/Consequences/Traces.</p>
+
+      <example type="good" title="Full ADR for email validation">
+        <code lang="markdown"><![CDATA[
+### AD-001: Email Validation Strategy
+
+**Context:** Users must provide valid email addresses for account recovery and notifications.
+
+**Decision:** Use Zod schema validation with RFC 5322 format check at API level.
+
+**Rationale:**
+- Immediate feedback to user on invalid format
+- Prevents invalid data from reaching database
+- Zod provides TypeScript type safety
+
+**Alternatives Considered:**
+| Alternative | Pros | Cons | Why Rejected |
+|-------------|------|------|--------------|
+| Database constraint only | Simple | No user feedback until commit | Poor UX |
+| External email verification service | Catches typos | Adds latency, cost | Over-engineering for MVP |
+
+**Consequences:**
+- Positive: Fast validation, good UX, no external dependencies
+- Negative: Will not catch typos in valid-format emails
+- Risks: Some valid emails might be rejected by strict RFC 5322
+
+**Traces to:** FR-001, FR-002
+]]></code>
+      </example>
+    </section>
+
+    <section name="ad-002-password-hashing">
+      <p>Architecture Decision 002: Password Hashing. Demonstrates security trade-off reasoning and explicit rejection criteria.</p>
+
+      <example type="good" title="AD for password hashing — note the explicit cost factor and security rationale">
+        <code lang="markdown"><![CDATA[
+### AD-002: Password Hashing
+
+**Context:** Passwords must be stored securely to prevent breaches.
+
+**Decision:** Use bcrypt with cost factor 12.
+
+**Rationale:**
+- Industry standard for password hashing
+- Adaptive work factor (can increase as hardware improves)
+- Built-in salt generation
+- Cost 12 balances security and performance (~300ms hash time)
+
+**Alternatives Considered:**
+| Alternative | Pros | Cons | Why Rejected |
+|-------------|------|------|--------------|
+| SHA-256 | Fast | No salt, vulnerable to rainbow tables | Insecure |
+| Argon2 | More secure | Less battle-tested, harder to configure | Over-engineering |
+| Cost 10 | Faster | Weaker security | NFR-002 requires strong hashing |
+
+**Consequences:**
+- Positive: Strong security, proven algorithm
+- Negative: ~300ms latency on registration/login
+- Risks: Future hardware may require cost increase
+
+**Traces to:** FR-001, FR-003, NFR-002
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>When using this example as a reference, verify the bcrypt cost factor against your project's constitution — cost 12 is not a universal default.</statement>
+        <rationale>Agents copy bcrypt cost 12 from this example into every project regardless of performance constraints or constitution decisions.</rationale>
+      </rule>
+    </section>
+
+    <section name="ad-003-token-storage">
+      <p>Architecture Decision 003: Token Storage. Demonstrates security trade-off reasoning between XSS/CSRF protection and UX.</p>
+
+      <example type="good" title="AD for JWT storage strategy — demonstrates security trade-off reasoning">
+        <code lang="markdown"><![CDATA[
+### AD-003: Token Storage
+
+**Context:** JWT tokens need a storage mechanism that balances security and UX.
+
+**Decision:** Store JWT in HTTP-only, SameSite=Strict cookies.
+
+**Rationale:**
+- HTTP-only prevents XSS attacks
+- SameSite=Strict prevents CSRF attacks
+- Cookies sent automatically with requests (better UX)
+
+**Alternatives Considered:**
+| Alternative | Pros | Cons | Why Rejected |
+|-------------|------|------|--------------|
+| localStorage | Simple, works with CORS | Vulnerable to XSS | Security risk |
+| sessionStorage | Simple | Lost on tab close | Poor UX |
+| In-memory only | Most secure | Lost on refresh | Poor UX |
+
+**Consequences:**
+- Positive: Strong security, automatic handling
+- Negative: Slightly more complex CORS setup
+- Risks: Requires HTTPS in production
+
+**Traces to:** FR-001, FR-004, NFR-003
+]]></code>
+      </example>
+    </section>
+
+    <section name="ad-004-and-005-jwt-and-pooling">
+      <p>Architecture Decisions 004 and 005: JWT vs Session-Based Auth and Database Connection Pooling. Shows stateless authentication scaling and performance considerations.</p>
+
+      <example type="good" title="Remaining ADs — JWT vs session auth and connection pooling">
+        <code lang="markdown"><![CDATA[
+### AD-004: JWT vs Session-Based Auth
+
+**Context:** Need authentication mechanism for protected routes.
+
+**Decision:** Use JWT with 7-day expiration, no refresh tokens for MVP.
+
+**Rationale:**
+- Stateless authentication (no server-side session store)
+- Scales horizontally (no shared state)
+- Simpler implementation for MVP
+
+**Alternatives Considered:**
+| Alternative | Pros | Cons | Why Rejected |
+|-------------|------|------|--------------|
+| Session-based with Redis | Can revoke instantly | Requires Redis, stateful | More infrastructure |
+| JWT with refresh tokens | Better security | Complex flow | Over-engineering for MVP |
+
+**Consequences:**
+- Positive: Simple, scalable, no external dependencies
+- Negative: Cannot revoke tokens before expiration
+- Risks: Compromised token valid for 7 days
+
+**Traces to:** FR-004, FR-005, FR-006
+
+---
+
+### AD-005: Connection Pooling
+
+**Context:** Database queries must meet NFR-001 (< 500ms p95).
+
+**Decision:** Use connection pooling with min=2, max=10 connections.
+
+**Consequences:**
+- Positive: Consistent low latency, efficient resource use
+- Negative: Slightly more memory usage
+- Risks: Must monitor pool exhaustion
+
+**Traces to:** NFR-001
+]]></code>
+      </example>
+    </section>
+
+    <section name="file-change-table">
+      <p>Every design.md must include a file change table with Action (CREATE/MODIFY/DELETE), File, Description, FR, and AD columns. Missing test files is the most common omission.</p>
+
+      <example type="good" title="Auth feature file change table — observe that test files are explicit entries">
+        <code lang="markdown"><![CDATA[
+| Action | File                              | Description                  | FR     | AD    |
+|--------|-----------------------------------|------------------------------|--------|-------|
+| CREATE | src/auth/handlers/register.ts    | User registration endpoint   | FR-001 | AD-001, AD-002 |
+| CREATE | src/auth/handlers/login.ts       | User login endpoint          | FR-004 | AD-002, AD-004 |
+| CREATE | src/auth/handlers/logout.ts      | User logout endpoint         | FR-005 | AD-004 |
+| CREATE | src/auth/services/password.ts    | Password hashing/verification| FR-003 | AD-002 |
+| CREATE | src/auth/services/jwt.ts         | JWT generation/verification  | FR-004 | AD-003, AD-004 |
+| CREATE | src/auth/services/email.ts       | Email validation             | FR-002 | AD-001 |
+| CREATE | src/auth/middleware/protect.ts   | JWT auth middleware          | FR-006 | AD-004 |
+| CREATE | src/auth/types.ts                | TypeScript interfaces        | FR-001 | -     |
+| CREATE | src/auth/index.ts                | Router configuration         | FR-001 | -     |
+| CREATE | database/migrations/001_users.sql| User table schema            | FR-001 | -     |
+| CREATE | tests/auth/register.test.ts      | Registration tests           | FR-001 | -     |
+| CREATE | tests/auth/login.test.ts         | Login tests                  | FR-004 | -     |
+| CREATE | tests/auth/middleware.test.ts    | Middleware tests              | FR-006 | -     |
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>File change table without test file entries.</description>
+        <reason>Agents stop after source files and treat tests as optional. Tests must be explicit CREATE entries or they will not be implemented.</reason>
+      </antipattern>
+    </section>
+
+    <section name="using-examples-as-few-shot-context">
+      <p>Guidelines for injecting examples as structural references in design-generation prompts, including domain filtering and alternative consideration patterns.</p>
+
+      <rule testable="true">
+        <statement>Inject the relevant example domain (auth for user-identity features, payment for transactional features) as a structural reference in the design-generation prompt. Never mix domains.</statement>
+        <rationale>TypeScript interface examples cause agents to generate TypeScript even in Python projects if example is injected without domain filtering.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Annotate example ADs with why each alternative was rejected, not just what was rejected.</statement>
+        <rationale>The rejection reason is where agents learn decision-making. An alternatives table without rejection reasons produces agents that list straw-man options.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Review the generated design against the FR coverage table — every FR-X from spec must appear in at least one AD and one file entry.</statement>
+        <rationale>The coverage table is the reconciliation step that catches FRs that slipped through the AD drafting pass.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common patterns where agents misapply examples by treating them as specifications or reproducing formatting rather than adapting content.</p>
+
+      <antipattern>
+        <description>Agent copies bcrypt cost 12 or JWT 7-day expiry from example into every project.</description>
+        <reason>Examples encode defaults, not decisions. Always filter example technology choices through the project constitution.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Alternatives Considered table always has exactly 2-3 rows because example has 2-3 rows.</description>
+        <reason>The example count is illustrative. Complex decisions may need 4+ alternatives. Prompt explicitly to consider all real options.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent reproduces directory tree diagrams as ASCII art from file structure examples.</description>
+        <reason>Project rules prohibit ASCII art. Use directory tree format (allowed) or a file change table only.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Component hierarchy examples assume React; agent will confuse these with backend component diagrams.</description>
+        <reason>Examples demonstrate correct structure but cannot show incorrect structure being caught and fixed. Filter examples by technology stack.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Examples are static snapshots; they don't reflect how a real design evolves through review cycles.</description>
+        <reason>Real designs change through feedback. Use examples as calibration points, not final answers.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Examples serve as few-shot prompts for design generation subagents. When invoking a design-writer agent, inject the relevant example (auth for user features, payment for transactional features) as a reference in the prompt. The agent uses the example's AD structure, FR coverage table format, and file change table as a template. A reviewer subagent then compares the generated design against the example's structural completeness using the FR coverage table as a checklist proxy.</p>
+
+      <example type="good" title="Recommended subagent prompt pattern">
+        <code lang="markdown"><![CDATA[
+Generate design.md for feature: {feature_name}
+Spec requirements: {fr_list}
+Constitution constraints: {tech_stack}
+
+Use this example as structural reference — match the AD format, FR coverage table,
+and file change table exactly. Adapt content, not structure.
+
+EXAMPLE:
+{paste relevant sections from design-doc-examples}
+]]></code>
+      </example>
+
+      <example type="good" title="Reviewer subagent checklist">
+        <code lang="markdown"><![CDATA[
+Review the generated design.md against the structural checklist:
+- FR coverage table present and complete?
+- Each AD has: Context, Decision, Rationale, Alternatives Considered, Consequences, Traces to?
+- File changes table has Action (CREATE/MODIFY/DELETE), File, Description, FR, AD columns?
+- Testing strategy covers unit and integration?
+- Risks table has Impact, Probability, Mitigation?
+]]></code>
+      </example>
+    </section>
+
+    <section name="cli-tools-and-services">
+      <p>Tools and services for validating and sharing design examples.</p>
+
+      <commands>
+        <command name="diff design.md design-reference.md">Compare generated design against example structure</command>
+        <command name="grep -c 'AD-'">Count AD entries; complex features should have 3-7 ADs</command>
+        <command name="grep 'Traces to'">Verify all ADs have FR traceability links</command>
+      </commands>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Keep examples in their own methodology directory — do not inline them in templates or README files that agents load automatically (adds token cost every session)</item>
+        <item>Annotate example ADs with why each alternative was rejected, not just what was rejected — this is where agents learn decision-making, not just structure</item>
+        <item>Include a "wrong" example alongside each "right" example showing common mistakes (missing Consequences section, no traceability, vague Rationale)</item>
+        <item>Version examples when the template format changes — agents referencing stale examples produce outdated structure</item>
+        <item>Use the authentication example as a baseline for any user-identity feature; payment example for any transactional feature; do not remix across domains</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/fr-coverage-check.py" purpose="Script to verify every FR-X from spec appears in design's FR coverage table."/>
+    </templates>
+
+    <see-also>
+      <link href="https://github.com/joelparkerhenderson/architecture-decision-record"/>
+      <link href="https://github.com/donnemartin/system-design-primer"/>
+      <link href="https://12factor.net/"/>
+      <link href="https://learn.microsoft.com/en-us/azure/architecture/"/>
+      <ref slug="design-doc-structure"/>
+      <ref slug="design-doc-writing-process"/>
+      <ref slug="writing-implementation-plans"/>
+    </see-also>
+  </content>
+</methodology>

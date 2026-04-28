@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="impl-plan-components">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd-planning</domain>
+    <summary>Structural reference for implementation-plan.md sections: prerequisites, graph, wave analysis, critical path, tasks, risk, rollout.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>implementation-plan</tag>
+      <tag>structure</tag>
+      <tag>wave-analysis</tag>
+      <tag>task-decomposition</tag>
+      <tag>dependency-graph</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Implementation Plan Components</title>
+
+    <summary>Structural reference for implementation-plan.md sections: prerequisites, dependency graph, wave analysis, critical path, task breakdown, risk assessment, and rollout.</summary>
+
+    <why>
+      <p>Implementation plans without a dependency graph and wave analysis produce sequential execution where parallel work was possible, and executor agents discover missing dependencies at runtime. The wave analysis table is the scheduling contract the executor must respect: tasks in the same wave have no unmet dependencies and may run in parallel. The critical path determines which tasks block everything else and must not slip.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Writing or reviewing an implementation-plan.md — as the structural reference.</item>
+        <item>Validating a generated plan against the canonical component list before marking it Draft.</item>
+        <item>Adapting the template to a specific project type (API-only, frontend-only, full-stack).</item>
+        <item>Onboarding an executor agent: wave analysis and dependency graph define the scheduling contract.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>As a substitute for writing-implementation-plans/ — that file explains the methodology (100k rule, INVEST, wave algorithm); this file shows the structural components.</item>
+        <item>When the plan is already written and approved — this is authoring guidance, not execution guidance.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="document-header">
+      <p>Document header and metadata for an implementation plan.</p>
+
+      <list>
+        <item>Version, Design path, Status (Draft/In Progress/Complete), Author, Date, Project.</item>
+        <item>Reference Documents table: Constitution, Spec, Design, Contracts — same pattern as design.md.</item>
+        <item>Overview: 1-2 paragraphs with total tasks, token estimate, critical path complexity, wave count.</item>
+      </list>
+    </section>
+
+    <section name="prerequisites">
+      <rule>
+        <statement>List infrastructure, environment, code, and documentation prerequisites as explicit checkboxes before defining any tasks.</statement>
+        <rationale>Executor agents that start task execution without checking prerequisites fail mid-execution when a database migration or auth middleware does not exist. Explicit prerequisites enable pre-flight validation.</rationale>
+      </rule>
+
+      <list>
+        <item>Infrastructure: database running, Redis configured, external API keys obtained.</item>
+        <item>Environment: dev environment set up, env vars configured, access permissions.</item>
+        <item>Code Dependencies: base service class exists, auth middleware exists, test framework configured.</item>
+        <item>Documentation: spec.md status=Approved, design.md status=Approved.</item>
+      </list>
+    </section>
+
+    <section name="dependency-graph">
+      <rule>
+        <statement>Build the dependency graph before the wave analysis table — the graph is the input to wave grouping; inverting the order produces incorrect waves.</statement>
+        <rationale>Wave analysis groups tasks by dependency level. Without a correct dependency graph, tasks end up in waves that assume non-existent outputs, producing runtime failures when the executor tries to import from a file not yet created.</rationale>
+      </rule>
+
+      <list>
+        <item>FS (Finish-to-Start): TASK-002 starts when TASK-001 finishes (most common).</item>
+        <item>SS (Start-to-Start): TASK-002 can start when TASK-001 starts.</item>
+        <item>FF (Finish-to-Finish): TASK-002 finishes when TASK-001 finishes.</item>
+        <item>Use arrow notation (TASK-001 → TASK-003) for agent-generated graphs; ASCII box diagrams are copied incorrectly.</item>
+      </list>
+    </section>
+
+    <section name="wave-analysis">
+      <p>Table format: Wave | Tasks | Parallel | Dependencies | Est. Tokens. Wave 1: tasks with no dependencies — all can run in parallel. Wave 2: tasks depending only on Wave 1 outputs. Continue until all tasks assigned to a wave.</p>
+
+      <rule>
+        <statement>Each task entry must have: wave number, complexity (simple/normal/complex), token estimate, traces to AD-X and FR-X, depends-on list, blocks list, acceptance criteria, files table.</statement>
+        <rationale>Executor agents reading sparse task entries make up missing context. The task entry in the implementation plan is the authoritative source the TASK_NNN.md file is generated from; missing fields produce incomplete task files.</rationale>
+      </rule>
+    </section>
+
+    <section name="risk-assessment-and-rollout">
+      <list>
+        <item>Risk table: Risk | Likelihood (Low/Med/High) | Impact (Low/Med/High) | Mitigation (concrete action).</item>
+        <item>Contingency buffer: 20% added to token estimates.</item>
+        <item>Rollout: pre-deployment checklist, deployment steps, rollback plan, success criteria.</item>
+      </list>
+
+      <rule>
+        <statement>Risk mitigations must be concrete actions, not vague hedges ("monitor for errors" vs "alert on error rate &gt; 0.5% for 5 minutes").</statement>
+        <rationale>Vague mitigations provide no actionable guidance when the risk materializes. Concrete mitigations specify the trigger condition, the response action, and who is responsible.</rationale>
+      </rule>
+    </section>
+
+    <section name="wave-analysis-deep-dive">
+      <p>How to build the dependency graph, compute waves, define checkpoints, and calculate parallelization speedup.</p>
+
+      <rule>
+        <statement>Group all tasks with no unmet dependencies into Wave 1; tasks depending only on Wave 1 go into Wave 2; continue until all tasks are assigned.</statement>
+        <rationale>This topological layering ensures maximum parallelization without violating any dependency. Agents that assign all tasks to Wave 1 and Wave 2 are underestimating dependency depth — validate with tsort.</rationale>
+      </rule>
+
+      <list>
+        <item>Wave 1: tasks with no dependencies at all — run in parallel.</item>
+        <item>Wave 2: tasks where all dependencies are in Wave 1 — run in parallel after Wave 1 checkpoint.</item>
+        <item>Wave N: tasks where all dependencies are in earlier waves.</item>
+        <item>Typical speedup: 1.8x-3.5x (actual speedup = 30-50% of theoretical due to coordination cost).</item>
+      </list>
+
+      <p>Checkpoint types:</p>
+
+      <list>
+        <item>Merge: after parallel wave — combine outputs, resolve conflicts between parallel implementations.</item>
+        <item>Verify: at critical dependency — run tests, check contract compliance.</item>
+        <item>Review: complex integration — human review before continuing (cannot be automated).</item>
+        <item>Sync: state-dependent tasks — ensure consistent shared state before next wave.</item>
+      </list>
+
+      <rule>
+        <statement>Detect implicit dependencies from shared file modifications — two tasks that modify the same file must be sequential even if no explicit dependency is declared.</statement>
+        <rationale>Agents updating the same file in parallel produce merge conflicts or overwrite each other's changes. File-level implicit dependencies are the most common source of wave analysis errors.</rationale>
+      </rule>
+
+      <list>
+        <item>Same file modified: sequential (file conflict).</item>
+        <item>Module imports: TASK producing a module before TASK importing it.</item>
+        <item>Database schema: migration tasks before data-access tasks.</item>
+        <item>API producer before consumer: endpoint must exist before client code is written.</item>
+      </list>
+
+      <p>The critical path is the longest dependency chain by token estimate. Tasks on the critical path cannot be delayed without delaying the overall feature. Mark them in the plan to help human reviewers prioritize risk assessment.</p>
+
+      <list>
+        <item>Identify longest chain: sum token estimates along each dependency path.</item>
+        <item>Mark critical path tasks explicitly in the plan.</item>
+        <item>Apply highest contingency buffer to critical path tasks.</item>
+        <item>Non-critical tasks have slack — can absorb delays without affecting overall completion.</item>
+      </list>
+    </section>
+
+    <section name="authoring-checklist">
+      <p>Phase-by-phase checklist for creating an implementation plan from approved design.md through stakeholder approval.</p>
+
+      <p>Phase 1: Load Context</p>
+
+      <list>
+        <item>Read constitution.md — principles and standards.</item>
+        <item>Read spec.md — extract all FR-X IDs.</item>
+        <item>Read design.md — extract all AD-X and the full file change table (CREATE/MODIFY).</item>
+        <item>Review features/done/ — identify patterns from completed implementations.</item>
+      </list>
+
+      <p>Phase 2: Complexity Analysis</p>
+
+      <list>
+        <item>List every file from design.md file change table.</item>
+        <item>Estimate tokens per file: LOC + dependencies + business logic + test coverage.</item>
+        <item>Flag any single file estimate &gt; 60k for decomposition (total task must be &lt; 100k).</item>
+        <item>Group related files into logical work units (high cohesion, low coupling).</item>
+      </list>
+
+      <p>Phase 3: Dependency Graph</p>
+
+      <list>
+        <item>For each file/task, identify Finish-to-Start dependencies.</item>
+        <item>Check for implicit dependencies: shared file modifications, module imports, schema order.</item>
+        <item>Run tsort validation — detect cycles before writing wave analysis.</item>
+        <item>Document why each dependency exists (not just which tasks depend on which).</item>
+      </list>
+
+      <p>Phase 4: Wave Analysis</p>
+
+      <list>
+        <item>Group Wave 1: all tasks with no dependencies.</item>
+        <item>Group Wave 2+: tasks where all dependencies are in earlier waves.</item>
+        <item>Define checkpoint action for each wave boundary.</item>
+        <item>Mark critical path through the dependency graph.</item>
+      </list>
+
+      <p>Phase 5: Task-Level Details</p>
+
+      <list>
+        <item>For each task: wave, complexity, token estimate, description (2-3 sentences).</item>
+        <item>For each task: traces to AD-X and FR-X.</item>
+        <item>For each task: depends-on list and blocks list (consistent with dependency graph).</item>
+        <item>For each task: acceptance criteria (verifiable conditions).</item>
+        <item>For each task: files to create/modify (exact paths from design.md).</item>
+        <item>Apply INVEST: Independent, Negotiable, Valuable, Estimable, Small, Testable.</item>
+      </list>
+
+      <p>Quality Gate</p>
+
+      <list>
+        <item>All AD-X from design.md mapped to at least one task.</item>
+        <item>All FR-X from spec.md covered by at least one task.</item>
+        <item>All tasks have token estimate &lt; 100k.</item>
+        <item>Dependency graph has no cycles (tsort validates).</item>
+        <item>All tasks have verifiable acceptance criteria.</item>
+        <item>Testing strategy covers all layers (unit, integration, E2E).</item>
+        <item>Risk assessment: all High impact risks have mitigations.</item>
+        <item>Rollout: pre-deployment checklist and rollback plan defined.</item>
+      </list>
+    </section>
+
+    <section name="invest-criteria">
+      <p>INVEST framework for evaluating whether a task meets quality standards for implementation plan inclusion.</p>
+
+      <list>
+        <item>Independent: task does not depend on multiple other unfinished tasks (dependencies should be minimal).</item>
+        <item>Negotiable: task description is clear but details can be adjusted based on executor feedback.</item>
+        <item>Valuable: task contributes to a feature requirement or quality goal (traced to FR-X or AD-X).</item>
+        <item>Estimable: task scope is understood well enough to estimate token context budget.</item>
+        <item>Small: task fits within 100k token context budget (ideally 60k or less).</item>
+        <item>Testable: task includes acceptance criteria that can be verified and tested.</item>
+      </list>
+
+      <p>Tasks failing INVEST criteria are too large or too vague and should be split or refined further before assignment to an executor agent.</p>
+    </section>
+
+    <templates>
+      <template path="templates/impl-plan-template.md" purpose="Canonical implementation-plan.md template with all sections and placeholder text."/>
+    </templates>
+
+    <scripts>
+      <script path="scripts/validate-deps.sh" purpose="Topological sort validator — detects cycles in task dependency list."/>
+      <script path="scripts/extract-waves.py" purpose="Extract wave → tasks mapping from implementation-plan.md wave analysis table."/>
+    </scripts>
+
+    <see-also>
+      <ref slug="impl-plan-100k-rule"/>
+      <ref slug="impl-plan-examples"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="impl-plan-task-format">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd-planning</domain>
+    <summary>TASK_*.md format v2.0 for executor agents. Specifies: ID, Phase, Wave, Description, Traces To, Dependencies, Complexity, Estimate, AC, Files, Notes, Tests. INVEST validation ensures task independence.</summary>
+    <tags>
+      <tag>task-format</tag>
+      <tag>sdd</tag>
+      <tag>executor</tag>
+      <tag>invest</tag>
+      <tag>planning</tag>
+    </tags>
+    <category>planning</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Implementation Plan Task Format</title>
+    <summary>The executor agent parses TASK files mechanically — it must find every required field in a known location. Vague AC items ("works correctly") leave no observable outcome; the executor cannot determine success. The INVEST criteria (Independent, Negotiable, Valuable, Estimable, Small, Testable) ensure tasks can be executed in isolation without blocking sibling waves, and that each task fits within the 100k token budget.</summary>
+    <why>
+      <p>The executor agent parses TASK files mechanically — it must find every required field in a known location. Vague AC items ("works correctly") leave no observable outcome; the executor cannot determine success. The INVEST criteria (Independent, Negotiable, Valuable, Estimable, Small, Testable) ensure tasks can be executed in isolation without blocking sibling waves, and that each task fits within the 100k token budget.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Converting design.md architecture decisions into executor-ready TASK_*.md files.</item>
+        <item>Defining structure for an implementation plan that supports parallel waves.</item>
+        <item>Auditing existing task files for INVEST compliance before executor assignment.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>One-off scripts or changes outside the SDD lifecycle — overhead exceeds benefit.</item>
+        <item>Research spikes where the output is a document, not code.</item>
+        <item>Tasks under ~15k tokens — the format overhead is not justified.</item>
+      </list>
+    </when-not-to-use>
+    <section name="required-fields">
+      <rule>
+        <statement>Every TASK_*.md must contain all these fields in order: ID (TASK-NNN), Phase, Wave, Description (2-3 sentences), Traces To (AD-X and FR-X), Depends On, Blocks, Complexity (simple/normal/complex), Context Estimate, Acceptance Criteria, Files table (Action/File/Purpose), Technical Notes, Tests checklist.</statement>
+        <rationale>The executor agent parses TASK files mechanically. Missing fields cause the executor to either halt or proceed with wrong assumptions. Including FR-X and AD-X text inline means the executor does not need to load spec.md or design.md during execution.</rationale>
+      </rule>
+      <reference path="templates/task-template.md">Blank TASK_*.md skeleton with all required fields and placeholder comments.</reference>
+    </section>
+    <section name="complexity-levels">
+      <list>
+        <item>simple: 10-30k tokens — single file, clear pattern, minimal dependencies. Example: database migration, utility function.</item>
+        <item>normal: 30-60k tokens — multiple files, some integration, standard patterns. Example: API endpoint, service class.</item>
+        <item>complex: 60-100k tokens — multiple components, integration logic, edge cases. Example: E2E tests, complex business logic.</item>
+      </list>
+      <rule>
+        <statement>Never assign two complex tasks to the same wave. Execution failures on complex tasks create blocking situations for all dependent waves.</statement>
+        <rationale>Complex tasks have the highest failure probability. Serializing them in separate waves ensures a failure in one does not block a parallel sibling.</rationale>
+      </rule>
+    </section>
+    <section name="invest-validation">
+      <rule>
+        <statement>Apply INVEST validation to every task after generation. A task that fails any criterion must be rewritten before being moved to todo/.</statement>
+        <rationale>INVEST failures at planning time are cheap to fix; the same failures discovered mid-execution cause session aborts and rework.</rationale>
+      </rule>
+      <list>
+        <item>Independent: no code dependencies on other incomplete tasks. Can be assigned to an isolated agent context.</item>
+        <item>Negotiable: implementation details are flexible. "User can register" is negotiable; "Use bcrypt version 5.1.0" is not.</item>
+        <item>Valuable: has a clear business value or enables a specific FR. "Enables FR-001" is sufficient for infrastructure tasks.</item>
+        <item>Estimable: effort estimate is possible. "~50k tokens, normal complexity" is estimable; "some time" is not.</item>
+        <item>Small: fits within 100k token context budget. If not, split it.</item>
+        <item>Testable: AC items have observable, pass/fail outcomes. "Returns 201 status" is testable; "works correctly" is not.</item>
+      </list>
+    </section>
+    <section name="dependency-types">
+      <list>
+        <item>FS (Finish-to-Start): most common. Task B starts when Task A finishes. Example: database migration FS API handler.</item>
+        <item>SS (Start-to-Start): Task B can start when Task A starts. Example: UI mockup SS frontend implementation.</item>
+        <item>FF (Finish-to-Finish): Task B finishes when Task A finishes. Example: testing FF documentation.</item>
+        <item>SF (Start-to-Finish): rare. Task B finishes when Task A starts. Example: old system SF new system migration.</item>
+      </list>
+      <rule>
+        <statement>When in doubt, use FS. Document non-FS dependency types explicitly with a reason — most dependencies are FS and agents generate SS/FF/SF incorrectly.</statement>
+        <rationale>Incorrect dependency types cause waves to be sequenced wrong, eliminating parallelism or creating false serial ordering.</rationale>
+      </rule>
+    </section>
+    <section name="file-actions-reference">
+      <list>
+        <item>CREATE: new file needed. Example: CREATE src/handlers/auth/register.ts</item>
+        <item>MODIFY: add to existing file. Example: MODIFY src/routes/auth.ts — Add registration route</item>
+        <item>DELETE: remove file. Example: DELETE src/deprecated/old-auth.ts</item>
+        <item>RENAME: change file path. Example: RENAME src/utils/hash.ts to src/utils/crypto.ts</item>
+      </list>
+    </section>
+    <section name="ac-writing-rules">
+      <rule>
+        <statement>Every AC item must be an observable outcome with a specific, measurable value. HTTP status codes, database state assertions, or measurable values are acceptable. Vague phrases are not.</statement>
+        <rationale>Vague ACs cannot be mechanically verified by the executor. "Works correctly" leaves the success determination to the agent, which may mark a failing task as done.</rationale>
+      </rule>
+      <example type="good" title="Specific, testable ACs">
+        <code lang="markdown"><![CDATA[**Acceptance Criteria:**
+- [ ] POST /api/auth/register returns 201 on success
+- [ ] Response includes valid JWT token (verified with jwt.verify)
+- [ ] Password is bcrypt hashed in database (SELECT query confirms)
+- [ ] Duplicate email returns 409 with error message
+- [ ] Invalid email format returns 400 with validation errors]]></code>
+        <note>Each item is specific, references an observable outcome, and has a clear pass/fail condition.</note>
+      </example>
+      <example type="bad" title="Vague, unmeasurable ACs">
+        <code lang="markdown"><![CDATA[**Acceptance Criteria:**
+- [ ] Registration works correctly
+- [ ] Handles errors properly
+- [ ] Follows best practices
+- [ ] Code is clean]]></code>
+        <note>Vague, subjective, not measurable. No clear test procedure. Multiple interpretations possible.</note>
+      </example>
+      <rule>
+        <statement>Write Tests checklist separately from functional ACs. Use the Tests section for unit/integration/E2E items so test coverage is explicit and distinct from behavioral requirements.</statement>
+        <rationale>Mixing test requirements with behavioral ACs obscures which ACs require code changes and which require test additions. The executor can address them separately.</rationale>
+      </rule>
+    </section>
+    <section name="critical-path">
+      <rule>
+        <statement>Mark the critical path (longest dependency chain) explicitly in the implementation plan. The executor will optimize for parallelism but may miss the longest chain without explicit marking.</statement>
+        <rationale>Unidentified critical path causes misallocation of wave priorities. The longest chain determines the minimum elapsed sessions for the feature; shortening it has more impact than any non-critical task optimization.</rationale>
+      </rule>
+      <example type="good" title="Critical path documentation">
+        <code lang="text"><![CDATA[Critical Path: TASK-001 (15k) -> TASK-003 (45k) -> TASK-005 (30k) -> TASK-007 (75k)
+Total: ~165k tokens across 4 serial tasks
+Parallel path: TASK-002 -> TASK-004 -> TASK-006 (joins at TASK-007)]]></code>
+      </example>
+    </section>
+    <section name="technical-notes-guidelines">
+      <rule>
+        <statement>Technical Notes must cite the exact file path and pattern to follow, not generic advice. Write them after Wave 1 is complete for later-wave tasks, not speculatively.</statement>
+        <rationale>Speculative Technical Notes written before Wave 1 execution become stale when implementation patterns differ from design assumptions. They mislead the executor.</rationale>
+      </rule>
+      <list>
+        <item>Good: "Use Joi for validation (see constitution.md section Standards)"</item>
+        <item>Good: "Follow error handling pattern in src/handlers/user.ts lines 45-67"</item>
+        <item>Bad: "Use best practices for security"</item>
+        <item>Bad: "Make sure to handle errors properly"</item>
+      </list>
+      <antipattern>
+        <description>Agents generating task files write "Depends on: None" even when implicit data dependencies exist (e.g., handler task that needs a database migration).</description>
+        <reason>Implicit dependencies not declared cause wave ordering to place the handler before the migration. Validate that database migration tasks always precede handler tasks.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/task-template.md" purpose="Blank TASK_*.md skeleton with all required fields and placeholder comments."/>
+    </templates>
+    <scripts>
+      <script path="templates/gen-dep-graph.sh" purpose="Bash script: generates Graphviz DOT dependency graph from a feature's TASK files."/>
+    </scripts>
+  </content>
+</methodology>

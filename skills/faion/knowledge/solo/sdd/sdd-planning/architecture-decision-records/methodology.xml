@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="architecture-decision-records">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd-planning</domain>
+    <summary>Nygard ADRs document architectural decisions co-located with code: context, decision, alternatives considered with rejection reasons, and consequences (positive, negative, neutral).</summary>
+    <tags>
+      <tag>architecture</tag>
+      <tag>adr</tag>
+      <tag>decision-records</tag>
+      <tag>documentation</tag>
+      <tag>agentic-workflow</tag>
+    </tags>
+    <category>adr</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>Architecture Decision Records (ADR)</title>
+    <summary>A single-file document (Nygard format) that captures one architectural decision — its context, the decision made, alternatives considered with rejection reasons, and consequences (positive, negative, neutral). ADRs live in docs/adr/NNN-title.md, are numbered sequentially from 001, and transition through statuses: Proposed → Accepted → Deprecated/Superseded. New ADRs amend, never edit, existing Accepted ones.</summary>
+    <why>
+      <p>Architecture decisions made today are invisible to new team members and to agents working months later. Without ADRs, the same debates recur; production incidents lack design context; and agents generating new code may contradict existing architectural choices they cannot see. Storing ADRs co-located with code in version control gives agents file-system access to the full decision history during code generation and review.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Before committing to a tech stack choice that will be hard to reverse (database, framework, auth strategy).</item>
+        <item>After a production incident that exposes a design weakness — capture the fix decision.</item>
+        <item>When a new team member keeps asking "why did we choose X?" — ADR is the answer.</item>
+        <item>Anytime two or more viable alternatives were seriously considered.</item>
+        <item>At the start of a new feature with meaningful architectural surface (new service, new API contract, new data model).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Trivial implementation details (which library function to call, naming conventions).</item>
+        <item>Decisions that will certainly be revisited within 1-2 weeks — too early, no context yet.</item>
+        <item>Configuration values that belong in docs, not decision records.</item>
+        <item>When there was only one realistic option — no choice means no ADR needed.</item>
+      </list>
+    </when-not-to-use>
+    <section name="nygard-format">
+      <rule testable="true">
+        <statement>Every ADR must contain five sections: Context (situation and forces), Decision (active voice "We will..."), Alternatives Considered (at least 2 with pros, cons, and rejection reason), Consequences (positive, negative, neutral), Related Decisions.</statement>
+        <rationale>Missing the Alternatives section is the most common quality failure. Without alternatives, the ADR does not explain why other options were rejected — new team members will re-open the decision without knowing what was already considered.</rationale>
+      </rule>
+      <reference path="templates/adr-template.md">Nygard ADR skeleton with all required sections and field descriptions.</reference>
+    </section>
+    <section name="status-lifecycle">
+      <rule testable="true">
+        <statement>All new ADRs are written with status "Proposed". A human must change it to "Accepted" before the ADR is considered active. Agents must not self-approve ADRs.</statement>
+        <rationale>"Proposed" is a human-in-loop gate. Self-approving skips the review step where affected teams can object or add constraints. An ADR that bypasses review may conflict with decisions in other parts of the system.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>When superseding an existing ADR, create a new ADR and update the old one's status to "Superseded by ADR-NNN". Never edit an Accepted ADR's content — immutability is the convention.</statement>
+        <rationale>Editing Accepted ADRs destroys the historical record. The original decision context is valuable even after the decision is superseded — it explains why the earlier choice made sense at the time.</rationale>
+      </rule>
+      <list>
+        <item>Proposed: under discussion, gathering feedback.</item>
+        <item>Accepted: approved, active decision.</item>
+        <item>Deprecated: no longer relevant, kept for history.</item>
+        <item>Superseded: replaced by a newer ADR (link required).</item>
+      </list>
+    </section>
+    <section name="authoring-rules">
+      <rule testable="true">
+        <statement>Write in active voice: "We will use PostgreSQL" not "PostgreSQL was chosen". Keep each ADR under 400 words. If it is longer, the decision scope is too broad — split it.</statement>
+        <rationale>Passive voice obscures agency and makes the decision seem inevitable rather than chosen. Length over 400 words typically means the ADR contains implementation details that belong in design.md.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Store ADRs in docs/adr/NNN-title.md in the same repository as the code. Number sequentially from 001. Never reuse a number even if an ADR is deleted.</statement>
+        <rationale>Co-location with code gives agents file-system access to ADRs during code generation and review. Sequential numbering creates a stable citation scheme (AD-X references in design.md and tasks).</rationale>
+      </rule>
+    </section>
+    <section name="writing-workflow">
+      <rule testable="true">
+        <statement>Before writing an ADR, the agent must read docs/adr/ to find the next sequential number, then read the relevant feature spec.md and design.md to source Context, Decision, and Consequences. Do not invent consequences not grounded in these documents.</statement>
+        <rationale>Invented consequences are the second most common quality failure after missing alternatives. Consequences must be traceable to real design tradeoffs, not generic technology wisdom.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>After writing, set status to "Proposed" and stop. The agent must not proceed to Accepted without human review.</statement>
+        <rationale>Human sign-off is the primary quality gate for ADRs. Agents that self-approve skip the review where affected teams identify conflicts with other architectural constraints.</rationale>
+      </rule>
+    </section>
+    <section name="adr-compliance-review">
+      <p>To audit whether accepted ADRs are still being followed, an agent reads docs/adr/, then inspects the codebase for each Accepted decision. Output: table of ADR number, status, "still followed?" (yes/no), and notes. Flag any violation as "review-needed".</p>
+      <rule testable="true">
+        <statement>Run ADR compliance review at major version bumps and after significant refactors. Mark obsolete decisions as "Deprecated" — do not leave orphaned Accepted ADRs that no longer reflect the codebase.</statement>
+        <rationale>Orphaned Accepted ADRs mislead agents and new team members. An ADR that says "We will use PostgreSQL" when the project now uses MongoDB is worse than no ADR.</rationale>
+      </rule>
+    </section>
+    <section name="antipatterns">
+      <antipattern>
+        <description>ADR used as a design guide: detailed implementation instructions in the Decision section.</description>
+        <reason>ADRs document the choice, not the implementation. Implementation details belong in design.md. An ADR with implementation details will become stale as the implementation evolves.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Missing Alternatives section or alternatives stated as "Option A and Option B were considered."</description>
+        <reason>Without pros, cons, and rejection reasons per alternative, the ADR does not prevent re-opening the debate. Alternatives must include why each was rejected.</reason>
+      </antipattern>
+      <antipattern>
+        <description>ADRs stored only in a wiki (Confluence, Notion) separate from the codebase.</description>
+        <reason>Agents cannot access wiki content via file system during code generation. Orphaned ADRs drift out of sync with the actual implementation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents fabricating alternatives in the Alternatives Considered section without grounding in real context.</description>
+        <reason>Hallucinated alternatives undermine the credibility of the entire ADR. Always supply spec.md and design.md as input when asking an agent to write alternatives.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Consequences section copied from the Decision section with different wording.</description>
+        <reason>Consequences must describe downstream effects, not restate the decision. Require distinct, actionable consequence bullets in the prompt.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Passing all 50+ ADR files to an agent instead of just the index list.</description>
+        <reason>Full ADR history consumes 20-40k tokens. Pass only the index (NNN | Title | Status) and load individual ADRs on demand when their content is needed.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/adr-template.md" purpose="Nygard ADR skeleton with all required sections and field descriptions."/>
+      <template path="templates/adr-status.sh" purpose="Bash script: lists all ADRs in docs/adr/ with their status line for quick index review."/>
+    </templates>
+    <section name="agentic-workflow-subagents">
+      <p>Recommended subagents for ADR workflow:</p>
+      <list>
+        <item>faion-sdd-executor-agent — reads ADRs as AD-X citations in design.md; enforces decisions during code generation.</item>
+        <item>General research subagent (claude-opus-4-7) — drafts alternatives section and consequences; requires broad context.</item>
+      </list>
+    </section>
+    <section name="cli-tools-and-services">
+      <p>Tools for ADR lifecycle management:</p>
+      <list>
+        <item>adr-tools: CLI to create, list, and link ADRs in standard format. Install: brew install adr-tools. Docs: https://github.com/npryce/adr-tools</item>
+        <item>log4brains: Markdown-based ADR knowledge base with web UI. Install: npx log4brains init. Docs: https://github.com/thomvaill/log4brains</item>
+        <item>pyadr: Python CLI for ADR lifecycle management. Install: pip install pyadr. Docs: https://github.com/opinionated-digital-center/pyadr</item>
+      </list>
+      <p>Storage options:</p>
+      <list>
+        <item>GitHub (docs/adr/ in repo): Best — ADRs versioned with code, agents can read via file system.</item>
+        <item>Confluence: ADRs stored in wiki; agents can write via API but content drifts from code.</item>
+        <item>Notion: Flexible; works if team uses Notion for docs; link to code PRs manually.</item>
+        <item>Backstage: ADR plugin available; good for large orgs with service catalogs.</item>
+        <item>log4brains: Static site generation from docs/adr/; zero API needed.</item>
+      </list>
+    </section>
+    <section name="prompt-patterns">
+      <p>For writing ADRs from spec/design context:</p>
+      <code lang="text"><![CDATA[
+Read docs/adr/ to find the next ADR number. Read {feature}/spec.md to extract decision AD-{N}.
+Write docs/adr/{NNN}-{slug}.md using the Nygard format.
+Status must be "Proposed". List at least 2 alternatives considered and why each was rejected.
+Do not invent consequences — base them only on information in spec.md and design.md.
+      ]]></code>
+      <p>For reviewing ADR compliance:</p>
+      <code lang="text"><![CDATA[
+Review existing ADRs in docs/adr/. For each ADR with status "Accepted", check if the codebase
+still follows the decision. Output a table: ADR number | Status | Still followed? | Notes.
+Flag any ADR that appears to be violated as "review-needed".
+      ]]></code>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Number sequentially from 001; never reuse a number even if an ADR is deleted.</item>
+        <item>Write in active voice: "We will use PostgreSQL" not "PostgreSQL was chosen".</item>
+        <item>Keep each ADR under 400 words; if it is longer, the decision scope is too broad — split it.</item>
+        <item>Link related ADRs bidirectionally in the "Related Decisions" section.</item>
+        <item>Store in docs/adr/ in the same repository as the code; agents need file-system access.</item>
+        <item>When superseding, update the old ADR's status to "Superseded by ADR-NNN" — do not delete.</item>
+        <item>Review ADRs at major version bumps; mark obsolete ones as "Deprecated".</item>
+        <item>ADRs are immutable by convention; agents must create a new ADR to amend decisions, never edit an Accepted one.</item>
+      </list>
+    </section>
+    <section name="ai-agent-gotchas">
+      <p>Common patterns when agents write or review ADRs:</p>
+      <list>
+        <item>Agents will fabricate alternatives if not grounded in real context — always provide spec.md and design.md as input.</item>
+        <item>"Proposed" status is a human-in-loop gate; agents must not skip it even when certain.</item>
+        <item>Agents writing ADRs tend to copy-paste consequences from the Decision section — require distinct, actionable consequence bullets in the prompt.</item>
+        <item>Long ADR histories (50+ files) increase context cost; pass only the index list to agents, not all ADR content.</item>
+        <item>ADR content is immutable by convention; agents must create a new ADR to amend decisions, never edit an Accepted one.</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://adr.github.io"/>
+      <link href="https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions"/>
+      <link href="https://aws.amazon.com/architecture/well-architected/"/>
+      <link href="https://github.com/npryce/adr-tools"/>
+      <link href="https://github.com/thomvaill/log4brains"/>
+    </see-also>
+  </content>
+</methodology>

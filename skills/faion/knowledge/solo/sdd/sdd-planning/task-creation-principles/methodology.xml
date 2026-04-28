@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="task-creation-principles">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd-planning</domain>
+    <summary>Decompose approved design into bounded TASK_*.md files using INVEST criteria, SMART task goals, WBS 8-80 rule adapted to token budgets (max 100k tokens per task), Given-When-Then AC, and full FR/AD traceability.</summary>
+    <tags>
+      <tag>sdd</tag>
+      <tag>task-creation</tag>
+      <tag>implementation</tag>
+      <tag>invest</tag>
+      <tag>decomposition</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Task Creation Principles</title>
+    <summary>Principles for decomposing an approved design into bounded, executor-ready TASK_*.md files. Applies the INVEST criteria (Independent, Negotiable, Valuable, Estimable, Small, Testable), SMART task goals, WBS 8-80 rule adapted to token budgets (hard cap: 100k tokens per task), Given-When-Then acceptance criteria, and full FR-X/AD-X traceability links inside each task file.</summary>
+    <why>
+      <p>Implementation plans fail when tasks are too large (executor runs out of context mid-implementation), too vague (AC are not testable), or untraceable (executor cannot verify the task satisfies a requirement). INVEST + SMART enforced at task creation time catches these defects before execution, and inline FR/AD text eliminates re-reading the full SDD context during execution.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Converting an approved design document into executable TASK_*.md files</item>
+        <item>Splitting large undefined work into bounded units before assigning to a subagent</item>
+        <item>Auditing an existing implementation plan where tasks are vague or oversized</item>
+        <item>When faion-sdd-executor-agent will run unattended and needs unambiguous inputs</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Prototyping or exploratory spikes — INVEST/SMART overhead is not worth it</item>
+        <item>Single-file hot-fixes with obvious scope — task structure adds ceremony with no return</item>
+        <item>Early brainstorming phases before a spec exists (no FR-X to trace to yet)</item>
+      </list>
+    </when-not-to-use>
+    <section name="right-size-rule">
+      <rule testable="true">
+        <statement>Every task must fit within 100k tokens total (research + SDD docs + implementation + tests + buffer). Tasks exceeding this limit must be split at natural code boundaries.</statement>
+        <rationale>Executor agents that run out of context mid-implementation produce partial or inconsistent code. The 100k limit is a hard enforcement boundary, not a suggestion.</rationale>
+      </rule>
+      <example type="good" title="Token tier table for task sizing">
+        <code lang="text"><![CDATA[
+Complexity | Token Range | Description
+---------- | ----------- | -----------
+simple     | <30k        | Single file, clear existing pattern
+normal     | 30-60k      | Multiple files, some decisions needed
+complex    | 60-100k     | Architecture decisions, research needed
+]]></code>
+      </example>
+      <example type="bad" title="Too large — must be split">
+        <code lang="text"><![CDATA[Task: "Implement authentication" (multiple subsystems, estimated >200k tokens)]]></code>
+      </example>
+      <example type="good" title="Right size — single responsibility">
+        <code lang="text"><![CDATA[Task: "Create password hashing utilities with bcrypt" (~30k tokens, single file)]]></code>
+      </example>
+    </section>
+    <section name="invest-criteria">
+      <rule testable="true">
+        <statement>Each task must satisfy all six INVEST criteria before being assigned to an executor. A task that fails any criterion must be rewritten or split.</statement>
+        <rationale>INVEST failures cause execution failures: non-independent tasks block each other unexpectedly, non-testable tasks cannot be verified as done.</rationale>
+      </rule>
+      <example type="good" title="INVEST criteria table with verification questions">
+        <code lang="text"><![CDATA[
+Criterion    | Verification Question                    | Example
+------------ | ---------------------------------------- | -------
+Independent  | Can be done without blocking others?     | Password utils (no deps)
+Negotiable   | Can details be refined?                  | Algorithm choice is flexible
+Valuable     | Clear user or business value?            | "Enables secure login"
+Estimable    | Can estimate tokens?                     | ~30k tokens
+Small        | Fits in one work session?                | Not "build auth system"
+Testable     | Has Given-When-Then AC?                  | AC-1 through AC-4 defined
+]]></code>
+      </example>
+    </section>
+    <section name="smart-task-goals">
+      <rule testable="true">
+        <statement>Task Objective must satisfy SMART: one interpretation only (Specific), verifiable by test (Measurable), technically feasible (Achievable), traces to FR-X (Relevant), has a token estimate (bound).</statement>
+        <rationale>Non-SMART objectives cause executors to implement the wrong scope — too much, too little, or in the wrong direction.</rationale>
+      </rule>
+    </section>
+    <section name="traceability-format">
+      <rule testable="true">
+        <statement>Every task must include inline FR-X and AD-X text from spec and design. Do not link — paste the full text of each requirement and decision the task implements.</statement>
+        <rationale>Executor agents that must re-read the full spec to understand their task add 10-30k tokens of overhead and risk misreading a requirement out of context.</rationale>
+      </rule>
+      <example type="good" title="Traceability section in task file">
+        <code lang="markdown"><![CDATA[
+## Requirements Coverage
+
+### FR-2: User can log in with email/password
+Full text: "System SHALL authenticate users by verifying email and bcrypt-hashed password. Returns JWT on success."
+This task implements: bcrypt verification in password service.
+
+### AD-1: JWT for authentication
+Full text: "Use JWT with 7-day expiry, no refresh tokens for MVP. Rationale: stateless, no Redis dependency."
+This task implements: JWT generation and HTTP-only cookie storage.
+]]></code>
+      </example>
+    </section>
+    <section name="task-lifecycle-states">
+      <rule testable="true">
+        <statement>Task state is determined by which directory it lives in (todo/ / in-progress/ / done/), not by the Status field in the header. The header status must always match the directory.</statement>
+        <rationale>Executor agents check the directory when scanning for work. A task in todo/ is picked up regardless of its Status header value.</rationale>
+      </rule>
+      <list>
+        <item>todo/ — Ready to start, all dependencies met</item>
+        <item>in-progress/ — Being worked on by one executor</item>
+        <item>done/ — Completed, all AC verified, execution report filled</item>
+      </list>
+    </section>
+    <section name="given-when-then-format">
+      <rule testable="true">
+        <statement>Every acceptance criterion must use Given-When-Then format with specific values. Vague criteria ("system works correctly") are rejected.</statement>
+        <rationale>Executor agents cannot verify vague criteria. Every AC must have an observable, code-verifiable outcome — a test that passes or fails.</rationale>
+      </rule>
+      <example type="good" title="Well-formed acceptance criteria">
+        <code lang="markdown"><![CDATA[
+## Acceptance Criteria
+
+**AC-1: Successful login**
+- Given: registered user with email "test@example.com" and correct password
+- When: user submits login form
+- Then: JWT token returned in HTTP-only cookie, user redirected to /dashboard, response 200
+
+**AC-2: Invalid password**
+- Given: registered user with correct email but wrong password
+- When: user submits login form
+- Then: error message "Invalid credentials" shown, no cookie set, response 401
+
+**AC-3: Expired token**
+- Given: user with a JWT cookie expired 1 second ago
+- When: user accesses /api/protected
+- Then: response 401, body {"error": "Token expired"}
+]]></code>
+      </example>
+      <rule testable="true">
+        <statement>For background jobs with no user actor, use "Given / Triggered by / Then" instead of "Given / When / Then".</statement>
+        <rationale>Standard GWT requires a "when" actor. Background jobs are triggered by events (cron, queue message), not user actions.</rationale>
+      </rule>
+    </section>
+    <section name="ac-coverage-checklist">
+      <list>
+        <item>Happy path (successful scenario with correct inputs)</item>
+        <item>Alternative paths (valid variations of the happy path)</item>
+        <item>Boundary conditions (minimum/maximum values, edge cases)</item>
+        <item>Error handling (invalid inputs, service failures)</item>
+        <item>Security scenarios (unauthorized access, injection attempts)</item>
+        <item>Performance (if an NFR applies to this task)</item>
+      </list>
+    </section>
+    <section name="pre-creation-quality-checklist">
+      <section name="before-creating-task">
+        <list>
+          <item>Implementation plan reviewed and task row identified</item>
+          <item>Design decisions (AD-X) understood — read the full AD text</item>
+          <item>Requirements (FR-X) mapped — read the full FR text</item>
+        </list>
+      </section>
+      <section name="task-definition">
+        <list>
+          <item>INVEST criteria all met</item>
+          <item>SMART criteria all met</item>
+          <item>Complexity tier assigned (simple/normal/complex)</item>
+          <item>SDD references included as table</item>
+        </list>
+      </section>
+      <section name="acceptance-criteria">
+        <list>
+          <item>Given-When-Then format throughout</item>
+          <item>Happy path covered</item>
+          <item>Error cases covered</item>
+          <item>Boundary conditions covered</item>
+          <item>Each criterion is testable — not vague</item>
+        </list>
+      </section>
+      <section name="context-and-traceability">
+        <list>
+          <item>FR-X text pasted inline (not linked)</item>
+          <item>AD-X text pasted inline (not linked)</item>
+          <item>Token estimate &lt;100k with breakdown</item>
+          <item>Dependency tree populated from actual done/ task files</item>
+        </list>
+      </section>
+    </section>
+    <section name="common-task-creation-mistakes">
+      <antipattern>
+        <description>Tasks too large — "Implement authentication" as a single task.</description>
+        <reason>Break down until each task fits one work session and &lt;100k tokens.</reason>
+      </antipattern>
+      <antipattern>
+        <description>No traceability — FR-X and AD-X not mentioned in task.</description>
+        <reason>Add FR-X and AD-X links inline; executor cannot verify the task satisfies a requirement without them.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Vague acceptance criteria — "user experience is smooth".</description>
+        <reason>Replace with Given-When-Then that a test can verify as pass or fail.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Missing test files in Files table.</description>
+        <reason>Include testing in AC and list test files explicitly; tests are required, not optional.</reason>
+      </antipattern>
+      <antipattern>
+        <description>INVEST "Independent" criterion violated in sequential migration chains.</description>
+        <reason>Accept partial dependency and document it explicitly — forcing artificial independence causes worse splits.</reason>
+      </antipattern>
+    </section>
+    <section name="agent-integration-workflow">
+      <p>A planning agent reads the approved design.md and spec.md, then produces one TASK_*.md file per unit. Each file is validated against the INVEST/SMART checklist before being written. The executor agent (faion-sdd-executor-agent) later picks tasks from todo/ and runs them sequentially in dependency order, writing an execution report back into the same file.</p>
+      <p>Keep task creation and task execution in separate agent turns: a planning agent that also executes tends to cut corners on AC definition.</p>
+      <section name="recommended-subagents">
+        <list>
+          <item>faion-sdd-executor-agent — executes tasks from todo/, moves through lifecycle, writes execution reports</item>
+          <item>General Claude subagent (Sonnet) — sufficient for task decomposition from a well-structured design doc</item>
+        </list>
+      </section>
+      <section name="prompt-patterns">
+        <example type="good" title="Task decomposition prompt">
+          <code lang="text"><![CDATA[Given this design.md and spec.md, produce TASK_*.md files.
+Each task: <100k tokens, INVEST-valid, Given-When-Then ACs, FR/AD links.
+Output one markdown block per task. Do not implement anything.]]></code>
+        </example>
+        <example type="good" title="Task review prompt">
+          <code lang="text"><![CDATA[Review these TASK_*.md files. Flag any that violate INVEST (not independent,
+not estimable, not testable). For each violation, suggest a split or rewrite.]]></code>
+        </example>
+      </section>
+      <section name="cli-tools">
+        <list>
+          <item>tokencounter / ttok — Estimate token count of a file before assigning. Install: pip install ttok. Docs: https://github.com/simonw/ttok</item>
+          <item>jq — Parse and validate JSON task metadata if stored in frontmatter. System package.</item>
+          <item>grep / ripgrep — Trace FR-X and AD-X references across docs. Install: apt install ripgrep</item>
+        </list>
+      </section>
+      <section name="services-and-apps">
+        <list>
+          <item>Linear (SaaS, Agent-friendly) — Can create issues from TASK_*.md; maps to INVEST story format. REST + GraphQL API.</item>
+          <item>GitHub Issues (SaaS, Agent-friendly) — Cheapest integration; label by complexity; milestone = wave. gh CLI + REST.</item>
+          <item>Jira (SaaS, Partial) — Overkill for solo workflow; use only if client requires. REST API, complex auth.</item>
+          <item>Notion (SaaS, Partial) — Good for stakeholder visibility; not ideal for agent writes. REST API.</item>
+        </list>
+      </section>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Write task files in waves: create Wave 1 tasks in detail, execute, then write Wave 2 with patterns learned from Wave 1 output</item>
+        <item>Always include the full text of referenced FR-X and AD-X inline in the task file — the executor agent should not need to re-read the entire spec</item>
+        <item>Keep "Technical Notes" specific: name the exact pattern file, line range, or prior task that establishes the pattern to follow</item>
+        <item>One task = one commit; never combine multiple TASK-IDs in a single commit</item>
+        <item>Assign complex tasks their own wave rather than parallelizing them — complex tasks have higher abort/rework rates</item>
+      </list>
+    </section>
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Executor agents ignore vague AC like "works correctly" — every criterion must have an observable, code-verifiable outcome</item>
+        <item>If a task file is a stub ("See implementation-plan.md"), faion-sdd-executor-agent extracts from the plan table — this loses context; always prefer full task files</item>
+        <item>Circular dependency detection is not automatic — validate the dependency graph manually before handing to an executor</item>
+        <item>Agents tend to overestimate independence: "no code dependency" does not mean "no data dependency" (e.g., task B needs the DB rows created by task A)</item>
+        <item>Human checkpoint required before executing any complex-rated task that touches auth, payments, or public APIs — flag these in the task file</item>
+        <item>INVEST "Independent" criterion is often violated in sequential migration chains — accept partial dependency and document it rather than forcing artificial splits</item>
+        <item>Token estimates are rough; large config files or generated types can spike context unexpectedly</item>
+        <item>Given-When-Then ACs work poorly for performance NFRs — supplement with measurable thresholds rather than scenario language</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://agileforall.com/new-to-agile-invest-in-good-user-stories/"/>
+      <link href="https://cucumber.io/docs/bdd/"/>
+      <link href="https://www.pmi.org/pmbok-guide-standards/framework/practice-standard-wbs"/>
+      <link href="https://martinfowler.com/bliki/GivenWhenThen.html"/>
+    </see-also>
+  </content>
+</methodology>
