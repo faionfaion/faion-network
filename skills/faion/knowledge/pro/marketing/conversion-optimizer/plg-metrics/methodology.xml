@@ -4,7 +4,7 @@
     <tier>pro</tier>
     <group>marketing</group>
     <domain>conversion-optimizer</domain>
-    <summary>A metrics methodology for Product-Led Growth: the full funnel from acquisition through expansion, including activation rate, time-to-value (TTV), free-to-paid conversion, Product-Qualified Lead (PQL) scoring, net revenue retention (NRR), and cohort analysis.</summary>
+    <summary>PLG metrics: activation rate, TTV, free-to-paid conversion, PQL scoring, NRR, and cohort analysis. Every metric needs a single owner and version-controlled definition.</summary>
     <tags>
       <tag>plg</tag>
       <tag>metrics</tag>
@@ -128,6 +128,78 @@
       </antipattern>
     </section>
 
+    <section name="limitations-and-where-it-fails">
+      <list>
+        <item>Activation events get over-engineered — a 7-step "fully activated" definition is unmeasurable; teams ship and forget.</item>
+        <item>PQL scores drift as the product evolves; stale weights misroute sales motion within 1-2 quarters.</item>
+        <item>Cohort tables become showpieces — readable but no action attached. Retention diagnosis without root-cause is theater.</item>
+        <item>TTV is reported as a global median; it hides huge variance across segments (SMB vs Enterprise, mobile vs web).</item>
+        <item>NRR &gt; 100% covers up logo churn; tracking only NRR misses customer-base erosion.</item>
+        <item>Tracking infra debt: events fire from frontend AND backend AND third-party tools, with no idempotent definition; metrics drift silently.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A Claude subagent is well-suited for: drafting the metric catalog (definitions + SQL), proposing PQL scoring weights from a sample of converted vs churned users, reading dashboard snapshots and producing weekly executive summaries with anomalies highlighted, and translating cohort tables into prioritized hypotheses. The agent should NOT silently change metric definitions in production warehouses — its role is proposal + draft, with a human approving DDL/DML changes.</p>
+
+      <p>Recommended subagents: faion-sdd-executor-agent — model the metric catalog as an SDD spec (definitions, owners, SLAs, alert thresholds). nero-sdd-executor-agent — for NERO-internal product analytics tasks. A plg-analytics-agent (suggested) — sonnet for weekly summaries and PQL scoring proposals; opus for cohort diagnosis and pricing-strategy suggestions; haiku for DDL/SQL boilerplate and dashboard config. faion-growth-agent — owns hypothesis prioritization downstream of metrics.</p>
+
+      <prompt purpose="Cohort diagnosis with experiment recommendations"><![CDATA[
+Given the metric catalog <attached> and last 8 weeks of cohort retention
+<csv>, identify the 3 worst-performing cohorts, the most likely root cause
+per cohort, and a single experiment per cause to test next sprint. Output
+as a table with hypothesis, target metric, and minimum detectable effect.
+]]></prompt>
+
+      <prompt purpose="PQL scoring proposal from sample data"><![CDATA[
+PQL scoring proposal: from this sample of 200 paid converters and 200
+churned trials <attached>, propose signal weights, score thresholds, and
+expected sales workload. State assumptions; flag where sample is biased.
+]]></prompt>
+    </section>
+
+    <section name="cli-tools-and-services">
+      <list>
+        <item>dbt — Define + test PLG metrics in the warehouse (https://docs.getdbt.com/)</item>
+        <item>cube (Cube CLI) — Semantic layer for consistent metric definitions (https://cube.dev/)</item>
+        <item>metricflow — dbt's semantic layer (https://docs.getdbt.com/docs/build/about-metricflow)</item>
+        <item>posthog-cli — Query Posthog events / cohorts (https://posthog.com/docs/cli)</item>
+        <item>bigquery / snow (Snowflake CLI) — Run metric SQL ad hoc</item>
+        <item>evidence — Code-as-config BI for metric narratives (https://evidence.dev/)</item>
+      </list>
+      <list>
+        <item>Amplitude: SaaS, Yes (API) — Strong cohorting, behavioral analysis</item>
+        <item>Mixpanel: SaaS, Yes (API) — Funnel + cohort + JQL</item>
+        <item>PostHog: OSS + SaaS, Yes (API) — Self-host option; event + session + feature flags</item>
+        <item>Heap: SaaS, Yes (API) — Auto-capture; weaker custom event control</item>
+        <item>Madkudu: SaaS, Yes (API) — Built-for-PQL scoring</item>
+        <item>Pocus: SaaS, Yes (API) — Product-led sales workflow on top of warehouse</item>
+        <item>ChartMogul: SaaS, Yes (API) — Subscription analytics, NRR/MRR</item>
+        <item>Stripe: SaaS, Yes (API) — Source of truth for billing + expansion MRR</item>
+        <item>dbt Cloud / Cube Cloud: SaaS, Yes (API) — Hosted semantic layer</item>
+        <item>Metabase: OSS, Yes — Self-host BI for the dashboard view</item>
+      </list>
+
+      <example type="good" title="pql_score.py — signal-weighted PQL score scaffold">
+        <code lang="python"><![CDATA[
+# pql_score.py — signal-weighted PQL score from raw events.
+# Run weekly; output to user_pql table for sales routing.
+SIGNALS = {
+    "weekly_actions_gte_100": (3, "high"),
+    "invited_members_gte_5":  (3, "high"),
+    "tried_gated_feature":    (3, "high"),
+    "hours_in_product_gte_10":(2, "medium"),
+    "integrations_gte_3":     (2, "medium"),
+    "exported_or_shared":     (2, "medium"),
+}
+def score(user_events: dict) -> dict:
+    total = sum(w for k, (w, _) in SIGNALS.items() if user_events.get(k))
+    band = "nurture" if total < 6 else "self_serve" if total < 9 else "sales"
+    return {"score": total, "band": band}
+]]></code>
+      </example>
+    </section>
+
     <section name="best-practices">
       <list>
         <item>One owner per metric. Without an owner, definitions drift and the dashboard becomes folklore.</item>
@@ -138,6 +210,37 @@
         <item>Keep the metric catalog version-controlled (dbt + Git). Dashboards that change definitions silently are net-negative.</item>
         <item>Pair every dashboard tile with an "if this moves, who acts and how" runbook line.</item>
       </list>
+    </section>
+
+    <section name="ai-agent-gotchas-extended">
+      <antipattern>
+        <description>LLMs propose plausible-but-wrong SQL aggregations on event tables (UNION over UNION ALL, missed deduplication).</description>
+        <reason>Always require the agent to output the SQL and a test query against a known sample.</reason>
+      </antipattern>
+      <antipattern>
+        <description>PQL weight proposals based on small samples overfit.</description>
+        <reason>Force the agent to report sample size and confidence band. Reject proposals with sample under 200 converters + 200 churned trials.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Cohort summaries paraphrased by the agent often invert direction ("retention improved" when M3 dropped 2pp).</description>
+        <reason>Demand verbatim numbers, no rounding, no directional paraphrase.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Anomaly detection without a baseline is hallucination.</description>
+        <reason>Provide last 8 weeks of values as context for any "anomaly" claim.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Privacy: per-user event data sent to an external LLM without aggregation.</description>
+        <reason>Per-user event data must be aggregated before sending to any external model. Sanitize emails, names, IPs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents conflate "activation" with "onboarding completion".</description>
+        <reason>Force a glossary into the prompt and reject if the agent uses the terms interchangeably.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Quarterly strategy outputs (freemium vs trial) shipped directly from agent recommendation.</description>
+        <reason>These are decision-grade outputs. Never ship the agent's recommendation without a human PM/CFO review.</reason>
+      </antipattern>
     </section>
 
     <templates>
