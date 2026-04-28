@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ai-persona-building">
+  <metadata>
+    <tier>geek</tier>
+    <group>ux</group>
+    <domain>user-researcher</domain>
+    <summary>Lightweight single-pass persona generation using Sonnet + Haiku for early exploration without clustering.</summary>
+    <tags>
+      <tag>persona-building</tag>
+      <tag>ux-research</tag>
+      <tag>ai-agents</tag>
+      <tag>lightweight-process</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>AI Persona Building (Lightweight)</title>
+    <summary>Lightweight single-pass persona generation: a Sonnet subagent receives a structured description of a user type with known data points and a JTBD statement, and produces a persona card. A Haiku subagent formats the card into the team's documentation template. No clustering step — suitable for early exploration or updating a single field, not for full segmentation.</summary>
+    <why>
+      <p>Teams in early prototyping need placeholder personas to unblock design decisions before real cluster data arrives. This thin pipeline produces a usable card quickly, provided the human supplies at least 3 concrete data points and forces the agent to mark all inferred fields explicitly.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Lightweight persona creation needed quickly without a dedicated researcher</item>
+        <item>Prototyping phase where placeholder personas unblock design decisions</item>
+        <item>Updating a single persona field across an existing library</item>
+        <item>Generating documentation from an already-agreed behavioral cluster description</item>
+        <item>Supplementing thin data with AI-expanded hypotheses for rapid validation planning</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>No real user data exists and the team plans to treat AI output as ground truth</item>
+        <item>Regulated domains (healthcare, finance) where persona inaccuracy causes downstream harm</item>
+        <item>Personas will drive hiring, pricing, or go-to-market budget without human review</item>
+        <item>Full clustering from multi-source data is needed — use ai-assisted-persona-building instead</item>
+      </list>
+    </when-not-to-use>
+    <section name="lightweight-process">
+      <p>Single-pass persona generation pipeline for early exploration: Sonnet builds the card from structured input, Haiku formats it; human review is the only validation gate.</p>
+      <section name="pipeline">
+        <list>
+          <item>1. Supply structured input: user type, at least 3 concrete data points, JTBD statement</item>
+          <item>2. Sonnet subagent generates persona card; marks all inferred fields as [INFERRED]</item>
+          <item>3. Haiku subagent formats card into team documentation template (no content changes)</item>
+          <item>4. Human review: smell-test against real users known to the team; approve before use</item>
+        </list>
+      </section>
+      <section name="input-requirements">
+        <rule>
+          <statement>Supply at least 3 concrete data points per persona — zero-data prompts produce archetype stereotypes.</statement>
+          <rationale>Without grounding data, LLMs default to demographic stereotypes rather than behavioral segments. Even thin evidence (3 facts) significantly improves output quality.</rationale>
+        </rule>
+        <rule>
+          <statement>Require the LLM to tag all inferred fields explicitly; teams often treat untagged output as validated fact.</statement>
+          <rationale>AI-generated fields that look like facts get used as facts. The [INFERRED] tag creates a visible validation queue.</rationale>
+        </rule>
+      </section>
+      <section name="scope-constraints">
+        <rule>
+          <statement>Limit each persona to one primary goal; multi-goal personas produce unfocused design decisions.</statement>
+          <rationale>When a persona has multiple primary goals, designers optimize for the wrong one or try to satisfy all of them, producing diluted solutions.</rationale>
+        </rule>
+        <rule>
+          <statement>Store the prompt and input alongside the output so personas can be regenerated as data improves.</statement>
+          <rationale>Persona generation is not a one-time artifact. Storing the full input enables reproducible updates when new research data arrives.</rationale>
+        </rule>
+      </section>
+      <section name="escalation-rule">
+        <rule>
+          <statement>Use this lightweight method only for early exploration; graduate to ai-assisted-persona-building once real cluster data exists.</statement>
+          <rationale>This pipeline has no clustering step. Once enough behavioral data exists (30+ records per segment), the full clustering pipeline produces more reliable, segmented personas.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="anti-patterns">
+      <p>Failure modes specific to single-pass persona generation: stereotypes, user-story confusion, segment collapse, and template drift.</p>
+      <antipattern>
+        <description>Treating AI output as ground truth when no real user data was supplied.</description>
+        <reason>Without data, the LLM produces a plausible-sounding stereotype. If the team treats it as a real persona, design decisions are made on fiction. The [INFERRED] tags are the only protection — and they only work if the team reads them.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LLM produces a user story format instead of a persona card.</description>
+        <reason>LLMs conflate "persona" with "user story" when not explicitly constrained. Explicitly forbid story format in the prompt ("Output a persona card, not a user story").</reason>
+      </antipattern>
+      <antipattern>
+        <description>Sonnet collapses two distinct segments into one when the input description is ambiguous.</description>
+        <reason>Similar vocabulary in the input description causes the agent to merge segments. Require the agent to state the assumed cluster boundary explicitly before producing the card.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Haiku formatting agent receives no explicit template structure and produces inconsistent output across runs.</description>
+        <reason>Haiku is purely mechanical — it cannot infer the team's preferred template. Without the exact template structure in the prompt, output format varies every run and creates downstream formatting work.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Asking the agent to update an existing persona (add a field) without passing the full existing persona JSON.</description>
+        <reason>Without the prior persona as context, the agent rewrites rather than extends. Pass the full existing persona JSON every time an incremental update is needed.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Skipping human review under time pressure because the pipeline is fast.</description>
+        <reason>Human review is the only validation gate in this thin pipeline. The speed advantage of single-pass generation is only valuable if the output is correct — AI errors here propagate directly into design decisions.</reason>
+      </antipattern>
+    </section>
+    <section name="agentic-workflow">
+      <p>A single Claude subagent (Sonnet) receives a structured description of user type, available data points, and JTBD context, then produces a persona card in Markdown. A second Haiku subagent formats the card into the team's documentation template. Because this methodology lacks a clustering step, the agent pipeline is shorter but the human review checkpoint before publication is more critical.</p>
+      <section name="recommended-subagents">
+        <list>
+          <item>General Claude subagent (Sonnet) — persona synthesis from description + data points</item>
+          <item>General Claude subagent (Haiku) — documentation formatting and template population</item>
+        </list>
+      </section>
+    </section>
+    <section name="tools-and-services">
+      <section name="cli-tools">
+        <list>
+          <item>jq — Preprocess any JSON analytics data before prompt injection (apt install jq)</item>
+          <item>pandoc — Convert persona Markdown cards to Confluence/Notion-compatible HTML (apt install pandoc)</item>
+        </list>
+      </section>
+      <section name="saas-services">
+        <list>
+          <item>Notion — SaaS, Store output persona cards; agents can create pages via API</item>
+          <item>Airtable — SaaS, Persona registry for team-wide access and incremental updates</item>
+          <item>Dovetail — SaaS, Source of interview tags to feed into prompt (export only)</item>
+          <item>Figma (FigJam) — SaaS, Manual step: paste persona card into FigJam template (no direct API)</item>
+        </list>
+      </section>
+    </section>
+    <section name="prompt-patterns">
+      <example type="good" title="Persona Card Generation">
+        <code lang="text"><![CDATA[You are a UX researcher. Create a persona for the following user type:
+- Product: [product name and core value prop]
+- User segment: [one-sentence description]
+- Known data points: [bullet list of facts from analytics/interviews]
+- JTBD: When [situation], I want to [motivation], So I can [outcome]
+
+Output a persona card with sections: Name/Role, Demographics, Goals, Pain Points,
+Behavior Patterns, Trigger Events, Representative Quote.
+Only use the provided data points. Mark any inferred fields as [INFERRED — needs validation].]]></code>
+      </example>
+      <example type="good" title="Template Formatting">
+        <code lang="text"><![CDATA[You are a documentation assistant. Format the following persona content into this template:
+[paste team template structure]
+Do not add or change any content — only reformat.]]></code>
+      </example>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Always supply at least 3 concrete data points per persona — zero-data prompts produce archetype stereotypes</item>
+        <item>Require the LLM to tag all inferred fields explicitly; teams often treat untagged output as validated fact</item>
+        <item>Limit persona scope to one primary goal — multi-goal personas produce unfocused design decisions</item>
+        <item>Store the prompt + input alongside the output so personas can be regenerated as data improves</item>
+        <item>Run a manual smell-test: does this persona remind you of a real user you have spoken to? If not, it is probably a hallucination</item>
+        <item>Use this lightweight method only for early exploration; graduate to ai-assisted-persona-building once real cluster data exists</item>
+      </list>
+    </section>
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Haiku formatting agent must receive explicit template structure; without it, it reformats inconsistently across runs</item>
+        <item>LLMs conflate "persona" with "user story" — explicitly forbid story format in the prompt</item>
+        <item>Sonnet will occasionally collapse two distinct segments into one if the input description is ambiguous — require the agent to state the cluster boundary assumptions explicitly</item>
+        <item>Human review is the only validation gate in this thin pipeline — do not skip it even under time pressure</item>
+        <item>If the agent is asked to update an existing persona (add a field), pass the full existing persona JSON; partial context causes the agent to rewrite rather than extend</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/build-persona.py" purpose="Claude API call: user_type + data_points + jtbd → persona card Markdown"/>
+      <template path="templates/prompt-persona-card.txt" purpose="Sonnet prompt enforcing data-only output with [INFERRED] tagging"/>
+      <template path="templates/prompt-format-card.txt" purpose="Haiku formatting prompt: content → team template structure (no changes to content)"/>
+    </templates>
+    <see-also>
+      <link href="https://www.nngroup.com/articles/persona/">Nielsen Norman Group: Personas</link>
+      <link href="https://docs.anthropic.com/en/api/messages">Anthropic Claude API docs</link>
+      <ref slug="ai-assisted-persona-building"/>
+    </see-also>
+  </content>
+</methodology>
