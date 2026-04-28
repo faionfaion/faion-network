@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- fix: trim methodology summary event-driven-architecture
 - fix: trim methodology summary microservices-design
 - fix: trim methodology summary use-case-modeling
 - fix: trim methodology summary stakeholder-analysis
