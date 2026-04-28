@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/pm/pm-agile methodologies → methodology.xml (predictive-analytics-pm, raci-matrix, reporting-basics; feature-045 batch 164)
 - migrate: 3/3 pro/pm/pm-agile methodologies → methodology.xml (pm-framework-focus-areas, pm-tools-comparison, pm-tools-overview; feature-045 batch)
 - migrate: 3/3 pro/infra/cicd-engineer methodologies → methodology.xml (gitlab-cicd, grafana-setup, jenkins-basics; feature-045 batch 167)
 - migrate: 3/3 pro/pm/pm-agile methodologies → methodology.xml (scrum-ceremonies, seven-performance-domains, six-core-principles; feature-045 batch 165)

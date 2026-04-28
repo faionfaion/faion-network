@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="predictive-analytics-pm">
+  <metadata>
+    <tier>pro</tier>
+    <group>pm</group>
+    <domain>pm-agile</domain>
+    <summary>ML-based forecasting for PM: schedule early warning, budget overrun detection, resource optimization, and risk pattern mining from issue data.</summary>
+    <category>analytics</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>predictive-analytics</tag>
+      <tag>forecasting</tag>
+      <tag>ml</tag>
+      <tag>project-management</tag>
+      <tag>risk-management</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="dora-metrics"/>
+      <ref slug="value-stream-management"/>
+      <ref slug="jira-workflow-management"/>
+      <ref slug="ai-in-project-management"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Predictive Analytics in PM</title>
+
+    <summary>The application of ML-based forecasting to project management: schedule delay early warning, budget overrun detection, resource utilization optimization, and risk pattern mining from issue tracker data. Requires a deterministic data pipeline (extract → feature-build → classical ML model) with an LLM layer only for plain-language briefs. The LLM never produces the point forecast; a calibrated model does.</summary>
+
+    <why>
+      <p>Naive baselines (last-3-sprint velocity, mean cycle time) are the floor — only deploy a model that beats them on a holdout with statistical significance. Human intuition on schedule risk lags 3–5 days behind what burn-down data already implies; a properly calibrated model can surface "this sprint will miss" with actionable lead time. Privacy and survivorship bias are the two most common failure modes: aggregate at team level, include cancelled projects in training data.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Backlogs and historical data large enough (at least 200 closed items, 6+ months) for forecasting to beat naive baselines.</item>
+        <item>Schedule risk early-warning: detect sprint misses 3–5 days before the burn-down does.</item>
+        <item>Budget overrun detection: compare run-rate trends with planned spend.</item>
+        <item>Resource utilization optimization across multi-team programs.</item>
+        <item>Risk pattern mining: find leading indicators (epic age, comment sentiment, churn) of late delivery.</item>
+        <item>Material/vendor cost forecasting where commodity prices drive a meaningful share of project cost.</item>
+        <item>Pair with value-stream-management (DORA + Flow Metrics input data), jira-workflow-management (data source), dora-metrics.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Small teams or new projects without historical data — models will overfit or underperform expert estimation.</item>
+        <item>Hand-managed spreadsheets without consistent fields — data quality kills the signal.</item>
+        <item>Decision-making needing explainability you cannot provide (regulated procurement, public-sector audits).</item>
+        <item>"AI dashboards" stakeholders cannot read — predictive output without a human translator becomes shelf-ware.</item>
+        <item>One-off projects without comparable history to learn from.</item>
+        <item>When the underlying issue is organizational (priorities flip weekly) — no model fixes leadership decisions.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="analytics-pipeline">
+      <p>A data-extractor pulls issue/cycle data from Jira/Linear/GitHub/GitLab into a tidy parquet table (one row per issue-state-transition). A feature-builder derives lead-time, cycle-time, age, churn, comment-count, blocker-age, skill match. A classical-ML model (gradient boosting / Cox / hazard) produces forecasts; an analyst-agent (LLM) writes a plain-language brief explaining drivers and recommended actions, but never the predictions themselves. A forecast-monitor tracks calibration and decision impact; flags drift. Humans approve any action that re-allocates resources, pulls scope, or triggers escalation.</p>
+
+      <rule testable="true">
+        <statement>Use a classical ML model (gradient boosting, Cox hazard, Prophet) for point forecasts and confidence intervals; use an LLM only for the plain-language analyst brief that accompanies the model output. Never use an LLM as the forecasting engine.</statement>
+        <rationale>LLMs asked "predict when this will finish" hallucinate confident dates without uncertainty quantification. Deterministic estimators produce calibrated probabilities that can be monitored for drift; LLM forecasts cannot be calibrated or monitored.</rationale>
+      </rule>
+
+      <list>
+        <item>data-extractor (haiku): paginated REST/GraphQL pulls from Jira/Linear/GitHub/GitLab, schema validation, snapshot to parquet with data-freshness timestamp.</item>
+        <item>feature-builder (haiku): deterministic transforms — lead time, cycle time, age, churn, comment count, blocker age, skill match. No inference.</item>
+        <item>forecast-runner (sonnet, calls model API): invokes trained model, attaches confidence intervals, emits SHAP feature attribution.</item>
+        <item>analyst-agent (sonnet): translates model output into stakeholder brief (headline forecast, top 3 drivers, recommended decisions). Never asserts causation; says "associated with".</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Deploy only a model that beats naive baselines (last-3-sprint velocity, mean cycle time) on a holdout set with statistical significance. Measure calibration with Brier score; reject any model with Brier score above 0.20.</statement>
+        <rationale>An uncalibrated model emitting "70% likely to slip" with no empirical basis is worse than intuition — it provides false confidence and cannot be improved without calibration data.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Retrain on a fixed monthly cadence AND on drift triggers (team composition change, process change, scope change). Track both; log every forecast with input snapshot for post-hoc audit.</statement>
+        <rationale>Concept drift makes yesterday's model stale within months of the first organizational change. Silent drift produces confident wrong forecasts that PM teams stop trusting — then stop using.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Require human approval for any action triggered by a forecast: resource reallocation, scope pull, escalation, or replanning. Agents emit recommendations only — never autonomous actions on forecast output.</statement>
+        <rationale>Auto-actioning a forecast creates feedback loops in the training data (the intervention changes the outcome, invalidating future calibration) and bypasses judgment calls that require organizational context.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Aggregate all analytics at team or program level; refuse to generate per-person productivity metrics from issue data.</statement>
+        <rationale>Per-person metrics from issue trackers are an HR and legal risk (GDPR, labor law, union agreements in some regions). They also incentivize gaming the data at the individual level, destroying the signal entirely.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <p>Seven most common failure modes when applying ML-based forecasting to project management:</p>
+
+      <antipattern>
+        <description>Garbage-in status fields — "In Progress" means "abandoned" or "waiting for review" depending on the team member.</description>
+        <reason>Every metric computed from inconsistent status fields lies. A model trained on this data will forecast confidently based on noise. Data quality discipline is a prerequisite to any forecasting investment.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Concept drift ignored — model trained on Q1 team composition and process used in Q4 after three re-orgs and a process overhaul.</description>
+        <reason>ML models learn the statistical regularities of a specific team and process. When the team or process changes significantly, the model's learned patterns are no longer valid. Silent drift produces increasingly wrong but equally confident forecasts.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Survivorship bias — training data includes only completed projects, excluding cancelled and silent-fail projects.</description>
+        <reason>Cancelled projects carry the failure patterns the model most needs to learn. A dataset of completions only under-predicts cancellation risk and over-predicts completion probability.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Uncalibrated probabilities — model emits "70% likely to slip" without a calibration dataset to validate that claim.</description>
+        <reason>An uncalibrated probability is an opinion dressed as a number. PM teams that make budget or scope decisions on uncalibrated confidence intervals will be systematically misled.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Causal claims from correlational features — "long descriptions correlate with overrun" → PM bans long descriptions.</description>
+        <reason>Correlation in issue data is not causal. Intervening on a correlate without understanding the mechanism often removes a useful signal without changing the underlying cause.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Per-person productivity metrics emitted from issue data (velocity per developer, bug rate per engineer).</description>
+        <reason>Individual-level metrics from trackers are an HR and legal risk, incentivize gaming (artificially inflating closed tickets), and destroy the team-level signal that makes forecasting valuable.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Stale snapshot forecast — forecast generated yesterday from data a week old, presented as current to stakeholders.</description>
+        <reason>PM data ages fast; a week-old snapshot misses the sprint that just closed, the risk that materialized, or the scope change that was approved. Every forecast must show a data-freshness timestamp.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <p>Recommended patterns when implementing predictive analytics in project management:</p>
+
+      <rule testable="true">
+        <statement>Define the decision the forecast supports before training; if no decision changes with the forecast, do not build it.</statement>
+        <rationale>Forecasting without a decision context produces shelf-ware dashboards that stakeholders ignore.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Start with naive baselines (last-3-sprints velocity, mean cycle time) — only ship a model that beats them on holdout, with statistical significance.</statement>
+        <rationale>Naive baselines set the bar; a model that fails this test has no value to add.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Calibrate probabilistic outputs; report both the prediction and its reliability diagram each release.</statement>
+        <rationale>Stakeholders need to understand both the forecast and how much to trust it.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always include feature attribution (SHAP) in stakeholder briefs; opaque scores destroy trust.</statement>
+        <rationale>PMs and executives need to understand the drivers behind a forecast to act on it with confidence.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Retrain on a fixed cadence (monthly) AND on drift triggers; track both.</statement>
+        <rationale>Regular retraining keeps the model synchronized with team evolution; drift triggers catch sudden changes.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Human-in-the-loop for any action — model recommends, human decides — especially for resource changes.</statement>
+        <rationale>Organizational decisions require context and judgment that models cannot provide.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Aggregate at team or program level, not per individual; prevents misuse for performance management.</statement>
+        <rationale>Individual metrics invite HR abuse and destroy psychological safety on teams.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Log every forecast with input snapshot for post-hoc audit; PM forecasts are revisited frequently.</statement>
+        <rationale>Forecasts improve when you track what you predicted, what happened, and why. Audit logs enable retrospectives.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Pair predictive output with value-stream-management flow metrics and dora-metrics for triangulation.</statement>
+        <rationale>Multiple signals strengthen forecasting confidence and catch model edge cases.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Document model assumptions in a model card; PMs and execs need to understand limits.</statement>
+        <rationale>Model cards prevent overconfidence and set realistic expectations for forecast reliability.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Recommended subagents for a complete predictive analytics system:</p>
+
+      <list>
+        <item>data-extractor (haiku) — paginated REST/GraphQL pulls, schema validation, snapshot to parquet.</item>
+        <item>feature-builder (haiku) — deterministic transformations; no inference.</item>
+        <item>forecast-runner (sonnet, calls model API) — invokes the trained model, attaches confidence intervals.</item>
+        <item>analyst-agent (sonnet) — translates forecasts into stakeholder briefs with caveats.</item>
+        <item>forecast-monitor (haiku, scheduled) — calibration plots, drift alarms, retraining trigger.</item>
+        <item>policy-watch-agent (haiku) — watches PMI / org policy on AI-driven decisions; blocks releases that violate.</item>
+      </list>
+
+      <p>Prompt pattern for analyst-agent:</p>
+
+      <code lang="text"><![CDATA[You are analyst-agent. Inputs: forecast.json (point estimates + 80% CIs +
+top SHAP features), program_context.md. Produce a stakeholder brief in 3
+sections: (1) headline forecast in plain language, (2) the 3 most important
+drivers with one-sentence explanations, (3) recommended human decisions.
+Rules: never assert causation; say "associated with"; no numeric precision
+beyond the model's CI; flag low confidence (CI width > 30% of point) as
+"low confidence — treat as direction only".]]></code>
+
+      <p>Prompt pattern for data-extractor:</p>
+
+      <code lang="text"><![CDATA[You are data-extractor. Pull issues from Jira project KEY, time range
+[start, end], with fields: status_history, assignee, story_points,
+created, resolved, components, labels. Validate against schema X. Write
+parquet to ./data/raw/{KEY}_{date}.parquet. Refuse if rate-limited; back off.]]></code>
+    </section>
+
+    <section name="tools-and-services">
+      <p>Tools and services for implementing predictive analytics:</p>
+
+      <rule testable="true">
+        <statement>Use dvc for dataset and model version control, mlflow for experiment tracking and model registry.</statement>
+        <rationale>Reproducibility and version control prevent duplicate work and enable rollback on drift.</rationale>
+      </rule>
+
+      <p>Data and ML foundations:</p>
+
+      <list>
+        <item>dvc — Version control for datasets and models (https://dvc.org)</item>
+        <item>mlflow — Experiment tracking, model registry (https://mlflow.org)</item>
+        <item>prophet (Meta) — Time-series forecasting baseline (pip install prophet)</item>
+        <item>statsmodels / lifelines — Survival/hazard models for completion forecasting (pip install lifelines)</item>
+        <item>xgboost / lightgbm / catboost — Tabular gradient boosting (pip install lightgbm)</item>
+        <item>shap — Feature attribution for explainability (pip install shap)</item>
+        <item>pandas / polars / duckdb — Tabular wrangling (standard)</item>
+        <item>jira-cli / glab / gh / linear — Issue exporters (per tool)</item>
+        <item>papermill — Parameterized notebook runs for forecast generation (pip install papermill)</item>
+        <item>evidently — Calibration + drift dashboards (https://github.com/evidentlyai/evidently)</item>
+      </list>
+
+      <p>SaaS services with forecasting capability:</p>
+
+      <list>
+        <item>Atlassian Atlas + Jira Insights — Native predictive forecasts; opaque, but easy.</item>
+        <item>Microsoft Project for the Web + Power BI — Forecast widgets, model authoring in Power BI.</item>
+        <item>GitLab Value Stream Analytics + Insights — Cycle / DORA metrics with forecasting.</item>
+        <item>Azure DevOps Analytics (OData) — Powerful query surface for ML.</item>
+        <item>LinearB / Swarmia / Sleuth — Engineering-metrics with predictive overlays.</item>
+        <item>Plandek — Delivery-forecast tooling for SAFe orgs.</item>
+        <item>Tableau / Power BI / Looker — Visualization layer; pair with model output.</item>
+        <item>Databricks / Snowflake / BigQuery ML — Train models close to the data.</item>
+        <item>Hugging Face Inference / OpenAI / Anthropic — LLM layer for analyst briefs (not point forecasts).</item>
+        <item>MLflow Tracking Server (self-host) — Model + run versioning.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common pitfalls when building AI agents for predictive analytics:</p>
+
+      <antipattern>
+        <description>LLMs asked "predict when this will finish" hallucinate confident dates; force them to emit only ranges with explicit "model output X says" citations.</description>
+        <reason>LLMs lack the ability to generate calibrated uncertainty; they default to confident predictions that feel authoritative but are unreliable.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Per-person productivity outputs are an HR landmine — refuse to generate; aggregate to team or workstream.</description>
+        <reason>Individual metrics invite performance management abuse and destroy psychological safety.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Calibration drifts silently; without monitoring agents will keep forecasting poorly with high confidence.</description>
+        <reason>Drift detection requires continuous monitoring; it does not happen automatically.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LLMs love to weave causal claims ("Bob's stories slip because Bob is overloaded") from purely correlational features. Strip causal language.</description>
+        <reason>Agents will confidently make causal claims without statistical basis; this leads to interventions that do not work and erode trust in forecasting.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Survivorship bias: training data excludes cancelled projects; agents will under-predict cancellation risk. Add explicit cancellation labels.</description>
+        <reason>Models learn only from observed outcomes; missing data on failures makes them blind to failure modes.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Privacy: comment text used as a feature can leak PII into model logs; redact before training.</description>
+        <reason>Issue comments often contain personal information; using raw text violates privacy expectations and may violate GDPR/CCPA.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Stale snapshots: a forecast generated yesterday on data from a week ago is worthless; agents must show data-freshness timestamp.</description>
+        <reason>PM decisions move fast; a stale forecast leads to decisions on outdated information.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Auto-actioning a forecast (e.g., auto-escalating "at-risk") creates feedback loops in the data; route to humans.</description>
+        <reason>Automated actions change the data distribution on which the model was trained, invalidating future calibration.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Power-BI/Tableau dashboards from agents often miss row-level security; verify before publishing.</description>
+        <reason>Dashboards can leak sensitive data if not configured with proper access controls.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Human-in-the-loop checkpoints (mandatory): release of new model, threshold tuning, retraining cadence change, escalation rules.</description>
+        <reason>These gates prevent silent failures and keep humans accountable for model behavior in the organization.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/calibration.py" purpose="Calibration check script: Brier score and calibration curve from a parquet holdout set."/>
+    </templates>
+
+    <see-also>
+      <ref slug="value-stream-management"/>
+      <ref slug="dora-metrics"/>
+      <ref slug="jira-workflow-management"/>
+      <ref slug="ai-in-project-management"/>
+      <link href="https://en.wikipedia.org/wiki/Calibration_(statistics)">Calibration in statistics</link>
+      <link href="https://en.wikipedia.org/wiki/SHAP">SHAP explainability</link>
+    </see-also>
+  </content>
+</methodology>
