@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="llm-powered-conversational-ai">
+  <metadata>
+    <tier>geek</tier>
+    <group>ux</group>
+    <domain>ui-designer</domain>
+    <summary>LLM-powered voice/text conversational interfaces with ASR→LLM→TTS pipeline.</summary>
+    <tags>
+      <tag>conversational-ai</tag>
+      <tag>voice-ui</tag>
+      <tag>llm</tag>
+      <tag>asr</tag>
+      <tag>tts</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>LLM-Powered Conversational AI</title>
+
+    <summary>Design and implement voice/text conversational interfaces backed by an LLM core (ASR → LLM → TTS pipeline) rather than rule-based NLU. The LLM handles complex, multi-part queries, maintains conversation history, resolves ambiguity, and generates natural continuations — capabilities that traditional intent-slot systems cannot match.</summary>
+
+    <why>
+      <p>Rule-based VUI breaks on any query outside its predefined intent list. LLMs interpret open-ended phrasing, ask clarifying questions, and maintain context across turns. The result is a conversational experience that degrades gracefully instead of failing hard. The tradeoff is latency, cost, and hallucination risk — which must be managed with guardrails and a bounded persona scope.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Replacing a rule-based chatbot that fails on complex or multi-part queries</item>
+        <item>Building a voice agent where users phrase the same intent in many different ways</item>
+        <item>Implementing natural follow-up handling across multi-turn conversations</item>
+        <item>Prototyping an ASR → LLM → TTS pipeline for a product voice feature</item>
+        <item>Adding ambiguity clarification to a conversational flow</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Narrow command set (3–10 intents) — rule-based NLU is simpler, faster, cheaper, and more reliable</item>
+        <item>Response must be deterministic and auditable (medical dosage, legal status) — LLM variability is a liability</item>
+        <item>Latency budget is under 300ms end-to-end — the ASR → LLM → TTS stack has irreducible latency</item>
+        <item>Product needs autonomous action execution without human confirmation — guardrail architecture must come first</item>
+        <item>High background noise or non-standard accents at scale — ASR accuracy is the bottleneck, not LLM quality</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pipeline-stages">
+      <p>Core pipeline stages, capability comparison, and guardrail rules for LLM-powered conversational interfaces.</p>
+
+      <rule testable="true">
+        <statement>Route user speech through ASR → LLM → TTS in sequence; never skip or merge stages.</statement>
+        <rationale>Each stage has distinct failure modes. ASR errors propagate to LLM as noisy input; LLM output must be buffered to sentence boundaries before TTS to prevent unnatural speech fragments.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Buffer LLM streaming output to sentence boundaries before submitting to TTS.</statement>
+        <rationale>Partial-sentence TTS sounds unnatural and breaks comprehension. Sentence-boundary buffering adds minimal latency while preserving audio quality.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Keep conversation history to 5–10 turns; summarize older context rather than dropping it.</statement>
+        <rationale>Unbounded history grows context window cost and latency without proportional benefit. Summarization preserves relevant prior context at fixed cost.</rationale>
+      </rule>
+
+      <p>LLM-powered VUI handles complex, multi-part queries, full conversation history, ambiguity resolution, and natural follow-ups. Traditional rule-based VUI is limited to simple intents, slot-filling, pre-defined follow-ups, and no tone detection.</p>
+    </section>
+
+    <section name="guardrails">
+      <rule testable="true">
+        <statement>Define the persona scope boundary explicitly in the system prompt; require the LLM to escalate when outside it.</statement>
+        <rationale>Without an explicit boundary, LLMs engage with off-topic queries confidently. Escalation triggers (user says "agent", "human", "frustrated") are more reliable than sentiment scoring.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always confirm with the user before executing real-world actions (booking, purchasing, deleting).</statement>
+        <rationale>One LLM turn of confirmation is cheap; a bad action is not. Never trust LLM-generated parameter values directly — validate against schema before execution.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run a guardrail validator agent on every tool call before execution.</statement>
+        <rationale>The guardrail agent must see the original ASR transcript, not just the LLM-generated call, because the LLM may hallucinate parameters not present in the user's speech.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations-and-antipatterns">
+      <p>LLM hallucination in conversational context produces confident wrong answers — without retrieval grounding, factual reliability is low. Conversation history grows with each turn; at ~10–15 turns the context window cost and latency increase significantly. Persona consistency degrades over long conversations without explicit persona reinforcement in the system prompt. Off-topic escalation is an unsolved problem — LLMs engage with out-of-scope queries when they should decline. TTS introduces latency; streaming TTS (chunk-by-chunk) required for perceived responsiveness. Emotion/tone detection is imprecise — aggressive frustration and mild impatience produce different user needs but similar ASR output. Function/tool calling in voice context requires explicit validation before execution — LLM may call wrong function from ambiguous audio.</p>
+
+      <antipattern>
+        <description>Passing ASR transcript directly to LLM without confidence filtering.</description>
+        <reason>Low-confidence transcripts (e.g., "buck a flight" for "book a flight") produce wrong LLM intent. Log ASR confidence scores and require LLM confirmation for ambiguous transcripts.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Unbounded conversation history without a window limit.</description>
+        <reason>At 10–15 turns, context window cost and latency increase significantly with no proportional benefit. Use a 5–10 turn window with summarization of older context.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using sentiment scoring instead of explicit escalation triggers.</description>
+        <reason>Emotion/tone detection is imprecise — aggressive frustration and mild impatience produce similar ASR output. Use explicit keywords ("agent", "human") as escalation triggers.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Storing presigned ASR URLs instead of downloading immediately.</description>
+        <reason>Presigned URLs from ASR services expire. Download the audio or transcript immediately after generation.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Long system prompts for persona definition.</description>
+        <reason>Keep persona prompt under 200 tokens; use retrieval for factual knowledge. Long system prompts increase latency and cost without proportional quality gain.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Relying on automated metrics alone for quality monitoring.</description>
+        <reason>Review conversation logs weekly for hallucinated facts, persona drift, and off-topic escalation. Automated metrics miss nuanced failures. Alert if escalation rate exceeds 10%.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-integration">
+      <p>Subagent roles, prompt patterns, service catalog, and gotchas for building agent-driven conversational AI pipelines. A Claude subagent (Sonnet) acts as the conversational LLM core: it receives the ASR transcript, conversation history, and system persona prompt, generates a response, and outputs both a spoken text and an optional structured action (tool call). A Haiku subagent handles TTS integration (submitting the response to Amazon Polly or Google TTS), format conversion, and logging. A guardrail agent (Haiku) validates tool calls against an allowlist before execution. Human review of conversation logs is required periodically to detect persona drift and off-topic escalation patterns.</p>
+
+      <rule testable="true">
+        <statement>Use a Sonnet subagent for conversation turn generation and a Haiku subagent for TTS, logging, and guardrail validation.</statement>
+        <rationale>Sonnet handles intent understanding and ambiguity resolution; Haiku handles mechanical integration tasks (TTS API calls, log formatting, tool call validation) at lower cost and latency.</rationale>
+      </rule>
+
+      <p>Services and tools for ASR, TTS, and voice agents: OpenAI Whisper (cloud) is a high-accuracy ASR REST API with 90%+ accuracy on standard accents. Deepgram provides low-latency streaming ASR best for real-time voice. AssemblyAI offers real-time streaming ASR with speaker diarization. Amazon Polly delivers neural TTS with SSML support and voice persona selection. ElevenLabs provides ultra-realistic TTS with voice cloning and streaming. OpenAI Realtime API provides end-to-end voice (ASR + LLM + TTS) over WebSocket. Vapi offers managed voice agent infrastructure with phone call support. Pipecat is an OSS voice agent framework (ASR → LLM → TTS pipeline). LiveKit Agents is a real-time voice agent SDK.</p>
+
+      <p>Prompt patterns for voice agents include a system prompt structure: You are [persona name], a [role] for [product]. You help users [core use cases]. You must never claim capabilities outside [allowed domain list], ask one clarifying question at a time when the request is ambiguous, escalate to human support when the user is frustrated or the query is outside your scope, keep responses under 2 sentences for voice delivery, and always confirm before executing actions (booking, purchasing, deleting). Conversation history should include the last 5 turns as role/content pairs. Current user input is the ASR transcript.</p>
+
+      <p>For guardrail validation, the prompt pattern is: You are a guardrail validator for a voice agent. The LLM has proposed this tool call: [tool_name, parameters]. Allowed tools: [allowlist]. Allowed parameter ranges: [constraints]. Check: (1) Is the tool in the allowlist? (2) Are all parameters within allowed ranges? (3) Does the action match what the user asked for in the transcript? Output: { approved: true/false, reason: "...", safe_to_execute: true/false }.</p>
+
+      <p>Recommended CLI tools: openai-whisper for local ASR (speech-to-text) via pip install openai-whisper; whisper.cpp, a C++ port of Whisper for lower latency and on-device performance; pyttsx3 for local TTS in development/testing via pip install pyttsx3; pyaudio for microphone capture for real-time ASR via pip install pyaudio; Pipecat, an OSS voice agent framework via pip install pipecat-ai from pipecat.ai; LiveKit Agents real-time voice agent SDK.</p>
+
+      <example type="good" title="Minimal ASR→LLM→TTS pipeline">
+        <code lang="python"><![CDATA[
+import anthropic, boto3, io, sys
+import speech_recognition as sr
+from pydub import AudioSegment
+from pydub.playback import play
+
+PERSONA = (
+    "You are a helpful assistant. Keep responses under 2 sentences. "
+    "Ask one clarifying question when the request is ambiguous."
+)
+
+def transcribe(audio_data: bytes) -> str:
+    """Transcribe audio via Whisper (or swap for Deepgram/AssemblyAI)."""
+    import whisper
+    model = whisper.load_model("base")
+    result = model.transcribe(io.BytesIO(audio_data))
+    return result["text"]
+
+def generate_response(history: list[dict], user_text: str) -> str:
+    client = anthropic.Anthropic()
+    history.append({"role": "user", "content": user_text})
+    msg = client.messages.create(
+        model="claude-haiku-4-5",
+        max_tokens=256,
+        system=PERSONA,
+        messages=history,
+    )
+    reply = msg.content[0].text
+    history.append({"role": "assistant", "content": reply})
+    return reply
+
+def speak(text: str) -> None:
+    polly = boto3.client("polly", region_name="us-east-1")
+    response = polly.synthesize_speech(Text=text, OutputFormat="mp3", VoiceId="Joanna")
+    audio = AudioSegment.from_mp3(io.BytesIO(response["AudioStream"].read()))
+    play(audio)
+]]></code>
+        <note>Minimal working pipeline with Anthropic Claude, AWS Polly, and local Whisper ASR.</note>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <p>Define the persona's scope boundary explicitly in the system prompt — "I can only help with [X], [Y], [Z]" prevents topic drift. Always confirm before executing real-world actions (booking, deleting, purchasing) — one LLM turn of confirmation is cheap; bad action execution is not. Use streaming TTS output (chunk text as it generates) to keep perceived latency under 1 second. Log every conversation turn with the ASR confidence score — low-confidence transcripts explain the most common LLM errors. Set a conversation history window (5–10 turns) and summarize older context — unbounded history increases cost and latency without proportional benefit. Validate function call parameters against schema before execution, every time — never trust LLM-generated parameter values directly. Monitor escalation rate weekly — if more than 10% of conversations escalate to human, the persona boundary or the LLM's capability is mismatched to user expectations.</p>
+
+      <p>ASR introduces noise that degrades LLM intent recognition — "book a flight" may transcribe as "buck a flight"; require the LLM to confirm ambiguous transcripts before acting. Streaming responses must be buffered to sentence boundaries before TTS submission — partial sentence TTS sounds unnatural and breaks understanding. Tool call guardrail agent must see the original user transcript, not just the LLM-generated tool call — the LLM may hallucinate parameters not mentioned by the user. Long system prompts increase latency and cost; keep persona prompt under 200 tokens, use retrieval for knowledge. Human-in-loop checkpoint: review conversation logs weekly for hallucinated facts, persona drift, and off-topic escalation patterns — do not rely on automated metrics alone. Emotional tone detection is unreliable; use explicit escalation triggers (user says "agent", "human", "frustrated") rather than sentiment scoring.</p>
+    </section>
+
+    <see-also>
+      <link href="https://github.com/openai/whisper"/>
+      <link href="https://docs.anthropic.com/en/api/messages-streaming"/>
+      <link href="https://pipecat.ai"/>
+      <link href="https://livekit.io/agents"/>
+      <link href="https://www.nngroup.com/articles/llm-conversation-design/"/>
+      <link href="https://platform.openai.com/docs/guides/realtime"/>
+    </see-also>
+
+    <templates>
+      <template path="templates/persona-system-prompt.txt" purpose="System prompt template for voice agent persona with scope boundary and escalation rules"/>
+      <template path="templates/guardrail-validator-prompt.txt" purpose="Guardrail agent prompt for validating tool calls before execution"/>
+      <template path="templates/pipeline.py" purpose="Minimal ASR → LLM → TTS pipeline implementation in Python"/>
+    </templates>
+  </content>
+</methodology>
