@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/marketing/smm-manager + pro/pm/pm-agile methodologies → methodology.xml (instagram-basics, threads-basics, agile-hybrid-approaches; feature-045 batch)
 - migrate: 3/3 pro/pm/pm-agile methodologies → methodology.xml (azure-devops-boards, gitlab-boards, hybrid-delivery; feature-045 batch)
 - migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (growth-paid-acquisition, instagram-ads, meta-audience-targeting; feature-045 batch)
 - migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (google-pmax, google-search-ads, google-shopping-ads; feature-045 batch)
