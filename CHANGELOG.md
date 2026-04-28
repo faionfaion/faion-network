@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/ux/ux-researcher VUI methodologies → methodology.xml (vui-conversation-design, vui-market-context, vui-testing-best-practices; feature-045 batch 223)
 - migrate: 3/3 pro/ux/ux-researcher methodologies → methodology.xml (personas, surveys, tree-testing; feature-045 batch 222)
 - migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (accessibility-evaluation, accessibility-first-design, ada-title-ii-compliance-2026; feature-045 batch 224)
 - migrate: 3/3 pro/ux/user-researcher + pro/ux/ux-researcher methodologies → methodology.xml (user-research-at-scale, cog-walk-basics, cog-walk-process; feature-045 batch 219)

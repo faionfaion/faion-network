@@ -1,0 +1,187 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<methodology slug="vui-conversation-design">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-researcher</domain>
+    <summary>Intent-based dialog flow design with repair branches for voice interfaces.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>voice-ui</tag>
+      <tag>conversation-design</tag>
+      <tag>dialog-flow</tag>
+      <tag>intent-design</tag>
+      <tag>repair-paths</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>VUI Conversation Design</title>
+
+    <summary>VUI conversation design structures intent-based dialog flows for voice interfaces: defining intents, slots, prompt classes (open, directed, option, confirmation), happy paths, and all repair branches (no-match, no-input, max-retry, escape-to-human). The method applies to Alexa Skills, Google Actions, IVR systems, and in-app voice features that use a defined intent+entity NLU model.</summary>
+
+    <why>
+      <p>Voice UI removes visual affordances — the user cannot scan options or re-read instructions. Every dialog node must handle failure gracefully or the conversation terminates in frustration. Designing repair branches first (before happy path) forces honest coverage and surfaces ambiguity while cost is low. Confirmation strategy (implicit vs explicit) and retry-cap discipline are the two decisions that most visibly affect real-world satisfaction.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Authoring intent-based dialog flows with defined intents and slots.</item>
+        <item>Writing prompt copy in all four classes (open, directed, option, confirmation) and tagging for analytics.</item>
+        <item>Migrating a chatbot script to voice where brevity, prosody, and turn-taking change the requirements.</item>
+        <item>Adding repair coverage (no-match, no-input, escalation) to an existing dialog graph.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>LLM-only freestyle conversation without pre-defined intents — that needs RAG-driven or agentic dialog methodology.</item>
+        <item>Pure GUI form-filling — no turn-taking benefit from VUI design patterns.</item>
+        <item>Asynchronous chat (email, ticketing) where real-time constraint is absent.</item>
+        <item>One-shot commands with no follow-up (smart-home toggle) — dialog flow is degenerate.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-components">
+      <p>Every VUI turn consists of: wake word (activation), intent (user goal), entities (parameters), system prompt (question or confirmation), and response. Error handling is a first-class component, not an afterthought.</p>
+
+      <rule>
+        <statement>Design all four repair paths for every prompt node: no-match (unrecognized input), no-input (silence/timeout), max-retry (escalation after N failures), and escape-to-human (always available within 3 retries).</statement>
+        <rationale>VUI flows without repair paths produce dead ends. The user cannot read a "Page Not Found" equivalent — they just hear silence or repeated prompts and abandon the interaction.</rationale>
+      </rule>
+    </section>
+
+    <section name="prompt-classes">
+      <rule>
+        <statement>Use the correct prompt class for each node: open prompts ("How can I help?") for unconstrained input; directed prompts ("What city?") when the entity space is large; option prompts ("Red, blue, or green?") only when options are 4 or fewer; confirmation prompts ("Is that correct?") for destructive or irreversible actions only.</statement>
+        <rationale>Option prompts with more than 4 choices exceed working memory. Using explicit confirmation for low-stakes actions (setting a timer) feels robotic and wastes turn budget. Implicit confirmation (just executing) is correct for low-stakes reversible actions.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Tag every prompt with class, intent, and retry-count in analytics. Without this tagging, you cannot measure where the dialog fails in production.</statement>
+        <rationale>Anonymous prompt firing data cannot be analyzed by failure type. Class + intent + retry-count gives the minimum dimensions needed to locate dialog bottlenecks.</rationale>
+      </rule>
+    </section>
+
+    <section name="dialog-flow-patterns">
+      <example type="good" title="Happy path, missing-entity slot-filling, and disambiguation flow">
+        <code lang="text">
+Happy path:
+  User: "Set a timer for 5 minutes"
+  VUI:  "5-minute timer started"
+
+Missing entity (no duration):
+  User: "Set a timer"
+  VUI:  "For how long?"
+  User: "5 minutes"
+  VUI:  "5-minute timer started"
+
+Disambiguation (ambiguous entity):
+  User: "Set a timer for five"
+  VUI:  "5 minutes or 5 hours?"
+  User: "Minutes"
+  VUI:  "5-minute timer started"
+        </code>
+        <note>Shows happy path, missing-entity slot-filling, and disambiguation flow for "set timer".</note>
+      </example>
+
+      <reference path="templates/dialog-flow.json">Skeleton dialog graph node structure with required transition fields</reference>
+    </section>
+
+    <section name="retry-discipline">
+      <rule>
+        <statement>Cap retries at 3 on any node. The third no-match transitions to human escalation or an alternative modality (text fallback, app deep link). Never loop indefinitely.</statement>
+        <rationale>Users who fail 3 times in a row are in a breakdown state. Offering a different modality respects their time and preserves product trust. Looping produces frustration and abandonment.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Vary prompt copy on retry — do not repeat the same wording. Maintain at least 3 variants per node and rotate. Repeating the same prompt feels broken.</statement>
+        <rationale>Identical retry prompts signal to the user that the system is stuck, increasing anxiety and reducing the chance of a successful follow-up input.</rationale>
+      </rule>
+    </section>
+
+    <section name="confirmation-strategy">
+      <rule>
+        <statement>Use implicit confirmation for low-stakes reversible actions (executing immediately). Use explicit confirmation ("Is that correct?") only for destructive or irreversible actions.</statement>
+        <rationale>Overuse of explicit confirmation creates robotic, slow interactions. Users learn to ignore confirmations when they appear too frequently. Reserve explicit confirmation for actions where a mistake has real cost.</rationale>
+      </rule>
+    </section>
+
+    <section name="write-repair-first">
+      <rule>
+        <statement>Author no-match, no-input, and barge-in handlers before the happy path. Happy path is written last.</statement>
+        <rationale>Writing repair branches first forces honest coverage and exposes ambiguity at design time. Happy-path-first designers consistently underspecify repair branches and discover gaps in testing.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-coverage-check">
+      <rule>
+        <statement>Run repair-coverage-checker on every dialog graph draft. LLMs producing dialog flows skip no-input and max-retry transitions reliably.</statement>
+        <rationale>Agent-generated dialog graphs consistently omit timeout transitions and max-retry escalations. Automated linting after every draft catches these before human review.</rationale>
+      </rule>
+
+      <reference path="templates/repair-check.ts">TypeScript linter for missing repair transitions</reference>
+    </section>
+
+    <section name="design-antipatterns">
+      <antipattern>
+        <description>Disambiguation with more than one clarifying turn before falling back to directed prompt or human.</description>
+        <reason>Multi-turn disambiguation compounds confusion. After one failed disambiguation, transition to a directed prompt with explicit options or escalate to human assistance.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using option prompts with more than 4 choices (e.g., listing 7 options).</description>
+        <reason>Voice working memory holds 3-4 items. Users lose track of options mid-list and cannot re-hear. Constrain options to 4 or fewer, or use directed prompting to narrow the space.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Breaking the user's mental model on barge-in by ignoring a relevant interruption mid-prompt.</description>
+        <reason>If the user starts speaking during a prompt with a relevant utterance and the system ignores it, trust breaks immediately. Accept relevant barge-in; if irrelevant, gracefully resume.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-specific-failures">
+      <antipattern>
+        <description>LLM-generated unbounded paraphrases used as runtime prompt variants.</description>
+        <reason>Runtime LLM paraphrases drift in tone and length across sessions. Pre-generate 3-5 vetted variants offline and rotate. Never generate prompt copy live in production.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LLM dialog flow skips no-input and max-retry transitions.</description>
+        <reason>LLMs reliably omit timeout and escalation transitions. Run repair-coverage-checker on every draft before review — treat missing transitions as blocking defects.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using the same TTS engine for test fixtures as for product output.</description>
+        <reason>Same-vendor TTS inflates naturalness scores in LLM-judge evaluation. Use a different TTS engine for test utterance fixtures than for product output rendering.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow"><p>Pair a deterministic dialog graph with an LLM only at edges that benefit from generation: paraphrasing prompts, generating disambiguation alternatives, classifying low-confidence inputs. Keep state in code (intent, slot map, last_prompt_class), not in the LLM. Pipeline: (1) `flow-author` drafts the canonical graph from a goal spec, (2) `prompt-writer` produces 3-5 variants per node tagged by class, (3) `repair-coverage-checker` enumerates missing repair paths, (4) `dialog-runner` executes the graph at runtime, calling LLMs only on no-match/disambiguation.</p><p>### Recommended subagents</p><p>### Prompt pattern</p><p>```</p><p>You are repair-coverage-checker. Given &lt;flow_json&gt;, verify each prompt node has:</p><p>Output JSON: {missing:[{node_id, defect}], escalation_paths:[...]}.</p><p>```</p></section><templates>
+      <template path="templates/dialog-flow.json" purpose="Skeleton dialog graph node structure with required transition fields." />
+      <template path="templates/prompt-palette.txt" purpose="Prompt-class palette: 3-5 variant slots per node, tagged for analytics." />
+      <template path="templates/repair-check.ts" purpose="TypeScript linter: flags nodes missing no-match, no-input, or max-retry transitions." />
+    </templates>
+
+    <checklist>
+      <check>All prompt nodes have four repair paths: no-match, no-input, max-retry, escape-to-human.</check>
+      <check>Repair branches are authored before happy path.</check>
+      <check>Each prompt node is tagged with class (open, directed, option, confirm), intent, and retry-count.</check>
+      <check>Option prompts have 4 or fewer choices.</check>
+      <check>Retry prompts vary in wording with at least 3 variants per node.</check>
+      <check>Destructive actions require explicit confirmation; low-stakes actions use implicit confirmation.</check>
+      <check>Repair-coverage-checker passes on the final dialog graph.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://developers.google.com/assistant/conversation-design/welcome" />
+      <link href="https://developer.amazon.com/docs/alexa/alexa-design/get-started.html" />
+      <link href="https://www.nngroup.com/articles/voice-interaction/" />
+      <link href="https://alistapart.com/article/conversational-ui/" />
+    </see-also>
+  <section name="cli-tools"><item>`ask-cli` v2 — developer.amazon.com/docs/smapi/ask-cli-intro.html</item><item>`gactions` — developers.google.com/assistant</item><item>`voiceflow-cli` — github.com/voiceflow/voiceflow-cli</item><item>`rasa` CLI — rasa.com/docs/rasa</item><item>`botpress` CLI — botpress.com/docs</item><item>`azure-bot-cli` — learn.microsoft.com/azure/bot-service</item><item>`pipecat` — github.com/pipecat-ai/pipecat</item><item>`livekit-cli` — docs.livekit.io</item></section><section name="services-and-apps"><item>Voiceflow (SaaS) — Visual dialog builder, agent-friendly export</item><item>Amazon Lex / Connect (SaaS) — IVR + chat; intent + slot model</item><item>Google Dialogflow CX (SaaS) — State-machine dialogs</item><item>Rasa Open Source (OSS) — Self-host, full state control</item><item>Botpress (OSS + SaaS) — Studio editor + LLM blocks</item><item>Azure Bot Framework (SaaS) — Composer + adaptive dialogs</item><item>Pipecat / Vapi / Retell (SaaS/OSS) — LLM-first realtime voice agents (different paradigm)</item><item>ElevenLabs / Azure Neural TTS / OpenAI TTS (SaaS) — Render prompts to audio for review</item></section></content>
+</methodology>
