@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ab-testing-setup">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>growth-marketer</domain>
+    <summary>Technical and analytical groundwork for valid A/B experiments: accurate sample-size calculation using statsmodels, traffic-split configuration with deterministic-hash bucketing, SRM monitoring from day 1, and pre-launch and results documentation templates.</summary>
+    <tags>
+      <tag>ab-testing</tag>
+      <tag>experimentation</tag>
+      <tag>sample-size</tag>
+      <tag>statistical-power</tag>
+      <tag>experiment-design</tag>
+    </tags>
+    <category>testing</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>A/B Testing Setup</title>
+
+    <summary>A/B testing setup covers the technical and analytical groundwork for a valid experiment: accurate sample-size calculation (statsmodels NormalIndPower, not the simplified 16×p(1-p)/MDE² teaching formula), traffic-split configuration with deterministic-hash bucketing, SRM monitoring from day 1, and a plan-and-results template that an analyst agent fills in deterministically.</summary>
+
+    <why>
+      <p>The single biggest experiment-program failure mode is not low K-factor or poor hypothesis quality — it is underpowered tests that produce noise mistaken for signal. Using statsmodels gives honest sample-size math; the simplified formula under- or over-estimates by 25–50% for non-50/50 splits, one-sided tests, or asymmetric baselines. Pre-committing to end dates and wiring SRM day 1 prevents the two most common invalidation patterns.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Pre-launch sample-size and duration calculation for any planned experiment.</item>
+        <item>Configuring traffic split, randomization, and SRM monitoring in Statsig, GrowthBook, LaunchDarkly, or equivalent.</item>
+        <item>Auditing a draft test plan against the pre-launch checklist before traffic flows.</item>
+        <item>Generating plan and results templates that analysts fill in consistently across the team.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Network-effect surfaces (chat, marketplace, multiplayer) — independent randomization is invalid; use cluster or switchback designs.</item>
+        <item>Heavy personalization where every user already sees a unique variant — plain A/B math doesn't apply.</item>
+        <item>Single-shot critical decisions (pricing model, brand direction) — blast radius too large.</item>
+        <item>Pre-instrumentation: if the primary metric is not tracked end-to-end yet, instrument first; computing sample size is meaningless otherwise.</item>
+        <item>Continuous heavy-tailed outcome metrics (revenue per user) without log-transform or bootstrap — proportion math misleads.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="sample-size-calculation-rules">
+      <p>Accurate sample-size and duration calculation using statsmodels, with common pitfalls of the simplified formula and a quick reference table by baseline rate and MDE.</p>
+
+      <rule testable="true">
+        <statement>Use statsmodels NormalIndPower for all sample-size calculations; the simplified n = 16*p*(1-p)/MDE^2 is a teaching aid — it silently assumes 95% two-sided, 80% power, and 50/50 split.</statement>
+        <rationale>Deviations from those defaults (one-sided test, 90/10 split, 90% power) cause 25–50% error in the simplified formula. statsmodels handles all cases correctly.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always state MDE as relative percentage (e.g. 10% relative lift on a 5% baseline = 0.5pp absolute), and convert explicitly in the calculation output.</statement>
+        <rationale>MDE relative vs absolute confusion is the single biggest sample-size error — an agent told "MDE = 1%" on a 5% baseline can compute for a 1pp absolute lift (doubling the metric) rather than a 10% relative lift.</rationale>
+      </rule>
+
+      <example type="bad">
+        <note>baseline=10%, MDE="10%" — ambiguous: does this mean +1pp (absolute) or +10% relative (to 11%)?</note>
+      </example>
+
+      <example type="good">
+        <note>baseline=10%, mde_relative=0.10 → p2 = 0.10 * 1.10 = 0.11, effect_size = proportion_effectsize(0.11, 0.10)</note>
+      </example>
+
+      <rule testable="true">
+        <statement>Account for weekend traffic dips when estimating duration; if daily_users is based on a Monday-Friday average, multiply by 7/5 to get true daily average before dividing into total sample.</statement>
+        <rationale>Agents using weekday-only traffic estimate durations that are 30–50% too short; the test hits its end date before reaching the required sample.</rationale>
+      </rule>
+
+      <p>duration_days = ceil((n_per_variant * 2) / daily_traffic_true_daily_avg)</p>
+
+      <p>Quick reference: n_per_variant at alpha=0.05, power=0.80, two-sided</p>
+      <list>
+        <item>baseline=1%, MDE_rel=5%: ~62k | 10%: ~16k | 20%: ~4k</item>
+        <item>baseline=5%, MDE_rel=5%: ~30k | 10%: ~8k | 20%: ~2k</item>
+        <item>baseline=10%, MDE_rel=5%: ~28k | 10%: ~7k | 20%: ~1.8k</item>
+        <item>baseline=25%, MDE_rel=5%: ~20k | 10%: ~5k | 20%: ~1.3k</item>
+        <item>baseline=50%, MDE_rel=5%: ~16k | 10%: ~4k | 20%: ~1k</item>
+      </list>
+
+      <rule testable="true">
+        <statement>When using a 90/10 split to limit blast radius, pass ratio=9.0 to NormalIndPower; the small arm needs ~9x more users per-arm than a 50/50 split to achieve the same power.</statement>
+        <rationale>Asymmetric splits blow up sample requirement on the small arm; agents that forget the ratio parameter under-size and produce unreliable results.</rationale>
+      </rule>
+
+      <reference path="templates/sample-size.py">Python function: n_per_variant and duration_days using NormalIndPower + proportion_effectsize</reference>
+    </section>
+
+    <section name="randomization-and-monitoring">
+      <p>Randomization rules, SRM monitoring setup, A/A test, sequential testing opt-in, and holdout bucket design for valid experiment infrastructure.</p>
+
+      <rule testable="true">
+        <statement>Use deterministic-hash bucketing (hash(user_id + experiment_id) % 100) so users stay in the same arm across sessions and devices.</statement>
+        <rationale>Session-based random assignment causes the same user to see both variants across sessions, contaminating results.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Reserve a 5% holdout bucket outside all experiments for clean baseline measurement.</statement>
+        <rationale>Without a holdout, long-running experiment programs cannot measure the aggregate effect of the full test calendar on the product metrics.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Configure an SRM check (chi-square on observed split vs expected) on day 1 and alert when p &lt; 0.001; invalidate the test if the alert fires and investigate before resuming.</statement>
+        <rationale>SRM indicates that randomization is broken — the test result cannot be trusted even if the primary metric reaches significance.</rationale>
+      </rule>
+
+      <list>
+        <item>expected 50/50 split → observed n_A vs n_B → chi2 p-value</item>
+        <item>if p &lt; 0.001 → pause, investigate tracking and bucketing before proceeding</item>
+        <item>common SRM causes: bot traffic, caching bypasses partial variant, SDK version mismatch</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Run an A/A test (both arms see control) for 1–2 days before the real experiment; confirm no false positive on the primary metric before introducing the treatment.</statement>
+        <rationale>A/A tests catch tracking bugs, bucketing errors, and pre-existing metric imbalances that would invalidate results even before treatment is introduced.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>If the experiment platform supports sequential testing (Statsig, Optimizely), opt in — it allows valid peeking at any time without inflating false positives.</statement>
+        <rationale>Fixed-horizon tests require committing to an end date and not peeking; sequential designs are more flexible but require the platform to use a valid always-valid inference method.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Using fixed-horizon sample-size math and then analyzing with sequential testing tools.</description>
+        <reason>The two frameworks have different stopping rules; mixing them produces invalid confidence intervals.</reason>
+      </antipattern>
+    </section>
+
+    <section name="pre-launch-checklist">
+      <p>Full setup checklist covering technical platform, analytics configuration, team training, success-metrics definition, and experiment governance.</p>
+
+      <p>Technical Platform:</p>
+      <list>
+        <item>install experiment platform (Statsig / GrowthBook / LaunchDarkly / PostHog)</item>
+        <item>configure deterministic-hash bucketing with user_id + experiment_id</item>
+        <item>set up SRM monitoring with day-1 chi-square alert</item>
+        <item>wire analytics integration (GA4, Mixpanel, Amplitude, or warehouse)</item>
+        <item>QA tracking in staging before first live test</item>
+      </list>
+
+      <p>Analytics Configuration:</p>
+      <list>
+        <item>define primary metric SQL in a versioned model</item>
+        <item>add custom events for all secondary and guardrail metrics</item>
+        <item>create user segment for test participants (exclude bots, staff)</item>
+        <item>verify conversion tracking fires on correct events in both variants</item>
+        <item>confirm no partial-day contamination (ramp-up traffic excluded from analysis window)</item>
+      </list>
+
+      <p>Team Training and Governance:</p>
+      <list>
+        <item>train team on if/then/because hypothesis format</item>
+        <item>document MDE relative vs absolute distinction and calculator link</item>
+        <item>create experiment log template (hypothesis, result, lift, learning)</item>
+        <item>establish weekly test-launch meeting and sign-off procedure</item>
+        <item>define governance rule: no test launches without analyst approval on sample size</item>
+      </list>
+
+      <p>Success Metrics Definition:</p>
+      <list>
+        <item>choose primary metric — must tie to a business outcome, not a vanity metric</item>
+        <item>define 3+ guardrail metrics explicitly as "watch only"</item>
+        <item>set baseline value from the last 28 days</item>
+        <item>calculate MDE based on minimum business-relevant improvement</item>
+        <item>compute n_per_variant and duration using statsmodels (not simplified formula)</item>
+        <item>set confidence level (standard: alpha=0.05, power=0.80)</item>
+      </list>
+    </section>
+
+    <section name="agent-integration">
+      <p>Agentic workflow and common failure modes.</p>
+
+      <p>An `opus` design agent runs the pre-launch checklist (hypothesis, primary, secondaries, guardrails, MDE) and computes sample size + duration with explicit alpha/power/split. A `sonnet` config agent translates the plan into the experiment platform's API call (Statsig/GrowthBook/LaunchDarkly). A `haiku` monitor watches SRM and traffic-allocation health daily. The same `opus` agent reads results at the pre-committed end date and writes the learning into the experiment log.</p>
+
+      <p>Agent-specific gotchas:</p>
+      <list>
+        <item>Agent reports "duration: 7 days" without checking whether traffic includes a weekend; weekend traffic dips by 30-50%.</item>
+        <item>The simplified formula uses two-sided alpha=0.05 implicitly; agents on one-sided tests under-size by ~25%.</item>
+        <item>Asymmetric splits (90/10 to limit blast radius) blow up the sample requirement on the small arm; agent must apply the ratio correctly.</item>
+        <item>SRM check is often skipped in templates — wire it into the pre-launch checklist explicitly.</item>
+        <item>Sample-size answers in "users" can confuse a per-session metric — agent should declare the unit of randomization.</item>
+        <item>Experiment-platform API agents that auto-create experiments without the analytical-plan attachment break audit trails.</item>
+        <item>Prompt agents to refuse the test if MDE is missing rather than picking a default; a "default 10%" silently misleads.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/sample-size.py" purpose="Python: accurate n_per_variant and duration_days using statsmodels"/>
+      <template path="templates/test-plan.md" purpose="A/B test planning card template"/>
+      <template path="templates/test-results.md" purpose="A/B test results template"/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.evanmiller.org/ab-testing/sample-size.html"/>
+      <link href="https://www.statsmodels.org/stable/stats.html"/>
+      <link href="https://statsig.com/blog/sequential-testing"/>
+      <link href="https://www.exp-platform.com/Pages/papers.aspx"/>
+    </see-also>
+  </content>
+</methodology>

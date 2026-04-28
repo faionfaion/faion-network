@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ruby-rspec-testing">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Write comprehensive, maintainable RSpec tests for Rails applications using FactoryBot, Shoulda Matchers, and modern RSpec idioms (is_expected.to, request specs, build_stubbed).</summary>
+    <tags>
+      <tag>rspec</tag>
+      <tag>testing</tag>
+      <tag>rails</tag>
+      <tag>tdd</tag>
+      <tag>factory-bot</tag>
+    </tags>
+    <category>testing</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-24</created>
+    <languages>
+      <language>ruby</language>
+    </languages>
+    <frameworks>
+      <framework>rails</framework>
+    </frameworks>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+  <content>
+    <title>RSpec Testing (Rails)</title>
+    <summary>Write comprehensive, maintainable tests for Rails applications using RSpec 3.13+, FactoryBot, Shoulda Matchers, and Capybara. Model specs test validations and associations using matchers; service specs exercise business logic; request specs validate HTTP contracts; system specs verify end-to-end flows. Modern idioms: `is_expected.to` (not `should`), request specs (never deprecated controller specs), `build_stubbed` for speed, `travel_to` for time-dependent code.</summary>
+    <why>
+      <p>RSpec with FactoryBot and Shoulda Matchers provides a single, composable testing framework that scales from unit (model validations) through integration (request specs) to end-to-end (system specs). Shoulda matchers reduce boilerplate; FactoryBot fixtures are maintainable; Capybara matchers (not `sleep`) handle async waits correctly. The modern `is_expected.to` syntax enforces clarity and avoids the deprecated `should` form that breaks under RSpec 3+.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Backfilling tests on a Rails monolith that has shipped without sufficient model/controller/service coverage</item>
+        <item>Driving TDD on a new Rails app where RSpec + FactoryBot + Shoulda Matchers + Capybara is the team standard</item>
+        <item>Standardizing a mixed Minitest/RSpec codebase to a single style; or generating RSpec specs from existing fixtures</item>
+        <item>Adding request specs to lock down API contracts before a controller refactor or migration to GraphQL</item>
+        <item>Writing service-object specs for Trailblazer / Interactor / dry-monads-style command objects extracted from fat controllers</item>
+        <item>Generating system / feature specs with Capybara + Selenium / Cuprite for happy-path regression coverage</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Sinatra / Roda apps, gems with no Rails dependency — drop the `rails_helper`, use plain RSpec or Minitest</item>
+        <item>Performance-sensitive Ruby microservices where startup tax of `rails_helper` (>3s) breaks CI throughput. Consider Minitest or `rspec` without `rails_helper`</item>
+        <item>Codebases standardized on Minitest / Test::Unit — don't impose RSpec</item>
+        <item>Jobs / mailers heavy on third-party APIs without a contract layer — mocks in RSpec drift; use VCR + Pact</item>
+        <item>Throwaway prototypes / Hanami / dry-system experiments where Shoulda Matchers / FactoryBot don't apply</item>
+      </list>
+    </when-not-to-use>
+    <section name="model-specs">
+      <p>Model specs test validations, associations, scopes, and instance methods using Shoulda Matchers for declarative assertions. Type: :model loads ActiveRecord with all extensions; use `build_stubbed` for spec objects that don't require persistence, and `create` only when the test queries the database. Shoulda Matchers reduces boilerplate: `it { is_expected.to validate_presence_of(:email) }` instead of writing a custom test that builds an invalid record and asserts it fails.</p>
+      <example type="good" title="Model spec with validations and associations">
+        <code lang="ruby"><![CDATA[
+# spec/models/user_spec.rb
+require 'rails_helper'
+
+RSpec.describe User, type: :model do
+  describe 'validations' do
+    it { is_expected.to validate_presence_of(:email) }
+    it { is_expected.to validate_presence_of(:name) }
+    it { is_expected.to validate_uniqueness_of(:email).case_insensitive }
+    it { is_expected.to validate_length_of(:name).is_at_least(2).is_at_most(100) }
+  end
+
+  describe 'associations' do
+    it { is_expected.to have_one(:profile).dependent(:destroy) }
+    it { is_expected.to have_many(:orders).dependent(:nullify) }
+  end
+
+  describe 'scopes' do
+    describe '.active' do
+      let!(:active_user) { create(:user, active: true) }
+      let!(:inactive_user) { create(:user, active: false) }
+
+      it 'returns only active users' do
+        expect(User.active).to eq([active_user])
+      end
+    end
+  end
+
+  describe '#full_name' do
+    let(:user) { build(:user, first_name: 'John', last_name: 'Doe') }
+
+    it 'returns combined first and last name' do
+      expect(user.full_name).to eq('John Doe')
+    end
+  end
+end
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Use `is_expected.to` syntax, never `should`. The deprecated `should` syntax (e.g., `it { should validate_presence_of(:email) }`) is a pre-RSpec-3 idiom that still appears in older tutorials; RSpec 3+ strongly prefers the explicit `is_expected.to` form.</statement>
+        <rationale>Modern RSpec 3+ idiom; explicit and clear. Agents trained on stale data emit the deprecated form; enforce in review.</rationale>
+      </rule>
+      <rule>
+        <statement>Use `build_stubbed` for model specs that don't require persistence; only `create` when the spec queries the database or requires side effects. Avoid `let!` unless the side-effect setup is necessary; lazy `let` keeps specs fast and avoids hidden coupling.</statement>
+        <rationale>Modern RSpec 3+ idiom. `build_stubbed` is faster and prevents test-order coupling via database state. `build` skips persistence but allows association loading; `create` persists. Lazy evaluation (let) runs only when the value is accessed; eager evaluation (let!) runs even for skipped contexts.</rationale>
+      </rule>
+      <rule>
+        <statement>Group tests with describe/context blocks by concern: validations, associations, scopes, methods. Name each context clearly: 'when email is blank', 'with dependent: destroy', etc.</statement>
+        <rationale>Readability and maintainability; easy to locate related specs. Clear names become executable documentation.</rationale>
+      </rule>
+      <rule>
+        <statement>Conditional validations, custom validators, and model callbacks need explicit specs; Shoulda Matchers does not cover them. Test these manually to catch false confidence from matchers alone.</statement>
+        <rationale>Matchers are a shorthand for common cases; always supplement with explicit tests for domain logic.</rationale>
+      </rule>
+    </section>
+    <section name="service-specs">
+      <p>Service specs exercise business logic in isolation, testing happy paths and error cases. Services are command objects with a single `call` method; RSpec drives each scenario via context blocks. Use `be_success` and `be_failure` matchers if the service returns a ServiceResult value object. Avoid database hits in service specs unless the service queries the database; use `build_stubbed` for AR objects and plain hashes for input params.</p>
+      <example type="good" title="Service spec with valid and invalid contexts">
+        <code lang="ruby"><![CDATA[
+# spec/services/users/create_service_spec.rb
+require 'rails_helper'
+
+RSpec.describe Users::CreateService do
+  describe '#call' do
+    subject(:service) { described_class.new(params: params) }
+
+    context 'with valid params' do
+      let(:params) { { name: 'John', email: 'john@example.com', password: 'secret123' } }
+
+      it 'creates a user' do
+        expect { service.call }.to change(User, :count).by(1)
+      end
+
+      it 'returns success result' do
+        result = service.call
+        expect(result).to be_success
+        expect(result.data).to be_a(User)
+      end
+
+      it 'sends welcome email' do
+        expect { service.call }
+          .to have_enqueued_mail(UserMailer, :welcome)
+      end
+    end
+
+    context 'with invalid params' do
+      let(:params) { { name: '', email: 'invalid' } }
+
+      it 'does not create a user' do
+        expect { service.call }.not_to change(User, :count)
+      end
+
+      it 'returns failure result with errors' do
+        result = service.call
+        expect(result).to be_failure
+        expect(result.errors).to include(/Email/)
+      end
+    end
+  end
+end
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Name contexts clearly: 'with valid params', 'when email taken', etc. Each context tests one scenario; each it tests one assertion or related group. Use `describe '#call'` to group all service entry-point tests.</statement>
+        <rationale>Readable test names become executable documentation; easy to understand what fails. The describe block makes clear which method is being exercised.</rationale>
+      </rule>
+      <rule>
+        <statement>Use `build_stubbed` in service specs unless the test requires database queries (e.g., association loading). Avoid persisting data unless the service queries the database. Never use `create` where `build_stubbed` would suffice — multiply test duration across large suites.</statement>
+        <rationale>Faster test execution; specs remain unit tests rather than integration tests. For CI with parallel_tests or large suites, database overhead dominates. Force the rule: if the test doesn't query the DB, use build_stubbed.</rationale>
+      </rule>
+    </section>
+    <section name="request-specs">
+      <p>Request specs (formerly integration specs) test HTTP contracts: endpoints, status codes, response bodies. Type: :request loads the full Rails routing stack; always prefer request specs over deprecated controller specs (which test Rails internals like `assigns` and `assert_template`). Request specs exercise routes, middleware, and auth filters like a real HTTP client would.</p>
+      <example type="good" title="Request spec testing POST endpoint">
+        <code lang="ruby"><![CDATA[
+# spec/requests/api/v1/users_spec.rb
+require 'rails_helper'
+
+RSpec.describe 'Users API', type: :request do
+  describe 'POST /api/v1/users' do
+    context 'with valid params' do
+      let(:valid_params) do
+        { user: { name: 'John', email: 'john@example.com', password: 'secret123' } }
+      end
+
+      it 'creates a user' do
+        expect { post '/api/v1/users', params: valid_params }
+          .to change(User, :count).by(1)
+      end
+
+      it 'returns 201 Created' do
+        post '/api/v1/users', params: valid_params
+        expect(response).to have_http_status(:created)
+      end
+
+      it 'returns the created user in JSON' do
+        post '/api/v1/users', params: valid_params
+        json = JSON.parse(response.body)
+        expect(json['data']['name']).to eq('John')
+        expect(json['data']['email']).to eq('john@example.com')
+      end
+    end
+
+    context 'with invalid params' do
+      let(:invalid_params) { { user: { email: 'invalid' } } }
+
+      it 'does not create a user' do
+        expect { post '/api/v1/users', params: invalid_params }
+          .not_to change(User, :count)
+      end
+
+      it 'returns 422 Unprocessable Entity' do
+        post '/api/v1/users', params: invalid_params
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      it 'returns error messages' do
+        post '/api/v1/users', params: invalid_params
+        json = JSON.parse(response.body)
+        expect(json['errors']).to include(/Email/)
+      end
+    end
+  end
+end
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Write request specs, never controller specs. Controller specs (`assigns`, `assert_template`) are deprecated in Rails 5+ and test Rails internals instead of the HTTP contract. Request specs exercise routes, middleware, and auth filters like a real HTTP request would.</statement>
+        <rationale>Request specs test the actual HTTP interface the client sees. Controllers are implementation details; controllers are refactored without affecting the spec contract.</rationale>
+      </rule>
+      <rule>
+        <statement>Use verb methods: `get`, `post`, `put`, `delete`. Assert on `response.status` and `have_http_status(:created)` matcher. For JSON APIs, parse the response with `JSON.parse(response.body)` and assert on the structure.</statement>
+        <rationale>Clear, declarative HTTP semantics. Matchers like `have_http_status` are more readable than numeric codes.</rationale>
+      </rule>
+      <rule>
+        <statement>Use the expect block form for request specs that test side effects: `expect { post '/path' }.to change(Model, :count).by(1)` asserts the request both succeeds (doesn't raise) and changes the database.</statement>
+        <rationale>Combines the HTTP contract test with the side-effect test in one clear statement.</rationale>
+      </rule>
+    </section>
+    <section name="system-and-feature-specs">
+      <p>System specs exercise full user flows in a browser-like environment using Capybara and Cuprite (CDP driver) or Selenium.</p>
+      <rule>
+        <statement>Use Capybara matchers that auto-wait: `have_content`, `have_selector`, `have_link`. Never use `sleep` in system specs.</statement>
+        <rationale>Capybara's built-in waits (default 2 seconds, configurable) handle async JS rendering. `sleep` is unreliable on CI.</rationale>
+      </rule>
+      <rule>
+        <statement>Use Cuprite (Ferrum/CDP) as the default driver, not Selenium. Cuprite is faster, has no binary dependency, and handles headless Chrome natively.</statement>
+        <rationale>Performance and reliability on CI; no ChromeDriver version conflicts.</rationale>
+      </rule>
+      <rule>
+        <statement>Use `travel_to` for time-dependent specs. Freeze time with `travel_to(Time.zone.local(2026, 5, 1, 12, 0, 0))` and reset with `travel_back` in an `after` block.</statement>
+        <rationale>Prevents flaky tests that fail on specific dates (Feb 29, DST transitions) or month boundaries.</rationale>
+      </rule>
+    </section>
+    <section name="factories-and-fixtures">
+      <rule>
+        <statement>Define factories under `spec/factories/`, one file per model. Use traits for variations; never define factories inline inside spec files.</statement>
+        <rationale>Centralized, reusable, maintainable.</rationale>
+      </rule>
+      <rule>
+        <statement>Prefer `build_stubbed` for unit tests; `build` for tests that query the DB but don't need saved state; `create` only when persistence is required.</statement>
+        <rationale>Speed: `build_stubbed` skips database round-trips; `build` skips save but allows association loading; `create` persists.</rationale>
+      </rule>
+    </section>
+    <section name="vcr-and-http-mocking">
+      <rule>
+        <statement>Use VCR to record HTTP interactions. Mark cassettes with `record: :none` in CI so they don't re-record silently. Local development can use `record: :new_episodes`; commit cassettes and review them before merge.</statement>
+        <rationale>Cassettes encode API behavior at moment-of-record. Accidental re-record in CI masks API changes. Human review gates breaking changes.</rationale>
+      </rule>
+    </section>
+    <section name="agentic-workflow">
+      <p>Drive RSpec scaffolding as a four-stage pipeline: (1) a slice agent reads the class under test (model/controller/service/job/mailer) and picks the right spec type with the right helper requires; (2) a spec-gen agent emits describe/context/it blocks with is_expected.to matchers, FactoryBot factories, and Shoulda matchers where applicable; (3) a flake hunter runs new specs in random order with --seed rotation to surface hidden ordering bugs; (4) a fixture-cleanup agent prunes orphaned let/before setups and merges duplicate factories. Use faion-sdd-executor-agent to drive one spec per SDD task; tests must run green before close. Always require the diff include the spec file alongside the service, controller, or model being tested — specs are not optional.</p>
+    </section>
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Emitting deprecated RSpec idioms: `it { should validate_presence_of(:email) }`, controller specs with `assigns(:user)`, `RSpec.configure` with deprecated config keys, `assert_template`.</description>
+        <reason>RSpec 3.0+ deprecates the `should` syntax (pre-RSpec-3 idiom) and controller specs in favor of request specs. Agents trained on older tutorials or Rails 4-era documentation emit these patterns. Always enforce the modern form: `is_expected.to`, request specs, `have_http_status` matchers.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using `create(:model)` everywhere instead of `build_stubbed` for specs that don't query the database. Creates 1000s of database rows in test runs.</description>
+        <reason>Multiplies test duration; CI becomes slow and CI quota is exceeded. Force the rule in the prompt: "if the test doesn't query the DB, use build_stubbed". For model specs testing validations, use `is_expected.to` matchers instead of building invalid records.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hidden test-order coupling via shared state: `@user = create(:user)` in `before(:all)`, or lazy `let` accessing instance variables set in another context. Tests pass in sequence but fail on `--order random`.</description>
+        <reason>RSpec random order (enable in `.rspec` with `--order random`) surfaces coupling early. Lazy `let` avoids this; use eager `let!` only when side effects are needed. Human-in-loop: run tests with `--order random --seed 1234` before merge; if order-dependent, force fix in the agent loop.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hard-coding timestamps: `Time.current`, `Date.today` in spec body. Tests fail on Feb 29, DST transitions, or month boundaries without human notice.</description>
+        <reason>Use `travel_to(Time.zone.local(2026, 5, 1, 12, 0, 0))` to freeze time explicitly. Reset with `travel_back` in an `after` block. Never rely on the current date/time in a test.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Adding `sleep` or `wait_for_ajax` loops in system specs instead of using Capybara matchers (`have_content`, `have_selector`).</description>
+        <reason>Capybara's matchers auto-wait with sensible defaults (2-30s configurable); `sleep` is unreliable on CI with variable load and adds unnecessary latency. Use Capybara's built-in waits; only add custom `wait_for_ajax` if the app is known to use AJAX and Capybara can't detect it.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Defining factories inside spec files (`FactoryBot.define { factory :user do ... end }` in `_spec.rb`) instead of under `spec/factories/`.</description>
+        <reason>Duplicate factories across files, harder to reuse and maintain. Move all factories to `spec/factories/`, one file per model. Agents often flatten factory hierarchies; enforce inheritance and traits in review.</reason>
+      </antipattern>
+      <antipattern>
+        <description>VCR cassettes with `record: :all` or `record: :new_episodes` in CI, allowing silent re-record when APIs change. Cassettes encode API behavior at moment-of-record forever.</description>
+        <reason>Accidental re-record in CI masks API changes. Force `record: :none` in CI; local development can use `record: :new_episodes`, and cassettes are committed for review before merge. Human decision gate: "does the cassette change match the API change?".</reason>
+      </antipattern>
+      <antipattern>
+        <description>Mocking what you don't own: `allow_any_instance_of(HTTP::Client)` mocks the lib, diverging from reality. When the lib changes, mocks don't.</description>
+        <reason>Force a `RemoteService` wrapper class and stub that boundary. Mocking the third-party lib directly hides integration bugs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>System spec flake from Capybara waits tuning. Tests pass locally but flake on CI due to `Capybara.default_max_wait_time` being too short or not set.</description>
+        <reason>Capybara's default is 2 seconds. On slow CI (shared runners), increase to 5-10 seconds. Configure in `spec/support/capybara.rb` or `rails_helper.rb`. Use `Capybara.current_session.config.default_max_wait_time = 10` to set globally.</reason>
+      </antipattern>
+      <antipattern>
+        <description>DatabaseCleaner strategy set globally to `:truncation` instead of context-specific `:transaction`. Truncation is slow and unnecessary for non-JS tests.</description>
+        <reason>Configure DatabaseCleaner: use `:transaction` for normal model/request specs (fast, atomic); switch to `:truncation` only for system specs that use Selenium/Capybara (JS-driven, require a separate connection). Global `:truncation` doubles CI time.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Skipping flaky specs to make CI green without investigation or follow-up. Disabled tests become stale and are never re-enabled.</description>
+        <reason>Flaky specs signal a real bug: ordering dependency, timing issue, or test environment problem. Disable with a human TODO: "fix by X date". Set a calendar reminder to re-enable and investigate.</reason>
+      </antipattern>
+    </section>
+    <see-also>
+      <link href="https://relishapp.com/rspec"/>
+      <link href="https://www.betterspecs.org"/>
+      <link href="https://thoughtbot.com/blog/tags/factorybot"/>
+      <link href="https://matchers.shoulda.io"/>
+      <link href="https://teamcapybara.github.io/capybara"/>
+      <link href="https://github.com/rubycdp/cuprite"/>
+      <link href="https://github.com/vcr/vcr"/>
+      <link href="https://guides.rubyonrails.org/testing.html"/>
+    </see-also>
+  </content>
+</methodology>

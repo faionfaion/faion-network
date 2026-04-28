@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gitlab-cicd">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>GitLab CI/CD is an integrated DevSecOps platform using .gitlab-ci.yml to define DAG-based pipelines with stages, jobs, rules, and environments. Use the needs keyword to enable parallelism and replace sequential stages. Always use protected, masked CI/CD variables for secrets.</summary>
+    <tags>
+      <tag>gitlab-ci</tag>
+      <tag>cicd</tag>
+      <tag>dag</tag>
+      <tag>devsecops</tag>
+      <tag>pipelines</tag>
+    </tags>
+    <category>cicd</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+
+  <content>
+    <title>GitLab CI/CD</title>
+
+    <summary>GitLab CI/CD is an integrated DevSecOps platform using .gitlab-ci.yml to define pipelines with stages, jobs, rules, and environments. Use DAG with the needs keyword to replace sequential stages and achieve parallelism. Never store secrets in .gitlab-ci.yml — use protected, masked CI/CD variables. GitLab 18 (2025) adds immutable artifact tags and structured pipeline inputs.</summary>
+
+    <why>
+      <p>GitLab CI/CD provides a single platform for source control, pipelines, container registry, environments, DORA metrics, and security scanning — eliminating the integration overhead of separate tools. The needs keyword unlocks DAG-based pipelines that run 2–5x faster than sequential stages by parallelizing independent jobs.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Projects hosted on GitLab (cloud or self-hosted)</item>
+        <item>Teams needing integrated DevSecOps: SAST, DAST, dependency scanning, secret detection</item>
+        <item>Multi-environment deployments with review apps per merge request</item>
+        <item>Monorepo projects with change-based job filtering (rules: changes)</item>
+        <item>Organizations tracking DORA metrics natively</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Repositories hosted on GitHub — use GitHub Actions instead</item>
+        <item>Simple single-developer projects — overhead of .gitlab-ci.yml is not justified; use a Makefile</item>
+        <item>Projects requiring Jenkins-level plugin customization not available in GitLab</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="dag-pipeline-rules">
+      <rule>
+        <statement>Use the `needs` keyword to define job dependencies explicitly instead of relying on sequential stages.</statement>
+        <rationale>Sequential stages force all jobs in one stage to complete before any job in the next stage starts. The `needs` keyword unlocks DAG execution: independent jobs run in parallel while dependent jobs wait only for their direct dependencies.</rationale>
+      </rule>
+      <rule>
+        <statement>Set `interruptible: true` on all build and test jobs so newer pipeline runs can cancel stale ones.</statement>
+        <rationale>Without `interruptible: true`, pushing multiple commits in quick succession causes all pipelines to run fully, wasting runner capacity on intermediate commits that are already superseded.</rationale>
+      </rule>
+    </section>
+
+    <section name="workflow-rules">
+      <rule>
+        <statement>Define `workflow: rules` at the top of `.gitlab-ci.yml` to control when a pipeline is created; target: default branch, merge requests, and tags only.</statement>
+        <rationale>Without workflow rules, GitLab creates a pipeline for every branch push including feature branches without merge requests, causing unnecessary CI runs.</rationale>
+      </rule>
+      <example type="good" title="Standard workflow rules">
+        <note>Standard workflow rules covering main branch, MR pipelines, and release tags.</note>
+        <code lang="yaml"><![CDATA[
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_MERGE_REQUEST_IID
+    - if: $CI_COMMIT_TAG
+]]></code>
+      </example>
+    </section>
+
+    <section name="job-templates-with-extends">
+      <rule>
+        <statement>Use `extends` with hidden job templates (`.template-name`) to share configuration across jobs; use YAML anchors only for single-file reuse.</statement>
+        <rationale>`extends` merges deeply across the entire pipeline definition and works with GitLab's `include` for cross-file sharing. YAML anchors only work within the same file.</rationale>
+      </rule>
+    </section>
+
+    <section name="caching-strategy">
+      <rule>
+        <statement>Key caches on dependency lock files (`package-lock.json`, `Gemfile.lock`, `requirements.txt`) to invalidate automatically when dependencies change.</statement>
+        <rationale>Keying on the lock file hash means cache misses occur exactly when they should (dependency update) and hits occur on all other runs without manual cache management.</rationale>
+      </rule>
+      <rule>
+        <statement>Use `policy: pull` for jobs that only read the cache and `policy: pull-push` for the job that builds it; define a fallback key for initial cache population.</statement>
+        <rationale>Without pull-only policy, every parallel job tries to update the same cache key simultaneously, causing write contention on distributed cache backends (S3/GCS).</rationale>
+      </rule>
+    </section>
+
+    <section name="security-and-secrets">
+      <rule>
+        <statement>Mark all secret CI/CD variables as Protected (available only on protected branches) and Masked (hidden in job logs).</statement>
+        <rationale>Unprotected variables are accessible in any branch pipeline, including attacker-controlled branches. Unmasked variables appear in job logs visible to all project members.</rationale>
+      </rule>
+      <rule>
+        <statement>Never echo or print secret variables in pipeline scripts; use `--silent` flags with curl and avoid `set -x` in scripts that handle secrets.</statement>
+        <rationale>Shell debug mode (`set -x`) prints every command with expanded variable values to the job log, exposing secrets to anyone with log access.</rationale>
+      </rule>
+      <rule>
+        <statement>Use file-type CI/CD variables for certificates, kubeconfig, and private keys — they are written to a temp file and the path is the variable value.</statement>
+        <rationale>Multiline secrets in string variables are fragile across shells. File-type variables handle encoding correctly and are automatically cleaned up after the job.</rationale>
+      </rule>
+      <rule>
+        <statement>Include GitLab security templates via `include:` rather than installing scanners manually — they receive automatic updates from GitLab.</statement>
+        <rationale>Manually maintained scanner installations drift in version and configuration over time. GitLab's managed templates stay current with the scanner vendor's latest recommendations.</rationale>
+      </rule>
+      <example type="good" title="GitLab security scanning templates">
+        <note>Include all four GitLab security scanning templates.</note>
+        <code lang="yaml"><![CDATA[
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml
+  - template: Security/Container-Scanning.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+]]></code>
+      </example>
+      <antipattern>
+        <description>Hardcoding credentials or API keys in `.gitlab-ci.yml`.</description>
+        <reason>`.gitlab-ci.yml` is committed to Git. Even if the repository is private, any team member or compromised account can read the file and extract credentials.</reason>
+      </antipattern>
+    </section>
+
+    <section name="environments-and-review-apps">
+      <rule>
+        <statement>Deploy review apps for every merge request using `CI_MERGE_REQUEST_IID` as the environment name suffix; set `auto_stop_in: 1 week` to prevent orphaned namespaces.</statement>
+        <rationale>Review apps let reviewers test changes in a live environment before merge. Without auto_stop_in, each merged or abandoned MR leaves a running environment that consumes cluster resources indefinitely.</rationale>
+      </rule>
+      <rule>
+        <statement>Always pair a review-deploy job with a review-stop job (same environment name, `action: stop`, `when: manual`) to enable manual early cleanup.</statement>
+        <rationale>Auto-stop waits for the timeout; manual stop lets developers clean up immediately after review is complete, reclaiming resources and reducing cloud costs.</rationale>
+      </rule>
+      <rule>
+        <statement>Require manual approval (`when: manual`) for all production deployments; automate staging deployments on default branch.</statement>
+        <rationale>Automated production deployments without a human gate increase blast radius for any CI/CD misconfiguration or untested code path that slips past automated checks.</rationale>
+      </rule>
+      <rule>
+        <statement>Set `environment.url` on all deployment jobs so GitLab tracks the live URL and shows it in MR and environment views.</statement>
+        <rationale>Without the URL, team members cannot navigate to the deployed environment directly from GitLab, reducing visibility into what is actually deployed.</rationale>
+      </rule>
+      <example type="good" title="Review app deploy and stop with auto-stop">
+        <note>Review app deploy and stop jobs with auto-stop after one week.</note>
+        <code lang="yaml"><![CDATA[
+review-deploy:
+  stage: deploy
+  environment:
+    name: review/$CI_MERGE_REQUEST_IID
+    url: https://$CI_MERGE_REQUEST_IID.review.example.com
+    on_stop: review-stop
+    auto_stop_in: 1 week
+  script:
+    - kubectl create namespace review-$CI_MERGE_REQUEST_IID --dry-run=client -o yaml | kubectl apply -f -
+    - envsubst < k8s/review/deployment.yaml | kubectl apply -f -
+    - kubectl rollout status deployment/app -n review-$CI_MERGE_REQUEST_IID --timeout=5m
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+
+review-stop:
+  stage: deploy
+  variables:
+    GIT_STRATEGY: none
+  environment:
+    name: review/$CI_MERGE_REQUEST_IID
+    action: stop
+  script:
+    - kubectl delete namespace review-$CI_MERGE_REQUEST_IID --ignore-not-found
+  when: manual
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+]]></code>
+      </example>
+    </section>
+
+    <section name="pipeline-examples">
+      <section name="nodejs-dag-pipeline">
+        <example type="good" title="Node.js DAG Pipeline">
+          <note>Node.js pipeline with DAG: lint and test run in parallel after install, build runs after both pass.</note>
+          <code lang="yaml"><![CDATA[
+default:
+  image: node:20-alpine
+
+cache:
+  key:
+    files: [package-lock.json]
+  paths: [node_modules/, .npm/]
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_MERGE_REQUEST_IID
+
+stages: [install, test, build, deploy]
+
+install:
+  stage: install
+  script: npm ci --cache .npm --prefer-offline
+  artifacts:
+    paths: [node_modules/]
+    expire_in: 1 hour
+
+lint:
+  stage: test
+  needs: [install]
+  script: npm run lint
+  interruptible: true
+
+test:
+  stage: test
+  needs: [install]
+  script: npm test -- --coverage
+  interruptible: true
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+
+build:
+  stage: build
+  needs: [test, lint]
+  script: npm run build
+  artifacts:
+    paths: [dist/]
+    expire_in: 1 week
+]]></code>
+        </example>
+      </section>
+
+      <section name="docker-build-with-trivy">
+        <example type="good" title="Docker Build with Trivy Scan">
+          <note>Docker build with BuildKit cache, Trivy vulnerability scan blocking on CRITICAL findings.</note>
+          <code lang="yaml"><![CDATA[
+variables:
+  DOCKER_TLS_CERTDIR: "/certs"
+  IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  IMAGE_LATEST: $CI_REGISTRY_IMAGE:latest
+
+docker-build:
+  stage: build
+  image: docker:24
+  services: [docker:24-dind]
+  variables:
+    DOCKER_BUILDKIT: 1
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build --cache-from $IMAGE_LATEST --build-arg BUILDKIT_INLINE_CACHE=1
+        --tag $IMAGE_TAG --tag $IMAGE_LATEST .
+    - docker push $IMAGE_TAG
+    - docker push $IMAGE_LATEST
+
+trivy-scan:
+  stage: scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  needs: [docker-build]
+  script:
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL $IMAGE_TAG
+    - trivy image --exit-code 1 --severity CRITICAL $IMAGE_TAG
+]]></code>
+        </example>
+      </section>
+
+      <section name="monorepo-change-detection">
+        <example type="good" title="Monorepo Change Detection">
+          <note>Only run API service jobs when files in `services/api/` or `shared/` change.</note>
+          <code lang="yaml"><![CDATA[
+.service-template:
+  rules:
+    - changes:
+        - $SERVICE_PATH/**/*
+        - shared/**/*
+
+api-test:
+  extends: .service-template
+  stage: test
+  variables:
+    SERVICE_PATH: services/api
+  script: cd services/api && npm test
+
+api-build:
+  extends: .service-template
+  stage: build
+  variables:
+    SERVICE_PATH: services/api
+  needs: [api-test]
+  script:
+    - cd services/api
+    - docker build -t $CI_REGISTRY_IMAGE/api:$CI_COMMIT_SHA .
+    - docker push $CI_REGISTRY_IMAGE/api:$CI_COMMIT_SHA
+]]></code>
+        </example>
+      </section>
+    </section>
+
+    <section name="agent-integration-notes">
+      <p>When to use: Repo lives on GitLab (SaaS or self-hosted) and the team already uses GitLab issues / MRs / Container Registry — pipeline lives next to the code. Need a single platform that bundles SCM + CI + registry + DAST/SAST + Pages + Kubernetes Agent without gluing 5 SaaS tools together. Pipelines need fan-out / parent-child / multi-project triggering — GitLab's `trigger:` and `include:` are first-class, simpler than reusable workflows in GHA for cross-repo use. Compliance environments where every stage must produce an artifact / SBOM / scan report attached to a pipeline that auditors can pull from one place. Self-hosted runners on K8s with the GitLab Runner Helm chart — autoscaling executor pods per job is painless.</p>
+
+      <p>When NOT to use: Codebase on GitHub or Bitbucket — using GitLab CI as an external runner via mirror/webhook is technically possible but creates a dual-source-of-truth headache. Tiny throwaway projects — `.gitlab-ci.yml` syntax has more surface area (rules, workflow, includes, extends) than a one-job GHA workflow. Teams that need OSS-friendly free tier matching GHA — GitLab.com free CI minutes are tighter; for public repos GHA is genuinely free.</p>
+
+      <p>Common limitations: `rules:` vs `only/except` confusion: agents copy old `only/except` snippets from blogs, which silently get overridden by `workflow:rules`. Force `rules:` only. Stages without `needs:` serialize the whole pipeline. Default templates in old projects do this and waste 60%+ of wall time. `dependencies:` vs `needs:artifacts:` — both pass artifacts but `needs` activates DAG. Mixing them produces non-obvious "where did my file go" bugs. Cache vs artifacts: agents reach for `artifacts:` when they want `cache:` (or vice versa). Artifacts are uploaded to GitLab on every job; caches are runner-local by default — cache key + policy matters. `extends:` plus YAML anchors (`&`/`*`) plus `include:` with overrides → final job spec is unreadable. Agents lose track of what actually runs. Always run `gitlab-ci-lint` and inspect the merged config. Protected branches / protected variables: secrets only flow on protected refs. Agents test on a feature branch, secret is empty, job fails with cryptic "permission denied". Self-hosted Docker executor with `dind` is slow and racy. Prefer Kubernetes executor with BuildKit, or use rootless `kaniko`/`buildah`. GitLab runner concurrency setting is per-runner-process, not per-project — easy to over-saturate a self-hosted box.</p>
+
+      <p>Agentic workflow: Have one agent draft the pipeline structure (stages, jobs, DAG via `needs:`, env-aware `rules:`) as a Markdown table BEFORE writing YAML — this catches "this job has no real trigger" at design time. A second agent generates `.gitlab-ci.yml` using `extends:` for shared steps and a small `include:` library. Always pipe the result through `glab ci lint` (or `POST /ci/lint`) inside the agent loop; YAML that lints clean still fails on `rules:` semantics, so trigger a sandboxed run on a draft MR before merging. A reviewer agent inspects merged config (`glab ci config`) and the timing/parallelism actually achieved on first run.</p>
+    </section>
+
+    <templates>
+      <template path="templates/nodejs-pipeline.yml" purpose="Standard Node.js pipeline with install/lint/test/build/deploy stages and DAG"/>
+      <template path="templates/docker-build.yml" purpose="Docker build with BuildKit cache, Trivy scan, and registry push"/>
+      <template path="templates/review-app.yml" purpose="Review app deploy/stop lifecycle with auto_stop_in and namespace cleanup"/>
+      <template path="templates/security-scan.yml" purpose="GitLab security template includes: SAST, dependency, container, secret detection"/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.gitlab.com/ee/ci/yaml/"/>
+      <link href="https://docs.gitlab.com/ee/ci/pipelines/pipeline_efficiency.html"/>
+      <link href="https://docs.gitlab.com/ee/ci/secrets/id_token_authentication.html"/>
+      <link href="https://docs.gitlab.com/runner/install/kubernetes.html"/>
+      <link href="https://gitlab.com/gitlab-org/cli"/>
+      <link href="https://docs.gitlab.com/ee/ci/jobs/job_rules.html"/>
+    </see-also>
+  </content>
+</methodology>

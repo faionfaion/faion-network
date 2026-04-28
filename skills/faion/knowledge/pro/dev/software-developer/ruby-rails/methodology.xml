@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ruby-rails">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Rails backend patterns for production: Service Objects encapsulating business logic with transactions and result objects; RSpec model/service/request specs with factories; Sidekiq background jobs with retry policies; and proper error handling via ActiveRecord::RecordInvalid.</summary>
+    <category>backend</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>ruby</tag>
+      <tag>rails</tag>
+      <tag>rspec</tag>
+      <tag>sidekiq</tag>
+      <tag>backend</tag>
+    </tags>
+    <languages>
+      <language>ruby</language>
+    </languages>
+    <frameworks>
+      <framework>rails</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Ruby on Rails Backend Development</title>
+
+    <summary>Rails backend patterns for production-grade applications. Service Objects encapsulate business logic (user creation, order processing) with ActiveRecord::Base.transaction for data consistency and ServiceResult for success/failure semantics. RSpec model specs validate constraints, association specs check belongs_to/has_many, scope specs isolate filtering. Service specs exercise the happy path and error cases. Sidekiq background jobs with retry policies (exponential backoff) for async work (email, exports, notifications). Controllers stay thin, delegating to services. Pagination via kaminari.</summary>
+
+    <why>
+      <p>Service Objects isolate business logic from HTTP concerns. A Users::CreateService encapsulates "how to create a user" — validations, transactions, audit logging, async notification — separate from "how to respond to POST /users". This separation makes the logic testable without mocking the controller, reusable across API/web/CLI, and maintainable as features grow.</p>
+      <p>ServiceResult (success/failure) provides explicit contract: the caller knows whether the action succeeded and what data/errors resulted. ActiveRecord::Base.transaction ensures data consistency — if any step fails, all changes roll back. Sidekiq jobs with retry policies decouple critical async work from the request lifecycle.</p>
+      <p>RSpec specs at the model level test validations and scopes without HTTP overhead. Service specs test the business rule in isolation. Request specs (formerly integration tests) test the full controller-to-model flow, hitting the router and auth layers.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any Rails/Ruby backend shipping to production with a database.</item>
+        <item>Building multi-user SaaS with proper data isolation, audits, and async notifications.</item>
+        <item>Complex domain logic (order processing, payment reconciliation, report generation).</item>
+        <item>API backends with strict JSON contracts, validation errors, and fault handling.</item>
+        <item>Background job pipelines for email, data export, or data transformation.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple static sites or content management — Rails is overkill.</item>
+        <item>Real-time systems requiring sub-100ms latency — consider Go or Rust.</item>
+        <item>Teams unfamiliar with Rails conventions — the convention overhead requires buy-in.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="service-objects">
+      <p>Service Objects encapsulate business logic. Initialize with params and dependencies (current_user, logger). Call the service via .call or similar. Return a ServiceResult with success/failure semantics and data/errors. Use ActiveRecord::Base.transaction to ensure atomicity.</p>
+
+      <rule testable="true">
+        <statement>Every endpoint that touches the database MUST delegate to a Service Object (Users::CreateService, Orders::ProcessService). The service MUST wrap database operations in ActiveRecord::Base.transaction and return a ServiceResult (success/failure with data or errors).</statement>
+        <rationale>Services isolate business logic from HTTP, making it testable without a request and reusable across API/web/CLI. Transactions ensure data consistency. ServiceResult provides an explicit contract so callers don't have to catch exceptions.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>A Service MUST raise ActiveRecord::RecordInvalid on validation failures (save!) and catch it to return a ServiceResult.failure. It MUST NOT swallow exceptions; catch specific errors (RecordInvalid, PaymentGatewayError) and re-raise unexpected errors so they bubble to error tracking (Sentry, etc.).</statement>
+        <rationale>save! raises when validations fail. Catching RecordInvalid and converting to ServiceResult.failure is idiomatic Rails. Re-raising unexpected errors ensures they bubble to monitoring so on-call engineers know a service is broken.</rationale>
+      </rule>
+
+      <example type="good" title="Service Object with transaction and result">
+        <code lang="ruby"><![CDATA[
+# app/services/users/create_service.rb
+module Users
+  class CreateService
+    def initialize(params:, current_user: nil)
+      @params = params
+      @current_user = current_user
+    end
+
+    def call
+      user = User.new(user_params)
+
+      ActiveRecord::Base.transaction do
+        user.save!
+        send_welcome_email(user)
+        create_audit_log(user)
+      end
+
+      ServiceResult.success(user)
+    rescue ActiveRecord::RecordInvalid =&gt; e
+      ServiceResult.failure(e.record.errors.full_messages)
+    end
+
+    private
+
+    def user_params
+      @params.slice(:name, :email, :password)
+    end
+
+    def send_welcome_email(user)
+      UserMailer.welcome(user).deliver_later
+    end
+
+    def create_audit_log(user)
+      AuditLog.create!(
+        action: 'user.created',
+        resource: user,
+        actor: @current_user
+      )
+    end
+  end
+end
+
+# app/services/service_result.rb
+class ServiceResult
+  attr_reader :data, :errors
+
+  def initialize(success:, data: nil, errors: [])
+    @success = success
+    @data = data
+    @errors = errors
+  end
+
+  def success?
+    @success
+  end
+
+  def failure?
+    !@success
+  end
+
+  def self.success(data = nil)
+    new(success: true, data: data)
+  end
+
+  def self.failure(errors)
+    new(success: false, errors: Array(errors))
+  end
+end
+        ]]></code>
+        <note>Service encapsulates user creation, email dispatch, and audit logging within a transaction.</note>
+      </example>
+
+      <example type="good" title="Controller delegating to service">
+        <code lang="ruby"><![CDATA[
+# app/controllers/api/v1/users_controller.rb
+module Api
+  module V1
+    class UsersController &lt; ApplicationController
+      def create
+        result = Users::CreateService.new(
+          params: user_params,
+          current_user: current_user
+        ).call
+
+        if result.success?
+          render json: UserSerializer.new(result.data), status: :created
+        else
+          render json: { errors: result.errors }, status: :unprocessable_entity
+        end
+      end
+
+      private
+
+      def user_params
+        params.require(:user).permit(:name, :email, :password)
+      end
+    end
+  end
+end
+        ]]></code>
+        <note>Controller is thin: extract params, call service, render result.</note>
+      </example>
+    </section>
+
+    <section name="rspec-testing">
+      <p>Use RSpec for specs. Model specs validate presence/uniqueness/length and association structure. Service specs exercise the business logic (happy path, error cases). Request specs test the full endpoint (auth, routing, JSON shape). Factory Bot creates test fixtures.</p>
+
+      <rule testable="true">
+        <statement>Every model MUST have a model spec using shoulda-matchers (validate_presence_of, validate_uniqueness_of, have_one, have_many) to document and test constraints. Scope specs MUST isolate the WHERE clause: create(:user, active: true) and create(:user, active: false), then assert User.active returns only the active one.</statement>
+        <rationale>Shoulda matchers read as documentation. Scope specs catch regressions when someone refactors the WHERE logic. Model specs are fast (no HTTP, no full Rails setup) and isolated.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Service specs MUST cover the happy path (valid params → success result, data persisted, side effects dispatched) and error cases (invalid params → failure result with errors, no data persisted).</statement>
+        <rationale>Service specs verify the contract: given input, the service returns success/failure. Error cases are as important as happy paths — they document what the service does when things go wrong.</rationale>
+      </rule>
+
+      <example type="good" title="Model spec with validations and associations">
+        <code lang="ruby"><![CDATA[
+# spec/models/user_spec.rb
+require 'rails_helper'
+
+RSpec.describe User, type: :model do
+  describe 'validations' do
+    it { is_expected.to validate_presence_of(:email) }
+    it { is_expected.to validate_presence_of(:name) }
+    it { is_expected.to validate_uniqueness_of(:email).case_insensitive }
+    it { is_expected.to validate_length_of(:name).is_at_least(2).is_at_most(100) }
+  end
+
+  describe 'associations' do
+    it { is_expected.to have_one(:profile).dependent(:destroy) }
+    it { is_expected.to have_many(:orders).dependent(:nullify) }
+  end
+
+  describe 'scopes' do
+    describe '.active' do
+      let!(:active_user) { create(:user, active: true) }
+      let!(:inactive_user) { create(:user, active: false) }
+
+      it 'returns only active users' do
+        expect(User.active).to eq([active_user])
+      end
+    end
+  end
+
+  describe '#full_name' do
+    let(:user) { build(:user, first_name: 'John', last_name: 'Doe') }
+
+    it 'returns combined first and last name' do
+      expect(user.full_name).to eq('John Doe')
+    end
+  end
+end
+        ]]></code>
+        <note>Model spec documents validations, associations, and scopes.</note>
+      </example>
+
+      <example type="good" title="Service spec with happy path and error cases">
+        <code lang="ruby"><![CDATA[
+# spec/services/users/create_service_spec.rb
+require 'rails_helper'
+
+RSpec.describe Users::CreateService do
+  describe '#call' do
+    subject(:service) { described_class.new(params: params) }
+
+    context 'with valid params' do
+      let(:params) { { name: 'John', email: 'john@example.com', password: 'secret123' } }
+
+      it 'creates a user' do
+        expect { service.call }.to change(User, :count).by(1)
+      end
+
+      it 'returns success result' do
+        result = service.call
+        expect(result).to be_success
+        expect(result.data).to be_a(User)
+      end
+
+      it 'sends welcome email' do
+        expect { service.call }
+          .to have_enqueued_mail(UserMailer, :welcome)
+      end
+    end
+
+    context 'with invalid params' do
+      let(:params) { { name: '', email: 'invalid' } }
+
+      it 'does not create a user' do
+        expect { service.call }.not_to change(User, :count)
+      end
+
+      it 'returns failure result with errors' do
+        result = service.call
+        expect(result).to be_failure
+        expect(result.errors).to include(/Email/)
+      end
+    end
+  end
+end
+        ]]></code>
+        <note>Service spec covers happy path and validation failure.</note>
+      </example>
+    </section>
+
+    <section name="sidekiq-background-jobs">
+      <p>Use Sidekiq for async work. Define a Job class with sidekiq_options (queue, retry count, dead letter queue). Use sidekiq_retry_in to define custom backoff (exponential, linear per exception type). Catch specific exceptions and re-raise, letting the job framework handle retry.</p>
+
+      <rule testable="true">
+        <statement>Every async operation (email, export, data sync) MUST be enqueued as a Sidekiq Job (include Sidekiq::Job, sidekiq_options queue: ..., retry: ...). Jobs MUST catch specific exceptions (PaymentGatewayError) with custom retry logic and re-raise unexpected errors so monitoring systems catch them.</statement>
+        <rationale>Sidekiq decouples async work from the request lifecycle. If email dispatch fails, the job retries; the user's account creation is not rolled back. Retry policies ensure transient failures (network blips) are retried; permanent failures (invalid email) fail fast.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Job perform methods MUST handle missing records gracefully (ActiveRecord::RecordNotFound). Jobs MUST log via Sidekiq.logger, not puts, so logs appear in the job queue monitoring system.</statement>
+        <rationale>A job may be enqueued for an object that is later deleted. Logging via Sidekiq.logger ensures the message appears in job monitoring dashboards (Sidekiq Pro, ContractuallyObliged, etc.).</rationale>
+      </rule>
+
+      <example type="good" title="Sidekiq job with retry policies">
+        <code lang="ruby"><![CDATA[
+# app/jobs/process_order_job.rb
+class ProcessOrderJob
+  include Sidekiq::Job
+
+  sidekiq_options queue: :default, retry: 3, dead: true
+
+  sidekiq_retry_in do |count, exception|
+    case exception
+    when PaymentGatewayError
+      (count + 1) * 60 # Linear backoff for payment issues
+    else
+      (count ** 4) + 15 # Exponential backoff
+    end
+  end
+
+  def perform(order_id)
+    order = Order.find(order_id)
+
+    return if order.processed?
+
+    OrderProcessor.new(order).process!
+
+    NotifyCustomerJob.perform_async(order_id)
+  rescue ActiveRecord::RecordNotFound
+    # Order deleted, nothing to do
+    Sidekiq.logger.warn "Order #{order_id} not found"
+  rescue PaymentGatewayError =&gt; e
+    # Will retry with custom backoff
+    raise
+  rescue StandardError =&gt; e
+    ErrorTracker.capture(e, order_id: order_id)
+    raise
+  end
+end
+
+# app/jobs/notify_customer_job.rb
+class NotifyCustomerJob
+  include Sidekiq::Job
+
+  sidekiq_options queue: :notifications, retry: 5
+
+  def perform(order_id)
+    order = Order.find(order_id)
+    OrderMailer.confirmation(order).deliver_now
+  end
+end
+        ]]></code>
+        <note>ProcessOrderJob uses custom sidekiq_retry_in logic for different exception types. NotifyCustomerJob is simpler.</note>
+      </example>
+
+      <example type="good" title="Batch processing in Sidekiq">
+        <code lang="ruby"><![CDATA[
+# app/jobs/batch_export_job.rb
+class BatchExportJob
+  include Sidekiq::Job
+
+  sidekiq_options queue: :exports, retry: 1
+
+  def perform(export_id)
+    export = Export.find(export_id)
+    export.update!(status: :processing)
+
+    records = export.query_records
+
+    CSV.open(export.file_path, 'wb') do |csv|
+      csv &lt;&lt; export.headers
+      records.find_each(batch_size: 1000) do |record|
+        csv &lt;&lt; export.row_for(record)
+      end
+    end
+
+    export.update!(status: :completed, completed_at: Time.current)
+    ExportMailer.ready(export).deliver_later
+  rescue StandardError =&gt; e
+    export.update!(status: :failed, error_message: e.message)
+    raise
+  end
+end
+        ]]></code>
+        <note>Batch export uses find_each(batch_size: 1000) to avoid loading all records into memory.</note>
+      </example>
+    </section>
+
+    <see-also>
+      <link href="https://guides.rubyonrails.org/"/>
+      <link href="https://sidekiq.org/"/>
+      <link href="https://rspec.info/"/>
+      <link href="https://github.com/thoughtbot/factory_bot"/>
+    </see-also>
+  </content>
+</methodology>

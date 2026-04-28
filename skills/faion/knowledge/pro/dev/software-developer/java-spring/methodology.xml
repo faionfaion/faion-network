@@ -222,6 +222,82 @@ class UserControllerTest {
       </antipattern>
     </section>
 
+    <section name="agentic-workflow">
+      <p>Recommended patterns for agent-driven code generation in Spring Boot applications.</p>
+
+      <p>A subagent should generate the full vertical slice in one diff: Entity → Repository → Service (interface + impl) → Controller → Mapper → *Request/*Response DTOs → *Test (WebMvcTest + service unit). Use Spring's "Slice Test" annotations (@WebMvcTest, @DataJpaTest) so tests are fast. For DB changes, generate a Flyway/Liquibase migration alongside the entity. Always require integration tests with Testcontainers for repos that use Postgres-specific SQL.</p>
+
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-sdd-executor-agent — TDD loop with quality gate check before commit.</item>
+        <item>A spring-vertical-slice subagent (project-local) — produces 7 files (entity, repo, service, controller, mapper, dtos, tests) plus the migration.</item>
+      </list>
+
+      <prompt purpose="Vertical slice generation"><![CDATA[Add a vertical slice for "ApiKey" under com.example.apikey:
+- entity ApiKey (id Long, hash String unique, name String, createdAt)
+- repo ApiKeyRepository extends JpaRepository<ApiKey, Long>
+- service ApiKeyService { create(req): Resp; revoke(id) }
+- controller POST /api/v1/api-keys, DELETE /{id}, with @Valid
+- mapper via MapStruct
+- WebMvcTest for controller, @ExtendWith(MockitoExtension.class) for service
+- Flyway V20260424__api_keys.sql
+Use constructor injection (@RequiredArgsConstructor). No field injection.]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <p>Command-line tools and their purposes in Spring Boot development.</p>
+
+      <list>
+        <item>spring init (Spring CLI) — Scaffolds projects, deps. https://docs.spring.io/spring-boot/installing.html</item>
+        <item>mvn spring-boot:run / gradle bootRun — Local run. https://docs.spring.io/spring-boot/maven-plugin/</item>
+        <item>spring-boot-devtools — Hot reload during agent loop. https://docs.spring.io/spring-boot/reference/using/devtools.html</item>
+        <item>Flyway CLI / mvn flyway:migrate — Schema migrations. https://flywaydb.org</item>
+        <item>gradle test --tests *Test — Run targeted tests. https://docs.gradle.org</item>
+        <item>mvn dependency:tree — Diagnose Spring dep conflicts. core Maven</item>
+        <item>Testcontainers — Real Postgres/Redis in tests. https://testcontainers.com</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <p>SaaS and OSS services commonly used with Spring Boot.</p>
+
+      <list>
+        <item>Spring Initializr (SaaS at start.spring.io) — Programmatic API at https://start.spring.io/starter.zip?... for scaffolding.</item>
+        <item>Spring Cloud Config (OSS) — Externalized config; ok to drive but versioning gets tricky.</item>
+        <item>Micrometer + Prometheus (OSS) — Auto-exposed at /actuator/prometheus — add counters/timers in services.</item>
+        <item>Sentry / Datadog Java (SaaS) — Java agent does most work; agents only add Sentry.captureException(e) calls.</item>
+        <item>Liquibase / Flyway (OSS) — Prefer Flyway for SQL-first; Liquibase for cross-DB.</item>
+        <item>MapStruct (OSS annotation processor) — Generates DTO mappers at compile time.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <p>Proven patterns and practices for Spring Boot applications.</p>
+
+      <list>
+        <item>Use constructor injection + @RequiredArgsConstructor (Lombok) or explicit constructors. Ban @Autowired field injection in lint rules.</item>
+        <item>Mark service methods read or write: @Transactional(readOnly = true) on queries.</item>
+        <item>Never return JPA entities from controllers — always map to DTOs at the service boundary.</item>
+        <item>Use DTOs as Java records (Java 17+) for immutability, especially for *Request/*Response.</item>
+        <item>Validate at the edge with @Valid + Bean Validation (jakarta.validation.constraints.*); throw MethodArgumentNotValidException is auto-handled by @RestControllerAdvice.</item>
+        <item>For @Async, always declare an explicit Executor bean per workload (email vs reports) — sharing the default executor causes head-of-line blocking.</item>
+        <item>Pair every JPA query that uses JOIN FETCH with a test that asserts Hibernate.isInitialized(...) or use @EntityGraph.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common mistakes agents introduce when building Spring Boot applications.</p>
+
+      <list>
+        <item>Agents call @Async methods from inside the same class — the call bypasses the proxy and runs synchronously. Pin "must be called from a different bean" in prompts and verify in code review.</item>
+        <item>They write @Transactional on private or final methods — proxies can't intercept; require public non-final.</item>
+        <item>LLMs default to findAll() without Pageable, OOMing prod. Force Pageable arg in every list endpoint.</item>
+        <item>They mix MapStruct + Lombok without lombok-mapstruct-binding, causing null mappers at runtime. Lock the dep in templates.</item>
+        <item>JpaRepository derived queries silently match wrong fields (e.g., findByEmail on a renamed column). Always include a repo @DataJpaTest.</item>
+        <item>Human-in-loop checkpoint: review N+1 queries before merge; agents do not catch them. Run with spring.jpa.show-sql=true + Hibernate statistics in dev.</item>
+      </list>
+    </section>
+
     <templates>
       <template path="templates/maven-annotation-processors.xml" purpose="Maven compiler plugin snippet for Lombok + MapStruct in correct dependency order"/>
     </templates>

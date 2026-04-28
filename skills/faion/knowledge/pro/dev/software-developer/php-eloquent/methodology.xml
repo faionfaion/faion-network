@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="php-eloquent">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Eloquent ORM patterns for Laravel 10/11: $fillable, enum casts, scopes, accessors, Query Objects. Eager loading via with()/loadMissing(). Model::preventLazyLoading() in dev. Pagination required.</summary>
+    <tags>
+      <tag>eloquent</tag>
+      <tag>laravel</tag>
+      <tag>orm</tag>
+      <tag>php</tag>
+      <tag>query-optimization</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <languages>
+      <language>php</language>
+    </languages>
+    <frameworks>
+      <framework>laravel</framework>
+      <framework>eloquent</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>PHP Eloquent Patterns</title>
+
+    <summary>Eloquent ORM patterns for Laravel 10/11: model with $fillable, enum casts, scopes, accessors/mutators; optional thin Repository or Query Object for multi-condition filters; eager loading via with()/loadMissing(); Model::preventLazyLoading() in development; pagination enforced on all user-facing endpoints.</summary>
+
+    <why>
+      <p>Eloquent's Active Record style silently produces N+1 queries, mass-assignment vulnerabilities (empty $fillable), and hydration overhead on bulk operations. Without Model::preventLazyLoading() in dev, agents ship N+1 undetected. Query Objects give a chainable, testable alternative to repositories for multi-condition report queries without the dead abstraction overhead.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Laravel 10/11 models gaining scopes, accessors/mutators, relationships that need eager loading</item>
+        <item>Migrating raw query builder to Eloquent for readability and relationship loading</item>
+        <item>Standardizing $fillable, $casts, soft deletes, observers vs events across models</item>
+        <item>API resources backed by paginated Eloquent collections</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>High-throughput hot paths where Eloquent hydration cost matters — use DB::table(...) builder</item>
+        <item>Reporting/OLAP queries — Eloquent over-fetches; use raw SQL or a read model</item>
+        <item>Bulk inserts/updates over 10k rows — use upsert, LazyCollection, or chunked raw SQL</item>
+        <item>DDD aggregates with strict invariants — Active Record fights immutability and value objects</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="model-conventions">
+      <p>Eloquent model patterns and conventions.</p>
+
+      <rule>
+        <statement>Always declare $fillable on every Eloquent model. Never leave both $fillable and $guarded empty. Use ULID or UUID PKs (use HasUlids) for API-exposed models.</statement>
+        <rationale>Empty $fillable + empty $guarded allows mass assignment on every column, enabling IDOR via update endpoints. Auto-increment PKs leak row counts.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Cast every non-string column explicitly: enums to PHP 8.1 backed enum, dates to 'datetime', booleans to 'boolean', JSON to 'array', decimals to 'decimal:N'.</statement>
+        <rationale>Without explicit casts, boolean columns return '0'/'1' strings, JSON columns return raw strings, and decimals lose precision in arithmetic.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use the new Attribute::make(...) accessor/mutator syntax (Laravel 9+). Do not mix with old getXAttribute / setXAttribute methods in the same model.</statement>
+        <rationale>Mixing old and new accessor syntax produces undefined behavior when both exist for the same attribute; old-style accessors silently win in some versions.</rationale>
+      </rule>
+    </section>
+
+    <section name="scopes">
+      <p>Scope patterns for model queries.</p>
+
+      <rule>
+        <statement>Define local scopes for filters reused across multiple endpoints (scopeActive, scopeSearch, scopeWithRole). Use Query Objects for multi-condition report filters.</statement>
+        <rationale>Scopes are tied to the model and auto-discovered; Query Objects are independent and composable without model coupling.</rationale>
+      </rule>
+    </section>
+
+    <section name="soft-deletes-and-related">
+      <p>Managing soft-deleted records and hidden global eager loads.</p>
+
+      <rule>
+        <statement>When using SoftDeletes, explicitly use withTrashed() in any report or admin query that must include deleted records. Never rely on default scopes being excluded.</statement>
+        <rationale>The default global scope silently hides soft-deleted rows, causing counts and reports to differ from raw DB state.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Set $with = [] (empty) on all models. Eager load explicitly per query with with(). Never declare $with with relationship names.</statement>
+        <rationale>Declaring $with causes hidden global eager loads on every query — even when the relationship is unused — wasting database round trips.</rationale>
+      </rule>
+    </section>
+
+    <section name="n-plus-one-prevention">
+      <p>Detecting and preventing N+1 queries.</p>
+
+      <rule>
+        <statement>Enable Model::preventLazyLoading(! app()->isProduction()) in AppServiceProvider::boot(). This throws an exception when a lazy relationship is accessed in non-prod.</statement>
+        <rationale>Without this guard, N+1 queries are invisible until they appear as production latency. Failing loud in dev surfaces them immediately.</rationale>
+      </rule>
+    </section>
+
+    <section name="repository-vs-query-object">
+      <p>Choosing between Repository and Query Object patterns.</p>
+
+      <rule>
+        <statement>Use a Repository only when you need a second data-source implementation or a mock boundary for unit testing. A thin repository wrapping $model->find/create is dead abstraction.</statement>
+        <rationale>Eloquent already implements the Repository pattern internally. Adding a second layer duplicates method signatures and adds no domain value unless you have multiple data sources.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use a Query Object (app/Queries/XQuery.php) for multi-condition report queries. Chain methods fluently; call paginate() or get() at the call site.</statement>
+        <rationale>Query Objects are composable without coupling to the model class or the controller. They can be unit-tested by asserting SQL or by running against an in-memory SQLite.</rationale>
+      </rule>
+    </section>
+
+    <section name="eager-loading">
+      <p>Controlling eager loading to prevent N+1 queries.</p>
+
+      <rule>
+        <statement>Use with('relation') when loading a collection in a controller/service. Use loadMissing('relation') when the model is already hydrated and the relation might not be loaded.</statement>
+        <rationale>with() runs one JOIN before hydration. loadMissing() adds the relation on-demand without re-running the base query.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Never access $model->relation inside a loop when $model was retrieved without eager loading. This generates one SQL query per iteration (N+1).</statement>
+        <rationale>N+1 queries multiply with dataset size and are invisible in development unless Model::preventLazyLoading() is active.</rationale>
+      </rule>
+    </section>
+
+    <section name="pagination">
+      <p>Mandatory pagination for user-facing queries.</p>
+
+      <rule>
+        <statement>All user-facing list endpoints must use paginate($perPage) or cursorPaginate($perPage). Never call get() or all() on a user-facing query without a LIMIT.</statement>
+        <rationale>Unbounded get() on large tables loads the entire result set into PHP memory, causing OOM and slow responses.</rationale>
+      </rule>
+    </section>
+
+    <section name="bulk-operations">
+      <p>Efficient bulk inserts and updates.</p>
+
+      <rule>
+        <statement>For bulk inserts/updates (&gt; 100 rows), use upsert(), insert(), or chunked LazyCollection. Never call Model::create() in a loop.</statement>
+        <rationale>Model::create() in a loop generates N INSERT statements, each with full model lifecycle hooks. upsert() sends one batch statement.</rationale>
+      </rule>
+    </section>
+
+    <section name="code-examples">
+      <p>Concrete Eloquent examples and antipatterns.</p>
+
+      <example type="good" title="Model with fillable, casts, scopes">
+        <code lang="php"><![CDATA[
+class User extends Authenticatable
+{
+    use HasFactory, SoftDeletes, HasUlids;
+
+    protected $fillable = ['name', 'email', 'password'];
+    protected $hidden = ['password', 'remember_token'];
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'settings' => 'array',
+        'is_active' => 'boolean',
+    ];
+    protected $with = [];  // never declare relations here
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function scopeActive(Builder $q): Builder
+    {
+        return $q->where('is_active', true);
+    }
+
+    public function scopeSearch(Builder $q, ?string $term): Builder
+    {
+        if (empty($term)) return $q;
+        return $q->where(fn($inner) =>
+            $inner->where('name', 'LIKE', "%{$term}%")
+                  ->orWhere('email', 'LIKE', "%{$term}%")
+        );
+    }
+
+    protected function email(): Attribute
+    {
+        return Attribute::make(set: fn(string $v) => strtolower($v));
+    }
+}
+        ]]></code>
+        <note>HasUlids for ULID PKs. $with = [] prevents hidden global eager loads. New Attribute::make() syntax only.</note>
+      </example>
+
+      <example type="good" title="Query Object">
+        <code lang="php"><![CDATA[
+class UsersQuery
+{
+    public function __construct(private Builder $query) {}
+
+    public static function make(): self
+    {
+        return new self(User::query());
+    }
+
+    public function active(): self
+    {
+        $this->query->where('is_active', true);
+        return $this;
+    }
+
+    public function search(?string $term): self
+    {
+        if (filled($term)) {
+            $this->query->whereAny(['name', 'email'], 'LIKE', "%$term%");
+        }
+        return $this;
+    }
+
+    public function paginate(int $per = 20): LengthAwarePaginator
+    {
+        return $this->query->with('roles')->latest()->paginate($per);
+    }
+}
+
+// Usage in controller/service:
+// UsersQuery::make()->active()->search($request->search)->paginate(20)
+        ]]></code>
+      </example>
+
+      <antipattern>
+        <description>Model::all() on a user-facing endpoint without pagination.</description>
+        <reason>Loads the entire table into PHP memory. OOM risk on tables with &gt;10k rows.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Empty $fillable = [] and $guarded = [] simultaneously.</description>
+        <reason>All columns become mass-assignable, allowing an attacker to set is_admin, organization_id, or any sensitive field via the API.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mixing old getEmailAttribute() accessor and new Attribute::make() for the same attribute on the same model.</description>
+        <reason>Produces undefined behavior; old-style accessors silently win in some Laravel versions, causing the new accessor to be ignored.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/query-object.php" purpose="Fluent Query Object skeleton with active/search/role filters and paginate()"/>
+      <template path="templates/prompt-resource.txt" purpose="Subagent prompt for generating model + migration + factory + resource + test in one diff"/>
+    </templates>
+
+    <see-also>
+      <link href="https://laravel.com/docs/eloquent"/>
+      <link href="https://laravel-beyond-crud.com"/>
+      <link href="https://masteringpostgres.com"/>
+      <link href="https://github.com/larastan/larastan/blob/master/docs/rules.md"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,474 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="azure-compute">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Choose Azure compute (VMs, VMSS, AKS, Container Apps, App Service) based on control vs operational overhead: VMs for legacy, AKS for Kubernetes, Container Apps for scale-to-zero.</summary>
+    <tags>
+      <tag>azure</tag>
+      <tag>compute</tag>
+      <tag>aks</tag>
+      <tag>container-apps</tag>
+      <tag>vmss</tag>
+    </tags>
+    <category>cloud-compute</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Azure Compute Services</title>
+
+    <summary>Azure compute covers five service tiers — VMs, VMSS (Flexible mode only for new workloads), AKS, Container Apps (serverless, KEDA-based), and App Service. Choose based on control vs operational overhead: VMs for legacy/custom OS, AKS for complex Kubernetes workloads, Container Apps for event-driven microservices that can scale to zero. Always use Managed Identity instead of credentials in code; use Workload Identity (not the deprecated Pod Identity) in AKS.</summary>
+
+    <why>
+      <p>Azure's service spectrum eliminates the false IaaS-vs-PaaS binary: teams pick the exact level of control they need. Spot Priority Mix on VMSS achieves up to 90% cost savings while maintaining a minimum on-demand baseline. Container Apps' scale-to-zero eliminates idle compute costs for variable workloads.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Already on Azure (AAD / Entra ID is the IdP, billing is in Azure, networking is in vNets) and need to pick between VMs / VMSS / AKS / Container Apps / App Service.</item>
+        <item>Lifting an existing AD-integrated workload that needs Windows VMs, Active Directory, or Azure-specific services (Storage, Service Bus, Key Vault) on the same backbone.</item>
+        <item>Greenfield containerized workloads where Container Apps' KEDA + scale-to-zero saves real money vs always-on AKS node pools.</item>
+        <item>Regulated workloads needing Azure-native compliance (FedRAMP, HIPAA BAA, regional sovereignty); cross-cloud migration would lose attestations.</item>
+        <item>Designing new cloud-native workloads on Azure.</item>
+        <item>Migrating existing VM-based applications to containers (AKS or Container Apps).</item>
+        <item>Building event-driven microservices that must scale to zero (Container Apps + KEDA).</item>
+        <item>Setting up autoscaling for batch processing or ML inference (AKS + KEDA or VMSS Spot Mix).</item>
+        <item>Optimizing Azure compute costs with Spot/Reserved/Savings Plans.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Multi-cloud-by-default org with a vendor-neutral platform (Crossplane, Terraform-only, Kubernetes everywhere) — pure Azure abstractions (Container Apps, App Service slots, ARM/Bicep) lock you in.</item>
+        <item>Tiny solo project — App Service Free / Container Apps Consumption are fine, but a single VM on a cheaper provider is often simpler.</item>
+        <item>Latency-critical to non-Azure regions / users; Azure's edge story is weaker than AWS CloudFront / Cloudflare.</item>
+        <item>Multi-cloud or AWS/GCP-primary environments — use cloud-agnostic tooling (Terraform modules, Kubernetes) instead of Azure-specific APIs.</item>
+        <item>Windows container workloads on Container Apps — no Windows support; use AKS or App Service.</item>
+        <item>ARM64 container workloads on Container Apps — not supported as of 2026.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="service-selection-rules">
+      <p>Choosing the right Azure compute service depends on specific requirements:</p>
+
+      <rule testable="true">
+        <statement>Choose VMs only for legacy applications requiring specific OS versions, custom kernel modules, or licensing tied to VM instances.</statement>
+        <rationale>VMs provide full OS control but require the most operational overhead (patching, scaling, HA configuration). Every other scenario maps to a higher abstraction tier with less burden.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use VMSS Flexible orchestration (not Uniform) for all new scale-out workloads; Uniform mode is being deprecated.</statement>
+        <rationale>Flexible orchestration supports standard VM APIs, mixed instance types, and max zone-spreading. Uniform mode uses a separate scale set VM API surface that Microsoft is retiring.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Choose AKS for containerized workloads that require Kubernetes features: custom operators, advanced scheduling, multi-tenancy, or complex networking.</statement>
+        <rationale>AKS gives full Kubernetes API access with a free managed control plane (99.95% SLA). Teams without Kubernetes expertise should evaluate Container Apps first — AKS operational overhead is significant.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use Container Apps for event-driven microservices that benefit from scale-to-zero; use AKS when you need control plane access, custom operators, or ARM64 nodes.</statement>
+        <rationale>Container Apps is built on Kubernetes (Dapr + KEDA + Envoy) but hides all Kubernetes complexity. It does not support Windows containers or ARM64 as of 2026. AKS supports both.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use App Service for web applications and APIs with predictable traffic where slot-based blue-green deployments are sufficient; prefer Container Apps for event-driven or variable-load services.</statement>
+        <rationale>App Service deployment slots enable zero-downtime swaps with auto-swap for CD pipelines. Container Apps is better for bursty workloads because it can scale to zero, eliminating idle compute cost.</rationale>
+      </rule>
+    </section>
+
+    <section name="vm-series-selection">
+      <p>Selecting the right VM series optimizes cost and performance:</p>
+
+      <rule testable="true">
+        <statement>Select B-series VMs for workloads with variable CPU usage (CI agents, dev environments, low-traffic web servers); use D-series for balanced production workloads.</statement>
+        <rationale>B-series accumulates CPU credits during idle periods and uses them during bursts — ideal when average utilization is below 20%. D-series provides consistent CPU without burst limits, suitable for production APIs.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Enable Availability Zones for all production VMs and VMSS (99.99% SLA); Availability Sets provide only 99.95% SLA and do not protect against zone failures.</statement>
+        <rationale>Availability Zones place VMs in physically separate datacenters within a region. A zone failure (rare but documented) takes down all VMs in that zone. Zone-redundant deployments survive such events.</rationale>
+      </rule>
+    </section>
+
+    <section name="app-service-tier-selection">
+      <p>App Service tier selection affects scaling and features:</p>
+
+      <rule testable="true">
+        <statement>Use Standard tier or higher for production App Service plans; Free and Basic tiers lack autoscale, custom domains with TLS, and deployment slots.</statement>
+        <rationale>Standard is the minimum viable tier for production: it includes 5 deployment slots, VNet integration, autoscale, and custom domain TLS. Premium adds more scale-out capacity and improved performance.</rationale>
+      </rule>
+    </section>
+
+    <section name="service-decision-matrix">
+      <p>Service selection based on workload characteristics:</p>
+
+      <example type="good" title="Azure compute service decision matrix">
+        <code lang="text"><![CDATA[
+Workload characteristics → Recommended service:
+
+Legacy app, custom OS, specific kernel    → VM (D-series, Availability Zones)
+Stateless web tier, predictable scale     → VMSS Flexible + App Gateway
+Containerized, K8s features needed       → AKS
+Event-driven, scale-to-zero, Linux only  → Container Apps (Consumption plan)
+Web API, simple CD, slot swaps           → App Service (Standard+)
+ML/GPU batch inference                   → AKS + GPU node pool (N-series)
+Interruptible batch workloads            → VMSS Spot or AKS Spot node pool
+]]></code>
+      </example>
+    </section>
+
+    <section name="aks-identity">
+      <p>Proper identity management is critical for AKS security:</p>
+
+      <rule testable="true">
+        <statement>Use Workload Identity (OIDC federation) for pod-level Azure resource access — never use the deprecated AAD Pod Identity or store service principal credentials in Secrets.</statement>
+        <rationale>Workload Identity uses Kubernetes ServiceAccount token projection with Azure AD OIDC federation. It requires no secret management: the cluster issues a signed JWT that Azure AD verifies directly. Pod Identity is deprecated and will be removed.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Enable the OIDC issuer and Workload Identity add-on before enabling KEDA — KEDA's TriggerAuthentication uses Workload Identity to access Azure queues, Service Bus, and Event Hub without credentials.</statement>
+        <rationale>KEDA's Azure scalers authenticate to Azure via Workload Identity when the cluster has OIDC issuer enabled. Installing KEDA before OIDC/Workload Identity leaves scalers unable to authenticate to Azure backends.</rationale>
+      </rule>
+
+      <example type="good" title="Enable Workload Identity and KEDA in correct order">
+        <code lang="bash"><![CDATA[
+az aks create \
+  --name my-cluster \
+  --resource-group my-rg \
+  --enable-oidc-issuer \
+  --enable-workload-identity \
+  --enable-keda \
+  --node-count 2 \
+  --generate-ssh-keys
+]]></code>
+      </example>
+    </section>
+
+    <section name="aks-node-pool-strategy">
+      <p>Node pool design ensures cluster stability:</p>
+
+      <rule testable="true">
+        <statement>Create a system node pool with small VMs (D2s_v5), taints to prevent user workloads, and a dedicated user node pool with autoscaling across all three availability zones.</statement>
+        <rationale>System node pools run CoreDNS and kube-proxy. Mixing user workloads onto system nodes risks evicting critical cluster components under memory pressure. Separation ensures stable cluster operations regardless of workload load spikes.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Add a Spot node pool (priority=Spot, min=0, max=N) for batch and interruptible workloads to reduce compute costs by up to 90%; add tolerations to workloads that run on Spot nodes.</statement>
+        <rationale>Spot VMs are evicted with 30 seconds notice. Applications that handle preemption gracefully (batch jobs, stateless workers) run correctly on Spot. Applications requiring persistent connections (databases, session-sensitive APIs) must never run on Spot pools.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set max_surge to 33% for all node pool upgrade settings to control rolling upgrade speed while maintaining capacity during upgrades.</statement>
+        <rationale>33% surge allows one-third of nodes to be upgraded at a time. Lower values slow upgrades unnecessarily; higher values risk under-capacity if surge nodes are slow to provision.</rationale>
+      </rule>
+    </section>
+
+    <section name="aks-networking">
+      <p>Network design at scale requires careful planning:</p>
+
+      <rule testable="true">
+        <statement>Use Azure CNI Overlay networking for large clusters (hundreds of nodes) to avoid exhausting subnet IP space; use standard Azure CNI for clusters where pod IPs must be directly routable in the VNet.</statement>
+        <rationale>Standard Azure CNI assigns a VNet IP to every pod, consuming IPs rapidly at scale. Overlay mode assigns pod IPs from a private CIDR that is NAT'd at the node level, decoupling pod count from VNet IP consumption.</rationale>
+      </rule>
+    </section>
+
+    <section name="aks-upgrades">
+      <p>Keep AKS clusters current and secure:</p>
+
+      <rule testable="true">
+        <statement>Enable automatic_channel_upgrade: patch with a maintenance window on off-peak hours to receive automatic patch version upgrades without manual intervention.</statement>
+        <rationale>Unpatched Kubernetes clusters accumulate CVEs. Automatic patch upgrades within the maintenance window keep clusters current without disrupting business hours. Minor version upgrades still require manual approval for testing.</rationale>
+      </rule>
+    </section>
+
+    <section name="container-apps-scaling">
+      <p>Container Apps scaling must match workload patterns:</p>
+
+      <rule testable="true">
+        <statement>Set min_replicas: 0 for batch and background workloads to enable scale-to-zero; set min_replicas: 1 or higher for latency-sensitive APIs to avoid cold-start latency on first request.</statement>
+        <rationale>Scale-to-zero eliminates idle compute cost. However, a cold start from zero replicas adds 1–5 seconds latency depending on image size. APIs with SLA requirements on first-request latency must maintain at least one warm replica.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Configure KEDA scale rules for event-driven sources (Azure Service Bus, Storage Queue, Event Hub) to scale containers based on queue depth rather than CPU/memory metrics.</statement>
+        <rationale>CPU/memory-based scaling reacts to load after it has already arrived. Queue-depth scaling is proactive: containers are provisioned as messages accumulate, before processing falls behind.</rationale>
+      </rule>
+    </section>
+
+    <section name="container-apps-revisions">
+      <p>Revisions enable safe progressive deployments:</p>
+
+      <rule testable="true">
+        <statement>Use revision_mode: Multiple with named revision labels to implement blue-green or canary deployments via traffic weight splitting — never delete the old revision before verifying the new one is healthy.</statement>
+        <rationale>Traffic splitting in Multiple mode allows incremental rollout (e.g., 10% → 50% → 100%) and instant rollback by shifting 100% traffic back to the previous revision. Single revision mode requires a full cutover with no gradual validation.</rationale>
+      </rule>
+    </section>
+
+    <section name="container-apps-dapr">
+      <p>Dapr simplifies service-to-service communication:</p>
+
+      <rule testable="true">
+        <statement>Enable Dapr sidecar for service-to-service communication and state management in microservices — use Dapr component scopes to limit which containers can access each component.</statement>
+        <rationale>Dapr component scopes enforce least-privilege: a payment service can access the payments state store but not the orders state store, even though both run in the same environment. Without scopes, any app can read/write any Dapr component.</rationale>
+      </rule>
+    </section>
+
+    <section name="container-apps-limitations">
+      <p>Container Apps has important limitations:</p>
+      <list>
+        <item>No Windows container support — use AKS or App Service for Windows workloads.</item>
+        <item>No ARM64 support as of 2026 — use AKS with ARM64 node pools if needed.</item>
+        <item>Consumption plan has a 4 vCPU / 8 GiB per replica limit — use Dedicated plan for memory-heavy containers.</item>
+      </list>
+    </section>
+
+    <section name="container-apps-example">
+      <p>Container Apps configuration with scaling and secrets:</p>
+
+      <example type="good" title="Container App with HTTP scaling and Key Vault integration">
+        <code lang="yaml"><![CDATA[
+# Bicep-equivalent ARM properties for reference
+properties:
+  template:
+    containers:
+      - name: api
+        image: myregistry.azurecr.io/api:v2
+        resources:
+          cpu: 0.5
+          memory: 1Gi
+        env:
+          - name: DB_PASSWORD
+            secretRef: db-password
+    scale:
+      minReplicas: 1
+      maxReplicas: 20
+      rules:
+        - name: http-scaling
+          http:
+            metadata:
+              concurrentRequests: "100"
+  dapr:
+    enabled: true
+    appId: api
+    appPort: 8080
+    appProtocol: http
+  secrets:
+    - name: db-password
+      keyVaultUrl: https://my-vault.vault.azure.net/secrets/db-password
+      identity: /subscriptions/.../userAssignedIdentities/api-identity
+]]></code>
+      </example>
+    </section>
+
+    <section name="cost-optimization">
+      <p>Optimize Azure spending across compute services:</p>
+
+      <rule testable="true">
+        <statement>Use Spot Priority Mix on VMSS to maintain a minimum on-demand baseline while running the remainder as Spot VMs; calculate the split using baseRegularPriorityCount + regularPriorityPercentageAboveBase.</statement>
+        <rationale>Pure Spot is unreliable for production — eviction rates can exceed 20% during peak Azure demand. Spot Priority Mix guarantees a minimum on-demand baseline (e.g., 2 VMs) while saving up to 90% on the remaining capacity, making it safe for production stateless workloads.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Purchase Reserved Instances for stable baseline workloads (VMs, AKS system nodes, App Service plans) with 1-year commitments; use Savings Plans for flexible cross-service commitments.</statement>
+        <rationale>Reserved Instances provide up to 72% savings over pay-as-you-go for predictable workloads. Savings Plans offer similar savings but apply across compute services, useful when the mix of VMs vs containers changes over time.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use Dev/Test pricing for all non-production environments and scale down or stop non-prod resources outside business hours.</statement>
+        <rationale>Dev/Test pricing removes the Windows Server license fee from eligible VMs and App Service plans, reducing cost by up to 55%. Stopping non-prod VMs overnight (16h/day off) reduces compute cost by approximately 67% compared to always-on.</rationale>
+      </rule>
+    </section>
+
+    <section name="cost-example">
+      <p>Spot Priority Mix cost calculation example:</p>
+
+      <example type="good" title="VMSS Spot Priority Mix configuration">
+        <code lang="json"><![CDATA[
+{
+  "priorityMixPolicy": {
+    "baseRegularPriorityCount": 2,
+    "regularPriorityPercentageAboveBase": 25
+  }
+}
+# At 10 VMs: 2 + ceil(8 * 0.25) = 4 on-demand, 6 Spot
+# At 20 VMs: 2 + ceil(18 * 0.25) = 7 on-demand, 13 Spot
+# At 50 VMs: 2 + ceil(48 * 0.25) = 14 on-demand, 36 Spot
+]]></code>
+      </example>
+    </section>
+
+    <section name="security">
+      <p>Implement defense-in-depth for Azure compute:</p>
+
+      <rule testable="true">
+        <statement>Use Managed Identity for all Azure resource access from VMs, AKS, Container Apps, and App Service — never store service principal credentials in code, environment variables, or Kubernetes Secrets.</statement>
+        <rationale>Managed Identities are issued and rotated by Azure AD automatically. A stored service principal credential is a permanent secret that can be exfiltrated; a Managed Identity credential expires with the VM/pod and cannot be used outside its assigned resource.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Configure private endpoints for all PaaS services accessed by compute resources (Azure SQL, Storage, Key Vault, Container Registry) to route traffic over the Azure backbone instead of the public internet.</statement>
+        <rationale>Private endpoints bind a PaaS service to a private VNet IP. Traffic stays on Microsoft's backbone and is not exposed to internet routing, DDoS, or man-in-the-middle risks. NSG rules can then block all outbound internet from compute nodes.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Enable Microsoft Defender for Containers (AKS) and Defender for VMs for threat detection; enforce Azure Policy assignments to prevent non-compliant resource configurations from being deployed.</statement>
+        <rationale>Defender for Containers scans running images, detects privilege escalation attempts, and alerts on anomalous network activity. Azure Policy prevents teams from deploying resources without required tags, encryption, or network restrictions, shifting security left before deployment.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Agents should follow a structured compute selection process:</p>
+
+      <p>Compute selection is THE consequential decision. Have a planning agent produce a decision matrix (workload type, traffic shape, scale-to-zero need, OS reqs, identity model, regulatory constraints) BEFORE any IaC is written. A second agent codifies the choice in Bicep/Terraform with module pinning + terraform plan / bicep build checks. A reviewer agent diffs the plan against the matrix and flags drift (e.g. matrix said "Container Apps" but the module created an App Service Plan). For day-2 changes (scale rules, image updates) prefer GitOps via ACR webhook → ArgoCD/Flux on AKS, or Container Apps revision-based traffic split — agents should never az directly into prod compute.</p>
+
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-sdd-executor-agent — drives the spec → IaC → review loop; quality gate must include az deployment what-if or terraform plan artifact.</item>
+        <item>password-scrubber-agent — Bicep/Terraform files attract subscription_id, SAS tokens, connection strings, AAD app secrets.</item>
+        <item>A custom azure-cost-projector (Sonnet, read-only) — given a Bicep/TF plan, calls Azure Pricing API and emits monthly burn estimate broken down by SKU.</item>
+        <item>A custom azure-policy-auditor — runs az policy state list against the proposed resources to catch denied SKUs / regions before deploy.</item>
+      </list>
+
+      <prompt purpose="azure-compute-selection"><![CDATA[
+Choose Azure compute for <workload>. Inputs: traffic profile (peak QPS, idle %, latency budget ms), OS req, container vs. VM, identity model (Managed Identity preferred), region, compliance constraints, monthly budget USD.
+Output: (1) decision matrix (Markdown), (2) chosen service + 2nd-best alternative, (3) high-level Bicep/Terraform skeleton (modules only), (4) scale config (HPA/KEDA rule, min/max), (5) monthly cost projection at p50 and p99 traffic, (6) failure modes specific to chosen service.
+Forbid: VMSS Uniform mode, Pod Identity (use Workload Identity), Spot without scheduled-event handler, App Service slot swap without warmup, hardcoded subscription IDs.
+]]></prompt>
+
+      <prompt purpose="terraform-cost-audit"><![CDATA[
+Generate `terraform plan -out=plan.bin` then `terraform show -json plan.bin`. For every resource in the plan, emit JSON {address, type, sku, region, est_monthly_usd, identity_type, network_exposure}. Reject if any compute resource has identity_type == "SystemAssigned-only" AND requires access to Key Vault / SQL — must use Workload Identity / federated credential.
+]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <p>Essential tools for Azure compute operations:</p>
+      <list>
+        <item>az (Azure CLI) — All Azure mgmt; agent-driven via --query (JMESPath) and -o json (https://learn.microsoft.com/cli/azure)</item>
+        <item>az aks get-credentials / kubelogin — Pull AKS kubeconfig with AAD auth (https://azure.github.io/kubelogin/)</item>
+        <item>az containerapp — Container Apps lifecycle, revisions, traffic split (https://learn.microsoft.com/cli/azure/containerapp)</item>
+        <item>az deployment what-if — ARM/Bicep dry-run; show what changes before apply (https://learn.microsoft.com/azure/azure-resource-manager/bicep/deploy-what-if)</item>
+        <item>bicep CLI — Compile Bicep → ARM, lint, decompile (https://learn.microsoft.com/azure/azure-resource-manager/bicep/install)</item>
+        <item>Azure Developer CLI (azd) — App-template-driven deploys for Container Apps / App Service / AKS (https://learn.microsoft.com/azure/developer/azure-developer-cli/)</item>
+        <item>Terraform AzureRM provider — Multi-cloud-style IaC for Azure (https://registry.terraform.io/providers/hashicorp/azurerm/latest)</item>
+        <item>kubectl + helm + kustomize — AKS day-2 ops (upstream)</item>
+        <item>kured — Auto-reboot AKS nodes after kernel patch (https://kured.dev)</item>
+        <item>Azure Pricing API (REST) — Cost projection inside agent loop (https://learn.microsoft.com/rest/api/cost-management/)</item>
+      </list>
+    </section>
+
+    <section name="failure-modes">
+      <p>Common Azure compute errors and solutions:</p>
+
+      <antipattern>
+        <description>VMSS Uniform mode in old Terraform that still defaults to Uniform.</description>
+        <reason>Force Flexible orchestration on every new VMSS.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>AKS Pod Identity is deprecated in favor of Workload Identity (OIDC + federated credentials). Agents still scaffold Pod Identity from old blog posts.</description>
+        <reason>Update to Workload Identity.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>KEDA add-on must be enabled AFTER Workload Identity on AKS — wrong order leaves KEDA without an identity, scalers fail silently.</description>
+        <reason>Enable OIDC issuer and Workload Identity before KEDA.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Container Apps: no Windows containers, no ARM64, no privileged containers. Agents reach for --privileged and the deploy fails late.</description>
+        <reason>Check limitations before provisioning.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Container Apps revisions: setting min-replicas: 0 triggers cold starts (5-30s on first request).</description>
+        <reason>For latency-sensitive APIs use min-replicas: 1 and accept the cost.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>App Service slot swap WITHOUT warmup → first requests after swap hit cold workers and 5xx.</description>
+        <reason>Always configure WEBSITE_SWAP_WARMUP_PING_PATH + WEBSITE_SWAP_WARMUP_PING_STATUSES.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>VM/VMSS Spot evictions: 30-second notice via Scheduled Events; agents forget to wire the metadata endpoint and lose work mid-task.</description>
+        <reason>Implement Scheduled Events handler.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>AKS Cluster Autoscaler vs. Karpenter (now AKS Node Auto-Provisioning preview) — agents mix recommendations, end up with neither truly enabled.</description>
+        <reason>Pick one and configure it properly.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Quotas (vCPU per region, public IPs, NIC count) bite at scale. New subscriptions have absurdly low defaults; agents file ARM templates that hit quota mid-deploy and leave half-created resources.</description>
+        <reason>Check quotas with az vm list-usage before deploying.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents pick a region by name without checking SKU availability — Standard_D4ds_v5 exists in westeurope but not in swedencentral Spot.</description>
+        <reason>Force a az vm list-skus -l &lt;region&gt; check before generating IaC.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Quota limits cause partial deploys: agents apply, hit a vCPU quota, leave half-created NICs / disks.</description>
+        <reason>Always run az deployment group what-if AND check az vm list-usage first.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>"Subscription" vs. "tenant" vs. "management group" confusion → agents create resources in the wrong subscription.</description>
+        <reason>Bind subscription ID via az account set --subscription at the very top of any script and assert via az account show.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Service principal vs. managed identity: agents default to creating a SP because samples do; SP secrets expire and rotate poorly.</description>
+        <reason>Prefer Managed Identity / Workload Identity; only use SP for cross-tenant edge cases.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Soft-delete on Key Vault / Storage: agents terraform destroy and the next apply fails because the name is reserved for 7-90 days.</description>
+        <reason>Use --purge or rename — and document the choice.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Costs creep silently: agents add a Premium SSD + GRS Storage + always-on App Service Plan; no one notices for a billing cycle.</description>
+        <reason>Wire cost projection into the PR check.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <p>Proven practices for Azure compute success:</p>
+      <list>
+        <item>Default to Managed Identity / Workload Identity. Any access key, SAS, or AAD client secret in IaC is a review-blocker.</item>
+        <item>Use Availability Zones for production VMs/AKS — single-region single-zone gives 99.9% best case.</item>
+        <item>Pin AKS Kubernetes version + node image; let auto-upgrade run on a maintenance window, not arbitrary.</item>
+        <item>KEDA scalers: pin to one of (CPU, queue depth, HTTP RPS, custom). Multiple competing scalers thrash.</item>
+        <item>App Service: enable "Always On" for non-Consumption tiers, configure slot warmup, set WEBSITE_RUN_FROM_PACKAGE=1 for atomic deploys.</item>
+        <item>Container Apps: pin min-replicas: 1 for any user-facing API (cold start tax otherwise); use min-replicas: 0 for batch / async only.</item>
+        <item>Use Azure Policy + Defender for Cloud as guardrails; agents read policy assignments before generating IaC to avoid denied-by-policy SKUs.</item>
+        <item>Pin Bicep modules to AVM (Azure Verified Modules) versions; do not embed inline Microsoft.Compute/... API versions copy-pasted from old samples.</item>
+        <item>Tag every resource with {owner, env, costCenter, purpose} — agents must add tags or the FinOps audit fails.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/aks-create.sh" purpose="Azure CLI command to create AKS cluster with Workload Identity, KEDA, and OIDC issuer enabled."/>
+      <template path="templates/vmss-spot-mix.json" purpose="VMSS Flexible orchestration with Spot Priority Mix configuration for cost optimization."/>
+    </templates>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/azure/architecture/guide/technology-choices/compute-decision-tree"/>
+      <link href="https://learn.microsoft.com/azure/aks/best-practices"/>
+      <link href="https://learn.microsoft.com/azure/container-apps/"/>
+      <link href="https://learn.microsoft.com/azure/app-service/deploy-best-practices"/>
+      <link href="https://learn.microsoft.com/azure/aks/workload-identity-overview"/>
+      <link href="https://learn.microsoft.com/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-orchestration-modes"/>
+      <link href="https://aka.ms/avm"/>
+      <link href="https://learn.microsoft.com/azure/azure-resource-manager/bicep/deploy-what-if"/>
+      <link href="https://learn.microsoft.com/rest/api/cost-management/"/>
+    </see-also>
+  </content>
+</methodology>

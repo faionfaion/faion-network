@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="privacy-compliance">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>growth-marketer</domain>
+    <summary>Privacy-compliant analytics means implementing a consent management platform with default-deny analytics, GA4 Consent Mode v2 wiring, CCPA Global Privacy Control signal handling, and IP anonymization so tracking only activates after explicit user consent.</summary>
+    <tags>
+      <tag>privacy</tag>
+      <tag>gdpr</tag>
+      <tag>analytics</tag>
+      <tag>compliance</tag>
+      <tag>consent</tag>
+    </tags>
+    <category>compliance</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Privacy-Compliant Analytics</title>
+
+    <summary>Privacy-compliant analytics means implementing a consent management platform (CMP) with default-deny analytics, GA4 Consent Mode v2 wiring, CCPA Global Privacy Control (GPC) signal handling, and IP anonymization — so tracking only activates after explicit user consent. Every new tag or pixel must pass through the consent gate before firing.</summary>
+
+    <why>
+      <p>GDPR, UK GDPR, CCPA/CPRA, and LGPD impose fines for analytics cookies set before consent, for "Reject all" buttons that are harder to click than "Accept all" (CNIL fines, 2022–2024), and for US-hosted analytics processing EU personal data without valid SCCs or EU-US DPF. A correct default-deny setup eliminates the most common violations with minimal developer effort.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any web or app property tracked by GA4, Plausible, Mixpanel, Amplitude, or PostHog under GDPR, CCPA, or LGPD scope.</item>
+        <item>Adding a new analytics or marketing tag — must pass through the consent gate before firing.</item>
+        <item>Migrating to GA4 Consent Mode v2 or upgrading a CMP to IAB TCF 2.2.</item>
+        <item>Implementing or auditing a CMP: OneTrust, Cookiebot, Iubenda, Osano, CookieYes, Klaro.</item>
+        <item>DPIA or vendor review for a new tracker, pixel, or session-replay tool.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Internal-only tools behind SSO with no third-party analytics — no public consent surface.</item>
+        <item>Server-side-only telemetry tied to authenticated user IDs processed under contract (legitimate interest / contract basis) — still needs Records of Processing, but not a cookie banner.</item>
+        <item>Static brochure sites with zero cookies and zero analytics — a banner here is legal theater.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="consent-gate-setup">
+      <rule>
+        <statement>Ship the page with analytics_storage: 'denied' and all ad consent signals denied; only update to 'granted' on explicit user action.</statement>
+        <rationale>Implied consent ("by continuing to use this site") is not valid consent under GDPR Article 7; default-deny is the only safe starting state in EU/UK jurisdictions.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Queue tracking events fired before consent is granted and flush the queue only after the user explicitly accepts; never drop events silently or fire them before consent.</statement>
+        <rationale>Pre-consent events silently dropped cause analytics gaps; pre-consent events fired violate GDPR. Queuing + conditional flush is the correct pattern.</rationale>
+      </rule>
+
+      <reference path="templates/analytics-manager.js">AnalyticsManager class: default-deny init, consent grant/revoke, GA4 Consent Mode v2 update, event queue flush, cookie clearing</reference>
+    </section>
+
+    <section name="ga4-consent-mode-v2">
+      <list>
+        <item>analytics_storage: denied by default</item>
+        <item>ad_storage: denied by default</item>
+        <item>ad_user_data: denied by default</item>
+        <item>ad_personalization: denied by default</item>
+        <item>on explicit accept: update all four to granted (or per-category if granular consent)</item>
+      </list>
+
+      <rule>
+        <statement>Consent Mode v2 still pings Google with cookieless beacons even after "Reject all"; describe this in your privacy policy and verify it aligns with the applicable DPA interpretation.</statement>
+        <rationale>CNIL (France) and Austrian DSB have contested cookieless beacons as personal data processing; Consent Mode v2 reduces violation risk but does not eliminate it in all EU jurisdictions.</rationale>
+      </rule>
+    </section>
+
+    <section name="ccpa-global-privacy-control">
+      <rule>
+        <statement>Check navigator.globalPrivacyControl on page load and honor it as a Do Not Sell / Do Not Share signal without requiring any additional user action.</statement>
+        <rationale>CPRA (effective 2023) requires businesses to recognize GPC as a valid opt-out signal; failing to do so is an enforceable violation by the California AG.</rationale>
+      </rule>
+
+      <list>
+        <item>if navigator.globalPrivacyControl === true → gtag('set', 'restricted_data_processing', true)</item>
+        <item>also honor localStorage 'ccpa_opt_out' for users who explicitly opted out via UI</item>
+      </list>
+    </section>
+
+    <section name="ui-parity-rule">
+      <rule>
+        <statement>The "Reject all" button must be one click and visually equal to "Accept all" in size, color, and prominence.</statement>
+        <rationale>CNIL (France) issued multiple fines in 2022–2024 for consent banners where "Accept all" was a prominent button and "Reject all" required additional clicks or was visually de-emphasized. Equal prominence is a concrete, auditable requirement.</rationale>
+      </rule>
+    </section>
+
+    <section name="sub-processor-dpa-requirement">
+      <rule>
+        <statement>Every new analytics pixel, SDK, or session-replay tool must have a signed DPA, a valid data-transfer mechanism (SCCs or EU-US DPF), and an entry in the Records of Processing before it fires.</statement>
+        <rationale>Adding an undocumented sub-processor violates GDPR Article 28; the CMP consent banner does not authorize processing by unlisted vendors.</rationale>
+      </rule>
+
+      <list>
+        <item>tie the cookie policy table to the live CMP scan output, not a hand-written list — it drifts within weeks</item>
+        <item>run Cookiebot or Osano quarterly scan to catch new cookies introduced by code changes</item>
+      </list>
+    </section>
+
+    <section name="ip-anonymization-scope">
+      <rule>
+        <statement>Do not claim that IP anonymization exempts analytics from GDPR processing law — state only that it is one mitigation applied, and document the lawful basis separately.</statement>
+        <rationale>ICO and EDPB treat anonymized IP-derived analytics as personal data in many cases; claiming anonymization = no GDPR is a common LLM error that creates compliance risk.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-llm-gotchas">
+      <antipattern>
+        <description>Agent claims "GA4 is GDPR-compliant" as a conclusion.</description>
+        <reason>This is a marketing claim, not a legal determination. The correct output is the gating mechanism applied (consent gate + Consent Mode v2 + EU region configuration).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent writes banner copy with highlighted Accept and hidden Reject button.</description>
+        <reason>LLMs default to UX patterns optimized for conversion, not consent parity; lock UI parity in the template and do not let the agent restyle.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent claims hashing emails/IDs is sufficient anonymization.</description>
+        <reason>Hashing without a rotation policy is reversible; only salted hashing with key rotation can reduce re-identification risk, and even then GDPR may still apply.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent uses Accept-Language or other client-side signal for EU/US/CA region detection.</description>
+        <reason>Region detection must use a server-trusted GeoIP signal; client-side headers are user-controlled and not legally reliable for jurisdiction determination.</reason>
+      </antipattern>
+    </section>
+
+    <section name="pre-launch-checklist">
+      <list>
+        <item>choose analytics platform(s) and confirm GDPR stance (Plausible/Fathom = cookieless; GA4 = consent required)</item>
+        <item>install CMP (Cookiebot, Iubenda, CookieYes, or Klaro for OSS)</item>
+        <item>configure default-deny for analytics_storage and all ad signals</item>
+        <item>implement Consent Mode v2 defaults before gtag fires</item>
+        <item>add CCPA GPC signal check (navigator.globalPrivacyControl)</item>
+        <item>verify "Reject all" is one-click and visually equal to "Accept all"</item>
+        <item>run automated pre-consent cookie test (see templates/consent-test.ts)</item>
+      </list>
+
+      <reference path="templates/consent-test.ts">Playwright test: no non-essential cookies before consent, GA4 fires only after explicit accept</reference>
+    </section>
+
+    <section name="data-anonymization-steps">
+      <list>
+        <item>confirm GA4 IP anonymization is active (automatic in GA4)</item>
+        <item>implement server-side IP truncation for custom tracking (remove last IPv4 octet)</item>
+        <item>never claim hashing == anonymization in documentation or agent output</item>
+        <item>set GA4 data retention to minimum (2 months for most use cases)</item>
+        <item>clear user_id on logout: gtag('config', 'G-ID', { user_id: undefined })</item>
+      </list>
+    </section>
+
+    <section name="user-rights-implementation">
+      <list>
+        <item>implement data access request process (download user data on request)</item>
+        <item>implement data deletion process and right-to-be-forgotten flag in warehouse</item>
+        <item>document user rights in privacy policy (access, deletion, rectification, portability)</item>
+        <item>add users to suppression list on deletion before any campaign sends</item>
+      </list>
+    </section>
+
+    <section name="governance-and-audit">
+      <list>
+        <item>maintain versioned consent log: timestamp, policy version, IP hash, user choice</item>
+        <item>run quarterly CMP cookie scan to catch new cookies from code changes</item>
+        <item>update cookie policy table from live CMP scan output, not hand-written list</item>
+        <item>document all sub-processors with DPA and transfer mechanism (SCCs / EU-US DPF)</item>
+        <item>create incident response plan for data breach (72h GDPR notification requirement)</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/analytics-manager.js" purpose="AnalyticsManager class: consent gate, GA4 Consent Mode v2, CCPA GPC, event queue, cookie clearing"/>
+      <template path="templates/consent-test.ts" purpose="Playwright test: no analytics cookies before consent, GA4 fires only after accept"/>
+    </templates>
+
+    <see-also>
+      <link href="https://edpb.europa.eu"/>
+      <link href="https://www.cnil.fr/en/cookies-and-other-trackers"/>
+      <link href="https://ico.org.uk"/>
+      <link href="https://developers.google.com/tag-platform/security/guides/consent"/>
+      <link href="https://iabeurope.eu/tcf-2-2/"/>
+      <link href="https://oag.ca.gov/privacy/ccpa"/>
+      <link href="https://www.gov.br/anpd"/>
+      <link href="https://curia.europa.eu"/>
+    </see-also>
+  </content>
+</methodology>

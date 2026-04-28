@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ruby-sidekiq-jobs">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Sidekiq job patterns: job class with Sidekiq::Job, explicit sidekiq_options, idempotency check, primitive IDs, custom retry backoff, and RSpec testing with inline! mode.</summary>
+    <tags>
+      <tag>sidekiq</tag>
+      <tag>background-jobs</tag>
+      <tag>rails</tag>
+      <tag>async</tag>
+      <tag>queuing</tag>
+    </tags>
+    <category>async</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <languages>
+      <language>ruby</language>
+    </languages>
+    <frameworks>
+      <framework>rails</framework>
+    </frameworks>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+  <content>
+    <title>Sidekiq Background Jobs</title>
+    <summary>Sidekiq job patterns for Rails apps: job class with `include Sidekiq::Job`, explicit `sidekiq_options` (queue, retry, dead), idempotency check at the top of `perform`, primitive IDs in arguments (never ActiveRecord objects), custom retry backoff via `sidekiq_retry_in`, and RSpec tests using `Sidekiq::Testing.inline!`. Jobs must survive re-execution; errors must be captured and re-raised so retries fire correctly. Sidekiq's threaded model delivers ~10x the throughput of forking workers on the same box. Redis-backed queuing decouples user requests from slow work (mailers, webhooks, image pipelines). Idempotency, explicit retry policies, and the Dead set provide durability without requiring a separate durable queue system.</summary>
+    <why>
+      <p>Sidekiq's threaded model (N jobs concurrently per process) delivers ~10x the throughput of forking workers on the same box. Redis-backed queuing decouples user requests from slow work (mailers, webhooks, image pipelines). Idempotency, explicit retry policies, and the Dead set provide durability without requiring a separate durable queue system. Passing IDs instead of AR objects avoids stale data and GlobalID re-fetch failures when rows are deleted between enqueue and run.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Rails apps needing background processing: mailers, webhooks, third-party API calls, image/video pipelines</item>
+        <item>High-throughput job execution where Redis is already part of the stack</item>
+        <item>Scheduled / cron-style jobs via `sidekiq-cron` or `sidekiq-scheduler`</item>
+        <item>Workflows with batches, callbacks, and unique-job semantics (Sidekiq Pro or `sidekiq-unique-jobs`)</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-threaded code that mutates global state — Sidekiq runs N jobs concurrently and will trigger races</item>
+        <item>Low-volume one-shot tasks where Rails 8's Solid Queue / ActiveJob async adapter is enough</item>
+        <item>Serverless environments without persistent compute — choose a queue-as-a-service (SQS + ECS task) instead</item>
+        <item>When jobs must persist beyond Redis durability — use GoodJob (Postgres-backed) or Solid Queue instead</item>
+        <item>Strict FIFO requirements per partition — Sidekiq is best-effort ordering</item>
+      </list>
+    </when-not-to-use>
+    <section name="required-job-structure">
+      <rule>
+        <statement>Every job must include Sidekiq::Job, declare explicit sidekiq_options (queue:, retry:, dead:), and check idempotency as the first line of perform: return early if the work is already done.</statement>
+        <rationale>Sidekiq delivers at-least-once. Redis network blips cause re-delivery after the job has already completed. An idempotency check prevents double-sends, double-charges, and double-inserts.</rationale>
+      </rule>
+      <rule>
+        <statement>Pass only primitive IDs (Integer, String, UUID) into perform. Inside perform, reload ActiveRecord objects with Order.find(order_id) and return early if the record is not found (rescue ActiveRecord::RecordNotFound).</statement>
+        <rationale>GlobalID serialization re-fetches the AR record at run time. If the record was deleted between enqueue and execution, GlobalID raises before your idempotency check runs. Primitive IDs give you control over the not-found path.</rationale>
+      </rule>
+      <rule>
+        <statement>Use sidekiq_retry_in for custom backoff. Rescue specific error classes to control whether the job retries with linear, exponential, or no backoff. Always re-raise after capturing to an error tracker so the retry fires.</statement>
+        <rationale>Generic rescue StandardError without re-raise absorbs the exception — the job appears to succeed, moves to Done, and no retry is scheduled. Sidekiq retries only jobs that raise.</rationale>
+      </rule>
+      <example type="good" title="ProcessOrderJob with idempotency and custom retry backoff">
+        <code lang="ruby"><![CDATA[
+class ProcessOrderJob
+  include Sidekiq::Job
+
+  sidekiq_options queue: :default, retry: 3, dead: true
+
+  sidekiq_retry_in do |count, exception|
+    case exception
+    when PaymentGatewayError then (count + 1) * 60
+    else (count ** 4) + 15
+    end
+  end
+
+  def perform(order_id)
+    order = Order.find(order_id)
+    return if order.processed?
+
+    OrderProcessor.new(order).process!
+    NotifyCustomerJob.perform_async(order_id)
+  rescue ActiveRecord::RecordNotFound
+    Sidekiq.logger.warn "Order #{order_id} not found — skipping"
+  rescue PaymentGatewayError => e
+    raise # retry with custom backoff
+  rescue StandardError => e
+    ErrorTracker.capture(e, order_id: order_id)
+    raise
+  end
+end
+        ]]></code>
+      </example>
+    </section>
+    <section name="queue-registration">
+      <rule>
+        <statement>Register every new queue name in config/sidekiq.yml under :queues. Queues not in the config file are never processed by the worker — jobs sit silently in Redis with no error.</statement>
+        <rationale>Sidekiq workers only poll queues listed in their configuration. An unregistered queue name causes the job to remain in Redis indefinitely, appearing to the application as if it was dispatched successfully.</rationale>
+      </rule>
+      <rule>
+        <statement>Never dispatch a job from inside an ActiveRecord transaction. Use after_commit callback or call perform_later after the transaction block completes.</statement>
+        <rationale>The worker picks up the job before the transaction commits. AR.find(id) returns nil or raises because the row does not exist yet. The job fails on a row that will exist 10ms later.</rationale>
+      </rule>
+    </section>
+    <section name="batch-export-pattern">
+      <rule>
+        <statement>For jobs processing large datasets, use find_each(batch_size: 1000) instead of all.each. Update a status column on the associated model (processing → completed / failed) so the UI reflects current state.</statement>
+        <rationale>all.each loads all records into memory. A 100k-row export loads all 100k AR objects simultaneously, triggering GC pressure and potential OOM. find_each processes in batches of 1000, keeping memory bounded regardless of dataset size.</rationale>
+      </rule>
+      <rule>
+        <statement>Wrap the job body in rescue StandardError: update the model to status :failed with error_message, then re-raise so Sidekiq records the failure and retries.</statement>
+        <rationale>Without rescue, a partial export leaves the model in status :processing indefinitely. The UI shows "processing" forever. The rescue ensures failed state is persisted before the retry or dead-job transition.</rationale>
+      </rule>
+      <example type="good" title="BatchExportJob with status tracking and find_each">
+        <code lang="ruby"><![CDATA[
+class BatchExportJob
+  include Sidekiq::Job
+
+  sidekiq_options queue: :exports, retry: 1
+
+  def perform(export_id)
+    export = Export.find(export_id)
+    export.update!(status: :processing)
+
+    CSV.open(export.file_path, 'wb') do |csv|
+      csv << export.headers
+      export.query_records.find_each(batch_size: 1000) do |record|
+        csv << export.row_for(record)
+      end
+    end
+
+    export.update!(status: :completed, completed_at: Time.current)
+    ExportMailer.ready(export).deliver_later
+  rescue StandardError => e
+    export&.update!(status: :failed, error_message: e.message)
+    raise
+  end
+end
+        ]]></code>
+        <note>deliver_later (not deliver_now) inside the job enqueues the mailer as a separate Sidekiq job — if the mailer fails, only the mail retries, not the entire export.</note>
+      </example>
+    </section>
+    <section name="antipatterns">
+      <antipattern>
+        <description>Passing full ActiveRecord objects or hashes containing AR objects into perform_async arguments.</description>
+        <reason>AR objects serialize via GlobalID and re-fetch on the worker. If the record was deleted between enqueue and execution, findOrFail raises before your idempotency logic runs. Large AR objects also bloat Redis memory. Pass primitive IDs only.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Calling perform_async inside an ActiveRecord transaction: User.transaction { user.save!; SendWelcomeJob.perform_async(user.id) }.</description>
+        <reason>Sidekiq picks up the job before the transaction commits. The worker calls User.find(id) — the row does not exist yet — and the job fails. Use after_commit :enqueue_welcome, on: :create or call perform_async after the transaction block.</reason>
+      </antipattern>
+      <antipattern>
+        <description>sidekiq_options retry: false to "keep things simple" on jobs touching user-facing state.</description>
+        <reason>retry: false means the first failure permanently discards the job into the Dead set. A transient network blip deletes a user's welcome email, order confirmation, or subscription activation with no recovery path. Default to retry: 3-5 with dead: true.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Testing with Sidekiq::Testing.inline! as the only test mode without supplementing with fake! + drain.</description>
+        <reason>inline! runs perform synchronously in the test process, which masks enqueueing-order bugs and prevents testing retry behavior. Use fake! + WorkerClass.drain to test the enqueue-then-drain lifecycle, and inline! only for integration-style tests.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Logging full perform arguments that include API tokens, payment details, or user PII.</description>
+        <reason>Sidekiq logs job arguments by default. Arguments containing secrets appear in log files, Sidekiq Web dashboard (visible to anyone with dashboard access), and error tracker payloads. Redact secrets before logging or use Sidekiq Pro argument encryption.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Long-running jobs (>30s) that process all records in a single perform call without chunking.</description>
+        <reason>Sidekiq worker timeout kills the job mid-run. Without chunking, the job restarts from the beginning on retry, re-processing already-completed records (idempotency risk) or exceeding the retry window. Split into chunks of ≤1000 records per job.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/job.rb" purpose="ProcessOrderJob with idempotency, retry backoff, error handling"/>
+      <template path="templates/sidekiq.yml" purpose="Queue priorities and concurrency configuration"/>
+      <template path="templates/sidekiq.service" purpose="Systemd unit for daemonized Sidekiq worker with graceful shutdown"/>
+    </templates>
+    <see-also>
+      <link href="https://github.com/sidekiq/sidekiq/wiki"/>
+      <link href="https://www.mikeperham.com"/>
+      <link href="https://github.com/mhenrixon/sidekiq-unique-jobs"/>
+      <link href="https://github.com/bensheldon/good_job"/>
+      <link href="https://guides.rubyonrails.org/active_job_basics.html"/>
+    </see-also>
+  </content>
+</methodology>

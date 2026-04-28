@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="retention-metrics">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>growth-marketer</domain>
+    <summary>Retention metrics quantify how many users return over time. Core set: D1/D7/D30 cohort retention rates, DAU/MAU engagement ratio, monthly churn rate, and a churn-risk score per user. Every metric requires a locked SQL definition.</summary>
+    <tags>
+      <tag>retention</tag>
+      <tag>metrics</tag>
+      <tag>cohort</tag>
+      <tag>churn</tag>
+      <tag>engagement</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Retention Metrics</title>
+    <summary>Retention metrics quantify how many users return over time. Core set: D1/D7/D30 cohort retention rates, DAU/MAU engagement ratio, monthly churn rate, and a churn-risk score per user. Every metric requires a locked SQL definition — "DAU" computed differently across reports produces uncomparable numbers.</summary>
+    <why>
+      <p>Aggregate retention ("D30 = 15%") hides cohort trends and segment regressions. Without cohort-level retention you cannot tell whether the product is improving, whether a traffic-source change is diluting quality, or whether a feature experiment moved the needle. The churn-risk score gives operators time to intervene before users cancel.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Standing up retention reporting for the first time — generate D1/D7/D30 cohort tables.</item>
+        <item>Weekly digest automation: WoW deltas, at-risk cohort flags, DAU/MAU trend.</item>
+        <item>Benchmarking against industry norms (B2B SaaS, social, mobile, ecom) to set realistic targets.</item>
+        <item>Building a churn-risk model: feature engineering per user from event data.</item>
+        <item>Pre-A/B-test power planning — knowing baseline cohort variance is required to size experiments.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>One-off transactional products (single-purchase utility, gift) — retention is the wrong primitive; use LTV + repeat-purchase.</item>
+        <item>Pre-PMF: cohorts smaller than 100 users produce noise, not signal.</item>
+        <item>B2B products with monthly or quarterly usage — D1/D7 retention misleads; use feature-event retention or contract-tied metrics.</item>
+        <item>Heavily seasonal products where cohort comparison across periods is invalid without de-seasonalizing.</item>
+      </list>
+    </when-not-to-use>
+    <section name="core-metrics">
+      <p>Metric Definitions and Benchmarks for D1/D7/D30 retention, DAU/MAU engagement ratios, and monthly churn by product type.</p>
+      <rule>
+        <statement>Lock every retention metric definition in a versioned SQL model (dbt or equivalent) before any reporting begins; never let an agent recompute with a slightly different filter mid-week.</statement>
+        <rationale>Definitional drift — "DAU" computed as event_count > 0 vs DISTINCT(user_id) — produces numbers that look comparable but are not, breaking trend analysis.</rationale>
+      </rule>
+      <p>Metric Definitions:</p>
+      <list>
+        <item>Dn retention = users from cohort C still active on day N / cohort C size</item>
+        <item>DAU = distinct users with qualifying event on a given calendar day</item>
+        <item>WAU = distinct users with qualifying event in a 7-day window</item>
+        <item>MAU = distinct users with qualifying event in a 28-day window</item>
+        <item>DAU/MAU ratio = stickiness; measures how often monthly users return daily</item>
+        <item>Monthly churn = users who cancel or become inactive in month / users at start of month</item>
+      </list>
+      <p>Retention Benchmarks by Product Type. Use as reference band (min/typical/max), not a single target:</p>
+      <list>
+        <item>Social app: D1 40-60%, D7 25-35%, D30 15-25%</item>
+        <item>Mobile game: D1 35-45%, D7 15-25%, D30 5-10%</item>
+        <item>B2B SaaS: D1 50-70%, D7 40-55%, D30 30-45%</item>
+        <item>Consumer subscription: D1 60-80%, D7 50-65%, D30 40-55%</item>
+        <item>E-commerce: D1 15-25%, D7 8-15%, D30 3-8%</item>
+      </list>
+      <p>Engagement Ratio Benchmarks:</p>
+      <list>
+        <item>DAU/MAU poor: &lt;15% | average: 15-25% | good: 25-40% | great: &gt;40%</item>
+        <item>WAU/MAU poor: &lt;40% | average: 40-60% | good: 60-75% | great: &gt;75%</item>
+      </list>
+      <rule>
+        <statement>Suppress DAU/MAU ratio when MAU &lt; 1000 — on tiny products it is noise, not signal.</statement>
+        <rationale>A single power user skews the ratio; the metric needs a stable denominator to be meaningful.</rationale>
+      </rule>
+      <p>Monthly Churn Targets by Industry:</p>
+      <list>
+        <item>B2B SaaS: good &lt;5%, great &lt;2%</item>
+        <item>Consumer subscription: good &lt;8%, great &lt;5%</item>
+        <item>Mobile app: good &lt;10%, great &lt;7%</item>
+      </list>
+      <p>Agent Gotchas:</p>
+      <antipattern>
+        <description>Computing DAU from event_count > 0 instead of COUNT(DISTINCT user_id).</description>
+        <reason>Multi-session users inflate DAU; the metric becomes non-comparable across time periods.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Reporting D30 retention for cohorts that are only 10 days old.</description>
+        <reason>Diagonal effect: newest cohorts have incomplete history; D30 comparisons are meaningless until the cohort matures to 30+ days.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Comparing cohort retention across periods with different traffic mixes.</description>
+        <reason>A paid-channel expansion confounds the trend; always segment by acquisition source before declaring retention improvement.</reason>
+      </antipattern>
+    </section>
+    <section name="implementation-checklist">
+      <p>Four-phase checklist for standing up retention measurement: define active user, build cohort tables, segment analysis, dashboarding and predictive scoring.</p>
+      <p>Phase 1: Define and Track</p>
+      <list>
+        <item>determine what counts as "active" (login, key action, purchase) — document the decision</item>
+        <item>exclude test accounts and internal staff from all retention calculations</item>
+        <item>calculate D1, D7, D30, D90 retention for each weekly/monthly cohort</item>
+        <item>verify cohort size — suppress or grey-label cohorts with fewer than 50 users</item>
+        <item>lock definition in versioned SQL model before building any dashboard</item>
+      </list>
+      <p>Phase 2: Cohort Analysis</p>
+      <list>
+        <item>build acquisition cohort retention table (rows = cohort, columns = D1/D7/D30/D90)</item>
+        <item>add cohort size column next to every retention rate</item>
+        <item>identify seasonal patterns by comparing same-month cohorts year-over-year</item>
+        <item>find best and worst performing cohorts and attribute the difference to source or product change</item>
+      </list>
+      <p>Phase 3: Segment Retention</p>
+      <list>
+        <item>segment by acquisition channel (paid vs organic vs referral)</item>
+        <item>segment by pricing tier (free vs paid) and device/platform</item>
+        <item>compare feature-adoption cohorts: users who used feature X vs did not in first week</item>
+        <item>flag any segment where D30 retention is &gt;20% below the aggregate — this is the intervention priority</item>
+      </list>
+      <p>Phase 4: Dashboard and Alerts</p>
+      <list>
+        <item>create weekly DAU/WAU/MAU table with WoW deltas</item>
+        <item>set up cohort retention view with benchmark bands overlaid</item>
+        <item>configure alert if D7 retention for current cohort deviates &gt;20% from rolling median</item>
+        <item>pair every retention dashboard with a "retention loop" map: which mechanic drives the next session</item>
+      </list>
+    </section>
+    <section name="churn-risk-scoring">
+      <p>Three-tier churn risk model (low/medium/high) based on logins, feature breadth, support sentiment, and tenure, with per-tier intervention logic.</p>
+      <p>Risk Tiers:</p>
+      <list>
+        <item>Low risk (score 0-30): daily active, multiple sessions, broad feature use — maintain current experience</item>
+        <item>Medium risk (score 30-70): weekly active (down from daily), shorter sessions, narrower feature use — re-engagement nudge</item>
+        <item>High risk (score 70-100): monthly or less active, very short sessions, only checking — personal outreach or save offer</item>
+      </list>
+      <rule>
+        <statement>Compute health score as a sum of four capped components: login frequency (max 25), feature breadth (max 25), support sentiment (max 25), tenure (max 25). Retrain monthly after any product change.</statement>
+        <rationale>A four-component score is interpretable by humans and auditable; single-signal scores (login only) miss users who log in but never engage with core features.</rationale>
+      </rule>
+      <p>Health Score Formula:</p>
+      <list>
+        <item>s_login = min(25, logins_last_7d * 5)</item>
+        <item>s_feature = min(25, distinct_feature_types_last_30d * 3)</item>
+        <item>s_support = coalesce(avg_sentiment_last_60d, 0.5) * 25</item>
+        <item>s_tenure = min(25, days_since_signup / 30)</item>
+        <item>health = s_login + s_feature + s_support + s_tenure</item>
+      </list>
+      <p>Agent Workflow Rules:</p>
+      <rule>
+        <statement>Keep the churn-risk agent in draft-only mode — humans must approve before any re-engagement email is sent.</statement>
+        <rationale>Automated sends to suppression-listed or long-dormant users hurt sender reputation and may violate GDPR; human approval gate prevents batch mistakes.</rationale>
+      </rule>
+      <rule>
+        <statement>Require human approval for cadence before the agent sends re-engagement emails to high-risk users.</statement>
+        <rationale>Over-mailing at-risk users causes fatigue and accelerates churn rather than preventing it.</rationale>
+      </rule>
+      <antipattern>
+        <description>Churn-risk model trained on Q1 data scoring Q3 cohorts without retraining.</description>
+        <reason>Product changes and seasonal patterns shift the feature distributions; a stale model misclassifies users and wastes intervention budget.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Push-notification spikes from re-engagement campaign counted as "retention improvement".</description>
+        <reason>Notification-induced short-term returns must be separated from habitual return — distinguish them by checking D7 retention of reactivated users vs organic baseline.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/retention-loop-design.md" purpose="Retention loop design template: trigger, action, reward, investment, metrics"/>
+      <template path="templates/engagement-dashboard.md" purpose="Weekly engagement dashboard template: retention rates, DAU/MAU, loop health, churn analysis"/>
+    </templates>
+    <see-also>
+      <link href="https://www.lennysnewsletter.com/"/>
+      <link href="https://mixpanel.com/blog/cohort-analysis/"/>
+      <link href="https://amplitude.com/blog/retention-rate"/>
+    </see-also>
+  </content>
+</methodology>

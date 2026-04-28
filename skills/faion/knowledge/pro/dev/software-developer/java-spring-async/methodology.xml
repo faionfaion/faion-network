@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="java-spring-async">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Spring @Async with ThreadPoolTaskExecutor for running methods on managed thread pools without blocking HTTP threads. Named executors, CompletableFuture returns, TaskDecorator context propagation.</summary>
+    <tags>
+      <tag>spring-boot</tag>
+      <tag>async</tag>
+      <tag>threading</tag>
+      <tag>concurrent</tag>
+      <tag>java</tag>
+    </tags>
+    <category>backend</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <languages>
+      <language>java</language>
+    </languages>
+    <frameworks>
+      <framework>spring-boot</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Spring Async</title>
+
+    <summary>Spring's @Async + ThreadPoolTaskExecutor pattern for running methods on a managed thread pool without blocking the HTTP thread. Annotate a method @Async("executorName"), enable with @EnableAsync, define a ThreadPoolTaskExecutor bean, and return CompletableFuture&lt;T&gt; so callers can observe errors. The async method must live in a different bean than the caller to avoid proxy self-invocation bypass.</summary>
+
+    <why>
+      <p>Offloading fire-and-forget work (email, SMS, audit logging, webhook delivery) to a named pool removes it from the request thread, reducing p99 latency. Named executors with bounded queues and CallerRunsPolicy provide backpressure without dropping tasks. Unlike raw ExecutorService, Spring-managed pools participate in DI, observability (Micrometer metrics), graceful shutdown, and context propagation (MDC, SecurityContext, OTel span) via TaskDecorator.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Background tasks that must not block HTTP threads: email/SMS, CRM sync, report generation, image transcoding.</item>
+        <item>Fan-out: controller fires multiple downstream calls, aggregates via CompletableFuture.allOf.</item>
+        <item>Event-driven side effects using ApplicationEventPublisher + @Async @EventListener.</item>
+        <item>Migrating raw ExecutorService boilerplate to Spring-managed pools with proper shutdown and metrics.</item>
+        <item>Fire-and-forget audit logging or metrics that must not impact request latency.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Cross-process work needing durability, retries, or idempotency — use SQS / RabbitMQ / Kafka instead; @Async does not survive a JVM restart.</item>
+        <item>High-throughput streaming — use Project Reactor / WebFlux end-to-end; mixing @Async with reactive code wastes threads.</item>
+        <item>Latency-sensitive paths where work MUST complete before response — use synchronous code.</item>
+        <item>Spring Boot 3.2+ apps with virtual threads enabled — @Async adds no value and may interfere with Loom schedulers.</item>
+        <item>Exactly-once semantics, durable state, or saga workflows — use Temporal or a queue broker.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="executor-configuration">
+      <p>Rules for creating named ThreadPoolTaskExecutor beans with proper shutdown, backpressure, and context propagation via TaskDecorator.</p>
+
+      <rule>
+        <statement>Define a named ThreadPoolTaskExecutor bean and always reference it by name: @Async("taskExecutor"). Never use bare @Async — it falls back to SimpleAsyncTaskExecutor (unbounded threads, no pooling).</statement>
+        <rationale>SimpleAsyncTaskExecutor creates a new thread per call. Under load this exhausts OS thread limits silently. A named bounded pool provides predictable resource usage.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Set corePoolSize, maxPoolSize, queueCapacity, threadNamePrefix, and rejectionPolicy on every ThreadPoolTaskExecutor bean. Set setWaitForTasksToCompleteOnShutdown(true) and setAwaitTerminationSeconds to a bounded value.</statement>
+        <rationale>Without shutdown wait, in-flight tasks (emails, webhook calls) are dropped on JVM shutdown during deploys. Bounded termination prevents graceful shutdown from hanging indefinitely.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use CallerRunsPolicy as the default rejection policy for fire-and-forget executors. Use AbortPolicy only when the caller can handle RejectedExecutionException.</statement>
+        <rationale>CallerRunsPolicy degrades gracefully under overload by running the task on the caller's thread, providing natural backpressure without dropping tasks.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Wrap every ThreadPoolTaskExecutor in a TaskDecorator that copies MDC context map, SecurityContextHolder, and OTel current span to the async thread before execution, restoring originals afterward.</statement>
+        <rationale>MDC (trace IDs), SecurityContext (authenticated principal), and OTel span are ThreadLocal. Without propagation, async threads produce untraced logs and null principals, breaking observability and security.</rationale>
+      </rule>
+
+      <example type="good" title="AsyncConfig with TaskDecorator">
+        <code lang="java"><![CDATA[
+@Configuration
+@EnableAsync
+public class AsyncConfig {
+
+    @Bean(name = "taskExecutor")
+    public Executor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("Async-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(60);
+        executor.setTaskDecorator(task -> {
+            Map<String, String> mdc = MDC.getCopyOfContextMap();
+            SecurityContext sc = SecurityContextHolder.getContext();
+            return () -> {
+                try {
+                    MDC.setContextMap(mdc != null ? mdc : Map.of());
+                    SecurityContextHolder.setContext(sc);
+                    task.run();
+                } finally {
+                    MDC.clear();
+                    SecurityContextHolder.clearContext();
+                }
+            };
+        });
+        executor.initialize();
+        return executor;
+    }
+}
+        ]]></code>
+        <note>One @EnableAsync per application (in a @Configuration class). Multiple executor beans are allowed — name each descriptively (emailExecutor, reportExecutor).</note>
+      </example>
+
+      <rule>
+        <statement>Register Micrometer metrics on every ThreadPoolTaskExecutor: queued, active, completed, rejected counts. Alert on rejected > 0 for any non-CallerRuns pool.</statement>
+        <rationale>Without metrics, pool exhaustion is invisible until the application degrades. rejected > 0 is an immediate operational signal.</rationale>
+      </rule>
+    </section>
+
+    <section name="method-annotation-rules">
+      <p>Rules for annotating async methods, returning CompletableFuture for error observability, and composing fan-out calls.</p>
+
+      <rule>
+        <statement>The @Async method must live in a different Spring bean than the caller. If the caller and the target are in the same class, extract the async method to a dedicated @Service (e.g., AsyncEmailService).</statement>
+        <rationale>@Async works via a Spring proxy. Calling this.asyncMethod() inside the same bean bypasses the proxy — the method runs synchronously and silently. This is the #1 cause of @Async "not working" bug reports.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Return CompletableFuture&lt;Void&gt; (or CompletableFuture&lt;T&gt;) from @Async methods where errors must be observable. For true fire-and-forget, wire an AsyncUncaughtExceptionHandler in AsyncConfig that logs the error and increments a Prometheus counter.</statement>
+        <rationale>void @Async methods drop exceptions silently unless an AsyncUncaughtExceptionHandler is registered. Lost exceptions mean lost operational visibility.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Do not place @Transactional and @Async on the same method. An async method runs in a separate thread, so the caller's transaction is not propagated. Either the caller opens no transaction, or the async method opens its own.</statement>
+        <rationale>@Transactional binds a connection to the calling thread. The async thread is a different thread — it gets no connection from the caller's tx. The code compiles and appears to work in tests (synchronous by default) but fails in production.</rationale>
+      </rule>
+
+      <example type="good" title="NotificationService with fan-out">
+        <code lang="java"><![CDATA[
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class NotificationService {
+
+    private final EmailService emailService;
+    private final SmsService smsService;
+
+    @Async("emailExecutor")
+    public CompletableFuture<Void> sendOrderConfirmation(Order order) {
+        try {
+            emailService.send(order.getUser().getEmail(),
+                "Order Confirmation", buildBody(order));
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            log.error("Failed to send order confirmation for {}", order.getId(), e);
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    @Async("taskExecutor")
+    public CompletableFuture<Void> sendWelcomeNotifications(User user) {
+        CompletableFuture<Void> email = CompletableFuture.runAsync(() ->
+            emailService.send(user.getEmail(), "Welcome!", buildWelcome(user)));
+        CompletableFuture<Void> sms = CompletableFuture.runAsync(() ->
+            smsService.send(user.getPhone(), "Welcome to our service!"));
+        return CompletableFuture.allOf(email, sms)
+            .exceptionally(ex -> { log.error("Welcome notifications failed", ex); return null; });
+    }
+}
+        ]]></code>
+        <note>NotificationService is a separate bean from any controller that calls it — proxy interception works correctly.</note>
+      </example>
+
+      <rule>
+        <statement>Test @Async methods with Awaitility (await().atMost(2, SECONDS).untilAsserted(...)). Never use Thread.sleep.</statement>
+        <rationale>Thread.sleep is a fixed wait that produces flaky tests: too short on slow CI, too long for developer feedback. Awaitility polls until the condition is true or the timeout expires.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <p>Concrete failure modes that agents introduce when adding @Async; each has a detectable symptom and a required fix.</p>
+
+      <antipattern>
+        <description>Self-invocation: calling this.asyncMethod() inside the same @Service class.</description>
+        <reason>Spring's @Async proxy is not engaged for internal method calls. The method runs synchronously on the caller's thread with no pooling, no error routing, no context propagation. The bug is silent — no exception is thrown, the method just blocks.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Bare @Async without a named executor: @Async with no argument or @Async("").</description>
+        <reason>Falls back to SimpleAsyncTaskExecutor, which creates a new OS thread per invocation. Under sustained load, thread count grows without bound until the JVM or OS kills the process. No backpressure, no metrics, no pool reuse.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>void-returning @Async method with no AsyncUncaughtExceptionHandler registered in AsyncConfig.</description>
+        <reason>Exceptions thrown by void @Async methods are silently discarded. Failures (email send errors, webhook rejections) produce no log, no metric, no alert. Operators have no visibility.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>@Transactional and @Async on the same method, expecting the caller's transaction to propagate.</description>
+        <reason>The async thread is a different OS thread. Spring cannot propagate a JDBC connection (bound to a ThreadLocal) across threads. The async method reads uncommitted data or opens its own unrelated transaction.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>ThreadPoolTaskExecutor without setWaitForTasksToCompleteOnShutdown(true).</description>
+        <reason>On JVM shutdown (during deploys), in-flight async tasks are killed immediately. Email sends, webhook deliveries, and audit log writes are silently dropped. Durable work must use a queue, but at minimum the shutdown hook must drain the in-flight pool.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Thread.sleep() in tests waiting for async completion.</description>
+        <reason>Produces flaky tests: too short on slow CI, too long on fast hardware. Use Awaitility's await().atMost().untilAsserted() which polls until the condition is met or times out.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using @Async for work that requires durability: charging cards, sending invoices, triggering external state transitions.</description>
+        <reason>@Async tasks live in JVM memory. A JVM restart (crash, OOM, deploy) permanently loses in-flight tasks. Durable work requires a persistent queue (SQS, RabbitMQ, Kafka) with at-least-once delivery.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Recommended agent-driven patterns for adopting Spring Async in existing applications.</p>
+
+      <p>Drive Spring Async adoption as a four-stage pipeline: (1) a discovery agent enumerates candidate methods (long-running, no return value needed by caller, idempotent on retry); (2) a config agent verifies / creates ThreadPoolTaskExecutor beans with TaskDecorator for MDC + Security + OTel context; (3) a refactor agent annotates methods, replaces void with CompletableFuture&lt;Void&gt; where errors must be observable, splits async methods to a separate bean to avoid self-invocation; (4) a test agent generates Awaitility + WireMock-based tests. Persist async-eligible inventory in .aidocs/product_docs/async-inventory.md. Use faion-sdd-executor-agent to drive each method per SDD task.</p>
+
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-sdd-executor-agent — opus model fits because async/sync trade-offs (consistency, retries, backpressure) are decision-heavy.</item>
+        <item>faion-feature-executor skill — sequential mode: config → refactor → test → integration test, gating on green.</item>
+        <item>A purpose-built async-anti-pattern agent: linter for self-invocation, missing @EnableAsync, void-returning @Async without AsyncUncaughtExceptionHandler, @Async on method that calls JpaRepository.save inside a parent @Transactional.</item>
+        <item>password-scrubber-agent — async tasks frequently log payload bodies (email content, webhook bodies) that contain PII / tokens; scrub before commit.</item>
+      </list>
+
+      <prompt purpose="Async refactoring pattern"><![CDATA[You are converting a method to Spring @Async on Spring Boot 3.4.
+Constraints:
+1. The async method MUST live in a different bean than the caller
+   (no self-invocation). If currently same bean, extract to a new
+   @Service.
+2. Annotate the class @EnableAsync once (in @Configuration). Reuse
+   existing AsyncConfig if present.
+3. Use a named executor: @Async("taskExecutor") or "emailExecutor".
+   Bean must be ThreadPoolTaskExecutor with corePoolSize, maxPoolSize,
+   queueCapacity, threadNamePrefix, CallerRunsPolicy, and
+   setWaitForTasksToCompleteOnShutdown(true).
+4. Wrap with TaskDecorator that copies MDC + SecurityContextHolder +
+   OTel current span.
+5. If errors matter, return CompletableFuture<Void> and add
+   .exceptionally to the caller; OR set AsyncUncaughtExceptionHandler
+   in AsyncConfig that logs + increments a Prometheus counter.
+6. NEVER call the @Async method from a parent @Transactional
+   expecting transaction propagation; remove the parent @Transactional
+   or split.
+7. Test with Awaitility, never Thread.sleep.]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <p>Command-line tools for async workload profiling and testing.</p>
+
+      <list>
+        <item>mvn / gradle — Build, test, run. https://maven.apache.org , https://gradle.org</item>
+        <item>Spring Boot Actuator + /actuator/threaddump — Inspect live thread pools. https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html</item>
+        <item>jcmd (pid) Thread.print — JVM thread dump from CLI. https://docs.oracle.com/en/java/javase/21/docs/specs/man/jcmd.html</item>
+        <item>async-profiler — Sample async / blocking time. https://github.com/async-profiler/async-profiler</item>
+        <item>Micrometer + Prometheus — executor.queued, executor.active, executor.completed metrics. https://micrometer.io</item>
+        <item>awaitility — Test fluent waits. org.awaitility:awaitility ; https://github.com/awaitility/awaitility</item>
+        <item>WireMock CLI — Stub external HTTP for async integration tests. https://wiremock.org</item>
+        <item>jstack / jfr (Java Flight Recorder) — Profiling thread / lock contention. bundled with JDK</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <p>SaaS and OSS tools for durability, observability, and scaling beyond @Async.</p>
+
+      <list>
+        <item>RabbitMQ + Spring AMQP (OSS) — Use when @Async outgrows in-process (durability, retries).</item>
+        <item>Apache Kafka + Spring Cloud Stream (OSS) — High-throughput async; replace @Async for event fan-out.</item>
+        <item>AWS SQS + spring-cloud-aws (SaaS) — Drop-in cloud queue.</item>
+        <item>Temporal (OSS / Cloud) — Where async needs durable state machines / saga.</item>
+        <item>Redis Streams + Spring Data Redis (OSS) — Cheap pub/sub upgrade path.</item>
+        <item>Hazelcast / Ignite distributed executors (OSS) — Cluster-wide async work.</item>
+        <item>Sentry / Datadog APM (SaaS) — Observe async tasks; trace propagation requires TaskDecorator.</item>
+        <item>OpenTelemetry Java agent (OSS) — Auto-instrumentation propagates async context if executor is wrapped.</item>
+        <item>Spring Batch (OSS) — When async grows into chunked jobs with restart semantics.</item>
+        <item>Quartz Scheduler (OSS) — Cron-like scheduled @Async; Boot integration via spring-boot-starter-quartz.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <p>Proven patterns and practices for Spring Async applications.</p>
+
+      <list>
+        <item>Async method lives in a different bean than the caller. No self-invocation. Refactor into a dedicated AsyncEmailService if needed.</item>
+        <item>Always use a named executor. @Async("taskExecutor") — not just @Async. Default is unbounded SimpleAsyncTaskExecutor.</item>
+        <item>ThreadPoolTaskExecutor with explicit limits. Core, max, queue, prefix, rejection policy, shutdown wait. README's AsyncConfig is a good baseline; copy it.</item>
+        <item>TaskDecorator propagates context. MDC (logging trace IDs), SecurityContext, OTel current span, request locale. Without this, observability is broken.</item>
+        <item>Return CompletableFuture&lt;T&gt; if errors must be observable. void async swallows exceptions unless AsyncUncaughtExceptionHandler is wired.</item>
+        <item>Don't share @Transactional across async boundary. Either the parent doesn't open a tx, or the async method opens its own (and read-after-commit is needed).</item>
+        <item>Backpressure-friendly rejection policy. CallerRunsPolicy for fire-and-forget where degradation is OK; AbortPolicy only when caller can handle the exception.</item>
+        <item>Metrics on every executor. Micrometer exports executor.queued, active, completed, rejected. Alert on rejected &gt; 0 for any non-CallerRuns pool.</item>
+        <item>setWaitForTasksToCompleteOnShutdown(true) + bounded setAwaitTerminationSeconds. No silent task loss on deploy.</item>
+        <item>Virtual threads on Boot 3.2+ where applicable. spring.threads.virtual.enabled=true lets the platform handle scheduling; revisit per-pool sizing.</item>
+        <item>Test with Awaitility, not Thread.sleep. await().atMost(2, SECONDS).untilAsserted(...).</item>
+        <item>Boundaries with external systems = queue, not @Async. Email vendor down → @Async retries die with the JVM. Use a queue for durability.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common mistakes agents introduce when adding Spring Async.</p>
+
+      <list>
+        <item>Self-invocation reflex. Agents add @Async to a method and call it from the same class. The proxy doesn't intercept and the method runs synchronously. Force the rule: "If the caller and @Async method are in the same bean, refactor."</item>
+        <item>Wrong executor. Agents leave @Async empty and code uses SimpleAsyncTaskExecutor (unbounded threads). Force named executor + bean definition.</item>
+        <item>Lost SecurityContext. Agents call SecurityContextHolder.getContext() inside the async method — null. Add DelegatingSecurityContextAsyncTaskExecutor or TaskDecorator.</item>
+        <item>@Async + @Transactional on same method. Tx applied to the caller's thread, not the async thread. Misleading. Reject in review.</item>
+        <item>Returning void and losing exceptions. Agents do not wire AsyncUncaughtExceptionHandler. Force one in AsyncConfig that logs + emits a metric.</item>
+        <item>@Async for things that need durability. Agents use @Async for charging cards / sending invoices. JVM restart loses the work. Force a queue + handler.</item>
+        <item>Thread.sleep in tests. Agents test async by Thread.sleep(500); assertX(). Flaky. Use Awaitility + untilAsserted.</item>
+        <item>MDC drop. Agents log inside async method, lose trace ID, and debugging is dark. Add TaskDecorator that copies MDC.getCopyOfContextMap().</item>
+        <item>Default rejection policy crashes user requests. Default AbortPolicy throws RejectedExecutionException to caller. Pick CallerRunsPolicy for fire-and-forget OR a dedicated handler that logs + queues.</item>
+        <item>Virtual-thread confusion. Agents wire @Async AND virtual threads, doubling abstraction. Decide one model per pool.</item>
+        <item>Memory leak via unbounded CompletableFuture chains. Agents chain .thenApplyAsync(...).thenApplyAsync(...) indefinitely; without explicit executors, the common pool runs everything. Pin executor on each *Async.</item>
+        <item>Human-in-the-loop on parallelism numbers. corePoolSize / maxPoolSize / queueCapacity are tuning decisions; never let an agent guess. Require benchmark + load test before merge.</item>
+        <item>Observability gaps. Agents add @Async and forget to register Micrometer metrics on the executor (Metrics.gauge("executor.active", taskExecutor, ThreadPoolTaskExecutor::getActiveCount)). Force registration in the config.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://docs.spring.io/spring-framework/reference/integration/scheduling.html"/>
+      <link href="https://docs.spring.io/spring-boot/reference/features/task-execution-and-scheduling.html"/>
+      <link href="https://docs.spring.io/spring-security/reference/servlet/integrations/concurrency.html"/>
+      <link href="https://github.com/awaitility/awaitility"/>
+      <link href="https://micrometer.io/"/>
+    </see-also>
+  </content>
+</methodology>

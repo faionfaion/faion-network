@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ruby-activerecord">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>ActiveRecord patterns for efficient database access: Query Objects for chainable filters, proper scopes with lambdas, eager loading via includes, and callback structure. Emphasizes N+1 prevention and association semantics (has_one, has_many, through).</summary>
+    <category>backend</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>ruby</tag>
+      <tag>activerecord</tag>
+      <tag>rails</tag>
+      <tag>database</tag>
+      <tag>orm</tag>
+    </tags>
+    <languages>
+      <language>ruby</language>
+    </languages>
+    <frameworks>
+      <framework>rails</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>ActiveRecord Patterns</title>
+
+    <summary>Efficient database access with proper query optimization via Query Objects for chainable filters, scopes as lambdas for composition, eager loading via includes() to prevent N+1, and lifecycle callbacks (before_validation, after_create_commit). Validate presence, uniqueness with case_insensitive, and length constraints. Use has_one/has_many/has_many through for association semantics. Normalize data in callbacks (email lowercasing). Dispatch async work via deliver_later and callbacks.</summary>
+
+    <why>
+      <p>Query Objects encapsulate the business logic of filtering (active users, by role, by date range) into reusable, testable classes. They eliminate scattered WHERE clauses in controllers and make complex queries debuggable. ActiveRecord scopes as lambdas enable method chaining and composition — User.active.admins.recent reads like prose and is more flexible than procedural conditionals.</p>
+      <p>Eager loading via includes() prevents the N+1 query anti-pattern where loading 100 users and then their profiles issues 101 queries. Validations at the model layer catch business rule violations before they hit the database. Callbacks (before_validation for normalization, after_create_commit for side effects) keep the model responsible for its own invariants.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any Rails application shipping to production with a relational database.</item>
+        <item>Building a complex domain with associations, scopes, and validation rules.</item>
+        <item>Extracting reusable query logic that appears in multiple controllers.</item>
+        <item>Performance optimization: identifying N+1 queries and using includes/joins.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>NoSQL/document stores — use a different ORM pattern (Mongoid, etc.).</item>
+        <item>Raw SQL is more efficient — use find_by_sql for complex analytical queries.</item>
+        <item>Data migration/ETL scripts where overhead of the full Rails stack is unnecessary.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="query-objects">
+      <p>Query Objects encapsulate WHERE/ORDER/INCLUDE logic into reusable, chainable classes. Each method transforms the internal @relation and returns self, enabling fluent composition.</p>
+
+      <rule testable="true">
+        <statement>Complex query logic MUST be extracted into a Query Object (UsersQuery, OrdersQuery) rather than scattered in controller actions or helper methods. Query Objects MUST initialize with a base relation (User.all by default) and return self from each filter method to enable chaining.</statement>
+        <rationale>Query Objects are testable without hitting routes, reusable across controllers, and make the business rules explicit. Chaining makes the intent readable: UsersQuery.new.active.with_role('admin').search(term).paginate(...) documents the filtering flow.</rationale>
+      </rule>
+
+      <example type="good" title="Query Object pattern with chaining">
+        <code lang="ruby"><![CDATA[
+# app/queries/users_query.rb
+class UsersQuery
+  def initialize(relation = User.all)
+    @relation = relation
+  end
+
+  def active
+    @relation = @relation.where(active: true)
+    self
+  end
+
+  def with_role(role)
+    @relation = @relation.where(role: role)
+    self
+  end
+
+  def created_after(date)
+    @relation = @relation.where('created_at > ?', date)
+    self
+  end
+
+  def search(term)
+    return self if term.blank?
+    @relation = @relation.where(
+      'name ILIKE :term OR email ILIKE :term',
+      term: "%#{term}%"
+    )
+    self
+  end
+
+  def ordered
+    @relation = @relation.order(created_at: :desc)
+    self
+  end
+
+  def with_associations
+    @relation = @relation.includes(:profile, :roles)
+    self
+  end
+
+  def paginate(page:, per_page: 20)
+    @relation = @relation.page(page).per(per_page)
+    self
+  end
+
+  def results
+    @relation
+  end
+end
+
+# Usage in controller
+users = UsersQuery.new
+  .active
+  .with_role('admin')
+  .search(params[:q])
+  .with_associations
+  .ordered
+  .paginate(page: params[:page])
+  .results
+        ]]></code>
+        <note>Query Objects enable fluent chaining and make complex filters testable.</note>
+      </example>
+
+      <antipattern>
+        <description>Putting WHERE logic directly in controller actions (Users.where(active: true).where(role: 'admin').where(...)).</description>
+        <reason>Query logic scattered in controllers is not reusable, hard to test, and couples the controller to the schema. Later, multiple actions need the same filter and the code gets duplicated or moved to a helper (which is worse).</reason>
+      </antipattern>
+    </section>
+
+    <section name="scopes-and-validations">
+      <p>ActiveRecord scopes are class methods that return a relation, allowing composition. Lambdas are the modern syntax and enable arguments. Validations enforce business rules (presence, uniqueness, length) at the model layer before INSERT/UPDATE. Use callbacks (before_validation, after_create_commit) to normalize data and dispatch side effects.</p>
+
+      <rule testable="true">
+        <statement>Model scopes MUST be defined as lambda scopes (scope :name, -&gt; { ... }) to enable composition and arguments. A scope MUST always return a relation (where, joins, etc.) so it can be chained with other scopes.</statement>
+        <rationale>Lambda scopes are evaluated at query-time, allowing arguments to be passed. Non-lambda scopes are evaluated at definition-time and break chaining. Scope chaining is the core flexibility of ActiveRecord: User.active.admins.recent composes three scopes into one query.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Validations (validates :email, presence: true, uniqueness: { case_sensitive: false }) MUST live on the model, not in the controller. All non-nil assignments MUST be validated before save! or create!.</statement>
+        <rationale>Model validations are a single source of truth for business rules. Controllers may have multiple code paths (API, form, CLI); putting validation on the model ensures every path enforces the same constraints.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>before_validation callbacks MUST normalize data (downcase email, strip whitespace). after_create_commit callbacks MUST dispatch async work (deliver_later, enqueue jobs) so failures do not roll back the primary transaction.</statement>
+        <rationale>Normalization before validation ensures consistent state (all emails lowercase). after_create_commit fires after the transaction commits, so network/queue failures do not cause a rollback. Use after_update_commit for updates.</rationale>
+      </rule>
+
+      <example type="good" title="Scopes, validations, and callbacks">
+        <code lang="ruby"><![CDATA[
+# app/models/user.rb
+class User < ApplicationRecord
+  # Associations
+  has_one :profile, dependent: :destroy
+  has_many :orders, dependent: :nullify
+  has_many :roles, through: :user_roles
+
+  # Validations
+  validates :email, presence: true, uniqueness: { case_sensitive: false }
+  validates :name, presence: true, length: { minimum: 2, maximum: 100 }
+
+  # Scopes
+  scope :active, -&gt; { where(active: true) }
+  scope :admins, -&gt; { joins(:roles).where(roles: { name: 'admin' }) }
+  scope :recent, -&gt; { where('created_at &gt; ?', 30.days.ago) }
+
+  # Callbacks
+  before_validation :normalize_email
+  after_create_commit :send_welcome_email
+
+  private
+
+  def normalize_email
+    self.email = email&amp;.downcase&amp;.strip
+  end
+
+  def send_welcome_email
+    UserMailer.welcome(self).deliver_later
+  end
+end
+        ]]></code>
+        <note>Demonstrates scope chaining (User.active.admins.recent), validations, and async dispatch via after_create_commit.</note>
+      </example>
+    </section>
+
+    <section name="associations">
+      <p>Use has_one for singular relationships (User has_one Profile), has_many for collections (User has_many Orders), and has_many through for join tables (User has_many Roles through UserRoles). Always specify dependent: :destroy or dependent: :nullify to handle cascade deletion.</p>
+
+      <rule testable="true">
+        <statement>Every has_one and has_many association MUST declare a dependent: option (destroy, delete, nullify, or restrict_with_exception). The option MUST match the business rule: destroy when the child has no independent meaning, nullify when the child can exist without a parent, restrict_with_exception when the child must not be orphaned.</statement>
+        <rationale>Without dependent, deleting a parent leaves orphaned rows. dependent: :destroy cascades the deletion; dependent: :nullify removes the foreign key; dependent: :restrict_with_exception prevents deletion if children exist. Choosing the right option prevents data corruption and enforces invariants.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>N+1 prevention: after writing a query that loads multiple parents, call includes() on the original relation to eager-load the children. Use includes(:associations) before the query, not after.</statement>
+        <rationale>User.includes(:profile).all loads users and their profiles in 2 queries total. User.all + looping and calling user.profile issues 1 + N queries. The difference is orders of magnitude for 100+ records.</rationale>
+      </rule>
+
+      <example type="good" title="Eager loading with includes">
+        <code lang="ruby"><![CDATA[
+# Correct: includes before the query
+users = User.includes(:profile, :roles).all
+users.each { |u| puts u.profile.bio }  # No additional queries
+
+# Incorrect: N+1 query
+users = User.all
+users.each { |u| puts u.profile.bio }  # 1 + N queries
+        ]]></code>
+        <note>includes() prevents the N+1 anti-pattern.</note>
+      </example>
+    </section>
+
+    <see-also>
+      <link href="https://guides.rubyonrails.org/active_record_basics.html"/>
+      <link href="https://guides.rubyonrails.org/association_basics.html"/>
+      <link href="https://guides.rubyonrails.org/active_record_validations.html"/>
+    </see-also>
+  </content>
+</methodology>

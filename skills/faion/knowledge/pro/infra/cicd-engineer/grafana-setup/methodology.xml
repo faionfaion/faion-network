@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="grafana-setup">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Grafana setup methodology covering Docker Compose, Kubernetes Helm, and High Availability deployment patterns with configuration-as-code provisioning for data sources, dashboards, and alerting. Grafana Agent reached EOL on November 1, 2025 — all new deployments must use Grafana Alloy.</summary>
+    <tags>
+      <tag>grafana</tag>
+      <tag>monitoring</tag>
+      <tag>provisioning</tag>
+      <tag>observability</tag>
+      <tag>kubernetes</tag>
+    </tags>
+    <category>monitoring</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+
+  <content>
+    <title>Grafana Setup and Provisioning</title>
+
+    <summary>Grafana setup methodology covering Docker Compose, Kubernetes Helm, and High Availability deployment patterns, with configuration-as-code provisioning for data sources, dashboards, and alerting. Grafana Agent reached EOL on November 1, 2025 — all new deployments must use Grafana Alloy. HA requires PostgreSQL or MySQL (SQLite is single-node only); no session affinity needed since sessions are stored in the database.</summary>
+
+    <why>
+      <p>Provisioning Grafana via configuration files (YAML + JSON) instead of the UI prevents configuration drift, enables GitOps workflows, and allows reproducible deployments across environments. Without provisioning, every new environment requires manual dashboard and datasource setup, which breaks consistency and slows incident response.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Deploying Grafana for the first time in any environment (Docker, K8s, VM)</item>
+        <item>Migrating from Grafana Agent to Grafana Alloy (mandatory — Agent EOL Nov 2025)</item>
+        <item>Setting up HA Grafana for production with PostgreSQL backend</item>
+        <item>Configuring alerting pipelines with contact points and notification policies</item>
+        <item>Managing Grafana infrastructure as code with Terraform or Helm</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Quick local exploration with no persistence requirement — use `docker run grafana/grafana` directly</item>
+        <item>When Grafana Cloud is available and operational complexity must be zero</item>
+        <item>When the only requirement is viewing existing dashboards — no setup needed, just access</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="deployment-model-selection">
+      <rule>
+        <statement>Use Docker Compose for development and single-node deployments; Kubernetes Helm for production; HA with PostgreSQL for critical systems.</statement>
+        <rationale>SQLite is not supported in HA configurations — any multi-replica setup requires PostgreSQL or MySQL as the shared database.</rationale>
+      </rule>
+      <rule>
+        <statement>Use Grafana Alloy as the data collection agent — Grafana Agent is EOL since November 1, 2025.</statement>
+        <rationale>Grafana Agent (Static, Flow, and Operator modes) reached end-of-life on November 1, 2025. All three modes migrate to Grafana Alloy via the `alloy convert` command.</rationale>
+      </rule>
+    </section>
+
+    <section name="high-availability-requirements">
+      <rule>
+        <statement>For HA: deploy PostgreSQL or MySQL as the shared database, expose a headless Kubernetes Service for alerting peer discovery, and set min 2 replicas behind a load balancer.</statement>
+        <rationale>Sessions are stored in the database, so no session affinity is needed on the load balancer. Alerting HA uses gossip via `ha_listen_address` and `ha_peers` (or Redis) to deduplicate alert firing.</rationale>
+      </rule>
+      <rule>
+        <statement>Configure the health check endpoint `/api/health` on the load balancer, not a TCP check.</statement>
+        <rationale>TCP checks pass even when Grafana is starting up. The HTTP health endpoint returns 200 only when Grafana is ready to serve traffic.</rationale>
+      </rule>
+    </section>
+
+    <section name="grafana-alloy-migration">
+      <rule>
+        <statement>Convert existing Grafana Agent configs with `alloy convert --source-format=static --output=config.alloy config.yaml` before EOL, then run Alloy in parallel to validate metrics continuity.</statement>
+        <rationale>Parallel-run validation catches label differences or missing scrape targets before the Agent is decommissioned, preventing monitoring gaps.</rationale>
+      </rule>
+      <example type="good" title="Converting Grafana Agent to Alloy">
+        <note>Converting a static Agent config to Alloy format.</note>
+        <code lang="bash"><![CDATA[
+# Static mode conversion
+alloy convert --source-format=static --output=config.alloy config.yaml
+
+# Flow mode conversion
+alloy convert --source-format=flow --output=config.alloy config.river
+]]></code>
+      </example>
+      <antipattern>
+        <description>Deploying multiple Grafana replicas with SQLite.</description>
+        <reason>SQLite is file-based and cannot be shared across processes. Concurrent writes from multiple replicas corrupt the database.</reason>
+      </antipattern>
+    </section>
+
+    <section name="datasource-provisioning">
+      <rule>
+        <statement>Provision all datasources via YAML files in `/etc/grafana/provisioning/datasources/`; never create them manually in the UI in production.</statement>
+        <rationale>UI-created datasources are not version-controlled and are lost on container restart unless the database is backed up. YAML provisioning is idempotent and GitOps-compatible.</rationale>
+      </rule>
+      <rule>
+        <statement>Mark all provisioned datasources as `editable: false` in production to prevent UI drift.</statement>
+        <rationale>If a user modifies a provisioned datasource in the UI, the change is lost on the next restart when Grafana re-applies the provisioning files.</rationale>
+      </rule>
+      <rule>
+        <statement>Inject all credentials (database passwords, API keys) via environment variables referenced in YAML as `${VAR_NAME}`, never hardcoded.</statement>
+        <rationale>YAML provisioning files are committed to version control. Hardcoded credentials in Git are a security breach regardless of repository visibility.</rationale>
+      </rule>
+    </section>
+
+    <section name="dashboard-provisioning">
+      <rule>
+        <statement>Use `foldersFromFilesStructure: true` in the dashboard provider to derive Grafana folder names from the filesystem directory structure.</statement>
+        <rationale>Manually specifying folder names for hundreds of dashboards creates maintenance overhead. Filesystem-derived folders are automatic and consistent.</rationale>
+      </rule>
+      <rule>
+        <statement>Set `disableDeletion: true` for production dashboard providers and `allowUiUpdates: false` to prevent UI edits from diverging from Git.</statement>
+        <rationale>Allows developers to view and explore dashboards without accidentally overwriting the provisioned version. Changes must go through Git to take effect.</rationale>
+      </rule>
+    </section>
+
+    <section name="alerting-provisioning">
+      <rule>
+        <statement>Provision alert rules, contact points, notification policies, and mute timings all via YAML — unified alerting must be enabled (`[unified_alerting] enabled = true`).</statement>
+        <rationale>Legacy alerting (`[alerting] enabled = true`) is deprecated. Unified Alerting is the only path for provisioned alert management and HA-compatible alert deduplication.</rationale>
+      </rule>
+      <antipattern>
+        <description>Mixing manual UI configuration with provisioning files in the same Grafana instance.</description>
+        <reason>Provisioning on restart overwrites UI changes silently. Teams discover their manual changes are gone after the next deployment, causing repeated work and confusion.</reason>
+      </antipattern>
+    </section>
+
+    <section name="docker-compose-dev">
+      <example type="good" title="Docker Compose Development Stack">
+        <note>Minimal development stack: Grafana + Prometheus + Loki + Alloy with persistent volumes and provisioning mount.</note>
+        <code lang="yaml"><![CDATA[
+services:
+  grafana:
+    image: grafana/grafana:11.6.0
+    ports: ["3000:3000"]
+    environment:
+      - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./provisioning:/etc/grafana/provisioning
+      - ./dashboards:/var/lib/grafana/dashboards
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.1.0
+    volumes:
+      - loki-data:/loki
+    restart: unless-stopped
+
+  alloy:
+    image: grafana/alloy:v1.4.0
+    volumes:
+      - ./alloy-config.alloy:/etc/alloy/config.alloy
+      - /var/log:/var/log:ro
+    command: run /etc/alloy/config.alloy --server.http.listen-addr=0.0.0.0:12345
+    restart: unless-stopped
+
+volumes:
+  grafana-data:
+  prometheus-data:
+  loki-data:
+]]></code>
+      </example>
+    </section>
+
+    <section name="ha-docker-compose">
+      <example type="good" title="HA Docker Compose with PostgreSQL">
+        <note>Two Grafana nodes sharing PostgreSQL, with nginx load balancer. Both nodes point to the same DB and sync alerting via gossip.</note>
+        <code lang="yaml"><![CDATA[
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: grafana
+      POSTGRES_USER: grafana
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U grafana"]
+      interval: 10s
+
+  grafana-1:
+    image: grafana/grafana:11.6.0
+    environment:
+      - GF_DATABASE_TYPE=postgres
+      - GF_DATABASE_HOST=postgres:5432
+      - GF_DATABASE_NAME=grafana
+      - GF_DATABASE_USER=grafana
+      - GF_DATABASE_PASSWORD=${DB_PASSWORD}
+      - GF_UNIFIED_ALERTING_HA_LISTEN_ADDRESS=0.0.0.0:9094
+      - GF_UNIFIED_ALERTING_HA_PEERS=grafana-2:9094
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  grafana-2:
+    image: grafana/grafana:11.6.0
+    environment:
+      - GF_DATABASE_TYPE=postgres
+      - GF_DATABASE_HOST=postgres:5432
+      - GF_DATABASE_NAME=grafana
+      - GF_DATABASE_USER=grafana
+      - GF_DATABASE_PASSWORD=${DB_PASSWORD}
+      - GF_UNIFIED_ALERTING_HA_LISTEN_ADDRESS=0.0.0.0:9094
+      - GF_UNIFIED_ALERTING_HA_PEERS=grafana-1:9094
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  nginx:
+    image: nginx:alpine
+    ports: ["443:443"]
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./certs:/etc/nginx/certs
+]]></code>
+      </example>
+    </section>
+
+    <section name="kubernetes-helm-values">
+      <example type="good" title="Kubernetes Helm Values">
+        <note>Minimal production Helm values.yaml: persistence, ingress with TLS, Prometheus datasource, community dashboards from grafana.com.</note>
+        <code lang="yaml"><![CDATA[
+replicas: 1
+persistence:
+  enabled: true
+  size: 10Gi
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts: [grafana.example.com]
+  tls:
+    - secretName: grafana-tls
+      hosts: [grafana.example.com]
+
+envFromSecret: grafana-secrets
+
+grafana.ini:
+  server:
+    root_url: https://grafana.example.com
+  auth.anonymous:
+    enabled: false
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server.monitoring.svc.cluster.local
+        isDefault: true
+        editable: false
+
+dashboards:
+  default:
+    node-exporter:
+      gnetId: 1860
+      revision: 37
+      datasource: Prometheus
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-integration-notes">
+      <p>When to use: Standing up a new Grafana stack (Docker Compose dev, Kubernetes Helm prod, or HA on VMs). Migrating off Grafana Agent (EOL 2025-11-01) to Grafana Alloy. Codifying datasources, dashboards, alert rules, and contact points as files in Git (provisioning). Setting up HA with shared PostgreSQL/MySQL behind a load balancer. Bootstrapping the kube-prometheus-stack / k8s-monitoring 2.0 chart and tuning it. Hardening: HTTPS, OIDC/SAML, RBAC, secrets, audit logging.</p>
+
+      <p>When NOT to use: Single-user lab / quick demo — `docker run grafana/grafana` is enough; provisioning overhead is wasted. When you can use Grafana Cloud (free tier covers most solo workloads) — managed beats self-hosted ops. For pure log search where Kibana/OpenSearch dashboards are already entrenched. As a CI dashboard tool (use the CI vendor's native UI for run history; Grafana adds latency).</p>
+
+      <p>Common limitations: Grafana Agent → Alloy migration silently changes config syntax (River vs YAML) and metric names (`agent_*` → `alloy_*`); agents copy old configs and dashboards break. Helm chart values schema changes between minor versions; pinning the chart but not reviewing release notes leads to "deploy succeeds, alerts disappear". Provisioning + UI-edited objects collide: a UI-edited dashboard reverts on next reconcile; agents that "fix dashboards in UI" lose changes. HA needs shared storage for plugins, image rendering, and alerting state — without shared storage, alerts duplicate or vanish across replicas. SQLite is fine for single node; agents leave it on for HA and lose data on schema migration. Image renderer (PDF/PNG export) is a separate service with chrome dependencies; provisioning forgets it and "send PDF report" silently fails. LDAP/SAML/OIDC: each has separate provisioning files and gotchas (group_search_base_dns, attribute mappings). Agents copy a half-config and authentication breaks for one IdP edge case. Mimir/Loki/Tempo + Grafana stack: the integration of multiple charts is fragile across versions. Use the umbrella `k8s-monitoring` chart (2.0+) when possible. `admin_password` env var is honored only on first start; rotating after install requires CLI reset, not env change.</p>
+
+      <p>Agentic workflow: Provisioning is the cornerstone — everything in Git, deploys via Helm/values + ConfigMaps. One agent generates the Helm values + provisioning ConfigMaps from a template (org name, OIDC issuer, datasources, alerting contact points). A reviewer agent (Opus) checks: (1) HA preconditions (DB, replicas, session cache), (2) Alloy not Agent, (3) provisioning paths mounted, (4) admin password from secret not literal, (5) `serve_from_sub_path` consistency with ingress. A deploy agent runs `helm upgrade --install` with `--atomic --timeout 5m`; on success runs smoke tests (`/api/health`, sample dashboard render).</p>
+    </section>
+
+    <templates>
+      <template path="templates/datasources.yaml" purpose="Prometheus, Loki, Tempo, PostgreSQL datasource provisioning YAML"/>
+      <template path="templates/dashboards.yaml" purpose="Dashboard provider config with folder-based organization"/>
+      <template path="templates/alerting-rules.yaml" purpose="Alert rules, contact points, notification policies, mute timings"/>
+      <template path="templates/grafana.ini" purpose="Production grafana.ini with security, OAuth, HA alerting, metrics sections"/>
+      <template path="templates/alloy-config.alloy" purpose="Grafana Alloy config for K8s pod/node scraping and log collection"/>
+    </templates>
+
+    <see-also>
+      <link href="https://grafana.com/docs/grafana/latest/setup-grafana/"/>
+      <link href="https://grafana.com/docs/grafana/latest/administration/provisioning/"/>
+      <link href="https://github.com/grafana/helm-charts"/>
+      <link href="https://grafana.com/docs/grafana/latest/setup-grafana/set-up-for-high-availability/"/>
+      <link href="https://grafana.com/docs/alloy/latest/"/>
+      <link href="https://grafana.com/docs/alloy/latest/tasks/migrate/"/>
+      <link href="https://grafana.com/blog/2025/01/23/kubernetes-monitoring-helm-chart-2.0"/>
+    </see-also>
+  </content>
+</methodology>

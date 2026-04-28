@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="java-spring-boot">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Spring Boot 3.x enterprise applications with clean layered architecture: Controller → Service → Repository stack with Spring Data JPA, Bean Validation, dependency injection, and slice testing.</summary>
+    <tags>
+      <tag>spring-boot</tag>
+      <tag>java</tag>
+      <tag>rest-api</tag>
+      <tag>layered-architecture</tag>
+      <tag>clean-architecture</tag>
+    </tags>
+    <category>backend</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <languages>
+      <language>java</language>
+    </languages>
+    <frameworks>
+      <framework>spring-boot</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Spring Boot Patterns</title>
+
+    <summary>Structure Spring Boot applications with clean architecture. Build enterprise Java services with the standard layered Controller → Service → Repository stack using Spring Data JPA, Bean Validation, dependency injection, declarative transactions, and Actuator-based observability. The patterns prevent subtle runtime bugs like lazy-load exceptions, N+1 queries, and proxy-based annotation failures.</summary>
+
+    <why>
+      <p>Spring Boot's layered pattern is dominant in enterprise Java, but it produces subtle runtime bugs if guardrails are not in place. Lazy-load exceptions after transaction close, N+1 queries via default fetch strategies, @Transactional on self-invoked methods doing nothing (proxy bypass), open-session-in-view hiding production problems, and missing pagination causing OOM are all silent failures that only surface under load. This methodology encodes the guardrails so teams produce correct, observable, production-safe code on the first pass and avoid the most common autoconfig surprises.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield enterprise Java services where the team standardises on a layered Controller → Service → Repository stack with Spring Data JPA + Bean Validation.</item>
+        <item>Migrating legacy Java EE / older Spring MVC apps onto Spring Boot 3.x (Jakarta EE 10, virtual threads, Native Image option).</item>
+        <item>Building REST APIs that already commit to dependency injection, AOP, declarative transactions, and Actuator-based observability.</item>
+        <item>Multi-module Gradle/Maven monorepos where you want a uniform skeleton (controller / service / mapper / dto / entity) generated per module.</item>
+        <item>Teams that are JVM-bound (JDK licensing, existing Kafka/Cassandra/Oracle drivers, internal Spring Cloud config server).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Sub-200ms cold-start serverless (Lambda, Cloud Run min-instances=0). Spring Boot startup is heavy; pick Quarkus or Micronaut, or compile to GraalVM native — but then most Spring "magic" silently breaks.</item>
+        <item>Polyglot reactive pipelines where the dominant pattern is async streams; Spring WebFlux exists but most teams writing Boot apps default to blocking servlet stack which dilutes the win.</item>
+        <item>Tiny solo projects / scripts. The annotation surface and starter explosion (spring-boot-starter-*) is overkill for a CRUD &lt;5 entities.</item>
+        <item>When the team has no Spring expertise — Boot's autoconfig debugging is a senior-Java skill (--debug + ConditionEvaluationReport reading).</item>
+        <item>Anywhere tight, predictable memory matters (embedded, edge). JVM + Spring is not the right footprint.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="controller-layer">
+      <p>HTTP adapters that accept requests and delegate to services. No business logic, no repository access, no transactions.</p>
+
+      <rule>
+        <statement>Controllers accept HTTP requests, call one service method, and return responses. No @Transactional, no repository access, no business logic.</statement>
+        <rationale>Controllers are HTTP adapters. Business logic in controllers cannot be tested without loading the Servlet container, inflating test time.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Every list endpoint accepts org.springframework.data.domain.Pageable and returns Page&lt;T&gt;. Never expose findAll() without Pageable in a controller.</statement>
+        <rationale>findAll() without pagination loads the entire table into the JVM heap, causing OOM in production. Pageable is the guard against catastrophic load.</rationale>
+      </rule>
+
+      <example type="good" title="Controller with pagination and validation">
+        <code lang="java"><![CDATA[
+@RestController
+@RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+
+    @GetMapping
+    public ResponseEntity<Page<UserResponse>> listUsers(Pageable pageable) {
+        return ResponseEntity.ok(userService.findAll(pageable));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserResponse> getUser(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.findById(id));
+    }
+
+    @PostMapping
+    public ResponseEntity<UserResponse> createUser(
+            @Valid @RequestBody CreateUserRequest request) {
+        UserResponse user = userService.create(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(user);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UserResponse> updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateUserRequest request) {
+        return ResponseEntity.ok(userService.update(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+        ]]></code>
+        <note>No @Transactional, no @Autowired fields, constructor injection via @RequiredArgsConstructor, Pageable on list endpoint.</note>
+      </example>
+    </section>
+
+    <section name="service-layer">
+      <p>Business logic boundary with explicit transaction control and DTO mapping.</p>
+
+      <rule>
+        <statement>Service methods that mutate state carry @Transactional. Read-only service methods carry @Transactional(readOnly = true) or the class-level default is readOnly = true overridden per write method.</statement>
+        <rationale>readOnly = true skips flush and enables read-replica routing. Explicit write transactions prevent silent dirty-writes and make operational intent clear.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Never return JPA entities from service public methods. Map to a DTO at the service boundary using MapStruct.</statement>
+        <rationale>Returning entities exposes schema internals, risks lazy-load exceptions outside @Transactional, and prevents computed fields. DTOs enforce a contract boundary.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use constructor injection + @RequiredArgsConstructor (Lombok) or explicit constructors. Ban @Autowired field injection in lint rules.</statement>
+        <rationale>Constructor injection makes dependencies explicit, enables immutability, and lets tests inject mocks without reflection. Field injection obscures dependencies and couples to Spring.</rationale>
+      </rule>
+
+      <example type="good" title="Service with transactions and DTO mapping">
+        <code lang="java"><![CDATA[
+@Service
+@RequiredArgsConstructor
+public class UserService {
+
+    private final UserRepository userRepository;
+    private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
+
+    public Page<UserResponse> findAll(Pageable pageable) {
+        return userRepository.findAll(pageable)
+                .map(userMapper::toResponse);
+    }
+
+    public UserResponse findById(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User", id));
+        return userMapper.toResponse(user);
+    }
+
+    @Transactional
+    public UserResponse create(CreateUserRequest request) {
+        User user = userMapper.toEntity(request);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user = userRepository.save(user);
+        return userMapper.toResponse(user);
+    }
+
+    @Transactional
+    public UserResponse update(Long id, UpdateUserRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User", id));
+        userMapper.updateEntity(user, request);
+        user = userRepository.save(user);
+        return userMapper.toResponse(user);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        if (!userRepository.existsById(id)) {
+            throw new ResourceNotFoundException("User", id);
+        }
+        userRepository.deleteById(id);
+    }
+}
+        ]]></code>
+        <note>@Transactional on write methods only. readOnly default assumed or explicit. Constructor injection. DTO mapping at boundaries.</note>
+      </example>
+    </section>
+
+    <section name="dto-and-validation">
+      <p>Data transfer objects and Bean Validation constraints.</p>
+
+      <rule>
+        <statement>DTOs are Java records (Java 17+). Request records carry Bean Validation annotations. Response records carry no logic.</statement>
+        <rationale>Records are immutable, concise, and equal by value — ideal for DTO transfer objects. Validation annotations on request DTOs enforce edge constraints; responses are shaped by the service and need no further validation.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use @Valid on @RequestBody parameters. Use @RestControllerAdvice with ProblemDetail (RFC 7807) for all error responses. Never create custom error envelope classes.</statement>
+        <rationale>RFC 7807 is the industry standard for HTTP problem details. Custom envelopes diverge per endpoint and break client SDKs. @RestControllerAdvice centralises error handling.</rationale>
+      </rule>
+    </section>
+
+    <section name="mapstruct-lombok">
+      <p>DTO mapping and annotation processor ordering.</p>
+
+      <rule>
+        <statement>In maven-compiler-plugin annotationProcessorPaths, list lombok first, then mapstruct-processor, then lombok-mapstruct-binding. Never reverse the order.</statement>
+        <rationale>Lombok generates setters that MapStruct reads. If MapStruct runs before Lombok, it reads no setters and produces null mappers at runtime.</rationale>
+      </rule>
+    </section>
+
+    <section name="jpa-and-fetch-strategy">
+      <p>Preventing N+1 queries and lazy-load exceptions.</p>
+
+      <rule>
+        <statement>Pin spring.jpa.open-in-view: false in every profile. Forces lazy access into the service layer where it belongs.</statement>
+        <rationale>open-in-view=true (Boot default) lets controllers lazy-load associations after the transaction closes, hiding N+1 problems until production load hits. Disabling it forces the service layer to fetch eagerly, where you can measure.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use @EntityGraph for read endpoints that traverse associations. List endpoints with associations always specify the graph; never let the framework decide.</statement>
+        <rationale>Explicit @EntityGraph or JOIN FETCH queries prevent hidden N+1 selects and make data fetching intent clear during code review.</rationale>
+      </rule>
+    </section>
+
+    <section name="slice-testing">
+      <p>Fast, focused tests via Spring Boot's slice annotations.</p>
+
+      <rule>
+        <statement>Use @WebMvcTest (controllers, MockMvc), @DataJpaTest (repositories, Testcontainers), @SpringBootTest only for end-to-end. Slicing keeps suite under ~30s.</statement>
+        <rationale>Slicing avoids loading the full application context for every test. @WebMvcTest loads only the servlet layer; @DataJpaTest loads only the data layer. Full context tests are slow and should be rare.</rationale>
+      </rule>
+
+      <example type="good" title="WebMvcTest for controller">
+        <code lang="java"><![CDATA[
+@WebMvcTest(UserController.class)
+class UserControllerTest {
+    @Autowired private MockMvc mockMvc;
+    @Autowired private ObjectMapper objectMapper;
+    @MockBean private UserService userService;
+
+    @Test
+    void createUser_WithValidData_ReturnsCreated() throws Exception {
+        var req = new CreateUserRequest("John", "john@example.com", "pass");
+        var resp = new UserResponse(1L, "John", "john@example.com");
+        when(userService.create(any())).thenReturn(resp);
+
+        mockMvc.perform(post("/api/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value(1));
+    }
+}
+        ]]></code>
+        <note>@WebMvcTest loads only the servlet layer and provided mocks. No database, no full context.</note>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <p>Common pitfalls when implementing Spring Boot applications.</p>
+
+      <antipattern>
+        <description>@Transactional on a controller method or on a private service method.</description>
+        <reason>Spring AOP proxy cannot intercept controller-layer calls or private methods — the annotation is silently ignored. Transactions never open and reads see uncommitted data or write conflicts.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Service returns JPA entity instead of DTO.</description>
+        <reason>Exposes schema internals, triggers lazy-load exceptions outside @Transactional, prevents circular-reference handling, and couples the contract to the implementation.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Field injection (@Autowired on a field) instead of constructor.</description>
+        <reason>Hides dependencies, couples to Spring, makes beans hard to test without reflection, and prevents immutability.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>@OneToMany without @EntityGraph or fetch join used in a list endpoint.</description>
+        <reason>Hidden N+1 queries: the list query loads N parent rows, then N separate queries load the associations. Invisible until production load hits. @EntityGraph or fetch joins make the intent explicit.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>spring.jpa.open-in-view not explicitly set to false.</description>
+        <reason>Boot default is true. Controllers can lazy-load after transaction close, hiding N+1 problems until production. Disabling forces fetch decisions into the service layer where they're visible and testable.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Password / secret in application.yml committed.</description>
+        <reason>Secrets in code are exfiltrated via version control, log files, container images, and backups. Use environment variables or Spring Cloud Vault.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using @SpringBootTest for every test instead of slicing.</description>
+        <reason>@SpringBootTest loads the full context (5–15 seconds per test). Slicing with @WebMvcTest and @DataJpaTest keeps individual tests under 100ms. Test suite balloons and CI gets gamed via skip.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <link href="https://docs.spring.io/spring-boot/reference/"/>
+      <link href="https://docs.spring.io/spring-framework/reference/"/>
+      <link href="https://start.spring.io"/>
+      <link href="https://vladmihalcea.com"/>
+      <link href="https://www.baeldung.com/spring-tutorial"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,529 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="java-junit-testing">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Write comprehensive unit and integration tests for Spring Boot applications using JUnit 5, Mockito, MockMvc, and Testcontainers for deterministic database testing.</summary>
+    <category>testing</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-24</created>
+    <tags>
+      <tag>java</tag>
+      <tag>junit5</tag>
+      <tag>mockito</tag>
+      <tag>testing</tag>
+      <tag>spring-boot</tag>
+    </tags>
+    <languages>
+      <language>java</language>
+    </languages>
+    <frameworks>
+      <framework>spring-boot</framework>
+    </frameworks>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>JUnit Testing for Spring Boot</title>
+
+    <summary>JUnit 5 (Jupiter) is the standard test framework for modern Spring Boot applications. Write controller tests via MockMvc or WebTestClient, service unit tests using Mockito annotations (@Mock, @InjectMocks), and repository slice tests via @DataJpaTest. Parameterize tests with @ParameterizedTest and @ValueSource, enforce test isolation through @ExtendWith(MockitoExtension.class), and use Testcontainers for integration tests with real PostgreSQL or MySQL instances. Measure coverage via JaCoCo and enforce thresholds in CI.</summary>
+
+    <why>
+      <p>JUnit 5 provides extension points (@ExtendWith) that allow Spring to manage test lifecycle without the brittle subclass hierarchy of JUnit 4. Mockito annotations eliminate verbose Mock setup, and @DataJpaTest spins up only the data layer, making repository tests fast. MockMvc intercepts HTTP requests without a servlet container, catching controller and serialization errors without the overhead of WebTestClient. Testcontainers provision real database instances per test class in Docker, ensuring tests reflect production schema and dialect behavior.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Spring Boot applications with controller, service, and repository layers.</item>
+        <item>Unit tests for service logic, domain logic, and utility classes using Mockito.</item>
+        <item>Slice tests for repositories via @DataJpaTest, catching lazy-loading and query bugs in isolation.</item>
+        <item>Integration tests that need a real database (PostgreSQL, MySQL) via Testcontainers.</item>
+        <item>Controller tests via MockMvc to verify HTTP endpoints without a full application context.</item>
+        <item>CI gates with JaCoCo coverage thresholds.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>BDD-flavored prose specs where Cucumber or Gherkin readability is non-negotiable — JUnit 5 is orthogonal to BDD.</item>
+        <item>Browser-based end-to-end tests — use Selenium or Playwright with a different harness.</item>
+        <item>Microservice contract tests where Pact or Spring Cloud Contract is mandated by a central team.</item>
+        <item>Legacy JUnit 4 code where the cost of upgrading exceeds the value — backport patterns carefully if needed.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="controller-testing">
+      <p>Controller tests verify that HTTP endpoints return correct status codes, response bodies, and headers. Use @WebMvcTest to load only the controller under test and MockMvc to simulate HTTP requests without a full application context.</p>
+
+      <rule testable="true">
+        <statement>Every controller test class MUST be annotated @WebMvcTest(YourController.class) and inject MockMvc. Mock the service layer via @MockBean. Never load the full application context in a controller test — use @SpringBootTest only for full integration tests that need multiple layers.</statement>
+        <rationale>@WebMvcTest is fast (sub-second startup) and isolates the controller from database and external service complexity. @SpringBootTest is for end-to-end verification, not controller unit tests.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Controller test assertions MUST use fluent assertion libraries (AssertJ: assertThat(...).isEqualTo(...)) rather than JUnit's Assert.assertEquals. MockMvc's andExpect methods use AssertJ matchers internally.</statement>
+        <rationale>Fluent assertions produce readable diffs when assertions fail. Assert.assertEquals on complex objects is hard to debug.</rationale>
+      </rule>
+
+      <example type="good" title="Controller test with @WebMvcTest">
+        <code lang="java"><![CDATA[
+@WebMvcTest(UserController.class)
+class UserControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private UserService userService;
+
+    @Test
+    void createUser_WithValidData_ReturnsCreated() throws Exception {
+        // Arrange
+        CreateUserRequest request = new CreateUserRequest(
+                "John Doe", "john@example.com", "password123"
+        );
+        UserResponse response = new UserResponse(1L, "John Doe", "john@example.com");
+
+        when(userService.create(any(CreateUserRequest.class))).thenReturn(response);
+
+        // Act & Assert
+        mockMvc.perform(post("/api/v1/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.name").value("John Doe"));
+    }
+
+    @Test
+    void getUser_WhenNotFound_Returns404() throws Exception {
+        // Arrange
+        when(userService.findById(999L)).thenThrow(new NotFoundException("User not found"));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/v1/users/999"))
+                .andExpect(status().isNotFound());
+    }
+}
+]]></code>
+        <note>@WebMvcTest loads only the controller; service is mocked. MockMvc intercepts HTTP calls; andExpect verifies the response.</note>
+      </example>
+
+      <antipattern>
+        <description>Using @SpringBootTest instead of @WebMvcTest for controller tests.</description>
+        <reason>@SpringBootTest spins up the entire application context (database, all beans) on every test class. Tests become slow (multi-second startup). Use @WebMvcTest for controller-only tests.</reason>
+      </antipattern>
+    </section>
+
+    <section name="unit-testing-services">
+      <p>Service unit tests verify business logic in isolation. Use Mockito to mock dependencies (repository, external service), and @ExtendWith(MockitoExtension.class) to manage mock lifecycles.</p>
+
+      <rule testable="true">
+        <statement>Service unit tests MUST use @ExtendWith(MockitoExtension.class) and inject mocks via @Mock and @InjectMocks. Never instantiate service dependencies manually in the test; let Mockito inject them.</statement>
+        <rationale>@InjectMocks automatically constructs the service with mocked collaborators, reducing boilerplate. MockitoExtension handles setup/teardown, ensuring mocks are reset between tests.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Mock return values MUST be set up with precise argument matchers (when(mock.method(any(Type.class))).thenReturn(...)) inside the test, not globally. Use ArgumentCaptor to verify the exact arguments passed to a mock.</statement>
+        <rationale>Precise matchers catch accidental divergence between test setup and code. ArgumentCaptor reveals what the code actually passed, vs. what the test expected.</rationale>
+      </rule>
+
+      <example type="good" title="Service unit test with Mockito">
+        <code lang="java"><![CDATA[
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private UserMapper userMapper;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @InjectMocks
+    private UserService userService;
+
+    @Test
+    void create_EncodesPassword() {
+        // Arrange
+        CreateUserRequest request = new CreateUserRequest(
+                "John", "john@example.com", "plaintext"
+        );
+        User user = User.builder()
+                .id(1L)
+                .name("John")
+                .email("john@example.com")
+                .password("encoded")
+                .build();
+        UserResponse response = new UserResponse(1L, "John", "john@example.com");
+
+        when(passwordEncoder.encode("plaintext")).thenReturn("encoded");
+        when(userMapper.toEntity(request)).thenReturn(user);
+        when(userRepository.save(any(User.class))).thenReturn(user);
+        when(userMapper.toResponse(user)).thenReturn(response);
+
+        // Act
+        userService.create(request);
+
+        // Assert
+        verify(passwordEncoder).encode("plaintext");
+        verify(userRepository).save(argThat(u -> u.getPassword().equals("encoded")));
+    }
+
+    @Test
+    void findById_WhenNotExists_ThrowsException() {
+        // Arrange
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> userService.findById(999L))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessageContaining("User");
+    }
+}
+]]></code>
+        <note>@Mock and @InjectMocks eliminate manual setup. ArgumentCaptor (via argThat) verifies precise arguments.</note>
+      </example>
+
+      <example type="bad" title="Manual mock setup">
+        <code lang="java"><![CDATA[
+class UserServiceTest {
+
+    private UserRepository userRepository;
+    private UserService userService;
+
+    @BeforeEach
+    void setUp() {
+        userRepository = mock(UserRepository.class);
+        userService = new UserService(userRepository);  // Manual setup
+    }
+
+    @Test
+    void findById_WhenNotExists_ThrowsException() {
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> userService.findById(999L))
+                .isInstanceOf(NotFoundException.class);
+    }
+}
+]]></code>
+        <note>Manual setup is verbose. @Mock and @InjectMocks are cleaner.</note>
+      </example>
+    </section>
+
+    <section name="repository-testing">
+      <p>Repository tests verify query logic, lazy-loading, and fetch strategies. Use @DataJpaTest to load only the JPA layer, plus Testcontainers for integration tests with a real database.</p>
+
+      <rule testable="true">
+        <statement>Repository unit tests MUST use @DataJpaTest to spin up only the data layer. Test custom @Query methods, Specification predicates, and lazy-loading behavior. Use an in-memory H2 database by default, or Testcontainers PostgreSQL for tests that depend on dialect-specific behavior (JSONB, window functions).</statement>
+        <rationale>@DataJpaTest is fast and isolates the repository from service and controller logic. H2 is lightweight; Testcontainers gives real PostgreSQL/MySQL for dialect-dependent tests.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Every repository test that loads a lazy collection MUST assert the collection is populated, catching N+1 bugs and LazyInitializationException. If lazy loading is expected, the test MUST use JOIN FETCH or @EntityGraph.</statement>
+        <rationale>Lazy collections loaded outside a transaction throw LazyInitializationException in production. Tests must catch this.</rationale>
+      </rule>
+
+      <example type="good" title="Repository test with @DataJpaTest">
+        <code lang="java"><![CDATA[
+@DataJpaTest
+class UserRepositoryTest {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private TestEntityManager entityManager;
+
+    @Test
+    void findByIdWithRoles_LoadsRoles() {
+        // Arrange
+        User user = User.builder()
+                .name("John")
+                .email("john@example.com")
+                .build();
+        Role role = new Role("ADMIN");
+        user.getRoles().add(role);
+        entityManager.persistAndFlush(user);
+
+        // Act
+        Optional<User> found = userRepository.findByIdWithRoles(user.getId());
+
+        // Assert
+        assertThat(found).isPresent();
+        assertThat(found.get().getRoles())
+                .hasSize(1)
+                .extracting(Role::getName)
+                .contains("ADMIN");
+    }
+
+    @Test
+    void search_WithFilter_ReturnsMatching() {
+        // Arrange
+        entityManager.persistAndFlush(User.builder().name("Alice").isActive(true).build());
+        entityManager.persistAndFlush(User.builder().name("Bob").isActive(false).build());
+
+        // Act
+        Page<User> results = userRepository.search("Alice", true, PageRequest.of(0, 10));
+
+        // Assert
+        assertThat(results.getContent())
+                .hasSize(1)
+                .extracting(User::getName)
+                .contains("Alice");
+    }
+}
+]]></code>
+        <note>@DataJpaTest loads only JPA beans. TestEntityManager provides direct access to persistence context for assertions.</note>
+      </example>
+    </section>
+
+    <section name="integration-testing-testcontainers">
+      <p>Integration tests verify the full stack: controller + service + repository + real database. Use @SpringBootTest with Testcontainers to provision PostgreSQL or MySQL per test class.</p>
+
+      <rule testable="true">
+        <statement>Integration tests MUST use @SpringBootTest(webEnvironment = RANDOM_PORT) with @Testcontainers and @Container static Postgres container. This spins up a real database and the full application context. Do NOT use in-memory H2 for production dialect verification.</statement>
+        <rationale>Real PostgreSQL/MySQL verify dialect-specific behavior (JSONB, sequences, transactions). H2 is fast but silently skips relational constraints, producing false-positive test passes.</rationale>
+      </rule>
+
+      <example type="good" title="Integration test with Testcontainers">
+        <code lang="java"><![CDATA[
+@SpringBootTest(webEnvironment = RANDOM_PORT)
+@Testcontainers
+class UserApiIntegrationTest {
+
+    @Autowired
+    private TestRestTemplate restTemplate;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15")
+            .withDatabaseName("testdb")
+            .withUsername("test")
+            .withPassword("test");
+
+    @DynamicPropertySource
+    static void configureTestContainer(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+    }
+
+    @Test
+    void createUser_PersistsToDatabase() {
+        // Arrange
+        CreateUserRequest request = new CreateUserRequest(
+                "John Doe", "john@example.com", "password123"
+        );
+
+        // Act
+        ResponseEntity<UserResponse> response = restTemplate.postForEntity(
+                "/api/v1/users", request, UserResponse.class
+        );
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        User saved = userRepository.findByEmail("john@example.com").orElseThrow();
+        assertThat(saved.getName()).isEqualTo("John Doe");
+    }
+}
+]]></code>
+        <note>@Container and @DynamicPropertySource configure the test container. restTemplate makes HTTP calls to the full application stack.</note>
+      </example>
+
+      <antipattern>
+        <description>Using H2 in-memory database for integration tests that depend on PostgreSQL-specific features (JSONB, window functions, sequences).</description>
+        <reason>H2 silently skips unsupported SQL, causing tests to pass that would fail in production. Use Testcontainers PostgreSQL for reality-based testing.</reason>
+      </antipattern>
+    </section>
+
+    <section name="parametrized-testing">
+      <p>Parametrized tests reduce boilerplate for boundary cases. Use @ParameterizedTest with @ValueSource, @CsvSource, or @MethodSource.</p>
+
+      <rule testable="true">
+        <statement>Boundary tests and validation tests MUST use @ParameterizedTest + @ValueSource or @CsvSource instead of multiple [Fact]-style test methods.</statement>
+        <rationale>@ParameterizedTest eliminates copy-paste and clearly documents the test matrix in one place.</rationale>
+      </rule>
+
+      <example type="good" title="Parametrized test with @ValueSource">
+        <code lang="java"><![CDATA[
+@ExtendWith(MockitoExtension.class)
+class UserValidationTest {
+
+    @InjectMocks
+    private UserService userService;
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "invalid", "missing@", "@example.com"})
+    void validate_InvalidEmail_Throws(String email) {
+        // Act & Assert
+        assertThatThrownBy(() -> userService.validate(new CreateUserRequest("John", email, "password")))
+                .isInstanceOf(ValidationException.class);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "John, john@example.com, true",
+            "Alice, alice@example.com, true",
+            "'', invalid, false",
+            "Bob, '', false"
+    })
+    void validate_MultipleFields(String name, String email, boolean shouldSucceed) {
+        CreateUserRequest request = new CreateUserRequest(name, email, "password");
+
+        if (shouldSucceed) {
+            assertThatNoException().isThrownBy(() -> userService.validate(request));
+        } else {
+            assertThatThrownBy(() -> userService.validate(request))
+                    .isInstanceOf(ValidationException.class);
+        }
+    }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p>Common pitfalls when using JUnit 5 with Spring Boot. Agents frequently introduce these errors; review carefully in code review.</p>
+
+      <antipattern>
+        <description>N+1 queries as the default outcome of FetchType.LAZY collections plus naive iteration.</description>
+        <reason>Lazy collections are not fetched until accessed. Iterating over a collection in the service layer fires one query per item. Use @EntityGraph or JOIN FETCH inside a @Transactional method to load the collection eagerly, within the transactional boundary.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>@OneToMany(cascade = ALL, orphanRemoval = true) on relations where the child is referenced elsewhere.</description>
+        <reason>Looks tidy but corrupts data. orphanRemoval=true deletes the child when it is removed from the parent collection, even if other entities still reference it. Always justify cascade and orphanRemoval in comments, and test the scenario where the child has multiple parents.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Confusing merge() vs save() vs persist() semantics; agents pick the wrong one.</description>
+        <reason>merge() re-attaches a detached entity and updates it; persist() inserts a new one; save() is Spring Data, not JPA. Test agents will produce duplicate rows or detached-entity exceptions. Code review must verify the right method is used for the domain operation.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LazyInitializationException outside transactions — accessing lazy collections in a controller method.</description>
+        <reason>Hibernate session is closed at the end of the service transaction. Accessing u.getRoles() in the controller triggers a query on a closed session. Use JOIN FETCH or @EntityGraph inside the service before the session closes.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Hibernate 6+ changed query parameter handling and implicit casts; copy-pasted code from old Stack Overflow answers compiles but throws at runtime.</description>
+        <reason>Verify code against the active Hibernate major version. If migrating, test all JPQL queries in a fresh environment.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Schema drift between @Entity and Flyway/Liquibase migrations.</description>
+        <reason>Entity expects a column that does not exist in the database. spring.jpa.hibernate.ddl-auto=validate (the correct setting) throws InvalidDataAccessResourceUsageException on startup. CI passes (uses ddl-auto=create for tests) but production fails immediately. Pair every @Entity change with a migration in the same PR.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using H2 in-memory database for integration tests that depend on PostgreSQL-specific features.</description>
+        <reason>H2 silently skips unsupported SQL and relational constraints. Tests pass that fail in production. Use Testcontainers PostgreSQL for reality-based testing.</reason>
+      </antipattern>
+    </section>
+
+    <section name="tools-and-cli">
+      <p>Essential CLI tools and Maven/Gradle plugins for JUnit 5 and Spring Boot testing workflows.</p>
+
+      <rule testable="false">
+        <statement>Configure JaCoCo (Java Code Coverage) in your build and enforce a threshold (e.g., 70-85%) in CI. Never chase 100% coverage — trivial tests degrade quality. Run ./mvnw verify locally before pushing.</statement>
+        <rationale>Coverage thresholds prevent regressions. Realistic targets (70-85%) encourage meaningful tests. JaCoCo is the standard for Spring Boot; configure it in the POM or Gradle build.</rationale>
+      </rule>
+
+      <commands>
+        <command name="./mvnw test">Run all tests via Maven.</command>
+        <command name="./mvnw verify">Build, test, and run integration tests (includes post-integration-test cleanup).</command>
+        <command name="./mvnw test -Dtest=UserServiceTest">Run a specific test class.</command>
+        <command name="./mvnw spring-javaformat:validate">Validate code formatting (Spring-specific style rules).</command>
+        <command name="./gradlew test">Run all tests via Gradle.</command>
+        <command name="./gradlew check">Build, test, and run lint checks (Gradle equivalent of ./mvnw verify).</command>
+      </commands>
+
+      <example type="good" title="JaCoCo Maven configuration">
+        <code lang="xml"><![CDATA[
+<!-- pom.xml -->
+<plugins>
+  <plugin>
+    <groupId>org.jacoco</groupId>
+    <artifactId>jacoco-maven-plugin</artifactId>
+    <version>0.8.10</version>
+    <executions>
+      <execution>
+        <goals>
+          <goal>prepare-agent</goal>
+        </goals>
+      </execution>
+      <execution>
+        <id>report</id>
+        <phase>test</phase>
+        <goals>
+          <goal>report</goal>
+        </goals>
+      </execution>
+      <execution>
+        <id>coverage-check</id>
+        <phase>verify</phase>
+        <goals>
+          <goal>check</goal>
+        </goals>
+        <configuration>
+          <rules>
+            <rule>
+              <element>PACKAGE</element>
+              <excludes>
+                <exclude>*Test</exclude>
+              </excludes>
+              <limits>
+                <limit>
+                  <counter>LINE</counter>
+                  <value>COVEREDRATIO</value>
+                  <minimum>0.70</minimum>
+                </limit>
+              </limits>
+            </rule>
+          </rules>
+        </configuration>
+      </execution>
+    </executions>
+  </plugin>
+</plugins>
+]]></code>
+        <note>Prepare-agent instruments classes during test execution. Report generates the coverage.xml. Check verifies the coverage threshold.</note>
+      </example>
+    </section>
+
+    <section name="best-practices-summary">
+      <list>
+        <item>Use @WebMvcTest(YourController.class) for controller unit tests; mock the service layer.</item>
+        <item>Use @ExtendWith(MockitoExtension.class) with @Mock and @InjectMocks for service unit tests.</item>
+        <item>Use @DataJpaTest for repository slice tests; use Testcontainers for repository integration tests.</item>
+        <item>Use @SpringBootTest(webEnvironment = RANDOM_PORT) with Testcontainers PostgreSQL for full integration tests.</item>
+        <item>Assert with AssertJ (assertThat(...).isEqualTo(...)) for readable diffs.</item>
+        <item>Use @ParameterizedTest + @ValueSource for boundary and validation tests.</item>
+        <item>Verify mocks with verify(...) to catch divergence between test setup and code.</item>
+        <item>Never use in-memory H2 for tests dependent on PostgreSQL dialect features.</item>
+        <item>Run ./mvnw test locally before commit; enforce JaCoCo coverage thresholds in CI.</item>
+        <item>Pair every @Entity change with a Flyway migration in the same PR.</item>
+        <item>Always load lazy collections inside @Transactional methods with JOIN FETCH or @EntityGraph.</item>
+        <item>Use ArgumentCaptor to verify the exact arguments passed to mocks.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://junit.org/junit5/docs/current/user-guide/"/>
+      <link href="https://javadoc.io/doc/org.mockito/mockito-core/latest/org/mockito/Mockito.html"/>
+      <link href="https://docs.spring.io/spring-boot/reference/testing.html"/>
+      <link href="https://testcontainers.com/guides/testcontainers-for-java/"/>
+      <link href="https://assertj.github.io/assertj-core/"/>
+    </see-also>
+  </content>
+</methodology>

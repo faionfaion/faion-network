@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="laravel-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Laravel 11 patterns: thin controller → FormRequest → Action/Service → model. Enforces $fillable discipline, enum casts, DB transactions, eager loading, queue idempotency, Policy auth.</summary>
+    <tags>
+      <tag>laravel</tag>
+      <tag>php</tag>
+      <tag>eloquent</tag>
+      <tag>api</tag>
+      <tag>architecture</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <languages>
+      <language>php</language>
+    </languages>
+    <frameworks>
+      <framework>laravel</framework>
+      <framework>eloquent</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Laravel Patterns</title>
+
+    <summary>Laravel 11 architecture patterns: thin controller → FormRequest validation → Action/Service → Eloquent model → API Resource. Enforces $fillable discipline, enum casts, DB transactions, eager loading, typed queues with idempotency, and Policy-based authorization.</summary>
+
+    <why>
+      <p>Laravel's "magic" makes it easy to write fat controllers, skip transactions, and produce N+1 queries — all of which are silent until they hit prod. This methodology encodes the concrete guardrails: FormRequests on every mutation, DB::transaction(fn () => ...) for multi-step writes, eager loading in services, ShouldBeUnique on jobs, and Policy coverage for every protected action.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Scaffolding a new Laravel 11 app or extending one with models, migrations, FormRequests, Resources</item>
+        <item>Generating service/action/DTO classes around Eloquent models</item>
+        <item>Authoring API resources with consistent envelopes (JsonResource, ResourceCollection)</item>
+        <item>Reviewing PRs for N+1, fat controllers, missing FormRequests, mass-assignment vulnerabilities</item>
+        <item>Adding queues (Horizon, Redis, SQS) and event/listener wiring</item>
+        <item>Auth flows: Sanctum (SPA), Passport (OAuth2), policies, gates, RBAC</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Hot paths needing sub-millisecond latency — PHP-FPM round trip dominates</item>
+        <item>Heavy data engineering or streaming workloads — use a JVM/Go pipeline</item>
+        <item>Real-time bidirectional protocols beyond Reverb/Echo scope</item>
+        <item>Greenfield where the team has no PHP experience</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="layer-responsibilities">
+      <p>Laravel 11 separates concerns into distinct layers with clear responsibilities.</p>
+
+      <rule>
+        <statement>Controllers stay thin: accept FormRequest, call one Action/Service, return API Resource. No validation logic, no DB queries, no event dispatching inline.</statement>
+        <rationale>Controllers that own business logic cannot be tested without booting the HTTP kernel. Service/Action classes are plain PHP and testable in isolation.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Every POST, PUT, PATCH, DELETE endpoint must use a dedicated FormRequest class. FormRequest handles both authorization (authorize()) and validation (rules()).</statement>
+        <rationale>Inline $request->validate() in controllers duplicates authorization logic and scatters validation rules across the codebase.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Multi-step writes must be wrapped in DB::transaction(fn () => ...). Never rely on individual model saves to be consistent.</statement>
+        <rationale>Without a transaction, partial writes persist after any exception, leaving data in an inconsistent state.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Always declare $fillable on every Eloquent model. Never leave both $fillable and $guarded empty simultaneously.</statement>
+        <rationale>Empty $fillable + empty $guarded = mass assignment on every column, enabling IDOR via update endpoints.</rationale>
+      </rule>
+    </section>
+
+    <section name="project-layout">
+      <p>Canonical project layout under app/:</p>
+      <list>
+        <item>Http/Controllers/Api/V1/ — thin controllers</item>
+        <item>Http/Requests/ — CreateXRequest, UpdateXRequest (FormRequest subclasses)</item>
+        <item>Http/Resources/ — XResource, XCollection (JsonResource)</item>
+        <item>Services/ or Actions/ — business workflow classes</item>
+        <item>Repositories/ — optional; only when multiple data sources or mock boundary needed</item>
+        <item>DTOs/ — readonly PHP 8.2 classes for inter-layer data transfer</item>
+        <item>Models/ — Eloquent models with $fillable, $casts, scopes, relationships</item>
+        <item>Events/, Listeners/, Jobs/ — async work</item>
+        <item>Policies/ — one policy per model</item>
+      </list>
+    </section>
+
+    <section name="model-conventions">
+      <p>Eloquent model configuration and patterns.</p>
+
+      <rule>
+        <statement>Use enum casts for status/role columns: protected $casts = ['status' => StatusEnum::class]. Never manage status as a raw string with manual checks.</statement>
+        <rationale>Enum casts enforce valid values at the PHP layer and enable IDE autocompletion. Manual string checks scatter across the codebase and drift.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Every FK in a migration must declare cascadeOnDelete() or restrictOnDelete() explicitly. Every down() method must fully reverse the up().</statement>
+        <rationale>Implicit FK behavior differs across databases. Non-reversible migrations cannot be rolled back safely.</rationale>
+      </rule>
+    </section>
+
+    <section name="eager-loading-rules">
+      <p>Rules for controlling N+1 queries through eager loading.</p>
+
+      <rule>
+        <statement>Never access a relationship in a loop without eager loading. Use with() in controllers/services and loadMissing() when the model is already hydrated.</statement>
+        <rationale>Accessing $user->organization inside a loop without eager loading generates one SQL query per user (N+1), silently degrading performance.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use $with = [] on models only for universally needed relationships. Prefer explicit with() per query to avoid hidden global eager loads.</statement>
+        <rationale>Hidden global eager loads cause unexpected query overhead on endpoints that don't need the relationship.</rationale>
+      </rule>
+    </section>
+
+    <section name="authorization-rules">
+      <p>Authorization patterns using Policies and Gates.</p>
+
+      <rule>
+        <statement>Use Policies + Gates for authorization. Cover the unauthenticated case (when $user is null) in every policy method.</statement>
+        <rationale>Inline $this->authorize() checks duplicate logic. Missing the null-user case allows unauthenticated access to pass policy checks.</rationale>
+      </rule>
+
+      <rule>
+        <statement>For multi-tenant apps, every policy method must verify $user->organization_id === $model->organization_id before allowing access.</statement>
+        <rationale>Without tenant scope, a user in org A can read/modify records of org B.</rationale>
+      </rule>
+    </section>
+
+    <section name="queue-rules">
+      <p>Rules for async job processing and idempotency.</p>
+
+      <rule>
+        <statement>Queue jobs default to tries=3, backoff=[10, 30, 60]. Add ShouldBeUnique to any job that mutates shared state. Add idempotency keys for external API calls.</statement>
+        <rationale>Without ShouldBeUnique, concurrent retries run simultaneously and hammer external APIs or double-apply state changes.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Do not use Auth::user() inside a job. Inject the user ID and refetch from the database in the job's handle() method.</statement>
+        <rationale>Jobs run outside the HTTP session context. Auth::user() returns null in queue workers.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-gotchas-to-reject">
+      <p>Common mistakes that agents make when generating Laravel code.</p>
+
+      <rule testable="false">
+        <statement>Reject diffs targeting Laravel 11 that still emit app/Http/Kernel.php middleware registrations. Laravel 11 uses bootstrap/app.php for middleware.</statement>
+        <rationale>Kernel.php was removed in Laravel 11. Agents emit it from training on older versions.</rationale>
+      </rule>
+
+      <rule testable="false">
+        <statement>Reject Cache::remember() calls without a tenant-scoped cache key in multi-tenant apps.</statement>
+        <rationale>A cache key without tenant scope leaks data between organizations when the same key is used by different tenants.</rationale>
+      </rule>
+
+      <rule testable="false">
+        <statement>Reject API Resource diffs that call JsonResource::withoutWrapping() without a justification comment.</statement>
+        <rationale>Removing the data wrapper silently breaks any frontend that expects the {data: [...]} envelope.</rationale>
+      </rule>
+    </section>
+
+    <section name="code-examples">
+      <p>Concrete Laravel code examples and antipatterns.</p>
+
+      <example type="good" title="Model with scopes and casts">
+        <code lang="php"><![CDATA[
+class User extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = ['name', 'email', 'role', 'organization_id'];
+    protected $hidden = ['password', 'remember_token'];
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'settings' => 'array',
+        'is_active' => 'boolean',
+    ];
+
+    public function organization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeSearch($query, ?string $term)
+    {
+        if (empty($term)) return $query;
+        return $query->where(fn($q) =>
+            $q->where('name', 'ILIKE', "%{$term}%")
+              ->orWhere('email', 'ILIKE', "%{$term}%")
+        );
+    }
+
+    protected function email(): Attribute
+    {
+        return Attribute::make(set: fn(string $v) => strtolower($v));
+    }
+}
+        ]]></code>
+      </example>
+
+      <example type="good" title="Service with transaction">
+        <code lang="php"><![CDATA[
+class UserService
+{
+    public function __construct(
+        private UserRepository $repository,
+        private NotificationService $notifications,
+    ) {}
+
+    public function create(CreateUserDTO $dto): User
+    {
+        return DB::transaction(function () use ($dto) {
+            $user = $this->repository->create([
+                'name' => $dto->name,
+                'email' => $dto->email,
+                'password' => Hash::make($dto->password),
+                'organization_id' => $dto->organizationId,
+                'role' => $dto->role ?? 'member',
+            ]);
+            event(new UserCreated($user));
+            $this->notifications->sendWelcome($user);
+            return $user;
+        });
+    }
+}
+        ]]></code>
+      </example>
+
+      <example type="good" title="FormRequest with toDTO">
+        <code lang="php"><![CDATA[
+class CreateUserRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()->can('create', User::class);
+    }
+
+    public function rules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'min:2', 'max:100'],
+            'email' => [
+                'required', 'email',
+                Rule::unique('users')->where('organization_id', $this->user()->organization_id),
+            ],
+            'password' => ['required', Password::defaults()],
+            'role' => ['sometimes', Rule::in(['admin', 'moderator', 'member'])],
+        ];
+    }
+
+    public function toDTO(): CreateUserDTO
+    {
+        return new CreateUserDTO(
+            name: $this->validated('name'),
+            email: $this->validated('email'),
+            password: $this->validated('password'),
+            organizationId: $this->user()->organization_id,
+            role: $this->validated('role'),
+        );
+    }
+}
+        ]]></code>
+      </example>
+
+      <antipattern>
+        <description>Fat controller: validation inline, model creation inline, event dispatch inline, mail send inline.</description>
+        <reason>Cannot be tested without HTTP, duplicates logic across endpoints, violates single responsibility.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>N+1 query: $users = User::all(); foreach ($users as $u) { $u->organization->name; }</description>
+        <reason>Generates one SELECT per user. Fix: User::with('organization')->get().</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Empty $fillable with no $guarded — mass assignment on all columns.</description>
+        <reason>Allows an attacker to set any column (e.g., is_admin) via a create/update request.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <p>Key practices for sustainable Laravel development.</p>
+      <list>
+        <item>Pin Laravel + PHP version in the prompt (Laravel 11 + PHP 8.3 is current target).</item>
+        <item>Controllers stay thin: validate via FormRequest, dispatch to Action/Service, return Resource. No business logic inline.</item>
+        <item>Always declare $fillable (preferred) or $guarded = [] with explicit access policies; never both blank.</item>
+        <item>Use enum casts ($status => StatusEnum::class) instead of string columns + manual checks.</item>
+        <item>For migrations: every FK has cascadeOnDelete() or restrictOnDelete() explicit; every down() is reversible.</item>
+        <item>Wrap multi-step writes in DB::transaction(fn () => ...) — agent often forgets and partial writes persist.</item>
+        <item>Use $model->loadMissing(...) in services + with(...) in controllers; never $model->relation in tight loops.</item>
+        <item>Queue jobs default to tries=3, backoff=[10,30,60], ShouldBeUnique if mutating; idempotency keys for external calls.</item>
+        <item>Auth: prefer Policies + Gates over inline checks; always cover unauthenticated case in policy tests.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/laravel-pr-gate.sh" purpose="CI gate: pint, phpstan, FormRequest enforcement, eager-load check, fillable check, Pest with coverage"/>
+      <template path="templates/prompt-eloquent-coder.txt" purpose="Subagent prompt for model + migration + factory + seeder generation"/>
+      <template path="templates/prompt-policy-coder.txt" purpose="Subagent prompt for multi-tenant Policy generation"/>
+    </templates>
+
+    <see-also>
+      <link href="https://laravel.com/docs/"/>
+      <link href="https://spatie.be/guidelines/laravel"/>
+      <link href="https://bootcamp.laravel.com/"/>
+      <link href="https://pestphp.com/"/>
+      <link href="https://github.com/larastan/larastan"/>
+    </see-also>
+  </content>
+</methodology>

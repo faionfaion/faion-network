@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="csharp-entity-framework">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Entity Framework Core patterns: entities, IEntityTypeConfiguration, repositories, AsNoTracking() for reads, paged queries, migrations, change tracking, N+1 prevention.</summary>
+    <tags>
+      <tag>entity-framework</tag>
+      <tag>orm</tag>
+      <tag>csharp</tag>
+      <tag>database</tag>
+      <tag>migrations</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Entity Framework Patterns</title>
+    <summary>Entity Framework Core patterns for ASP.NET Core backends: entity definition, IEntityTypeConfiguration, repository interface and implementation, AsNoTracking() for reads, paged queries, migrations, and change tracking management. Covers configuration best practices, N+1 prevention, and concurrency handling.</summary>
+    <why>
+      <p>Entity Framework Core provides LINQ queries, automatic migrations, and change tracking that eliminate boilerplate SQL and prevent whole classes of SQL injection bugs. IEntityTypeConfiguration keeps mapping logic out of domain entities. The repository pattern encapsulates query logic and prevents leaky abstractions via IQueryable. AsNoTracking() for reads and careful DbContext lifetime management prevent the common N+1 and concurrency bugs that plague ORM usage.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>ASP.NET Core / .NET worker services that need an ORM with LINQ, change tracking, migrations, and provider portability</item>
+        <item>Domain models with rich relationships (one-to-many, many-to-many, owned types, TPH/TPT inheritance)</item>
+        <item>Read paths that benefit from compiled queries and EF 8+ JSON column support</item>
+        <item>CQRS-flavored apps where commands use the tracked context and queries use AsNoTracking() projections</item>
+        <item>Greenfield work that needs first-class migration tooling (dotnet ef migrations add)</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>High-throughput analytical workloads — Dapper, plain ADO.NET, or Microsoft.Data.SqlClient outperform EF for read-heavy hot paths</item>
+        <item>Stored-procedure-heavy systems where the DBA owns all SQL — EF mapping fights the existing model</item>
+        <item>Streaming / bulk inserts of millions of rows — use SqlBulkCopy, Npgsql COPY, or EFCore.BulkExtensions</item>
+        <item>DBs without a strong EF provider (some NoSQL, niche RDBMSes) — pick a native client</item>
+        <item>Tight memory environments (AOT trimming) where EF reflection footprint matters; consider Dapper + manual mapping</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="entity-definition">
+      <p>Entity classes represent rows in tables. They hold properties (columns) and navigation properties (relationships). Always define entities with proper initialization, nullable reference types, and no EF-specific attributes — use IEntityTypeConfiguration for all mapping logic.</p>
+      <rule>
+        <statement>Define entities with automatic properties and nullable reference type annotations. Initialize ICollection properties to empty List&lt;T&gt; in the property getter or init block. Never use attributes like [Required] or [MaxLength] on the entity — all mapping goes in IEntityTypeConfiguration.</statement>
+        <rationale>Initializing collections prevents null-dereference bugs when adding to a new entity. Putting all mapping logic in IEntityTypeConfiguration separates the domain model from persistence concerns, allowing the entity to be used in non-EF contexts.</rationale>
+      </rule>
+      <example type="good" title="Entity definition">
+        <code lang="csharp"><![CDATA[
+// Entities/User.cs
+namespace MyApp.Entities;
+
+public class User
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string PasswordHash { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+
+    // Navigation properties
+    public ICollection<Role> Roles { get; set; } = new List<Role>();
+    public ICollection<Order> Orders { get; set; } = new List<Order>();
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="configuration">
+      <p>IEntityTypeConfiguration separates mapping from entities and keeps domain logic clean. Always place configurations in a dedicated Data/Configurations folder and apply them via modelBuilder.ApplyConfigurationsFromAssembly().</p>
+      <rule>
+        <statement>Define all entity mappings in IEntityTypeConfiguration&lt;T&gt; classes, not via data annotations on the entity. Apply via modelBuilder.ApplyConfigurationsFromAssembly() in DbContext.OnModelCreating().</statement>
+        <rationale>IEntityTypeConfiguration separates persistence concerns from the domain entity. Data annotations on entities couple the domain model to EF-specific attributes, preventing reuse in non-EF contexts.</rationale>
+      </rule>
+      <rule>
+        <statement>Configure table name, primary key, indexes, and foreign keys in Configure(). Use HasDefaultValueSql() for columns with server defaults. Configure cascade behavior explicitly (never accept defaults).</statement>
+        <rationale>Explicit mapping prevents silent mismatches between the domain model and the database schema. Cascade behavior must be intentional — cascading deletes can silently wipe unrelated data.</rationale>
+      </rule>
+      <example type="good" title="Entity configuration">
+        <code lang="csharp"><![CDATA[
+// Data/Configurations/UserConfiguration.cs
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace MyApp.Data.Configurations;
+
+public class UserConfiguration : IEntityTypeConfiguration<User>
+{
+    public void Configure(EntityTypeBuilder<User> builder)
+    {
+        builder.ToTable("users");
+
+        builder.HasKey(u => u.Id);
+
+        builder.Property(u => u.Name)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        builder.Property(u => u.Email)
+            .IsRequired()
+            .HasMaxLength(255);
+
+        builder.HasIndex(u => u.Email)
+            .IsUnique();
+
+        builder.Property(u => u.CreatedAt)
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+        builder.HasMany(u => u.Roles)
+            .WithMany(r => r.Users)
+            .UsingEntity<Dictionary<string, object>>(
+                "user_roles",
+                j => j.HasOne<Role>().WithMany().HasForeignKey("RoleId"),
+                j => j.HasOne<User>().WithMany().HasForeignKey("UserId")
+            );
+
+        builder.HasMany(u => u.Orders)
+            .WithOne(o => o.User)
+            .HasForeignKey(o => o.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+    }
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="repository-pattern">
+      <p>Repositories encapsulate query logic and prevent IQueryable leaking out of the data access layer. Always use AsNoTracking() for reads, wrap queries in PagedResult for paging, and call SaveChangesAsync() only in the repository.</p>
+      <rule>
+        <statement>Repository methods that return lists must use AsNoTracking() and expose a PagedResult&lt;T&gt; return type that includes TotalCount, Page, and PageSize. Never return IQueryable from a repository — the query must execute inside the repository.</statement>
+        <rationale>IQueryable leaking out of the repository breaks the repository abstraction: callers can add arbitrary LINQ operators that bypass intended query constraints. PagedResult encapsulates pagination metadata so callers do not duplicate count queries.</rationale>
+      </rule>
+      <rule>
+        <statement>Always use AsNoTracking() (or AsNoTrackingWithIdentityResolution()) for read paths; reserve tracking for writes.</statement>
+        <rationale>EF Core tracks every loaded entity by default, consuming memory proportional to result set size. Read-only queries with AsNoTracking() are ~30% faster and use less memory.</rationale>
+      </rule>
+      <rule>
+        <statement>Call SaveChangesAsync() only in the repository (or a unit of work), not in service methods. The service orchestrates but the repository owns the persistence boundary.</statement>
+        <rationale>Services calling SaveChangesAsync() directly bypass the repository abstraction and make it impossible to batch multiple operations into a single unit of work without leaking EF context into the service.</rationale>
+      </rule>
+      <example type="good" title="Repository pattern">
+        <code lang="csharp"><![CDATA[
+// Repositories/UserRepository.cs
+namespace MyApp.Repositories;
+
+public interface IUserRepository
+{
+    Task<User?> GetByIdAsync(int id);
+    Task<User?> GetByEmailAsync(string email);
+    Task<PagedResult<User>> GetPagedAsync(int page, int pageSize);
+    Task AddAsync(User user);
+    void Remove(User user);
+    Task SaveChangesAsync();
+}
+
+public class UserRepository : IUserRepository
+{
+    private readonly AppDbContext _context;
+
+    public UserRepository(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<User?> GetByIdAsync(int id)
+    {
+        return await _context.Users
+            .Include(u => u.Roles)
+            .FirstOrDefaultAsync(u => u.Id == id);
+    }
+
+    public async Task<User?> GetByEmailAsync(string email)
+    {
+        return await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == email.ToLower());
+    }
+
+    public async Task<PagedResult<User>> GetPagedAsync(int page, int pageSize)
+    {
+        var query = _context.Users
+            .AsNoTracking()
+            .OrderByDescending(u => u.CreatedAt);
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new PagedResult<User>(items, totalCount, page, pageSize);
+    }
+
+    public async Task AddAsync(User user)
+    {
+        await _context.Users.AddAsync(user);
+    }
+
+    public void Remove(User user)
+    {
+        _context.Users.Remove(user);
+    }
+
+    public async Task SaveChangesAsync()
+    {
+        await _context.SaveChangesAsync();
+    }
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="queries-and-performance">
+      <p>Query performance depends on explicit loading strategies. Always use AsNoTracking() for reads. For complex queries loading multiple collections, use AsSplitQuery() to avoid Cartesian explosion. Use projection (Select) to reduce transferred data.</p>
+      <rule>
+        <statement>Use AsNoTracking() or AsNoTrackingWithIdentityResolution() for read-only queries. Avoid lazy loading via UseLazyLoadingProxies() — always force explicit Include() or projection.</statement>
+        <rationale>Lazy loading is the single most common N+1 cause. Lazy loading proxies silently add queries whenever navigation properties are accessed, and agents enable it because tutorials do. Disable it and force explicit Include().</rationale>
+      </rule>
+      <rule>
+        <statement>Use AsSplitQuery() when a query includes multiple collection Includes to avoid Cartesian explosion. Without it, a JOIN over two collections produces rows × rows result size.</statement>
+        <rationale>Multiple Include()s on collections explode result sets geometrically. AsSplitQuery() splits the query into multiple SELECT statements, one per Include, preserving row counts.</rationale>
+      </rule>
+      <rule>
+        <statement>Use compiled queries (EF.CompileAsyncQuery) for hot read paths in long-lived apps; or dotnet ef dbcontext optimize for the compiled model.</statement>
+        <rationale>Compiled queries avoid query compilation overhead and are essential for sub-millisecond read paths in high-throughput APIs.</rationale>
+      </rule>
+      <rule>
+        <statement>Avoid Include chains over multiple collections — use AsSplitQuery() or projection to a flat DTO.</statement>
+        <rationale>Including many related collections balloons the result set. Projection to a flat DTO keeps transferred data small.</rationale>
+      </rule>
+    </section>
+
+    <section name="migrations">
+      <p>Migrations capture schema changes and enable reproducible deployments. Always run dotnet ef migrations add after modifying entities, never edit deployed migrations in place, and verify idempotency via dotnet ef migrations script.</p>
+      <rule>
+        <statement>Run dotnet ef migrations add Name after every entity change. Name migrations with verbs (AddUserTable, AlterUserAddIsActive).</statement>
+        <rationale>Migrations are schema contracts: they must be reproducible and reversible. Naming with verbs makes migration purpose clear in git log.</rationale>
+      </rule>
+      <rule>
+        <statement>Never edit a deployed migration in place — add a new one instead. A migration whose timestamp predates the current branch's main merge must not be edited.</statement>
+        <rationale>Editing deployed migrations breaks environments that already applied it, and it is invisible to future rollbacks.</rationale>
+      </rule>
+      <rule>
+        <statement>Migrations require the project to compile — a half-renamed entity blocks migrations add. Always run dotnet build first.</statement>
+        <rationale>Compilation errors in migration generation can pass silently, leaving the migration unapplied and the schema out of sync.</rationale>
+      </rule>
+      <rule>
+        <statement>Verify idempotency: run dotnet ef migrations script and inspect generated SQL. The Up() method must be safe to re-apply on an already-migrated database.</statement>
+        <rationale>Idempotent migrations survive replayed deployments and disaster recovery scenarios.</rationale>
+      </rule>
+      <rule>
+        <statement>Pair every entity change with a migration in the same PR; CI should run dotnet ef migrations script and diff.</statement>
+        <rationale>Unbounded diffs between entities and migrations cause production deployment surprises.</rationale>
+      </rule>
+    </section>
+
+    <section name="concurrency-and-updates">
+      <p>EF Core tracks changes via ChangeTracker and updates via SaveChangesAsync(). Be explicit about which properties have changed, avoid Update() for partial updates, and use optimistic concurrency where multiple users edit the same row.</p>
+      <rule>
+        <statement>Use [ConcurrencyCheck] or RowVersion for optimistic concurrency on user-editable rows.</statement>
+        <rationale>Without concurrency checks, last-write-wins silently overwrites concurrent edits. Optimistic concurrency raises a concurrency exception that the caller can handle (e.g., retry or merge).</rationale>
+      </rule>
+      <rule>
+        <statement>For partial updates (DTO → entity), use Entry(entity).CurrentValues.SetValues(dto) only for matching shapes, or set individual properties. Never use Update(entity) after mapping a partial DTO — it marks every property as modified, including nulls and defaults.</statement>
+        <rationale>Update() marks every property as modified, overwriting unmodified properties with defaults or nulls. Partial updates require setting only changed properties.</rationale>
+      </rule>
+      <rule>
+        <statement>Set QueryTrackingBehavior.NoTracking as the default at the DbContext level if your app is mostly read.</statement>
+        <rationale>Opt-in tracking is safer than opt-out. Read-heavy apps default to AsNoTracking() and explicitly opt in where writes are needed.</rationale>
+      </rule>
+    </section>
+
+    <section name="dbcontext-lifetime">
+      <p>DbContext is not thread-safe and must have scoped lifetime. Never share DbContext across requests, and never capture it in a singleton service. Always use AddDbContextPool for ASP.NET Core to enable pooling across requests.</p>
+      <rule>
+        <statement>Use AddDbContextPool&lt;AppDbContext&gt;() instead of AddDbContext&lt;AppDbContext&gt;() in ASP.NET Core. DbContextPool recycles contexts across requests, reducing allocation overhead.</statement>
+        <rationale>Context pooling is ~30% faster and uses less memory in high-throughput scenarios. The pool automatically resets ChangeTracker state between reuses.</rationale>
+      </rule>
+      <rule>
+        <statement>DbContext is Scoped — one per request. Never inject it into a Singleton service; never pass it to Task.WhenAll or Task.Run. If BackgroundService or other long-lived service needs the context, use IServiceProvider.CreateScope() inside the loop.</statement>
+        <rationale>DbContext is not thread-safe. Shared across requests or threads → concurrency bugs and InvalidOperationException.</rationale>
+      </rule>
+      <rule>
+        <statement>Do not use DbContext.Database.EnsureCreated() and migrations together on the same DB — using both corrupts the migrations history table.</statement>
+        <rationale>EnsureCreated() bypasses migrations and has no concept of idempotency. Use migrations for all schema management.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <p>Common failure modes when working with Entity Framework. These patterns often come from agents and must be caught during code review.</p>
+      <antipattern>
+        <description>Lazy loading via UseLazyLoadingProxies() enabled globally, followed by accessing navigation properties in loops.</description>
+        <reason>Lazy loading silently adds a query whenever a navigation property is accessed, causing N+1 queries. Agents enable it because tutorials do, then performance collapses.</reason>
+      </antipattern>
+      <antipattern>
+        <description>DbContextOptions mis-registration: agents register Singleton or Transient — Scoped is the correct lifetime, AddDbContextPool is the right factory.</description>
+        <reason>Non-scoped contexts are shared across requests or not reused, causing concurrency bugs or allocation overhead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>New entity but no DbSet&lt;&gt; on the context — code compiles, runtime LINQ throws "entity not part of model".</description>
+        <reason>EF Core tracks entities by DbSet. Missing the DbSet entry breaks runtime LINQ queries.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Modifying a deployed migration: agents "fix" a generated migration file rather than adding a new one, breaking environments that already applied it.</description>
+        <reason>Deployed migrations are immutable contracts. Editing breaks idempotency and produces inconsistent schemas across environments.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Update() marks every property as modified, including null nav-props; partial updates need attaching + setting EntityState.Modified on specific properties.</description>
+        <reason>Update() is for full replacements, not patches. Partial updates overwrite unmodified properties with defaults.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Connection pooling (AddDbContextPool) caches contexts; mutating ChangeTracker.Tracked settings on one request leaks to the next.</description>
+        <reason>Pooled contexts are reused across requests. State set on one request carries over to the next unless explicitly reset.</reason>
+      </antipattern>
+      <antipattern>
+        <description>EnableSensitiveDataLogging() enabled without gating on IsDevelopment(), leaking PII to prod logs.</description>
+        <reason>Sensitive data logging is a security regression. It must be development-only.</reason>
+      </antipattern>
+    </section>
+
+    <section name="planning-phase">
+      <p>Before implementing an entity model, plan relationships, inheritance, and loading strategies.</p>
+      <rule>
+        <statement>Analyze entity relationships and cardinality before coding. Design entity model hierarchy (base classes, inheritance). Plan lazy loading vs eager loading strategies. Identify navigation properties and foreign keys. Plan composite key scenarios if needed. Design soft delete strategy if applicable.</statement>
+        <rationale>Poor planning leads to migration thrashing and loading strategy mismatch (N+1 or Cartesian explosion).</rationale>
+      </rule>
+    </section>
+
+    <section name="setup-phase">
+      <p>Setting up the persistence layer correctly prevents later bugs and rework.</p>
+      <rule>
+        <statement>Create DbContext class with DbSet properties. Create entity classes with proper data annotations. Create IEntityTypeConfiguration implementations. Register configurations in DbContext.OnModelCreating(). Create database migrations. Test migrations on fresh database.</statement>
+        <rationale>Complete setup in one pass prevents stale migrations and missing configurations.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <p>Production Entity Framework patterns that maximize reliability and performance.</p>
+      <rule>
+        <statement>Always use AsNoTracking() (or AsNoTrackingWithIdentityResolution()) for read paths; reserve tracking for writes.</statement>
+        <rationale>Tracking consumes memory proportional to result set size; read-only queries should not track.</rationale>
+      </rule>
+      <rule>
+        <statement>Place IEntityTypeConfiguration&lt;T&gt; per entity in a dedicated Data/Configurations folder; call modelBuilder.ApplyConfigurationsFromAssembly(...) once.</statement>
+        <rationale>Centralized configuration location makes maintenance easier and reduces clutter on entities.</rationale>
+      </rule>
+      <rule>
+        <statement>Avoid Include chains over multiple collections — use AsSplitQuery() or projection to a flat DTO.</statement>
+        <rationale>Including many related collections balloons the result set and causes Cartesian explosion.</rationale>
+      </rule>
+      <rule>
+        <statement>Use compiled queries (EF.CompileAsyncQuery) for hot read paths in long-lived apps; or dotnet ef dbcontext optimize for the compiled model.</statement>
+        <rationale>Compiled queries eliminate expression compilation overhead and improve cache locality.</rationale>
+      </rule>
+      <rule>
+        <statement>Migrations: name them with verbs (AddUserTable, AlterUserAddIsActive); never edit a deployed migration in place — add a new one.</statement>
+        <rationale>Versioned migrations are the contract between code and database. They must be immutable once deployed.</rationale>
+      </rule>
+      <rule>
+        <statement>Configure DeleteBehavior explicitly per FK; never accept the default cascade silently.</statement>
+        <rationale>Cascade deletes can silently wipe unrelated data. Explicit configuration makes deletion semantics clear.</rationale>
+      </rule>
+    </section>
+
+    <checklist>
+      <check>Analyze entity relationships and cardinality</check>
+      <check>Design entity model hierarchy (base classes, inheritance)</check>
+      <check>Plan lazy loading vs eager loading strategies</check>
+      <check>Identify navigation properties and foreign keys</check>
+      <check>Create DbContext class with DbSet properties</check>
+      <check>Create entity classes with proper data annotations</check>
+      <check>Create IEntityTypeConfiguration implementations</check>
+      <check>Register configurations in DbContext.OnModelCreating()</check>
+      <check>Create database migrations</check>
+      <check>Test migrations on fresh database</check>
+      <check>Create repository interfaces with query contracts</check>
+      <check>Implement repositories with IRepository pattern</check>
+      <check>Use AsNoTracking() for read-only queries</check>
+      <check>Implement Include() for eager loading of related entities</check>
+      <check>Use projection (Select) to reduce transferred data</check>
+      <check>Implement paging with Skip/Take</check>
+      <check>Add query filters for soft deletes and multi-tenancy</check>
+      <check>Test all CRUD operations on each entity</check>
+      <check>Verify relationships work (navigation properties)</check>
+      <check>Test lazy loading behavior and N+1 queries</check>
+      <check>Test query performance with multiple database sizes</check>
+      <check>Verify cascade deletes work as configured</check>
+      <check>Load test with concurrent operations</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/ef/core/"/>
+      <link href="https://learn.microsoft.com/ef/core/performance/"/>
+      <link href="https://github.com/dotnet/efcore"/>
+      <link href="https://www.thinktecture.com"/>
+      <link href="https://github.com/borisdj/EFCore.BulkExtensions"/>
+    </see-also>
+  </content>
+</methodology>

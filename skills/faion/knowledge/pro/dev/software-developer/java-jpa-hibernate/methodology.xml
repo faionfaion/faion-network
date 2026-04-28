@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="java-jpa-hibernate">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>JPA entity mapping with auditing, repositories with custom @Query and Specification, service-layer transactions, Flyway migrations, and N+1 prevention via explicit fetch strategies.</summary>
+    <category>orm</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-24</created>
+    <tags>
+      <tag>java</tag>
+      <tag>jpa</tag>
+      <tag>hibernate</tag>
+      <tag>spring-boot</tag>
+      <tag>orm</tag>
+    </tags>
+    <languages>
+      <language>java</language>
+    </languages>
+    <frameworks>
+      <framework>spring-boot</framework>
+      <framework>spring-data-jpa</framework>
+    </frameworks>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>JPA / Hibernate Patterns in Spring Boot</title>
+
+    <summary>JPA (Java Persistence API) with Hibernate provides a full-featured ORM for Spring Boot applications. Use @Entity with @CreationTimestamp/@UpdateTimestamp for auditing, JpaRepository with custom @Query and Specification for dynamic filtering, service-layer @Transactional boundaries to control session scope, and Flyway migrations co-versioned with entity changes. Always disable spring.jpa.open-in-view, use JOIN FETCH or @EntityGraph for eager loading, and map read paths to DTOs to avoid hydrating unnecessary entity graphs.</summary>
+
+    <why>
+      <p>JPA's lazy loading default (FetchType.LAZY on collections) silently produces N+1 queries when entities are accessed outside the transactional boundary. spring.jpa.open-in-view=true (the Spring Boot default) papers over this by keeping the session open through the view layer, hiding N+1 bugs at the cost of long-held database connections and connection pool starvation in production. Explicit fetch strategies (JOIN FETCH, @EntityGraph), DTO projections, and readOnly=true transactions make query behavior predictable and auditable. Co-locating entity changes with Flyway migrations prevents schema drift between the ORM definition and the actual database schema in production.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Spring Boot or Jakarta EE apps with rich domain relationships (one-to-many, many-to-many, inheritance).</item>
+        <item>Reporting / admin layers where Specification / Criteria API beats hand-rolled SQL strings.</item>
+        <item>Multi-database deployments where dialect abstraction (Hibernate's SQL generation) has real value.</item>
+        <item>Teams already invested in JPQL, @EntityGraph, and Spring Data Repositories.</item>
+        <item>Projects that need auditing timestamps, optimistic locking, and lifecycle event hooks.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>High-write OLTP hot paths needing predictable single-statement SQL — use plain JDBC, jOOQ, or MyBatis.</item>
+        <item>Bulk ETL / analytics — Hibernate's per-entity event hooks make 1M-row inserts orders of magnitude slower than JdbcTemplate.batchUpdate.</item>
+        <item>Schema-less stores (Mongo, DynamoDB) — use the matching driver, not JPA over a wrapper.</item>
+        <item>Read-only "view" services that map straight to DTOs from SQL — use Spring Data JDBC or jOOQ.</item>
+        <item>Functional/Kotlin-first codebases that prefer Exposed or jOOQ DSL over annotation-driven mapping.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="entity-mapping">
+      <p>Entity definitions declare the mapping between Java classes and database tables. Use Hibernate-managed auditing timestamps, explicit cascade/orphanRemoval justifications, @Version for optimistic locking, and required JPA annotations.</p>
+
+      <rule testable="true">
+        <statement>Annotate created/updated timestamps with @CreationTimestamp and @UpdateTimestamp (Hibernate-specific) or use @EntityListeners(AuditingEntityListener.class) with @CreatedDate / @LastModifiedDate (Spring Data JPA). Mark createdAt with updatable=false to prevent accidental updates.</statement>
+        <rationale>Manual timestamp management in service code is error-prone and misses bulk update paths. Hibernate-managed timestamps are applied at the persistence layer regardless of which code path modifies the entity — POST, PUT, PATCH, or batch updates all get the same auditing logic.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Every @OneToMany and @ManyToMany MUST carry an explicit justification comment for cascade and orphanRemoval choices. Never use CascadeType.ALL without a written reason. FetchType.LAZY is the default and the correct default for collections; document any EAGER fetch with justification.</statement>
+        <rationale>CascadeType.ALL with orphanRemoval=true on a relation to an entity referenced elsewhere corrupts data — orphanRemoval deletes the child when it is removed from the parent collection, even if other entities still reference it. Lazy loading prevents accidental N+1 during development.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Add @Version on user-editable aggregates to enable optimistic locking. Use LockModeType.PESSIMISTIC_WRITE on repository methods for inventory / balance writes where lost updates must be prevented.</statement>
+        <rationale>Without locking, two concurrent requests that both read and then update the same row produce a lost update: the second write silently overwrites the first without either party knowing. @Version catches this at runtime; pessimistic locking prevents it from happening.</rationale>
+      </rule>
+
+      <example type="good" title="Entity with auditing and fetch strategy">
+        <code lang="java"><![CDATA[
+@Entity
+@Table(name = "users")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @Column(nullable = false)
+    private String password;
+
+    @Column(name = "is_active")
+    @Builder.Default
+    private Boolean isActive = true;
+
+    @Version
+    private Long version;
+
+    // Cascade justification: Order lifecycle is fully owned by User.
+    // orphanRemoval: true because an Order without a User is invalid.
+    // FetchType: LAZY (default) because orders are not always needed in-memory.
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private Set<Order> orders = new HashSet<>();
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+}
+]]></code>
+        <note>@CreationTimestamp and @UpdateTimestamp are Hibernate-managed. @Version enables optimistic locking. The cascade and orphanRemoval justification is explicit in comments.</note>
+      </example>
+
+      <example type="bad" title="Entity with reflex cascade">
+        <code lang="java"><![CDATA[
+@Entity
+public class User {
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    // No justification. If an Order is referenced by Invoice, this deletes it when
+    // it is removed from User.orders. Data corruption.
+    private Set<Order> orders = new HashSet<>();
+}
+]]></code>
+        <note>Without justification and without understanding the data model, CascadeType.ALL is a data corruption risk.</note>
+      </example>
+    </section>
+
+    <section name="repository-queries">
+      <p>Spring Data JPA repositories define the data access layer. Use derived methods, custom @Query JPQL, Specification for dynamic filtering, @Modifying for bulk updates, and DTO projections to avoid loading unnecessary entity graphs.</p>
+
+      <rule testable="true">
+        <statement>Extend JpaRepository&lt;T, ID&gt; for standard CRUD. Add JpaSpecificationExecutor&lt;T&gt; when the repository needs dynamic filtering. Never expose JpaRepository directly to service methods — define a narrower repository interface listing only required operations (e.g., a read-only interface without delete/update).</statement>
+        <rationale>JpaSpecificationExecutor enables type-safe dynamic queries without string concatenation. A narrower interface prevents services from calling arbitrary Jpa operations (deleteAllInBatch(), etc.) that bypass business rules and auditing.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use JOIN FETCH in @Query for queries that must eagerly load associations within the transactional boundary: "SELECT u FROM User u JOIN FETCH u.roles WHERE u.id = :id". Use @EntityGraph as an alternative when the fetch plan varies by call site.</statement>
+        <rationale>FetchType.LAZY (the correct default) means accessing u.getRoles() outside a transaction throws LazyInitializationException. JOIN FETCH loads the association in a single query within the transactional boundary; @EntityGraph defers the join strategy to the query plan.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Map read-only queries directly to DTO projections (interface or class projections) when the full entity graph is not needed. Never load a full @Entity to populate a list DTO with only 3 fields.</statement>
+        <rationale>Loading full entities for read-only list views initializes all columns, all Hibernate proxies, and all auditing state for data that is never written. DTO projections generate a SELECT with only the required columns, reducing memory and GC pressure.</rationale>
+      </rule>
+
+      <example type="good" title="Repository with dynamic queries and DTO projections">
+        <code lang="java"><![CDATA[
+@Repository
+public interface UserRepository extends JpaRepository<User, Long>,
+        JpaSpecificationExecutor<User> {
+
+    Optional<User> findByEmail(String email);
+
+    boolean existsByEmail(String email);
+
+    @Query("SELECT u FROM User u WHERE u.isActive = true")
+    Page<User> findAllActive(Pageable pageable);
+
+    @Query("SELECT u FROM User u JOIN FETCH u.roles WHERE u.id = :id")
+    Optional<User> findByIdWithRoles(@Param("id") Long id);
+
+    @Query("""
+        SELECT u FROM User u
+        WHERE (:name IS NULL OR LOWER(u.name) LIKE LOWER(CONCAT('%', :name, '%')))
+        AND (:isActive IS NULL OR u.isActive = :isActive)
+        """)
+    Page<User> search(@Param("name") String name,
+                      @Param("isActive") Boolean isActive,
+                      Pageable pageable);
+
+    @Query("SELECT new com.example.dto.UserListDto(u.id, u.name, u.email) FROM User u")
+    Page<UserListDto> findAllAsDto(Pageable pageable);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE User u SET u.isActive = false WHERE u.lastLoginAt &lt; :cutoff")
+    int deactivateInactiveUsers(@Param("cutoff") LocalDateTime cutoff);
+}
+
+// DTO projection (read-only)
+public interface UserListDto {
+    Long getId();
+    String getName();
+    String getEmail();
+}
+]]></code>
+        <note>@Modifying requires @Transactional on the calling service method. DTO projection reduces memory footprint. The query with JOIN FETCH loads roles inside the transaction.</note>
+      </example>
+
+      <antipattern>
+        <description>Calling findById(id).get() directly instead of findById(id).orElseThrow(...).</description>
+        <reason>Optional.get() throws NoSuchElementException with no context when the entity is missing. orElseThrow(() -> new NotFoundException("User " + id + " not found")) provides a meaningful message and is mapped to a 404 by @ExceptionHandler.</reason>
+      </antipattern>
+    </section>
+
+    <section name="transaction-boundaries">
+      <p>Transactions define the scope of entity state changes and lazy-loading. Always annotate service methods, never repository methods, with @Transactional.</p>
+
+      <rule testable="true">
+        <statement>Annotate service methods @Transactional(readOnly = true) for query-only methods and @Transactional for write methods. Never annotate repository methods with @Transactional — the service owns the transaction boundary and orchestrates multiple repository calls into a single atomic unit.</statement>
+        <rationale>readOnly=true tells Hibernate to skip dirty checking and flush at the end of the transaction, reducing overhead for read paths. The service owning the transaction boundary allows multiple repository calls (e.g., fetch user, fetch roles, fetch permissions) to participate in a single atomic context without nested transactions.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Never access lazy-loaded collections outside a @Transactional method. If the controller or view layer needs a relation, load it explicitly with JOIN FETCH inside the service method before the transaction closes.</statement>
+        <rationale>Lazy loading after the transaction closes causes LazyInitializationException. The session is scoped to the transaction; accessing lazy collections after the session is closed fails.</rationale>
+      </rule>
+
+      <example type="good" title="Service with correct transaction boundaries">
+        <code lang="java"><![CDATA[
+@Service
+@Transactional
+public class UserService {
+
+    private final UserRepository userRepository;
+
+    @Transactional(readOnly = true)
+    public UserResponse findById(Long id) {
+        // readOnly=true: Hibernate skips dirty-check flush
+        User user = userRepository.findByIdWithRoles(id)  // JOIN FETCH loads roles here
+                .orElseThrow(() -> new NotFoundException("User " + id + " not found"));
+        return mapToResponse(user);
+    }
+
+    @Transactional
+    public UserResponse create(CreateUserRequest request) {
+        // No readOnly: Hibernate tracks changes, flushes at transaction end
+        User user = new User();
+        user.setName(request.getName());
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        userRepository.save(user);  // INSERT happens at transaction end
+        return mapToResponse(user);
+    }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <p>Common mistakes that produce N+1 queries, data corruption, LazyInitializationException, and schema drift in production.</p>
+
+      <antipattern>
+        <description>spring.jpa.open-in-view=true (Spring Boot default): the EntityManager session is kept open for the full HTTP request lifecycle, including the view/serialization layer.</description>
+        <reason>open-in-view allows lazy-loading in controllers and serializers, masking N+1 bugs during development. In production with connection pool pressure, holding sessions through the view layer exhausts the pool within minutes. Set open-in-view=false and use explicit fetch strategies (JOIN FETCH, @EntityGraph).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>CascadeType.ALL on every @OneToMany and @ManyToMany without justification or analysis of ownership.</description>
+        <reason>CascadeType.REMOVE with orphanRemoval=true propagates deletes through the owning side. If the child entity is referenced by another entity (e.g., an Order referenced by both User and Invoice), the cascade deletes a row still needed elsewhere, corrupting data.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>equals() and hashCode() implemented on the database-assigned @Id field using Lombok @EqualsAndHashCode(of = "id").</description>
+        <reason>Before a new entity is persisted, id is null. Two new entities with null id are considered equal by id-based equals, corrupting Sets and Maps. Use a UUID or business key, or the pattern recommended by Vlad Mihalcea (consistent equals based on type + UUID).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>spring.jpa.hibernate.ddl-auto=update or ddl-auto=create in production to keep the schema in sync with entity changes.</description>
+        <reason>ddl-auto=update cannot drop columns safely, cannot rename columns, and runs Hibernate's schema validation without a rollback mechanism. Schema changes in production require Flyway or Liquibase migrations with review and rollback scripts.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Changing an @Entity annotation or adding a column without a corresponding Flyway/Liquibase migration file in the same PR.</description>
+        <reason>Schema drift: the entity expects a column that does not exist in the database. ddl-auto=validate (the correct production setting) throws InvalidDataAccessResourceUsageException on startup. CI passes (uses ddl-auto=create for tests) but production deploy fails immediately.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Accessing lazy collections in a controller method or in a @RestController serializer outside a @Transactional boundary.</description>
+        <reason>Hibernate session is closed at the end of the service transaction. Accessing u.getRoles() in the controller triggers a new query on a closed session — LazyInitializationException. Use JOIN FETCH or @EntityGraph inside the service to load required associations before the session closes.</reason>
+      </antipattern>
+    </section>
+
+    <section name="configuration-best-practices">
+      <p>Spring Boot JPA configuration for safe defaults in production.</p>
+
+      <rule testable="true">
+        <statement>Configure spring.jpa.open-in-view=false, spring.jpa.hibernate.ddl-auto=validate, JDBC batch size, and SQL logging in application.yml. Never use ddl-auto=update or ddl-auto=create in production.</statement>
+        <rationale>open-in-view=false prevents session exhaustion. ddl-auto=validate fails fast if the entity schema drifts from the database. Batch settings reduce round-trips. SQL logging with log levels on org.hibernate.SQL and org.hibernate.orm.jdbc.bind catch N+1 bugs.</rationale>
+      </rule>
+
+      <example type="good" title="Safe JPA application.yml">
+        <code lang="yaml"><![CDATA[
+spring:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc.batch_size: 50
+        order_inserts: true
+        order_updates: true
+        generate_statistics: true
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace
+]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices-summary">
+      <list>
+        <item>Always disable open-in-view (spring.jpa.open-in-view=false).</item>
+        <item>Use @EntityGraph or JOIN FETCH for known eager paths; never rely on lazy in transient layers.</item>
+        <item>Mark service methods @Transactional(readOnly = true) for queries; @Transactional (read-write) only where you write.</item>
+        <item>Map projections directly to DTOs (interface or class projections) when you don't need the entity graph.</item>
+        <item>Use LockModeType.PESSIMISTIC_WRITE on repository methods for inventory/balance writes; document why.</item>
+        <item>Pair every entity change with a Flyway/Liquibase migration in the same PR; CI must run ddl-auto=validate.</item>
+        <item>Index foreign keys and unique constraints explicitly in migrations; Hibernate doesn't always create them.</item>
+        <item>Use @Version for optimistic locking on user-editable aggregates.</item>
+        <item>Justify every CascadeType and orphanRemoval in comments; CascadeType.ALL is rarely correct.</item>
+        <item>Use Hibernate-managed timestamps (@CreationTimestamp, @UpdateTimestamp) instead of manual management in service code.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/entity.java" purpose="Entity skeleton with auditing, lazy relations, @Version, and helper methods."/>
+      <template path="templates/application-jpa.yml" purpose="Safe JPA defaults: open-in-view=false, ddl-auto=validate, batch inserts, SQL logging."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.spring.io/spring-data/jpa/reference/"/>
+      <link href="https://docs.jboss.org/hibernate/orm/current/userguide/html_single/Hibernate_User_Guide.html"/>
+      <link href="https://vladmihalcea.com"/>
+      <link href="https://flywaydb.org/"/>
+      <link href="https://www.thoughts-on-java.org"/>
+    </see-also>
+  </content>
+</methodology>

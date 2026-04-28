@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="csharp-dotnet">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Production .NET backend patterns: [ApiController] controllers, service DI, EF Core entities with IEntityTypeConfiguration, repositories, xUnit tests via WebApplicationFactory.</summary>
+    <tags>
+      <tag>csharp</tag>
+      <tag>aspnet-core</tag>
+      <tag>entity-framework</tag>
+      <tag>backend</tag>
+      <tag>api</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>C# ASP.NET Core + Entity Framework</title>
+    <summary>Production .NET backend patterns: [ApiController] controllers with typed route parameters, service interfaces with constructor DI, EF Core entities with IEntityTypeConfiguration, repository interfaces, and xUnit tests via WebApplicationFactory. Use nullable reference types project-wide, record types for DTOs, AsNoTracking() for read paths, and BackgroundService + Channel for in-process async work.</summary>
+    <why>
+      <p>ASP.NET Core's DI container enforces constructor injection, making every dependency explicit and swappable. Strong static typing + records + nullable references prevent whole bug classes at compile time. EF Core's IEntityTypeConfiguration keeps mapping logic out of entity classes. The controller/service/repository split is testable at each layer with xUnit + WebApplicationFactory<Program> for integration tests without a real HTTP server.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Enterprise / B2B backends where Microsoft stack (Azure, AD, SQL Server) is already in place</item>
+        <item>High-throughput APIs needing async/await, minimal allocation, and eventual AOT</item>
+        <item>Long-running services (worker / hosted services) and gRPC microservices</item>
+        <item>Domain-rich applications where strong static typing prevents whole categories of bugs</item>
+        <item>Teams comfortable with dotnet CLI and willing to invest in Roslyn analyzers in CI</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Tiny scripts or one-off cron jobs — Python/Node ship in fewer lines</item>
+        <item>Frontend BFFs in TypeScript-first orgs — the type-sharing story is weaker than tRPC/Hono</item>
+        <item>Edge runtimes with hard cold-start budgets (<50ms) — Node/Bun win until AOT is fully adopted</item>
+        <item>Greenfield startups where hiring senior C# developers is a real constraint</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="controller-service">
+      <p>Controllers handle HTTP routing and request/response serialization. Services implement business logic. The split is testable at each layer: controllers via mocks, services via integration tests with WebApplicationFactory. Always use [ApiController] to enable automatic model validation and typed responses.</p>
+      <rule>
+        <statement>Use [ApiController] + [Route("api/v1/[controller]")] on every controller. Return ActionResult&lt;T&gt; from endpoints that may return NotFound or other non-200 codes. Return IActionResult only when the response type varies at runtime.</statement>
+        <rationale>[ApiController] enables automatic model validation binding and ProblemDetails error responses. ActionResult&lt;T&gt; allows Swagger to infer the success schema without requiring explicit ProducesResponseType attributes.</rationale>
+      </rule>
+      <rule>
+        <statement>Constructor-inject only interfaces, never concrete implementations. The controller may inject at most 4-5 dependencies; beyond that, refactor to a mediator or handler pattern.</statement>
+        <rationale>Injecting concrete classes couples the controller to specific implementations, preventing test doubles. More than 5 constructor dependencies is a god-class signal — split responsibilities.</rationale>
+      </rule>
+      <rule>
+        <statement>Define a service interface (IUserService) and register it as Scoped in Program.cs. Implement the interface in a concrete class. Never inject the concrete class directly.</statement>
+        <rationale>Interface injection enables test doubles (Mock&lt;IUserService&gt;) without a running DB. Scoped lifetime ensures the service shares the DbContext scope within a single request.</rationale>
+      </rule>
+      <rule>
+        <statement>Use record types for DTOs. Never return Entity Framework entities directly from service methods — always map to DTOs before crossing the service boundary.</statement>
+        <rationale>Entity classes carry EF tracking state and navigation proxies. Returning them from services leaks persistence concerns into the controller layer and causes infinite recursion in JSON serialization when navigation properties are loaded.</rationale>
+      </rule>
+      <example type="good" title="Controller with service DI">
+        <code lang="csharp"><![CDATA[
+[ApiController]
+[Route("api/v1/[controller]")]
+[Authorize]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+    private readonly ILogger<UsersController> _logger;
+
+    public UsersController(IUserService userService, ILogger<UsersController> logger)
+    {
+        _userService = userService;
+        _logger = logger;
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<UserDto>> GetUser(int id)
+    {
+        var user = await _userService.GetByIdAsync(id);
+        if (user == null)
+            return NotFound();
+        return Ok(user);
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<UserDto>> CreateUser(CreateUserDto dto)
+    {
+        var user = await _userService.CreateAsync(dto);
+        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
+    }
+}
+        ]]></code>
+        <note>CreatedAtAction returns 201 with a Location header pointing to the new resource. Always use it for POST endpoints that create a resource.</note>
+      </example>
+    </section>
+
+    <section name="entity-framework">
+      <p>Entity Framework Core provides LINQ queries, automatic migrations, and change tracking. Always use IEntityTypeConfiguration for mappings, AsNoTracking() for reads, and the repository pattern to encapsulate query logic. Never leak IQueryable outside the repository.</p>
+      <rule>
+        <statement>Define all entity mappings in IEntityTypeConfiguration&lt;T&gt; classes, not via data annotations on the entity. Apply via modelBuilder.ApplyConfigurationsFromAssembly() in DbContext.</statement>
+        <rationale>IEntityTypeConfiguration separates persistence concerns from the domain entity. Data annotations on entities couple the domain model to EF-specific attributes, preventing reuse in non-EF contexts.</rationale>
+      </rule>
+      <rule>
+        <statement>Always call AsNoTracking() on read-only repository queries. Use AsSplitQuery() when a query includes multiple collection Includes to avoid Cartesian explosion.</statement>
+        <rationale>EF Core tracks every loaded entity by default, consuming memory proportional to result set size. Read-only queries with AsNoTracking() are ~30% faster and use less memory. Multiple Include()s on collections without AsSplitQuery() produce a JOIN with row multiplication.</rationale>
+      </rule>
+      <rule>
+        <statement>Repository methods that return lists must use AsNoTracking() and expose a PagedResult&lt;T&gt; return type that includes TotalCount, Page, and PageSize. Never return IQueryable from a repository — the query must execute inside the repository.</statement>
+        <rationale>IQueryable leaking out of the repository breaks the repository abstraction: callers can add arbitrary LINQ operators that bypass intended query constraints. PagedResult encapsulates pagination metadata so callers do not duplicate count queries.</rationale>
+      </rule>
+      <rule>
+        <statement>Call SaveChangesAsync() only in the repository (or a unit of work), not in service methods. The service orchestrates but the repository owns the persistence boundary.</statement>
+        <rationale>Services calling SaveChangesAsync() directly bypass the repository abstraction and make it impossible to batch multiple operations into a single unit of work without leaking EF context into the service.</rationale>
+      </rule>
+      <example type="good" title="Entity configuration">
+        <code lang="csharp"><![CDATA[
+public class UserConfiguration : IEntityTypeConfiguration<User>
+{
+    public void Configure(EntityTypeBuilder<User> builder)
+    {
+        builder.ToTable("users");
+        builder.HasKey(u => u.Id);
+        builder.Property(u => u.Name).IsRequired().HasMaxLength(100);
+        builder.Property(u => u.Email).IsRequired().HasMaxLength(255);
+        builder.HasIndex(u => u.Email).IsUnique();
+        builder.Property(u => u.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        builder.HasMany(u => u.Roles)
+            .WithMany(r => r.Users)
+            .UsingEntity<Dictionary<string, object>>(
+                "user_roles",
+                j => j.HasOne<Role>().WithMany().HasForeignKey("RoleId"),
+                j => j.HasOne<User>().WithMany().HasForeignKey("UserId")
+            );
+    }
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="testing">
+      <p>Test your API without a database by mocking services at the controller layer, and with an in-memory database at the integration layer. xUnit + Moq provide the testing framework; WebApplicationFactory starts a test server in-process.</p>
+      <rule>
+        <statement>Mock service interfaces with Moq (Mock&lt;IUserService&gt;). Pass mock.Object to the controller constructor. Assert with Assert.IsType&lt;T&gt; to verify ActionResult shape, then cast and assert the inner value.</statement>
+        <rationale>Mocking the interface isolates the controller test from the DB and service logic. The test verifies HTTP-layer behavior: correct status code, correct ActionResult type, correct DTO shape.</rationale>
+      </rule>
+      <rule>
+        <statement>Add public partial class Program; at the bottom of Program.cs. Without it, WebApplicationFactory&lt;Program&gt; cannot find the entry point and throws a compile-time error in the test project.</statement>
+        <rationale>WebApplicationFactory uses Program as a generic type argument to access the application configuration. The partial class declaration makes Program visible to the test assembly.</rationale>
+      </rule>
+      <rule>
+        <statement>Use IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt; for integration tests that share a single test server instance. Create HttpClient via factory.CreateClient() — never create bare HttpClient pointing at localhost.</statement>
+        <rationale>WebApplicationFactory starts an in-process test server. CreateClient() creates an HttpClient pre-configured to route through that server without a real network socket, making tests deterministic and fast.</rationale>
+      </rule>
+      <example type="good" title="Unit test with mocks">
+        <code lang="csharp"><![CDATA[
+public class UsersControllerTests
+{
+    private readonly Mock<IUserService> _mockService;
+    private readonly UsersController _controller;
+
+    public UsersControllerTests()
+    {
+        _mockService = new Mock<IUserService>();
+        _controller = new UsersController(
+            _mockService.Object,
+            Mock.Of<ILogger<UsersController>>());
+    }
+
+    [Fact]
+    public async Task GetUser_WhenExists_ReturnsOk()
+    {
+        var dto = new UserDto { Id = 1, Name = "John", Email = "j@example.com" };
+        _mockService.Setup(s => s.GetByIdAsync(1)).ReturnsAsync(dto);
+
+        var result = await _controller.GetUser(1);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var returned = Assert.IsType<UserDto>(ok.Value);
+        Assert.Equal(1, returned.Id);
+    }
+
+    [Fact]
+    public async Task GetUser_WhenNotFound_ReturnsNotFound()
+    {
+        _mockService.Setup(s => s.GetByIdAsync(999)).ReturnsAsync((UserDto?)null);
+        var result = await _controller.GetUser(999);
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <p>Common failure modes when working with ASP.NET Core. These are patterns that agents frequently emit and must be rejected during code review.</p>
+      <antipattern>
+        <description>async void methods outside of event handlers: public async void ProcessAsync() { ... }</description>
+        <reason>Exceptions thrown inside async void are unobserved — they are posted to the thread pool's unhandled exception handler and crash the process or are silently swallowed, depending on runtime version. Only async Task or async ValueTask are awaitable.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Registering a DbContext-holding service as Singleton: builder.Services.AddSingleton&lt;IUserService, UserService&gt;().</description>
+        <reason>DbContext is Scoped by default (one per request). A Singleton that captures a Scoped DbContext holds the same context for the lifetime of the process. EF Core throws InvalidOperationException on the second concurrent request because DbContext is not thread-safe.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Missing public partial class Program; at the bottom of Program.cs in projects that have xUnit integration tests using WebApplicationFactory&lt;Program&gt;.</description>
+        <reason>WebApplicationFactory&lt;Program&gt; requires Program to be a visible type in the application assembly. Without the partial class declaration, the test project cannot reference Program and compilation fails with "Cannot find type Program".</reason>
+      </antipattern>
+      <antipattern>
+        <description>Injecting IServiceProvider into a controller or service and calling GetService&lt;T&gt;() inside methods (service locator pattern).</description>
+        <reason>Service locator hides dependencies — they are not visible in the constructor signature, cannot be mocked in unit tests, and are not validated by the DI container at startup. Use constructor injection exclusively.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Connection strings or API secrets in appsettings.json committed to source control.</description>
+        <reason>All secrets in appsettings.json are committed to version control and distributed to every developer machine and CI environment. Use dotnet user-secrets locally and Azure Key Vault / environment variables in production.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Adding [AllowAnonymous] or overly broad CORS policies as a workaround for authentication errors during development.</description>
+        <reason>[AllowAnonymous] on a controller disables authorization globally for that controller, including production builds. CORS wildcard (*) allows any origin to make credentialed requests. Both are security regressions that survive code review if not explicitly flagged.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <p>Production patterns that maximize reliability, testability, and operational observability in ASP.NET Core applications.</p>
+      <rule>
+        <statement>Use nullable reference types project-wide (<Nullable>enable</Nullable>); treat CS8 warnings as errors.</statement>
+        <rationale>Nullable reference types allow the compiler to detect null-dereference bugs at compile time, preventing a whole class of NullReferenceException runtime failures.</rationale>
+      </rule>
+      <rule>
+        <statement>Prefer minimal APIs for small services, controllers for >10 endpoints with cross-cutting filters.</statement>
+        <rationale>Minimal APIs reduce boilerplate for simple services. Controllers with attributes provide better organization when filters, authorization policies, and multiple status codes are in play.</rationale>
+      </rule>
+      <rule>
+        <statement>Constructor DI only — avoid IServiceProvider parameter (service locator antipattern) except inside BackgroundServices where scopes must be created manually.</statement>
+        <rationale>Constructor injection makes dependencies explicit and testable. Service locator hides dependencies and breaks mocking.</rationale>
+      </rule>
+      <rule>
+        <statement>Configure EF Core with AsNoTracking() for read paths; use AsSplitQuery() when joining many Includes.</statement>
+        <rationale>AsNoTracking() is ~30% faster and uses less memory for read-only queries. AsSplitQuery() prevents Cartesian explosion when loading multiple collections.</rationale>
+      </rule>
+      <rule>
+        <statement>Use record types for DTOs (value semantics, immutability, with-expressions).</statement>
+        <rationale>Records provide structural equality and immutability out of the box, making DTOs safer and more concise.</rationale>
+      </rule>
+      <rule>
+        <statement>Adopt IOptions&lt;T&gt; + [ConfigurationKeyName] and validate on startup with ValidateOnStart().</statement>
+        <rationale>Options pattern decouples configuration from code and validates configuration errors at startup, not at first use.</rationale>
+      </rule>
+      <rule>
+        <statement>For background work, pick BackgroundService + Channel&lt;T&gt; for in-process; Hangfire/MassTransit for cross-process or persistent.</statement>
+        <rationale>BackgroundService is lightweight for in-process work. Hangfire/MassTransit add durability and cross-process coordination at the cost of extra infrastructure.</rationale>
+      </rule>
+      <rule>
+        <statement>Pin <TargetFramework>net9.0</TargetFramework> (or current LTS) and the SDK in global.json so CI and local match.</statement>
+        <rationale>Unpinned frameworks cause "works on my machine" failures where CI uses a different .NET version than local development.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>LLMs and code generation agents have predictable failure modes with ASP.NET Core. These are validation points during code review.</p>
+      <rule testable="false">
+        <statement>Agents emit async void outside of event handlers — exceptions are unobserved. Reject all async void except known event handler signatures.</statement>
+        <rationale>Unobserved exceptions crash the process or are silently swallowed.</rationale>
+      </rule>
+      <rule testable="false">
+        <statement>Constructor parameter list grows unbounded ("god class" smell); the agent silently injects 8+ services. Set a soft cap of 4-5 dependencies and refactor to mediator/handler.</statement>
+        <rationale>Too many dependencies indicate a design problem, not a limitation to work around.</rationale>
+      </rule>
+      <rule testable="false">
+        <statement>EF migrations go stale fast — agents may modify the entity but not run dotnet ef migrations add. Pre-commit hook should fail if Migrations/* is out of sync with the OnModelCreating snapshot.</statement>
+        <rationale>Stale migrations cause inconsistency between code and schema.</rationale>
+      </rule>
+      <rule testable="false">
+        <statement>WebApplicationFactory<Program> requires public partial class Program; at the bottom of Program.cs. Agents often leave it off → "Cannot find Program" test errors. Verify in scaffolding.</statement>
+        <rationale>Without the partial class, the test assembly cannot see the Program type.</rationale>
+      </rule>
+      <rule testable="false">
+        <statement>DI lifetimes: agents register Singleton for things holding DbContext — captures a scoped dependency and crashes under load. Always lifecheck DbContext-touching services as Scoped.</statement>
+        <rationale>DbContext is not thread-safe and must not be shared across requests.</rationale>
+      </rule>
+      <rule testable="false">
+        <statement>Human checkpoint: review every new [AllowAnonymous], [Authorize(Roles = "Admin")] and CORS policy — agents err toward permissive.</statement>
+        <rationale>Security regressions often ship when defaults are not checked.</rationale>
+      </rule>
+      <rule testable="false">
+        <statement>Configuration: agents drop secrets into appsettings.json. Force dotnet user-secrets locally and env vars / Key Vault in prod; pre-commit should grep for connection strings.</statement>
+        <rationale>Secrets in source control are compromised by definition.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/program-cs.cs" purpose="Program.cs skeleton with DI registration, EF Core, AutoMapper, FluentValidation"/>
+      <template path="templates/entity-config.cs" purpose="IEntityTypeConfiguration with table, indexes, FK cascade, many-to-many"/>
+    </templates>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/aspnet/core/"/>
+      <link href="https://learn.microsoft.com/ef/core/"/>
+      <link href="https://learn.microsoft.com/dotnet/core/extensions/"/>
+      <link href="https://github.com/dotnet/aspire"/>
+      <link href="https://andrewlock.net"/>
+    </see-also>
+  </content>
+</methodology>

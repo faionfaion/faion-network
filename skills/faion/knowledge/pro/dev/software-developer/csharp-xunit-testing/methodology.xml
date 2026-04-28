@@ -1,0 +1,438 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="csharp-xunit-testing">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Write comprehensive unit and integration tests for .NET applications using xUnit with Moq, AAA layout, and WebApplicationFactory for controller tests.</summary>
+    <category>testing</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-24</created>
+    <tags>
+      <tag>csharp</tag>
+      <tag>xunit</tag>
+      <tag>testing</tag>
+      <tag>moq</tag>
+      <tag>unit-testing</tag>
+    </tags>
+    <languages>
+      <language>csharp</language>
+    </languages>
+    <frameworks>
+      <framework>aspnet-core</framework>
+    </frameworks>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>xUnit Testing for .NET</title>
+
+    <summary>xUnit is the de facto standard test framework for modern .NET applications. Write controller tests via WebApplicationFactory, service unit tests using Moq, and integration tests with AAA (Arrange-Act-Assert) layout. Parameterize tests with [Theory] and [InlineData], and enforce test isolation via IClassFixture for shared resources. Measure coverage with coverlet.collector and use FluentAssertions for readable diffs.</summary>
+
+    <why>
+      <p>xUnit creates a new test class instance per test method by default, ensuring test isolation without shared state. WebApplicationFactory provides an in-process HTTP testing harness that integrates the full ASP.NET Core pipeline, catching configuration and startup errors that unit tests alone miss. Moq enables precise mocking of dependencies without verbose setup, and [Theory] + [InlineData] replace repetitive test copy-paste with parameterized cases.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>ASP.NET Core / .NET class library projects — xUnit is the de facto default in modern templates.</item>
+        <item>Controller / minimal-API tests via WebApplicationFactory for in-process integration.</item>
+        <item>Service / domain unit tests using Moq, NSubstitute, or FakeItEasy.</item>
+        <item>Property-based tests (FsCheck.Xunit) and theory-based parametric tests with [Theory] + [InlineData].</item>
+        <item>CI gates with coverage thresholds via coverlet.collector + ReportGenerator.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>BDD-flavored prose specs preferred — SpecFlow / Reqnroll integrate but xUnit isn't the showcase format.</item>
+        <item>Browser end-to-end — use Playwright .NET / Selenium harnesses instead.</item>
+        <item>Performance benchmarks — use BenchmarkDotNet, not xUnit timing assertions.</item>
+        <item>Microbenchmarks of allocations / GC behavior — use BenchmarkDotNet.</item>
+        <item>Tests that need a shared mutable singleton across the entire run — xUnit isolates classes by default; use IClassFixture / ICollectionFixture deliberately.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="controller-testing">
+      <p>Controller tests verify HTTP endpoints return the correct status code, response body, and headers. Use WebApplicationFactory to spin up the full ASP.NET Core pipeline in-memory, and override the DbContext to use SQLite-in-memory so tests don't touch production data.</p>
+
+      <rule testable="true">
+        <statement>Every controller test class MUST use IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt; and override ConfigureWebHost to substitute the DbContext with SQLite-in-memory. Never use the production database or real external APIs in controller tests.</statement>
+        <rationale>Tests must be deterministic and fast. Production databases are off-limits; external APIs are blocked by the network in CI. SQLite-in-memory gives you a real relational database without persistence.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Controller tests MUST follow AAA (Arrange-Act-Assert) layout with blank-line separators between phases. Assertions MUST use FluentAssertions (.Should().BeEquivalentTo(...)) for readable diffs on failure.</statement>
+        <rationale>AAA layout is scannable by both humans and agents. FluentAssertions produces multiline diffs that pinpoint which field failed, vs. xUnit's Assert.Equal which shows the entire object stringified.</rationale>
+      </rule>
+
+      <example type="good" title="Controller test with WebApplicationFactory">
+        <code lang="csharp"><![CDATA[
+[Collection("Integration")]
+public class UsersApiTests : IClassFixture<TestAppFactory>
+{
+    private readonly HttpClient _client;
+
+    public UsersApiTests(TestAppFactory factory)
+    {
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task CreateUser_WithValidData_ReturnsCreatedWithId()
+    {
+        // Arrange
+        var request = new CreateUserRequest(
+            "John Doe",
+            "john@example.com",
+            "password123"
+        );
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/v1/users", request);
+
+        // Assert
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.Created);
+        var user = await response.Content.ReadFromJsonAsync<UserResponse>();
+        user.Should().NotBeNull();
+        user.Name.Should().Be("John Doe");
+        user.Email.Should().Be("john@example.com");
+    }
+
+    [Fact]
+    public async Task GetUser_WhenNotFound_Returns404()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/v1/users/999");
+
+        // Assert
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.NotFound);
+    }
+}
+]]></code>
+        <note>IClassFixture reuses the factory across all test methods in the class; ConfigureWebHost is called once per test class. Use ICollectionFixture to share a single factory across multiple test classes.</note>
+      </example>
+
+      <example type="bad" title="Controller test without isolation">
+        <code lang="csharp"><![CDATA[
+public class UsersApiTests
+{
+    private readonly HttpClient _client = new HttpClient();
+
+    [Fact]
+    public async Task CreateUser_ReturnsCreated()
+    {
+        // This test hits the production database!
+        var response = await _client.PostAsync("https://api.production.com/users", ...);
+        Assert.Equal(201, (int)response.StatusCode);
+    }
+}
+]]></code>
+        <note>No factory, no SQLite-in-memory, no override of the DbContext. Test is flaky (depends on network) and pollutes production data.</note>
+      </example>
+
+      <antipattern>
+        <description>WebApplicationFactory&lt;Program&gt; test fails with "The Program class was not found" or "Entry point not found" error.</description>
+        <reason>Program.cs does not have `public partial class Program;` at the bottom. The test host cannot discover the entry point. Add this line to Program.cs and retry.</reason>
+      </antipattern>
+    </section>
+
+    <section name="unit-testing">
+      <p>Unit tests verify individual service or domain logic without hitting the database or external services. Use Moq to mock dependencies, and keep tests focused on a single responsibility per test method.</p>
+
+      <rule testable="true">
+        <statement>Service unit tests MUST use [Fact] for single-input tests and [Theory] + [InlineData] for parametric boundary tests. Each test class MUST mock collaborators (repository, external service) via constructor injection or Moq.Of&lt;T&gt;().</statement>
+        <rationale>[Fact] is simpler for single cases; [Theory] avoids copy-paste of similar test logic. Mocking isolates the class-under-test from its dependencies.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Every mocked Setup MUST use argument matchers precisely (It.Is&lt;T&gt;(...) rather than It.IsAny&lt;T&gt;()) to catch accidental divergence between test setup and test code.</statement>
+        <rationale>Loose It.IsAny matchers hide bugs: a test passes even if the code calls the method with different arguments than expected. Precise matchers fail fast.</rationale>
+      </rule>
+
+      <example type="good" title="Service unit test with Moq">
+        <code lang="csharp"><![CDATA[
+public class UserServiceTests
+{
+    private readonly Mock<IUserRepository> _mockRepo;
+    private readonly UserService _service;
+
+    public UserServiceTests()
+    {
+        _mockRepo = new Mock<IUserRepository>();
+        _service = new UserService(_mockRepo.Object);
+    }
+
+    [Fact]
+    public async Task Create_WithValidData_ReturnsUser()
+    {
+        // Arrange
+        var request = new CreateUserRequest("John", "john@example.com", "password");
+        var savedUser = new User { Id = 1, Name = "John", Email = "john@example.com" };
+        _mockRepo.Setup(r => r.SaveAsync(It.Is<User>(u => u.Email == "john@example.com")))
+            .ReturnsAsync(savedUser);
+
+        // Act
+        var result = await _service.Create(request);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Id.Should().Be(1);
+        _mockRepo.Verify(r => r.SaveAsync(It.IsAny<User>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("", false)]
+    [InlineData("valid@example.com", true)]
+    public async Task Create_EmailValidation(string email, bool shouldSucceed)
+    {
+        // Arrange
+        var request = new CreateUserRequest("John", email, "password");
+
+        // Act & Assert
+        if (shouldSucceed)
+        {
+            var result = await _service.Create(request);
+            result.Should().NotBeNull();
+        }
+        else
+        {
+            await FluentActions.Invoking(() => _service.Create(request))
+                .Should().ThrowAsync<ValidationException>();
+        }
+    }
+}
+]]></code>
+        <note>Precise It.Is&lt;T&gt;(...) matcher catches divergence. [Theory] avoids copy-paste for boundary cases.</note>
+      </example>
+
+      <antipattern>
+        <description>Initializing expensive dependencies (HttpClient, DbContext) in the test class constructor instead of IClassFixture or IAsyncLifetime.</description>
+        <reason>xUnit creates a new test class instance per test method. Constructor init is called N times, exhausting resources. Use IClassFixture to share setup across methods.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Test methods returning void instead of Task for async tests.</description>
+        <reason>Exceptions in async void methods are unobserved; the test "passes" and the error is lost. Always return Task or Task&lt;T&gt; for async tests.</reason>
+      </antipattern>
+    </section>
+
+    <section name="test-isolation">
+      <p>Test isolation ensures one test's state does not affect another. xUnit isolates by default (new instance per test), but parallel execution and shared static state can break isolation.</p>
+
+      <rule testable="true">
+        <statement>Never use static fields or caches in test code. If tests must be serialized (e.g., all use the same port), mark the class with [CollectionDefinition(DisableParallelization = true)].</statement>
+        <rationale>Static state persists across tests and causes flakes in parallel runs. Serialization is the hammer; use sparingly and document why.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For tests that share a WebApplicationFactory, use ICollectionFixture&lt;TestAppFactory&gt; and decorate the class with [Collection("Integration")]. This creates a single factory for all tests in the collection and runs them serially.</statement>
+        <rationale>Each WebApplicationFactory is a separate port and database. Sharing saves startup cost; serialization prevents port collisions.</rationale>
+      </rule>
+
+      <example type="good" title="Serialized integration tests with ICollectionFixture">
+        <code lang="csharp"><![CDATA[
+[Collection("Integration")]
+public class UsersApiTests : IClassFixture<TestAppFactory>
+{
+    // All tests in this class share the same TestAppFactory and run serially.
+}
+
+[Collection("Integration")]
+public class OrdersApiTests : IClassFixture<TestAppFactory>
+{
+    // Shares the same factory; serialized to avoid port conflicts.
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="data-builders">
+      <p>Test data builders encapsulate the creation of complex test objects, making tests more readable and maintainable.</p>
+
+      <rule testable="true">
+        <statement>For test fixture data, create a builder class or use AutoFixture to generate realistic default values. Never hardcode data literals inline unless the test is about that specific value.</statement>
+        <rationale>Builders are DRY and document the minimal required fields for a test case. AutoFixture generates plausible defaults (unique emails, valid UUIDs) that prevent false positives.</rationale>
+      </rule>
+
+      <example type="good" title="User test builder">
+        <code lang="csharp"><![CDATA[
+public class UserBuilder
+{
+    private long _id = 1;
+    private string _name = "John Doe";
+    private string _email = "john@example.com";
+    private string _password = "password123";
+
+    public UserBuilder WithId(long id)
+    {
+        _id = id;
+        return this;
+    }
+
+    public UserBuilder WithEmail(string email)
+    {
+        _email = email;
+        return this;
+    }
+
+    public User Build()
+    {
+        return new User { Id = _id, Name = _name, Email = _email, Password = _password };
+    }
+}
+
+// Usage
+[Fact]
+public async Task FindUser_ReturnsUser()
+{
+    var user = new UserBuilder().WithEmail("special@example.com").Build();
+    _mockRepo.Setup(r => r.FindByEmailAsync(user.Email)).ReturnsAsync(user);
+
+    var result = await _service.FindByEmail(user.Email);
+    result.Email.Should().Be("special@example.com");
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="assertions">
+      <p>Assertions verify expected behavior. Use FluentAssertions for readable, composable assertions and clear failure messages.</p>
+
+      <rule testable="true">
+        <statement>All assertions MUST use FluentAssertions (.Should().xxx) rather than xUnit's Assert.xxx. Assert.Equal on objects produces a single stringified line; Should().BeEquivalentTo produces a multiline diff.</statement>
+        <rationale>Multiline diffs pinpoint which field failed. Single-line stringified output is hard to debug for agents and humans.</rationale>
+      </rule>
+
+      <example type="good" title="FluentAssertions">
+        <code lang="csharp"><![CDATA[
+[Fact]
+public void User_Comparison()
+{
+    var expected = new UserResponse { Id = 1, Name = "John", Email = "john@example.com" };
+    var actual = new UserResponse { Id = 1, Name = "John", Email = "jane@example.com" };
+
+    actual.Should().BeEquivalentTo(expected);
+    // Failure output:
+    // Expected user.Email to be "john@example.com", but found "jane@example.com".
+}
+]]></code>
+        <note>BeEquivalentTo ignores property order and null reference types by default; use StrictlyEquivalentTo for strict comparison.</note>
+      </example>
+
+      <example type="bad" title="xUnit Assert">
+        <code lang="csharp"><![CDATA[
+[Fact]
+public void User_Comparison()
+{
+    var expected = new UserResponse { Id = 1, Name = "John", Email = "john@example.com" };
+    var actual = new UserResponse { Id = 1, Name = "John", Email = "jane@example.com" };
+
+    Assert.Equal(expected, actual);
+    // Failure output: Expected UserResponse { Id = 1, Name = John, Email = john@example.com } but got UserResponse { Id = 1, Name = John, Email = jane@example.com }
+    // Hard to spot the difference at a glance.
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p>Common pitfalls when using xUnit with ASP.NET Core. Agents frequently introduce these errors; review carefully in code review.</p>
+
+      <antipattern>
+        <description>Async test methods that return void instead of Task.</description>
+        <reason>Exceptions in async void methods are unobserved; the test "passes" and the error is lost. xUnit doesn't warn for test methods (unlike regular methods). Always return Task or Task&lt;T&gt;.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Initializing expensive resources (HttpClient, DbContext) in the test class constructor instead of IClassFixture or IAsyncLifetime.</description>
+        <reason>xUnit creates a new test class instance per test method by design. Constructor init is called N times, exhausting resources. Agents pay tens of milliseconds per test. Use IClassFixture to share setup across methods.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>WebApplicationFactory&lt;Program&gt; test fails with cryptic "entry point not found" error.</description>
+        <reason>Program.cs is missing `public partial class Program;` at the bottom. The test host cannot discover the entry point. Add this line and retry.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Moq Setup chains with non-matching argument matchers — e.g., Setup(m =&gt; m.Method(1)) but the test calls m.Method(2).</description>
+        <reason>Moq silently returns default when matchers don't match, leading to false-positive null asserts in the test. Use It.Is&lt;T&gt;(...) for precise matching, or strict mocks to catch mismatches.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Parallel test execution collisions: agents reuse a static Faker, shared HttpClient, or mutable cache.</description>
+        <reason>Shared static state persists across tests and causes flakes in parallel runs. Make shared state per-instance, or disable parallelization with [CollectionDefinition(DisableParallelization = true)] only when necessary.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Tests marked [Fact(Skip = "TODO...")] to suppress failures, not to be fixed later.</description>
+        <reason>Skipped tests rot. CI should fail on skipped tests by default. Reject any Skip pragmatism in code review.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using UseInMemoryDatabase for integration tests that depend on relational constraints (foreign keys, unique indexes).</description>
+        <reason>In-memory DBs skip relational constraints; tests pass that would fail in production Postgres/SQL Server. Use SQLite-in-memory (via WebApplicationFactory override) or Testcontainers for reality-based testing.</reason>
+      </antipattern>
+    </section>
+
+    <section name="tools-and-cli">
+      <p>Essential CLI tools and NuGet packages for xUnit testing workflows.</p>
+
+      <rule testable="false">
+        <statement>Install coverlet.collector and ReportGenerator for code coverage measurement. Run dotnet test --collect:"XPlat Code Coverage" in CI and enforce a threshold (e.g., 70-85%) via Coverlet or ReportGenerator.</statement>
+        <rationale>Coverage thresholds prevent regressions; unrealistic targets (100%) encourage trivial tests. Coverlet is the modern standard; avoid legacy coverage.exe.</rationale>
+      </rule>
+
+      <example type="good" title="Code coverage setup">
+        <code lang="xml"><![CDATA[
+<!-- Project.Tests.csproj -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="xunit" Version="2.6.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.0" />
+    <PackageReference Include="FluentAssertions" Version="6.12.0" />
+    <PackageReference Include="Moq" Version="4.20.0" />
+  </ItemGroup>
+</Project>
+]]></code>
+        <note>coverlet.collector is included in the test project; it runs in-process during dotnet test. ReportGenerator (dotnet tool) generates HTML reports from coverage.cobertura.xml.</note>
+      </example>
+
+      <commands>
+        <command name="dotnet test">Run all tests; supports --filter, --collect, --logger. Default: parallel by assembly.</command>
+        <command name="dotnet test --collect:&quot;XPlat Code Coverage&quot;">Collect coverage into coverage.cobertura.xml.</command>
+        <command name="dotnet-reportgenerator-globaltool coverage.cobertura.xml -targetdir coverage-report">Generate HTML coverage report.</command>
+        <command name="dotnet new xunit">Scaffold a new xUnit test project.</command>
+        <command name="dotnet format --verify-no-changes">Verify code formatting (IDE / Roslyn analyzers).</command>
+      </commands>
+    </section>
+
+    <section name="best-practices-summary">
+      <list>
+        <item>Use IClassFixture&lt;TestAppFactory&gt; for controller integration tests with SQLite-in-memory; override ConfigureWebHost to swap the DbContext.</item>
+        <item>Follow AAA (Arrange-Act-Assert) layout with blank lines between phases.</item>
+        <item>Use [Fact] for single-input tests, [Theory] + [InlineData] for parametric cases.</item>
+        <item>Mock dependencies precisely with It.Is&lt;T&gt;(...) rather than It.IsAny&lt;T&gt;().</item>
+        <item>Assert with FluentAssertions (.Should().xxx) for readable diffs.</item>
+        <item>Use data builders to encapsulate test fixture setup.</item>
+        <item>Never use async void test methods; always return Task or Task&lt;T&gt;.</item>
+        <item>Run dotnet test locally before commit; enable code coverage via coverlet.collector.</item>
+        <item>Mark integration test classes with [Collection("Integration")] to serialize and share TestAppFactory.</item>
+        <item>Hide WebApplicationFactory&lt;Program&gt; behind a TestAppFactory class for DRY configuration.</item>
+        <item>Verify mock calls with Verify(m =&gt; m.Method(...), Times.Once) to catch unexpected invocations.</item>
+        <item>Use Testcontainers.PostgreSql / Testcontainers.MsSql for dialect-specific integration tests.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://xunit.net/docs/getting-started/netcore/cmdline"/>
+      <link href="https://learn.microsoft.com/aspnet/core/test/integration-tests"/>
+      <link href="https://github.com/fluentassertions/fluentassertions"/>
+      <link href="https://github.com/AutoFixture/AutoFixture"/>
+    </see-also>
+  </content>
+</methodology>
