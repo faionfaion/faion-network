@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/claude-code methodologies → methodology.xml (mcp-servers, project-docs-convention, skills; feature-045 batch 250)
+- migrate: 3/3 geek/ai/llm-integration methodologies → methodology.xml (claude-advanced-features, claude-api-basics, claude-api-integration; feature-045 batch 251)
 - migrate: 3/3 geek/ai/llm-integration methodologies → methodology.xml (claude-best-practices, claude-messages-api, claude-tool-use; feature-045 batch 252)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (subagent-as-context-firewall, tool-description-as-prompt, trajectory-eval-otel; feature-045 batch 247)
 - migrate: 3/3 geek/ai/claude-code methodologies → methodology.xml (hooks, mcp, mcp-basics; feature-045 batch 249)
