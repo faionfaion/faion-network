@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="chain-of-thought">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>CoT elicits intermediate reasoning, improving accuracy by 18-70%. Use zero-shot for modern models, few-shot for format enforcement. Do NOT use explicit CoT with reasoning models (o1, o3, DeepSeek-R1).</summary>
+    <tags>
+      <tag>chain-of-thought</tag>
+      <tag>prompting</tag>
+      <tag>reasoning</tag>
+      <tag>extended-thinking</tag>
+      <tag>llm</tag>
+    </tags>
+    <category>prompting</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Chain-of-Thought Prompting</title>
+
+    <summary>CoT prompting elicits intermediate reasoning steps before final answers, improving accuracy on multi-step problems by up to 18% (GSM8K) or 70% (with Tree-of-Thoughts). For modern models, use zero-shot CoT. Use few-shot only for format enforcement, not reasoning quality. For Claude, use `&lt;thinking&gt;` XML tags or Extended Thinking (Opus). Do NOT add explicit CoT to reasoning models (o1, o3, DeepSeek-R1) as they have it built in. Research shows for strong models, zero-shot CoT matches few-shot CoT — few-shot examples primarily enforce output format rather than improving reasoning quality.</summary>
+
+    <why>
+      <p>CoT makes the model's reasoning explicit and separable from its answer. This enables verification, error detection, and debugging of failures. Benchmarks: GSM8K +18% accuracy, Game of 24 +70% with Tree-of-Thoughts. However, 2025 research shows that for strong models, zero-shot CoT matches few-shot CoT — the benefit of examples is format enforcement, not reasoning improvement.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Task requires multi-step reasoning: math, logic puzzles, code debugging, complex decisions</item>
+        <item>LLM makes errors on a task it should theoretically solve — CoT surfaces where reasoning breaks</item>
+        <item>Output needs to be auditable: visible steps allow reviewers to verify the reasoning path</item>
+        <item>Agent must plan a sequence of actions before executing — CoT as a scratchpad before tool calls</item>
+        <item>High-stakes single response where Self-Consistency (5 samples + majority vote) is justified</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple classification, extraction, or translation — CoT adds tokens with no quality gain</item>
+        <item>Latency is critical (&lt;1s) — CoT adds tokens and turns</item>
+        <item>Using o1/o3/o4-mini/DeepSeek-R1 — built-in reasoning; explicit CoT interferes</item>
+        <item>High-volume, low-complexity pipelines — 2-5x token overhead multiplies at scale</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="techniques-and-variants">
+      <title>CoT Techniques and Selection</title>
+      <p>CoT variants, selection decision matrix, cost/quality trade-offs, and 2025 research insights.</p>
+
+      <section name="variants">
+        <title>Variants</title>
+        <rule>
+          <statement>Default to zero-shot CoT for modern models (Claude Sonnet 4+, GPT-4+). Add "Think step by step" or use Claude's `&lt;thinking&gt;` tags. Use few-shot CoT only when a specific output format must be enforced — not for reasoning quality improvement.</statement>
+          <rationale>2025 research (arXiv:2506.14641) shows zero-shot CoT matches or exceeds few-shot CoT for strong models. Few-shot examples primarily enforce output format. DeepSeek-R1 shows performance degradation with few-shot CoT.</rationale>
+        </rule>
+
+        <rule>
+          <statement>Use Self-Consistency (5 samples, temperature=0.7, majority vote) only for mission-critical single decisions — not for conversational or high-volume pipelines. Budget 5x token cost explicitly before enabling.</statement>
+          <rationale>Self-consistency improves accuracy on ambiguous problems by sampling diverse reasoning paths. At 5 samples/query it costs 5x tokens — only justified when the cost of a wrong answer exceeds the cost of the extra API calls.</rationale>
+        </rule>
+
+        <rule>
+          <statement>Use Tree-of-Thoughts (ToT) only for narrow planning or exploration problems (e.g., code planning, game-like search). Branching factor 3-5, max depth 3-5, best-first search. Never use as a general-purpose technique.</statement>
+          <rationale>ToT's branching^depth call count grows exponentially. At branching=3, depth=3 it requires up to 39 LLM calls per query. The 70% improvement on Game of 24 does not generalize to most production tasks.</rationale>
+        </rule>
+
+        <rule>
+          <statement>Use Extended Thinking (Claude Opus + `thinking` parameter) for math, formal logic, code correctness proofs, and multi-constraint optimization. Start at 1,024 budget tokens; increase by 1,024 until quality plateaus.</statement>
+          <rationale>Extended Thinking provides verifiable reasoning traces, not just CoT scaffolding. Diminishing returns appear quickly — most tasks plateau before 8,192 thinking tokens.</rationale>
+        </rule>
+      </section>
+
+      <section name="selection-matrix">
+        <title>Selection Matrix</title>
+        <list>
+          <item>Simple task + format flexible → Zero-Shot CoT ("Think step by step")</item>
+          <item>Simple task + strict format → Few-Shot CoT (2-3 examples)</item>
+          <item>Complex + single critical answer → Self-Consistency (5 samples)</item>
+          <item>Complex + planning/search → Tree-of-Thoughts (narrow use)</item>
+          <item>Sequential subproblems → Least-to-Most</item>
+          <item>Formal proof/math → Extended Thinking (Opus)</item>
+        </list>
+      </section>
+
+      <section name="cost-vs-quality">
+        <title>Cost vs Quality</title>
+        <list>
+          <item>Zero-Shot CoT: low cost, low latency, good quality</item>
+          <item>Few-Shot CoT: medium cost (examples in prompt), medium latency, good+ quality</item>
+          <item>Self-Consistency: 5x cost, 5x latency, better quality</item>
+          <item>Tree-of-Thoughts: very high cost, very high latency, best quality for planning</item>
+          <item>Extended Thinking: +$0.30/call (Opus at 4K thinking tokens), verifiable traces</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="production-rules-and-gotchas">
+      <title>CoT Production Rules and Gotchas</title>
+      <p>Concrete rules for production CoT use, agentic loop costs, Extended Thinking caveats, and validation requirements.</p>
+
+      <section name="production-rules">
+        <title>Production Rules</title>
+        <rule>
+          <statement>For Claude, use `&lt;thinking&gt;` XML tags in the prompt to signal where the model should externalize reasoning. This is more reliable than free-form "think step by step" for structured outputs.</statement>
+          <rationale>Claude was fine-tuned to treat XML tag boundaries as semantic signals. The `&lt;thinking&gt;` / `&lt;answer&gt;` pattern produces cleaner separation between reasoning and output than untagged CoT.</rationale>
+        </rule>
+
+        <rule>
+          <statement>In agentic loops, use CoT for the initial planning step only, then switch to direct prompts for execution steps. CoT token costs compound across turns.</statement>
+          <rationale>If an agent generates a CoT plan before each tool call in a 10-step pipeline, total token cost is 10x the single-call overhead. Plan once, execute directly.</rationale>
+        </rule>
+
+        <rule>
+          <statement>Always validate the final answer independently for numerical or verifiable claims — do not trust the reasoning trace alone. Zero-shot CoT can produce confident-sounding wrong reasoning.</statement>
+          <rationale>CoT improves accuracy on average but not on every instance. The model may generate a plausible-looking incorrect chain. For math/code, run the answer through a verifier or test suite.</rationale>
+        </rule>
+      </section>
+
+      <section name="extended-thinking-gotchas">
+        <title>Extended Thinking Gotchas</title>
+        <antipattern>
+          <description>Using Extended Thinking on every query regardless of complexity.</description>
+          <reason>Extended Thinking tokens are billed at output token rates (~$0.30/call at 4K thinking budget with Opus). Multiply by query volume. Reserve for tasks where reasoning quality matters more than cost.</reason>
+        </antipattern>
+
+        <antipattern>
+          <description>Assuming thinking tokens are cached by Prompt Caching.</description>
+          <reason>Prompt Caching applies to input tokens, not to Extended Thinking output. Thinking cost cannot be amortized across requests — it is paid fresh every call.</reason>
+        </antipattern>
+      </section>
+
+      <section name="self-consistency-gotchas">
+        <title>Self-Consistency Gotchas</title>
+        <antipattern>
+          <description>Running Self-Consistency on high-stakes automated pipelines without logging disagreement rate.</description>
+          <reason>If &gt;40% of samples disagree, majority vote is unreliable. Escalate to human review rather than returning a 3-2 majority answer.</reason>
+        </antipattern>
+
+        <antipattern>
+          <description>Using Self-Consistency at temperature=0.</description>
+          <reason>All samples will produce identical reasoning paths at temperature=0, defeating the purpose of sampling diverse paths. Use temperature=0.7.</reason>
+        </antipattern>
+      </section>
+    </section>
+
+    <section name="integration-guidance">
+      <p>When to use CoT in Claude subagents and agentic workflows.</p>
+
+      <rule>
+        <statement>A reasoning agent uses CoT implicitly via Claude's extended thinking (for Opus) or explicitly by structuring the prompt with `&lt;thinking&gt;` tags (for Sonnet). For planning tasks, the agent prompts Claude to output a plan in structured steps before executing any tool calls, then executes the plan step by step, checking intermediate results.</statement>
+        <rationale>Claude's native agent API enforces the CoT structure automatically. For high-stakes decisions, the agent runs Self-Consistency: generates 5 independent reasoning paths and selects the answer that appears in the majority.</rationale>
+      </rule>
+
+      <note>Recommended subagents: Reasoning agent with `&lt;thinking&gt;` for structured CoT on complex analysis tasks (returns `{thinking: ..., answer: ...}`); Self-consistency voting subagent that runs N parallel Claude calls with temperature=0.7, collects answers, and returns majority vote with confidence score.</note>
+    </section>
+
+    <section name="best-practices">
+      <title>Best Practices</title>
+      <list>
+        <item>Start with zero-shot CoT ("Think step by step") for Claude Sonnet 4 and GPT-4+ — it works as well as few-shot for most tasks and saves tokens</item>
+        <item>Use few-shot CoT only when you need a specific output format, not to improve reasoning quality on modern models</item>
+        <item>For Claude: use `&lt;thinking&gt;` XML tags in the prompt to signal where the model should externalize its reasoning; this is more reliable than free-form "think step by step"</item>
+        <item>Use Extended Thinking (Opus + `thinking` parameter) for math, formal logic, code correctness proofs, and multi-constraint optimization — it provides verifiable reasoning traces, not just CoT scaffolding</item>
+        <item>Keep thinking budget proportional to task complexity: start at 1,024 tokens (minimum), increase by 1,024 until quality plateaus; diminishing returns appear quickly for most tasks</item>
+        <item>Reserve Self-Consistency for truly high-stakes single decisions (not conversational); at 5 samples per query, it costs 5x tokens — budget explicitly</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <title>AI Agent Gotchas</title>
+      <list>
+        <item>Reasoning tokens cost money: Extended Thinking tokens are billed at the same rate as output tokens — a 4,096-token thinking budget adds ~$0.30 per Opus call at current pricing; multiply by query volume</item>
+        <item>CoT in agentic loops: if an agent generates a CoT plan before each tool call, token costs compound across turns — use CoT for the initial planning step, then switch to direct prompts for execution steps</item>
+        <item>Thinking tokens are not cached: Prompt Caching applies to input tokens, not to Extended Thinking output — cannot amortize thinking cost across requests</item>
+        <item>Human-in-loop checkpoint: for automated pipelines using Self-Consistency on high-stakes decisions (financial calculations, legal interpretations), log the disagreement rate across samples; if &gt; 40% of samples disagree, escalate to human review rather than taking the majority vote</item>
+        <item>Zero-Shot CoT can produce confidently wrong reasoning: always validate the final answer independently for numerical or verifiable claims — do not trust the reasoning trace alone</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/prompt-zero-shot.txt" purpose="Zero-shot CoT prompt patterns (basic + XML-structured for Claude)"/>
+      <template path="templates/extended-thinking.py" purpose="Claude Extended Thinking API call pattern"/>
+      <template path="templates/self-consistency.py" purpose="Self-consistency with majority voting (N parallel calls)"/>
+    </templates>
+
+    <see-also>
+      <link href="https://arxiv.org/abs/2201.11903">Chain-of-Thought Prompting (Wei et al., 2022)</link>
+      <link href="https://arxiv.org/abs/2203.11171">Self-Consistency (Wang et al., 2022)</link>
+      <link href="https://arxiv.org/abs/2305.10601">Tree of Thoughts (Yao et al., 2023)</link>
+      <link href="https://arxiv.org/abs/2506.14641">Revisiting CoT Prompting (2025)</link>
+      <link href="https://arxiv.org/pdf/2510.01069">Typed Chain-of-Thought (ICLR 2026)</link>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking">Anthropic Extended Thinking guide</link>
+      <link href="https://www.promptingguide.ai/techniques/cot">Prompt Engineering Guide - CoT</link>
+      <ref slug="ai-agent-patterns"/>
+      <ref slug="prompt-engineering-fundamentals"/>
+    </see-also>
+  </content>
+</methodology>
