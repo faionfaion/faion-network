@@ -1,0 +1,424 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="csharp-aspnet-core">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Layered ASP.NET Core architecture (.NET 8/9) with record DTOs, service layer, EF Core repository, RFC 7807 error handling, scoped DI, CancellationToken, and WebApplicationFactory integration tests.</summary>
+    <tags>
+      <tag>aspnet-core</tag>
+      <tag>dotnet</tag>
+      <tag>architecture</tag>
+      <tag>entity-framework</tag>
+      <tag>dependency-injection</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>ASP.NET Core Patterns</title>
+
+    <summary>ASP.NET Core (.NET 8/9) layered architecture: record DTOs → IService + impl → [ApiController] controller → EF Core repository → AutoMapper/Mapperly → IExceptionHandler with ProblemDetails (RFC 7807). Enforces CancellationToken threading, TimeProvider injection, scoped DI for DbContext, and integration tests via WebApplicationFactory + Testcontainers.</summary>
+
+    <why>
+      <p>Controller-heavy ASP.NET projects accumulate domain logic in HTTP handlers, inject DbContext into singletons (captive dependency), and return tracked EF entities directly (circular refs, information leaks). This methodology enforces the DTO mapping boundary, scoped DI discipline, RFC 7807 error shape, and testability via TimeProvider/WebApplicationFactory — the patterns that prevent the most common runtime failures.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building HTTP APIs in .NET 8/9 with [ApiController], DI-injected services, EF Core.</item>
+        <item>Layered architecture (Controller → Service → Repository) with AutoMapper or Mapperly.</item>
+        <item>JWT/cookie authenticated APIs using [Authorize].</item>
+        <item>OpenAPI-first endpoints via Swashbuckle or NSwag with strongly-typed DTOs.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Microservices that fit Minimal API style — use app.MapGroup(...) instead of controllers.</item>
+        <item>Reactive/streaming endpoints — switch to gRPC or SignalR.</item>
+        <item>CQRS-heavy domains — use MediatR + handlers per command/query instead.</item>
+        <item>AOT-compiled apps — AutoMapper and generic filters break in Native AOT; use Mapperly (source-gen).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="layered-architecture">
+      <p>ASP.NET Core APIs are structured in layers: HTTP (controllers), business logic (services), and data access (repositories/DbContext). Each layer has clear responsibilities and boundaries. Controllers stay thin; services contain domain rules; EF Core + repositories abstract data access.</p>
+
+      <rule testable="true">
+        <statement>Controllers MUST NOT access DbContext directly; they MUST call service methods. Services implement IService and contain domain logic. Repositories expose FindByIdAsync, CreateAsync, UpdateAsync, DeleteAsync — no complex queries in controllers. DTOs (record types) map domain entities at the service boundary; controllers never return tracked EF entities.</statement>
+        <rationale>Direct DbContext access in controllers leaks data access patterns (N+1 queries, lazy loading), spreads domain logic, and makes testing hard. Services encapsulate logic; repositories encapsulate queries. DTOs prevent circular references and information leaks (e.g., internal columns like HashedPassword).</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>DbContext MUST be registered as scoped (services.AddDbContext&lt;T&gt;(...)), never as singleton or transient. A scoped DbContext lives for the HTTP request duration; multiple requests get independent DbContexts. If you inject DbContext into a singleton, you have a captive dependency and concurrent requests will interfere with each other's state.</statement>
+        <rationale>DbContext is not thread-safe; each request needs its own instance. Singleton injection of a scoped dependency causes the singleton to hold a stale DbContext reference, leading to Use-After-Dispose and concurrency bugs at scale.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Every async method MUST accept a CancellationToken parameter and pass it to EF Core calls (ToListAsync(ct), SaveChangesAsync(ct), etc.). Without it, a client disconnect leaves database queries running to completion, wasting resources and obscuring timeout bugs.</statement>
+        <rationale>CancellationToken allows the HTTP layer to signal a timeout or client disconnect, so the database query stops early. Without it, a fast timeout response to the client is followed by a slow query completing and wasting database work.</rationale>
+      </rule>
+
+      <example type="good" title="Scoped DbContext, service layer, DTOs">
+        <code lang="csharp"><![CDATA[
+// Startup: register DbContext as scoped
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+// Service layer: encapsulates domain logic
+public interface IUserService
+{
+    Task<UserDto> CreateAsync(CreateUserDto dto, CancellationToken ct);
+    Task<UserDto?> GetByIdAsync(int id, CancellationToken ct);
+}
+
+public class UserService(AppDbContext db, IPasswordHasher<User> hasher) : IUserService
+{
+    public async Task<UserDto> CreateAsync(CreateUserDto dto, CancellationToken ct)
+    {
+        var user = new User { Email = dto.Email, PasswordHash = hasher.Hash(dto.Password) };
+        db.Users.Add(user);
+        await db.SaveChangesAsync(ct);
+        return new UserDto(user.Id, user.Email);
+    }
+
+    public async Task<UserDto?> GetByIdAsync(int id, CancellationToken ct)
+    {
+        var user = await db.Users.FindAsync(new object[] { id }, cancellationToken: ct);
+        return user == null ? null : new UserDto(user.Id, user.Email);
+    }
+}
+
+// Controller: stays thin
+[ApiController]
+[Route("api/[controller]")]
+public class UsersController(IUserService users) : ControllerBase
+{
+    [HttpPost]
+    public async Task<IActionResult> Create(CreateUserDto dto, CancellationToken ct)
+    {
+        var result = await users.CreateAsync(dto, ct);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<UserDto>> GetById(int id, CancellationToken ct)
+    {
+        var user = await users.GetByIdAsync(id, ct);
+        return user == null ? NotFound() : Ok(user);
+    }
+}
+
+// DTOs as records: immutable, strongly typed
+public record UserDto(int Id, string Email);
+public record CreateUserDto(string Email, string Password);
+        ]]></code>
+        <note>DbContext scoped, service encapsulates logic, controller stays thin, DTOs at the boundary, CancellationToken threaded through.</note>
+      </example>
+
+      <example type="bad" title="DbContext in controller, returning tracked entity">
+        <code lang="csharp"><![CDATA[
+public class UsersController(AppDbContext db) : ControllerBase
+{
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var user = await db.Users.FindAsync(id);  // ❌ no service layer
+        return user == null ? NotFound() : Ok(user);  // ❌ returns tracked entity
+    }
+}
+        ]]></code>
+        <note>DbContext in controller. If User has a PasswordHash property, it leaks to the client. Tracked entity can cause lazy-loading bugs and information leaks.</note>
+      </example>
+
+      <antipattern>
+        <description>Injecting DbContext into singleton services, causing a captive dependency where one DbContext is shared across requests.</description>
+        <reason>DbContext is not thread-safe and is tied to an HTTP request scope. Singleton services hold a single DbContext reference, breaking concurrency. Always use dependency injection with the correct scope (scoped for services, not singleton).</reason>
+      </antipattern>
+    </section>
+
+    <section name="error-handling-and-dto-mapping">
+      <p>Errors are returned as RFC 7807 ProblemDetails. DTOs map domain entities at the service boundary, preventing information leaks and circular references. Mapping is done via AutoMapper, Mapperly (source-gen), or hand-written mappers.</p>
+
+      <rule testable="true">
+        <statement>Errors MUST be returned as ProblemDetails (RFC 7807) with consistent shape: { type, title, status, detail, instance }. Implement a global IExceptionHandler that catches domain exceptions and maps them to ProblemDetails. Never return raw exception messages or stack traces to the client. Use HTTP status codes correctly (400 for validation, 404 for not found, 500 for server errors).</statement>
+        <rationale>Consistent error shape makes client error handling reliable. Hiding implementation details (stack traces, SQL errors) improves security. A global exception handler centralizes error logic; controllers stay focused on happy paths.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>DTOs MUST be record types (immutable) with required init properties. Mappers (AutoMapper profile, Mapperly source-gen, or manual) convert domain entities to DTOs at the service boundary. Return DTOs from service methods, never tracked EF entities. Services MUST NOT return navigation properties; if a client needs related data, add a separate request or a BFF-style aggregation.</statement>
+        <rationale>Record DTOs are immutable and strongly typed. Mappers enforce a boundary between internal domain models and external API contracts. Navigation properties leak internal data access patterns (e.g., accessing User.Orders triggers a query) and expose unrelated data.</rationale>
+      </rule>
+
+      <example type="good" title="Global exception handler with ProblemDetails">
+        <code lang="csharp"><![CDATA[
+public class ProblemDetailsHandler : IExceptionHandler
+{
+    public async ValueTask<bool> TryHandleAsync(
+        HttpContext ctx, Exception ex, CancellationToken ct)
+    {
+        var pd = ex switch
+        {
+            NotFoundException nf => new ProblemDetails
+            {
+                Status = 404,
+                Title = "Not Found",
+                Detail = nf.Message,
+                Type = "https://example.com/problems/not-found"
+            },
+            ValidationException ve => new ProblemDetails
+            {
+                Status = 422,
+                Title = "Validation Failed",
+                Detail = ve.Message,
+                Type = "https://example.com/problems/validation"
+            },
+            _ => new ProblemDetails
+            {
+                Status = 500,
+                Title = "Internal Server Error",
+                Type = "https://example.com/problems/server-error"
+            }
+        };
+        ctx.Response.StatusCode = pd.Status!.Value;
+        await ctx.Response.WriteAsJsonAsync(pd, ct);
+        return true;
+    }
+}
+
+// Program.cs
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<ProblemDetailsHandler>();
+app.UseExceptionHandler();
+        ]]></code>
+        <note>One exception handler catches all domain exceptions and returns RFC 7807 shape. Controllers never need try/catch.</note>
+      </example>
+
+      <example type="good" title="Mapperly source-generated mapper (no runtime cost)">
+        <code lang="csharp"><![CDATA[
+[Mapper]
+public partial class UserMapper
+{
+    public partial UserDto ToDto(User user);
+    public partial User ToEntity(CreateUserDto dto);
+}
+
+// Usage in service
+var userDto = _mapper.ToDto(user);
+        ]]></code>
+        <note>Mapperly generates mapper code at compile time; no reflection overhead.</note>
+      </example>
+    </section>
+
+    <section name="dependency-injection-and-testability">
+      <p>DI makes services testable by allowing mock implementations. TimeProvider injection replaces DateTime.UtcNow calls and makes time-based logic testable.</p>
+
+      <rule testable="true">
+        <statement>Inject TimeProvider instead of calling DateTime.UtcNow. TimeProvider is testable; you can inject a FakeTimeProvider in tests to control the current time and test time-based logic (expiry, scheduling). Avoid static DateTime.UtcNow; it cannot be mocked.</statement>
+        <rationale>DateTime.UtcNow is hard-coded system time, making time-dependent tests flaky and hard to debug. TimeProvider is an abstraction; tests inject a fake instance and control time.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Write integration tests using WebApplicationFactory&lt;Program&gt; + Testcontainers Postgres. Never use EF InMemory for tests of real logic — InMemory is not relational and allows queries that fail on real databases. Testcontainers is slower (spins up a real database) but catches real bugs.</statement>
+        <rationale>EF InMemory allows LINQ queries that don't translate to SQL, leading to test-green production-red failures. WebApplicationFactory spins up the real DI container; Testcontainers gives a real database. Testing against a real database catches N+1 queries, index selection, and transaction bugs that InMemory misses.</rationale>
+      </rule>
+
+      <example type="good" title="Integration test with WebApplicationFactory">
+        <code lang="csharp"><![CDATA[
+[Collection("Database collection")]
+public class UserApiTests : IAsyncLifetime
+{
+    private readonly WebApplicationFactory<Program> factory;
+    private HttpClient client;
+
+    public UserApiTests()
+    {
+        factory = new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureServices(services =>
+                {
+                    // Replace with test database
+                    services.Remove(services.Single(d => d.ServiceType == typeof(DbContextOptions<AppDbContext>)));
+                    services.AddDbContext<AppDbContext>(options =>
+                        options.UseNpgsql(testConnectionString));
+                });
+            });
+    }
+
+    public async Task InitializeAsync()
+    {
+        client = factory.CreateClient();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await db.Database.MigrateAsync();
+        }
+    }
+
+    public Task DisposeAsync() => factory.DisposeAsync().AsTask();
+
+    [Fact]
+    public async Task CreateUser_ReturnsCreatedAtAction()
+    {
+        var response = await client.PostAsJsonAsync("/api/users",
+            new { email = "test@example.com", password = "secret" });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+}
+        ]]></code>
+        <note>WebApplicationFactory boots the real DI container. Testcontainers spins up a real PostgreSQL. Tests hit real database, catch real bugs.</note>
+      </example>
+    </section>
+
+    <section name="entity-framework-core-guidance">
+      <p>EF Core is an ORM with some sharp edges. This methodology enforces patterns that prevent common pitfalls.</p>
+
+      <rule testable="true">
+        <statement>Use keyset pagination (WHERE id > @after ORDER BY id LIMIT 20), not Skip/Take. Skip materializes all skipped rows on the database; on a large table, skipping to page 1000 loads 20k rows only to discard them. Keyset pagination is O(1).</statement>
+        <rationale>Skip/Take performance degrades as the page number grows. Keyset pagination (also called "seek") is O(1) because the database can seek directly to the id boundary.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Avoid lazy loading. Always use .Include() or .ThenInclude() to eagerly load related data in a single query. If a navigation property is loaded implicitly (e.g., accessing user.Orders in a disconnected DbContext), you will get a use-after-dispose exception or a new query fire unexpectedly.</statement>
+        <rationale>Lazy loading is convenient in REPL contexts but a footgun in production. Accidental queries (N+1) degrade performance. Eager loading via .Include() makes queries explicit and visible in code reviews.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use explicit transactions for multi-step writes. Begin a transaction, do multiple SaveChanges calls, then commit. Without a transaction, a failure partway through leaves the database partially updated.</statement>
+        <rationale>EF Core's SaveChanges is not atomic across multiple calls. If you save, then do a second save and it fails, the first save is not rolled back. Transactions ensure all-or-nothing semantics.</rationale>
+      </rule>
+
+      <example type="good" title="Explicit transaction, keyset pagination">
+        <code lang="csharp"><![CDATA[
+// Multi-step write with transaction
+public async Task TransferAsync(int fromId, int toId, decimal amount, CancellationToken ct)
+{
+    await using var transaction = await db.Database.BeginTransactionAsync(ct);
+    try
+    {
+        var from = await db.Accounts.FindAsync(new object[] { fromId }, cancellationToken: ct);
+        from.Balance -= amount;
+        var to = await db.Accounts.FindAsync(new object[] { toId }, cancellationToken: ct);
+        to.Balance += amount;
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+    }
+    catch
+    {
+        await transaction.RollbackAsync(ct);
+        throw;
+    }
+}
+
+// Keyset pagination
+public async Task<List<UserDto>> GetUsersAsync(int? afterId, CancellationToken ct)
+{
+    var query = db.Users
+        .Where(u => afterId == null || u.Id > afterId)
+        .OrderBy(u => u.Id)
+        .Take(20);
+    var users = await query.ToListAsync(ct);
+    return users.Select(u => new UserDto(u.Id, u.Email)).ToList();
+}
+        ]]></code>
+        <note>Explicit transaction ensures all-or-nothing. Keyset pagination is O(1) regardless of page number.</note>
+      </example>
+
+      <antipattern>
+        <description>Using Skip/Take for pagination on large tables.</description>
+        <reason>Skip materializes all skipped rows; page 1000 with page size 20 loads 20k rows only to discard them. Use keyset pagination instead.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Returning DbContext-tracked entities from service methods; client accesses navigation properties after DbContext is disposed.</description>
+        <reason>Explicit eager loading via .Include() or DTO mapping prevents this. Never return tracked entities.</reason>
+      </antipattern>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common mistakes when agents generate ASP.NET Core code.</p>
+
+      <antipattern>
+        <description>Agents inject DbContext directly into singleton services.</description>
+        <reason>DbContext is scoped, not singleton. Verify the DI registration and service scope in Program.cs. If an agent injects a scoped service into a singleton, it creates a captive dependency.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents forget await using var transaction = await db.Database.BeginTransactionAsync(ct) for multi-step writes. One SaveChanges fails, but the first is not rolled back.</description>
+        <reason>Require explicit transactions for any operation that involves multiple SaveChanges calls. Make it a linting rule.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents wrap every method in Result&lt;T&gt; (success/failure), then controllers check if (result.IsSuccess) return Ok(...). Mixed paradigm: neither full Result&lt;T&gt; pattern nor exception-based error handling.</description>
+        <reason>Pick one paradigm: either full Result&lt;T&gt; with explicit handling, or exception-based with a global IExceptionHandler. Mixing both is error-prone.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents generate tests using EF InMemory and assume they match production behavior. Tests pass, but real database queries fail (e.g., missing index, translation failure).</description>
+        <reason>Mandate WebApplicationFactory + Testcontainers for critical tests. InMemory is acceptable for unit tests of services (with mocked DbContext), but integration tests must use a real database.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents return EF tracked entities directly to clients, exposing internal columns or causing circular reference serialization errors.</description>
+        <reason>Require DTO mapping at the service boundary. Make it a linting rule: no direct return of EF entities.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents shuffle middleware order in Program.cs (e.g., UseAuthorization before UseAuthentication), breaking auth silently.</description>
+        <reason>Human checkpoint: review middleware order. Provide a template with correct ordering.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <p>Patterns that make ASP.NET Core projects maintainable and performant.</p>
+
+      <rule>
+        <statement>Use record DTOs with required init properties — immutability for free.</statement>
+      </rule>
+
+      <rule>
+        <statement>Return Results&lt;Ok&lt;T&gt;, NotFound, ValidationProblem&gt; (typed results) in Minimal APIs for OpenAPI accuracy.</statement>
+      </rule>
+
+      <rule>
+        <statement>Inject TimeProvider instead of DateTime.UtcNow — testable + replaces IClock patterns.</statement>
+      </rule>
+
+      <rule>
+        <statement>Centralize error mapping in IExceptionHandler + AddProblemDetails().</statement>
+      </rule>
+
+      <rule>
+        <statement>Prefer services.AddDbContext&lt;T&gt;(o =&gt; o.UseNpgsql(...)) with explicit connection strings from IConfiguration; avoid hard-coded names.</statement>
+      </rule>
+
+      <rule>
+        <statement>Always pass CancellationToken to async EF calls (ToListAsync(ct), SaveChangesAsync(ct)); without it, a client disconnect leaves queries running.</statement>
+      </rule>
+
+      <rule>
+        <statement>For pagination, use keyset (WHERE id &gt; @after ORDER BY id LIMIT 20), not Skip/Take on large tables.</statement>
+      </rule>
+
+      <rule>
+        <statement>Wire OpenTelemetry for traces + metrics; one block in Program.cs covers ASP.NET, EF, HttpClient.</statement>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/problem-details-handler.cs" purpose="IExceptionHandler implementation mapping domain exceptions to RFC 7807 responses."/>
+      <template path="templates/prompt-aspnet-slice.txt" purpose="Subagent prompt for generating full vertical slice: DTOs, service, controller, migration, test."/>
+    </templates>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/aspnet/core/"/>
+      <link href="https://github.com/davidfowl/AspNetCoreDiagnosticScenarios"/>
+      <link href="https://andrewlock.net"/>
+      <link href="https://mapperly.riok.app"/>
+      <link href="https://github.com/dotnet/eShop"/>
+    </see-also>
+  </content>
+</methodology>
