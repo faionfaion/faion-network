@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ar-design-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>accessibility-specialist</domain>
+    <summary>Design patterns for AR on iOS (ARKit), Android (ARCore), WebAR (8th Wall), and social AR. Anchoring strategies, interaction patterns, safety, accessibility, performance constraints.</summary>
+    <tags>
+      <tag>ar</tag>
+      <tag>augmented-reality</tag>
+      <tag>xr</tag>
+      <tag>arkit</tag>
+      <tag>arcore</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>AR Design Patterns</title>
+    <summary>Design patterns for augmented reality experiences on iOS (ARKit/RealityKit), Android (ARCore), WebAR (8th Wall, model-viewer), and social AR (Snap Lens Studio). Covers surface and object anchoring strategies, interaction patterns (touch, gaze, voice, controller), real/virtual distinction, safety considerations, comfort and performance constraints, and accessibility requirements per W3C XAUR.</summary>
+    <why>
+      <p>Poor AR design causes disorientation, cognitive overload, and safety hazards when digital overlays obscure real-world objects. Battery life caps sessions at 10-20 minutes on phones; tracking quality varies by lighting, surface texture, and platform. AR-specific accessibility (voice alternatives, high-contrast overlays, gaze selection, exit affordance) is routinely omitted because designers default to touch-and-drag patterns that exclude motor-limited users.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing AR experiences with spatial anchoring for iOS, Android, WebAR, or social AR platforms.</item>
+        <item>Selecting an anchoring strategy (horizontal surface, vertical surface, image tracking, object recognition, geo).</item>
+        <item>Auditing AR UX for safety, occlusion quality, accessibility, and performance.</item>
+        <item>Building retail try-on, maintenance overlay, museum, navigation, or training AR flows.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Fully-immersive VR with occluded headset — use vr-design-patterns.</item>
+        <item>Mixed-reality productivity (passthrough Quest / Vision Pro) — use immersive-design-principles.</item>
+        <item>Pure 2D mobile UI that only overlays a camera feed without spatial anchoring — standard mobile UX applies.</item>
+        <item>Low-power smart glasses with no spatial tracking — different constraints (voice-first display-only).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="anchoring-types">
+      <p>Anchoring type selection is the foundational decision in AR design. Choose based on use case and always define a fallback chain.</p>
+      <rule>
+        <statement>Choose an anchoring type based on the use case and always define a fallback chain for when primary tracking fails.</statement>
+        <rationale>AR tracking degrades with poor lighting, low-texture surfaces, or underpowered devices. Without a fallback the user sees a blank screen or a jittering object.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[
+Anchoring Type    | Best Use Case                      | Fallback
+Horizontal plane  | Furniture try-on, floor navigation  | vertical plane → manual placement
+Vertical plane    | Wall posters, window overlays        | image marker
+Image tracking    | Product packaging, business cards    | object recognition → GPS/compass
+Object recognition| Tools, vehicles, printed logos       | image marker
+Geo (VPS/GPS)     | Outdoor navigation, city guides      | GPS + compass only
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="tracking-quality-rules">
+      <p>User feedback during the scanning phase is critical to AR success. Clear affordances build trust and manage expectations.</p>
+      <rule>
+        <statement>Give the user scanning feedback within 2 seconds of AR mode launch; fall back to the next anchor type if tracking is not established within 8 seconds.</statement>
+        <rationale>Waiting silently erodes trust. Users do not understand why nothing appears. Progressive feedback ("Move device slowly") sets correct expectations.</rationale>
+      </rule>
+      <list>
+        <item>Minimum 200 lux for indoor horizontal-plane tracking; warn user if environment is too dark.</item>
+        <item>High-contrast, non-reflective images work best for image tracking; warn and offer fallback on reflective surfaces.</item>
+        <item>Show "Looking for surfaces..." indicator during scan phase; replace with "Good tracking" confirmation on anchor.</item>
+        <item>Let user re-scan if tracking quality drops — expose a "Reset AR" control.</item>
+      </list>
+    </section>
+
+    <section name="surface-placement-best-practices">
+      <p>Stable, snapped placement is essential to creating believable AR.</p>
+      <rule>
+        <statement>Snap AR content to detected surfaces; do not leave objects floating mid-air, as unstable placement causes motion discomfort and looks broken.</statement>
+        <rationale>Floating objects drift as tracking updates and appear unanchored, destroying the "AR feel" that makes spatial interfaces useful.</rationale>
+      </rule>
+      <list>
+        <item>Horizontal surfaces (tables, floors): documents, 3D models, navigation paths.</item>
+        <item>Vertical surfaces (walls, doors): posters, dashboards, labels.</item>
+        <item>Respect physical boundaries — content should not clip through detected geometry.</item>
+        <item>Match content scale to detected surface size; provide user resize with pinch gesture.</item>
+      </list>
+    </section>
+
+    <section name="webaR-constraints">
+      <p>WebAR has significantly different capabilities and constraints compared to native AR platforms.</p>
+      <antipattern>
+        <description>Applying ARKit-spec patterns directly to WebAR without checking browser support.</description>
+        <reason>iOS Safari does not support WebXR Device API; AR on iPhone must use AR Quick Look (model-viewer) or a native wrapper. WebAR has the worst tracking parity across platforms.</reason>
+      </antipattern>
+      <p>For WebAR: use model-viewer for iOS Quick Look + Android Scene Viewer as the baseline; upgrade to 8th Wall or Niantic Lightship for richer tracking where commercial license is available.</p>
+    </section>
+
+    <section name="interaction-patterns">
+      <p>Multiple input modalities are required for inclusive AR. Touch-only interaction excludes users with motor disabilities.</p>
+      <rule>
+        <statement>Every AR interaction must have a voice-command alternative; gaze-based selection provides a hands-free path for motor-limited users.</statement>
+        <rationale>W3C XAUR requires multiple input modalities for XR. Touch-only AR excludes users with motor disabilities and users who are multitasking (e.g., holding a tool while viewing maintenance overlays).</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[
+Interaction  | Touch gesture           | Voice alternative
+Select       | Tap                     | "Select [object name]"
+Move         | Drag                    | "Move [object] to [location]"
+Scale        | Pinch                   | "Make bigger" / "Make smaller"
+Rotate       | Two-finger rotate       | "Rotate [degrees]"
+Open menu    | Long press              | "Show menu"
+Dismiss      | Swipe off screen        | "Cancel" / "Hide AR"
+        ]]></code>
+      </example>
+      <p>Gaze-based selection: dwell time 1-2 seconds, show visual countdown ring on gaze target, allow cancel by looking away. Require an explicit confirmation before destructive actions.</p>
+    </section>
+
+    <section name="safety-rules">
+      <p>Physical safety in AR contexts cannot be overstated. Always provide clear exit paths and avoid obscuring hazards.</p>
+      <rule>
+        <statement>Never use AR overlays to obscure safety hazards, moving obstacles, or exit paths; always provide a one-tap "Exit AR" control that is always visible.</statement>
+        <rationale>Users walking while using phone AR or wearing AR glasses can collide with real-world objects. Obscuring hazards creates physical danger, not just a UX problem.</rationale>
+      </rule>
+      <list>
+        <item>Provide a "Safety mode" that dims or hides AR content — activate automatically when device detects motion.</item>
+        <item>Emit audio warnings for detected obstacles (requires Depth API or semantic segmentation).</item>
+        <item>Include an "AR-free zone" toggle that pauses overlays in sensitive areas.</item>
+        <item>Keep AR content minimal — every additional layer raises cognitive load and obscures real-world cues.</item>
+      </list>
+      <antipattern>
+        <description>Hiding the "Exit AR" button once the AR experience starts.</description>
+        <reason>Trapping users in AR is both a safety issue and an accessibility failure. Exit must always be one tap away.</reason>
+      </antipattern>
+    </section>
+
+    <section name="accessibility-requirements">
+      <p>AR accessibility encompasses contrast, touch targets, fallback paths, and motion comfort.</p>
+      <list>
+        <item>High contrast AR elements; user-adjustable contrast mode.</item>
+        <item>Color-blind safe palettes for all AR indicators.</item>
+        <item>Adjustable text size in spatial UI (minimum 44dp tap targets on mobile AR).</item>
+        <item>Option to disable AR entirely and use a 2D fallback experience.</item>
+        <item>Reduce AR when device detects walking or rapid movement (motion comfort).</item>
+      </list>
+      <rule>
+        <statement>Use environmental lighting estimation to match AR shadow direction and color temperature to the real scene.</statement>
+        <rationale>Without light estimation, AR objects look pasted onto the world ("uncanny valley"), reducing depth perception and increasing cognitive load — particularly for users with visual processing difficulties.</rationale>
+      </rule>
+    </section>
+
+    <section name="performance-constraints">
+      <p>Performance directly impacts motion comfort and user experience. Maintain consistent frame rates or degrade gracefully.</p>
+      <rule>
+        <statement>Maintain a minimum 30 FPS; degrade AR content quality automatically if FPS drops below threshold rather than letting the frame rate drop further.</statement>
+        <rationale>Inconsistent frame timing is a leading cause of AR-induced motion sickness and vestibular discomfort. Battery and thermal limits typically cap phone AR sessions at 10-20 minutes.</rationale>
+      </rule>
+      <list>
+        <item>Target 60 FPS; minimum 30 FPS; display a warning and quality-reduction prompt if FPS drops below 25.</item>
+        <item>Show battery status; provide a "low-power mode" that reduces texture resolution and particle effects.</item>
+        <item>Display thermal warnings before device throttles the AR session.</item>
+        <item>Always provide a non-AR alternative path — some users cannot or will not enter AR (motion sensitivity, low-end device, battery).</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Agents convert use-case and target devices into anchoring strategy, interaction pattern, and safety/accessibility checklist. Human XR designer and accessibility partner provide final sign-off.</p>
+      <p>Agents convert use-case + target devices into an anchoring strategy (horizontal surface, vertical surface, image, object, world, geo), an interaction pattern (tap / drag / pinch / gaze / voice), and a safety/accessibility punch list. A separate agent reviews the design against XAUR (XR Accessibility User Requirements) and platform HIG. Implementation hand-off goes to engine-specific agents (ARKit / ARCore / WebXR / Lens Studio). Human XR designer + at least one mobility-impaired tester + outdoor real-world test gate sign-off.</p>
+      <list>
+        <item>faion-ux-ui-designer-agent — anchor selection, content density, AR/real visual distinction.</item>
+        <item>faion-accessibility-specialist-agent — voice/gaze parity, contrast, target sizes (44 × 44 minimum on mobile AR).</item>
+        <item>faion-multimodal-ai-agent — spatial audio, audio descriptions, real-time captioning.</item>
+        <item>iOS / Android implementation agent — ARKit / ARCore code; verify perf budget and tracking-quality UX.</item>
+        <item>WebAR-specific agent (8th Wall / model-viewer) — handle browser quirks, fallback to non-AR.</item>
+      </list>
+    </section>
+
+    <section name="prompt-patterns">
+      <p>These patterns guide agents in AR design and review:</p>
+      <example type="good" title="AR design reviewer">
+        <code lang="text"><![CDATA[
+Role: AR design reviewer.
+Input: use case + target devices (iOS/Android/WebAR/Snap/Meta).
+For each axis emit {status, evidence, fix}:
+  anchoring (surface/image/object/geo) appropriate for use case
+  scanning UX (clear "looking for surfaces", lighting/perf hints)
+  occlusion (real objects hide AR where required)
+  safety (obstacles, AR-free zones, reduced AR while moving)
+  accessibility (voice, gaze, captions, color, large targets, exit AR)
+  perf (≥30 FPS, battery + thermal mitigations)
+        ]]></code>
+      </example>
+      <example type="good" title="Anchoring strategy generator">
+        <code lang="text"><![CDATA[
+Role: anchoring strategy generator.
+Given use case <indoor furniture try-on>, target <iOS+Android>, output anchor
+type, fallback chain, and content scale rules. Include "exit AR" affordance,
+"AR-free" toggle, and minimum lighting requirement.
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>Apple ARKit + RealityKit — iOS AR with image / world / object anchors. Xcode 15+</item>
+        <item>Apple Reality Composer Pro — Spatial layout previewing. Xcode bundled</item>
+        <item>Google ARCore — Android AR; Depth API; geospatial. https://developers.google.com/ar</item>
+        <item>ARCore Geospatial API — Outdoor world-anchored AR via VPS. Same</item>
+        <item>WebXR Device API — Browser AR (Android Chrome, limited iOS). https://immersiveweb.dev</item>
+        <item>model-viewer — Open-source AR Quick Look + Scene Viewer. https://modelviewer.dev</item>
+        <item>8th Wall CLI — WebAR build + deploy. https://www.8thwall.com</item>
+        <item>Niantic Lightship ARDK — World-scale AR + meshing. https://lightship.dev</item>
+        <item>Snap Lens Studio CLI — Snap AR Lenses. https://ar.snap.com/lens-studio</item>
+        <item>Meta Spark Studio — Instagram / Facebook AR effects (legacy; sunsetting 2025). Verify status before use</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <p>Various SaaS platforms support AR development and deployment:</p>
+      <list>
+        <item>8th Wall (SaaS WebAR) — Cross-browser; commercial license. REST + CLI.</item>
+        <item>Niantic Lightship (SaaS) — Cloud anchors, VPS, meshing. SDK.</item>
+        <item>Apple App Store Connect (SaaS) — Required for ARKit app distribution. REST.</item>
+        <item>Google Play Console (SaaS) — Required for ARCore apps. REST.</item>
+        <item>Adobe Aero (SaaS) — Designer-led AR prototyping. Limited agent support.</item>
+        <item>Sketchfab (SaaS) — 3D model hosting + AR delivery. REST.</item>
+        <item>Mapbox / Cesium (SaaS) — Geospatial AR base layers. REST.</item>
+        <item>Wwise / FMOD (Licensed) — Spatial audio for AR cues. Runtime APIs.</item>
+      </list>
+    </section>
+
+    <section name="anchoring-decision-schema-template">
+      <p>Anchoring decision schema that agents can codegen against:</p>
+      <code lang="json"><![CDATA[
+{
+  "use_case": "indoor furniture try-on",
+  "primary_anchor": "horizontal_plane",
+  "fallback_chain": ["vertical_plane", "image_marker", "manual_placement"],
+  "scale": {
+    "unit": "real_world_meters",
+    "user_resize": true,
+    "max_scale_factor": 1.0
+  },
+  "tracking": {
+    "min_lux": 200,
+    "perf_target_fps": 60,
+    "perf_min_fps": 30,
+    "scan_timeout_s": 8,
+    "fallback_on_timeout": true
+  },
+  "lifecycle": {
+    "scan_phase": {
+      "user_hint": "Move device slowly across the floor",
+      "timeout_s": 8
+    },
+    "place_phase": {
+      "requires_confirmation": true,
+      "preview_translucent": true
+    },
+    "interact_phase": {
+      "gestures": ["tap", "drag", "pinch", "two_finger_rotate"],
+      "voice_alts": true,
+      "gaze_selection": true,
+      "gaze_dwell_ms": 1500
+    }
+  },
+  "exit": {
+    "always_visible": true,
+    "single_tap": true,
+    "voice_command": "Exit AR"
+  },
+  "ar_free_toggle": true,
+  "safety_mode": {
+    "dim_on_motion": true,
+    "obstacle_audio_warning": false
+  },
+  "lighting": {
+    "estimation_enabled": true,
+    "shadow_casting": true,
+    "warn_below_lux": 200
+  },
+  "accessibility": {
+    "voice_commands": true,
+    "high_contrast_option": true,
+    "color_blind_safe": true,
+    "min_target_dp": 44,
+    "adjustable_text_size": true,
+    "non_ar_fallback": true,
+    "captions": false
+  }
+}
+      ]]></code>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always provide a non-AR alternative path; some users cannot or will not enter AR (motion, vision, battery, low-end device).</item>
+        <item>Surface-detection should give clear "we are looking" feedback within 2 seconds; longer than 8 seconds → fall back.</item>
+        <item>Keep AR overlays minimal — every additional layer raises cognitive load and obscures real-world hazards.</item>
+        <item>Use light estimation so AR shadows match real lighting; without it, "AR feel" collapses.</item>
+        <item>Treat outdoor AR as a different design problem — geospatial accuracy, GPS drift, sunlight contrast, safety.</item>
+        <item>Mobile AR target sizes 44 × 44 dp minimum; thumbs are imprecise while holding a phone.</item>
+        <item>Every AR session needs a one-tap exit; never trap the user in AR.</item>
+        <item>For shared AR, require explicit consent before world-scan data leaves the device.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Be aware of these common pitfalls when using agents for AR design:</p>
+      <antipattern>
+        <description>LLMs default to "place a 3D model on the floor" without specifying surface size or fallback when scanning fails.</description>
+        <reason>Require agents to explicitly specify anchor type, fallback chain, and tracking timeout.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents conflate ARKit and ARCore feature sets.</description>
+        <reason>Image tracking, occlusion, and anchors differ; pin platform in the prompt.</reason>
+      </antipattern>
+      <antipattern>
+        <description>WebAR generated samples often skip the iOS-Safari constraints.</description>
+        <reason>Must use Quick Look on iPhone, not WebXR. Require browser compatibility check.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents under-spec lighting requirements — say "good lighting" instead of providing a lux floor or runtime check.</description>
+        <reason>Require minimum lux and runtime feedback for lighting conditions.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Voice-command coverage is forgotten unless explicitly required.</description>
+        <reason>Force agent to list voice equivalents for every interaction.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Privacy of camera + spatial-mesh data is rarely flagged.</description>
+        <reason>Require a privacy note in any shared-anchor design.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents propose smooth dolly-zoom transitions that cause AR motion sickness.</description>
+        <reason>Clamp camera-driven motion. Require motion-sensitivity tester review.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents skip human-in-loop checkpoints entirely.</description>
+        <reason>Require: outdoor real-environment test, low-light test, motion-sensitive tester, accessibility partner review, privacy review for any cloud-anchor / world-mesh upload.</reason>
+      </antipattern>
+    </section>
+
+    <section name="limitations">
+      <p>AR design has important technical and practical limitations:</p>
+      <list>
+        <item>AR tracking quality varies dramatically by device, lighting, and texture density — guidelines assume "ideal" conditions.</item>
+        <item>Battery + thermal limits cap session length to ~10–20 min on phone AR; design must front-load value.</item>
+        <item>Occlusion rendering (real things hide AR) is uneven: ARKit People Occlusion, ARCore Depth API, WebXR all differ.</item>
+        <item>"Safety mode" is hand-wavy; no standard exists. Each platform handles obstacle warnings differently.</item>
+        <item>WebAR has the worst tracking and feature parity; patterns valid for ARKit may not work in browser.</item>
+        <item>Multi-user / shared-anchor AR (Cloud Anchors, Spatial Anchors, ARWorldMap) adds privacy + consent concerns the methodology does not cover.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://developer.apple.com/design/human-interface-guidelines/augmented-reality"/>
+      <link href="https://developers.google.com/ar/develop/best-practices"/>
+      <link href="https://www.w3.org/TR/xaur/"/>
+      <link href="https://www.nngroup.com/articles/ar-ux/"/>
+      <link href="https://www.8thwall.com/docs/web/"/>
+      <link href="https://lightship.dev/docs/"/>
+      <link href="https://docs.snap.com/lens-studio/"/>
+      <ref slug="accessibility-first-design"/>
+      <ref slug="immersive-design-principles"/>
+      <ref slug="vr-design-patterns"/>
+    </see-also>
+  </content>
+</methodology>
