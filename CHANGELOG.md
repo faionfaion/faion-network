@@ -15,6 +15,7 @@
 - migrate: 3/3 pro/dev/code-quality methodologies → methodology.xml (cqrs-pattern, domain-driven-design, event-sourcing-basics; feature-045 batch)
 - migrate: 3/3 pro/dev/backend-enterprise PHP methodologies → methodology.xml (php-eloquent, php-laravel, php-laravel-patterns; feature-045 batch)
 - migrate: 3/3 pro/dev/backend-systems methodologies → methodology.xml (go-http-handlers, go-project-structure, rust-backend; feature-045 batch)
+- migrate: 3/3 pro/marketing/conversion-optimizer methodologies → methodology.xml (funnel-basics-examples, funnel-basics-framework, funnel-tactics-advanced; feature-045 batch)
 - migrate: 3/3 pro/dev/backend-enterprise methodologies → methodology.xml (java-spring-boot, java-spring-boot-patterns, laravel-patterns; feature-045 batch)
 - migrate: 3/3 pro/dev/backend-systems Go methodologies → methodology.xml (go-concurrency-patterns, go-error-handling, go-error-handling-patterns; feature-045 batch)
 - migrate: 3/3 pro/dev/backend-systems Rust methodologies → methodology.xml (rust-error-handling, rust-http-handlers, rust-ownership; feature-045 batch)
