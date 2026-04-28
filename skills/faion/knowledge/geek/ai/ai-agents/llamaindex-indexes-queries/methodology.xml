@@ -1,0 +1,526 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="llamaindex-indexes-queries">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Master advanced LlamaIndex patterns: index types (vector, keyword, knowledge graph, tree), query engines, retrievers, response synthesis, and hybrid search strategies for heterogeneous data sources.</summary>
+    <tags>
+      <tag>llamaindex</tag>
+      <tag>query-engines</tag>
+      <tag>retrievers</tag>
+      <tag>vector-stores</tag>
+      <tag>hybrid-search</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-24</created>
+  </metadata>
+
+  <content>
+    <title>LlamaIndex: Indexes &amp; Query Engines</title>
+
+    <summary>LlamaIndex offers multiple index types (VectorStore, Keyword, KnowledgeGraph, Tree, Summary) to optimize for different query patterns and data shapes. Query engines wrap retrievers and response synthesizers to handle the full pipeline from user question to final answer. This guide covers index selection, query engine configuration, hybrid retrieval, reranking, and structured output generation.</summary>
+
+    <why>
+      <p>A single index type rarely fits all use cases: VectorStore excels at semantic similarity but misses exact keyword matches; KnowledgeGraph captures relationships but requires entity extraction; TreeIndex hierarchically summarizes but is slow on small documents. LlamaIndex lets you compose multiple index types over the same corpus and route queries to the right one. Query engines orchestrate the retrieval + synthesis pipeline, hiding the complexity of ranking, filtering, and LLM synthesis behind a clean `.query()` API.</p>
+      <p>Production RAG systems need reranking (a cross-encoder re-ranks the top-20 retrieved nodes down to top-5) and structured output (Pydantic schemas enforce valid responses). LlamaIndex bundles these patterns, letting you swap rerankers (local cross-encoder vs. Cohere API) and output formats without rewriting orchestration logic.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building a RAG pipeline that requires multiple index types over the same corpus (vector - keyword - graph).</item>
+        <item>Queries span heterogeneous data sources: SQL tables - unstructured documents - knowledge graphs.</item>
+        <item>Need hierarchical summarization (TreeIndex, SummaryIndex) over large document sets.</item>
+        <item>Building an agent with knowledge retrieval tools backed by LlamaIndex query engines.</item>
+        <item>Complex multi-hop questions that benefit from SubQuestionQueryEngine decomposition.</item>
+        <item>Need structured output (Pydantic) from document queries with schema enforcement.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple single-document Q&amp;A — direct prompt - context is faster and cheaper.</item>
+        <item>High-throughput production APIs where LlamaIndex's Python overhead matters — use a dedicated vector DB SDK directly.</item>
+        <item>When you only need BM25 keyword search — Elasticsearch or Typesense is lighter.</item>
+        <item>If the codebase already uses LangChain RAG heavily — mixing both frameworks adds cognitive overhead without clear gain.</item>
+        <item>Real-time streaming over very large retrievals — latency compounds with each response synthesis pass.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="index-types">
+      <p>LlamaIndex supports five core index types: VectorStoreIndex (semantic search), KeywordTableIndex (BM25 sparse retrieval), KnowledgeGraphIndex (entity-relationship traversal), TreeIndex (hierarchical summarization), and SummaryIndex (full context). Choose based on query pattern and data shape.</p>
+
+      <p>VectorStoreIndex is the most common and should be your default. It supports multiple vector store backends: Qdrant (production, filtering), Pinecone (managed serverless), Weaviate (hybrid search), Chroma (local development), pgvector (PostgreSQL native), Milvus (large scale), and FAISS (in-memory speed). Use Qdrant or Pinecone for production; use Chroma or in-memory for development and prototyping.</p>
+
+      <rule testable="true">
+        <statement>VectorStoreIndex MUST be the default for semantic search over documents. Use Qdrant (or Pinecone/Weaviate) for production; in-memory is only for development. Always set similarity_top_k=20, then post-process with reranking or similarity cutoff to narrow to top-5.</statement>
+        <rationale>VectorStore scales to millions of documents and supports filtering by metadata. Retrieving top-20 then reranking recovers matches that vector similarity alone would miss. In-memory indices lose data on restart.</rationale>
+      </rule>
+
+      <example type="good" title="VectorStoreIndex with Qdrant">
+        <code lang="python"><![CDATA[
+from llama_index.core import VectorStoreIndex, StorageContext
+from llama_index.vector_stores.qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient
+
+# In-memory (development)
+index = VectorStoreIndex.from_documents(documents)
+
+# Persistent with Qdrant
+client = QdrantClient(path="./qdrant_data")  # Local
+# client = QdrantClient(url="http://localhost:6333")  # Server
+
+vector_store = QdrantVectorStore(
+    client=client,
+    collection_name="my_collection",
+)
+storage_context = StorageContext.from_defaults(vector_store=vector_store)
+index = VectorStoreIndex.from_documents(
+    documents,
+    storage_context=storage_context,
+)
+
+# Load existing index
+index = VectorStoreIndex.from_vector_store(vector_store)
+
+query_engine = index.as_query_engine(similarity_top_k=20)
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>KeywordTableIndex (BM25) SHOULD be paired with VectorStoreIndex in a QueryFusionRetriever for hybrid search. Use keyword-only when exact phrase matching is critical and corpus size is under 100k documents. Configure max_keywords_per_chunk (typically 5-10) based on document domain.</statement>
+        <rationale>Hybrid search (vector - keyword fusion) recovers matches that either approach alone would miss. Keyword search is fast and cheap; vector search is semantically smart. Combining with reciprocal rank fusion balances precision and recall. BM25 excels at exact-match retrieval; vector search at semantic similarity.</rationale>
+      </rule>
+
+      <example type="good" title="KeywordTableIndex setup">
+        <code lang="python"><![CDATA[
+from llama_index.core import KeywordTableIndex
+
+index = KeywordTableIndex.from_documents(
+    documents,
+    max_keywords_per_chunk=10,
+)
+
+# Good for exact keyword matching
+query_engine = index.as_query_engine()
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>KnowledgeGraphIndex MUST specify explicit relationship schemas in the extraction prompt; unconstrained LLM extraction produces noisy, hallucinated relationships. Use only when entity relationships are core to the task (e.g., "Who did X work with?"). Avoid for document Q&amp;A.</statement>
+        <rationale>KnowledgeGraphIndex relies on an LLM to extract entities and relationships from text. Without schema constraints, the LLM may invent relationships. Graphs are best used for structured knowledge (people, companies, projects) where relationships are well-defined. Relationship hallucination is common without schema constraints.</rationale>
+      </rule>
+
+      <example type="good" title="KnowledgeGraphIndex with Neo4j">
+        <code lang="python"><![CDATA[
+from llama_index.core import KnowledgeGraphIndex
+from llama_index.graph_stores.neo4j import Neo4jGraphStore
+
+# With Neo4j
+graph_store = Neo4jGraphStore(
+    username="neo4j",
+    password="password",
+    url="bolt://localhost:7687",
+)
+
+index = KnowledgeGraphIndex.from_documents(
+    documents,
+    graph_store=graph_store,
+    max_triplets_per_chunk=10,
+    include_embeddings=True,
+)
+
+# Query with graph traversal
+query_engine = index.as_query_engine(
+    include_text=True,
+    response_mode="tree_summarize",
+)
+]]></code>
+      </example>
+
+      <example type="bad" title="KnowledgeGraph without schema">
+        <code lang="python"><![CDATA[
+# Avoid: unconstrained extraction produces hallucinated links
+index = KnowledgeGraphIndex.from_documents(documents)
+# The LLM may invent "Person A worked with Person B" if they appear in the same doc
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>TreeIndex (hierarchical summarization) SHOULD only be used when the task is summarization over large documents (100+ pages) and you have budget for many LLM calls. For typical RAG, TreeIndex is overkill; use VectorStoreIndex instead. Configure num_children to control branching factor (default 10 children per node).</statement>
+        <rationale>TreeIndex recursively summarizes nodes in a tree, which is expensive (one LLM call per internal node) and slow. For Q&amp;A, VectorStore with reranking is faster and cheaper. TreeIndex shines when the goal is to distill a massive document into a short summary and cost is secondary to quality.</rationale>
+      </rule>
+
+      <example type="good" title="TreeIndex for summarization">
+        <code lang="python"><![CDATA[
+from llama_index.core import TreeIndex
+
+# Builds hierarchical summaries
+index = TreeIndex.from_documents(
+    documents,
+    num_children=10,  # Children per node
+)
+
+# Good for summarization tasks
+query_engine = index.as_query_engine(
+    response_mode="tree_summarize",
+)
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>SummaryIndex (pass all nodes to LLM) MUST only be used for tiny corpora (under 100 small nodes). Exceeding context window causes silent truncation; for large document sets, use VectorStoreIndex or TreeIndex. SummaryIndex is best for small documents where comprehensive answers require all context.</statement>
+        <rationale>SummaryIndex loads every node into the LLM context. This is affordable for ~20 documents but fails for 1000. If you need comprehensive coverage of large corpora, use TreeIndex (expensive but guaranteed coverage) or VectorStore (fast, approximate, good enough). SummaryIndex passes ALL nodes to LLM, making it unusable beyond ~100 small documents before context overflow.</rationale>
+      </rule>
+
+      <example type="good" title="SummaryIndex for small corpus">
+        <code lang="python"><![CDATA[
+from llama_index.core import SummaryIndex
+
+# Passes ALL nodes to LLM
+index = SummaryIndex.from_documents(documents)
+
+# Best for small documents, comprehensive answers
+query_engine = index.as_query_engine(
+    response_mode="tree_summarize",
+)
+]]></code>
+      </example>
+
+      <example type="bad" title="SummaryIndex on large corpus">
+        <code lang="python"><![CDATA[
+# Avoid: context overflow on large corpus
+index = SummaryIndex.from_documents(documents)  # 1000 documents
+response = index.as_query_engine().query("Summarize")
+# LLM context overflows; response is truncated without warning
+]]></code>
+      </example>
+    </section>
+
+    <section name="query-engines">
+      <p>Query engines tie together retrieval and response synthesis. They orchestrate fetching relevant nodes and generating a final answer. LlamaIndex provides several query engine types: basic (VectorStoreIndex), SubQuestionQueryEngine (multi-source decomposition), RouterQueryEngine (LLM routing), SQL + Vector Hybrid (structured - unstructured), and custom combinations.</p>
+
+      <p>Response modes control how the synthesizer generates answers from retrieved context: refine (iteratively refine one passage at a time), compact (compress chunks into single LLM call), tree_summarize (hierarchical summarization for large context), simple_summarize (concatenate and summarize), no_text (return only nodes), accumulate (separate answer per node), and compact_accumulate (balanced hybrid).</p>
+
+      <rule testable="true">
+        <statement>Always retrieve more nodes than needed (similarity_top_k=20), then rerank or filter down to top-5. Retrieval recall (getting all relevant nodes) is more important than precision; synthesis precision (good answer from good context) is then up to the LLM. Configure basic query engine with similarity_top_k, response_mode, and streaming parameters.</statement>
+        <rationale>Vector similarity is a soft ranking; rank 20 may still be relevant. Reranking with a cross-encoder refines the ranking. Dropping to top-5 after reranking is faster and cheaper for synthesis than including all 20. Retrieval recall (missing relevant nodes) is worse than retrieval noise (extra irrelevant nodes); synthesis can handle noise.</rationale>
+      </rule>
+
+      <example type="good" title="Basic Query Engine configuration">
+        <code lang="python"><![CDATA[
+# From index
+query_engine = index.as_query_engine(
+    similarity_top_k=5,          # Number of chunks to retrieve
+    response_mode="compact",      # Response synthesis mode
+    streaming=False,              # Enable streaming
+)
+
+response = query_engine.query("What is RAG?")
+
+print(response.response)           # Answer
+print(response.source_nodes)       # Retrieved chunks
+print(response.metadata)           # Query metadata
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Response mode MUST match the task: use `compact` (default) for Q&amp;A and short contexts, use `refine` for legal/medical (high fidelity required), use `tree_summarize` for large retrievals (&gt;10k tokens), use `accumulate` for multi-perspective answers. Compact compresses chunks and makes a single LLM call (fast). Refine iteratively refines the answer with each chunk (accurate but slow). Tree summarize recursively summarizes large retrievals.</statement>
+        <rationale>Compact truncates without warning; refine iteratively refines one passage at a time; tree_summarize hierarchically summarizes large contexts; accumulate produces separate answers per node. Wrong choice silently degrades quality or explodes latency. Refine mode is most accurate but multiple LLM calls; tree_summarize is middle ground; compact is fastest.</rationale>
+      </rule>
+
+      <example type="good" title="Response mode selection">
+        <code lang="python"><![CDATA[
+# Refine mode (most accurate, slower)
+query_engine = index.as_query_engine(
+    response_mode="refine",
+    similarity_top_k=10,
+)
+
+# Tree summarize (large context)
+query_engine = index.as_query_engine(
+    response_mode="tree_summarize",
+    similarity_top_k=20,
+)
+
+# Compact (fast, default)
+query_engine = index.as_query_engine(
+    response_mode="compact",
+    similarity_top_k=5,
+)
+]]></code>
+      </example>
+
+      <example type="good" title="Query engine with reranking">
+        <code lang="python"><![CDATA[
+from llama_index.core.postprocessor import SentenceTransformerRerank
+
+reranker = SentenceTransformerRerank(
+    model="cross-encoder/ms-marco-MiniLM-L-2-v2",
+    top_n=5,
+)
+
+query_engine = index.as_query_engine(
+    similarity_top_k=20,  # Retrieve broad set
+    node_postprocessors=[reranker],  # Rerank to top 5
+    response_mode="compact",
+)
+
+response = query_engine.query("What is X?")
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>SubQuestionQueryEngine MUST only be used when the main question logically decomposes into independent sub-questions (e.g., "Compare X and Y" becomes "What is X?", "What is Y?"). Avoid for simple questions; it doubles token cost with no quality gain. Always use use_async=True for parallel query execution.</statement>
+        <rationale>SubQuestionQueryEngine uses an LLM to decompose the query, then queries specialized indices in parallel. This is powerful for research but wasteful for simple lookups. Test decomposition output before deploying. Synchronous sub-question execution is a latency killer; async execution parallelizes queries across tools.</rationale>
+      </rule>
+
+      <example type="good" title="SubQuestionQueryEngine setup">
+        <code lang="python"><![CDATA[
+from llama_index.core.query_engine import SubQuestionQueryEngine
+from llama_index.core.tools import QueryEngineTool, ToolMetadata
+
+# Create tools from indices
+tools = [
+    QueryEngineTool(
+        query_engine=tech_index.as_query_engine(),
+        metadata=ToolMetadata(
+            name="tech_docs",
+            description="Technical documentation for the product",
+        ),
+    ),
+    QueryEngineTool(
+        query_engine=finance_index.as_query_engine(),
+        metadata=ToolMetadata(
+            name="financial_reports",
+            description="Financial reports and metrics",
+        ),
+    ),
+]
+
+# Decomposes complex questions
+query_engine = SubQuestionQueryEngine.from_defaults(
+    query_engine_tools=tools,
+    use_async=True,
+)
+
+response = query_engine.query(
+    "Compare the technical roadmap with financial projections for Q1"
+)
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>RouterQueryEngine (LLM routing) MUST use precise, non-overlapping tool descriptions. If two tools have similar descriptions, the LLM router may pick the wrong one. Test routing decisions with a unit test suite. Use LLMSingleSelector for one tool per query; use other selectors for multi-select.</statement>
+        <rationale>LLM routing is a full LLM call and introduces non-determinism. Clear tool descriptions ("Product documentation" vs. "Financial reports") help routing; ambiguous descriptions ("Documents") cause errors. LLM router is a full LLM call — at high QPS, routing alone becomes a bottleneck; cache routing decisions for repeated query patterns.</rationale>
+      </rule>
+
+      <example type="good" title="RouterQueryEngine setup">
+        <code lang="python"><![CDATA[
+from llama_index.core.query_engine import RouterQueryEngine
+from llama_index.core.selectors import LLMSingleSelector
+
+query_engine = RouterQueryEngine(
+    selector=LLMSingleSelector.from_defaults(),
+    query_engine_tools=tools,
+)
+
+# LLM routes to appropriate index
+response = query_engine.query("What are our revenue numbers?")
+]]></code>
+      </example>
+
+      <example type="bad" title="Overlapping tool descriptions">
+        <code lang="python"><![CDATA[
+# Avoid: ambiguous descriptions confuse the router
+tools = [
+    QueryEngineTool(
+        query_engine=index1.as_query_engine(),
+        metadata=ToolMetadata(name="tool1", description="Documents"),
+    ),
+    QueryEngineTool(
+        query_engine=index2.as_query_engine(),
+        metadata=ToolMetadata(name="tool2", description="Documentation"),
+    ),
+]
+# Router may pick wrong tool for "Find documentation about X"
+]]></code>
+      </example>
+    </section>
+
+    <section name="retrievers-and-postprocessing">
+      <p>Retrievers fetch nodes from indices. Postprocessors (rerankers, filters, similarity cutoff) refine retrieved results before synthesis.</p>
+
+      <rule testable="true">
+        <statement>Hybrid retrieval (BM25 - Vector fusion) MUST use QueryFusionRetriever with reciprocal rank fusion and configurable weights. Start with weights [0.3, 0.7] (vector favored); tune per task and corpus.</statement>
+        <rationale>Hybrid search combines sparse (keyword) and dense (semantic) retrieval. Reciprocal rank fusion avoids assuming scores are comparable across retrievers. Different corpora and tasks benefit from different weights.</rationale>
+      </rule>
+
+      <example type="good" title="Hybrid retrieval with QueryFusionRetriever">
+        <code lang="python"><![CDATA[
+from llama_index.core.retrievers import QueryFusionRetriever
+from llama_index.retrievers.bm25 import BM25Retriever
+
+bm25_retriever = BM25Retriever.from_defaults(nodes=nodes, similarity_top_k=10)
+vector_retriever = index.as_retriever(similarity_top_k=10)
+
+hybrid = QueryFusionRetriever(
+    retrievers=[bm25_retriever, vector_retriever],
+    retriever_weights=[0.3, 0.7],  # Adjust per corpus
+    num_queries=1,  # Set &gt;1 to generate query variants
+    mode="reciprocal_rerank",
+)
+
+nodes = hybrid.retrieve("your query here")
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>AutoMergingRetriever (hierarchical node merging) MUST use HierarchicalNodeParser with matching chunk sizes. Mismatched sizes silently produce no merges. Test merge behavior explicitly before production use.</statement>
+        <rationale>AutoMerging checks if enough child nodes are retrieved, then merges them back to their parent for context. This works only if the parser created explicit parent-child relationships. Broken setup silently fails (no merges occur).</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Reranking MUST use either a local cross-encoder (SentenceTransformerRerank) or Cohere API (CohereRerank). Apply AFTER vector retrieval to refine top-k. Cost is ~$0.001/query for Cohere; use locally if QPS permits.</statement>
+        <rationale>Reranking improves precision (fewer false positives) at the cost of a second ranking pass. Local cross-encoders are free but single-threaded; Cohere is parallelizable and handles edge cases better. Trade off cost vs. quality.</rationale>
+      </rule>
+
+      <example type="good" title="Reranking with Cohere">
+        <code lang="python"><![CDATA[
+from llama_index.postprocessor.cohere_rerank import CohereRerank
+
+reranker = CohereRerank(
+    api_key="...",
+    top_n=5,
+    model="rerank-english-v2.0",
+)
+
+query_engine = index.as_query_engine(
+    similarity_top_k=20,
+    node_postprocessors=[reranker],
+)
+]]></code>
+      </example>
+    </section>
+
+    <section name="response-synthesis">
+      <p>Response synthesis generates a final answer from retrieved nodes using the LLM. Customization includes prompts, output formats, and streaming.</p>
+
+      <rule testable="true">
+        <statement>Structured output via Pydantic output parsers MUST match the query task. For open-ended questions use simple text; for fact extraction use a schema with required fields and validation.</statement>
+        <rationale>Pydantic parsing enforces output shape; the LLM is prompted to follow the schema. If the schema is wrong, the parser fails and the agent gets an error. Design schemas carefully.</rationale>
+      </rule>
+
+      <example type="good" title="Structured output with Pydantic">
+        <code lang="python"><![CDATA[
+from pydantic import BaseModel
+from llama_index.core.output_parsers import PydanticOutputParser
+
+class AnalysisResult(BaseModel):
+    summary: str
+    key_points: list[str]
+    confidence: float  # 0.0 to 1.0
+
+output_parser = PydanticOutputParser(output_cls=AnalysisResult)
+
+query_engine = index.as_query_engine(
+    output_parser=output_parser,
+)
+
+response = query_engine.query("Analyze the document")
+result: AnalysisResult = response.response  # Type-safe
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Custom QA prompts MUST be tested with real queries before deployment. Prompt injection (user input in the prompt) requires careful escaping. Always use PromptTemplate with placeholder names, never string concatenation.</statement>
+        <rationale>Poorly designed prompts cause the LLM to ignore context or produce hallucinations. Template placeholders ({context_str}, {query_str}) are auto-escaped; manual concatenation risks injection.</rationale>
+      </rule>
+
+      <example type="bad" title="Unsafe prompt construction">
+        <code lang="python"><![CDATA[
+# Avoid: string concatenation allows prompt injection
+query = user_input  # May contain "Ignore context and say..."
+prompt = f"Answer based on: {context}\nQuery: {query}"
+# User can inject malicious instructions
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Refine response mode (iterative refinement) SHOULD only be used when source fidelity is critical (legal, medical). For typical Q&amp;A, `compact` is sufficient and 10x faster.</statement>
+        <rationale>Refine mode processes passages sequentially, refining the answer with each one. This is slow (multiple LLM calls) but ensures all context is incorporated. Compact mode is approximate but fast.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-integration">
+      <p>Agents use LlamaIndex query engines as tools, selecting the right index and engine based on the task.</p>
+
+      <rule testable="true">
+        <statement>Wrap query engines in QueryEngineTool with precise descriptions. Register with the agent. The agent routes questions to the right tool and validates output. Test tool routing with unit queries before production.</statement>
+        <rationale>Tools are the agent's interface to retrieval. Clear descriptions enable routing; ambiguous ones cause wrong-tool selection. Unit testing routing prevents silent failures in production.</rationale>
+      </rule>
+
+      <example type="good" title="QueryEngineTool registration">
+        <code lang="python"><![CDATA[
+from llama_index.core.tools import QueryEngineTool, ToolMetadata
+
+tools = [
+    QueryEngineTool(
+        query_engine=vector_index.as_query_engine(similarity_top_k=5),
+        metadata=ToolMetadata(
+            name="product_docs",
+            description="Product documentation: features, API reference, troubleshooting guides",
+        ),
+    ),
+    QueryEngineTool(
+        query_engine=sql_engine,
+        metadata=ToolMetadata(
+            name="financial_data",
+            description="Financial tables: revenue, expenses, quarterly reports",
+        ),
+    ),
+]
+
+# Register with agent
+agent = Agent(tools=tools, ...)
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>For high-QPS agents, cache routing decisions and retrieved node IDs. Log every query with a request ID and log retrieved node IDs for debugging wrong answers. Set up alerts for low confidence (top node score &lt; 0.7).</statement>
+        <rationale>At scale, routing becomes a bottleneck (each route is an LLM call). Caching routes for repeated patterns saves cost. Logging node IDs enables post-hoc analysis of bad answers.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>When agents use NLSQLTableQueryEngine (SQL generation), ALWAYS show the generated SQL to a human before executing on write-capable connections. Test on read-only schema first.</statement>
+        <rationale>LLM-generated SQL can be syntactically valid but semantically wrong (e.g., dropping the wrong table). Human-in-the-loop prevents data loss.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always retrieve more nodes (top_k=20), then rerank or filter to top-5. Retrieval recall matters more than individual node relevance.</item>
+        <item>Use `compact` response mode for 90% of cases; switch to `refine` only when source fidelity matters (legal, medical).</item>
+        <item>Store index metadata (creation time, source hash) alongside vector store — detect stale indexes before agent use.</item>
+        <item>For KnowledgeGraphIndex, provide explicit relationship type schema in extraction prompt; unconstrained extraction produces noisy graphs.</item>
+        <item>Persist BM25 retriever nodes separately from vector index — they live in memory by default and rebuild from scratch on restart.</item>
+        <item>Use `use_async=True` in SubQuestionQueryEngine — synchronous decomposition with 5- sub-questions is a latency killer.</item>
+        <item>Tag every query with a request ID and log retrieved node IDs — essential for debugging wrong answers in production.</item>
+        <item>Hybrid search (BM25 - Vector) beats either approach alone; start with retriever_weights=[0.3, 0.7].</item>
+        <item>Never rely on node scores alone — always inspect response.source_nodes to verify retrieval quality.</item>
+        <item>Implement explicit deletion or collection versioning for indices — updating with new documents does not remove stale nodes.</item>
+        <item>For RouterQueryEngine, test routing decisions with unit test suite before production deployment.</item>
+        <item>Use async wrappers for high-concurrency agents with Cohere reranker; default integration is synchronous.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://docs.llamaindex.ai/en/stable/module_guides/querying/"/>
+      <link href="https://docs.llamaindex.ai/en/stable/examples/retrievers/bm25_retriever/"/>
+      <link href="https://docs.llamaindex.ai/en/stable/examples/retrievers/auto_merging_retriever/"/>
+      <link href="https://docs.arize.com/phoenix/integrations/llamaindex"/>
+      <ref slug="llamaindex-basics"/>
+      <ref slug="rag-engineer-basics"/>
+    </see-also>
+  </content>
+</methodology>
