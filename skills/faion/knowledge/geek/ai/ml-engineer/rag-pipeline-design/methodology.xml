@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rag-pipeline-design">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Production RAG architecture: hybrid search, reranking, chunking strategy matrix, agentic retrieval loops. Four tiers: Naive, Advanced, Modular, Agentic.</summary>
+    <tags>
+      <tag>rag</tag>
+      <tag>pipeline</tag>
+      <tag>architecture</tag>
+      <tag>hybrid-search</tag>
+      <tag>production</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>RAG Pipeline Design</title>
+    <summary>Production RAG pipelines ground LLM responses in domain-specific data through a retrieval layer (embedding + vector search + reranking) followed by synthesis. Use hybrid search (vector + BM25) as the default; it improves recall@10 by 15-25% over pure vector search. Choose the architecture tier — Naive, Advanced, Modular, or Agentic — based on query complexity and data source heterogeneity.</summary>
+    <why>
+      <p>LLMs hallucinate on private or recent knowledge. RAG solves this by retrieving relevant passages at query time and injecting them into context with source citations. Hybrid search, semantic chunking, and reranking are the three highest-impact improvements over a naive implementation. Retrieval quality (recall@10 >85%) must be measured before deploying — the ragas framework provides automated faithfulness and relevancy evaluation.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>LLM needs access to private, domain-specific, or frequently updated knowledge not in training data</item>
+        <item>Application requires citations: users need to verify sources for trust</item>
+        <item>Knowledge base exceeds the model's context window (>200K tokens of documents)</item>
+        <item>Multiple heterogeneous data sources (PDFs, SQL DB, APIs) need unified semantic search</item>
+        <item>Answer accuracy on domain queries is below acceptable threshold with prompt engineering alone</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Knowledge is fully covered by the model's training and does not change — prompt engineering suffices</item>
+        <item>Retrieval latency >500ms is unacceptable and caching cannot compensate (e.g., real-time trading)</item>
+        <item>Corpus is fewer than 50 documents — just include them all in the context window (simpler, often more accurate)</item>
+        <item>Team lacks infra to maintain a vector database and embedding pipeline — use a managed RAG service (LlamaCloud, Azure AI Search)</item>
+        <item>Queries are always the same — pre-generate answers and cache them instead of building a full pipeline</item>
+      </list>
+    </when-not-to-use>
+    <section name="Where it Fails / Limitations">
+      <list>
+        <item>Naive chunking (fixed-size split) loses cross-sentence semantic boundaries — accuracy 10-20% below semantic chunking</item>
+        <item>Retrieval recall@10 >85% is achievable but requires hybrid search (vector + BM25) — pure vector search alone misses exact-match queries</item>
+        <item>Hallucination is not eliminated by RAG — the LLM can still confabulate when retrieved context is ambiguous or irrelevant</item>
+        <item>GraphRAG (entity extraction) costs 5-10x more at indexing time and requires accurate NER — do not use for general knowledge bases</item>
+        <item>Embedding model lock-in: re-indexing the entire corpus is required when switching embedding models</item>
+        <item>Cold start: first query after index build returns stale embeddings if documents changed during build</item>
+        <item>Multi-tenant isolation in shared vector DBs requires careful namespace/collection partitioning — data leakage risk</item>
+      </list>
+    </section>
+    <section name="Architecture Tiers">
+      <rule>
+        <statement>Select the architecture tier based on query complexity: Naive RAG for simple repetitive Q&amp;A, Advanced RAG for ambiguous user queries, Modular RAG for multiple data sources, Agentic RAG for multi-step reasoning and tool use.</statement>
+        <rationale>Starting with Naive RAG and upgrading incrementally prevents over-engineering. Each tier adds infrastructure cost: Advanced RAG adds a reranking call; Modular RAG adds orchestration; Agentic RAG adds agent loops with LLM calls per retrieval round.</rationale>
+      </rule>
+      <list>
+        <item>Naive RAG: fixed-size chunks → vector search → generate; suits FAQ and policy Q&amp;A</item>
+        <item>Advanced RAG: query rewriting + HyDE + hybrid search + reranking; suits ambiguous queries</item>
+        <item>Modular RAG: pluggable components, parallel retrieval from heterogeneous sources</item>
+        <item>Agentic RAG: iterative retrieval loops, reformulation, multi-source synthesis</item>
+      </list>
+    </section>
+    <section name="Vector Database Selection">
+      <rule>
+        <statement>Use Chroma for local development, Qdrant for production self-hosted, Pinecone for managed serverless. Choose pgvector only when a PostgreSQL database already exists and operational simplicity outweighs performance.</statement>
+        <rationale>Qdrant is written in Rust with built-in hybrid search and rich metadata filtering — the best self-hosted option. Pinecone auto-scales with no operational burden. pgvector is limited to 2000 dimensions and lacks native hybrid search.</rationale>
+      </rule>
+      <list>
+        <item>Pinecone: managed enterprise, auto-scaling, multi-region, SOC 2, 40KB metadata/vector</item>
+        <item>Qdrant: self-hosted production, Rust performance, hybrid search, rich filtering</item>
+        <item>Weaviate: knowledge graphs, GraphQL API, hybrid search, modules ecosystem</item>
+        <item>Milvus: large-scale (>100M vectors), GPU acceleration, distributed</item>
+        <item>Chroma: local development, simple API, not for multi-process production</item>
+        <item>pgvector: existing PostgreSQL, familiar tooling, limited to 2000 dims</item>
+      </list>
+    </section>
+    <section name="Embedding Model Selection">
+      <rule>
+        <statement>Use Voyage-3-large for quality-critical applications (outperforms OpenAI by 9-20% on retrieval benchmarks). Use text-embedding-3-small for cost-sensitive deployments. Use local BGE or E5 models when data privacy requires no external API calls.</statement>
+        <rationale>Embedding model choice directly determines retrieval recall ceiling. Switching models after index build requires full re-indexing — decide once and commit. Voyage-3-large is the current MTEB leader for retrieval tasks.</rationale>
+      </rule>
+    </section>
+    <section name="Chunking Strategy Matrix">
+      <rule>
+        <statement>Use RecursiveCharacterTextSplitter at 400-512 tokens with 50-token overlap as the default. Apply semantic chunking for long-form articles where topic boundaries matter. Use hierarchical chunking for technical manuals that mix high-level context with specific details.</statement>
+        <rationale>NVIDIA benchmark: page-level chunking achieves 0.648 accuracy. Semantic chunking improves recall by 9% over fixed-size. RecursiveCharacterTextSplitter at 400-512 tokens achieves 85-90% recall — a reliable default before tuning.</rationale>
+      </rule>
+      <list>
+        <item>Short, single-purpose (FAQs, tickets): no chunking / document-level</item>
+        <item>Code documentation: header-based, recursive, 400-512 tokens</item>
+        <item>Long-form articles: semantic chunking, 400-800 tokens</item>
+        <item>Technical manuals: hierarchical, parent 1000 tokens / child 200 tokens</item>
+        <item>Legal documents: paragraph-based, 300-500 tokens</item>
+      </list>
+    </section>
+    <section name="Hybrid Search">
+      <rule>
+        <statement>Use hybrid search (vector + BM25) as the default retrieval strategy. It improves recall@10 by 15-25% over pure vector search alone. Weight vector at 0.6-0.7 and BM25 at 0.3-0.4 as a starting point.</statement>
+        <rationale>Pure vector search misses exact-match queries (product codes, proper names, technical terms). BM25 covers lexical precision; vector covers semantic generalization. The hybrid combination handles both query types reliably.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+# Qdrant native hybrid search
+from qdrant_client import QdrantClient
+from qdrant_client.models import SparseVector, NamedSparseVector
+
+results = qdrant.query_points(
+    collection_name="knowledge_base",
+    prefetch=[
+        {"query": dense_vector, "limit": 20},    # Vector search
+        {"query": SparseVector(indices=..., values=...), "limit": 20},  # BM25
+    ],
+    query=FusionQuery(fusion=Fusion.RRF),  # Reciprocal Rank Fusion
+    limit=10,
+    with_payload=True,
+)
+        ]]></code>
+      </example>
+    </section>
+    <section name="Reranking">
+      <rule>
+        <statement>Apply a cross-encoder reranker after retrieval: retrieve top-20, rerank to top-5. Top-5 after reranking outperforms top-20 without reranking. Use Cohere Rerank API or BGE Reranker locally.</statement>
+        <rationale>Embedding models optimize for broad recall; cross-encoders optimize for precision on the specific query. The two-stage approach gets the best of both: fast vector search for candidate generation, slow cross-encoder for precision ranking.</rationale>
+      </rule>
+    </section>
+    <section name="HyDE (Hypothetical Document Embedding)">
+      <rule>
+        <statement>Use HyDE for technical or domain-specific queries where the query vocabulary differs significantly from document vocabulary. Budget for one extra LLM call per query (adds 200-500ms latency).</statement>
+        <rationale>HyDE generates a hypothetical answer to the query, then embeds that answer rather than the query itself. The hypothetical answer uses document vocabulary, bridging the vocabulary gap between user queries and stored content.</rationale>
+      </rule>
+      <antipattern>
+        <description>Using HyDE for all queries regardless of vocabulary gap.</description>
+        <reason>HyDE adds an LLM call per query. For simple, direct queries where vocabulary matches, HyDE provides no recall improvement and adds latency and cost unnecessarily.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Retrieval">
+      <rule>
+        <statement>Implement iterative retrieval for complex queries: if initial retrieval scores below 0.7 quality threshold, reformulate the query and retry up to 3 times before returning a "no results" response to the user.</statement>
+        <rationale>Single-pass retrieval fails when the user's query vocabulary doesn't match document vocabulary. Agentic reformulation using the initial low-quality results as context allows the agent to construct a better query.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+MAX_RETRIEVAL_ROUNDS = 3
+reformulated_query = original_query
+for round_num in range(MAX_RETRIEVAL_ROUNDS):
+    results = vector_db.search(query=reformulated_query, top_k=5)
+    if is_sufficient(results, quality_threshold=0.7):
+        break
+    if round_num < MAX_RETRIEVAL_ROUNDS - 1:
+        reformulated_query = llm.reformulate(
+            original_query, previous_results=results
+        )
+answer = llm.synthesize(original_query, context=results)
+        ]]></code>
+      </example>
+    </section>
+    <section name="Caching Strategy">
+      <rule>
+        <statement>Implement three caching layers: embedding cache (Redis, TTL based on query patterns), semantic cache (similar query matching at 0.95+ cosine similarity), and response cache for identical queries.</statement>
+        <rationale>Embedding calls cost money and add latency. Query patterns in production are highly repetitive — 40-60% cache hit rates are common. Semantic caching captures near-duplicate queries that differ only in phrasing.</rationale>
+      </rule>
+      <rule>
+        <statement>Hash document content and skip re-embedding unchanged documents during incremental index updates. Never re-embed the full corpus unless the embedding model changes.</statement>
+        <rationale>Embedding is expensive. A 10K-document corpus costs $5-50 to embed depending on model. Re-embedding unchanged documents wastes budget and time. Content hash comparison adds negligible overhead.</rationale>
+      </rule>
+    </section>
+    <section name="Monitoring Metrics">
+      <rule>
+        <statement>Track query latency (p50/p95/p99), retrieval score distribution, cache hit rate, and token usage per query in production. Monitor retrieval score drift — score degradation below 0.6 average indicates embedding model mismatch or data drift.</statement>
+        <rationale>RAG quality degrades silently. Score distribution monitoring catches data drift before users notice quality degradation. Latency breakdowns per component (embed → search → rerank → LLM) reveal where to optimize.</rationale>
+      </rule>
+      <list>
+        <item>Query latency p50: target &lt;500ms</item>
+        <item>Query latency p99: target &lt;2s</item>
+        <item>Retrieval recall@10: target >85% (measure with ragas weekly)</item>
+        <item>Answer relevance: target >90% (LLM-as-judge)</item>
+        <item>Cache hit rate: track per caching layer</item>
+      </list>
+    </section>
+    <section name="Evaluation with Ragas">
+      <rule>
+        <statement>Run ragas evaluation against 50-100 labeled QA pairs before every production release. Gate deployment on faithfulness above 0.9 and context recall above 0.85.</statement>
+        <rationale>ragas provides automated faithfulness (grounding in context) and relevancy (answer matches question) metrics using LLM-as-judge. Running it before every release prevents quality regressions from undetected chunking or prompt changes.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+from ragas import evaluate
+from ragas.metrics import faithfulness, answer_relevancy, context_recall
+from datasets import Dataset
+
+eval_dataset = Dataset.from_list([
+    {"question": q, "answer": a, "contexts": ctx, "ground_truth": gt}
+    for q, a, ctx, gt in labeled_qa_pairs
+])
+result = evaluate(eval_dataset, metrics=[faithfulness, answer_relevancy, context_recall])
+assert result["faithfulness"] >= 0.90, f"Faithfulness below threshold: {result['faithfulness']}"
+assert result["context_recall"] >= 0.85, f"Context recall below threshold: {result['context_recall']}"
+        ]]></code>
+      </example>
+    </section>
+    <section name="Security">
+      <rule>
+        <statement>Multi-tenant RAG must isolate namespaces strictly via collection partitioning or namespace filters. A missing filter parameter in a query causes data leakage across tenants.</statement>
+        <rationale>Vector database queries without tenant filters return results from all tenants. This is a data leakage risk that is invisible in logs — the query succeeds and returns results, just results from the wrong tenant. Always make tenant_id a required parameter in the search function.</rationale>
+      </rule>
+      <antipattern>
+        <description>Injecting retrieved context verbatim without length limits into the LLM prompt.</description>
+        <reason>Long chunks eat context budget fast. 5 chunks of 1000 tokens each plus system prompt may consume 80% of a 8K context model. Compress or truncate retrieved passages before injection; prioritize by reranking score.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Workflow">
+      <p>RAG fits naturally as a tool in an agentic loop. The orchestrator calls a `search_knowledge_base(query, top_k=5)` tool, receives ranked passages with source metadata, and uses them to synthesize a grounded response. For complex queries, use Agentic RAG: the agent reformulates the query if initial results are insufficient, applies metadata filters (date range, source type), and iterates retrieval up to 3 times before answering. Multi-agent setups can dispatch parallel retrieval agents over different corpora (vector DB, SQL, web search) and merge results at the synthesis stage.</p>
+    </section>
+    <section name="Recommended Subagents">
+      <list>
+        <item>`faion-sdd-executor-agent` — can be given a search tool backed by a RAG pipeline to answer research questions within SDD workflows</item>
+      </list>
+    </section>
+    <section name="Prompt Pattern">
+      <code lang="xml"><![CDATA[<tools>
+  <tool name="search_knowledge_base">
+    <description>
+      Semantic search over company documentation. Returns top-K passages with source citations.
+      Use this before answering any factual question about company policies, products, or procedures.
+    </description>
+    <parameters>
+      {
+        "query": "string — natural language search query",
+        "top_k": "integer — number of results (default 5, max 10)",
+        "source_filter": "optional string — filter by document source (e.g. 'contracts', 'policies')"
+      }
+    </parameters>
+  </tool>
+</tools>
+<task>
+  Answer the user's question. Always call search_knowledge_base first.
+  Cite your sources using the document titles returned.
+  If search results are insufficient, say so — do not guess.
+</task>]]></code>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Use hybrid search (vector + BM25) as the default — improves recall@10 by 15-25% over pure vector search</item>
+        <item>Chunk size 400-512 tokens with 50-token overlap is a reliable default; tune based on document type</item>
+        <item>Add source metadata at ingestion: `{"source": "policy/refunds", "date": "2026-01"}` — enables date-range filtering</item>
+        <item>Rerank retrieved passages with Cohere Rerank or BGE Reranker before synthesis — top-5 after reranking > top-20 without it</item>
+        <item>Evaluate the pipeline before deploying: run `ragas` on 50-100 labeled QA pairs to measure faithfulness and relevancy</item>
+        <item>Cache embeddings for documents — embedding is expensive; hash document content and skip re-embedding unchanged docs</item>
+        <item>Use `parent-child` chunking: embed small child nodes (200 tokens), return parent chunk (1000 tokens) for synthesis</item>
+        <item>Monitor retrieval score distribution in production: score drift indicates embedding model mismatch or data drift</item>
+      </list>
+    </section>
+    <section name="CLI Tools">
+      <p>`qdrant-client`: Qdrant vector DB Python client. `pip install qdrant-client` / docs.qdrant.tech</p>
+      <p>`langchain`: RAG pipeline orchestration. `pip install langchain langchain-community` / python.langchain.com</p>
+      <p>`llama-index`: Document-centric RAG framework. `pip install llama-index` / docs.llamaindex.ai</p>
+      <p>`sentence-transformers`: Local embedding models. `pip install sentence-transformers` / sbert.net</p>
+      <p>`ragas`: RAG evaluation (faithfulness, relevancy, recall). `pip install ragas` / docs.ragas.io</p>
+      <p>`rank-bm25`: BM25 keyword search for hybrid retrieval. `pip install rank-bm25`</p>
+      <p>`unstructured`: PDF, DOCX, HTML parsing for ingestion. `pip install unstructured[all-docs]` / docs.unstructured.io</p>
+      <p>`pgvector`: Vector extension for PostgreSQL. `pip install pgvector` / github.com/pgvector/pgvector</p>
+    </section>
+    <section name="Services and Apps">
+      <p>Qdrant (OSS + SaaS): Best self-hosted; Rust perf; hybrid search built-in; rich filtering</p>
+      <p>Pinecone (SaaS): Managed, serverless; auto-scaling; 40KB metadata/vector</p>
+      <p>Weaviate (OSS + SaaS): GraphQL API; hybrid search; knowledge graph modules</p>
+      <p>Chroma (OSS): Local dev only; simple API; not for multi-process prod</p>
+      <p>pgvector (OSS, Postgres ext): No new infra if Postgres exists; limited to 2000 dims</p>
+      <p>Azure AI Search (SaaS): Enterprise; hybrid search + semantic ranking built-in</p>
+      <p>LlamaCloud (SaaS): Managed RAG pipeline; LlamaParse included</p>
+      <p>Cohere Embed (SaaS): Embed-v3 tops MTEB; multilingual; reranker API</p>
+      <p>Voyage AI (SaaS): voyage-3-large outperforms OpenAI by 9-20% on retrieval</p>
+    </section>
+    <templates>
+      <template path="templates/rag-pipeline.py" purpose="Production RAG with Qdrant: ingest + hybrid search + metadata filter"/>
+      <template path="templates/prompt-rag.txt" purpose="RAG system prompt enforcing citation and 'don't know' fallback"/>
+    </templates>
+    <see-also>
+      <link href="https://orq.ai/blog/rag-architecture"/>
+      <link href="https://learn.microsoft.com/en-us/azure/architecture/ai-ml/guide/rag/rag-solution-design-and-evaluation-guide"/>
+      <link href="https://docs.ragas.io/"/>
+      <link href="https://qdrant.tech/documentation/"/>
+      <link href="https://docs.voyageai.com/"/>
+      <link href="https://docs.cohere.com/docs/rerank-2"/>
+      <link href="https://www.firecrawl.dev/blog/best-chunking-strategies-rag-2025"/>
+      <link href="https://coralogix.com/ai-blog/rag-in-production-deployment-strategies-and-practical-considerations/"/>
+    </see-also>
+  </content>
+</methodology>
