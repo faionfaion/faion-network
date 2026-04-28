@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="semantic-field-naming">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Field names are part of the prompt. Choose names that are specific, English, and semantically loaded — never field1, val, data, output. Renaming a single field can swing accuracy by tens of points.</summary>
+    <tags>
+      <tag>semantic</tag>
+      <tag>field-naming</tag>
+      <tag>structured-output</tag>
+      <tag>schema</tag>
+      <tag>accuracy</tag>
+    </tags>
+    <category>so</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Semantic Field Naming</title>
+
+    <summary>Field NAMES are part of the prompt. Choose names that are specific, English, and semantically loaded — never field1, val, data, output. Renaming a single field can swing accuracy by tens of points. The structured-output pipeline turns your schema into part of the prompt the model is conditioned on. The model has seen tens of millions of answer keys and has very high prior probability for what should follow. It has barely seen final_choice — it has to guess what to put there. Naming equals priming. Specific, semantically-loaded names recruit pre-trained knowledge for free.</summary>
+
+    <why>
+      <p>The structured-output pipeline turns your schema into part of the prompt the model is conditioned on. The model has seen tens of millions of answer keys and has very high prior probability for what should follow. It has barely seen final_choice — it has to guess what to put there.</p>
+      <p>Instructor (2024-09) reported that renaming a single field from final_choice to answer lifted model accuracy from 4.5% to 95% on a benchmark — a 90-point swing from one token. Naming equals priming. Specific, semantically-loaded names recruit pre-trained knowledge for free.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Always. Costs nothing.</item>
+        <item>Especially for fields with units (age_years, price_usd, weight_kg).</item>
+        <item>For Booleans — make truth explicit (is_returning_customer, not flag).</item>
+        <item>For enums-mapped strings — the field name should reflect the enum's domain (severity not level).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Never. Even legacy schemas should at least add description to compensate for cryptic names.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="the-rule">
+      <p>Field NAMES are part of the prompt. Choose names that are specific, English, and semantically loaded — never field1, val, data, output. Renaming a single field can swing accuracy by tens of points.</p>
+    </section>
+
+    <section name="empirical-anchor">
+      <p>Instructor (2024-09) reported that renaming a single field from final_choice to answer lifted model accuracy from 4.5% → 95% on a benchmark — a 90-point swing from one token.</p>
+    </section>
+
+    <section name="naming-patterns">
+      <rule testable="true">
+        <statement>Every field name must be specific, English, lower_snake_case, and encode unit/format/cardinality information where relevant. No generic placeholders like val, field1, output, result, or flag.</statement>
+        <rationale>Generic names force the model to guess what to put there, based only on context. Specific names recruit the model's pre-trained knowledge of what typically goes in an answer, age_years, or is_paid field.</rationale>
+      </rule>
+
+      <example type="good" title="Patterns: Bad vs Good">
+        <code lang="python"><![CDATA[
+# Bad patterns
+val: int
+flag: bool
+output: str
+data: list
+result: dict
+final_choice: str
+score: float
+
+# Good patterns
+customer_age_years: int
+is_returning_customer: bool
+summary_under_50_words: str
+validated_email_addresses: list[str]
+pricing_breakdown_usd: PricingBreakdown
+answer: str  # or recommended_action
+confidence_0_to_1: float
+]]></code>
+        <note>Each good pattern encodes unit, direction (for booleans), format, validation state, or domain.</note>
+      </example>
+    </section>
+
+    <section name="the-instructor-case">
+      <p>Example 1: The Instructor case (90-point swing).</p>
+      <p>A multiple-choice benchmark scored 4.5% with a schema that had final_choice: str. Same prompt, same model, same options — renaming the single field to answer: str raised accuracy to 95%.</p>
+      <p>The model's pre-training gives answer an enormously higher prior than final_choice. Field name was the bottleneck.</p>
+    </section>
+
+    <section name="currency-confusion">
+      <p>Example 2: Currency confusion.</p>
+      <example type="bad" title="Bad: generic total field">
+        <code lang="python"><![CDATA[
+class Invoice(BaseModel):
+    total: float
+]]></code>
+        <note>Model sometimes returns dollars, sometimes cents.</note>
+      </example>
+
+      <example type="good" title="Good: unit in name and type">
+        <code lang="python"><![CDATA[
+class Invoice(BaseModel):
+    total_cents: int
+]]></code>
+        <note>Unit pinned in the name AND type. A typical hallucination is the model writing $19.99 as 19.99 when the intent was 1999 cents. Naming it total_cents and typing it int cuts these errors.</note>
+      </example>
+    </section>
+
+    <section name="booleans-without-direction">
+      <p>Example 3: Booleans without direction.</p>
+      <example type="bad" title="Bad: unclear flag and status">
+        <code lang="python"><![CDATA[
+class Order(BaseModel):
+    flag: bool   # what does True mean?
+    status: str  # is this open or closed or...
+]]></code>
+      </example>
+
+      <example type="good" title="Good: explicit direction and literal">
+        <code lang="python"><![CDATA[
+class Order(BaseModel):
+    is_paid: bool
+    is_shipped: bool
+    payment_status: Literal["pending", "paid", "refunded"]
+]]></code>
+      </example>
+    </section>
+
+    <section name="neromedia-pipeline">
+      <p>Example 4: From neromedia pipeline.</p>
+      <p>Before:</p>
+      <code lang="python"><![CDATA[
+class Story(BaseModel):
+    text: str
+    output: str
+    score: float
+]]></code>
+      <p>After:</p>
+      <code lang="python"><![CDATA[
+class Story(BaseModel):
+    body_markdown: str
+    one_line_hook: str
+    relevance_score_0_to_1: float
+]]></code>
+      <p>Hallucinations dropped: the model stopped putting markdown in output, the score stopped drifting outside [0,1].</p>
+    </section>
+
+    <section name="enum-naming">
+      <p>Example 5: Enum naming.</p>
+      <example type="bad" title="Bad: cryptic letters">
+        <code lang="python"><![CDATA[
+class Triage(BaseModel):
+    label: Literal["a", "b", "c"]
+]]></code>
+        <note>Forces the model to guess what a/b/c mean from prompt context.</note>
+      </example>
+
+      <example type="good" title="Good: semantic values">
+        <code lang="python"><![CDATA[
+class Triage(BaseModel):
+    priority: Literal["low", "medium", "high", "critical"]
+]]></code>
+        <note>Maps to the model's pre-trained understanding of priority levels.</note>
+      </example>
+    </section>
+
+    <section name="field-name-description-synergy">
+      <p>Example 6: Field-name + description synergy.</p>
+      <code lang="python"><![CDATA[
+class Comment(BaseModel):
+    is_genuine_complaint: bool = Field(
+        description="True only if the comment expresses dissatisfaction with a product or service. Sarcasm counts as complaint. Pure questions do not."
+    )
+]]></code>
+      <note>Name carries the question; description carries the rules.</note>
+    </section>
+
+    <section name="repository-signal">
+      <p>Example 7: Repository signal.</p>
+      <p>In a git diff agent:</p>
+      <example type="bad" title="Bad: generic terms">
+        <code lang="python"><![CDATA[
+class Change(BaseModel):
+    file: str
+    lines: int
+    type: str
+]]></code>
+      </example>
+
+      <example type="good" title="Good: repo-specific terminology">
+        <code lang="python"><![CDATA[
+class FileChange(BaseModel):
+    path_relative_to_repo_root: str
+    net_lines_added: int
+    change_kind: Literal["create", "modify", "delete", "rename"]
+]]></code>
+        <note>Each field name now lets the model recruit relevant repo-coding priors.</note>
+      </example>
+    </section>
+
+    <section name="anti-redundancy">
+      <p>Example 8: Anti-redundancy.</p>
+      <example type="bad" title="Bad: redundant suffixes">
+        <code lang="python"><![CDATA[
+class Stats(BaseModel):
+    age_value: int
+    name_data: str
+    total_result: float
+]]></code>
+        <note>Every name suffixed _value or _data.</note>
+      </example>
+
+      <example type="good" title="Good: drop the redundant suffixes">
+        <code lang="python"><![CDATA[
+class Stats(BaseModel):
+    age_years: int
+    full_name: str
+    total_revenue_usd: float
+]]></code>
+      </example>
+    </section>
+
+    <section name="common-anti-patterns">
+      <antipattern>
+        <description>output_data, result_value, final_answer (redundant suffixes).</description>
+        <reason>Drop the suffix; let the field name carry the meaning.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>field_a, field_b, field_c.</description>
+        <reason>Replace with what they mean.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Languages mixed (montant_usd, total_eur).</description>
+        <reason>Stick to one language; English has the highest prior.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Single-letter (x, y, n).</description>
+        <reason>Spell out (x_coordinate, count).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Plurals when single (items: Item).</description>
+        <reason>Match the cardinality.</reason>
+      </antipattern>
+    </section>
+
+    <section name="pydantic-naming-conventions">
+      <p>Numeric: unit in the name</p>
+      <code lang="python"><![CDATA[
+class CustomerStats(BaseModel):
+    age_years: int
+    monthly_spend_usd: float
+    days_since_last_login: int
+    confidence_0_to_1: float
+]]></code>
+
+      <p>Boolean: direction explicit</p>
+      <code lang="python"><![CDATA[
+class OrderFlags(BaseModel):
+    is_first_order: bool
+    has_promo_code: bool
+    requires_age_verification: bool
+    should_notify_supplier: bool
+]]></code>
+
+      <p>Enum: semantic values</p>
+      <code lang="python"><![CDATA[
+class Verdict(BaseModel):
+    decision: Literal["approve", "reject", "needs_more_info"]
+    severity: Literal["low", "medium", "high", "critical"]
+]]></code>
+
+      <p>String: format in name</p>
+      <code lang="python"><![CDATA[
+class Article(BaseModel):
+    body_markdown: str
+    title_max_70_chars: str
+    slug_kebab: str
+    iso_published_date: str
+]]></code>
+    </section>
+
+    <section name="legacy-name-migration">
+      <p>Pydantic — when you must keep a legacy name:</p>
+      <code lang="python"><![CDATA[
+class Legacy(BaseModel):
+    answer: str = Field(validation_alias="final_choice")
+    # external API still sends "final_choice"; we use "answer" internally because
+    # the model writes the field by alias too in some configs — pick what the LLM sees
+]]></code>
+      <p>For LLM-facing schemas, the LLM sees the primary field name, not the alias. Pick the primary name with the highest semantic prior.</p>
+    </section>
+
+    <section name="common-rename-map">
+      <p>Common rename map:</p>
+      <code lang="text"><![CDATA[
+final_choice, final_answer  → answer
+output, result              → name what the result IS (summary, decision, verdict)
+data                        → name the contents (items, findings, entries)
+value                       → name the kind (amount_usd, count, score)
+flag                        → is_X, has_Y, should_Z
+code                        → error_code, status_code, currency_code
+name                        → customer_name, product_name, slug
+id                          → order_id, customer_uuid, slug (only if globally unique-typed)
+type                        → event_type, error_type (one word per domain)
+]]></code>
+    </section>
+
+    <section name="llm-prompts">
+      <p>Prompt 1: Schema rename pass. Review this Pydantic schema. For every field name, check: (1) Is it specific, English, and semantically loaded? (2) Does it embed unit / format / cardinality where relevant? (3) Booleans: do they start with is_/has_/should_/requires_? (4) Could the field be renamed to a more conventional name that the LLM has stronger priors for (e.g., final_choice → answer)? For each issue, output field_old_name → field_new_name and one-sentence reason.</p>
+      <p>Prompt 2: Generate names from descriptions. Given these field descriptions, propose semantically-loaded field NAMES (not generic placeholders). Rules: lower_snake_case, ≥ 2 tokens, units in name, bool starts with is_/has_/should_.</p>
+      <p>Prompt 3: A/B name evaluator. Two candidate names: {A} vs {B}. Score each on: Specificity (1-5), Pre-training prior strength (1-5) — how many times has this exact name appeared in training-grade text?, Cognitive load to read in the schema (1-5, lower is better). Pick the winner.</p>
+      <p>Prompt 4: Self-check inside the agent. When designing a schema field, ask: "If a reader sees only this name (no description), can they tell what the value will be?" If not, rename.</p>
+    </section>
+
+    <checklist>
+      <check>Every field name is English, lower_snake_case, and at least 2 tokens.</check>
+      <check>No field1, val, data, output, result, flag, info.</check>
+      <check>Booleans start with is_, has_, should_, requires_.</check>
+      <check>Numeric fields encode unit and (when bounded) range — age_years, confidence_0_to_1.</check>
+      <check>String fields encode format when constrained — email, iso_date, slug_kebab.</check>
+      <check>Enums use semantically-loaded values (approve/reject, not 1/0 or a/b).</check>
+      <check>Field names match the cardinality (singular for Item, plural for list[Item]).</check>
+      <check>Read the schema aloud — does each field name describe what's in it?</check>
+      <check>Replaced any cryptic names that would require a reader to look up the description.</check>
+      <check>Did NOT use final_* / _value / _data redundant suffixes.</check>
+      <check>If migrating from legacy schema, kept old name + description referencing the rename.</check>
+      <check>Renamed-field A/B test on at least 5 tasks.</check>
+      <check>No regression in field types after rename (rename is name-only, not shape change).</check>
+      <check>Downstream consumers updated to new names (or aliased via Pydantic validation_alias).</check>
+      <check>Field name and field order both reinforce dependency direction.</check>
+      <check>Field descriptions extend (don't duplicate) the name.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="schema-field-order"/>
+      <ref slug="stream-json-orchestration"/>
+    </see-also>
+  </content>
+</methodology>
