@@ -4,7 +4,7 @@
     <tier>pro</tier>
     <group>ba</group>
     <domain>ba-core</domain>
-    <summary>Produce sign-off-ready requirements sets (BRD + URS + SRS/FRD) aligned to a single locked standard (IEEE 830-1998 or ISO/IEC/IEEE 29148:2018). Write functional requirements in EARS patterns. Validate structure via a YAML conformance schema before any document is rendered to PDF. Source is Markdown with frontmatter; the PDF is a generated artifact via pandoc.</summary>
+    <summary>Produce sign-off-ready requirements (BRD + URS + SRS/FRD) aligned to IEEE 830 or ISO 29148. Write FRs in EARS patterns. Validate via YAML schema. Source is Markdown; PDF via pandoc.</summary>
     <category>requirements</category>
     <difficulty>intermediate</difficulty>
     <created>2026-04-28</created>
@@ -187,6 +187,128 @@
         <item>Approval block — names, roles, dates are human-only; agent produces the stub</item>
         <item>Status transition from Draft to InReview to Approved — requires human action in the source file</item>
         <item>Any v2.0 re-baseline requiring sponsor re-sign-off</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow-multiagent-pipeline">
+      <p>The ba-core take treats requirements docs as a multi-document set with strict document identity ({doc_type, version, status, approval_date}) and a single source-of-truth tree from which BRD / URS / SRS / FRD are rendered. Drive it with a four-role pipeline: (1) a scaffolder instantiates the standards-correct outline (IEEE 830 §5 or ISO 29148 clause 9) for the chosen doc type; (2) a populator fills sections from elicitation transcripts and the shared glossary.md, applying SMART for atomic requirements and EARS for FR phrasing; (3) a conformance checker validates structure (mandatory sections present, version table populated, every requirement has an ID, source, priority, AC) against a YAML schema; (4) a renderer emits PDF/DOCX via pandoc with a deterministic cover page, version history, approval block, and traceability matrix. faion-feature-executor should not move a feature out of todo/ until the conformance checker passes; the SDD spec.md becomes the FRD section, and a separate BRD.md is rendered for sponsors.</p>
+
+      <p><term name="recommended-subagents">Recommended subagents:</term></p>
+      <list>
+        <item>faion-sdd-executor-agent — owns spec.md per feature; treats the FR section as authoritative and forbids editing the rendered FRD directly.</item>
+        <item>faion-feature-executor — wires scaffolder → populator → checker as a quality gate before estimation; refuses to advance a feature lacking a glossary entry for any non-trivial term used in its requirements.</item>
+        <item>faion-brainstorm — diverge to surface NFR categories (security, usability, observability, compliance, accessibility, locale, performance, capacity, portability, maintainability) the standards-template lists but the populator skipped; converge to keep only those that apply.</item>
+        <item>password-scrubber-agent — pre-render pass over the source tree before pandoc emits a PDF that may leave the company perimeter.</item>
+        <item>A custom ba-doc-scaffolder (haiku) — emits the empty document outline given {doc_type, standard, scale} and a list of mandatory sections.</item>
+        <item>A custom ba-doc-conformance (sonnet) — runs the YAML-schema check, reports missing sections / IDs / priorities / sources / AC.</item>
+        <item>A custom ba-ears-formatter (sonnet) — rewrites unconditional FRs into the correct EARS pattern (Ubiquitous / Event-driven / State-driven / Optional / Unwanted-behaviour / Complex).</item>
+        <item>A custom ba-glossary-curator (sonnet) — extracts candidate terms from the corpus, deduplicates against glossary.md, proposes definitions, never edits an approved term in place.</item>
+      </list>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p><term name="template-fundamentalism">Template fundamentalism.</term> BAs paste a 60-section IEEE 830 outline, then half is left blank or filled with "N/A". Use a scaled template that explicitly drops sections instead of stubbing them.</p>
+
+      <p><term name="brd-neq-frd-confusion">BRD ≠ FRD ≠ URS confusion.</term> Teams treat these as synonyms and produce overlapping content. BRD = why (business); URS = what users need (operational); SRS / FRD = what the system shall do (functional + NFR). Agent prompts must enforce the boundary.</p>
+
+      <p><term name="invest-misapplied">INVEST misapplied to non-stories.</term> INVEST is for user stories, not FRs. Applying "Estimable / Small" to an FR pushes BAs to fragment requirements until they become tasks. Keep INVEST for the story-card view; use SMART + IEEE 830 quality attributes for FR-level docs.</p>
+
+      <p><term name="ears-adoption-fails">EARS adoption fails silently.</term> Teams claim EARS but write only Ubiquitous ("The system shall...") and never Event-driven (When ... the system shall...) or State-driven (While ... the system shall...) or Optional (Where ... the system shall...). Result is unconditional requirements that under-specify state machines.</p>
+
+      <p><term name="approval-block-as-ritual">Approval block as ritual.</term> Names without dated, versioned signatures = no audit trail. Tie sign-off to a Git tag or a signed PDF; agents cannot forge dates.</p>
+
+      <p><term name="glossary-drift">Glossary drift.</term> Same term defined three different ways across BRD/URS/SRS. Force a single glossary.md referenced by all three.</p>
+
+      <p><term name="numbering-archaeology">Numbering archaeology.</term> REQ-FR-001 vs FR-1 vs 1.4.2.1 — three doc generations, no mapping. Lock a numbering convention in constitution.md before a single REQ is written.</p>
+
+      <p><term name="pdf-only-delivery">PDF-only delivery.</term> A signed PDF is the contract output, but the source must be diff-able Markdown. Agents that edit PDFs directly destroy provenance.</p>
+    </section>
+
+    <section name="ai-agent-gotchas-requirements-doc">
+      <antipattern>
+        <description>Standard hallucination. Agent produces "IEEE 830-2025" sections that do not exist.</description>
+        <reason>Pin the standard in the prompt and reject any structural claim not present in the schema file. Use the srs-conformance.yaml as ground truth.</reason>
+      </antipattern>
+      <antipattern>
+        <description>EARS pattern collapse. Agent defaults all FRs to Ubiquitous.</description>
+        <reason>Force a per-requirement EARS classification call before phrasing. Require the agent to name the pattern before writing the sentence.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Modal-verb drift. RFC 2119 vs IEEE 830 conventions differ; agent trained on RFCs writes "MAY", "SHOULD" in an SRS that mandates "shall" only.</description>
+        <reason>Lint with the schema; reject may|should|might. Ban these words at linting time.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Glossary forks. Agent redefines an existing term inline rather than reading the glossary.</description>
+        <reason>Provide glossary.md in context for every populate call and forbid in-doc definitions.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Approval-block fabrication. Agent emitting a populated approval table with names + dates is forging an audit record.</description>
+        <reason>Approval table must be a stub the human fills. Approval block must remain empty for agent-driven workflows.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Section-completeness theatre. Agent fills every section with "N/A" rather than dropping it.</description>
+        <reason>Force "drop or fill" — emit nothing if no content applies; track section-coverage as a metric.</reason>
+      </antipattern>
+      <antipattern>
+        <description>NFR template-numbness. Models reproduce IEEE 830 §5.5 categories verbatim without adapting to the project.</description>
+        <reason>Run a tailoring pass: prune categories that do not apply (e.g., no portability for an internal-only web app).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Re-baseline silence. Agent edits an Approved doc in place.</description>
+        <reason>Status must be a CI-checked invariant: any change to an Approved file must bump version and reset status to Draft.</reason>
+      </antipattern>
+      <antipattern>
+        <description>PDF render drift. Re-rendering yields a binary diff (font kerning, generated date).</description>
+        <reason>Pin pandoc version, supply a deterministic timestamp (SOURCE_DATE_EPOCH), and diff via pdftotext.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Traceability matrix overload. A 5,000-row matrix is unreadable.</description>
+        <reason>Auto-generate one matrix per top-level capability instead of one project-wide.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices-requirements-doc">
+      <list>
+        <item>Pick one standard per project (IEEE 830 or ISO/IEC/IEEE 29148) and freeze it in constitution.md. Mixing produces section-name skew.</item>
+        <item>Maintain BRD.md, URS.md, SRS.md/FRD.md, and glossary.md as separate files at separate ID prefixes (BR-, UR-, FR-, NFR-). One requirement per file remains the source-of-truth.</item>
+        <item>Write FRs in EARS form. The five canonical patterns map cleanly to test scaffolds (when → trigger, while → setup state, where → feature flag).</item>
+        <item>Keep INVEST for the story-card view rendered for sprints; do not retrofit Estimable/Small onto formal FRs — they break atomicity.</item>
+        <item>Version the document, not just the requirements: patch for typos, minor for added requirements, major for scope/baseline change requiring re-sign-off.</item>
+        <item>Approval block names a role + named individual + date + Git tag (approved-2026-04-15-srs-v1.0). Tags are signed, dates immutable.</item>
+        <item>Render PDFs from Markdown with pandoc; never edit PDFs by hand. Track the rendered PDF via Git LFS so reviewers diff source, not output.</item>
+        <item>Maintain a single Traceability Matrix (Appendix A of SRS) auto-generated from traces_to: frontmatter. Manual matrices rot within one sprint.</item>
+        <item>For regulated work, attach a Glossary version reference to every doc — Glossary v0.7 — so a term redefinition forces an explicit re-baseline of dependent docs.</item>
+        <item>When migrating from DOORS / Polarion, use ReqIF as the lossless intermediate. CSV exports drop attribute hierarchy.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools-requirements-doc">
+      <list>
+        <item>pandoc — Render Markdown source → DOCX/PDF with custom cover-page template and reference docx; https://pandoc.org</item>
+        <item>pandoc-crossref — Numbering for figures, tables, and requirements across a multi-doc set; https://lierdakil.github.io/pandoc-crossref/</item>
+        <item>vale — Prose linter; ban "should/may/might" in shall-only documents; https://vale.sh</item>
+        <item>markdownlint-cli2 — Heading-level + link-validity lint per IEEE 830 outline; npm i -g markdownlint-cli2</item>
+        <item>yq — Validate YAML frontmatter on every REQ-XXX file (id, type, priority, source, traces_to); https://github.com/mikefarah/yq</item>
+        <item>git-lfs — Track signed PDFs alongside Markdown sources; git lfs install</item>
+        <item>cosign — Sign released PDFs with a developer key for tamper evidence; https://github.com/sigstore/cosign</item>
+        <item>pdftotext (poppler) — Diff a re-rendered PDF against the previous baseline before re-issue; apt install poppler-utils</item>
+        <item>mkdocs-material + mkdocs-mermaid2-plugin — Browseable HTML mirror of the doc set; pip install mkdocs-material</item>
+        <item>req-if-converter (OSS) — Convert ReqIF (DOORS export) → Markdown source-of-truth; https://github.com/ReqIF</item>
+      </list>
+    </section>
+
+    <section name="services-requirements-doc">
+      <list>
+        <item>IBM ENGINEERING DOORS Next — SaaS / on-prem; OSLC + REST; Standard for regulated industries; ReqIF round-trip with Markdown</item>
+        <item>Jama Connect — SaaS; REST + webhooks; Strong baselining and review cycles; agents can post / fetch via REST</item>
+        <item>Polarion ALM — SaaS / on-prem; REST + WebDAV; Heavy enterprise; aligned to ASPICE / IEC 62304</item>
+        <item>codeBeamer — SaaS / on-prem; REST; Niche but strong traceability for safety-critical</item>
+        <item>Visure Requirements — SaaS; REST; Lightweight; covers IREB and IEEE templates out-of-box</item>
+        <item>ReqView — Desktop / OS-agnostic; OpenSpecTrace + JSON; Cheapest for solo / consultancy use</item>
+        <item>Modern Requirements4DevOps — SaaS; Azure DevOps API; Inside ADO; renders BRD / FRD / URS as Word from work items</item>
+        <item>Aha! — SaaS; REST + GraphQL; Roadmap to requirements link; weaker on formal sign-off</item>
+        <item>Notion + GitHub source — SaaS / OSS; REST + gh CLI; Cheap "good enough" for non-regulated work; agents own the GitHub side</item>
+        <item>Sphinx-Needs (sphinx-needs) — OSS; Python; Pure Markdown / RST source; ideal for fully agentic, audit-friendly</item>
       </list>
     </section>
 
