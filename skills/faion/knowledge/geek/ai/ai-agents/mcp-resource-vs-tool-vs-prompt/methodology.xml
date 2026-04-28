@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="mcp-resource-vs-tool-vs-prompt">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Master MCP primitive classification: Tools (actions), Resources (read-only content), Prompts (user-invoked templates). Use the three-question test to avoid the most common MCP design mistake.</summary>
+    <tags>
+      <tag>mcp</tag>
+      <tag>model-context-protocol</tag>
+      <tag>server-design</tag>
+      <tag>architecture</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+
+  <content>
+    <title>MCP — Resource vs Tool vs Prompt: The Three-Question Test</title>
+
+    <summary>Model Context Protocol (MCP) servers expose three types of capabilities: Tools (actions the model invokes), Resources (content the model reads), and Prompts (templates the user invokes as slash commands). The most common MCP design mistake is misclassification — exposing a Resource as a Tool, or a Tool as a Prompt. Use the three-question test to classify every capability correctly, ensuring the model can reason about side effects and the user gets the right interface.</summary>
+
+    <why>
+      <p>Each MCP primitive has different contracts. Tools let the model act (invoke actions with side effects). Resources let the model read content (deterministic, read-only). Prompts let the user invoke templates (slash-command interface). Mixing them creates subtle bugs: a Tool that always returns the same content bloats every model turn (should be a Resource). A Resource that mutates state when read breaks the model's ability to reason about idempotency (should be a Tool). A Tool meant to be invoked by the user never gets called (should be a Prompt).</p>
+      <p>MCP is built on this taxonomy. Claude Code, OpenAI Responses API, Vercel AI SDK, and LangChain all understand the three primitives. Correct classification makes the server work portably across all four; misclassification locks you into one runtime or breaks portability.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Designing any MCP server, no matter the domain (docs, code, infra, issues).</item>
+        <item>Auditing an existing MCP server and finding tools that always return the same content or resources with side effects.</item>
+        <item>Deciding whether to expose a capability as a Tool, Resource, or Prompt.</item>
+        <item>Building servers that must work across multiple runtimes (Claude Code, OpenAI, Vercel, LangChain).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Using an existing third-party MCP server — this is design guidance for server authors.</item>
+        <item>Writing a single-shot script that doesn't expose an MCP interface.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="the-three-question-test">
+      <p>When classifying a capability, ask three questions in order:</p>
+
+      <rule testable="true">
+        <statement>Question 1: Does the model need to ACT (mutate state, fetch live data, run computation)? If yes, it is a Tool. If no, continue to Question 2.</statement>
+        <rationale>Tools trigger actions with side effects or return dynamic computation. Resources and Prompts do not. If the capability mutates (write file, deploy, send message) or fetches live data (query DB, API call, search index), it must be a Tool so the model can reason about idempotency and side effects.</rationale>
+      </rule>
+
+      <example type="good" title="Actions that are Tools">
+        <list>
+          <item>search_docs(query) — dynamic search, returns different results per query</item>
+          <item>apply_patch(diff) — mutates filesystem</item>
+          <item>create_issue(title, body) — mutates external system (Jira, Linear, GitHub)</item>
+          <item>read_file(path, start, end) — dynamic based on path and range</item>
+        </list>
+      </example>
+
+      <rule testable="true">
+        <statement>Question 2: Is this content the model reads, as if it were a file or web page? Is it deterministic per URI and static or semi-static? If yes, it is a Resource. If no, continue to Question 3.</statement>
+        <rationale>Resources are read-only views of content. They are addressed by URI and return deterministic results per URI. The model loads them when relevant and they never cause side effects. Use Resources for docs, runbooks, manifests, schemas, code references — anything the model should be able to read on demand without triggering actions.</rationale>
+      </rule>
+
+      <example type="good" title="Content that are Resources">
+        <list>
+          <item>docs://api/auth — documentation page at a stable URI</item>
+          <item>file:///workspace/README.md — specific file</item>
+          <item>runbook://incident-database-down — static playbook</item>
+          <item>schema://user.json — schema at a URI</item>
+        </list>
+      </example>
+
+      <rule testable="true">
+        <statement>Question 3: Is this a prompt template the user invokes, typically as a slash command? Does it parameterize the user's intent and launch an interaction? If yes, it is a Prompt. If no, you have classified wrong — restart the test.</statement>
+        <rationale>Prompts are user-facing templates, typically slash commands. The user invokes them, and they return multi-message starters that guide the model through a task. Prompts can compose Tools and Resources (e.g., "/investigate(issue_id)" internally calls search_issues Tool and reads issue://issue_id Resource, then asks the model to analyze). Prompts are not model decisions; they are user UX.</rationale>
+      </rule>
+
+      <example type="good" title="Prompts that are user slash-commands">
+        <list>
+          <item>/onboard-engineer(seniority, focus_area) — user invokes, receives multi-step starter</item>
+          <item>/investigate-bug(bug_id) — user slash command, internally calls Tools and Resources</item>
+          <item>/weekly-report — parameterless starter that composes multiple Resources</item>
+        </list>
+      </example>
+    </section>
+
+    <section name="primitive-contracts">
+      <p>Each MCP primitive has a different interaction contract. Understanding these contracts is key to correct classification.</p>
+
+      <rule testable="true">
+        <statement>Tools are triggered by the model during reasoning. They can have side effects (mutation, API calls, file writes). The model decides to invoke them based on the task at hand. Tool descriptions are critical — they tell the model when to use the tool.</statement>
+        <rationale>The model is the agent making decisions. Tools are the model's action interface. If a tool doesn't fit the model's task, the model won't call it — so tool naming and description must be precise.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Resources are read-only content the model can request on demand. Resources are deterministic per URI — reading the same resource twice returns the same content (or content with a clear refresh policy). Resources have no side effects. Resources can be pre-injected by the host or fetched by the model when needed.</statement>
+        <rationale>Resources are content, not actions. They are stateless. The model's decision to read a resource has no consequence other than loading that content into context. This determinism lets the model reason about idempotency and avoid re-reading the same resource unnecessarily.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Prompts are user-facing templates the host (e.g., Claude Code IDE) invokes. Prompts can be parameterized ("Onboard engineer X") and return multi-message starters. Prompts are not model decisions; they are user commands. Prompts often compose Tools and Resources in their body text, and the model executes those instructions.</statement>
+        <rationale>Prompts are UX. They give users (and Agentic workflows) a way to launch complex multi-step interactions without typing everything manually. A Prompt like "/investigate-bug" can expand to "read the bug report (Resource), search for similar issues (Tool), then analyze the root cause".</rationale>
+      </rule>
+    </section>
+
+    <section name="common-misclassifications">
+      <p>Here are the most frequent design mistakes and their fixes.</p>
+
+      <antipattern>
+        <description>Tool that always returns the same content (e.g., get_doc_index() returning a 50KB docs manifest). The tool is used like a Resource — the model "reads" it — but consumes a tool slot and bloats every turn the model decides to invoke it.</description>
+        <reason>This tool should be a Resource at a URI like docs://_index. Now the model only loads it when explicitly relevant, and it doesn't pollute the tool list on every turn.</reason>
+      </antipattern>
+
+      <example type="bad" title="Tool that should be a Resource">
+        <code lang="python"><![CDATA[
+# Avoid: static content as a Tool
+@server.tool()
+async def get_doc_index() -> str:
+    """Returns the docs index (50KB)."""
+    return load_all_docs_index()
+
+# Better: expose as a Resource
+@server.resource("docs://_index")
+async def get_doc_index() -> str:
+    return load_all_docs_index()
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Resource that mutates state when accessed (e.g., GET runbook://incident-foo starts the incident playbook in the background). Resources are supposed to be read-only; side effects make replay and audit impossible.</description>
+        <reason>Convert to a Tool like start_runbook(name). Tools are designed for side effects; the model can reason about when to invoke them and what the consequences are.</reason>
+      </antipattern>
+
+      <example type="bad" title="Resource with side effects (should be Tool)">
+        <code lang="python"><![CDATA[
+# Avoid: Resource with side effects
+@server.resource("runbook://incident-foo")
+async def get_runbook(incident: str) -> str:
+    start_incident_playbook(incident)  # MUTATING!
+    return load_runbook(incident)
+
+# Better: expose as a Tool
+@server.tool()
+async def start_runbook(name: str) -> dict:
+    """Start an incident runbook. MUTATING."""
+    return start_incident_playbook(name)
+
+@server.resource("runbook://{name}")
+async def get_runbook(name: str) -> str:
+    return load_runbook(name)  # Read-only
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Tool meant to be invoked by the user (e.g., a Tool called `initialize_project` that the team expects the user to run at startup). The Tool never gets called because the model doesn't know to invoke it.</description>
+        <reason>Create a Prompt like /initialize-project. Prompts are the user-facing interface; the user sees them in the slash menu and invokes them. The Prompt can internally call the Tool if needed.</reason>
+      </antipattern>
+
+      <example type="bad" title="User-facing Tool (should be Prompt)">
+        <code lang="python"><![CDATA[
+# Avoid: Tool the user is expected to invoke
+@server.tool()
+async def initialize_project(name: str) -> dict:
+    """Initialize a new project."""
+    # User expects to call this, but the model decides to call tools, not the user
+    return setup_project(name)
+
+# Better: expose as a Prompt
+@server.prompt()
+async def initialize_project(name: str) -> list[dict]:
+    return [{"role": "user", "content": f"Initialize new project '{name}'. ..."}]
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Over-broad Tool with a mode argument (e.g., exec(mode="read"|"write"|"delete", target, ...). The model confuses the modes 25% of the time — it might write when it meant to read.</description>
+        <reason>Split into N named tools: read_file(path), write_file(path, content), delete_file(path). Clear names let the model reason about the operation.</reason>
+      </antipattern>
+
+      <example type="bad" title="Over-broad Tool with modes">
+        <code lang="python"><![CDATA[
+# Avoid: modes confuse the model
+@server.tool()
+async def exec(mode: str, target: str, content: str = None) -> str:
+    if mode == "read": return read_file(target)
+    if mode == "write": return write_file(target, content)
+    if mode == "delete": return delete_file(target)
+
+# Better: split into named tools
+@server.tool()
+async def read_file(path: str) -> str:
+    return read_file_impl(path)
+
+@server.tool()
+async def write_file(path: str, content: str) -> dict:
+    """MUTATING: write file."""
+    return write_file_impl(path, content)
+
+@server.tool()
+async def delete_file(path: str) -> dict:
+    """MUTATING: delete file."""
+    return delete_file_impl(path)
+]]></code>
+      </example>
+    </section>
+
+    <section name="design-process">
+      <p>A systematic process for classifying every capability in an MCP server.</p>
+
+      <rule testable="true">
+        <statement>List every capability the MCP server will expose. For each, build a decision matrix: Side effect? Static-per-URI? User invokes? Then apply the three-question test.</statement>
+        <rationale>A systematic process prevents ad-hoc decisions and the miscommunications they cause. Document every capability and its classification before implementing.</rationale>
+      </rule>
+
+      <example type="good" title="Decision matrix">
+        <code lang="text"><![CDATA[
+| Capability         | Side effect? | Static-per-URI? | User invokes? | Type     | URI/name           |
+|--------------------|--------------|-----------------|---------------|----------|-------|
+| search_docs(q)     | no           | no              | no            | Tool     | n/a                |
+| docs://api/auth    | no           | yes             | no            | Resource | docs://api/auth    |
+| /onboard(senior)   | no           | no              | yes           | Prompt   | /onboard           |
+| apply_migration()  | yes          | n/a             | no            | Tool     | n/a                |
+| schema://user.ts   | no           | yes             | no            | Resource | schema://user.ts   |
+| /investigate(id)   | no           | no              | yes           | Prompt   | /investigate       |
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>For Tools: write verb_object names (search_docs, not docs), precise descriptions (use-when / NOT-use-when), and mark MUTATING tools explicitly. For Resources: stable URI schemes and determinism guarantees. For Prompts: user-facing names (slash commands) and compositions of Tools/Resources.</statement>
+        <rationale>Naming and documentation are critical. Verb-object names tell the model what the tool does. MUTATING markers let the model reason about side effects. URI schemes make Resources discoverable and predictable.</rationale>
+      </rule>
+
+      <example type="good" title="Tool documentation template">
+        <code lang="text"><![CDATA[
+search_docs(query: str, max_results: int = 10) -> list[dict]
+
+Use this when the user asks a how-to or reference question.
+Do NOT use this for code search — use grep_repo instead.
+Returns list of {text: str, source: str, score: float}.
+]]></code>
+      </example>
+    </section>
+
+    <section name="cross-runtime-parity">
+      <p>Not all runtimes support all primitives equally. Design for the broadest portability.</p>
+
+      <rule testable="true">
+        <statement>Anthropic MCP (Claude Code) supports Tools, Resources, and Prompts natively. OpenAI Responses API supports Tools and Resources; Prompts collapse to system message snippets. Vercel AI SDK 6 supports Tools; Resources map via fetcher; Prompts as system snippets. LangChain MCP adapter supports all three. If you need maximum portability, design assuming all three exist; any runtime that doesn't support Prompts will collapse them to system messages.</statement>
+        <rationale>MCP is a standard, but runtimes implement it differently. Correct classification ensures your server works anywhere; design with all three primitives in mind, and every runtime benefits.</rationale>
+      </rule>
+
+      <example type="good" title="Portable MCP server">
+        <code lang="python"><![CDATA[
+# All three primitives in one server
+from mcp.server import Server
+
+server = Server("faion-mcp")
+
+# Tool: model invokes
+@server.tool()
+async def search_docs(query: str, max_results: int = 10) -> list[dict]:
+    """Search the docs corpus."""
+    return run_search(query, max_results)
+
+# Resource: model reads
+@server.resource("docs://{section}/{page}")
+async def get_doc(section: str, page: str) -> str:
+    return load_doc(section, page)
+
+# Prompt: user invokes
+@server.prompt()
+async def onboard_engineer(seniority: str, focus_area: str) -> list[dict]:
+    return [{"role": "user", "content": f"Onboard {seniority} engineer..."}]
+
+server.run()
+]]></code>
+      </example>
+    </section>
+
+    <section name="composition-patterns">
+      <p>Advanced patterns for combining Tools, Resources, and Prompts.</p>
+
+      <rule testable="true">
+        <statement>Prompts can compose Tools and Resources in their body text. Example: a /investigate-bug Prompt returns a message that asks the model to call search_issues Tool and read issue://issue_id Resource, then synthesize.</statement>
+        <rationale>Prompts are orchestration templates. They guide the model through a multi-step process by mentioning Tools and Resources by name in the prompt body. The model sees the instructions and executes them.</rationale>
+      </rule>
+
+      <example type="good" title="Prompt that composes Tools and Resources">
+        <code lang="python"><![CDATA[
+@server.prompt()
+async def review_pr(pr_number: int) -> list[dict]:
+    return [{
+        "role": "user",
+        "content": (
+            f"Review PR #{pr_number}.\n\n"
+            f"1. Read the diff via `get_pr_diff(pr_number={pr_number})` Tool.\n"
+            f"2. Read the architecture doc at docs://arch/overview Resource.\n"
+            f"3. Output a structured review."
+        )
+    }]
+
+# When the user invokes /review-pr(123), the model sees instructions to:
+# - Call Tool get_pr_diff(pr_number=123)
+# - Read Resource docs://arch/overview
+# - Then reason about the review
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Resources with content negotiation (different MIME types per URI suffix) can serve multiple formats. Example: schema://user.json vs. schema://user.ts both return the same schema but in different formats.</statement>
+        <rationale>Content negotiation lets one Resource serve multiple representations. The model or user picks the format via URI; the implementation handles the conversion.</rationale>
+      </rule>
+    </section>
+
+    <section name="checklist">
+      <checklist>
+        <check>Listed every capability the MCP server will expose</check>
+        <check>For each, applied the three-question test</check>
+        <check>Classified each as exactly one of: Tool, Resource, or Prompt</check>
+        <check>No Tool that always returns the same content (should be a Resource)</check>
+        <check>No Resource with side effects (should be a Tool)</check>
+        <check>No Tool meant for user invocation (should be a Prompt)</check>
+        <check>Every Tool has a verb_object name (search_docs, not docs)</check>
+        <check>Every Tool has a structured description with use-when / NOT-use-when</check>
+        <check>Mutating Tools tagged with explicit "MUTATING" in description</check>
+        <check>Every Resource has a stable URI scheme</check>
+        <check>Resource content is deterministic per URI</check>
+        <check>Every Prompt is parameterized for user invocation</check>
+        <check>Tested the server on at least Anthropic MCP and one other runtime</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <link href="https://modelcontextprotocol.io/docs/concepts/architecture"/>
+      <link href="https://docs.anthropic.com/claude/docs/mcp-servers"/>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/mcp"/>
+      <ref slug="mcp-model-context-protocol"/>
+    </see-also>
+  </content>
+</methodology>
