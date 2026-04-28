@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 solo/ux/ux-ui-designer methodologies → methodology.xml (content-audit, design-critique, error-prevention)
 - migrate: 3/3 solo/ux/ux-ui-designer methodologies → methodology.xml (heuristic-evaluation, information-architecture, journey-mapping)
 - migrate: 3/3 solo/ux/user-researcher methodologies → methodology.xml (problem-validation, problem-validation-2026, success-metrics-definition)
 - migrate: 3/3 solo/ux/ux-ui-designer methodologies → methodology.xml (error-recovery, flexibility-efficiency, help-documentation)
