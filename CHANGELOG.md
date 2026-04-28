@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (immersive-design-principles, personas, regulatory-compliance-2026; feature-045 batch 229)
 - migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (enterprise-xr-applications, error-handling-in-vui, focus-groups; feature-045 batch 228)
 - migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (design-system-success-factors, design-tokens-fundamentals, diary-studies; feature-045 batch 227)
 - migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (ar-design-patterns, cognitive-inclusion-design, cognitive-walkthrough; feature-045 batch 225)
