@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="decomposition-rails">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>Rails decomposition using Service Objects and Query Objects. One Service = one verb; services return domain entities or Result monads. File size budgets enforced by structural lint.</summary>
+    <tags>
+      <tag>rails</tag>
+      <tag>ruby</tag>
+      <tag>decomposition</tag>
+      <tag>service-object</tag>
+      <tag>query-object</tag>
+    </tags>
+    <category>decomposition</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Rails Decomposition Patterns</title>
+
+    <summary>LLM-friendly code organization for Rails 7+ using Service Objects, Query Objects, Serializers, and Policies. One Service = one verb; services return domain entities or Result monads — never void. File size budgets enforced by structural lint.</summary>
+
+    <why>
+      <p>Fat models (500+ lines) and fat controllers (400+ lines) cause merge collisions when multiple agents edit in parallel, and make LLMs unable to reason about boundaries without loading the entire file. Service Objects map 1:1 to SDD tasks, are independently testable, and can be reused from queue jobs and console commands.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield Rails 7+ app where LLM agents must work in small files (50–150 LOC) without fat models.</item>
+        <item>Refactoring legacy Rails monoliths before safe agent edits are possible.</item>
+        <item>Multi-developer or multi-agent teams with parallel work on User, Order, Billing domains.</item>
+        <item>SDD-driven projects: one task = one Service Object.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tiny Rails apps (&lt;20 controllers) — scope + thin controllers cover it; service-object ceremony costs more.</item>
+        <item>Codebases on Trailblazer/Hanami/dry-rb — they have their own decomposition idioms; mixing produces incoherence.</item>
+        <item>Rails Engines for shared internal libs — engine boundaries apply, not service objects.</item>
+        <item>Hot paths (background jobs &gt;1k/s) — service-object indirection adds GC pressure; use PORO or direct AR.</item>
+        <item>Prototype phase where domain is unstable — locking shapes into service+form objects slows discovery.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="service-query-object-pattern">
+      <p>Service Object with single #call method returning a domain entity, and Query Object with fluent builder accepting and returning a relation.</p>
+
+      <rule>
+        <statement>Service #call must return a domain entity or a Result monad — never nil, never void. Agents that return void prevent downstream composition from queue jobs and console commands.</statement>
+        <rationale>Void services require callers to re-fetch the entity after calling, creating implicit coupling. A returned entity enables callers to chain directly.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Wrap multi-write services in ActiveRecord::Base.transaction; never assume Eloquent-style auto-transaction.</statement>
+        <rationale>Creating a user then assigning roles in two separate AR calls is not atomic. A role assignment failure after a successful create leaves orphaned state without an explicit transaction.</rationale>
+      </rule>
+
+      <example type="good" title="Service Object with #call">
+        <code lang="ruby"><![CDATA[
+# app/services/users/create_service.rb (~50 lines)
+module Users
+  class CreateService
+    def initialize(params:, current_user: nil)
+      @params = params
+      @current_user = current_user
+    end
+
+    def call
+      validate!
+      create_user
+      send_welcome_email
+      @user
+    end
+
+    private
+
+    attr_reader :params, :current_user
+
+    def validate!
+      raise ValidationError, "Email required" if params[:email].blank?
+      raise ValidationError, "Email taken" if User.exists?(email: params[:email])
+    end
+
+    def create_user
+      @user = User.create!(
+        email: params[:email],
+        name: params[:name],
+        password: params[:password]
+      )
+    end
+
+    def send_welcome_email
+      Users::WelcomeEmailJob.perform_later(@user.id)
+    end
+  end
+end
+]]></code>
+      </example>
+
+      <example type="good" title="Query Object with fluent builder">
+        <code lang="ruby"><![CDATA[
+# app/queries/users/search_query.rb (~40 lines)
+module Users
+  class SearchQuery
+    def initialize(relation = User.all)
+      @relation = relation
+    end
+
+    def call(params)
+      @relation = filter_by_status(params[:status])
+      @relation = filter_by_query(params[:query])
+      @relation = order_by(params[:sort])
+      @relation
+    end
+
+    private
+
+    def filter_by_status(status)
+      return @relation if status.blank?
+      @relation.where(status: status)
+    end
+
+    def filter_by_query(query)
+      return @relation if query.blank?
+      @relation.where("name ILIKE ? OR email ILIKE ?", "%#{query}%", "%#{query}%")
+    end
+
+    def order_by(sort)
+      case sort
+      when "name"   then @relation.order(:name)
+      when "recent" then @relation.order(created_at: :desc)
+      else               @relation.order(:id)
+      end
+    end
+  end
+end
+]]></code>
+        <note>Query objects accept and return relations, not arrays. Final .results (or .call) defers SQL execution.</note>
+      </example>
+    </section>
+
+    <section name="controller-pattern">
+      <p>Thin controller delegating to Service/Query with Serializer wrapping.</p>
+
+      <rule>
+        <statement>Controllers must stay under 80 lines and handle only HTTP routing, authorization, and Serializer wrapping; all domain logic lives in Services.</statement>
+        <rationale>Thin controllers prevent merge collisions when multiple agents work in parallel. Reducing the controller to HTTP plumbing makes it stable and rarely-changed.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Authorize at the controller boundary; never inside a Service. Services assume authorization already passed.</statement>
+        <rationale>Placing authorization in Services duplicates it in every caller (HTTP, console, queue). Policy checks belong at the HTTP boundary where the actor is known.</rationale>
+      </rule>
+    </section>
+
+    <section name="file-size-guidelines-and-gotchas">
+      <p>File size guidelines and AI-agent gotchas for Rails decomposition.</p>
+
+      <rule>
+        <statement>File size budgets: Model target 50–80 lines max 150; Service target 40–60 lines max 100; Query target 30–50 lines max 80; Controller target 60–80 lines max 150; Form Object target 30–40 lines max 80; Serializer target 30–50 lines max 100; Policy target 30–50 lines max 100.</statement>
+        <rationale>Size budgets make files independently reasonable by agents. Controllers and Services exceeding their budgets indicate missing decomposition. Enforcement via structural lint prevents regression.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Service-object explosion. Every controller action gets its own `Users::CreateService`, `Users::UpdateService`, `Users::DeleteService`; agents copy boilerplate without consolidating.</description>
+        <reason>Consolidate variations into a single service with conditional logic for CRUD variants on the same aggregate. Multiple services should represent distinct domain operations, not HTTP verbs.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>No standard return shape. Some services return the record, some return a Result monad, some raise. Agents inconsistent across files.</description>
+        <reason>Pick Result or entity + raise, document it in CONTRIBUTING.md, and enforce in code review. Consistency prevents agents from writing fragile error-handling logic.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Concerns become dumping grounds. `Searchable`, `Authenticatable`, `Sluggable` end up with cross-concern logic; LLMs can't reason about model behavior without reading every concern.</description>
+        <reason>Concerns should be narrow mixins (1–20 LOC) for single cross-cutting behavior. Complex logic belongs in services or query objects.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Form object vs Service object overlap. Both validate; agents pick whichever they saw last.</description>
+        <reason>Form objects validate input shape; services validate business rules. If they overlap, refactor into a single shape contract.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Query object drift from `scope`. Same filter exists in both; agents fix one site and forget the other.</description>
+        <reason>Reuse scopes in query objects via `relation.active`. Don't duplicate filter logic.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Convention not enforced by Rails. `app/services/` is a folder convention only; the next agent introduces `app/lib/services/` or `app/operations/`.</description>
+        <reason>Add a linter that fails CI if files exist outside the canonical folders (`services/`, `queries/`, `forms/`, `policies/`, `serializers/`).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Rails callbacks still fire. Decomposing into services doesn't remove `before_save` magic; agents assume "service-only flow" and break audit logs.</description>
+        <reason>Document when callbacks fire and when they're bypassed. Tag services that skip callbacks with a comment: `# @warning bypasses callbacks`.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Treat each feature as a tree: Controller → Service(s) → QueryObject + FormObject + Serializer + Policy + Job + Spec. Drive with: (1) a planner subagent emits the file list with target line ranges (per `decomposition-rails/README.md` size table); (2) a code-writer subagent generates files in dependency order (FormObject → Service → Controller → Serializer); (3) a test subagent writes one RSpec describe per Service `#call`; (4) a structural-lint subagent fails the PR if any controller exceeds 150 LOC, any model exceeds 150 LOC, or any service exceeds 100 LOC. Persist the convention in CONTRIBUTING.md and load as system prompt context.</p>
+
+      <rule>
+        <statement>One service = one verb. `Users::CreateService` (not `Users::Service.create`). Maps cleanly to SDD task names.</statement>
+        <rationale>Explicit verb naming makes intent clear and prevents god-object services that do multiple unrelated operations.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Service `#call` returns a domain object or a Result monad — never `nil`. Pick one and document. Agents otherwise mix conventions.</statement>
+        <rationale>Explicit return contracts enable consistent error handling and prevent agents from writing fragile code.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Form objects validate, services execute. Don't validate inside the service; surface errors at the form-object boundary so the controller renders them cleanly.</statement>
+        <rationale>Validation is a HTTP concern. Services should assume input is already valid. Form objects are the appropriate validation boundary.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Query objects accept and return relations. Initialize with `relation = Model.all`; chain returns `self`; final `.results` returns the relation. Agents misuse and return arrays prematurely.</statement>
+        <rationale>Deferred relation evaluation allows chaining and prevents N+1 queries when filters are applied dynamically.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Concerns hold mixin behavior, not domain logic. If a concern grows beyond 50 LOC, it's a service waiting to happen.</statement>
+        <rationale>Concerns risk becoming dumping grounds for complex cross-cutting logic. Move domain logic into services where it can be tested independently.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Serializers (or `jbuilder`/`fast_jsonapi`) own response shape. Never `render json: model` directly — leaks columns.</statement>
+        <rationale>Serializers decouple API contracts from model structure. Direct rendering exposes internal columns and breaks versioning.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Policies authorize at the controller boundary. Services assume authorization passed; otherwise services duplicate auth logic.</statement>
+        <rationale>Authorization is a HTTP concern. Services can run from queue jobs where authorization doesn't apply. The controller is the right place to check.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Tag generated files with the spec ID (e.g., `# @sdd FEAT-007`). Lets agents trace files back to specs during refactor.</statement>
+        <rationale>Traceability helps future agents understand why a file exists and what feature it belongs to.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Lint-as-you-go. Run Rubocop + Reek + structural-lint in pre-commit so the next agent inherits a clean tree.</statement>
+        <rationale>Proactive enforcement prevents technical debt accumulation and keeps files predictable in size and style.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Reject `Service.new(...).call` chains in controllers — promote to `service = ...; result = service.call`. Easier to mock and read.</statement>
+        <rationale>Inline service instantiation makes mocking difficult and obscures the service boundary.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas-and-limitations">
+      <p>Common failure modes when agents adopt the decomposition pattern.</p>
+
+      <antipattern>
+        <description>Pattern collapse under deadline pressure. When asked to "just add an endpoint quickly," agents skip the service layer.</description>
+        <reason>Lock convention in CONTRIBUTING.md and reference in every system prompt.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Form-object/service-object validation drift. Agent adds a field to the form, forgets the service's internal invariant check.</description>
+        <reason>Centralize: form validates input shape, service validates business rules.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Service calling service in same request. Acceptable if explicit; not acceptable if a deep chain spans transactions.</description>
+        <reason>Force agents to declare orchestration in the docblock.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Query objects re-implementing scopes. Agents add `where(active: true)` inside a query object that's already a `scope :active` on the model.</description>
+        <reason>Reuse scopes in query objects via `relation.active`.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Test-per-service ignored. Agents assume the controller spec covers the service; it doesn't cover edge cases.</description>
+        <reason>Require `services/*/*.rb` ↔ `spec/services/*/*_spec.rb` parity.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Service skipping callbacks via `update_columns`. Agents reach for it for "performance"; counter caches and audit logs silently break.</description>
+        <reason>Document which callbacks exist and when they fire. Flag `update_columns` in code review.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents invent new layers. "Manager", "Coordinator", "Workflow" classes appear after a refactor.</description>
+        <reason>Whitelist namespaces (`services/`, `queries/`, `forms/`, `policies/`, `serializers/`) and block PRs introducing new ones without an ADR.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Decomposition without DI. Agents `Users::CreateService.new(params: ...).call` everywhere; mocking is awkward.</description>
+        <reason>Standardize on dependency-injected services or use `dry-system`.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Service returns void. Agent emits `def call; @user.save!; end` — downstream code can't compose.</description>
+        <reason>Always return the canonical entity or Result.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Policy bypass via `find` instead of policy scope. Agents `User.find(params[:id])` then check policy; multi-tenant data leaks via timing attack on `find`.</description>
+        <reason>Use `policy_scope(User).find(...)`.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Form object inheriting from ActiveRecord. Agents reach for `ActiveType::Object` or similar to "save like a model"; produces ghost columns and confusing schema.</description>
+        <reason>Use `ActiveModel::Model` + plain attributes only.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Serializer leaks fields. Agent uses `attributes :all` or `model.as_json` inside a serializer.</description>
+        <reason>Always explicit attribute lists.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/decomp-rails-lint.sh" purpose="Structural lint: fail CI if Controller/Model/Service/Query/Serializer/Policy exceeds its size budget."/>
+    </templates>
+
+    <see-also>
+      <link href="https://refactoringrails.com"/>
+      <link href="https://thoughtbot.com/blog"/>
+      <link href="https://codeclimate.com/blog/7-ways-to-decompose-fat-activerecord-models/"/>
+      <link href="https://trailblazer.to/2.1/docs/operation"/>
+      <link href="https://dry-rb.org/gems/dry-monads"/>
+      <link href="https://guides.rubyonrails.org/active_model_basics.html"/>
+      <link href="https://github.com/varvet/pundit"/>
+    </see-also>
+  </content>
+</methodology>
