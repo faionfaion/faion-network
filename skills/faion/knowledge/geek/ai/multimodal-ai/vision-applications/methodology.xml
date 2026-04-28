@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vision-applications">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>multimodal-ai</domain>
+    <summary>Vision LLM patterns for OCR, document extraction, classification, and content moderation with cost control and structured output validation.</summary>
+    <tags>
+      <tag>vision</tag>
+      <tag>ocr</tag>
+      <tag>document-extraction</tag>
+      <tag>image-classification</tag>
+      <tag>content-moderation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Vision Applications</title>
+    <summary>Production patterns for vision LLM tasks: OCR, document extraction, image classification, and content moderation using GPT-4o, Claude, or Gemini Vision. Each task sends an image plus a structured prompt and receives JSON-formatted output.</summary>
+    <why>
+      <p>Vision LLMs outperform traditional OCR on complex layouts, handwriting, and mixed languages, and they unify classification, extraction, and moderation into a single API call. The key constraint is token cost: detail: "high" on a 4K image consumes 1500+ prompt tokens, so images must be validated and resized before encoding.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Document digitization: invoices, receipts, forms, passports, business cards</item>
+        <item>Content moderation: classify user-uploaded images before storage or display</item>
+        <item>E-commerce: auto-tag product images, generate descriptions, classify categories</item>
+        <item>Accessibility: generate alt-text for images at upload time</item>
+        <item>Visual QA: answer questions about screenshots, diagrams, charts</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>High-volume bulk processing (>10k images/day) — per-image token cost accumulates; CLIP/YOLO/Tesseract are 100-1000x cheaper for classification/detection</item>
+        <item>Pixel-level precision tasks (medical imaging, satellite analysis) — vision LLMs reason semantically, not at pixel level</item>
+        <item>Real-time video analysis — frame-by-frame API calls add 1-3s latency per frame</item>
+        <item>Standardized forms with fixed layout — dedicated OCR tools are faster and cheaper</item>
+      </list>
+    </when-not-to-use>
+    <section name="document-analysis">
+      <p>DocumentAnalyzer wraps GPT-4o Vision to extract text and structured fields from documents including receipts, forms, and passports.</p>
+      <example type="good" title="Document extraction with structured fields">
+        <code lang="python"><![CDATA[
+class DocumentAnalyzer:
+    def __init__(self, model: str = "gpt-4o"):
+        self.client = OpenAI()
+        self.model = model
+
+    def extract_structured_data(self, image_path: str, fields: list[str]) -> dict:
+        fields_str = ", ".join(fields)
+        prompt = f"Extract these fields: {fields_str}. Return JSON. Use null for missing fields."
+        response = self._analyze(image_path, prompt, json_mode=True)
+        return json.loads(response)
+
+    def analyze_receipt(self, image_path: str) -> dict:
+        prompt = "Extract store_name, date, items (name/qty/price), subtotal, tax, total. Return JSON."
+        return json.loads(self._analyze(image_path, prompt, json_mode=True))
+        ]]></code>
+        <note>Always use json_mode=True for structured extraction and wrap json.loads in try/except.</note>
+      </example>
+    </section>
+    <section name="image-classification">
+      <p>ImageClassifier sends predefined categories with the image and receives a category, confidence score, and reasoning.</p>
+      <example type="good" title="Image classification with confidence">
+        <code lang="python"><![CDATA[
+class ImageClassifier:
+    def classify(self, image_path: str) -> dict:
+        categories_str = ", ".join(self.categories)
+        prompt = (
+            f"Classify this image into one of: {categories_str}. "
+            "Return JSON: {category, confidence (0-1), reasoning}"
+        )
+        with open(image_path, "rb") as f:
+            image_data = base64.standard_b64encode(f.read()).decode()
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
+            ]}],
+            response_format={"type": "json_object"}
+        )
+        return json.loads(response.choices[0].message.content)
+        ]]></code>
+      </example>
+    </section>
+    <section name="content-moderation">
+      <p>ContentModerator checks images for policy violations and returns a structured severity flag. Never use as the sole moderation layer — false negative rate on subtly harmful content is non-zero.</p>
+      <example type="good" title="Content moderation with severity and human review">
+        <code lang="text"><![CDATA[
+Analyze for policy violations.
+Categories: violence, adult_content, hate_symbols, self_harm, illegal_activity.
+Return JSON: {"is_safe": bool, "flags": [str], "severity": "none|low|medium|high",
+              "confidence": 0-1, "needs_human_review": bool}
+Set needs_human_review: true when confidence < 0.7.
+        ]]></code>
+        <note>Normalize severity values (enforce lowercase) — "HIGH" vs "high" breaks downstream routing silently.</note>
+      </example>
+    </section>
+    <section name="production-vision-service">
+      <p>VisionService wraps all vision calls with size validation (reject over 20MB), base64 encoding, retry logic, and structured output parsing.</p>
+      <example type="good" title="VisionConfig and VisionService">
+        <code lang="python"><![CDATA[
+@dataclass
+class VisionConfig:
+    model: str = "gpt-4o"
+    max_image_size_mb: int = 20
+    detail: str = "auto"   # "low" | "high" | "auto"
+    max_retries: int = 3
+    timeout: int = 60
+        ]]></code>
+      </example>
+      <antipattern>
+        <description>Passing remote image URLs from user input directly to the API without validation.</description>
+        <reason>Remote URLs embedded in prompts are fetched by the API server; URLs behind auth or expired pre-signed URLs cause silent failures.</reason>
+      </antipattern>
+    </section>
+    <section name="image-preparation-rules">
+      <rule>
+        <statement>Validate image size and format before base64 encoding. Reject files over 20MB and unsupported formats early.</statement>
+        <rationale>OpenAI Vision API rejects images over 20MB. Base64 encoding increases payload size by ~33%; a 20MB image becomes ~27MB on the wire.</rationale>
+      </rule>
+      <rule>
+        <statement>Use detail="auto" by default; switch to detail="high" only for dense text documents or charts with small labels.</statement>
+        <rationale>detail="high" costs 85 tokens per 512x512 tile plus a base 85 tokens — a 4K image consumes 1500+ prompt tokens just for the image.</rationale>
+      </rule>
+      <example type="good" title="Image resize and encode for API">
+        <code lang="python"><![CDATA[
+from PIL import Image
+import io, base64
+
+def prepare_image_for_api(path: str, max_short_side: int = 768) -> str:
+    """Resize and encode. Keeps detail:auto within token budget."""
+    img = Image.open(path)
+    w, h = img.size
+    short = min(w, h)
+    if short > max_short_side:
+        scale = max_short_side / short
+        img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+    buf = io.BytesIO()
+    fmt = "JPEG" if path.lower().endswith((".jpg", ".jpeg")) else "PNG"
+    img.save(buf, format=fmt, quality=85)
+    return base64.standard_b64encode(buf.getvalue()).decode()
+        ]]></code>
+      </example>
+    </section>
+    <section name="json-mode-rules">
+      <rule>
+        <statement>Always wrap json.loads() in try/except json.JSONDecodeError when using json_mode=True.</statement>
+        <rationale>Vision models hallucinate invalid JSON on complex nested structures. Silent failures propagate to downstream routing.</rationale>
+      </rule>
+      <rule>
+        <statement>Define the exact JSON schema in the prompt and use response_format={"type": "json_object"}. json_mode does not guarantee schema adherence — normalize output fields (e.g., enforce lowercase severity values).</statement>
+        <rationale>A ContentModerator returning {"severity": "HIGH"} instead of "high" breaks downstream logic silently.</rationale>
+      </rule>
+      <antipattern>
+        <description>Using json_mode without a schema in the prompt.</description>
+        <reason>Model chooses field names and nesting arbitrarily — output is unpredictable across requests.</reason>
+      </antipattern>
+    </section>
+    <section name="batch-and-caching-rules">
+      <rule>
+        <statement>For batch processing, use asyncio.gather() with a concurrency limit of 10-20 simultaneous requests.</statement>
+        <rationale>Sequential batch_analyze() is 10-100x slower than parallel calls. Rate limits apply per minute; 10-20 concurrent is safe for most tier-2 keys.</rationale>
+      </rule>
+      <rule>
+        <statement>Cache base64-encoded images by content hash to avoid re-encoding on retry.</statement>
+        <rationale>Re-encoding on each retry wastes CPU and adds latency to the critical path.</rationale>
+      </rule>
+      <rule>
+        <statement>For content moderation: set a confidence threshold and route low-confidence results to human review, not to auto-action.</statement>
+        <rationale>Vision LLM moderation is probabilistic — false negative rate on subtly harmful content is non-zero. Human review for confidence &lt; 0.7 prevents policy violations.</rationale>
+      </rule>
+    </section>
+    <section name="agentic-workflow">
+      <p>Vision analysis fits naturally into agent pipelines as a perception step: agent receives an image path or URL, calls the VisionService, and branches based on structured output (classification, extracted fields, moderation flags). For document extraction, the agent uses JSON mode and routes the parsed result to downstream logic. Subagents can drive the full pipeline — image intake → validation → analysis → result routing — with human review only on low-confidence or flagged outputs.</p>
+      <example type="good" title="Prompt pattern for structured extraction">
+        <code lang="text"><![CDATA[
+Analyze this image and extract the following fields as JSON.
+Required fields: {field_list}
+For missing or illegible fields, use null.
+Do not include fields not in the list.
+Return only valid JSON, no explanation.
+        ]]></code>
+      </example>
+      <example type="good" title="Prompt pattern for content moderation">
+        <code lang="text"><![CDATA[
+You are a content moderator. Analyze this image for policy violations.
+Categories: violence, adult_content, hate_symbols, self_harm, illegal_activity.
+Return JSON: {"is_safe": bool, "flags": [str], "severity": "none|low|medium|high", "confidence": 0-1}
+If confidence < 0.7, set "needs_human_review": true.
+        ]]></code>
+      </example>
+    </section>
+    <section name="cli-tools">
+      <list>
+        <item>openai — Vision via GPT-4o; base64 or URL image input. Install: pip install openai. Docs: platform.openai.com/docs/guides/vision</item>
+        <item>anthropic — Vision via Claude (200K context, multi-image). Install: pip install anthropic. Docs: docs.anthropic.com/en/docs/vision</item>
+        <item>Pillow — Image resize, format conversion, size validation pre-API. Install: pip install pillow. Docs: python-pillow.org</item>
+        <item>httpx — Async HTTP for downloading remote images before analysis. Install: pip install httpx</item>
+        <item>google-generativeai — Gemini Vision (1M context, native PDF support). Install: pip install google-generativeai. Docs: ai.google.dev</item>
+      </list>
+    </section>
+    <section name="services-and-platforms">
+      <p>OpenAI GPT-4o (SaaS, best general vision, JSON mode, up to 20MB images). Anthropic Claude (SaaS, multi-image comparison, 200K context, strong at documents). Google Gemini Pro Vision (SaaS, native PDF, 1M context, competitive on charts/diagrams). AWS Textract (SaaS, specialized OCR for forms/tables, cheaper than LLM for standard docs). Google Cloud Vision (SaaS, fast label detection, face detection, landmark; not generative). Azure Computer Vision (SaaS, OCR, object detection, content moderation; pairs with Azure OpenAI). Roboflow (SaaS, custom CV model training and serving, YOLO-based detection).</p>
+    </section>
+    <section name="best-practices">
+      <rule>
+        <statement>Always validate image size and format before encoding — reject files > 20MB and unsupported formats early.</statement>
+        <rationale>Early validation prevents API rejection and downstream errors.</rationale>
+      </rule>
+      <rule>
+        <statement>Use detail: "auto" for most cases; switch to detail: "high" only for dense text documents or charts.</statement>
+        <rationale>Token cost scales linearly with detail level; auto is the default for cost-consciousness.</rationale>
+      </rule>
+      <rule>
+        <statement>For structured extraction, define the exact JSON schema in the prompt and use response_format: json_object — parse with try/except always.</statement>
+        <rationale>Schema adherence is not guaranteed; always validate and normalize output.</rationale>
+      </rule>
+      <rule>
+        <statement>For content moderation: set confidence threshold and route low-confidence results to human review, not to auto-action.</statement>
+        <rationale>Probabilistic moderation requires human validation on borderline cases.</rationale>
+      </rule>
+      <rule>
+        <statement>Cache base64-encoded images by content hash to avoid re-encoding on retry.</statement>
+        <rationale>Encoding is expensive; caching saves CPU and latency.</rationale>
+      </rule>
+      <rule>
+        <statement>For batch processing, use asyncio.gather() with concurrency limit (10-20 simultaneous requests) to avoid rate limits.</statement>
+        <rationale>Parallelism is 10-100x faster than sequential processing.</rationale>
+      </rule>
+      <rule>
+        <statement>Include a few-shot example in the prompt for classification tasks — vision models benefit significantly from concrete examples.</statement>
+        <rationale>Few-shot examples improve output consistency and reduce hallucination.</rationale>
+      </rule>
+    </section>
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>JSON mode does not guarantee schema adherence — a ContentModerator returning {"severity": "HIGH"} instead of "high" breaks downstream logic silently.</description>
+        <reason>Always normalize output fields to expected types and values.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Remote image URLs embedded in prompts are fetched by the API server; ensure URLs are publicly accessible and not behind auth.</description>
+        <reason>URLs behind auth or expired pre-signed URLs cause silent failures.</reason>
+      </antipattern>
+      <antipattern>
+        <description>An agent passing raw file paths assumes the runtime has read access — always validate path existence before open().</description>
+        <reason>Path errors should fail loudly, not silently propagate.</reason>
+      </antipattern>
+      <antipattern>
+        <description>The VisionService.batch_analyze() is sequential (one-by-one); for true parallelism, wrap with asyncio or concurrent.futures.</description>
+        <reason>Sequential batching is slow; parallelism is required for production performance.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Vision models occasionally "hallucinate" text in images (especially small or blurry text) — for high-stakes OCR, cross-validate with a second API call.</description>
+        <reason>Different prompts and models produce different outputs; validation prevents silent errors.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/document-analyzer.py" purpose="DocumentAnalyzer and VisionService with config dataclass"/>
+      <template path="templates/image-classifier.py" purpose="ImageClassifier with batch support"/>
+      <template path="templates/content-moderator.py" purpose="ContentModerator returning structured severity flags"/>
+      <template path="templates/prompt-extract.txt" purpose="Structured field extraction prompt"/>
+      <template path="templates/prompt-moderate.txt" purpose="Content moderation prompt with confidence threshold"/>
+    </templates>
+    <see-also>
+      <link href="https://platform.openai.com/docs/guides/vision"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/vision"/>
+      <link href="https://ai.google.dev/tutorials/python_quickstart#vision"/>
+      <link href="https://docs.aws.amazon.com/textract/latest/dg/what-is.html"/>
+      <link href="https://platform.openai.com/docs/guides/vision/calculating-costs"/>
+    </see-also>
+  </content>
+</methodology>
