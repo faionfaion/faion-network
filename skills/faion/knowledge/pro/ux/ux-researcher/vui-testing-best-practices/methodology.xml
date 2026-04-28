@@ -4,7 +4,7 @@
     <tier>pro</tier>
     <group>ux</group>
     <domain>ux-researcher</domain>
-    <summary>VUI testing validates voice interfaces across three accuracy tiers (ASR word-error rate, NLU intent+slot F1, dialog task completion) using a two-tier suite: deterministic scripted-fixture assertions and LLM-judge scoring for naturalness and repair quality. The method covers corpus construction, noise-injection stress testing, metric tracking, and CI integration.</summary>
+    <summary>VUI testing across three accuracy tiers with deterministic assertions and LLM-judge scoring.</summary>
     <difficulty>intermediate</difficulty>
     <created>2026-04-28</created>
     <tags>
@@ -22,7 +22,7 @@
   <content>
     <title>VUI Testing Best Practices</title>
 
-    <summary>VUI testing validates voice interfaces across three accuracy tiers (ASR word-error rate, NLU intent+slot F1, dialog task completion) using a two-tier suite: deterministic scripted-fixture assertions and LLM-judge scoring for naturalness and repair quality. The method covers corpus construction, noise-injection stress testing, metric tracking, and CI integration.</summary>
+    <summary>VUI testing across three accuracy tiers with deterministic assertions and LLM-judge scoring.</summary>
 
     <why>
       <p>Voice interfaces fail in ways that standard usability testing misses: ASR provider upgrades shift accuracy silently, no-input and barge-in edge cases break state machines, and naturalness degrades invisibly when prompts are repeated verbatim on retry. Separating test tiers (deterministic vs LLM-judge) and tracking ASR, NLU, and dialog completion independently isolates where regressions originate.</p>
@@ -30,18 +30,18 @@
 
     <when-to-use>
       <list>
-        <item>Pre-launch validation of a voice skill or custom agent: stress-test intent recognition and dialog flow.</item>
-        <item>Multilingual/accent expansion: regression-test ASR accuracy and prompt naturalness across locales.</item>
-        <item>Continuous regression: every NLU model or prompt change re-runs utterance fixture corpus.</item>
+        <item>Pre-launch validation of an Alexa Skill, Google Action, or custom voice agent: stress-test intent recognition + dialog flow before certification.</item>
+        <item>Multilingual/accent expansion: regression-test ASR accuracy and prompt naturalness across locales using batched audio fixtures.</item>
+        <item>Continuous regression: every voice prompt or NLU model change re-runs a corpus of utterance fixtures and asserts intent + slot extraction accuracy.</item>
         <item>Field testing prep: scripted noise-injection runs before recruiting real users.</item>
       </list>
     </when-to-use>
 
     <when-not-to-use>
       <list>
-        <item>Voice is a minor shortcut (tap-to-speak search) — standard usability testing covers it.</item>
-        <item>No working dialog model yet — start with Wizard-of-Oz prototyping.</item>
-        <item>Single-turn command testing only — an NLU benchmark (intent classification F1) is sufficient.</item>
+        <item>Voice is a single shortcut, not a primary interface (e.g., a "tap-and-hold to speak" search): standard usability testing covers it.</item>
+        <item>You don't yet have a working dialog model — start with Wizard-of-Oz prototyping, not test automation.</item>
+        <item>Single-turn command testing only: an NLU benchmark (intent classification F1) is enough; a full VUI test suite is overkill.</item>
       </list>
     </when-not-to-use>
 
@@ -142,6 +142,115 @@
       </antipattern>
 
       <reference path="templates/llm-judge-prompt.txt">Per-turn LLM judge prompt scoring intent_match, naturalness, brevity, error_recovery</reference>
+    </section>
+
+    <section name="where-it-fails">
+      <list>
+        <item>Synthetic TTS test audio does not replicate real human prosody — accuracy numbers are optimistic versus production traffic.</item>
+        <item>Background-noise injection in test fixtures misses physical room acoustics (reverb, multi-mic beamforming) that smart speakers actually face.</item>
+        <item>Long-context retention bugs only surface in conversations >10 turns; most automated suites stop at 3-5.</item>
+        <item>LLM-judges of "did the assistant respond appropriately?" are biased toward verbose, polite responses and miss curtness/friction issues.</item>
+        <item>Privacy: voice fixtures with real PII cannot be replayed in cloud ASR — leaks customer data.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Run a two-tier suite: (1) deterministic test cases over scripted utterance fixtures asserting intent/slot/dialog-state machine outcomes; (2) LLM-judge tier scoring response naturalness, error recovery, and goal completion against a rubric. A coordinator subagent picks which tier each test belongs in, runs them in parallel, and produces a report keyed by feature + locale + noise condition. Human reviewers sign off any LLM-judge regression before promoting to production.</p>
+    </section>
+
+    <section name="recommended-subagents">
+      <list>
+        <item>faion-ux-researcher-agent — designs the test corpus (utterance variants, persona-based scenarios, edge cases).</item>
+        <item>faion-testing-developer (from free/dev/testing-developer) — wires fixtures into pytest/jest harness, manages CI integration.</item>
+        <item>faion-accessibility-specialist — reviews coverage for accent diversity, speech impairment patterns, hearing-related response cues.</item>
+        <item>faion-llm-integration agent (from geek/ai/llm-integration) — runs the LLM-judge tier with stable rubric prompts.</item>
+      </list>
+    </section>
+
+    <section name="prompt-patterns">
+      <p>LLM-judge per turn:</p>
+      <prompt purpose="llm-judge"><![CDATA[
+Conversation so far: {transcript}
+User utterance: "{utterance}"
+Assistant response: "{response}"
+Score (1-5) on: intent_match, naturalness, brevity, error_recovery.
+Return JSON. Penalize if response invents facts not in {kb}.
+      ]]></prompt>
+
+      <p>Corpus generator:</p>
+      <prompt purpose="corpus-generator"><![CDATA[
+Generate 30 phrasings of the intent "{intent}" varying formality, length, and dialect (en-US, en-GB, en-IN). Include 5 ungrammatical variants real users might say.
+      ]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>ask (Alexa Skills Kit CLI) — Invoke skills, run simulator, fetch logs. npm i -g ask-cli; https://developer.amazon.com/en-US/docs/alexa/smapi/quick-start-alexa-skills-kit-command-line-interface.html</item>
+        <item>gactions — Google Actions Builder CLI. https://developers.google.com/assistant/conversational/df-asdk/actions-sdk/gactions-cli</item>
+        <item>OpenAI Whisper / whisper-cli — OSS ASR for fixture transcription + comparison. pip install openai-whisper.</item>
+        <item>ffmpeg — Mix utterance audio with ambient-noise stems for stress fixtures. distro package.</item>
+        <item>sox — Pitch/speed perturbation to simulate accent/age variation. distro package.</item>
+        <item>pytest-voice (custom harnesses) — Drive intent-resolution assertions in CI. n/a; build per-project.</item>
+        <item>Voiceflow CLI — Export dialog model + test cases. https://www.voiceflow.com</item>
+        <item>pyttsx3 / gTTS / ElevenLabs API — Synthesize test utterances at scale. pip install pyttsx3 gtts.</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>Alexa Developer Console + SMAPI (SaaS, yes) — Full REST API + ask-cli. Required for skill certification testing.</item>
+        <item>Actions on Google + gactions (SaaS, yes) — Google Assistant simulator + logs.</item>
+        <item>Voiceflow (SaaS, yes) — API for dialog export, test runs. Strong for prototype + regression suites.</item>
+        <item>Bespoken (SaaS, yes) — CLI + Jest plugin. Voice-app testing platform; CI-friendly.</item>
+        <item>Vocalize.ai (SaaS, partial) — Real-device farm, accent panels.</item>
+        <item>Pulse Labs (SaaS, partial) — Booked panels. Real-user voice testing recruitment.</item>
+        <item>Rasa (OSS, yes) — Full Python. Self-hosted NLU + test runner (rasa test).</item>
+        <item>OpenAI Whisper / Deepgram / AssemblyAI (OSS / SaaS, yes) — ASR ground-truthing; Deepgram has streaming API.</item>
+        <item>ElevenLabs (SaaS, yes) — API. High-quality TTS for fixture diversity.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Build the utterance corpus from real anonymized logs first, synthesize variants second; pure-LLM-generated corpora over-represent grammatical, in-domain phrasings.</item>
+        <item>Track three accuracy tiers separately: ASR (word error rate), NLU (intent + slot F1), and dialog (task completion). A regression in only one tier tells you exactly where to look.</item>
+        <item>Always include a "barge-in" test (user interrupts mid-prompt) and a "no input" test (timeout); these break dialog state machines more than utterance variation.</item>
+        <item>Pin ASR model versions in CI — provider-side ASR upgrades silently shift WER and break tests overnight.</item>
+        <item>For LLM-judge naturalness scoring, use pairwise comparison ("Is response A or B more natural?") not absolute 1-5 scores; pairwise is more reliable.</item>
+        <item>Run the same suite in two locales minimum even for monolingual launches — reveals locale-leaking copy and fallback bugs.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Don't let the LLM-judge see the expected answer when scoring naturalness — anchoring bias inflates scores. Score blind, then compute correctness separately.</item>
+        <item>ASR transcripts contain noise tokens ("[unintelligible]", "uh"); your assertion harness must normalize before exact-match. Use a fuzzy-match fallback with a logged threshold.</item>
+        <item>Synthetic TTS used for fixtures may use the same vendor as your TTS output → false-high naturalness. Use a different TTS engine for fixtures than for product output.</item>
+        <item>Latency: ASR + LLM judge per turn is slow. Parallelize per-test, but cap concurrency at provider rate limits or the suite hits 429s and silently passes.</item>
+        <item>Cost: a 1000-utterance × 3-noise × 2-locale × LLM-judge sweep is non-trivial. Tier the suite: smoke (10 utterances, every commit) → full (nightly) → field-replay (release).</item>
+        <item>Privacy: never send raw user-recorded audio to a cloud LLM judge. Transcribe first locally, redact PII, then judge the text.</item>
+      </list>
+    </section>
+
+    <section name="minimal-noise-injection-harness">
+      <code lang="bash"><![CDATA[
+# stress_corpus.sh — mix clean utterances with ambient noise stems at 3 SNRs
+set -euo pipefail
+CLEAN_DIR=fixtures/clean
+NOISE_DIR=fixtures/noise   # cafe.wav, traffic.wav, tv.wav
+OUT=fixtures/mixed
+mkdir -p "$OUT"
+for u in "$CLEAN_DIR"/*.wav; do
+  for n in "$NOISE_DIR"/*.wav; do
+    for snr in 20 10 5; do
+      base="$(basename "$u" .wav)_$(basename "$n" .wav)_${snr}dB.wav"
+      ffmpeg -y -i "$u" -i "$n" \
+        -filter_complex "[1:a]volume=-${snr}dB[bg];[0:a][bg]amix=inputs=2:duration=first" \
+        "$OUT/$base" 2>/dev/null
+    done
+  done
+done
+      ]]></code>
     </section>
 
     <templates>
