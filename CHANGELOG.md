@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 methodologies → methodology.xml (solo/ux/ux-ui-designer/wireframing, pro/ba/ba-core/agile-ba-frameworks, pro/ba/ba-core/ba-governance; feature-045 batch 3/3)
 - migrate: 3/3 solo/ux/ux-researcher methodologies → methodology.xml (error-prevention, error-recovery, heuristic-evaluation)
 - migrate: 3/3 solo/ux/ux-ui-designer methodologies → methodology.xml (content-audit, design-critique, error-prevention)
 - migrate: 3/3 solo/ux/ux-ui-designer methodologies → methodology.xml (heuristic-evaluation, information-architecture, journey-mapping)
