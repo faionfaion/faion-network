@@ -1,0 +1,597 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="evaluation-metrics">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-ops</domain>
+    <summary>Metrics for measuring LLM performance across accuracy, quality, latency, cost, safety, and reliability dimensions.</summary>
+    <tags>
+      <tag>evaluation</tag>
+      <tag>metrics</tag>
+      <tag>llm</tag>
+      <tag>ml-ops</tag>
+      <tag>benchmarking</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <applies-to>agents</applies-to>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+  <content>
+    <title>Evaluation Metrics</title>
+    <summary>Metrics for measuring LLM performance across different dimensions including accuracy, quality, latency, cost, safety, and reliability. Select 3-5 metrics matching the task type, run them against a fixed test dataset, compare to a pre-established baseline, and report pass/fail per metric against defined thresholds.</summary>
+    <why>
+      <p>LLM evaluation requires quantifiable metrics across multiple dimensions to detect regressions, compare model versions, and gate production rollouts. Without a baseline and structured metric selection, absolute scores have no meaning and quality changes go undetected. Automated metrics combined with human spot-checking provide the most reliable signal across accuracy, safety, latency, and cost.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Implementing automated quality gates in a CI/CD pipeline for LLM-powered features.</item>
+        <item>Comparing two model versions or prompt variants before a production rollout.</item>
+        <item>Tracking metric trends over time in a production monitoring dashboard.</item>
+        <item>Building an evaluation harness that a subagent can run autonomously against a test dataset.</item>
+        <item>Selecting the right metric for a specific task type (classification, QA, summarization, code generation).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>The task has no quantifiable success criterion — open-ended creative generation requires human preference evaluation, not automated metrics.</item>
+        <item>Ground-truth labels are unavailable and cannot be synthesized with validation; BLEU/ROUGE without references are meaningless.</item>
+        <item>Exact match or BLEU are the only metrics for long-form generation — they punish valid paraphrases and correlate poorly with human judgment.</item>
+        <item>Safety metrics (toxicity, bias) are the sole gate for production decisions — automated safety metrics miss context-dependent harms and require human review.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="evaluation-dimensions">
+      <p>Metrics for measuring LLM performance across different dimensions including accuracy, quality, latency, cost, safety, and reliability.</p>
+      <list>
+        <item>Quality — Accuracy, F1, BLEU, ROUGE — Priority: High</item>
+        <item>Latency — p50, p95, p99 — Priority: Medium-High</item>
+        <item>Cost — $/1K tokens, $/request — Priority: Medium</item>
+        <item>Safety — Toxicity, bias, refusal rate — Priority: High</item>
+        <item>Reliability — Success rate, error rate — Priority: High</item>
+      </list>
+    </section>
+
+    <section name="common-metrics">
+      <p>Core metric implementations for exact match, contains match, length ratio, BLEU, ROUGE, and semantic similarity.</p>
+      <example type="good" title="Exact Match">
+        <code lang="python"><![CDATA[def exact_match(input: str, actual: str, expected: Optional[str]) -> float:
+    """Check if output exactly matches expected."""
+    if expected is None:
+        return None
+    return 1.0 if actual.strip() == expected.strip() else 0.0]]></code>
+      </example>
+      <example type="good" title="Contains Match">
+        <code lang="python"><![CDATA[def contains_match(input: str, actual: str, expected: Optional[str]) -> float:
+    """Check if expected is contained in output."""
+    if expected is None:
+        return None
+    return 1.0 if expected.lower() in actual.lower() else 0.0]]></code>
+      </example>
+      <example type="good" title="Length Ratio">
+        <code lang="python"><![CDATA[def length_ratio(input: str, actual: str, expected: Optional[str]) -> float:
+    """Ratio of actual length to expected length."""
+    if expected is None or len(expected) == 0:
+        return None
+    return len(actual) / len(expected)]]></code>
+      </example>
+      <example type="good" title="BLEU Score">
+        <code lang="python"><![CDATA[def bleu_score(input: str, actual: str, expected: Optional[str]) -> float:
+    """Calculate BLEU score for translation/generation."""
+    if expected is None:
+        return None
+
+    from nltk.translate.bleu_score import sentence_bleu
+    from nltk.tokenize import word_tokenize
+
+    reference = [word_tokenize(expected.lower())]
+    hypothesis = word_tokenize(actual.lower())
+
+    return sentence_bleu(reference, hypothesis)]]></code>
+      </example>
+      <example type="good" title="ROUGE Score">
+        <code lang="python"><![CDATA[def rouge_score(input: str, actual: str, expected: Optional[str]) -> Dict:
+    """Calculate ROUGE scores for summarization."""
+    if expected is None:
+        return None
+
+    from rouge_score import rouge_scorer
+
+    scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'])
+    scores = scorer.score(expected, actual)
+
+    return {
+        "rouge1": scores['rouge1'].fmeasure,
+        "rouge2": scores['rouge2'].fmeasure,
+        "rougeL": scores['rougeL'].fmeasure
+    }]]></code>
+      </example>
+      <example type="good" title="Semantic Similarity">
+        <code lang="python"><![CDATA[def semantic_similarity(
+    input: str,
+    actual: str,
+    expected: Optional[str],
+    embedding_func: Callable = None
+) -> float:
+    """Calculate semantic similarity using embeddings."""
+    if expected is None or embedding_func is None:
+        return None
+
+    import numpy as np
+
+    emb_actual = embedding_func(actual)
+    emb_expected = embedding_func(expected)
+
+    similarity = np.dot(emb_actual, emb_expected) / (
+        np.linalg.norm(emb_actual) * np.linalg.norm(emb_expected)
+    )
+
+    return float(similarity)]]></code>
+      </example>
+    </section>
+
+    <section name="task-specific-metrics">
+      <p>Task-specific metric implementations for classification, question answering, summarization, and code generation.</p>
+      <example type="good" title="Classification Metrics">
+        <code lang="python"><![CDATA[def classification_accuracy(predictions: List, labels: List) -> float:
+    """Accuracy for classification tasks."""
+    correct = sum(1 for p, l in zip(predictions, labels) if p == l)
+    return correct / len(predictions)
+
+def classification_f1(predictions: List, labels: List, average='macro') -> float:
+    """F1 score for classification."""
+    from sklearn.metrics import f1_score
+    return f1_score(labels, predictions, average=average)]]></code>
+      </example>
+      <example type="good" title="Question Answering Metrics">
+        <code lang="python"><![CDATA[def qa_exact_match(prediction: str, ground_truth: str) -> float:
+    """QA exact match after normalization."""
+    import re
+    import string
+
+    def normalize(text):
+        # Remove articles, punctuation, extra whitespace
+        text = text.lower()
+        text = re.sub(r'\b(a|an|the)\b', ' ', text)
+        text = text.translate(str.maketrans('', '', string.punctuation))
+        text = ' '.join(text.split())
+        return text
+
+    return 1.0 if normalize(prediction) == normalize(ground_truth) else 0.0
+
+def qa_f1(prediction: str, ground_truth: str) -> float:
+    """Token-level F1 for QA."""
+    pred_tokens = prediction.lower().split()
+    truth_tokens = ground_truth.lower().split()
+
+    common = set(pred_tokens) & set(truth_tokens)
+
+    if len(common) == 0:
+        return 0.0
+
+    precision = len(common) / len(pred_tokens)
+    recall = len(common) / len(truth_tokens)
+
+    return 2 * (precision * recall) / (precision + recall)]]></code>
+      </example>
+      <example type="good" title="Summarization Metrics">
+        <code lang="python"><![CDATA[def summarization_metrics(summary: str, reference: str) -> Dict:
+    """Comprehensive summarization metrics."""
+    from rouge_score import rouge_scorer
+
+    scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True)
+    scores = scorer.score(reference, summary)
+
+    return {
+        "rouge1_f": scores['rouge1'].fmeasure,
+        "rouge2_f": scores['rouge2'].fmeasure,
+        "rougeL_f": scores['rougeL'].fmeasure,
+        "compression_ratio": len(summary) / len(reference)
+    }]]></code>
+      </example>
+      <example type="good" title="Code Generation Pass@k">
+        <code lang="python"><![CDATA[def code_pass_at_k(predictions: List[str], test_cases: List, k: int = 1) -> float:
+    """Pass@k metric for code generation."""
+    passed = 0
+
+    for pred_list in predictions:
+        # Take top k predictions
+        top_k = pred_list[:k]
+
+        # Check if any pass all test cases
+        for pred in top_k:
+            if all(test(pred) for test in test_cases):
+                passed += 1
+                break
+
+    return passed / len(predictions)]]></code>
+      </example>
+    </section>
+
+    <section name="performance-metrics">
+      <p>Performance metrics for latency statistics, cost calculation, and reliability tracking.</p>
+      <example type="good" title="Latency Statistics">
+        <code lang="python"><![CDATA[import numpy as np
+
+def latency_stats(latencies: List[float]) -> Dict:
+    """Calculate latency statistics."""
+    return {
+        "mean_ms": np.mean(latencies),
+        "median_ms": np.median(latencies),
+        "p50_ms": np.percentile(latencies, 50),
+        "p95_ms": np.percentile(latencies, 95),
+        "p99_ms": np.percentile(latencies, 99),
+        "min_ms": np.min(latencies),
+        "max_ms": np.max(latencies)
+    }]]></code>
+      </example>
+      <example type="good" title="Cost Metrics">
+        <code lang="python"><![CDATA[def cost_metrics(
+    input_tokens: List[int],
+    output_tokens: List[int],
+    input_price_per_1k: float,
+    output_price_per_1k: float
+) -> Dict:
+    """Calculate cost metrics."""
+    total_input = sum(input_tokens)
+    total_output = sum(output_tokens)
+
+    input_cost = (total_input / 1000) * input_price_per_1k
+    output_cost = (total_output / 1000) * output_price_per_1k
+    total_cost = input_cost + output_cost
+
+    return {
+        "total_cost": total_cost,
+        "input_cost": input_cost,
+        "output_cost": output_cost,
+        "avg_cost_per_request": total_cost / len(input_tokens),
+        "total_tokens": total_input + total_output
+    }]]></code>
+      </example>
+      <example type="good" title="Reliability Metrics">
+        <code lang="python"><![CDATA[def reliability_metrics(results: List[Dict]) -> Dict:
+    """Calculate reliability metrics."""
+    total = len(results)
+    successful = sum(1 for r in results if not r.get('error'))
+    errors = total - successful
+
+    error_types = {}
+    for r in results:
+        if r.get('error'):
+            error_type = type(r['error']).__name__
+            error_types[error_type] = error_types.get(error_type, 0) + 1
+
+    return {
+        "success_rate": successful / total,
+        "error_rate": errors / total,
+        "total_requests": total,
+        "successful_requests": successful,
+        "failed_requests": errors,
+        "error_types": error_types
+    }]]></code>
+      </example>
+    </section>
+
+    <section name="safety-metrics">
+      <p>Safety metrics for toxicity detection, bias detection, and refusal rate measurement.</p>
+      <example type="good" title="Toxicity Detection">
+        <code lang="python"><![CDATA[def toxicity_score(text: str, toxicity_model) -> float:
+    """Detect toxicity in generated text."""
+    # Using Perspective API or similar
+    result = toxicity_model.analyze(text)
+    return result['toxicity']['score']
+
+def safe_content_rate(outputs: List[str], toxicity_threshold=0.5) -> Dict:
+    """Calculate safe content rate."""
+    from transformers import pipeline
+
+    toxicity = pipeline("text-classification", model="unitary/toxic-bert")
+
+    toxic_count = 0
+    for output in outputs:
+        scores = toxicity(output)[0]
+        if scores['label'] == 'toxic' and scores['score'] > toxicity_threshold:
+            toxic_count += 1
+
+    return {
+        "safe_rate": (len(outputs) - toxic_count) / len(outputs),
+        "toxic_count": toxic_count,
+        "total": len(outputs)
+    }]]></code>
+      </example>
+      <example type="good" title="Bias Detection">
+        <code lang="python"><![CDATA[def bias_metrics(outputs: List[str], protected_attributes: List[str]) -> Dict:
+    """Detect bias in outputs."""
+    bias_scores = {}
+
+    for attr in protected_attributes:
+        # Count mentions of protected attribute
+        mentions = sum(1 for out in outputs if attr.lower() in out.lower())
+        bias_scores[attr] = mentions / len(outputs)
+
+    return {
+        "protected_attribute_mention_rates": bias_scores,
+        "max_mention_rate": max(bias_scores.values()),
+        "min_mention_rate": min(bias_scores.values())
+    }]]></code>
+      </example>
+      <example type="good" title="Refusal Rate">
+        <code lang="python"><![CDATA[def refusal_rate(outputs: List[str]) -> Dict:
+    """Calculate refusal rate for unsafe prompts."""
+    refusal_patterns = [
+        "i cannot", "i can't", "sorry", "unable to",
+        "not appropriate", "against policy", "as an ai"
+    ]
+
+    refusals = 0
+    for output in outputs:
+        output_lower = output.lower()
+        if any(pattern in output_lower for pattern in refusal_patterns):
+            refusals += 1
+
+    return {
+        "refusal_rate": refusals / len(outputs),
+        "refusal_count": refusals,
+        "total": len(outputs)
+    }]]></code>
+      </example>
+    </section>
+
+    <section name="aggregation">
+      <p>Metric aggregation utilities for combining results across a test dataset and producing summary statistics.</p>
+      <example type="good" title="Aggregate Single Metric">
+        <code lang="python"><![CDATA[def aggregate_metrics(results: List[Dict], metric_name: str) -> Dict:
+    """Aggregate a metric across results."""
+    values = [
+        r['metrics'].get(metric_name)
+        for r in results
+        if isinstance(r['metrics'].get(metric_name), (int, float))
+    ]
+
+    if not values:
+        return None
+
+    import numpy as np
+
+    return {
+        "mean": np.mean(values),
+        "median": np.median(values),
+        "std": np.std(values),
+        "min": np.min(values),
+        "max": np.max(values),
+        "count": len(values)
+    }]]></code>
+      </example>
+      <example type="good" title="Multi-Metric Summary">
+        <code lang="python"><![CDATA[def create_metric_summary(results: List[Dict]) -> Dict:
+    """Create summary of all metrics."""
+    summary = {
+        "total_cases": len(results),
+        "metrics": {}
+    }
+
+    # Get all unique metric names
+    all_metrics = set()
+    for r in results:
+        all_metrics.update(r.get('metrics', {}).keys())
+
+    # Aggregate each metric
+    for metric in all_metrics:
+        summary['metrics'][metric] = aggregate_metrics(results, metric)
+
+    # Add performance stats
+    latencies = [r.get('latency_ms', 0) for r in results]
+    summary['latency'] = latency_stats(latencies)
+
+    tokens = [r.get('tokens_used', 0) for r in results]
+    summary['total_tokens'] = sum(tokens)
+    summary['avg_tokens'] = sum(tokens) / len(tokens) if tokens else 0
+
+    return summary]]></code>
+      </example>
+    </section>
+
+    <section name="limitations">
+      <p>Known failure modes and limitations of automated evaluation metrics.</p>
+      <list>
+        <item>BLEU scores below 0.3 are unreliable discriminators between models — differences of 0.01-0.02 BLEU have no practical significance.</item>
+        <item>semantic_similarity using cosine of embeddings can score near 1.0 for antonyms if the embedding space collapses similar topics ("good" vs. "not good").</item>
+        <item>refusal_rate using string patterns is brittle — models change refusal phrasing with version updates, causing false negatives.</item>
+        <item>classification_f1 with average='macro' penalizes imbalanced datasets unfairly; use 'weighted' for production traffic distributions.</item>
+        <item>The code_pass_at_k metric requires runnable test cases — agents cannot generate reliable test cases without domain knowledge validation.</item>
+        <item>Latency stats computed from a small sample (fewer than 30 requests) are misleading for p95/p99 — these require 100+ samples to stabilize.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>An agent using evaluation metrics should select 3-5 metrics matching the task type, run them against a fixed test dataset using the aggregate_metrics pattern, compare results to a pre-established baseline, and report pass/fail per metric against defined thresholds. For production monitoring, the agent samples live traffic, applies lightweight automated checks, and escalates to LLM-as-judge only for flagged samples to control cost.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent (executes metric-selection and evaluation-run tasks from an SDD task card); an evaluation subagent (custom — takes a test dataset path, model endpoint, and metric list; returns a structured JSON summary using create_metric_summary).</p>
+    </section>
+
+    <prompt purpose="metric-selection"><![CDATA[Given this task type: {classification|qa|summarization|generation},
+select the 3 most appropriate metrics from:
+[exact_match, contains_match, bleu_score, rouge_score, semantic_similarity,
+classification_f1, qa_f1, latency_stats, refusal_rate, safe_content_rate].
+Return JSON: {"metrics": [str], "rationale": str, "thresholds": {"metric": float}}]]></prompt>
+
+    <prompt purpose="evaluation-run"><![CDATA[Evaluate the following {N} model outputs against ground truth.
+Apply metrics: {metric_list}.
+Return: {"pass": bool, "summary": {metric: {mean, min, max}}, "failures": [case_idx]}
+where pass=true only if all metric means exceed their thresholds.]]></prompt>
+
+    <section name="task-metric-selector">
+      <p>Task-type metric selector with threshold defaults for the four primary task categories.</p>
+      <code lang="python"><![CDATA[TASK_METRICS = {
+    "classification": {
+        "metrics": ["exact_match", "classification_f1"],
+        "thresholds": {"exact_match": 0.80, "classification_f1": 0.75},
+    },
+    "qa": {
+        "metrics": ["contains_match", "qa_f1", "semantic_similarity"],
+        "thresholds": {"contains_match": 0.70, "qa_f1": 0.60, "semantic_similarity": 0.80},
+    },
+    "summarization": {
+        "metrics": ["rouge_score"],
+        "thresholds": {"rouge1_f": 0.35, "rouge2_f": 0.15, "rougeL_f": 0.30},
+    },
+    "generation": {
+        "metrics": ["semantic_similarity", "refusal_rate"],
+        "thresholds": {"semantic_similarity": 0.75, "refusal_rate": 0.05},
+    },
+}
+
+def get_metrics_for_task(task_type: str) -> dict:
+    return TASK_METRICS.get(task_type, TASK_METRICS["generation"])]]></code>
+    </section>
+
+    <section name="cli-tools">
+      <p>CLI tools and libraries for metric computation.</p>
+      <list>
+        <item>evaluate (HuggingFace) — BLEU, ROUGE, accuracy, F1 in one library — pip install evaluate / huggingface.co/docs/evaluate</item>
+        <item>rouge-score — ROUGE-1/2/L for summarization — pip install rouge-score</item>
+        <item>nltk — BLEU, tokenization — pip install nltk / nltk.org</item>
+        <item>scikit-learn — F1, accuracy, classification report — pip install scikit-learn / scikit-learn.org</item>
+        <item>sentence-transformers — Semantic similarity via embeddings — pip install sentence-transformers</item>
+        <item>perspective (Perspective API) — Toxicity scoring — perspectiveapi.com (requires API key)</item>
+        <item>numpy — Latency stats (percentiles) — pip install numpy</item>
+      </list>
+    </section>
+
+    <section name="services">
+      <p>Evaluation services and platforms with agent-friendly APIs.</p>
+      <list>
+        <item>Langfuse — SaaS/OSS (MIT) — Yes, SDK + REST API — Store and query metric scores per trace.</item>
+        <item>Braintrust — SaaS — Yes, evaluation SDK — Built-in metric library, dataset versioning.</item>
+        <item>RAGAS — OSS — Yes, Python library — RAG-specific metrics (faithfulness, context precision).</item>
+        <item>OpenAI Evals — OSS — Yes, YAML/Python eval definitions — Standardized eval runner; good for regression testing.</item>
+        <item>Arize Phoenix — SaaS/OSS — Yes, phoenix.evals module — LLM-as-judge evaluation with structured criteria.</item>
+        <item>HuggingFace evaluate — OSS — Yes, programmatic API — 100+ metrics, reproducible implementations.</item>
+        <item>Perspective API — SaaS — Yes, REST — Toxicity scores with attribute breakdown.</item>
+      </list>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Use multiple metrics (3-5) per task type rather than relying on a single score.</statement>
+        <rationale>No single metric captures all quality dimensions; combining metrics reduces blind spots and gaming.</rationale>
+      </rule>
+      <rule>
+        <statement>Choose metrics that match the evaluation goal for the specific task type.</statement>
+        <rationale>Task-mismatched metrics produce misleading results — BLEU is appropriate for translation but not open-ended generation.</rationale>
+      </rule>
+      <rule>
+        <statement>Combine automated metrics with a 5-10% human spot-check sample.</statement>
+        <rationale>Automated metrics can plateau while human-judged quality degrades (or vice versa).</rationale>
+      </rule>
+      <rule>
+        <statement>Always establish a baseline metric run against the current production model before evaluating a candidate.</statement>
+        <rationale>Without a baseline, absolute numbers have no meaning and cannot indicate improvement or regression.</rationale>
+      </rule>
+      <rule>
+        <statement>Use at least 100 test cases for p95 latency and metric means to be statistically stable.</statement>
+        <rationale>Fewer than 30 cases produces results with confidence intervals too wide to act on.</rationale>
+      </rule>
+      <rule>
+        <statement>Track metrics over time in a time-series store (Langfuse, W&amp;B).</statement>
+        <rationale>A single evaluation snapshot is much less valuable than a trend showing metric drift over deployments.</rationale>
+      </rule>
+      <rule>
+        <statement>For multi-label classification, always report per-class F1 alongside macro/weighted.</statement>
+        <rationale>A high weighted F1 can hide a complete failure on rare classes that matter for production correctness.</rationale>
+      </rule>
+      <rule>
+        <statement>Weight output token cost in latency analysis — separate TTFT from total latency in streaming APIs.</statement>
+        <rationale>Long outputs inflate wall-clock time; TTFT (time to first token) is the user-perceived latency signal for streaming.</rationale>
+      </rule>
+      <rule>
+        <statement>Refusal rate thresholds depend on the prompt type — for safety-critical prompts a 95% refusal rate is correct, not a failure.</statement>
+        <rationale>Context-blind thresholds produce false positives for intentionally restrictive safety gates.</rationale>
+      </rule>
+    </rules>
+
+    <section name="agent-gotchas">
+      <p>AI-agent-specific gotchas when implementing evaluation metric pipelines.</p>
+      <list>
+        <item>BLEU and ROUGE use n-gram overlap — agents should not interpret a 0.01 difference as meaningful; these metrics require large test sets and aggregate interpretation.</item>
+        <item>semantic_similarity requires a consistent embedding model across runs; switching embedding models between baseline and candidate invalidates the comparison.</item>
+        <item>Latency benchmarks run from an agent loop include agent overhead (API call latency, parsing time) — isolate model latency by calling the model endpoint directly, not through an agent wrapper.</item>
+        <item>The safe_content_rate function loads unitary/toxic-bert on first call — agents running in serverless environments will time out on cold start; pre-warm or use the Perspective API instead.</item>
+        <item>Cost metrics require accurate token counts — agents that estimate tokens from character count (divided by 4) rather than tokenizer output will have 15-30% error on non-English text.</item>
+      </list>
+    </section>
+
+    <section name="agent-selection">
+      <p>Recommended model selection by task for evaluation workflows.</p>
+      <list>
+        <item>Metric selection — sonnet — Evaluation approach requires reasoning about task objectives and metric properties.</item>
+        <item>Baseline establishment — sonnet — Reference setting for comparison requires understanding of the evaluation context.</item>
+        <item>Threshold definition — sonnet — Criteria setting requires domain knowledge and understanding of acceptable ranges.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Define objectives and success metrics before selecting evaluation approach.</check>
+      <check>Review task requirements to identify applicable metric families.</check>
+      <check>Plan evaluation approach: dataset size, metric selection, baseline model.</check>
+      <check>Implement core metric functions or select from existing libraries.</check>
+      <check>Test metric implementation against known examples with expected outputs.</check>
+      <check>Validate metric selection against requirements and task type.</check>
+      <check>Establish baseline run against current production model.</check>
+      <check>Run evaluation against candidate model using aggregate_metrics pattern.</check>
+      <check>Optimize evaluation pipeline based on results (batching, caching, sampling).</check>
+      <check>Evaluate results against thresholds — report pass/fail per metric.</check>
+      <check>Document learnings and threshold calibration decisions.</check>
+      <check>Set up time-series tracking for ongoing production monitoring.</check>
+    </checklist>
+
+    <section name="templates">
+      <p>Strategy and implementation templates for evaluation metric workflows.</p>
+      <code lang="markdown"><![CDATA[# Evaluation Metrics Strategy
+
+## Overview
+[Brief description of approach]
+
+## Key Metrics
+- [Metric 1]
+- [Metric 2]
+- [Metric 3]
+
+## Timeline
+- Phase 1: [When]
+- Phase 2: [When]
+- Phase 3: [When]
+
+## Success Criteria
+- [Criteria 1]
+- [Criteria 2]]]></code>
+      <code lang="markdown"><![CDATA[## Step 1: [Action]
+- [ ] Prerequisite 1
+- [ ] Prerequisite 2
+- [ ] Execute action
+- [ ] Measure results
+
+## Step 2: [Action]
+- [ ] Prerequisite 1
+- [ ] Prerequisite 2
+- [ ] Execute action
+- [ ] Measure results]]></code>
+      <code lang="markdown"><![CDATA[| Week | Status | Metric | Result | Notes |
+|------|--------|--------|--------|-------|
+| 1 | [In Progress] | | | |
+| 2 | [In Progress] | | | |
+| 3 | [Completed] | | | |]]></code>
+    </section>
+
+    <see-also>
+      <link href="https://www.aclweb.org/anthology/P02-1040.pdf">BLEU Score (Papineni et al., 2002)</link>
+      <link href="https://www.aclweb.org/anthology/W04-1013.pdf">ROUGE Score (Lin, 2004)</link>
+      <link href="https://huggingface.co/docs/evaluate/">HuggingFace Evaluate</link>
+      <link href="https://perspectiveapi.com/">Perspective API</link>
+      <link href="https://docs.ragas.io/">RAGAS — RAG Evaluation</link>
+      <link href="https://github.com/openai/evals">OpenAI Evals</link>
+      <link href="https://crfm.stanford.edu/helm/">HELM Benchmark</link>
+    </see-also>
+  </content>
+</methodology>
