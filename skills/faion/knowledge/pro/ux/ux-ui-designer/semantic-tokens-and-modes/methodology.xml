@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="semantic-tokens-and-modes">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>Structure design tokens in three layers (reference, system, component) with a pipeline: author → export → transform → consume. Every semantic token must be defined in every mode with linting.</summary>
+    <tags>
+      <tag>design-tokens</tag>
+      <tag>semantic-tokens</tag>
+      <tag>modes</tag>
+      <tag>style-dictionary</tag>
+      <tag>theming</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Semantic Tokens and Modes</title>
+    <summary>A methodology for structuring design tokens in three explicit layers — reference (raw palette/scale), system (semantic, mode-aware), component (component-scoped) — and driving them through a four-stage pipeline: author (Figma Variables) → export (REST API) → transform (Style Dictionary) → consume (CSS/Swift/Compose). Every semantic token must be defined in every mode (light, dark, high-contrast, brand). Raw reference values must never appear in product code; lint rules are mandatory.</summary>
+    <why>
+      <p>Semantic tokens decouple visual intent from raw values, enabling light/dark/high-contrast, multi-brand, multi-platform, and density modes to be applied as config overlays rather than code forks. Without them, adding a dark mode requires a full codebase grep-and-replace. Naming governance prevents the most expensive failure mode: token proliferation that fragments rather than unifies the system.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Adding light/dark/high-contrast modes to an existing token system.</item>
+        <item>Multi-brand or white-label products where one library serves several visual identities.</item>
+        <item>Multi-platform builds (web + iOS + Android) that share semantic intent but diverge in raw values.</item>
+        <item>Density modes (compact/comfortable) for data-dense enterprise UIs.</item>
+        <item>Migrating from raw CSS custom properties to a tokens-as-source-of-truth pipeline.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-theme product with no foreseeable theming requirement — semantic-token indirection adds no payoff.</item>
+        <item>Pure marketing campaigns or one-off pages outside the system.</item>
+        <item>Component libraries below ~30 components — overhead exceeds savings.</item>
+        <item>Motion/animation primitives — semantic naming for durations rarely earns its keep.</item>
+      </list>
+    </when-not-to-use>
+    <section name="three-layer-model">
+      <p>Maintain exactly three token layers — reference (raw palette/scale), system (semantic, mode-aware), component (component-scoped) — and forbid direct references from component layer to reference layer.</p>
+      <rule>
+        <statement>Maintain exactly three token layers — reference (raw palette/scale), system (semantic, mode-aware), component (component-scoped) — and forbid direct references from component layer to reference layer.</statement>
+        <rationale>Jumping from component to reference bypasses the semantic abstraction. When the palette changes, every component that referenced raw colors must update individually. The system layer is the isolation boundary that makes theme swaps cheap.</rationale>
+      </rule>
+      <rule>
+        <statement>One semantic token encodes one intent; never let a single token do duty for two different roles (e.g., both action primary and brand primary).</statement>
+        <rationale>Dual-purpose tokens create coupling: a contrast fix for the action color changes the brand color, or a rebrand breaks interactive affordances. Separate intents into separate tokens.</rationale>
+      </rule>
+      <example type="good">
+        <note>action.primary → button fill, link color. brand.primary → logo tint, hero background. Changing action.primary for contrast does not affect brand.primary.</note>
+      </example>
+      <example type="bad">
+        <note>color.primary used for both button fill and logo tint. A contrast fix for the button breaks the logo color.</note>
+      </example>
+    </section>
+    <section name="mode-types">
+      <p>Every semantic token must have a value defined in every mode within its collection; a missing mode value must fail the CI build.</p>
+      <rule>
+        <statement>Every semantic token must have a value defined in every mode within its collection; a missing mode value must fail the CI build.</statement>
+        <rationale>Missing mode values cause runtime fallback to the default mode — which is often invisible until users switch themes. Build-time enforcement catches this at the authoring step.</rationale>
+      </rule>
+      <list>
+        <item>Color modes: Light, Dark, High Contrast</item>
+        <item>Typography modes: Desktop, Mobile, Compact</item>
+        <item>Density modes: Default, Compact, Comfortable</item>
+        <item>Brand modes: Brand A, Brand B, White-label</item>
+      </list>
+      <templates>
+        <template path="templates/check-modes.mjs" purpose="CI gate: fails build if any semantic token is missing a value in any required mode"/>
+      </templates>
+    </section>
+    <section name="dtcg-format-and-pipeline">
+      <p>Use the W3C Design Tokens Community Group format ($value, $type) for all token files so tooling remains interoperable across Style Dictionary, Tokens Studio, and Specify. Generate all platform outputs (tokens.css, tokens.swift, tokens.compose.kt) from the pipeline; never hand-write per-platform token files.</p>
+      <rule>
+        <statement>Use the W3C Design Tokens Community Group format ($value, $type) for all token files so tooling remains interoperable across Style Dictionary, Tokens Studio, and Specify.</statement>
+        <rationale>Proprietary token formats lock teams into a single tool. The DTCG format is the emerging standard; adopting it now prevents migration cost when tooling converges.</rationale>
+      </rule>
+      <rule>
+        <statement>Generate all platform outputs (tokens.css, tokens.swift, tokens.compose.kt) from the pipeline; never hand-write per-platform token files.</statement>
+        <rationale>Hand-written per-platform files diverge from source immediately after the first unsynced edit. Generated outputs are always consistent with the canonical source.</rationale>
+      </rule>
+      <rule>
+        <statement>Lint all source files to reject raw hex values and direct references to reference tokens; redirect violations to the semantic equivalent.</statement>
+        <rationale>A component that uses var(--color-blue-500) directly defeats the theme-switching mechanism. Lint must be automated and block PRs — design review alone misses these.</rationale>
+      </rule>
+    </section>
+    <section name="four-stage-pipeline">
+      <p>Author in Figma Variables → export via REST API → transform with Style Dictionary → consume in CSS/Swift/Compose. Agents excel at stages 2-3 and at lint enforcement in stage 4. Keep semantic naming decisions in a human design council; agents propose, humans ratify.</p>
+      <rule>
+        <statement>Snapshot every mode in visual regression (Chromatic, Percy) on every token pipeline run; broken dark mode is the most common token-system regression.</statement>
+        <rationale>Dark and high-contrast mode changes are invisible in code diff — only visual comparison catches an accidental color swap. Automated visual regression at the CI level is the only reliable safety net.</rationale>
+      </rule>
+    </section>
+    <section name="naming-governance">
+      <p>Use a data-theme attribute switcher (e.g., [data-theme="dark"]) rather than separate stylesheets; eases mid-page mode previews and iframe embedding. Treat brand modes as config data, not code: adding a new white-label tenant must require only a config row in the token source, not a deploy.</p>
+      <rule>
+        <statement>Use a data-theme attribute switcher (e.g., [data-theme="dark"]) rather than separate stylesheets; eases mid-page mode previews and iframe embedding.</statement>
+        <rationale>Separate stylesheets require re-loading or toggling link elements, which causes a flash of unstyled content. Attribute-based switching is instantaneous and composable within a single document.</rationale>
+      </rule>
+      <rule>
+        <statement>Treat brand modes as config data, not code: adding a new white-label tenant must require only a config row in the token source, not a deploy.</statement>
+        <rationale>Code-based brand forks create N+1 maintenance burden — every system update must be applied to every brand fork. Config-overlay brand modes keep the system unified.</rationale>
+      </rule>
+    </section>
+    <section name="agent-prompt-patterns">
+      <example type="good">
+        <note>Mode coverage: "Given figma-variables.json from collection Colors with modes Light, Dark, HC, list semantic tokens missing in any mode. Propose a value using WCAG-AA contrast against the corresponding surface.* token in that mode. Do not invent reference tokens; reuse existing palette."</note>
+      </example>
+      <example type="good">
+        <note>Style Dictionary config: "Convert tokens/semantic.json to style-dictionary config that emits tokens.css with [data-theme='dark'] { ... } blocks per mode and tokens.swift with a Color.Theme struct."</note>
+      </example>
+    </section>
+    <section name="ai-agent-gotchas">
+      <p>Agents often break token system consistency or accessibility. Common failure modes include minting new reference colors instead of reusing the palette, duplicating all tokens when adding a brand mode, missing platform-specific transforms, and writing CSS that uses raw reference-token values directly.</p>
+      <antipattern>
+        <description>Agent minting new reference colors instead of reusing existing palette when adding a token.</description>
+        <reason>Reference token proliferation defeats the palette abstraction. Lint must reject reference tokens that duplicate existing palette entries within a configurable delta.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent duplicating all tokens when asked to add a brand mode instead of overlaying only the delta values.</description>
+        <reason>Full duplication creates N copies of every token, each requiring independent maintenance. A mode overlay contains only the tokens that differ from the base mode.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Style Dictionary configs generated by agents missing platform-specific transforms (e.g., size/pxToPt for iOS).</description>
+        <reason>Without the iOS pxToPt transform, point values are treated as pixel values, producing layout bugs that are only visible on physical devices — not in simulators.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent writing CSS like var(--color-blue-500) directly in component files.</description>
+        <reason>Direct reference-token usage in components bypasses the semantic layer and breaks on theme switch. Lint rule must redirect to the semantic equivalent (e.g., var(--action-primary)).</reason>
+      </antipattern>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Maintain three layers explicitly: reference (palette / scale), system (semantic, mode-aware), component (component-scoped). Forbid jumping from component → reference.</item>
+        <item>One semantic token = one intent. Resist "primary" doing duty for both action colour and brand colour; split into action.primary and brand.primary.</item>
+        <item>Co-locate the token's accessibility intent in metadata (via contrastPair metadata); contrast is a property of the token, not a reviewer's memory.</item>
+        <item>Generate platform output (tokens.css, tokens.swift, tokens.compose.kt) — never hand-write per platform.</item>
+        <item>Adopt the W3C Design Tokens Community Group format (DTCG / $value, $type) so tooling stays interoperable.</item>
+        <item>Add a data-theme attribute switcher rather than separate stylesheets; eases mid-page mode previews.</item>
+        <item>Treat brand modes as data, not code — a new white-label tenant should be a config row, not a deploy.</item>
+        <item>Snapshot every mode in visual regression (Chromatic / Percy) — broken dark mode is the most common token-system regression.</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://tr.designtokens.org/format/">W3C Design Tokens Community Group spec</link>
+      <link href="https://help.figma.com/hc/en-us/articles/15339657135383">Figma Guide to variables</link>
+      <link href="https://medium.com/eightshapes-llc/naming-tokens-in-design-systems-9e86c7444676">Nathan Curtis — Naming Tokens in Design Systems</link>
+      <link href="https://spectrum.adobe.com/page/design-tokens/">Adobe Spectrum tokens</link>
+      <link href="https://m3.material.io/foundations/design-tokens/overview">Material Design 3 token system</link>
+      <link href="https://styledictionary.com/info/architecture/">Style Dictionary architecture</link>
+    </see-also>
+  </content>
+</methodology>
