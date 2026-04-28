@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="design-doc-advanced-patterns">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd-planning</domain>
+    <summary>Advanced design sections: component hierarchy, dependencies, security, performance, test pyramid, migrations. Each section traces back to spec requirements.</summary>
+    <tags>
+      <tag>design-doc</tag>
+      <tag>architecture</tag>
+      <tag>advanced-patterns</tag>
+      <tag>security</tag>
+      <tag>performance</tag>
+    </tags>
+    <category>design</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>Design Document Advanced Patterns</title>
+    <summary>Extends a base design document with six advanced sections: component hierarchy (frontend), dependency table (new packages and external services), security mitigations table, performance considerations table, test pyramid strategy, and migration/rollback plan. Each section traces back to FR-X or NFR-X items from the spec. Performance targets must come from spec NFRs. Security mitigations must reference AD-X decisions.</summary>
+    <why>
+      <p>Base design docs describe the happy-path architecture. Advanced sections handle the failure modes: XSS, CSRF, SQL injection, rate limiting, database migrations, rollback procedures. Without these sections, implementation teams make ad-hoc security and migration decisions that are inconsistent across features and impossible to review as a unit.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Feature has a frontend component with more than 2 nesting levels in the component hierarchy.</item>
+        <item>Security attack surface requires explicit mitigation table (auth, XSS, CSRF, injection).</item>
+        <item>New external dependencies or third-party services are introduced.</item>
+        <item>Performance targets are specified in NFRs and must be traced to design decisions.</item>
+        <item>Feature involves database schema changes or backward compatibility concerns.</item>
+        <item>Full test pyramid (unit + integration + E2E) must be planned at design time.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure backend feature with no UI. Skip the component hierarchy section entirely.</item>
+        <item>Greenfield project with no existing patterns. Establish base design patterns first; advanced patterns assume known constraints.</item>
+        <item>Spike output. Advanced patterns assume known NFRs; spikes produce NFRs, not consume them.</item>
+        <item>Security section would be identical to a recently completed feature. Reference the prior design.md instead of duplicating.</item>
+      </list>
+    </when-not-to-use>
+    <section name="component-hierarchy-frontend">
+      <rule testable="true">
+        <statement>Document component hierarchy as a tree (no ASCII art diagrams). Include a TypeScript interface definition for each component's props.</statement>
+        <rationale>Props interfaces become the source of truth. Implementation copies from design, not the reverse. Missing interfaces lead to inconsistent prop shapes across components.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Skip this section entirely for pure backend features.</statement>
+        <rationale>Component hierarchy adds no value when there is no UI to design.</rationale>
+      </rule>
+      <example type="good" title="Component hierarchy with interfaces">
+        <note>AuthLayout contains RegisterForm (props: onSuccess, onError?) which contains EmailInput, PasswordInput, PasswordStrengthMeter, SubmitButton. Each component has a TypeScript interface in the design doc before implementation begins.</note>
+      </example>
+      <antipattern>
+        <description>ASCII art component tree with box-drawing characters.</description>
+        <reason>Violates the no ASCII art documentation convention and is not parseable by agents.</reason>
+      </antipattern>
+    </section>
+    <section name="dependency-table">
+      <rule testable="true">
+        <statement>List every new package and external service with: name, version (pinned range), purpose, license, and whether a fallback exists for local development.</statement>
+        <rationale>Undocumented dependencies are discovered at build time or in production. License tracking is a legal requirement for enterprise deployments.</rationale>
+      </rule>
+      <example type="good" title="Dependency documentation">
+        <note>Package: bcrypt ^5.1.0 | Purpose: password hashing | License: MIT | Local fallback: N/A (required). External service: SendGrid | Purpose: email delivery | Required: Yes | Local fallback: log to console in dev.</note>
+      </example>
+    </section>
+    <section name="security-mitigations-table">
+      <rule testable="true">
+        <statement>Include a security table with columns: Concern | Mitigation | AD Reference. Every mitigation must reference a specific AD-X architectural decision. Cover at minimum: password storage, XSS, CSRF, SQL injection, and rate limiting.</statement>
+        <rationale>Security mitigations without AD references are not traceable. Code reviewers cannot verify that the mitigation was actually implemented as designed.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use only NFR-X security values from spec.md for targets (e.g., bcrypt cost 12). Never invent security parameters.</statement>
+        <rationale>Agents default to generic use bcrypt without cost factor. The cost factor is a tunable performance/security tradeoff that must be specified in the spec.</rationale>
+      </rule>
+      <antipattern>
+        <description>Security section that says use best practices for authentication.</description>
+        <reason>Not traceable, not implementable, not reviewable. Every mitigation needs a specific technique and an AD reference.</reason>
+      </antipattern>
+    </section>
+    <section name="performance-considerations-table">
+      <rule testable="true">
+        <statement>For each performance concern: specify the concern, strategy, target (taken directly from NFR-X in spec.md), and AD reference. Never invent target numbers. If NFR is absent, write TBD, NFR required.</statement>
+        <rationale>Agents invent latency targets when spec NFRs are absent. Invented targets create false confidence and cannot be used as acceptance criteria.</rationale>
+      </rule>
+      <example type="good" title="Performance documentation">
+        <note>Login latency | connection pooling | less than 500ms p95 (from NFR-001) | AD-004. Token validation | JWT stateless | less than 10ms (from NFR-002) | AD-002.</note>
+      </example>
+    </section>
+    <section name="test-pyramid">
+      <rule testable="true">
+        <statement>Define three test layers: unit (coverage % target), integration (list all API endpoints to test with happy path and error path), E2E (list critical user flows, not just happy paths). Coverage targets must be project constants from constitution.md.</statement>
+        <rationale>E2E suites that cover only happy paths miss the highest-impact failure modes. Integration tests with only happy paths leave error handling unverified.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>List specific test file paths for at least the unit layer. Agents cannot generate tests without knowing where they go.</statement>
+        <rationale>Vague write tests instructions produce tests in arbitrary locations that break CI path configuration.</rationale>
+      </rule>
+    </section>
+    <section name="migration-strategy">
+      <rule testable="true">
+        <statement>Include a migration section only when design.md lists schema changes (new tables, altered columns, index changes). If no schema changes exist, explicitly state No migration required.</statement>
+        <rationale>Agents frequently generate boilerplate migration sections even when no schema changes exist. Explicit not applicable prevents confusion.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Migration strategy must include: rollout plan (staged percentages or feature flag), rollback procedure (step-by-step), and backward compatibility statement.</statement>
+        <rationale>Rollout without rollback is a deployment risk. Backward compatibility statement prevents breaking changes from going unreviewed.</rationale>
+      </rule>
+    </section>
+    <section name="agentic-workflow">
+      <p>An agent reads spec.md (FR-X, NFR-X) and the base design structure and extends the design with advanced sections: component hierarchy from the UI requirements, security table from the NFR security items, performance considerations from NFR performance items, and testing strategy aligned to the test pyramid. The agent writes each phase as a section in design.md. The faion-sdd-executor-agent then reads the completed design.md to generate implementation tasks that reference the specific AD-X decisions.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-sdd-executor-agent. Reads design.md advanced sections during task execution; uses security and performance constraints to write code.</item>
+        <item>Architecture/design subagent (claude-opus-4-7). Required for dependency analysis, security mitigations, migration planning.</item>
+      </list>
+    </section>
+    <section name="prompt-patterns">
+      <p>For extending design with advanced sections:</p>
+      <code lang="text"><![CDATA[
+Read {feature}/spec.md for NFR-X security and performance requirements.
+Read {feature}/design.md for existing AD-X decisions.
+Add the following sections to design.md:
+Phase 8: Component hierarchy (tree format, no ASCII art) with TypeScript interface per component.
+Phase 10: Security table — Concern | Mitigation | AD Reference. Cover: XSS, CSRF, injection, auth, rate limiting.
+Phase 11: Performance table — Concern | Strategy | Target (from NFR) | AD Reference.
+Phase 12: Test pyramid — unit coverage % target, integration endpoints list, E2E critical flows.
+Phase 13: Migration strategy (only if schema changes exist in design).
+Do not invent NFR values. Use only values from spec.md NFR-X items.
+      ]]></code>
+      <p>For traceability review:</p>
+      <code lang="text"><![CDATA[
+Review design.md for traceability gaps.
+Output a table: AD-X | Traces to FR-X | Has security implication? | Performance target set?
+Flag any AD without FR trace and any NFR without a corresponding design strategy.
+      ]]></code>
+    </section>
+    <section name="tools-and-services">
+      <p>CLI tools for advanced design work:</p>
+      <list>
+        <item>playwright. E2E test scaffolding from critical flow list. Install: npm i -D @playwright/test. Docs: https://playwright.dev</item>
+        <item>vitest. Unit test framework matching design test strategy. Install: npm i -D vitest. Docs: https://vitest.dev</item>
+        <item>supertest. Integration test for API endpoints in design. Install: npm i -D supertest. Docs: https://github.com/ladjs/supertest</item>
+        <item>owasp-threat-dragon. Threat modeling to feed security section. https://owasp.org/www-project-threat-dragon/</item>
+      </list>
+      <p>External services:</p>
+      <list>
+        <item>Figma. Component hierarchy can be extracted from Figma frames; agents read via API.</item>
+        <item>Storybook. Component specs in stories; agents can read story files for hierarchy.</item>
+        <item>Sentry. Performance baselines from prod data to populate NFR targets in design.</item>
+        <item>Datadog. Same as Sentry for performance data.</item>
+        <item>AWS Well-Architected Tool. Security pillar provides standard mitigations; not agent-native.</item>
+      </list>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Component interface TypeScript definitions in Phase 8 become the source of truth. Agents copy them into implementation, not the reverse.</item>
+        <item>Security table must reference a specific AD-X for each mitigation. Use bcrypt without AD-003 is not traceable.</item>
+        <item>Performance targets must come from NFR-X in spec.md. Never let agents invent latency numbers.</item>
+        <item>Test pyramid percentages (80% unit, 100% integration endpoints, critical E2E) should be project constants in constitution.md.</item>
+        <item>Migration strategy is only needed when design.md lists schema changes. If no schema changes, omit Phase 13.</item>
+        <item>Check features/done/ for prior designs before writing security or performance sections. Reuse mitigations across features.</item>
+        <item>Design review (human) must happen before impl-plan is written. Advanced sections are the main review surface.</item>
+      </list>
+    </section>
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents will add ASCII art component trees by default. Explicitly require tree format, no ASCII art in the prompt.</item>
+        <item>Security mitigations without AD references are common agent outputs. Require | AD Reference column in the prompt.</item>
+        <item>Component interface definitions in design.md are often incomplete for optional props and event handlers. Require full TypeScript interfaces including optional fields.</item>
+        <item>Agents skip migration strategy when no explicit prompt exists, even when design lists schema changes. Add a check step.</item>
+        <item>E2E critical flows list often covers only the happy path. Require error and edge flows explicitly.</item>
+        <item>Performance strategy column often says use caching without specifying cache layer, TTL, or invalidation. Require concrete strategy per row.</item>
+      </list>
+    </section>
+    <section name="checklist-for-quality-gates">
+      <p>Phase-by-phase checklist and quality gates for each advanced design section:</p>
+      <p>Prerequisites before starting:</p>
+      <list>
+        <item>spec.md with FR-X and NFR-X items is approved (human sign-off exists).</item>
+        <item>base design.md with AD-X architectural decisions is present.</item>
+        <item>constitution.md is accessible for test coverage targets and tech standards.</item>
+        <item>features/done/ reviewed for similar security or performance patterns to reuse.</item>
+      </list>
+      <p>Component Hierarchy (skip if no UI):</p>
+      <list>
+        <item>Tree structure uses plain indentation. No ASCII art box-drawing characters.</item>
+        <item>Each component has a TypeScript interface definition (props, optional props marked with ?).</item>
+        <item>State management approach is documented (local state, context, store).</item>
+        <item>Component behavior documented: validation triggers, loading states, event handlers.</item>
+        <item>All component file paths specified (e.g., src/components/auth/RegisterForm.tsx).</item>
+      </list>
+      <p>Dependency Table:</p>
+      <list>
+        <item>Every new npm/pip/gem package listed with pinned version range.</item>
+        <item>License noted for each package.</item>
+        <item>External services listed with Required/Optional and local dev fallback.</item>
+        <item>No packages added that duplicate existing dependencies (check constitution.md).</item>
+      </list>
+      <p>Security Mitigations:</p>
+      <list>
+        <item>Table columns present: Concern | Mitigation | AD Reference.</item>
+        <item>Mandatory concerns covered: password storage, XSS, CSRF, SQL injection, rate limiting, input validation.</item>
+        <item>Every mitigation references a specific AD-X decision.</item>
+        <item>All security parameters (bcrypt cost, rate limit thresholds) sourced from spec.md NFR-X. None invented.</item>
+        <item>Domain-specific threats considered (business logic abuse, multi-tenant isolation if applicable).</item>
+      </list>
+      <p>Performance Considerations:</p>
+      <list>
+        <item>Table columns present: Concern | Strategy | Target | AD Reference.</item>
+        <item>Every target value traced to a specific NFR-X from spec.md.</item>
+        <item>No invented numbers. Absent NFR means TBD, NFR required.</item>
+        <item>Strategy column is concrete (e.g., connection pooling, max 20 connections) not generic (e.g., use caching).</item>
+      </list>
+      <p>Test Pyramid:</p>
+      <list>
+        <item>Unit layer: coverage target % (from constitution.md), specific test file paths listed.</item>
+        <item>Integration layer: all API endpoints listed with happy path and at least one error path.</item>
+        <item>E2E layer: critical flows listed including error flows and edge cases (not only happy paths).</item>
+        <item>Mocking strategy documented (which external services are mocked in tests).</item>
+      </list>
+      <p>Migration Strategy:</p>
+      <list>
+        <item>If design.md includes no schema changes, write No migration required and skip this section.</item>
+        <item>Data migration steps (if applicable): numbered, reversible where possible.</item>
+        <item>Backward compatibility: explicitly stated as maintained or broken (with migration path).</item>
+        <item>Rollout plan: stages with percentages or feature flag names.</item>
+        <item>Rollback procedure: numbered steps to undo the deployment.</item>
+      </list>
+      <p>Final Review Gate:</p>
+      <list>
+        <item>Design review (human) must occur before impl-plan is written.</item>
+        <item>Advanced sections are the primary review surface.</item>
+        <item>No impl-plan authoring until design has human sign-off.</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://www.industrialempathy.com/posts/design-docs-at-google/"/>
+      <link href="https://google.github.io/eng-practices/review/"/>
+      <link href="https://aws.amazon.com/architecture/well-architected/"/>
+      <link href="https://kentcdodds.com/blog/the-testing-trophy-and-testing-classifications"/>
+      <link href="https://owasp.org/www-project-threat-dragon/"/>
+      <link href="https://stripe.com/docs/api"/>
+    </see-also>
+  </content>
+</methodology>
