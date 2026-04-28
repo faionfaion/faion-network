@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="llamaindex-basics">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Master LlamaIndex fundamentals: data connectors, node parsers, indexing strategies, and query engines for building scalable RAG pipelines in under 50 lines of code.</summary>
+    <tags>
+      <tag>llamaindex</tag>
+      <tag>rag</tag>
+      <tag>retrieval</tag>
+      <tag>indexing</tag>
+      <tag>document-parsing</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-24</created>
+  </metadata>
+
+  <content>
+    <title>LlamaIndex Basics</title>
+
+    <summary>LlamaIndex is a data indexing framework that sits between your documents and an LLM. It loads documents from diverse sources (files, web, APIs), chunks them into nodes with metadata, embeds them, stores them in a vector or hybrid index, and provides query engines to retrieve and synthesize responses. Unlike LangChain (which orchestrates multi-step workflows), LlamaIndex specializes in the retrieval layer and ships production-ready defaults that work in 50 lines of code.</summary>
+
+    <why>
+      <p>Building RAG systems from scratch means solving: (1) document loading from N source types, (2) smart chunking that preserves document structure, (3) metadata extraction (titles, summaries, keywords), (4) embedding and indexing, (5) retrieval ranking, and (6) response synthesis. LlamaIndex bundles all six into a single dependency with sane defaults, letting you go from filesystem to production retrieval in a weekend.</p>
+      <p>LlamaIndex's strength over writing custom Python is the ecosystem: 1500+ connectors for reading from Slack, Confluence, Notion, GitHub, databases; multiple node parsers for semantic or hierarchical chunking; out-of-the-box metadata extraction; and a unified QueryEngine interface that abstracts over vector stores, keyword search, and knowledge graphs. For document-centric RAG, it's the fastest path to integration.</p>
+      <p>The framework separates concerns cleanly: data connectors read sources, node parsers chunk, embedders vectorize, indexes store, and query engines retrieve. Each is independently swappable, so you can start with defaults and swap in Qdrant, Pinecone, or a local Chroma later without rewriting.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building a RAG pipeline over a static or semi-static document corpus (PDFs, Markdown, DOCX, web pages).</item>
+        <item>Implementing document Q&amp;A where retrieval quality matters more than workflow complexity.</item>
+        <item>Prototyping needs to be operational in under 50 lines  -  LlamaIndex defaults cover most tuning later.</item>
+        <item>The corpus is on disk or accessible via URL; batch ingestion is acceptable (not real-time streaming).</item>
+        <item>You want node-level metadata (titles, keywords, summaries) auto-extracted before indexing.</item>
+        <item>A team is already invested in the LlamaIndex ecosystem and wants to avoid mixing frameworks.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Complex multi-step workflows with branching logic  -  use LangGraph instead.</item>
+        <item>Agent-driven tool use is the primary concern  -  LlamaIndex has agents but LangGraph is more expressive.</item>
+        <item>Real-time streaming ingestion (Kafka, CDC)  -  LlamaIndex ingestion is batch-oriented.</item>
+        <item>Pure LLM generation with no retrieval needed  -  use Anthropic SDK directly; adding LlamaIndex is overhead.</item>
+        <item>Team already standardized on LangChain; mixing frameworks adds maintenance burden.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="rag-pipeline-architecture">
+      <p>A LlamaIndex RAG pipeline has two phases: (1) ingestion (offline, once or incremental) and (2) querying (online, per user request).</p>
+      <p>Ingestion flow:</p>
+      <list>
+        <item>Documents (PDFs, markdown, web pages) → Data Connector (reads source)</item>
+        <item>→ Node Parser (chunks document into nodes, preserves metadata)</item>
+        <item>→ Embedding Model (vectorizes each node)</item>
+        <item>→ Vector Store (persists indexed nodes)</item>
+      </list>
+      <p>Query flow:</p>
+      <list>
+        <item>User query → Query Engine (entry point)</item>
+        <item>→ Retriever (searches vector store, returns top-k nodes by similarity)</item>
+        <item>→ Response Synthesizer (synthesizes an LLM response given query + context)</item>
+        <item>→ Response (text + source citations)</item>
+      </list>
+    </section>
+
+    <section name="core-components">
+      <p>LlamaIndex decomposes into four core components, each independently configurable.</p>
+
+      <rule testable="true">
+        <statement>Every LlamaIndex pipeline MUST initialize Settings (LLM and embedding model) globally at startup, not per-index, to avoid accidental model mixing and to ensure consistent behavior across multiple retrieval sessions.</statement>
+        <rationale>Default `gpt-4o` / `text-embedding-3-small` hardcodes OpenAI; you must override Settings.llm and Settings.embed_model explicitly to use Claude or other providers. Initializing once prevents bugs where different indices use different models.</rationale>
+      </rule>
+
+      <example type="good" title="Global Settings initialization">
+        <code lang="python"><![CDATA[
+from llama_index.core import Settings
+from llama_index.llms.anthropic import Anthropic
+from llama_index.embeddings.openai import OpenAIEmbedding
+
+Settings.llm = Anthropic(model="claude-opus-4-5")
+Settings.embed_model = OpenAIEmbedding(model="text-embedding-3-small")
+
+# Now all indices/queries use these globally
+index1 = VectorStoreIndex.from_documents(docs1)
+index2 = VectorStoreIndex.from_documents(docs2)
+# Both use Anthropic + OpenAI embeddings without per-index override
+]]></code>
+      </example>
+
+      <example type="bad" title="Per-index LLM override (inconsistent)">
+        <code lang="python"><![CDATA[
+# Avoid: hardcoding LLM per index
+query_engine1 = index1.as_query_engine(llm=OpenAI(model="gpt-4o"))
+query_engine2 = index2.as_query_engine(llm=Claude(model="claude-opus"))
+# Mixing models across indices creates hard-to-debug inconsistencies
+]]></code>
+      </example>
+    </section>
+
+    <section name="data-connectors">
+      <p>Data Connectors (Readers) load documents from diverse sources. SimpleDirectoryReader is the most common; specialized readers exist for web, databases, and SaaS apps. LlamaHub lists 1500+ community connectors.</p>
+
+      <rule testable="true">
+        <statement>Recursive document loading via SimpleDirectoryReader MUST set `recursive=True` and specify `required_exts` to include only supported file formats. After loading, log the document count and fail-fast if count is zero (silent skipping of unsupported files is a common bug).</statement>
+        <rationale>SimpleDirectoryReader silently skips unsupported formats (e.g., .docx if python-docx is not installed). Zero documents passed to an embedding model wastes tokens and creates an empty index that returns no results.</rationale>
+      </rule>
+
+      <example type="good" title="Recursive load with validation">
+        <code lang="python"><![CDATA[
+from llama_index.core import SimpleDirectoryReader
+
+documents = SimpleDirectoryReader(
+    input_dir="./data",
+    recursive=True,
+    required_exts=[".pdf", ".docx", ".md", ".txt"],
+    exclude_hidden=True,
+).load_data()
+
+print(f"Loaded {len(documents)} documents")
+assert len(documents) > 0, "No documents loaded; check file formats and paths"
+]]></code>
+      </example>
+
+      <example type="bad" title="Silent file skip">
+        <code lang="python"><![CDATA[
+# Avoid: no validation
+documents = SimpleDirectoryReader(input_dir="./data").load_data()
+# If .pdf files are present but python-pdf package is missing, silently loads 0 docs
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Re-ingesting the same directory repeatedly via SimpleDirectoryReader without incremental sync or dedup logic, creating duplicate nodes in the index.</description>
+        <reason>SimpleDirectoryReader has no incremental mtime tracking; re-running ingestion appends new nodes without deduplicating modified files. Either (a) clear the index and re-ingest, (b) implement a version hash check before re-indexing, or (c) use LlamaCloud for managed incremental updates.</reason>
+      </antipattern>
+    </section>
+
+    <section name="node-parsers-chunking">
+      <p>Node Parsers chunk documents into Nodes. Each Node carries text, metadata (title, keywords, summary), and relationships (parent/child for hierarchical parsers). The choice of parser and chunk size heavily impacts retrieval quality.</p>
+
+      <rule testable="true">
+        <statement>Chunk size MUST be tuned to the embedding and LLM context window. For typical RAG with Claude or GPT-4: use 512-1024 tokens (approximately 2000-4000 characters). Overlap SHOULD be 10-20% of chunk_size. For tasks dominated by Q&amp;A, smaller chunks (256-512) improve precision; for summarization, larger chunks (1024-2048) preserve context.</statement>
+        <rationale>Too-small chunks fragment information; too-large chunks dilute signal in retrieval. The rule of thumb: chunk_size ≈ context_window / top_k / 2. For a 128k context window and top_k=5, chunk_size ≈ 12,800 tokens. In practice, 512-1024 is the safe middle ground and avoids over-indexing.</rationale>
+      </rule>
+
+      <example type="good" title="SentenceSplitter with reasonable chunk size">
+        <code lang="python"><![CDATA[
+from llama_index.core.node_parser import SentenceSplitter
+
+parser = SentenceSplitter(
+    chunk_size=1024,      # Characters per chunk
+    chunk_overlap=200,    # 20% overlap
+    paragraph_separator="\n\n",
+)
+
+nodes = parser.get_nodes_from_documents(documents)
+print(f"Created {len(nodes)} nodes from {len(documents)} documents")
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Semantic chunking via SemanticSplitterNodeParser MUST only be used in offline ingestion pipelines, not in online query loops. Semantic splitting requires an embedding call per sentence boundary; on large corpora (>10k nodes), this cost is 10-100x an embedding call per document.</statement>
+        <rationale>Semantic splitting improves retrieval quality by respecting topic boundaries, but the cost (one embedding per potential chunk boundary) makes it expensive at query time. Reserve semantic splitting for batch ingestion and use simpler SentenceSplitter at query time if needed.</rationale>
+      </rule>
+
+      <example type="bad" title="Semantic splitting in online query">
+        <code lang="python"><![CDATA[
+# Avoid: semantic splitting on every user query
+from llama_index.core.node_parser import SemanticSplitterNodeParser
+
+def query_handler(user_query: str):
+    # Semantic parse the query (expensive per request)
+    parser = SemanticSplitterNodeParser(...)
+    query_nodes = parser.get_nodes_from_documents([Document(text=user_query)])
+    # Cost: one embedding per sentence. Do this once at ingestion, not per query.
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Hierarchical chunking (HierarchicalNodeParser) SHOULD be used when documents have multi-level structure (sections, subsections, paragraphs) and retrieval needs to balance specificity with context. Parent nodes preserve full section context; child nodes provide granular match points.</statement>
+        <rationale>Hierarchical parsing creates a tree of nodes (coarse → fine-grained). Retrievers can choose parent nodes for context-rich results or child nodes for precise matches. This flexibility is particularly valuable for long documents (100+ pages) where a flat chunk list loses structure.</rationale>
+      </rule>
+
+      <example type="good" title="Hierarchical node parser">
+        <code lang="python"><![CDATA[
+from llama_index.core.node_parser import HierarchicalNodeParser
+
+parser = HierarchicalNodeParser.from_defaults(
+    chunk_sizes=[2048, 512, 128],  # Parent → child hierarchy
+)
+
+nodes = parser.get_nodes_from_documents(documents)
+
+# Nodes carry parent-child relationships
+for node in nodes:
+    if node.metadata.get("level") == "child":
+        parent_id = node.relationships.get("parent")
+        # Retrievers can load parent for additional context
+]]></code>
+      </example>
+    </section>
+
+    <section name="metadata-extraction">
+      <p>LlamaIndex can auto-extract metadata (titles, summaries, keywords, questions answered) using LLM-based extractors. This enriches node metadata and enables filter-based retrieval (e.g., retrieve only nodes with keyword="security").</p>
+
+      <rule testable="true">
+        <statement>Metadata extraction via TitleExtractor, SummaryExtractor, and KeywordExtractor MUST run as an offline batch ingestion step, not inline during agent queries. LLM extraction is expensive (one LLM call per node); amortize the cost by running extraction once at ingestion time.</statement>
+        <rationale>Running extraction per query multiplies latency and API costs. Extract metadata once during ingestion, persist it alongside nodes, and use it for filtering and re-ranking during retrieval.</rationale>
+      </rule>
+
+      <example type="good" title="Batch metadata extraction via IngestionPipeline">
+        <code lang="python"><![CDATA[
+from llama_index.core.extractors import (
+    TitleExtractor, QuestionsAnsweredExtractor,
+    SummaryExtractor, KeywordExtractor,
+)
+from llama_index.core.ingestion import IngestionPipeline
+
+pipeline = IngestionPipeline(
+    transformations=[
+        SentenceSplitter(chunk_size=512, chunk_overlap=50),
+        TitleExtractor(nodes=5),
+        QuestionsAnsweredExtractor(questions=3),
+        SummaryExtractor(summaries=["self"]),
+        KeywordExtractor(keywords=5),
+    ]
+)
+
+nodes = pipeline.run(documents=documents)
+
+# Nodes now have .metadata["title"], .metadata["keywords"], etc.
+for node in nodes:
+    print(node.metadata)  # {'title': '...', 'keywords': [...], ...}
+]]></code>
+      </example>
+    </section>
+
+    <section name="index-types-and-storage">
+      <p>LlamaIndex supports multiple index types: VectorStore (semantic similarity), Keyword (sparse BM25), KnowledgeGraph (entity/relationship), Tree (hierarchical), and Summary. VectorStore is the default and most common.</p>
+
+      <rule testable="true">
+        <statement>VectorStoreIndex held in memory MUST be persisted to disk via `index.storage_context.persist(PERSIST_DIR)` after first build. Re-embedding the same corpus on every run wastes tokens and time. Always load from persistent storage if it exists; only re-index if source documents change.</statement>
+        <rationale>In-memory indices are lost on restart. Persisting to disk (local files or a remote vector store) avoids re-embedding and lets multiple agents reuse the same index. Check for persisted index existence before ingesting.</rationale>
+      </rule>
+
+      <example type="good" title="Persistent index with load-or-create logic">
+        <code lang="python"><![CDATA[
+import os
+from llama_index.core import (
+    VectorStoreIndex, SimpleDirectoryReader,
+    StorageContext, load_index_from_storage
+)
+
+PERSIST_DIR = "./index_storage"
+INPUT_DIR = "./data"
+
+if os.path.exists(PERSIST_DIR):
+    # Load existing index
+    storage_context = StorageContext.from_defaults(persist_dir=PERSIST_DIR)
+    index = load_index_from_storage(storage_context)
+else:
+    # Create and persist
+    docs = SimpleDirectoryReader(INPUT_DIR).load_data()
+    index = VectorStoreIndex.from_documents(docs)
+    index.storage_context.persist(PERSIST_DIR)
+
+query_engine = index.as_query_engine(similarity_top_k=5)
+response = query_engine.query("What is the main topic?")
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>For large corpora (>10k documents), MUST use a remote vector store (Qdrant, Pinecone, Weaviate) instead of in-memory storage. In-memory indices will run out of RAM and queries will slow linearly with corpus size.</statement>
+        <rationale>Vector stores like Qdrant provide: (a) disk-backed storage that doesn't exhaust RAM, (b) approximate nearest-neighbor search (HNSW, IVF) that scales to millions of vectors, and (c) metadata filtering to narrow search space. LlamaIndex integrates all via `vector_store` parameter to `VectorStoreIndex`.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Building a large in-memory VectorStoreIndex and expecting it to stay resident across server restarts without explicit persistence.</description>
+        <reason>In-memory indices are garbage-collected on restart. Always persist to a vector store (local SQLite + embeddings or remote Qdrant) and reload on startup.</reason>
+      </antipattern>
+    </section>
+
+    <section name="query-engines-and-retrieval">
+      <p>Query engines are the user-facing API. They accept a query string, retrieve nodes, synthesize a response, and return (text, source_nodes). Customization happens via response_mode (compact, tree_summarize, accumulate) and post-processing (similarity cutoff, custom rerankers).</p>
+
+      <rule testable="true">
+        <statement>Query engines SHOULD add a SimilarityPostprocessor with a cutoff (typically 0.7) to drop low-confidence nodes before synthesis. This prevents hallucination from weak context and improves response precision.</statement>
+        <rationale>Vector similarity is a soft ranking; a node with score 0.5 is not meaningfully similar. Dropping nodes below a cutoff ensures the synthesizer only sees confident matches. Tuning the cutoff trades recall (fewer results) for precision (higher confidence).</rationale>
+      </rule>
+
+      <example type="good" title="Query with similarity postprocessor">
+        <code lang="python"><![CDATA[
+from llama_index.core.postprocessor import SimilarityPostprocessor
+
+query_engine = index.as_query_engine(
+    similarity_top_k=10,
+    response_mode="compact",
+    node_postprocessors=[
+        SimilarityPostprocessor(similarity_cutoff=0.7)
+    ]
+)
+
+response = query_engine.query("What is X?")
+# Only nodes with similarity >= 0.7 are used for synthesis
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Response mode MUST be chosen per task: use `compact` (default) for Q&amp;A when context fits in model window, use `tree_summarize` for long documents (>10k tokens) where truncation risks losing critical content, use `accumulate` for exhaustive multi-step reasoning.</statement>
+        <rationale>Compact mode truncates context to fit the model window without warning, risking data loss. Tree summarize recursively summarizes retrieved nodes before synthesis. Accumulate loops through all retrieved nodes. Wrong choice silently truncates or explodes latency.</rationale>
+      </rule>
+
+      <example type="bad" title="Default compact mode on long documents">
+        <code lang="python"><![CDATA[
+# Default: compact mode
+query_engine = index.as_query_engine(similarity_top_k=10)
+response = query_engine.query("Summarize the 500-page report")
+# Compact mode truncates to fit context window; critical pages may be dropped
+]]></code>
+      </example>
+
+      <example type="good" title="Tree summarize for long documents">
+        <code lang="python"><![CDATA[
+query_engine = index.as_query_engine(
+    similarity_top_k=10,
+    response_mode="tree_summarize"  # Recursively summarize large contexts
+)
+response = query_engine.query("Summarize the 500-page report")
+# All retrieved nodes are summarized in a tree, no silent truncation
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Never inspecting `response.source_nodes` to verify retrieval quality, blindly trusting node scores.</description>
+        <reason>Vector similarity scores are relative, not absolute. A node with score 0.9 might still be off-topic if the query is ambiguous. Always inspect source nodes and verify that the synthesizer received good context.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-integration">
+      <p>Agents orchestrate LlamaIndex pipelines. An agent receives a task, invokes LlamaIndex to build or load an index, queries it, and returns structured results. The agent owns orchestration (retry, fallback, validation); LlamaIndex owns retrieval.</p>
+
+      <rule testable="true">
+        <statement>For pipeline tasks, use a subagent that owns the full ingestion step  -  load → parse → index → persist  -  and returns the storage path. Another subagent then loads the persisted index and queries it. This separation keeps each agent's responsibility narrow and testable.</statement>
+        <rationale>Monolithic agents that ingest and query in one pass are harder to debug and reuse. Splitting into (ingestion agent, query agent) makes it easy to re-ingest when source documents change, and to reuse the index across multiple query agents.</rationale>
+      </rule>
+
+      <example type="good" title="Ingestion subagent returning storage path">
+        <code lang="python"><![CDATA[
+# Subagent 1: Ingest
+def ingest_agent(input_dir: str, output_dir: str):
+    from llama_index.core import (
+        VectorStoreIndex, SimpleDirectoryReader, StorageContext
+    )
+    docs = SimpleDirectoryReader(input_dir).load_data()
+    index = VectorStoreIndex.from_documents(docs)
+    index.storage_context.persist(output_dir)
+    return {"storage_path": output_dir, "node_count": len(index.docstore.docs)}
+
+# Subagent 2: Query
+def query_agent(storage_path: str, query: str):
+    from llama_index.core import load_index_from_storage, StorageContext
+    storage_context = StorageContext.from_defaults(persist_dir=storage_path)
+    index = load_index_from_storage(storage_context)
+    qe = index.as_query_engine()
+    response = qe.query(query)
+    return {
+        "answer": str(response),
+        "sources": [{"text": n.text[:100], "score": n.score} for n in response.source_nodes]
+    }
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Query agents MUST validate response.source_nodes to ensure the synthesizer received good context. If top sources are below a similarity threshold, return a "low confidence" response instead of hallucinating from weak context.</statement>
+        <rationale>Agents are expected to recognize when they don't have enough information and say so. Blindly returning a response synthesized from weak context erodes trust.</rationale>
+      </rule>
+
+      <example type="good" title="Query agent with confidence check">
+        <code lang="python"><![CDATA[
+def query_agent_with_confidence(storage_path: str, query: str, min_confidence: float = 0.7):
+    storage_context = StorageContext.from_defaults(persist_dir=storage_path)
+    index = load_index_from_storage(storage_context)
+    qe = index.as_query_engine(node_postprocessors=[SimilarityPostprocessor(similarity_cutoff=min_confidence)])
+    response = qe.query(query)
+
+    if not response.source_nodes or response.source_nodes[0].score < min_confidence:
+        return {"confidence": "low", "answer": "I don't have sufficient context to answer this question."}
+
+    return {
+        "confidence": "high",
+        "answer": str(response),
+        "sources": [{"text": n.text[:100], "score": n.score} for n in response.source_nodes]
+    }
+]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always persist the index to disk after first build  -  re-embedding on every run costs tokens and time.</item>
+        <item>Set Settings.llm and Settings.embed_model globally at startup, not per-index, to avoid accidental model mixing.</item>
+        <item>Use IngestionPipeline with TitleExtractor + KeywordExtractor for production retrieval; metadata improves filter-based retrieval precision significantly.</item>
+        <item>For large corpora (>10k docs), point the vector store at Qdrant or Pinecone  -  in-memory index will OOM.</item>
+        <item>Tune chunk_size per content type: 256-512 for factual Q&amp;A, 1024-2048 for summarization tasks.</item>
+        <item>Add a SimilarityPostprocessor with cutoff 0.7+ to drop low-confidence nodes before synthesis  -  prevents hallucination from weak context.</item>
+        <item>Use query_engine.aquery() (async) when serving multiple users; sync queries block the event loop.</item>
+        <item>Never trust node scores alone  -  always inspect response.source_nodes in evaluation to verify retrieval quality.</item>
+        <item>Implement a version hash or mtime check to detect when documents change, triggering re-indexing.</item>
+        <item>Batch LLM-based extraction (TitleExtractor, SummaryExtractor) as offline batch, not inline during agent queries.</item>
+        <item>For ReActAgent, set max_iterations explicitly or the agent can spin on ambiguous tool descriptions.</item>
+        <item>Log document count after SimpleDirectoryReader.load_data() and fail-fast if zero (silent skipping of unsupported formats is a gotcha).</item>
+        <item>Add a RateLimiter or batch with asyncio.gather + semaphore during bulk ingestion to avoid embedding model rate limits.</item>
+        <item>Use response_mode="tree_summarize" for long documents where truncation risks dropping critical content; avoid default compact mode.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://docs.llamaindex.ai/en/stable/"/>
+      <link href="https://llamahub.ai/"/>
+      <link href="https://github.com/run-llama/llama_index"/>
+      <link href="https://cloud.llamaindex.ai/"/>
+      <ref slug="llamaindex-indexes-queries"/>
+      <ref slug="rag-engineer-basics"/>
+    </see-also>
+  </content>
+</methodology>
