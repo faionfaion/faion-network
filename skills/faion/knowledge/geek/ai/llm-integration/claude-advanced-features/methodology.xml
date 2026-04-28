@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="claude-advanced-features">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Extended Thinking, Computer Use, Prompt Caching, and Batch API are four distinct Claude capabilities that trade off cost, latency, or complexity for specific gains.</summary>
+    <tags>
+      <tag>claude</tag>
+      <tag>advanced-features</tag>
+      <tag>extended-thinking</tag>
+      <tag>computer-use</tag>
+      <tag>prompt-caching</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Claude Advanced Features</title>
+    <summary>Extended Thinking exposes the model's reasoning chain for complex problems. Computer Use lets Claude control a desktop or browser via screenshot + action loops. Prompt Caching reduces input token cost by up to 90% for repeated stable prefixes. Batch API cuts cost by 50% for workloads that tolerate up to 24-hour latency.</summary>
+    <why>
+      <p>Each feature targets a concrete cost or capability gap. Extended Thinking improves accuracy on multi-step reasoning without requiring custom chain-of-thought scaffolding. Computer Use automates GUI-only workflows that have no API. Prompt Caching makes large-context pipelines economically viable when the same system prompt is reused across many calls. Batch API makes offline enrichment and evaluation affordable at scale.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Extended Thinking: multi-step math, architecture decisions, complex debugging, strategic planning where visible reasoning improves trust.</item>
+        <item>Computer Use: automating legacy GUI apps, browser automation, or desktop testing in sandboxed environments.</item>
+        <item>Prompt Caching: any pipeline that calls Claude repeatedly with the same system prompt or document context (stable prefix > 1024 tokens).</item>
+        <item>Batch API: offline enrichment, content generation, nightly analysis — any workload where 24-hour latency is acceptable.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Extended Thinking: simple extraction, classification, or templating — adds latency and tokens without benefit.</item>
+        <item>Computer Use: production systems with live credentials or databases — always requires human-in-the-loop; never unattended.</item>
+        <item>Prompt Caching: prompts that change on every call — cache never hits; you pay write cost with no read benefit.</item>
+        <item>Batch API: real-time user-facing responses — 24-hour SLA makes it unsuitable for synchronous pipelines.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="Extended Thinking Rules and Patterns">
+      <p>Rules for enabling and consuming Claude Extended Thinking: budget sizing, max_tokens constraint, multi-turn preservation, and usage monitoring.</p>
+
+      <section name="Budget and Token Rules">
+        <rule>
+          <statement>Set max_tokens to at least budget_tokens + 2048 to avoid truncating the answer block.</statement>
+          <rationale>Thinking tokens count toward the max_tokens budget. If max_tokens equals budget_tokens, the answer block may be cut off mid-sentence with no error.</rationale>
+        </rule>
+        <rule>
+          <statement>Start with budget_tokens=5000; increase only when answer quality is insufficient.</statement>
+          <rationale>More thinking budget does not always produce better answers. Start low and tune empirically to avoid unnecessary cost.</rationale>
+        </rule>
+        <rule>
+          <statement>Do not set budget_tokens=0 to disable thinking silently; set thinking.type="disabled" instead.</statement>
+          <rationale>A budget of 0 disables thinking silently but the API still processes the thinking parameter, causing confusion. Use the explicit disable form.</rationale>
+        </rule>
+      </section>
+
+      <section name="API Constraints">
+        <rule>
+          <statement>Do not combine Extended Thinking with the temperature parameter.</statement>
+          <rationale>Setting both raises an API error. Extended Thinking requires deterministic reasoning; temperature is incompatible.</rationale>
+        </rule>
+        <rule>
+          <statement>Do not combine Extended Thinking with streaming unless you can parse thinking SSE deltas.</statement>
+          <rationale>The event format for thinking deltas differs from text deltas. Mixing them without delta-aware parsing produces garbled output.</rationale>
+        </rule>
+      </section>
+
+      <section name="Multi-Turn Handling">
+        <rule>
+          <statement>Preserve thinking blocks in the message history when continuing a multi-turn thinking conversation.</statement>
+          <rationale>Stripping thinking blocks from prior turns breaks the model's reasoning context, producing lower-quality responses in subsequent turns.</rationale>
+        </rule>
+        <rule>
+          <statement>Never expose thinking blocks to end users.</statement>
+          <rationale>Thinking outputs can include the model reasoning about its own limitations and internal uncertainties; surfacing them to users undermines trust.</rationale>
+        </rule>
+      </section>
+
+      <section name="Monitoring">
+        <rule>
+          <statement>Track cache_read_input_tokens in usage to verify prompt caching is active when used alongside Extended Thinking.</statement>
+          <rationale>Thinking tokens are non-cacheable. Only the non-thinking input prefix can be cached. Monitor separately to understand actual savings.</rationale>
+        </rule>
+      </section>
+
+      <example type="good">
+        <code lang="python"><![CDATA[import anthropic
+client = anthropic.Anthropic()
+
+def think_deeply(problem: str, budget: int = 8000) -> tuple[str, str]:
+    resp = client.messages.create(
+        model="claude-opus-4-5-20251101",
+        max_tokens=budget + 4096,  # must exceed budget_tokens
+        thinking={"type": "enabled", "budget_tokens": budget},
+        messages=[{"role": "user", "content": problem}]
+    )
+    thinking = next((b.thinking for b in resp.content if b.type == "thinking"), "")
+    answer = next((b.text for b in resp.content if b.type == "text"), "")
+    return thinking, answer]]></code>
+        <note>max_tokens is set to budget + 4096 to guarantee the answer block is never truncated.</note>
+      </example>
+    </section>
+
+    <section name="Computer Use Tool Setup and Safety">
+      <p>Rules for configuring the Computer Use tool, implementing action handlers, and enforcing safety requirements for sandboxed execution.</p>
+
+      <section name="Setup Rules">
+        <rule>
+          <statement>Always set exact display dimensions (display_width_px, display_height_px) matching the actual VM resolution.</statement>
+          <rationale>The model uses pixel coordinates for click and mouse_move actions. Mismatched dimensions produce clicks at wrong positions.</rationale>
+        </rule>
+        <rule>
+          <statement>Use the versioned tool type string (e.g., "computer_20241022") and include the matching beta header.</statement>
+          <rationale>Computer Use tool schemas are versioned. Mixing tool type version with a different beta header raises an API error.</rationale>
+        </rule>
+      </section>
+
+      <section name="Action Handler Rules">
+        <rule>
+          <statement>Implement handlers for all actions: screenshot, mouse_move, left_click, right_click, type, key.</statement>
+          <rationale>The model may call any action in the schema. An unhandled action raises a runtime error that breaks the session.</rationale>
+        </rule>
+        <rule>
+          <statement>Always capture a screenshot after each action cycle and return it as the tool result.</statement>
+          <rationale>The model uses the updated screenshot to decide the next action. Without a current screenshot, it reasons over stale state.</rationale>
+        </rule>
+        <rule>
+          <statement>Implement a per-action timeout and a maximum iteration count for each session.</statement>
+          <rationale>Computer Use can loop indefinitely on unexpected UI states. Timeouts and iteration limits prevent runaway sessions.</rationale>
+        </rule>
+      </section>
+
+      <section name="Safety Requirements">
+        <rule>
+          <statement>Never use Computer Use with production systems containing live credentials or databases.</statement>
+          <rationale>Computer Use generates OS-level commands (click, type, key). Executing them without sandboxing is a critical security risk.</rationale>
+        </rule>
+        <rule>
+          <statement>Route unknown or unexpected UI states to human review; never auto-retry on unrecognized screens.</statement>
+          <rationale>The model may hallucinate actions on unfamiliar UI. Human oversight prevents destructive commands.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="Prompt Caching Rules and Monitoring">
+      <p>Rules for structuring prompts to maximize cache hit rate, monitoring cache effectiveness, and avoiding the most common cache-busting mistakes.</p>
+
+      <section name="Structure Rules">
+        <rule>
+          <statement>Place the most stable content first in the system prompt and mark it with cache_control: ephemeral. Put dynamic content last.</statement>
+          <rationale>Cache uses prefix matching. Any change before the cached block invalidates the entire cache. Stable content at the top maximizes reuse.</rationale>
+        </rule>
+        <rule>
+          <statement>Never inject dynamic values (timestamps, request IDs, user names) before the cached block.</statement>
+          <rationale>A single character difference in the prefix causes a cache miss. You pay the write cost on every call with no read benefit.</rationale>
+        </rule>
+        <rule>
+          <statement>The minimum cacheable prefix is 1024 tokens; do not mark shorter content as cacheable.</statement>
+          <rationale>Prefixes below 1024 tokens are not eligible for caching. Marking them wastes the ephemeral annotation without any cost reduction.</rationale>
+        </rule>
+      </section>
+
+      <section name="Monitoring">
+        <rule>
+          <statement>Log cache_read_input_tokens from usage on every cached call. Zero means cache miss.</statement>
+          <rationale>Cache misses are silent — the API does not error; it just charges full input token cost. Monitoring the metric is the only way to detect misconfigurations.</rationale>
+        </rule>
+        <rule>
+          <statement>Target cache_read_input_tokens / input_tokens ratio above 0.70 for meaningful cost benefit.</statement>
+          <rationale>Cache write tokens cost 25% more than regular input. Below ~70% hit rate the write overhead starts to erode savings.</rationale>
+        </rule>
+      </section>
+
+      <example type="good">
+        <code lang="python"><![CDATA[def call_with_cache(system_text: str, user_msg: str) -> str:
+    resp = client.beta.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        betas=["prompt-caching-2024-07-31"],
+        system=[{"type": "text", "text": system_text, "cache_control": {"type": "ephemeral"}}],
+        messages=[{"role": "user", "content": user_msg}]
+    )
+    # Log cache metrics
+    u = resp.usage
+    hit_rate = u.cache_read_input_tokens / max(u.input_tokens, 1)
+    return resp.content[0].text, hit_rate]]></code>
+        <note>Cache hit rate is calculated from usage metrics on the response object.</note>
+      </example>
+    </section>
+
+    <section name="Batch API Lifecycle and Error Handling">
+      <p>Rules for submitting, polling, and consuming Batch API results, including error detection and the cost model.</p>
+
+      <section name="Submission Rules">
+        <rule>
+          <statement>Use custom_id values that map directly to database primary keys or job IDs.</statement>
+          <rationale>Results arrive out of order. Without a custom_id that maps to your data model, matching results back to inputs requires additional joins or lookups.</rationale>
+        </rule>
+        <rule>
+          <statement>Group batch requests by the same model and max_tokens to simplify result processing.</statement>
+          <rationale>Mixing models in one batch is allowed but produces heterogeneous result structures. Uniform batches simplify downstream parsing.</rationale>
+        </rule>
+      </section>
+
+      <section name="Polling Rules">
+        <rule>
+          <statement>Poll at intervals of at least 60 seconds; do not use a tight loop.</statement>
+          <rationale>Batch processing takes minutes to hours. Tight polling wastes API quota and adds no speed benefit.</rationale>
+        </rule>
+        <rule>
+          <statement>Check processing_status == "ended" before accessing results; do not assume completion on first poll.</statement>
+          <rationale>The batch may still be processing. Accessing results before "ended" returns an empty or partial result set.</rationale>
+        </rule>
+      </section>
+
+      <section name="Error Handling">
+        <rule>
+          <statement>Detect result.result.type == "errored" and resubmit failed items explicitly; Batch API does not retry automatically.</statement>
+          <rationale>Errored requests are included in the results file with type "errored". They are not retried. Your code must detect and resubmit them.</rationale>
+        </rule>
+      </section>
+
+      <example type="good">
+        <code lang="python"><![CDATA[import time
+
+def poll_and_collect(batch_id: str, poll_interval: int = 60) -> list[dict]:
+    """Poll Batch API until done. Returns list of {id, text}."""
+    while True:
+        batch = client.beta.messages.batches.retrieve(batch_id)
+        if batch.processing_status == "ended":
+            results = []
+            for r in client.beta.messages.batches.results(batch_id):
+                if r.result.type == "succeeded":
+                    results.append({
+                        "id": r.custom_id,
+                        "text": r.result.message.content[0].text
+                    })
+                else:
+                    results.append({"id": r.custom_id, "error": str(r.result.error)})
+            return results
+        time.sleep(poll_interval)]]></code>
+        <note>The polling loop checks processing_status before attempting to access results.</note>
+      </example>
+    </section>
+
+    <section name="Agentic Workflow and Best Practices">
+      <p>Extended Thinking fits as the reasoning step in a multi-stage pipeline: a Claude Opus subagent reasons through a problem and returns both thinking and answer blocks; the answer block is validated and passed downstream. Prompt Caching is transparent to the agentic caller — just add cache_control to stable content and monitor the usage object for cache hit rates. Batch API is ideal for faion-poll-agents style background processing: dispatch batches, poll for completion, consume results. Computer Use requires a dedicated operator agent with VM control and a human escalation path for unexpected UI states.</p>
+
+      <rule>
+        <statement>Extended Thinking: start with budget_tokens=5000; increase only if answer quality is insufficient — more thinking does not always mean better answers.</statement>
+        <rationale>Token cost scales with thinking budget. Empirical tuning avoids unnecessary expenditure.</rationale>
+      </rule>
+      <rule>
+        <statement>Extended Thinking: always set max_tokens to at least budget_tokens + 2048 to avoid truncation of the answer block.</statement>
+        <rationale>Thinking tokens count toward max_tokens. Insufficient ceiling causes answer truncation.</rationale>
+      </rule>
+      <rule>
+        <statement>Prompt Caching: put the most stable content first (system instructions), dynamic content last (user message) — cache is prefix-matched.</statement>
+        <rationale>Prefix-matching cache invalidation requires stable content at the head.</rationale>
+      </rule>
+      <rule>
+        <statement>Prompt Caching: measure cache_read_input_tokens / input_tokens ratio; target > 70% for cost benefit.</statement>
+        <rationale>Cache write cost is 25% higher. Below 70% hit rate, write overhead exceeds savings.</rationale>
+      </rule>
+      <rule>
+        <statement>Batch API: group requests by model and max_tokens to simplify result processing; use custom_id that maps to your DB primary key.</statement>
+        <rationale>Uniform batches and mappable IDs reduce post-processing complexity.</rationale>
+      </rule>
+      <rule>
+        <statement>Computer Use: always implement a timeout per action cycle; set maximum iteration count; route unknown UI states to human review.</statement>
+        <rationale>Bounded execution prevents runaway sessions and escalates unsafe states.</rationale>
+      </rule>
+      <rule>
+        <statement>Do not mix Extended Thinking with streaming unless you can parse thinking SSE deltas — the event format differs from text deltas.</statement>
+        <rationale>Thinking delta format is distinct from text delta format. Parsing mismatch produces garbled output.</rationale>
+      </rule>
+    </section>
+
+    <section name="Common Gotchas">
+      <p>AI-agent gotchas when using advanced Claude features:</p>
+
+      <antipattern>
+        <description>Extended Thinking with budget_tokens=0 disables thinking silently.</description>
+        <reason>A budget of 0 disables thinking silently but the API still processes the thinking parameter, causing confusion. Always set at least 1024 or use the explicit disable form.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Stripping thinking blocks from multi-turn history when continuing a thinking conversation.</description>
+        <reason>Thinking blocks must be preserved in multi-turn history. Stripping them breaks context and produces lower-quality responses.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Prompt Cache write cost is 25% higher than regular input tokens.</description>
+        <reason>On first call you pay more; savings start from second call. Expect to pay more overall if cache hit rate is below ~70%.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Batch API has no webhook; only poll-based status check.</description>
+        <reason>Build your own polling loop or use a cron job. Batch API does not notify you of completion.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Computer Use generates OS-level commands (click, type, key) — executing them without sandboxing is a critical security risk.</description>
+        <reason>Never run Computer Use actions on production systems. Always sandbox and implement human oversight.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Batch API errored results do not retry automatically.</description>
+        <reason>You must detect result.result.type == "errored" and resubmit failed items explicitly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Extended Thinking outputs can include model reasoning about its own limitations — exposing thinking blocks to end users undermines trust.</description>
+        <reason>Keep thinking blocks internal to the agent. Use only the answer block for user-facing output.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/think-deeply.py" purpose="Extended Thinking helper — returns (thinking, answer) tuple."/>
+      <template path="templates/call-with-cache.py" purpose="Prompt Caching wrapper with cache hit rate logging."/>
+      <template path="templates/batch-submit-poll.py" purpose="Batch API submit + poll loop."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/computer-use"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching"/>
+      <link href="https://docs.anthropic.com/en/api/messages-batches"/>
+      <link href="https://www.anthropic.com/research/claude-computer-use"/>
+    </see-also>
+  </content>
+</methodology>
