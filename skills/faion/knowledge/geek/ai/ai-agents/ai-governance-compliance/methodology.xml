@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ai-governance-compliance">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Implement EU AI Act compliance, bias monitoring, and explainability for high-risk AI systems using model cards, fairness metrics, and audit logging to ensure regulatory alignment.</summary>
+    <category>governance</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tags>
+      <tag>governance</tag>
+      <tag>compliance</tag>
+      <tag>bias-detection</tag>
+      <tag>explainability</tag>
+      <tag>audit-logging</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>AI Governance and Compliance</title>
+
+    <summary>EU AI Act and regulations require compliance frameworks for high-risk AI systems. Implement governance through model cards, bias monitoring, explainability reporting (SHAP/LIME), human oversight mechanisms, and data governance documentation to meet regulatory requirements for risk classification, transparency, and bias mitigation.</summary>
+
+    <why>
+      <p>EU AI Act (effective August 2024, tiered enforcement through 2027) mandates compliance for high-risk applications: recruitment, credit scoring, biometric ID, medical diagnostics, law enforcement tools, and any system making consequential automated decisions affecting natural persons. SHAP/LIME explainability and Fairlearn/AI Fairness 360 bias detection tools provide technical evidence of compliance. Audit logging with immutable timestamps is essential for regulatory review and demonstrates "meaningful human oversight."</p>
+      <p>The "one governance-checker subagent at the deployment pipeline gate" pattern enables automated compliance checking before production launch. A separate audit-logger subagent wraps inference calls and records input hashes, model version, decision output, and confidence scores to an append-only audit log, triggering human review when anomalies appear (decision reversal rate spikes, protected-attribute correlation jumps, distribution drift).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Deploying AI systems in EU markets where the AI Act applies (effective August 2024, tiered enforcement through 2027).</item>
+        <item>Building high-risk AI applications: recruitment, credit scoring, biometric ID, medical diagnostics, law enforcement tools.</item>
+        <item>Any product that makes consequential automated decisions affecting natural persons.</item>
+        <item>When organizational policies require documented model cards, bias audits, or explainability reports.</item>
+        <item>Preparing for enterprise sales where buyers require SOC 2 / ISO 42001 compliance evidence.</item>
+        <item>Audit trail requirements: financial services, healthcare, public sector AI deployments.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Internal developer tooling with no external user impact — overhead exceeds benefit.</item>
+        <item>Pure B2B APIs where the downstream customer handles their own compliance.</item>
+        <item>Low-risk AI (EU AI Act Annex III exclusions): spam filters, AI-powered search on public content, simple recommendation engines with no legal/financial effect.</item>
+        <item>Prototype / research phase — implement governance before production launch, not before first demo.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="eu-ai-act-requirements">
+      <p>EU AI Act Requirements (2026) establish mandatory categories for risk classification, transparency, human oversight, bias mitigation, and data governance. Documentation must include model cards and data sheets. Monitoring requires bias detection and drift monitoring. Explainability tools (SHAP/LIME for decisions) and human oversight review queues with escalation paths are required. Data governance covers consent, retention, and deletion policies.</p>
+
+      <rule testable="true">
+        <statement>High-risk AI systems MUST implement documentation (model cards, data sheets), monitoring (bias detection, drift monitoring), explainability (SHAP/LIME for decisions), human oversight (review queues, escalation), and data governance (consent, retention, deletion).</statement>
+        <rationale>EU AI Act Article 11-15 mandates these elements for high-risk systems. Model cards document a system at a point in time; they go stale after fine-tuning unless versioned in CI. Automated bias monitoring requires ground-truth labels to measure outcome disparity; these are rarely available in real-time but stratified validation sets provide evidence for pre-deployment audit.</rationale>
+      </rule>
+
+      <example type="good" title="EU AI Act compliance framework">
+        <p>Governance-checker subagent at deployment pipeline gate reads model card templates, runs bias checks against held-out validation set, generates SHAP explainability report on sample, and outputs structured compliance checklist with pass/fail per criterion. Separate audit-logger subagent wraps production inference calls, recording input hashes, model version, decision output, confidence scores to append-only audit log. Human review triggered when audit log shows anomalies (decision reversal rate &gt; threshold, protected-attribute correlation spike).</p>
+      </example>
+
+      <antipattern>
+        <description>Running SHAP/LIME explainability on black-box LLM API outputs (GPT-4, Claude) and treating feature attribution as meaningful.</description>
+        <reason>SHAP/LIME feature attribution is designed for tabular ML and tree ensembles. For transformer architectures and black-box APIs, use behavioral testing (perturbation analysis) instead. Agents generating compliance reports using LLMs can hallucinate passing scores — always validate generated reports against ground-truth metrics computed from actual data.</reason>
+      </antipattern>
+    </section>
+
+    <section name="bias-detection-and-mitigation">
+      <p>Bias detection tools (Fairlearn, AI Fairness 360) require labeled demographic data that is often unavailable or illegal to collect in EU jurisdictions (GDPR conflict). Automated bias monitoring in production requires ground-truth labels to measure outcome disparity; these are rarely available in real-time. Stratified validation sets provide pre-deployment evidence. Define thresholds (demographic parity difference &lt; 0.1 is industry convention; EU AI Act has no official number) and implement fairness metrics across all protected attributes in your jurisdiction.</p>
+
+      <rule testable="true">
+        <statement>Bias checks MUST run on stratified validation sets, not production data, to avoid GDPR issues with real user data. Define demographic parity difference threshold (0.1 is industry default; stricter for high-stakes decisions). Version every model card as code in the same repo as the model; require PR review for changes.</statement>
+        <rationale>GDPR prohibits collecting sensitive demographic data; validation sets are synthetic or historical. Automated bias monitoring post-deployment requires ground-truth labels that don't exist in real-time. Schedule weekly batch monitoring jobs instead. Model cards go stale after fine-tuning or prompt updates unless versioned.</rationale>
+      </rule>
+
+      <code lang="python"><![CDATA[
+from fairlearn.metrics import MetricFrame, demographic_parity_difference
+from sklearn.metrics import accuracy_score
+
+def run_bias_check(y_true, y_pred, sensitive_features) -> dict:
+    mf = MetricFrame(
+        metrics={"accuracy": accuracy_score},
+        y_true=y_true,
+        y_pred=y_pred,
+        sensitive_features=sensitive_features,
+    )
+    dpd = demographic_parity_difference(y_true, y_pred, sensitive_features=sensitive_features)
+    return {
+        "accuracy_by_group": mf.by_group.to_dict(),
+        "demographic_parity_difference": float(dpd),
+        "pass": abs(dpd) < 0.1,
+    }
+      ]]></code>
+    </section>
+
+    <section name="audit-logging-and-explainability">
+      <p>Separate audit logs from application logs using append-only storage (S3 + Object Lock, WORM drives) to prevent tampering. Record every inference call with input hashes, model version, decision output, confidence scores. Implement data lineage from raw source to training set (required for EU AI Act Article 10 data governance). Define "human oversight" concretely: a dashboard showing AI decisions counts only if humans act on it within a defined SLA. For EU high-risk systems, document Fundamental Rights Impact Assessment (FRIA) before deployment, not after.</p>
+
+      <code lang="python"><![CDATA[
+import hashlib, time, json
+
+def log_inference(model_id: str, input_data: dict, output: dict) -> dict:
+    entry = {
+        "ts": time.time(),
+        "model_id": model_id,
+        "input_hash": hashlib.sha256(json.dumps(input_data, sort_keys=True).encode()).hexdigest(),
+        "output": output,
+        "schema_version": "1.0",
+    }
+    append_to_audit_log(entry)  # write-once store
+    return entry
+      ]]></code>
+
+      <example type="good" title="Audit log structure">
+        <p>Immutable audit log entry with timestamp, model ID, input hash (not raw data for privacy), output decision, confidence scores. Weekly batch job reads production log, compares input distribution against training distribution using Evidently or custom KL-divergence checks, alerts on anomalies. Alerts trigger human review and optional model rollback decision (never automatic).</p>
+      </example>
+
+      <antipattern>
+        <description>Agent that auto-approves a model for production based on compliance metrics, or automated rollback triggered by drift alerts without human review.</description>
+        <reason>Automated green lights are insufficient for high-risk AI Act categories. Drift alerts should not trigger automatic rollback without human review — automated rollback can introduce compliance violations if the prior version had known issues. Human-in-the-loop checkpoint is mandatory.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-subagents-and-workflow">
+      <p>Use a governance-checker subagent as a gate in the deployment pipeline: it reads model card templates, runs bias checks against a held-out validation set, generates an explainability report using SHAP on a sample, and outputs a structured compliance checklist with pass/fail per criterion. A separate audit-logger subagent wraps production inference calls, recording input hashes, model version, decision output, and confidence scores to an append-only audit log. Human review is triggered when the audit log shows anomalies (decision reversal rate &gt; threshold, protected-attribute correlation spike).</p>
+
+      <rule testable="true">
+        <statement>Recommended subagents: compliance-checker (runs pre-deployment checklist: model card completeness, bias metrics, documentation audit), audit-logger (wraps every inference call, records structured log entry immutable and timestamped), explainability-reporter (generates SHAP/LIME report for sampled batch, flags top feature contributions), drift-monitor (compares production input distribution against training distribution weekly, alerts on divergence).</statement>
+        <rationale>Multi-agent pattern enables separation of concerns: governance verification before launch, audit trails during production, explainability on demand, drift detection as a background job. Each agent can run on different cadences and thresholds.</rationale>
+      </rule>
+
+      <code lang="text"><![CDATA[
+You are a compliance audit agent. Review the following AI system configuration and produce a structured compliance report.
+
+System info:
+- Model: {model_name} v{version}
+- Use case: {use_case}
+- Affected population: {population}
+- EU AI Act risk category: {risk_category}
+
+Check each item and return JSON:
+{
+  "model_card_complete": bool,
+  "bias_audit_done": bool,
+  "human_oversight_mechanism": str | null,
+  "data_governance_documented": bool,
+  "gaps": [str]
+}
+      ]]></code>
+    </section>
+
+    <section name="tools-and-services">
+      <p>CLI tools: fairlearn (bias mitigation and fairness metrics), aif360 (AI Fairness 360: bias detection, mitigation algorithms), shap (model explainability SHAP values), lime (local interpretable model explanations), evidently (data/model drift monitoring, bias reports), captum (PyTorch attribution methods). Services: Hugging Face Model Cards (SaaS/OSS, standard format, API for programmatic card creation), Evidently Cloud (SaaS, automated drift + bias monitoring, webhook alerts), Credo AI (SaaS, governance platform, policy checks, enterprise-focused), Weights and Biases (SaaS, track model versions, bias metrics per experiment, good audit trail), MLflow (OSS, model registry with metadata, compliance status tagging), AWS Audit Manager (SaaS, evidence collection for cloud-deployed models, CloudTrail integration).</p>
+
+      <reference path="templates/model-card-template.md">Model card template for governance documentation</reference>
+      <reference path="templates/bias-report-template.md">Bias audit report template</reference>
+    </section>
+
+    <section name="gotchas-and-limitations">
+      <p>SHAP/LIME explainability degrades for LLM-based systems — feature attribution methods designed for tabular ML do not apply to transformer architectures. Bias detection tools require labeled demographic data that is often unavailable or illegal to collect in EU jurisdictions (GDPR conflict). Model cards document a model at a point in time; they go stale after fine-tuning or prompt updates — versioning is manual unless automated in CI. EU AI Act "human oversight" requirement is vague — "meaningful oversight" is not defined technically, leaving compliance scope to interpretation. Automated bias monitoring in production requires ground-truth labels to measure outcome disparity; these are rarely available in real-time. AI Act conformity assessments for high-risk systems require a Notified Body review — no automated tooling replaces this for Category 3 systems.</p>
+
+      <note>Agents generating compliance reports using LLMs can hallucinate passing scores — always validate generated reports against ground-truth metrics computed from actual data. Drift alerts from monitoring agents should not trigger automatic model rollback without human review — automated rollback can introduce compliance violations if the prior version had known issues. Any agent that auto-approves a model for production based on compliance metrics must have a human sign-off step — automated green lights are insufficient for high-risk AI Act categories.</note>
+    </section>
+
+    <checklist>
+      <check>Define EU AI Act risk category for your system (Annex III exclusion, limited risk, high risk).</check>
+      <check>Create model card following Hugging Face format; include training data, model performance, limitations, bias testing results.</check>
+      <check>Run bias audit on stratified validation set using Fairlearn or AI Fairness 360; document demographic parity differences per protected attribute.</check>
+      <check>Generate SHAP or LIME explainability report on sample predictions; document top feature contributions for model decisions.</check>
+      <check>Implement audit logging: every inference call logged with timestamp, model version, input hash, output decision, confidence score.</check>
+      <check>Set up drift monitoring: weekly batch job comparing production input distribution against training distribution; alert on KL-divergence threshold.</check>
+      <check>Document human oversight mechanism: review queue, escalation path, SLA for decision review.</check>
+      <check>Version model card in git; require PR review for updates after fine-tuning or prompt changes.</check>
+      <check>For high-risk systems: document Fundamental Rights Impact Assessment (FRIA) before deployment.</check>
+      <check>Validate compliance checklist outputs against ground-truth metrics; never rely solely on agent-generated reports.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689">EU AI Act text</link>
+      <link href="https://fairlearn.org/v0.10/user_guide/">Fairlearn documentation</link>
+      <link href="https://huggingface.co/docs/hub/model-cards">Hugging Face model cards</link>
+      <link href="https://aif360.readthedocs.io/en/stable/">AI Fairness 360</link>
+      <link href="https://www.iso.org/standard/81230.html">ISO/IEC 42001 (AI management systems)</link>
+      <link href="https://www.nist.gov/system/files/documents/2023/01/26/AI%20RMF%201.0.pdf">NIST AI RMF</link>
+      <link href="https://shap.readthedocs.io/">SHAP explainability</link>
+      <link href="https://github.com/marcotcr/lime">LIME: Local Interpretable Model Explanations</link>
+      <link href="https://www.evidentlyai.com/">Evidently: drift monitoring platform</link>
+    </see-also>
+  </content>
+</methodology>
