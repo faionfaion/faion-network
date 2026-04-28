@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="openai-api">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>OpenAI API with Chat Completions, Responses API, Structured Outputs, Batch API (50% discount). Pin exact model versions, use Structured Outputs, set max_tokens.</summary>
+    <tags>
+      <tag>openai</tag>
+      <tag>llm-api</tag>
+      <tag>structured-output</tag>
+      <tag>function-calling</tag>
+      <tag>batch-processing</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>OpenAI API Integration</title>
+    <summary>OpenAI Platform provides Chat Completions, the Responses API (2025+, stateful), Structured Outputs, Batch API (50% discount), embeddings, Whisper, TTS, DALL-E, and fine-tuning. Pin exact model versions (gpt-4o-2024-08-06). Use Structured Outputs (beta.chat.completions.parse) not JSON mode. Set max_tokens on every call. For new projects, prefer the Responses API over Chat Completions — it manages conversation state server-side.</summary>
+    <why>
+      <p>The OpenAI API is the most widely supported LLM integration target, with the strongest ecosystem for structured output (native schema enforcement), function calling, and the Batch API for 50% cost reduction on non-time-sensitive workloads. Pinning model versions prevents silent behavior changes; exponential backoff handles rate limits gracefully.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Production app requiring best-in-class structured output with native schema enforcement</item>
+        <item>Vision tasks requiring GPT-4o's image understanding</item>
+        <item>Batch processing of non-time-sensitive data (50% cost discount via Batch API)</item>
+        <item>Function calling / tool use as the primary agentic mechanism</item>
+        <item>Audio transcription (Whisper) or TTS in agent pipelines</item>
+        <item>Responses API's built-in conversation state management is needed</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Privacy-sensitive data that must not leave your infrastructure (use local Ollama instead)</item>
+        <item>Very long context (&gt;128K tokens) — use Claude (200K) or Gemini (2M)</item>
+        <item>When Anthropic Claude's instruction-following is more reliable for your specific task</item>
+        <item>Tight budget with high-volume simple tasks — Gemini Flash ($0.10/M) is cheaper than gpt-4o-mini ($0.15/M)</item>
+        <item>When you need &gt;128K context for a single call (use gpt-4.1 with 1M context or alternatives)</item>
+      </list>
+    </when-not-to-use>
+    <section name="Key Endpoints">
+      <list>
+        <item>Chat Completions (/v1/chat/completions): text generation, conversation, vision, function calling</item>
+        <item>Responses API (/v1/responses): stateful API (2025+); manages conversation history server-side via previous_response_id</item>
+        <item>Embeddings (/v1/embeddings): text-embedding-3-large for RAG, semantic search</item>
+        <item>Batch (/v1/batches): 50% cost discount, 24h completion window, JSONL input</item>
+        <item>Audio (/v1/audio/transcriptions, /v1/audio/speech): Whisper for STT, TTS models</item>
+        <item>Images (/v1/images/generations): DALL-E 3 for image generation</item>
+      </list>
+    </section>
+    <section name="Model Selection">
+      <rule>
+        <statement>Default model: gpt-4o for quality-sensitive tasks; gpt-4o-mini for classification, routing, and formatting (90% cheaper). Use o3-mini for complex reasoning. Always pin exact version: `gpt-4o-2024-08-06` not `gpt-4o`.</statement>
+        <rationale>Non-pinned model aliases change behavior on OpenAI's update schedule without warning. A silent model upgrade can break prompt-sensitive production systems.</rationale>
+      </rule>
+    </section>
+    <section name="Responses API vs Chat Completions">
+      <rule>
+        <statement>For new projects, use the Responses API over Chat Completions. Use `previous_response_id` for multi-turn conversations — it eliminates manual history management and reduces payload size.</statement>
+        <rationale>Chat Completions requires the developer to send the full conversation history on every call. The Responses API manages history server-side, reducing payload size and developer surface area. OpenAI is actively developing the Responses API; Chat Completions is in maintenance mode.</rationale>
+      </rule>
+    </section>
+    <section name="Structured Outputs">
+      <rule>
+        <statement>Use `client.beta.chat.completions.parse(response_format=MyModel)` instead of JSON mode. Structured Outputs guarantee schema compliance; JSON mode only guarantees valid JSON syntax.</statement>
+        <rationale>JSON mode failures are silent: valid JSON with missing or wrong-typed fields passes JSON parsing but fails downstream. Native Structured Outputs enforce the schema at the model level.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+from pydantic import BaseModel
+from openai import OpenAI
+
+class Response(BaseModel):
+    answer: str
+    confidence: float
+
+client = OpenAI()
+result = client.beta.chat.completions.parse(
+    model="gpt-4o-2024-08-06",
+    messages=[{"role": "user", "content": "..."}],
+    response_format=Response,
+)
+typed_result: Response = result.choices[0].message.parsed
+        ]]></code>
+      </example>
+    </section>
+    <section name="Production Rules">
+      <rule>
+        <statement>Set `max_tokens` on every API call. Unbounded output generation runs up costs and stalls agents waiting for a response that never completes.</statement>
+        <rationale>Without max_tokens, a stuck generation can produce thousands of tokens. In agentic loops, this blocks all downstream steps. `finish_reason: "length"` signals truncation — check for it.</rationale>
+      </rule>
+      <rule>
+        <statement>Implement exponential backoff for 429 (rate limit) and 5xx errors: start at 1s, cap at 60s, max 6 retries. Use `time.sleep(min(2**attempt, 60))` pattern.</statement>
+        <rationale>Rate limits are transient. Immediate retry hammers the quota further. Exponential backoff distributes retries over time and recovers from temporary limits gracefully.</rationale>
+      </rule>
+      <rule>
+        <statement>Use service account keys (`sk-svcacct-*`) for automated systems — never user keys. Keep all API keys server-side; never expose them in client code.</statement>
+        <rationale>User keys have access to all projects in an account. Service account keys are scoped to a single project, limiting blast radius if compromised.</rationale>
+      </rule>
+      <rule>
+        <statement>Enable prompt caching by placing static system prompts first and never modifying their prefix. Track cache hits via `response.usage` to verify caching is active.</statement>
+        <rationale>OpenAI's prompt cache activates on prefix matches. Even a single character change in a cached prefix invalidates it. Static system prompts placed first (before any dynamic content) maximize cache hit rate.</rationale>
+      </rule>
+    </section>
+    <section name="Where it Fails / Limitations">
+      <list>
+        <item>Rate limits are hard walls: tier-based (3–10K RPM); no graceful degradation by default</item>
+        <item>Model versions are periodically deprecated without warning — pin exact versions in production (`gpt-4o-2024-08-06`)</item>
+        <item>JSON mode does NOT guarantee schema compliance — use Structured Outputs (`response_format=MyModel`) instead</item>
+        <item>Streaming + structured output: `beta.chat.completions.parse` buffers internally; latency gain is minimal</item>
+        <item>Context length limit (128K for gpt-4o) is strict — exceeded requests fail with 400, not a graceful fallback</item>
+        <item>Costs scale unpredictably with agentic loops that generate long outputs; always set `max_tokens`</item>
+        <item>Responses API (2025+) does not support all parameters available in Chat Completions; check docs before migrating</item>
+      </list>
+    </section>
+    <section name="Agentic Loop Gotchas">
+      <antipattern>
+        <description>Tool call response missing `tool_call_id` matching the request.</description>
+        <reason>OpenAI requires each tool result to reference the exact `tool_call_id` from the request. Mismatches cause HTTP 400 errors. Always map results back to the call ID.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Mixing Responses API and Chat Completions in the same conversation flow.</description>
+        <reason>The two APIs manage conversation history differently. Responses API stores history server-side; Chat Completions requires developer-managed history. Mixing them produces inconsistent context.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Submitting a Batch API job and then waiting synchronously for results.</description>
+        <reason>Batch API results arrive asynchronously (up to 24h). Synchronous waiting will time out. Use a separate completion-handler agent or poll the batch status endpoint.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using `finish_reason: "length"` response downstream without checking truncation.</description>
+        <reason>A truncated response means the model was cut off mid-output. Passing incomplete data downstream silently corrupts all dependent states. Always check finish_reason.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Agents use OpenAI via function calling (tools array) for structured decisions and the Batch API for high-volume background processing. The Responses API (`/v1/responses`) simplifies stateful multi-turn conversations by managing history server-side via `previous_response_id`, reducing the payload size agents must pass around. For tool-using agents, define tools as Pydantic models converted to JSON Schema; the model will call them deterministically. Always handle `tool_calls` in agent loops with explicit retry on parsing failures.</p>
+    </section>
+    <section name="Recommended Subagents">
+      <list>
+        <item>`faion-sdd-execution` — uses OpenAI structured output for quality gate decisions</item>
+        <item>Any custom extraction agent using `client.beta.chat.completions.parse`</item>
+      </list>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Pin exact model versions: `gpt-4o-2024-08-06` not `gpt-4o` — snapshot versions don't change behavior</item>
+        <item>Use Structured Outputs (`beta.chat.completions.parse`) instead of JSON mode for schema compliance</item>
+        <item>Set `max_tokens` on every call — unbounded output generation runs up costs and stalls agents</item>
+        <item>Implement exponential backoff for 429s: start at 1s, cap at 60s, max 6 retries</item>
+        <item>Use `usage` from response to track input/output token spend per agent step</item>
+        <item>Enable prompt caching by placing static system prompts first and never modifying their prefix</item>
+        <item>Use `gpt-4o-mini` for routing/classification steps, `gpt-4o` only for complex reasoning</item>
+        <item>Use service account keys (`sk-svcacct-*`) for automated systems, not user keys</item>
+      </list>
+    </section>
+    <section name="CLI Tools">
+      <p>`openai` (Python SDK): All API endpoints, streaming, structured output. `pip install openai` / github.com/openai/openai-python</p>
+      <p>`openai` (Node SDK): TypeScript/JS applications. `npm install openai` / github.com/openai/openai-node</p>
+      <p>`tiktoken`: Token counting for budget/context management. `pip install tiktoken` / github.com/openai/tiktoken</p>
+      <p>`instructor`: Structured output with retry across providers. `pip install instructor` / python.useinstructor.com</p>
+      <p>OpenAI CLI (`openai`): Upload files, manage fine-tunes, batches. installed with SDK</p>
+    </section>
+    <section name="Services and Apps">
+      <p>OpenAI Platform (SaaS): Primary; usage dashboard, rate limit self-service</p>
+      <p>OpenAI Batch API (SaaS): 50% discount, 24h window; ideal for bulk agent tasks</p>
+      <p>LangSmith (SaaS): Full OpenAI call tracing; prompt versioning</p>
+      <p>Langfuse (OSS): Self-hosted tracing for OpenAI calls via OTEL</p>
+      <p>Helicone (SaaS proxy): 1-line integration; caches, rate-limits, logs OpenAI calls</p>
+      <p>Portkey (SaaS): Multi-provider fallback: OpenAI → Anthropic → Gemini</p>
+    </section>
+    <templates>
+      <template path="templates/backoff.py" purpose="Exponential backoff wrapper for rate limit and server errors"/>
+      <template path="templates/agent-loop.py" purpose="Function-calling agent loop with tool execution"/>
+      <template path="templates/batch-submit.py" purpose="Batch API JSONL builder and job submission"/>
+    </templates>
+    <see-also>
+      <link href="https://platform.openai.com/docs/api-reference"/>
+      <link href="https://platform.openai.com/docs/guides/structured-outputs"/>
+      <link href="https://platform.openai.com/docs/guides/migrate-to-responses"/>
+      <link href="https://platform.openai.com/docs/guides/production-best-practices"/>
+      <link href="https://cookbook.openai.com/"/>
+      <link href="https://github.com/openai/openai-python"/>
+    </see-also>
+  </content>
+</methodology>
