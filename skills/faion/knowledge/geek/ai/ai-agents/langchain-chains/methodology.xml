@@ -1,0 +1,420 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="langchain-chains">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>LCEL chain patterns, prompt templates, output parsers, error handling, and streaming for composing LLM pipelines with LangChain.</summary>
+    <tags>
+      <tag>langchain</tag>
+      <tag>chains</tag>
+      <tag>lcel</tag>
+      <tag>prompts</tag>
+      <tag>parsing</tag>
+    </tags>
+    <category>chain</category>
+    <difficulty>intermediate</difficulty>
+    <created>2024-04-24</created>
+  </metadata>
+  <content>
+    <title>LangChain Chains: Patterns and Composition</title>
+    <summary>LCEL chain patterns, prompt templates, output parsers, error handling, and streaming for composing LLM pipelines with LangChain.</summary>
+    <why>
+      <p>Chains are composable building blocks for individual task types. A routing subagent classifies input and selects the appropriate chain; a specialist subagent runs the selected chain and returns structured output. For batch processing, an orchestrator fans out multiple chain invocations and collects results.</p>
+      <p>Chain definitions live in a registry so orchestrating agents can select by name without knowing implementation details. This decoupling enables rapid composition of complex pipelines.</p>
+      <p>LCEL (LangChain Expression Language) makes chain composition readable and testable. The pipe operator `|` chains components declaratively, making parallelism, fallbacks, and streaming explicit in the chain definition.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Composing discrete LLM steps in a linear pipeline where each step transforms and passes output to the next</item>
+        <item>Routing user input to specialized handlers without maintaining state between requests</item>
+        <item>Parallel execution of independent sub-tasks in a single LLM call batch</item>
+        <item>Building resilient pipelines where a primary model may fail and a fallback must take over transparently</item>
+        <item>Prompt engineering iteration — LCEL chain composition makes it easy to swap templates, models, or parsers without restructuring code</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>The pipeline needs to loop, retry with modified state, or maintain context between steps — use LangGraph</item>
+        <item>You need tool use (web search, database queries) inside the pipeline — LangGraph agent with tools is the right primitive</item>
+        <item>The "chain" would consist of a single prompt + model call — use the model directly without LCEL overhead</item>
+        <item>Output parsing is complex with multiple fallback formats — `with_structured_output()` with function calling is more reliable than chaining parsers</item>
+        <item>The team needs visual workflow debugging — LangGraph's graph structure is far easier to inspect than nested LCEL chains</item>
+      </list>
+    </when-not-to-use>
+    <section name="Overview: The Four Chain Patterns">
+      <p>LCEL supports four fundamental chain patterns. Sequential chains compose components in a linear pipeline. Router chains branch execution based on input. MapReduce chains process multiple items in parallel. Fallback chains provide resilience by trying alternatives on failure.</p>
+      <p>Each pattern addresses a specific need in LLM orchestration. Sequential is for straightforward transformations. Router is for input-dependent dispatch. MapReduce is for batch processing. Fallback is for fault tolerance. Combining these patterns enables building complex, resilient LLM systems.</p>
+    </section>
+    <section name="Sequential Chains">
+      <p>Simple A → B → C pipeline using LCEL. Sequential chains are the most common pattern for straightforward transformations where each step consumes output from the previous step. The pipe operator `|` chains components declaratively, making the pipeline structure explicit.</p>
+      <code lang="python"><![CDATA[from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
+from langchain_core.output_parsers import StrOutputParser
+
+# Define components
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful assistant."),
+    ("human", "{input}")
+])
+model = ChatOpenAI(model="gpt-4o-mini")
+parser = StrOutputParser()
+
+# Chain using LCEL
+chain = prompt | model | parser
+
+# Invoke
+result = chain.invoke({"input": "What is LangChain?"})]]></code>
+    </section>
+    <section name="Router Chains">
+      <p>Route to different chains based on input classification without dynamic routing keys known only at runtime. Router chains enable conditional branching where the chain executed depends on the input characteristics.</p>
+      <code lang="python"><![CDATA[from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableBranch
+
+# Define specialized chains
+math_prompt = ChatPromptTemplate.from_template("Solve this math problem: {input}")
+code_prompt = ChatPromptTemplate.from_template("Write code for: {input}")
+general_prompt = ChatPromptTemplate.from_template("Answer: {input}")
+
+math_chain = math_prompt | model | parser
+code_chain = code_prompt | model | parser
+general_chain = general_prompt | model | parser
+
+# Router function
+def route(info: dict) -> str:
+    topic = info.get("topic", "").lower()
+    if "math" in topic:
+        return "math"
+    elif "code" in topic:
+        return "code"
+    return "general"
+
+# Create router
+branch = RunnableBranch(
+    (lambda x: route(x) == "math", math_chain),
+    (lambda x: route(x) == "code", code_chain),
+    general_chain  # Default
+)
+
+# Use
+result = branch.invoke({"input": "2 + 2", "topic": "math"})]]></code>
+      <p>Note: RunnableBranch evaluates conditions sequentially; the first True wins. Put the most common route as the default to avoid unnecessary conditions.</p>
+    </section>
+    <section name="MapReduce Chains">
+      <p>Process multiple items in parallel, then combine results. Use `asyncio.gather()` for true async fan-out. MapReduce is essential for batch processing where independent items can be processed concurrently and then synthesized.</p>
+      <code lang="python"><![CDATA[import asyncio
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_anthropic import ChatAnthropic
+from langchain_core.output_parsers import StrOutputParser
+
+model = ChatAnthropic(model="claude-opus-4-5")
+parser = StrOutputParser()
+
+summarize_chain = (
+    ChatPromptTemplate.from_template("Summarize in 2 sentences:\n\n{document}")
+    | model | parser
+)
+combine_chain = (
+    ChatPromptTemplate.from_template("Synthesize these summaries:\n\n{summaries}")
+    | model | parser
+)
+
+async def map_reduce(documents: list[str]) -> str:
+    tasks = [summarize_chain.ainvoke({"document": d}) for d in documents]
+    summaries = await asyncio.gather(*tasks)
+    return await combine_chain.ainvoke({"summaries": "\n\n".join(summaries)})]]></code>
+      <p>RunnableParallel does not support true async fan-out; parallel dict keys execute synchronously in CPython without explicit async. For batch processing, use asyncio.gather with chain.ainvoke per element.</p>
+    </section>
+    <section name="Fallback Chains">
+      <p>Try primary chain, fall back to secondary on failure. Catches all exceptions by default; set `exceptions_to_handle` explicitly to avoid masking configuration bugs. Fallback chains are critical for building resilient systems where expensive or unreliable primary models can degrade gracefully.</p>
+      <code lang="python"><![CDATA[from langchain_core.runnables import RunnableWithFallbacks
+
+# Primary (expensive, high quality)
+primary = ChatOpenAI(model="gpt-4o") | parser
+
+# Fallback (cheaper, faster)
+fallback = ChatOpenAI(model="gpt-4o-mini") | parser
+
+# Chain with fallback
+robust_chain = primary.with_fallbacks([fallback])
+
+# Will try gpt-4o first, then gpt-4o-mini if it fails
+result = robust_chain.invoke("Complex question...")]]></code>
+    </section>
+    <section name="Prompt Templates">
+      <section name="Basic Templates">
+        <code lang="python"><![CDATA[from langchain_core.prompts import (
+    ChatPromptTemplate,
+    SystemMessagePromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder
+)
+
+# Simple template
+simple = ChatPromptTemplate.from_template("Translate to French: {text}")
+
+# With system message
+chat = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful translator."),
+    ("human", "Translate to {language}: {text}")
+])
+
+# With message history placeholder
+with_history = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful assistant."),
+    MessagesPlaceholder(variable_name="history"),
+    ("human", "{input}")
+])]]></code>
+      </section>
+      <section name="Few-Shot Templates">
+        <code lang="python"><![CDATA[from langchain_core.prompts import FewShotChatMessagePromptTemplate
+
+examples = [
+    {"input": "2 + 2", "output": "4"},
+    {"input": "5 * 3", "output": "15"},
+]
+
+example_prompt = ChatPromptTemplate.from_messages([
+    ("human", "{input}"),
+    ("ai", "{output}")
+])
+
+few_shot = FewShotChatMessagePromptTemplate(
+    example_prompt=example_prompt,
+    examples=examples
+)
+
+final_prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a calculator."),
+    few_shot,
+    ("human", "{input}")
+])]]></code>
+        <p>Note: FewShotChatMessagePromptTemplate injects examples before the user message. Large example sets can push user content below the model's effective attention window.</p>
+      </section>
+      <section name="Dynamic Few-Shot Selection">
+        <code lang="python"><![CDATA[from langchain_core.example_selectors import SemanticSimilarityExampleSelector
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import Chroma
+
+examples = [
+    {"input": "happy", "output": "sad"},
+    {"input": "tall", "output": "short"},
+    {"input": "fast", "output": "slow"},
+    {"input": "rich", "output": "poor"},
+]
+
+selector = SemanticSimilarityExampleSelector.from_examples(
+    examples,
+    OpenAIEmbeddings(),
+    Chroma,
+    k=2  # Select 2 most relevant examples
+)
+
+dynamic_few_shot = FewShotChatMessagePromptTemplate(
+    example_prompt=example_prompt,
+    example_selector=selector
+)
+
+# Will select most relevant examples for "big"
+result = dynamic_few_shot.invoke({"input": "big"})]]></code>
+        <p>FewShotChatMessagePromptTemplate with SemanticSimilarityExampleSelector requires a vector store; this dependency is non-obvious for newcomers. Chroma is the standard choice.</p>
+      </section>
+    </section>
+    <section name="Output Parsers">
+      <section name="String Parser">
+        <code lang="python"><![CDATA[from langchain_core.output_parsers import StrOutputParser
+
+parser = StrOutputParser()
+chain = prompt | model | parser]]></code>
+      </section>
+      <section name="JSON Parser">
+        <code lang="python"><![CDATA[from langchain_core.output_parsers import JsonOutputParser
+from pydantic import BaseModel, Field
+
+class Answer(BaseModel):
+    answer: str = Field(description="The answer")
+    confidence: float = Field(description="Confidence 0-1")
+
+parser = JsonOutputParser(pydantic_object=Answer)
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "Answer questions with confidence score."),
+    ("human", "{question}\n\n{format_instructions}")
+])
+
+chain = prompt.partial(format_instructions=parser.get_format_instructions()) | model | parser]]></code>
+        <p>StrOutputParser does not validate output format — downstream steps expecting structured data fail with confusing errors if the model returns prose. Use `with_structured_output()` instead.</p>
+      </section>
+      <section name="Structured Output (Recommended)">
+        <code lang="python"><![CDATA[from langchain_core.pydantic_v1 import BaseModel, Field
+
+class SearchQuery(BaseModel):
+    """Search query parameters."""
+    query: str = Field(description="The search query")
+    filters: list[str] = Field(default=[], description="Filters to apply")
+    limit: int = Field(default=10, description="Max results")
+
+# Use with_structured_output for reliable parsing
+structured_model = model.with_structured_output(SearchQuery)
+
+result = structured_model.invoke("Find Python tutorials, limit 5")
+# Returns: SearchQuery(query="Python tutorials", filters=[], limit=5)]]></code>
+      </section>
+      <section name="Streaming Parser">
+        <code lang="python"><![CDATA[from langchain_core.output_parsers import JsonOutputParser
+
+parser = JsonOutputParser()
+
+chain = prompt | model | parser
+
+# Stream partial results
+for chunk in chain.stream({"input": "Generate a complex JSON"}):
+    print(chunk)  # Partial JSON as it's generated]]></code>
+        <p>Piping into JsonOutputParser on streaming mode returns partial JSON dicts that are valid Python but not yet complete — downstream agents must handle partial objects.</p>
+      </section>
+    </section>
+    <section name="Error Handling and Resilience">
+      <section name="Retry Logic">
+        <code lang="python"><![CDATA[from langchain_core.runnables import RunnableRetry
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+# Built-in retry
+chain_with_retry = chain.with_retry(
+    stop_after_attempt=3,
+    wait_exponential_jitter=True
+)
+
+# Custom retry with tenacity
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=10)
+)
+def robust_invoke(chain, input):
+    return chain.invoke(input)]]></code>
+        <p>`chain.with_retry()` uses exponential backoff but does not distinguish between retryable errors (rate limit) and non-retryable ones (auth failure) — both trigger retry. Use tenacity for fine-grained control.</p>
+      </section>
+    </section>
+    <section name="Streaming">
+      <section name="Basic Streaming">
+        <code lang="python"><![CDATA[from langchain_openai import ChatOpenAI
+
+model = ChatOpenAI(model="gpt-4o", streaming=True)
+
+# Stream tokens
+for chunk in model.stream("Tell me a story"):
+    print(chunk.content, end="", flush=True)]]></code>
+      </section>
+      <section name="Chain Streaming">
+        <code lang="python"><![CDATA[chain = prompt | model | parser
+
+# Stream final output
+for chunk in chain.stream({"input": "Hello"}):
+    print(chunk, end="", flush=True)
+
+# Stream events (more detailed)
+async for event in chain.astream_events({"input": "Hello"}, version="v2"):
+    if event["event"] == "on_chat_model_stream":
+        print(event["data"]["chunk"].content, end="")]]></code>
+      </section>
+    </section>
+    <section name="Agentic Workflow">
+      <p>An agent uses LCEL chains as composable building blocks for individual task types. A routing subagent classifies the input and selects the appropriate chain. A specialist subagent runs the selected chain and returns structured output.</p>
+      <p>For batch processing, an orchestrator agent fans out multiple chain invocations using `asyncio.gather()` and collects results for aggregation. Chain definitions live in a registry so the orchestrating agent can select by name without knowing the implementation.</p>
+      <section name="Chain Registry Pattern">
+        <p>Define chains at module level, not inside request handlers. Chain compilation happens once at import time; recreating chains per request wastes CPU and makes chains non-reusable.</p>
+      </section>
+      <section name="Recommended Subagents">
+        <list>
+          <item>`faion-llm-cli-agent` — invokes named LCEL chains via CLI interface, handles prompt injection and output parsing</item>
+          <item>General extraction subagent — receives raw text, runs extraction chain with `with_structured_output()`, returns Pydantic object</item>
+        </list>
+      </section>
+      <section name="Prompt Pattern for Chain Selection">
+        <p>Pattern 1: Orchestrator selecting from registered chains:</p>
+        <code lang="text"><![CDATA[You are a chain orchestrator. Select and run the correct chain for this input:
+- If input is code → run "code_review_chain"
+- If input is prose → run "summarize_chain"
+- Otherwise → run "general_chain"
+
+Input: "{user_input}"
+Run the selected chain and return its output verbatim.]]></code>
+        <p>Pattern 2: MapReduce orchestration:</p>
+        <code lang="text"><![CDATA[Run the following MapReduce chain on these {count} documents:
+  Map step: summarize each document in 2 sentences
+  Reduce step: synthesize summaries into one coherent paragraph
+Documents: {documents_json}
+Return: {"individual_summaries": [...], "synthesis": str}]]></code>
+      </section>
+    </section>
+    <section name="CLI Tools and Services">
+      <section name="CLI Tools">
+        <list>
+          <item>`langchain-cli` — Scaffold chains, serve via LangServe | `pip install langchain-cli`</item>
+          <item>`langserve` — Expose LCEL chains as REST endpoints | `pip install langserve`</item>
+          <item>`langsmith` — Trace and debug each chain step | `pip install langsmith`</item>
+          <item>`tenacity` — Retry logic with fine-grained control | `pip install tenacity`</item>
+        </list>
+      </section>
+      <section name="Services and Apps">
+        <list>
+          <item>LangSmith (SaaS) — Per-step tracing; essential for debugging parser failures</item>
+          <item>LangServe (OSS) — Serves any LCEL chain as `/invoke`, `/stream`, `/batch` endpoints</item>
+          <item>LangChain Hub (SaaS) — Pull versioned prompts with `hub.pull("username/prompt-name")`</item>
+          <item>Chroma (OSS) — Required for `SemanticSimilarityExampleSelector` in few-shot chains</item>
+          <item>Redis (OSS) — `RedisCache` for LLM response caching across chain invocations</item>
+        </list>
+      </section>
+    </section>
+    <section name="Best Practices">
+      <p>Use `with_structured_output(PydanticModel)` for any chain where downstream code depends on specific fields — this eliminates an entire class of parser failure bugs. Function calling via structured output is more reliable than prompt-based JSON extraction.</p>
+      <p>Define chains at module level, not inside request handlers — chain compilation happens once at import time; recreating chains per request wastes CPU and prevents chain reuse across different contexts.</p>
+      <p>Use `hub.pull("username/prompt")` for production prompts; storing prompts in version control separately from code creates drift and makes versioning difficult. LangChain Hub provides commit-hash-based prompt versioning.</p>
+      <p>For router chains, put the most common route as the last RunnableBranch condition checked via the default fallback — avoids all conditions returning False for unrecognized inputs, which is a common source of bugs.</p>
+      <p>Enable `LANGCHAIN_TRACING_V2=true` during development but disable in production unless actively monitoring — tracing adds latency per chain call and should be optional in performance-critical systems.</p>
+      <p>When chaining model calls, set explicit `max_tokens` on each model to prevent runaway generation that exceeds downstream parser expectations and causes memory or cost overruns.</p>
+      <p>Test each chain component (prompt, model output format, parser) independently before testing the full chain — isolating failures to a single component is much faster than debugging the complete pipeline.</p>
+    </section>
+    <section name="Limitations and Gotchas">
+      <p>RunnableBranch does not support dynamic routing keys computed at runtime — all branch conditions must be lambda functions known at definition time.</p>
+      <p>MapReduce via RunnableParallel does not support true async fan-out; parallel dict keys execute synchronously in CPython without explicit async.</p>
+      <p>RunnableParallel with a dict of chains blocks on the slowest chain; there is no timeout-per-branch — one slow chain blocks the entire parallel step.</p>
+      <p>LCEL pipe operator `|` has no built-in timeout; a hung model call blocks indefinitely without explicit `asyncio.wait_for()` wrapping.</p>
+      <p>Output from one chain piped into another via LCEL must match the expected input dict key exactly; a key mismatch raises a KeyError at invocation time, not at chain definition time.</p>
+      <p>`with_fallbacks()` catches all exceptions by default, including auth errors and invalid API key errors — set `exceptions_to_handle` explicitly to avoid masking configuration bugs.</p>
+    </section>
+    <section name="Testing Chains">
+      <p>Test chains by mocking the LLM and verifying the chain structure. Unit tests should verify that chains accept the correct input shape and produce the correct output shape without calling the actual model. Mock each component independently to isolate failures.</p>
+      <p>Integration tests should call the real LLM to verify that prompts are effective and parsers extract correct fields. Use `@pytest.mark.integration` to separate fast unit tests (suitable for CI) from slow integration tests (run on-demand by developers).</p>
+    </section>
+    <section name="References">
+      <list>
+        <item>https://python.langchain.com/docs/expression_language/</item>
+        <item>https://python.langchain.com/docs/how_to/routing/</item>
+        <item>https://python.langchain.com/docs/how_to/parallel/</item>
+        <item>https://python.langchain.com/docs/how_to/fallbacks/</item>
+        <item>LangChain LCEL cookbook: https://python.langchain.com/docs/expression_language/cookbook/</item>
+      </list>
+    </section>
+    <checklist>
+      <check>Review methodology documentation</check>
+      <check>Identify requirements and constraints</check>
+      <check>Define success criteria</check>
+      <check>Set up development environment</check>
+      <check>Implement core functionality</check>
+      <check>Add error handling</check>
+      <check>Write tests</check>
+      <check>Document code</check>
+      <check>Run unit tests</check>
+      <check>Run integration tests</check>
+      <check>Validate against requirements</check>
+      <check>Performance testing (if applicable)</check>
+      <check>Code review</check>
+      <check>Deploy to staging</check>
+      <check>Validate in production-like environment</check>
+      <check>Deploy to production</check>
+      <check>Monitor metrics</check>
+      <check>Document lessons learned</check>
+      <check>Update runbooks</check>
+    </checklist>
+  </content>
+</methodology>
