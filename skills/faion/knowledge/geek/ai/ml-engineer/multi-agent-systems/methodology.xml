@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="multi-agent-systems">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Coordinate multiple AI agents to solve tasks exceeding single agent's context or parallelism. Use Claude Agent SDK subagents with typed contracts. Test single-agent mode first.</summary>
+    <tags>
+      <tag>agents</tag>
+      <tag>orchestration</tag>
+      <tag>langgraph</tag>
+      <tag>workflows</tag>
+      <tag>parallel-execution</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Multi-Agent Systems</title>
+    <summary>Multi-agent systems coordinate multiple AI agents to solve tasks that exceed a single agent's context, parallelism, or role boundaries. Use the Claude Agent SDK's subagent primitive: parent spawns children with typed contracts, waits for structured results, routes to the next stage. Keep orchestrators stateless (routing only); push state to a shared file or queue.</summary>
+    <why>
+      <p>Single agents fail when tasks exceed context windows (>100K tokens of reasoning), require parallel specialized work, or have natural role boundaries (planner/executor/critic). Multi-agent systems distribute these concerns — but only when the coordination overhead is less than the gain. 72% of enterprise AI projects (2025-2026) use multi-agent architectures, making framework selection and state management patterns critical skills.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Task requires parallel specialized work: research + coding + review happening simultaneously</item>
+        <item>Problem is too large for a single context window</item>
+        <item>Workflow has natural role boundaries (planner, executor, critic, verifier)</item>
+        <item>Iterative refinement loops benefit from adversarial agents (generator vs. critic)</item>
+        <item>Long-running pipelines where intermediate outputs need validation checkpoints</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Simple, linear task a single agent completes in one pass</item>
+        <item>Low latency required — multi-agent adds orchestration overhead (2-5x latency)</item>
+        <item>Budget is tight — multiple agents multiply token spend</item>
+        <item>Team lacks observability tooling — debugging multi-agent failures is hard without traces</item>
+        <item>Task has tight coupling between steps where parallelization creates conflicts</item>
+      </list>
+    </when-not-to-use>
+    <section name="Framework Comparison">
+      <list>
+        <item>LangGraph: fastest execution (2.2x faster than CrewAI), explicit state control, graph-based. Use for complex workflows with conditional branching. Steep learning curve.</item>
+        <item>CrewAI: role-based teams, minimal setup, production-ready. Use for structured workflows with clear agent roles.</item>
+        <item>AutoGen (Microsoft): conversational multi-agent, group chat. Higher latency. Use for research/flexible collaboration.</item>
+        <item>OpenAI Swarm: lightweight handoffs, prototyping only. Limited features, not for production.</item>
+      </list>
+      <rule>
+        <statement>Select framework by decision tree: need explicit state + complex branching → LangGraph; want role-based teams with minimal setup → CrewAI; need conversational collaboration → AutoGen; prototype only → Swarm. Default: LangGraph.</statement>
+        <rationale>LangGraph's explicit state machine model is the most debuggable in production. Other frameworks trade flexibility for ease of setup but limit customization for complex workflows.</rationale>
+      </rule>
+    </section>
+    <section name="Architecture Patterns">
+      <rule>
+        <statement>Hierarchical (Manager → Workers): use for complex projects with clear task decomposition. Collaborative/P2P: use for creative work and iterative refinement. Sequential pipeline: use for linear workflows and content processing.</statement>
+        <rationale>Architecture pattern determines coordination overhead, parallelism, and failure isolation. Hierarchical provides the best failure containment — a worker failure doesn't cascade to other workers.</rationale>
+      </rule>
+      <rule>
+        <statement>Use separate model tiers: orchestrator → Claude Opus; workers → Sonnet; formatters/classifiers → Haiku. Never use Opus for worker tasks.</statement>
+        <rationale>Orchestrators make routing decisions requiring broad knowledge; workers execute specific, well-defined tasks. Using Opus for formatting wastes $15/M tokens on a task Haiku handles at $0.80/M.</rationale>
+      </rule>
+    </section>
+    <section name="Communication Patterns">
+      <list>
+        <item>Direct message: point-to-point delegation between two agents</item>
+        <item>Shared state file: all agents read/write a structured state document</item>
+        <item>Queue: pub/sub for loose coupling; Redis/Valkey for production</item>
+        <item>Group chat: multi-party conversation for collaborative reasoning (AutoGen pattern)</item>
+      </list>
+      <rule>
+        <statement>For sequential pipelines, chain outputs as explicit inputs to the next stage. Never rely on shared memory or conversation history between agents — always serialize structured state.</statement>
+        <rationale>Shared memory introduces race conditions and context window fragmentation. Serialized structured state is explicit, auditable, and restartable from any checkpoint.</rationale>
+      </rule>
+    </section>
+    <section name="State Management Rules">
+      <rule>
+        <statement>Use immutable state updates: agents append to state, never overwrite previous stages. Use PostgresSaver for LangGraph in production — never InMemorySaver (lost on restart).</statement>
+        <rationale>Overwriting state prevents replay and debugging. In-memory state is lost on any crash or restart, which will happen in production.</rationale>
+      </rule>
+      <rule>
+        <statement>Validate the output schema of each agent before passing to the next stage. Re-validate on receipt even if the sending agent validated on emit — serialization can corrupt data.</statement>
+        <rationale>Schema drift between agents is the primary source of silent multi-agent failures. Each agent boundary is a contract; validate both sides.</rationale>
+      </rule>
+      <rule>
+        <statement>Set max_tokens on each agent AND a total spend cap for the pipeline. Implement a global timeout watchdog that terminates the pipeline after N minutes.</statement>
+        <rationale>Without per-agent token caps, a single stuck agent can exhaust the entire pipeline budget. A global watchdog prevents infinite loops that evade individual caps.</rationale>
+      </rule>
+    </section>
+    <section name="Orchestrator Constraints">
+      <rule>
+        <statement>Limit orchestrators to less than or equal to 4 workers. Above 4, split into sub-orchestrators. Orchestrators with more workers lose coherence after 5+ exchanges.</statement>
+        <rationale>LLM orchestrators experience prompt drift — original goals become diluted after many exchanges. Sub-orchestrators create scoped contexts that stay focused.</rationale>
+      </rule>
+      <rule>
+        <statement>Keep orchestrators stateless: orchestrators route and synthesize only. Workers maintain their own state. Never have the orchestrator do the work itself.</statement>
+        <rationale>Stateful orchestrators become bottlenecks and create shared-state race conditions when multiple workers report results simultaneously.</rationale>
+      </rule>
+    </section>
+    <section name="Failure Modes and Gotchas">
+      <antipattern>
+        <description>Tool abuse loops: agents calling tools in cycles when stuck, running up costs without making progress.</description>
+        <reason>Agents without iteration limits can call the same failing tool indefinitely. Implement circuit breakers and per-agent maximum iteration counts.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Context window fragmentation: sub-agents with small contexts miss critical info passed by the orchestrator as a summary.</description>
+        <reason>Summaries lose precision. Worker agents must receive full task context, not a summary — summaries cause hallucinated assumptions.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Persona collapse in peer-to-peer: agents with similar prompts converge on agreement rather than productive disagreement.</description>
+        <reason>For adversarial (generator/critic) patterns, prompts must explicitly differentiate roles and instruct the critic to actively challenge. Similar prompts produce echo chambers.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Destructive tool call without human-in-loop: agent executes file delete, API POST, or DB write without human confirmation.</description>
+        <reason>Autonomous agents make mistakes. Irreversible operations require a confirmation gate. This is not optional for production systems.</reason>
+      </antipattern>
+    </section>
+    <section name="Limitations and Failure Cases">
+      <rule>
+        <statement>Orchestrator prompt drift: after 5+ back-and-forth exchanges, manager agents lose track of original goals.</statement>
+        <rationale>Use sub-orchestrators above 4 workers to maintain focus across exchanges.</rationale>
+      </rule>
+      <rule>
+        <statement>State desynchronization: agents reading/writing shared state concurrently produce race conditions without explicit locking.</statement>
+        <rationale>Always serialize state through a single writer or database with ACID guarantees.</rationale>
+      </rule>
+      <rule>
+        <statement>Error propagation: worker failure silently passes bad output downstream unless each stage validates its inputs.</statement>
+        <rationale>Validate at every agent boundary. Design for explicit failure signals rather than implicit assumptions.</rationale>
+      </rule>
+    </section>
+    <section name="Best Practices">
+      <rule>
+        <statement>Use immutable state updates: agents append to state, never overwrite previous stages.</statement>
+        <rationale>Prevents data loss and enables replay for debugging.</rationale>
+      </rule>
+      <rule>
+        <statement>Set hard token budgets per agent role (orchestrator gets less; workers get more).</statement>
+        <rationale>Prevents cost runaway and ensures resources go to high-value work.</rationale>
+      </rule>
+      <rule>
+        <statement>Validate schema of each agent output before passing to the next stage.</statement>
+        <rationale>Catches errors early before they propagate downstream.</rationale>
+      </rule>
+      <rule>
+        <statement>Implement a global timeout watchdog that terminates the pipeline after N minutes.</statement>
+        <rationale>Prevents infinite loops and runaway costs.</rationale>
+      </rule>
+      <rule>
+        <statement>Prefer sequential pipelines for deterministic tasks; use peer-to-peer only for creative/research work.</statement>
+        <rationale>Sequential pipelines are easier to debug and reason about.</rationale>
+      </rule>
+      <rule>
+        <statement>Never pass raw conversation history between agents — serialize structured state only.</statement>
+        <rationale>Prevents context window fragmentation and makes the flow auditable.</rationale>
+      </rule>
+      <rule>
+        <statement>Use separate model tiers: orchestrator → Claude Opus; workers → Sonnet; formatters → Haiku.</statement>
+        <rationale>Optimizes cost per token and ensures orchestrators have sufficient reasoning capacity.</rationale>
+      </rule>
+      <rule>
+        <statement>Test single-agent mode first; only add multi-agent when single-agent demonstrably fails.</statement>
+        <rationale>Multi-agent systems add complexity. Use them only when necessary.</rationale>
+      </rule>
+    </section>
+    <section name="Agentic Workflow Integration">
+      <rule>
+        <statement>Deploy multi-agent systems via the Claude Agent SDK's subagent primitive: parent agent spawns child agents with tool access, waits for structured results, then routes to the next stage. For hierarchical patterns, keep the orchestrator stateless (just routing) and push state into a shared file or queue that all workers read. For sequential pipelines, chain outputs as explicit inputs to the next stage rather than relying on shared memory. Always instrument each agent boundary with structured logging.</statement>
+        <rationale>The subagent primitive handles all low-level orchestration concerns (startup, cleanup, error handling). Using it ensures consistent, production-ready multi-agent systems.</rationale>
+      </rule>
+    </section>
+    <section name="Minimal Sequential Pipeline Example">
+      <example type="good" title="Two-agent orchestrator pattern (Python, ~40 lines)">
+        <code lang="python"><![CDATA[import anthropic, json
+from pathlib import Path
+
+client = anthropic.Anthropic()
+STATE_FILE = Path("/tmp/agent-state.json")
+
+def run_agent(role: str, instruction: str, state: dict) -> dict:
+    resp = client.messages.create(
+        model="claude-opus-4-5",
+        max_tokens=4096,
+        system=f"You are the {role}. Return JSON only.",
+        messages=[{"role": "user", "content": f"State: {json.dumps(state)}\n\nTask: {instruction}"}],
+    )
+    return json.loads(resp.content[0].text)
+
+def run_pipeline(task: str) -> dict:
+    state = {"task": task, "research": None, "draft": None, "review": None}
+    state["research"] = run_agent("researcher", "Research the task. Return {\"findings\": \"...\"}.", state)
+    state["draft"] = run_agent("writer", "Write draft using findings. Return {\"draft\": \"...\"}.", state)
+    state["review"] = run_agent("reviewer", "Review draft. Return {\"verdict\": \"pass|fail\", \"notes\": \"...\"}.", state)
+    STATE_FILE.write_text(json.dumps(state, indent=2))
+    return state]]></code>
+      </example>
+    </section>
+    <templates>
+      <template path="templates/sequential-pipeline.py" purpose="Minimal 3-agent sequential pipeline (researcher → writer → reviewer)"/>
+      <template path="templates/orchestrator-prompt.txt" purpose="Stateless orchestrator system prompt pattern"/>
+    </templates>
+    <see-also>
+      <link href="https://docs.langchain.com/langgraph/">LangChain LangGraph</link>
+      <link href="https://docs.crewai.com/">CrewAI Documentation</link>
+      <link href="https://microsoft.github.io/autogen/">AutoGen (Microsoft)</link>
+      <link href="https://github.com/openai/swarm">OpenAI Swarm</link>
+      <link href="https://research.aimultiple.com/agentic-frameworks/">AI Multiple: Agentic Frameworks</link>
+      <link href="https://latenode.com/blog/ai-frameworks-technical-infrastructure/langgraph-multi-agent-orchestration/">LateNode: LangGraph Multi-Agent Orchestration</link>
+    </see-also>
+  </content>
+</methodology>
