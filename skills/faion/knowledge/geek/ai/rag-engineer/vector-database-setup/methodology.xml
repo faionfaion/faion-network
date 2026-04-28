@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vector-database-setup">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Choose and provision a vector DB: Pinecone, Weaviate, Chroma, Qdrant, Milvus, pgvector; HNSW vs IVF vs Flat; setup code; VectorStoreBase abstraction. Metric and index type are irreversible.</summary>
+    <tags>
+      <tag>vector-database</tag>
+      <tag>rag</tag>
+      <tag>embeddings</tag>
+      <tag>ann</tag>
+      <tag>pinecone</tag>
+      <tag>qdrant</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Vector Database Setup</title>
+    <summary>Decision methodology for choosing and provisioning a vector database at the start of a RAG project: comparison of Pinecone, Weaviate, Chroma, Qdrant, Milvus, and pgvector; HNSW vs IVF vs Flat index selection; setup code for each provider; and a provider-agnostic VectorStoreBase abstraction. Distance metric and index type must be decided before the first upsert because both are irreversible without recreating the collection.</summary>
+    <why>
+      <p>A wrong backend choice (Chroma for 10M vectors, wrong distance metric, no payload indexing) surfaces only at scale and requires a full re-index to fix. Selecting the right combination of hosting model, index type, and metadata strategy up-front avoids multi-day migrations. The VectorStoreBase abstraction keeps application code decoupled from the backend so future migrations require only swapping the implementation.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Starting a new RAG pipeline that needs a vector store</item>
+        <item>Migrating from one vector DB to another (e.g., Chroma → Qdrant for production)</item>
+        <item>Building multi-tenant search requiring data isolation by namespace/collection</item>
+        <item>Embedding datasets with &gt;10K vectors where in-memory numpy arrays are no longer viable</item>
+        <item>Recommendation or duplicate-detection systems needing fast ANN at scale</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Fewer than 5K vectors with no strict latency SLA — numpy cosine search is sufficient, zero infra</item>
+        <item>Relational data with complex JOINs — pgvector's SQL expressiveness matters more than ANN speed</item>
+        <item>Text search where full BM25/TF-IDF ranking is primary — use Elasticsearch or Typesense instead</item>
+        <item>Throwaway experiments with no persistence — in-memory Chroma is simpler</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="provider-comparison">
+      <list>
+        <item>Pinecone: managed SaaS, serverless, auto-scale, pay-per-use — best for teams wanting zero infra ops</item>
+        <item>Qdrant: open-source, self-hosted Docker/K8s, best performance + filtering + quantization at scale</item>
+        <item>Chroma: open-source, in-process SQLite, zero infra — best for local dev and eval harnesses</item>
+        <item>Weaviate: open-source/managed, schema-first, GraphQL API, built-in vectorizer integrations</item>
+        <item>Milvus: open-source, K8s-native, enterprise scale (billions of vectors)</item>
+        <item>pgvector: PostgreSQL extension — best when the application already uses Postgres and vector count is moderate</item>
+      </list>
+    </section>
+
+    <section name="index-type-selection">
+      <rule>
+        <statement>Use HNSW for real-time search requiring &lt;10ms latency and datasets up to tens of millions of vectors.</statement>
+        <rationale>HNSW achieves 95-99% recall with the lowest query latency of any ANN index. Memory overhead is ~40-50 bytes per vector per HNSW link.</rationale>
+      </rule>
+      <rule>
+        <statement>Use IVF for memory-constrained environments where query latency of 10-50ms is acceptable.</statement>
+        <rationale>IVF divides the space into Voronoi cells; query probes only a subset of cells, trading some recall for lower memory usage than HNSW.</rationale>
+      </rule>
+      <rule>
+        <statement>Use Flat (exact brute-force) only for datasets with fewer than 10K vectors.</statement>
+        <rationale>Flat search is O(n); at 10K vectors it remains under 10ms, but at 1M vectors it becomes prohibitively slow.</rationale>
+      </rule>
+    </section>
+
+    <section name="critical-rules">
+      <rule>
+        <statement>Choose the distance metric (cosine, L2, dot product) before creating the collection and treat it as immutable; changing it requires recreating the collection and re-ingesting all data.</statement>
+        <rationale>Vector DB indexes are built for a specific metric. Using the wrong metric produces incorrect similarity rankings; correcting it is a full re-index.</rationale>
+      </rule>
+      <rule>
+        <statement>Validate embedding dimensions match the collection definition before ingesting; dimension mismatches cause silent failures in some clients.</statement>
+        <rationale>Some clients silently truncate or reject mismatched vectors. Catching this at ingestion time prevents a corrupt index.</rationale>
+      </rule>
+    </section>
+
+    <section name="setup-pinecone">
+      <example type="good" title="Pinecone setup">
+        <code lang="python"><![CDATA[
+from pinecone import Pinecone, ServerlessSpec
+import os
+
+pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
+
+def create_index(name: str, dimension: int = 1536):
+    if name not in pc.list_indexes().names():
+        pc.create_index(name=name, dimension=dimension, metric="cosine",
+                        spec=ServerlessSpec(cloud="aws", region="us-east-1"))
+    return pc.Index(name)
+
+index = create_index("my-index")
+# Upsert in batches of 100
+index.upsert(vectors=[{"id": "1", "values": emb, "metadata": {"source": "a.pdf"}}])
+results = index.query(vector=query_emb, top_k=5, include_metadata=True)
+]]></code>
+      </example>
+    </section>
+
+    <section name="setup-chroma">
+      <example type="good" title="Chroma local dev">
+        <code lang="python"><![CDATA[
+import chromadb
+client = chromadb.PersistentClient(path="./chroma_db")
+col = client.get_or_create_collection("documents", metadata={"hnsw:space": "cosine"})
+col.add(ids=["1"], embeddings=[emb], documents=["text"], metadatas=[{"source": "a.pdf"}])
+results = col.query(query_embeddings=[qemb], n_results=5, include=["documents", "distances"])
+]]></code>
+      </example>
+    </section>
+
+    <section name="setup-qdrant">
+      <example type="good" title="Qdrant production self-hosted">
+        <code lang="python"><![CDATA[
+from qdrant_client import QdrantClient
+from qdrant_client.models import VectorParams, Distance, PointStruct
+
+client = QdrantClient(host="localhost", port=6333)
+client.create_collection("documents", vectors_config=VectorParams(size=1536, distance=Distance.COSINE))
+client.upsert("documents", points=[PointStruct(id=1, vector=emb, payload={"text": "..."})])
+results = client.search("documents", query_vector=qemb, limit=5)
+]]></code>
+      </example>
+    </section>
+
+    <section name="setup-weaviate">
+      <example type="good" title="Weaviate setup">
+        <code lang="python"><![CDATA[
+import weaviate
+from weaviate.classes.config import Configure, Property, DataType
+
+client = weaviate.connect_to_local()
+client.collections.create(
+    name="Documents",
+    vectorizer_config=Configure.Vectorizer.text2vec_openai(),
+    properties=[Property(name="content", data_type=DataType.TEXT)],
+)
+col = client.collections.get("Documents")
+with col.batch.dynamic() as batch:
+    batch.add_object(properties={"content": "..."})
+results = col.query.near_text(query="search", limit=5)
+]]></code>
+      </example>
+    </section>
+
+    <section name="setup-pgvector">
+      <example type="good" title="pgvector PostgreSQL">
+        <code lang="python"><![CDATA[
+import psycopg2
+from pgvector.psycopg2 import register_vector
+
+conn = psycopg2.connect(host="localhost", database="vectordb", user="user", password="password")
+register_vector(conn)
+cur = conn.cursor()
+cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+cur.execute("""
+    CREATE TABLE IF NOT EXISTS documents (
+        id SERIAL PRIMARY KEY, content TEXT, embedding vector(1536)
+    )
+""")
+cur.execute("CREATE INDEX IF NOT EXISTS emb_idx ON documents USING ivfflat (embedding vector_cosine_ops) WITH (lists=100)")
+conn.commit()
+# Insert
+cur.execute("INSERT INTO documents (content, embedding) VALUES (%s, %s)", (text, emb))
+# Search
+cur.execute("SELECT id, content, 1-(embedding <=> %s) AS sim FROM documents ORDER BY embedding <=> %s LIMIT 5", (qemb, qemb))
+]]></code>
+      </example>
+    </section>
+
+    <section name="abstraction-pattern">
+      <example type="good" title="VectorStoreFactory abstraction">
+        <code lang="python"><![CDATA[
+class VectorStoreFactory:
+    @staticmethod
+    def create(provider: str, **kwargs):
+        if provider == "qdrant":
+            return QdrantStore(**kwargs)
+        elif provider == "chroma":
+            return ChromaStore(**kwargs)
+        elif provider == "pinecone":
+            return PineconeStore(**kwargs)
+        raise ValueError(f"Unknown provider: {provider}")
+]]></code>
+      </example>
+    </section>
+
+    <section name="pitfalls">
+      <antipattern>
+        <description>Storing full document text as metadata (kilobytes per record).</description>
+        <reason>Metadata is loaded into memory at query time. Large payloads bloat RAM and slow query throughput. Store text externally; keep only IDs and small filter fields in metadata.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using a cloud managed DB (Pinecone Serverless) for hard real-time SLAs without testing cold-start latency.</description>
+        <reason>Serverless instances have cold-start latency on the first query after idle periods. Not suitable for sub-100ms P99 requirements.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Not implementing a document update/delete strategy before bulk ingestion.</description>
+        <reason>Vector DBs have no referential integrity. Deleted source documents leave stale chunks in the index. Plan delete+re-insert or soft-delete tracking before the first ingest.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents calling delete_collection without human confirmation.</description>
+        <reason>There is no undo. Collection deletion must always require human confirmation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>pgvector IVFFlat index without VACUUM ANALYZE after bulk inserts.</description>
+        <reason>The query planner will not use the index without VACUUM ANALYZE; agents running bulk loads must include this step.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>An agent selects the appropriate vector store backend based on constraints (self-hosted vs managed, vector count estimate, filter complexity), provisions the collection with the correct schema and index type, then runs an ingestion loop. A second agent validates the setup by querying with known embeddings and asserting top-1 recall matches expected results. Schema selection and metric choice are human-confirmed before the collection is created.</p>
+    </section>
+
+    <prompt purpose="vector-store-provisioner"><![CDATA[
+You are a vector store provisioner. Given: provider (pinecone|chroma|qdrant|weaviate|pgvector),
+vector_dim, distance_metric, filterable_fields, expected_vector_count.
+Steps:
+1. Select index type based on expected_vector_count (<10K→Flat, <1M→HNSW, >1M→IVF or HNSW+quantization).
+2. Provision the collection/index.
+3. Create indexes for each filterable_field.
+4. Return: {"provider": "...", "collection": "...", "index_type": "...", "status": "ready"}
+]]></prompt>
+
+    <section name="best-practices">
+      <list>
+        <item>Validate embedding dimension against collection config at startup — raise early rather than silently upsert wrong-dim vectors</item>
+        <item>Choose HNSW for latency-sensitive production search; IVF only if RAM is the binding constraint</item>
+        <item>Store raw text content in metadata/payload alongside the embedding — agents need to return human-readable context, not just IDs</item>
+        <item>Keep metadata fields small (KB scale); store large blobs in S3/GCS and put only the object key in metadata</item>
+        <item>Use consistent, deterministic IDs derived from document hash so re-ingestion is idempotent (upsert, not insert)</item>
+        <item>Test distance metric choice with a 100-sample labeled set before committing to a schema</item>
+        <item>For multi-tenant apps, use separate namespaces (Pinecone) or collections (Qdrant/Chroma) per tenant rather than metadata filtering — prevents cross-tenant data leaks</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/vector_store_base.py" purpose="VectorStoreBase ABC + PineconeStore + ChromaStore + VectorStoreFactory"/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.pinecone.io/"/>
+      <link href="https://docs.trychroma.com/"/>
+      <link href="https://qdrant.tech/documentation/"/>
+      <link href="https://weaviate.io/developers/weaviate"/>
+      <link href="https://github.com/pgvector/pgvector"/>
+      <link href="https://ann-benchmarks.com/"/>
+      <link href="https://huggingface.co/spaces/mteb/leaderboard"/>
+    </see-also>
+  </content>
+</methodology>
