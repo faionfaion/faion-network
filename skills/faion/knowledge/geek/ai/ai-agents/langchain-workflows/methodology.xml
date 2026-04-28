@@ -1,0 +1,532 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="langchain-workflows">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>LangGraph enables building stateful, multi-step workflows with complex control flow, conditional routing, human-in-the-loop patterns, and subgraph composition.</summary>
+    <tags>
+      <tag>langgraph</tag>
+      <tag>workflows</tag>
+      <tag>state-management</tag>
+      <tag>control-flow</tag>
+      <tag>orchestration</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-01-25</created>
+  </metadata>
+
+  <content>
+    <title>LangChain Workflows</title>
+
+    <summary>LangGraph enables building stateful, multi-step workflows with complex control flow. Define typed state, build directed graphs of nodes, route conditionally, and checkpoint for human-in-the-loop approval patterns.</summary>
+
+    <why>
+      <p>Complex multi-step workflows (agentic pipelines, data processing chains, approval flows) require explicit state tracking, conditional routing, and recovery semantics. LangGraph provides a graph-based state machine abstraction: TypedDict state, async node functions, conditional edges, and checkpointing. This prevents the common pattern of nested callbacks and manual state threading across function calls. Explicit workflows are observable and testable.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building agent orchestration workflows with branching logic</item>
+        <item>Creating approval pipelines that pause for human review</item>
+        <item>Implementing data processing chains with state accumulation</item>
+        <item>Complex reasoning chains that must route based on intermediate results</item>
+        <item>Error handling workflows that gracefully degrade on failures</item>
+        <item>Parallel execution patterns where multiple tasks run simultaneously then converge</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple linear chains — use plain RunnableSequence instead</item>
+        <item>Stateless single-node operations — graph overhead is unnecessary</item>
+        <item>Extremely latency-sensitive applications where graph traversal overhead matters</item>
+        <item>Workflows where state never persists (truly ephemeral, no replay needed)</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-concepts">
+      <p>LangGraph workflows consist of state, nodes, edges, and a compiler that assembles them into an executable graph.</p>
+
+      <rule testable="true">
+        <statement>Define workflow state as a flat TypedDict with simple fields and Annotated accumulating fields. Avoid deeply nested dicts and mutable defaults.</statement>
+        <rationale>Flat state schemas reduce checkpoint size, improve debuggability, and make state evolution explicit. Annotated fields with operator.add semantics accumulate results from multiple nodes without overwriting.</rationale>
+      </rule>
+
+      <example type="good" title="State Definition">
+        <code lang="python"><![CDATA[from typing import TypedDict, Annotated, List
+import operator
+
+class WorkflowState(TypedDict):
+    # Simple fields
+    input: str
+    output: str
+
+    # Accumulating field (appends instead of replaces)
+    messages: Annotated[List[str], operator.add]
+
+    # Optional field
+    error: str | None
+
+# Usage: {"messages": ["new"]} adds to existing messages]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Each node function receives state, processes it, and returns a partial state dict containing only the fields it updates.</statement>
+        <rationale>Partial updates keep nodes decoupled; each node specifies only what it modifies, making the graph more maintainable.</rationale>
+      </rule>
+
+      <example type="good" title="Node Functions">
+        <code lang="python"><![CDATA[from langgraph.graph import StateGraph, END
+
+def process_node(state: WorkflowState) -> WorkflowState:
+    """Process the input."""
+    result = f"Processed: {state['input']}"
+    return {
+        "output": result,
+        "messages": [f"Processed input: {state['input']}"]
+    }
+
+def validate_node(state: WorkflowState) -> WorkflowState:
+    """Validate the output."""
+    if "error" in state["output"].lower():
+        return {"error": "Validation failed"}
+    return {"messages": ["Validation passed"]}
+
+def finalize_node(state: WorkflowState) -> WorkflowState:
+    """Finalize the workflow."""
+    return {"messages": ["Workflow complete"]}]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use conditional_edges to route based on state. Define a routing function that returns the next node name or END.</statement>
+        <rationale>Conditional routing makes the graph data-driven; routing decisions are separate from node logic and easier to test.</rationale>
+      </rule>
+
+      <example type="good" title="Conditional Routing">
+        <code lang="python"><![CDATA[def should_continue(state: WorkflowState) -> str:
+    """Determine next node based on state."""
+    if state.get("error"):
+        return "error_handler"
+    if len(state.get("messages", [])) > 10:
+        return END
+    return "process"
+
+# Build graph
+graph = StateGraph(WorkflowState)
+
+graph.add_node("process", process_node)
+graph.add_node("validate", validate_node)
+graph.add_node("finalize", finalize_node)
+graph.add_node("error_handler", error_handler)
+
+graph.set_entry_point("process")
+graph.add_edge("process", "validate")
+graph.add_conditional_edges(
+    "validate",
+    should_continue,
+    {
+        "process": "process",
+        "error_handler": "error_handler",
+        END: END
+    }
+)
+graph.add_edge("finalize", END)
+graph.add_edge("error_handler", END)
+
+workflow = graph.compile()]]></code>
+      </example>
+    </section>
+
+    <section name="advanced-patterns">
+      <p>Human-in-the-loop, parallel execution, subgraphs, streaming, and error handling.</p>
+
+      <rule testable="true">
+        <statement>Use interrupt_before to pause a workflow before destructive nodes. Resume with workflow.invoke(None, config) after human approval.</statement>
+        <rationale>Interrupts provide atomic pause-and-resume semantics backed by a checkpointer. This is the correct pattern for human approval; in-graph checks cannot guarantee atomicity.</rationale>
+      </rule>
+
+      <example type="good" title="Human-in-the-Loop">
+        <code lang="python"><![CDATA[from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import StateGraph, END
+
+# Create checkpointer for persistence
+memory = MemorySaver()
+
+def get_approval(state: WorkflowState) -> WorkflowState:
+    """Node that requires human approval."""
+    return {"messages": ["Waiting for approval..."]}
+
+def execute_action(state: WorkflowState) -> WorkflowState:
+    """Execute after approval."""
+    return {"output": "Action executed", "messages": ["Done"]}
+
+# Build graph with interrupt
+graph = StateGraph(WorkflowState)
+graph.add_node("get_approval", get_approval)
+graph.add_node("execute", execute_action)
+
+graph.set_entry_point("get_approval")
+graph.add_edge("get_approval", "execute")
+graph.add_edge("execute", END)
+
+# Compile with interrupt before execute
+workflow = graph.compile(
+    checkpointer=memory,
+    interrupt_before=["execute"]
+)
+
+# First run - stops at interrupt
+config = {"configurable": {"thread_id": "1"}}
+result = workflow.invoke({"input": "Do something"}, config)
+
+# Resume after approval
+result = workflow.invoke(None, config)  # Continues from checkpoint]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Compose workflows via subgraphs. A node can call another compiled graph as if it were a function.</statement>
+        <rationale>Subgraphs enable modularity and code reuse; large workflows stay readable and testable.</rationale>
+      </rule>
+
+      <example type="good" title="Subgraphs">
+        <code lang="python"><![CDATA[from langgraph.graph import StateGraph
+
+# Define subgraph
+def create_research_subgraph():
+    graph = StateGraph(WorkflowState)
+    graph.add_node("search", search_node)
+    graph.add_node("analyze", analyze_node)
+    graph.set_entry_point("search")
+    graph.add_edge("search", "analyze")
+    return graph.compile()
+
+research_subgraph = create_research_subgraph()
+
+# Use in main graph
+main = StateGraph(WorkflowState)
+main.add_node("research", research_subgraph)
+main.add_node("synthesize", synthesize_node)
+
+main.set_entry_point("research")
+main.add_edge("research", "synthesize")
+main.add_edge("synthesize", END)
+
+main_workflow = main.compile()]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>For parallel execution, define multiple entry points and converge with a final node. All tasks run in parallel and are joined before the convergence node executes.</statement>
+        <rationale>LangGraph's parallel execution reduces latency compared to sequential node invocation.</rationale>
+      </rule>
+
+      <example type="good" title="Parallel Execution">
+        <code lang="python"><![CDATA[from langgraph.graph import StateGraph
+from typing import TypedDict
+
+class ParallelState(TypedDict):
+    input: str
+    result_a: str
+    result_b: str
+    result_c: str
+    final: str
+
+def task_a(state: ParallelState) -> ParallelState:
+    return {"result_a": f"A processed: {state['input']}"}
+
+def task_b(state: ParallelState) -> ParallelState:
+    return {"result_b": f"B processed: {state['input']}"}
+
+def task_c(state: ParallelState) -> ParallelState:
+    return {"result_c": f"C processed: {state['input']}"}
+
+def combine(state: ParallelState) -> ParallelState:
+    combined = f"{state['result_a']}, {state['result_b']}, {state['result_c']}"
+    return {"final": combined}
+
+# Build graph with parallel nodes
+graph = StateGraph(ParallelState)
+graph.add_node("task_a", task_a)
+graph.add_node("task_b", task_b)
+graph.add_node("task_c", task_c)
+graph.add_node("combine", combine)
+
+# All three tasks run in parallel
+graph.set_entry_point("task_a")
+graph.set_entry_point("task_b")
+graph.set_entry_point("task_c")
+
+# Wait for all to complete before combining
+graph.add_edge("task_a", "combine")
+graph.add_edge("task_b", "combine")
+graph.add_edge("task_c", "combine")
+graph.add_edge("combine", END)
+
+parallel_workflow = graph.compile()]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Wrap risky operations in try-except and route based on error state. Never let exceptions kill the workflow.</statement>
+        <rationale>Explicit error handling makes recovery logic visible and testable.</rationale>
+      </rule>
+
+      <example type="good" title="Exception Handling">
+        <code lang="python"><![CDATA[from langgraph.graph import StateGraph, END
+
+class SafeState(TypedDict):
+    input: str
+    output: str
+    error: str | None
+
+def safe_node(state: SafeState) -> SafeState:
+    try:
+        result = risky_operation(state["input"])
+        return {"output": result}
+    except Exception as e:
+        return {"error": str(e)}
+
+def error_handler(state: SafeState) -> SafeState:
+    """Handle errors gracefully."""
+    return {"output": f"Error occurred: {state['error']}"}
+
+def route_on_error(state: SafeState) -> str:
+    if state.get("error"):
+        return "error_handler"
+    return "next_node"
+
+graph = StateGraph(SafeState)
+graph.add_node("risky", safe_node)
+graph.add_node("error_handler", error_handler)
+graph.add_node("next_node", next_node)
+
+graph.add_conditional_edges("risky", route_on_error)]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Stream outputs using workflow.stream(). Use stream_mode="values" for full state snapshots, stream_mode="updates" for partial deltas, stream_mode="debug" for development.</statement>
+        <rationale>Streaming enables real-time feedback and progress visualization. Debug mode helps identify bottlenecks.</rationale>
+      </rule>
+
+      <example type="good" title="Streaming Outputs">
+        <code lang="python"><![CDATA[from langgraph.graph import StateGraph
+
+# Stream node outputs
+for state in workflow.stream({"input": "Hello"}):
+    print(f"Node: {list(state.keys())[0]}")
+    print(f"Output: {list(state.values())[0]}")
+
+# Stream with mode
+for chunk in workflow.stream(
+    {"input": "Hello"},
+    stream_mode="values"  # or "updates", "debug"
+):
+    print(chunk)
+
+# Stream individual events (development)
+for chunk in workflow.stream(
+    {"input": "Hello"},
+    stream_mode="debug"
+):
+    print(chunk)]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Always use checkpointer for production workflows. Use thread_id for session management; each thread maintains independent state history.</statement>
+        <rationale>Checkpointing enables recovery from failures and long-running workflows. Thread IDs prevent state collision between concurrent executions.</rationale>
+      </rule>
+
+      <example type="good" title="Checkpointing">
+        <code lang="python"><![CDATA[from langgraph.checkpoint.memory import MemorySaver
+
+# Always use checkpointer for production workflows
+memory = MemorySaver()
+workflow = graph.compile(checkpointer=memory)
+
+# Use thread_id for session management
+config = {"configurable": {"thread_id": "user-123"}}
+result = workflow.invoke({"input": "Hello"}, config)]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <p>State management, node design, debugging, testing, and performance optimization.</p>
+
+      <rule testable="true">
+        <statement>Keep WorkflowState schemas flat. Accumulating fields (messages: Annotated[List[str], operator.add]) should be compacted every N messages to prevent checkpoint bloat.</statement>
+        <rationale>Flat state reduces checkpoint size and improves debuggability. Checkpoint size grows with accumulating fields; compaction prevents unbounded growth.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Node functions MUST be pure functions that return partial state dicts. Never mutate state directly.</statement>
+        <rationale>Pure functions are deterministic, testable, and safe to retry on failure. Mutations break checkpointing semantics.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For development, enable debug mode: stream_mode="debug" or os.environ["LANGCHAIN_TRACING_V2"] = "true" with LangSmith for production monitoring.</statement>
+        <rationale>Debug output reveals bottlenecks and state transitions. LangSmith provides observability at scale.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Write unit tests for each node. Use pytest to test individual nodes and integration tests for full workflows.</statement>
+        <rationale>Testable workflows catch edge cases early and enable confident refactoring.</rationale>
+      </rule>
+
+      <example type="good" title="Testing Workflows">
+        <code lang="python"><![CDATA[import pytest
+
+def test_workflow_happy_path():
+    """Test successful workflow execution."""
+    result = workflow.invoke({"input": "test"})
+    assert result["output"] is not None
+    assert result.get("error") is None
+
+def test_workflow_error_handling():
+    """Test error path."""
+    result = workflow.invoke({"input": "trigger_error"})
+    assert result.get("error") is not None
+
+@pytest.mark.asyncio
+async def test_workflow_streaming():
+    """Test streaming mode."""
+    chunks = []
+    async for chunk in workflow.astream({"input": "test"}):
+        chunks.append(chunk)
+    assert len(chunks) > 0]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>For latency reduction, use parallel nodes where possible and cache expensive operations. For cost optimization, use cheaper models (e.g., gpt-4o-mini) for simple tasks and route complex ones to expensive models.</statement>
+        <rationale>Parallelism reduces overall latency. Model routing reduces LLM costs without sacrificing quality.</rationale>
+      </rule>
+
+      <example type="good" title="Cost Optimization">
+        <code lang="python"><![CDATA[from langchain_openai import ChatOpenAI
+from functools import lru_cache
+
+@lru_cache(maxsize=100)
+def expensive_operation(input: str) -> str:
+    # Cached result
+    return process(input)
+
+cheap_model = ChatOpenAI(model="gpt-4o-mini")
+expensive_model = ChatOpenAI(model="gpt-4o")
+
+def smart_route(state: WorkflowState) -> str:
+    if is_simple_task(state["input"]):
+        return "cheap_node"
+    return "expensive_node"]]></code>
+      </example>
+
+      <note>Critical gotchas. Deeply nested state dicts are hard to checkpoint and debug; keep schemas flat. Accumulating fields grow forever; add compaction logic. Missing checkpointer in production leads to lost work on failures. Mutations inside nodes break replay semantics. Streams without proper error handling silently drop errors; catch and handle explicitly. LangSmith credentials required for tracing in production; set LANGCHAIN_API_KEY and LANGCHAIN_TRACING_V2. Subgraphs embedded in a parent graph share state schema by default — mismatched TypedDict fields between parent and subgraph cause silent state loss. Interrupt_before nodes require the workflow to be invoked a second time with None as input and the same thread_id — passing a new state dict on resumption overwrites the checkpoint. Stream with stream_mode="events" returns a generator; consuming it multiple times raises StopIteration — collect to a list if you need to inspect twice. Conditional edge routing functions receive the full current state — accessing a field that hasn't been set yet raises KeyError; use .get() with defaults for optional fields. MemorySaver is not thread-safe for concurrent workflow instances with different thread_ids if using a single MemorySaver object — create one per event loop or use AsyncPostgresSaver. A workflow node that raises an unhandled exception halts the graph and loses the checkpoint — wrap risky operations in try/except and encode error state in the TypedDict.</note>
+    </section>
+
+    <section name="agent-integration-patterns">
+      <p>LangGraph workflows for agent orchestration, human-in-the-loop coordination, state persistence, and error recovery.</p>
+
+      <rule testable="true">
+        <statement>Use LangGraph when building stateful, multi-step pipelines where graph nodes represent distinct processing phases (validate → transform → store) and human-in-the-loop approval is required before irreversible actions execute.</statement>
+        <rationale>LangGraph's interrupt_before makes human approval explicit and atomic. Checkpoints enable resumable workflows across process restarts.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Do NOT use LangGraph for simple A → B → C chains without branching, stateless single-shot LLM generation, or real-time partial token streaming where LCEL chain latency matters more than state management.</statement>
+        <rationale>For simple cases, LangGraph state management adds overhead with no benefit. LCEL chains are lighter and easier to debug.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For production persistence, use AsyncPostgresSaver or RedisSaver. MemorySaver stores state in-process memory and does not survive process restarts.</statement>
+        <rationale>Process crashes lose all in-memory checkpoints. Durable backends enable recovery across restarts.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Parallel nodes in LangGraph execute sequentially by default. Use async node functions and call await workflow.ainvoke() to enable true parallelism.</statement>
+        <rationale>Synchronous parallel execution does not parallelize; async is required for real concurrency.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Model state with TypedDict and use Annotated[List, operator.add] only for fields that genuinely accumulate (message history, log entries). Using add-reducer on non-list fields causes subtle bugs.</statement>
+        <rationale>Accumulators are appropriate for append-only collections; misuse on other types produces unexpected merges.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Export Mermaid diagrams with workflow.get_graph().draw_mermaid() at build time and commit alongside the graph code as documentation.</statement>
+        <rationale>Diagrams clarify routing logic and help onboard new team members.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Every node that can fail must have an explicit conditional edge to an error_handler node. Do not rely on Python exceptions propagating through the graph.</statement>
+        <rationale>Explicit error routing prevents silent failures and makes recovery logic testable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always compile the graph with a checkpointer even in development. Catching checkpoint-related bugs early prevents production incidents.</statement>
+        <rationale>Development with checkpoints exposes serialization issues and state mismatches before deployment.</rationale>
+      </rule>
+
+      <example type="good" title="Workflow with Human-in-the-Loop">
+        <code lang="python"><![CDATA[from typing import TypedDict
+from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import MemorySaver
+
+class ActionState(TypedDict):
+    input: str
+    plan: str
+    approved: bool
+    result: str
+
+def planner(state: ActionState) -> ActionState:
+    return {"plan": f"Plan for: {state['input']}"}
+
+def executor(state: ActionState) -> ActionState:
+    return {"result": f"Executed: {state['plan']}"}
+
+graph = StateGraph(ActionState)
+graph.add_node("plan", planner)
+graph.add_node("execute", executor)
+graph.set_entry_point("plan")
+graph.add_edge("plan", "execute")
+graph.add_edge("execute", END)
+
+memory = MemorySaver()
+workflow = graph.compile(checkpointer=memory, interrupt_before=["execute"])
+
+cfg = {"configurable": {"thread_id": "task-001"}}
+# Run to interrupt point
+state = workflow.invoke({"input": "Deploy to production", "approved": False}, cfg)
+print(f"Plan: {state['plan']} — awaiting approval")
+# After human approval:
+final = workflow.invoke(None, cfg)
+print(f"Result: {final['result']}")]]></code>
+      </example>
+
+      <note>Recommended subagents for workflow orchestration. General workflow executor subagent — receives a compiled graph and initial state, runs it with a thread_id, returns final state. Human-in-the-loop coordinator — monitors interrupted checkpoints, sends approval requests, resumes on confirmation. Prompt pattern: "You are a workflow execution agent. Run the following LangGraph workflow: graph={workflow_name}, initial_state={state_json}, thread_id="{thread_id}". Report state after each node. If workflow hits interrupt_before=["execute"], pause and output status=awaiting_approval."</note>
+
+      <note>Tools and services. langgraph (core stateful graph framework). langgraph-cli (local dev server + graph visualization). langsmith (trace workflow node-by-node execution). langgraph-checkpoint-postgres (production PostgreSQL backend). langgraph-checkpoint-redis (Redis checkpoint backend). LangSmith (SaaS, per-node traces). LangGraph Cloud (managed stateful runtime with persistence). PostgreSQL (production checkpointing). Redis (fast checkpoint backend). Temporal (alternative durable workflow engine if LangGraph scale limits hit). Prefect (task orchestration, partial LangGraph integration).</note>
+    </section>
+
+    <checklist>
+      <check>Define flat TypedDict for workflow state</check>
+      <check>Implement node functions returning partial state</check>
+      <check>Define conditional routing functions</check>
+      <check>Set entry point and edges</check>
+      <check>Compile graph</check>
+      <check>Test individual nodes with pytest</check>
+      <check>Test workflow with happy path input</check>
+      <check>Test error handling paths</check>
+      <check>Enable streaming for development</check>
+      <check>Add checkpointer for persistence</check>
+      <check>Set LangSmith tracing for observability</check>
+      <check>Implement monitoring and alerting</check>
+      <check>Load test with realistic data volumes</check>
+      <check>Document state schema and routing logic</check>
+      <check>Deploy to staging before production</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://langchain-ai.github.io/langgraph/concepts/"/>
+      <link href="https://langchain-ai.github.io/langgraph/how-tos/human_in_the_loop/"/>
+      <link href="https://langchain-ai.github.io/langgraph/concepts/streaming/"/>
+      <link href="https://docs.smith.langchain.com/"/>
+    </see-also>
+  </content>
+</methodology>
