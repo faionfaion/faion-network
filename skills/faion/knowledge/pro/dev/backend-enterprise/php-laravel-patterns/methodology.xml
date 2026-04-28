@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="php-laravel-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>Clean-architecture layering for Laravel: Controller → FormRequest → Service → Repository → Resource with single responsibility per layer.</summary>
+    <tags>
+      <tag>laravel</tag>
+      <tag>architecture</tag>
+      <tag>patterns</tag>
+      <tag>clean-code</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Laravel Patterns</title>
+
+    <summary>Clean-architecture layering for Laravel applications: thin Controller (route → service → Resource) → FormRequest (validation) → Service (business logic + DB::transaction) → Repository (optional, for real abstraction needs) → JsonResource (response shape). Each layer has one responsibility; controllers must not contain Eloquent queries or business logic.</summary>
+
+    <why>
+      <p>Fat controllers mix HTTP, validation, business logic, and DB access, making each concern hard to test and change independently. The service layer is framework-light (no request() calls) and unit-testable without booting Laravel. FormRequest::validated() eliminates mass-assignment risk. DB::transaction(fn () => ...) handles rollback automatically. JsonResource stabilizes the API contract independently of the model shape.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield Laravel 10/11/12 service that will grow beyond simple CRUD.</item>
+        <item>Brownfield refactor where business logic leaks into controllers or models.</item>
+        <item>API-first apps where JsonResource + ResourceCollection must stay stable across releases.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Prototypes, admin tooling, or one-off scripts — abstraction tax is wasted; use Eloquent in controller.</item>
+        <item>Domains requiring DDD aggregates and explicit bounded contexts — use Symfony + hexagonal layout.</item>
+        <item>Essentially-CRUD apps already using Filament/Nova — extra service layer is dead weight.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="layer-responsibilities">
+      <p>Each layer in the Laravel pattern has one responsibility. Violating these boundaries couples layers and makes independent testing impossible.</p>
+
+      <rule testable="true">
+        <statement>Controllers must only: validate via FormRequest, call one service method, wrap result in Resource, return JsonResponse. No Eloquent queries, no business logic.</statement>
+        <rationale>Business logic in controllers cannot be unit-tested without booting HTTP; service isolation makes each concern independently testable and replaceable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Services must not call request() or access any HTTP globals; accept primitives or DTOs from the controller.</statement>
+        <rationale>Framework-coupled services cannot be tested without booting Laravel; plain constructors with injected repositories keep services testable with Mockery alone.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always use FormRequest::validated() when passing data to the service; never use request()->all() or $request->input().</statement>
+        <rationale>validated() returns only declared fields, eliminating mass-assignment risk without requiring $fillable checks inside the service.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Return JsonResource from controllers and plain Model/DTO from services; never return JsonResponse from a service.</statement>
+        <rationale>Leaking JsonResponse into the service layer couples it to HTTP; services should be callable from queued jobs, CLI commands, and tests without HTTP context.</rationale>
+      </rule>
+    </section>
+
+    <section name="transactions">
+      <p>Database transactions must be explicit and allow exceptions to propagate for automatic rollback.</p>
+
+      <rule testable="true">
+        <statement>Use DB::transaction(fn () => ...) not manual begin/commit/rollback; let exceptions propagate.</statement>
+        <rationale>Closure-based transactions auto-rollback on any exception; manual begin/commit requires remembering to rollback in every catch branch — easy to miss.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Do not wrap DB::transaction in try/catch that swallows the exception; let it bubble to the controller's exception handler.</statement>
+        <rationale>Swallowing exceptions inside a transaction closure defeats automatic rollback and hides bugs from the log. Laravel's exception handler maps exceptions to HTTP responses.</rationale>
+      </rule>
+    </section>
+
+    <section name="repository-justification">
+      <p>Repository pattern adds value only in specific scenarios. Avoid over-abstraction.</p>
+
+      <rule testable="true">
+        <statement>Add a repository only when: (a) multiple data sources exist, (b) you need to mock DB without a DB, or (c) query encapsulation is explicitly required. Default: inject the model directly.</statement>
+        <rationale>Eloquent is already an Active Record; a repository wrapping it adds ceremony without value unless there is a real abstraction need. LLMs over-prescribe repositories.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Bind RepositoryInterface to RepositoryImpl only if an alternative implementation exists or is planned; skip the interface for single-implementation repositories.</statement>
+        <rationale>Interface-first without a second implementation is premature abstraction; it adds two files and a service provider binding for zero benefit.</rationale>
+      </rule>
+    </section>
+
+    <section name="controller-example">
+      <p>Thin controller example demonstrating clean separation of concerns.</p>
+
+      <example type="good" title="Thin Controller Pattern">
+        <code lang="php"><![CDATA[
+class UserController extends Controller
+{
+    public function __construct(private readonly UserService $userService) {}
+
+    public function store(StoreUserRequest $request): JsonResponse
+    {
+        $user = $this->userService->create($request->validated());
+
+        return (new UserResource($user))
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    public function update(UpdateUserRequest $request, int $id): UserResource
+    {
+        $user = $this->userService->update($id, $request->validated());
+        return new UserResource($user);
+    }
+
+    public function destroy(int $id): JsonResponse
+    {
+        $this->userService->delete($id);
+        return response()->json(null, Response::HTTP_NO_CONTENT);
+    }
+}
+]]></code>
+        <note>No Eloquent. No business logic. Validation delegated to FormRequest. Returns Resource or JsonResponse.</note>
+      </example>
+
+      <example type="bad" title="Fat Controller Anti-Pattern">
+        <code lang="php"><![CDATA[
+public function store(Request $request): JsonResponse
+{
+    $data = $request->all(); // mass-assignment risk
+    $data['password'] = Hash::make($data['password']); // business logic in controller
+    $user = User::create($data); // Eloquent in controller
+    return response()->json($user, 201);
+}
+]]></code>
+        <note>Business logic and DB access in the controller; not independently testable.</note>
+      </example>
+    </section>
+
+    <section name="service-example">
+      <p>Service layer example encapsulating business logic and transactions.</p>
+
+      <example type="good" title="Service Layer with Transactions">
+        <code lang="php"><![CDATA[
+class UserService
+{
+    public function __construct(private readonly UserRepository $repository) {}
+
+    public function create(array $data): User
+    {
+        return DB::transaction(function () use ($data) {
+            $data['password'] = Hash::make($data['password']);
+            $user = $this->repository->create($data);
+            event(new UserCreated($user));
+            return $user;
+        });
+    }
+
+    public function update(int $id, array $data): User
+    {
+        return DB::transaction(function () use ($id, $data) {
+            if (isset($data['password'])) {
+                $data['password'] = Hash::make($data['password']);
+            }
+            return $this->repository->update($id, $data);
+        });
+    }
+}
+]]></code>
+        <note>No request() call. DB::transaction closure. Accepts validated array from controller.</note>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <p>Common patterns where agents struggle with Laravel layering.</p>
+
+      <antipattern>
+        <description>Eloquent::find() or User::create() called directly inside the controller despite the service-layer prompt.</description>
+        <reason>LLMs frequently fall back to Active Record in controllers because it is the shortest path. Code review must explicitly verify that controllers contain no Eloquent calls.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Validation duplicated in both FormRequest and Service: two sources of truth for the same rules drift apart over time.</description>
+        <reason>FormRequest is the single validation boundary; services receive only validated() data and trust it. Duplicating rules in the service creates divergence when one is updated.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>try/catch wrapping DB::transaction that swallows the exception and returns a success response.</description>
+        <reason>Swallowing the exception prevents the transaction from rolling back semantically (it does physically, but the caller believes it succeeded). Let exceptions propagate to the framework exception handler.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>private readonly constructor promotion on PHP &lt; 8.1 targets: syntax error at runtime.</description>
+        <reason>readonly property promotion requires PHP 8.1+. Agents must read composer.json "require.php" constraint before emitting this syntax.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Repository added for every resource without justification, including simple CRUD with a single Eloquent data source.</description>
+        <reason>Eloquent is already an Active Record pattern; wrapping it in a repository adds two files and a service provider binding for a single implementation with no abstraction benefit.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Missing return type on DB::transaction closure: agent emits mixed return type, breaking PHPStan strict mode analysis.</description>
+        <reason>DB::transaction infers the return type from the closure; without an explicit return type hint on the closure, static analysis treats the result as mixed and blocks further type checking.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A coding subagent should scaffold one resource at a time: migration → model → factory → FormRequest(s) → Resource → Service → Repository (optional) → Controller → Feature test. Drive with php artisan make:* to keep stub conventions, then have the agent fill in business logic. Run vendor/bin/pint, vendor/bin/phpstan analyse, and php artisan test --filter=Resource after each step. Insert a human checkpoint before generating Repository — confirm it is actually needed.</p>
+
+      <note>Recommended subagents: general-purpose Claude subagent — scaffolding via Artisan + filling controller/service/test bodies. Code-review subagent (Sonnet) — verifies layer boundaries (no Eloquent in controller, no HTTP concerns in service).</note>
+
+      <p>Prompt pattern: Generate REST resource Name: migration, model with $fillable/$casts/relationships, factory, StoreXRequest + UpdateXRequest with rules, XResource, XService with paginate/find/create/update/delete using DB::transaction, Api/V1/XController returning Resources. Add Feature test covering all 5 endpoints + validation failure. Run: composer test, ./vendor/bin/pint, ./vendor/bin/phpstan analyse.</p>
+
+      <p>Refactor Controller::method by extracting business logic into Service::method. Keep validation in FormRequest. Controller must only: call service, wrap in Resource, return JsonResponse. Add unit test for the service.</p>
+    </section>
+
+    <section name="cli-tools">
+      <p>Essential Laravel CLI tools for pattern-driven development:</p>
+
+      <command name="php artisan make:model,controller,request,resource,service,repository">Scaffold layer files. Bundled.</command>
+      <command name="vendor/bin/pint">Opinionated code style (Laravel preset). composer require laravel/pint --dev</command>
+      <command name="vendor/bin/phpstan (Larastan)">Static analysis with Laravel awareness. https://github.com/larastan/larastan</command>
+      <command name="vendor/bin/rector">Automated refactors (PHP version upgrades, dead code). https://getrector.com</command>
+      <command name="php artisan test --parallel">Parallel feature tests. Bundled (PHPUnit/Pest).</command>
+      <command name="php artisan ide-helper:generate">Eloquent magic-method type stubs for the agent. https://github.com/barryvdh/laravel-ide-helper</command>
+    </section>
+
+    <section name="services-and-apps">
+      <p>External services supporting Laravel pattern-based development:</p>
+
+      <list>
+        <item>Laravel Forge (SaaS) — Server provisioning; agents drive via Forge API. Limited agent integration.</item>
+        <item>Laravel Pulse (OSS) — Live ops dashboard, exposes /pulse JSON. Yes.</item>
+        <item>Laravel Telescope (OSS) — Inspect requests/queries; agents can scrape entries. Yes (dev).</item>
+        <item>Sentry (SaaS) — Error tracking; SDK auto-installs middleware. Yes.</item>
+        <item>Bagisto / Filament (OSS) — Skip the service layer pattern, use admin generators. Yes.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <p>Core best practices for Laravel pattern adoption:</p>
+
+      <list>
+        <item>Bind RepositoryInterface → RepositoryImpl only if you actually have an alternative implementation; otherwise inject the concrete class and skip the interface ceremony.</item>
+        <item>Use FormRequest::validated() (not all()) when passing to service — eliminates mass-assignment risk.</item>
+        <item>Never call request() from a service. Pass primitives or DTOs; keep services framework-light enough to test without booting Laravel.</item>
+        <item>Return Resources from controllers, models from services. Never leak JsonResponse into the service layer.</item>
+        <item>Use DB::transaction(fn () => …) not the manual begin/commit/rollback — exception handling is automatic.</item>
+        <item>Cache invalidation: tag caches per resource (Cache::tags(['users'])) so the agent has a clear hook to flush after writes.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common mistakes where LLMs fail to respect layer boundaries:</p>
+
+      <list>
+        <item>LLM frequently emits Eloquent::find() in controllers despite the service-layer prompt — review must catch this.</item>
+        <item>Generated FormRequest rules drift from migration constraints. Have the agent diff Schema::table against rules() after editing either.</item>
+        <item>private readonly syntax breaks on PHP &lt; 8.1; agent must read composer.json constraint first.</item>
+        <item>LLM tends to write try/catch blocks that hide errors — for transactions, let exceptions propagate; the framework rolls back.</item>
+        <item>Repository pattern is overprescribed by LLMs. Add a checkpoint prompt: "Is a repository justified for this resource? If not, inject the model directly."</item>
+        <item>For multi-tenant apps, agents forget tenant_id scopes in repository queries — explicit prompt + global scope required.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/UserController.php" purpose="Thin controller: FormRequest, service call, Resource response, HTTP status codes."/>
+      <template path="templates/UserService.php" purpose="Service with DB::transaction, Hash, event dispatch, no request() calls."/>
+      <template path="templates/BaseService.php" purpose="Abstract base service with paginate/findOrFail/delete for inheritance."/>
+    </templates>
+
+    <see-also>
+      <link href="https://laravel.com/docs/structure"/>
+      <link href="https://laravel.com/docs/eloquent-resources"/>
+      <link href="https://laravel.com/docs/validation#form-request-validation"/>
+      <link href="https://spatie.be/laravel-beyond-crud"/>
+      <link href="https://github.com/larastan/larastan"/>
+      <ref slug="php-laravel"/>
+      <ref slug="php-eloquent"/>
+    </see-also>
+  </content>
+</methodology>
