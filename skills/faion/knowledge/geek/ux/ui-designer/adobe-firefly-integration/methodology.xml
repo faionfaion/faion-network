@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="adobe-firefly-integration">
+  <metadata>
+    <tier>geek</tier>
+    <group>ux</group>
+    <domain>ui-designer</domain>
+    <summary>Use Adobe Firefly Services REST API to batch-generate commercial-safe images, apply Generative Fill to placeholder regions, and produce vector assets from text prompts.</summary>
+    <tags>
+      <tag>firefly</tag>
+      <tag>generative-ai</tag>
+      <tag>asset-generation</tag>
+      <tag>api-integration</tag>
+      <tag>automation</tag>
+    </tags>
+    <category>ai-asset</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Adobe Firefly Integration</title>
+    <summary>Use Adobe Firefly Services REST API to batch-generate commercial-safe images, apply Generative Fill to placeholder regions, and produce vector assets from text prompts. Firefly is trained on licensed content with clear generative-credit accounting — it is the correct tool when commercial IP safety is required. All generated assets require a human brand-alignment review before production promotion.</summary>
+    <why>
+      <p>Firefly's commercial licensing framework removes IP ambiguity that affects other generative image tools. Integration via the Firefly Services REST API enables automated batch generation pipelines (prompt → download → staging), but the API requires an Adobe enterprise plan and OAuth2 machine-to-machine auth. Generated outputs are starting points, not finals.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Generating commercial-safe image assets for UI mockups, marketing banners, or product visuals</item>
+        <item>Creating vector assets in Illustrator via text-to-vector prompts for icon sets</item>
+        <item>Removing or replacing image backgrounds in Photoshop for product shots or hero images</item>
+        <item>Producing asset variations (color, style, format) from a single source for A/B testing</item>
+        <item>Applying AI-generated text effects and typography variations at scale</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Design requires a coherent custom illustration style — Firefly outputs generic aesthetics</item>
+        <item>Iterating on UI layout or component design — Figma is the correct tool</item>
+        <item>Team has no Adobe CC enterprise licenses — generative credits are consumed per generation and the API requires enterprise plan</item>
+        <item>Output must strictly match an established illustration system — Firefly cannot learn custom styles</item>
+        <item>Speed is critical and assets must integrate directly into Figma without round-trips</item>
+      </list>
+    </when-not-to-use>
+    <section name="Adobe Firefly Capabilities and Rules">
+      <p>Firefly feature map per Creative Cloud application, commercial framework, and key API constraints.</p>
+      <section name="Capabilities by Application">
+        <list>
+          <item>Photoshop — Generative Fill, Background Removal</item>
+          <item>Illustrator — Text-to-Vector</item>
+          <item>Premiere — AI editing assistance</item>
+          <item>Express — Template generation</item>
+        </list>
+      </section>
+      <section name="Commercial Framework">
+        <rule>
+          <statement>Use Firefly when commercial IP safety is required; document the generation ID alongside each asset.</statement>
+          <rationale>Firefly is trained on licensed content with clear usage terms. Generation IDs enable audit trails and regeneration if model versions change. Storing IDs prevents orphaned assets.</rationale>
+        </rule>
+        <rule>
+          <statement>Always include a human review checkpoint before promoting any Firefly asset to production.</statement>
+          <rationale>Generated images frequently need manual refinement to match brand-specific visual language. Automated selection of generated images for production is not acceptable.</rationale>
+        </rule>
+        <rule>
+          <statement>Pre-define a prompt template approved by the brand team; agents fill variables, never freeform prompts.</statement>
+          <rationale>Brand-specific style prompts are not reproducible across model updates. Pre-approved templates constrain variation to acceptable range and prevent prompt injection into the commercial asset pipeline.</rationale>
+        </rule>
+      </section>
+      <section name="Limitations">
+        <antipattern>
+          <description>Storing presigned URLs from the API instead of downloading immediately.</description>
+          <reason>Generated image presigned URLs expire in approximately 1 hour. Always download immediately and write to stable storage.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Trusting empty outputs array as a success.</description>
+          <reason>Content moderation blocks can return HTTP 200 with an empty outputs array. Always validate that outputs length is greater than 0 before treating a call as successful.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Passing user-provided freeform text directly to Firefly.</description>
+          <reason>Unsanitized user input can trigger moderation blocks or inject unintended prompt content into a commercial asset pipeline. Sanitize and route through the pre-approved template only.</reason>
+        </antipattern>
+      </section>
+    </section>
+    <section name="Agent Integration for Adobe Firefly">
+      <p>Agentic workflow, API auth pattern, service catalog, and gotchas for automating Firefly asset generation.</p>
+      <section name="Agentic Workflow">
+        <rule>
+          <statement>Agents drive Firefly via Firefly Services REST API only; in-Figma plugin usage requires a human at the keyboard.</statement>
+          <rationale>Firefly cannot be driven headlessly from inside Figma. The Services API (enterprise) is the only agent-compatible surface for batch operations.</rationale>
+        </rule>
+        <rule>
+          <statement>Implement OAuth2 client-credentials token refresh; Firefly Services tokens expire every 24 hours.</statement>
+          <rationale>A batch pipeline that forgets token renewal will fail silently mid-run. Proactive refresh before expiry is required.</rationale>
+        </rule>
+        <rule>
+          <statement>Use numVariations: 3 and require a human to select; never auto-select generated images for production.</statement>
+          <rationale>AI aesthetic outputs are non-deterministic and brand-inconsistent at scale. Human selection is the quality gate.</rationale>
+        </rule>
+      </section>
+      <section name="Services">
+        <list>
+          <item>Adobe Firefly Services (enterprise SaaS) — REST API, OAuth2 machine-to-machine, requires enterprise plan</item>
+          <item>Photoshop API (enterprise SaaS) — headless PS: remove-bg, smart-crop, generative fill</item>
+          <item>Cloudinary (SaaS) — CDN and transformation layer for Firefly-generated assets</item>
+          <item>Bynder / Brandfolder (SaaS DAM) — approved asset destination; enforces brand consistency</item>
+          <item>imagemagick — post-process downloaded assets (resize, crop, convert)</item>
+          <item>rclone — sync generated assets to S3/GCS/Cloudflare R2</item>
+        </list>
+      </section>
+      <section name="Gotchas">
+        <antipattern>
+          <description>Synchronous loops without rate-limit backoff.</description>
+          <reason>Firefly API rate limits (typically 10 req/s) require exponential backoff. Latency per generation is 2–8s; synchronous tight loops will exhaust limits and fail.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Not monitoring credit consumption.</description>
+          <reason>Credit consumption is opaque for automated pipelines; large batches exhaust allotments quickly. Monitor per-project with a dashboard and alert before budget exhaustion.</reason>
+        </antipattern>
+      </section>
+    </section>
+    <section name="Limitations and Failure Modes">
+      <p>Known limitations of Firefly and integration patterns.</p>
+      <list>
+        <item>Generated images often need manual refinement to match brand-specific visual language</item>
+        <item>Text rendering inside generated images is unreliable — Firefly still produces garbled text in images</item>
+        <item>Generative Fill quality degrades on complex UI screenshots (pixel art, dense interfaces)</item>
+        <item>Credit consumption is opaque for automated pipelines; large batches exhaust allotments quickly</item>
+        <item>Firefly API (Firefly Services) requires Adobe enterprise agreement and is not available on standard CC plans</item>
+        <item>API rate limits and latency (2–8s per generation) make synchronous loops impractical</item>
+      </list>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Pre-define a prompt template approved by the brand team; agents fill variables, never freeform prompts</item>
+        <item>Store generation IDs alongside downloaded assets for audit trails and regeneration</item>
+        <item>Use numVariations: 3 and have a human select; never auto-select generated images for production</item>
+        <item>Set up a staging folder separate from production assets; require explicit human promotion step</item>
+        <item>Cache approved Firefly assets in a DAM (Bynder, Brandfolder) to avoid re-generating the same assets</item>
+        <item>Monitor credit consumption per project with a dashboard; alert before budget exhaustion</item>
+        <item>For Photoshop Generative Fill via API, always supply a mask rather than relying on auto-detection</item>
+        <item>Test prompts manually in Firefly web UI before encoding them into agent pipelines</item>
+      </list>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <list>
+        <item>Firefly Services token expires every 24h; agents must implement OAuth2 client-credentials refresh</item>
+        <item>Rate limits (varies by plan, typically 10 req/s) require exponential backoff in batch loops</item>
+        <item>Generated image presigned URLs expire in 1 hour — download immediately, do not store the URL</item>
+        <item>"Content moderation" blocks can silently return 200 with empty outputs array; always validate length > 0</item>
+        <item>Firefly cannot be driven from inside Figma headlessly; any Figma plugin usage requires a human at the keyboard</item>
+        <item>Brand-specific style prompts are not reproducible across model updates — Firefly model versions change without notice</item>
+        <item>Never pass user-provided freeform text directly to Firefly — sanitize to prevent prompt injection into commercial asset pipeline</item>
+      </list>
+    </section>
+    <section name="CLI Tools">
+      <list>
+        <item>adobe-firefly-cli (unofficial) — Thin shell wrapper around Firefly Services REST | github.com/nicholasgasior/firefly-cli</item>
+        <item>curl / httpx — Direct REST calls to Firefly Services | stdlib</item>
+        <item>imagemagick — Post-process downloaded assets (resize, crop, convert) | apt install imagemagick</item>
+        <item>rclone — Sync generated assets to S3/GCS/Cloudflare R2 | rclone.org</item>
+      </list>
+    </section>
+    <section name="Services and Apps">
+      <p>Adobe and third-party services compatible with Firefly asset generation.</p>
+      <list>
+        <item>Adobe Firefly Services (SaaS enterprise, Yes) — Requires Adobe enterprise plan; OAuth2 machine-to-machine auth</item>
+        <item>Adobe Creative Cloud API (SaaS, Partial) — CC Apps (PS/AI) automatable via UXP plugins, not purely headless</item>
+        <item>Photoshop API (SaaS enterprise, Yes) — Headless PS operations: remove-bg, smart-crop, generative fill</item>
+        <item>Illustrator API (SaaS beta, Limited) — Still gated behind enterprise agreement as of 2026</item>
+        <item>Cloudinary (SaaS, Yes) — Can receive and transform Firefly outputs; acts as CDN for generated assets</item>
+        <item>Bynder / Brandfolder (SaaS DAM, Yes) — Destination for approved Firefly assets; enforces brand consistency</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/batch-generate.py" purpose="Batch image generation script via Firefly Services REST API"/>
+      <template path="templates/firefly-prompt.txt" purpose="Approved prompt template for hero image generation"/>
+    </templates>
+    <see-also>
+      <link href="https://www.adobe.com/products/firefly.html"/>
+      <link href="https://developer.adobe.com/firefly-services/docs/"/>
+      <link href="https://helpx.adobe.com/firefly/using/generative-credits-faq.html"/>
+      <link href="https://www.adobe.com/legal/licenses-terms/adobe-firefly.html"/>
+      <link href="https://developer.adobe.com/photoshop/photoshop-api-docs/"/>
+    </see-also>
+  </content>
+</methodology>
