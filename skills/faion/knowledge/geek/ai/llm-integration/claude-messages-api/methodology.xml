@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="claude-messages-api">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Complete reference for Claude Messages API: request structure, parameters, response fields, multi-turn history, vision (images/PDFs), and streaming patterns.</summary>
+    <tags>
+      <tag>claude</tag>
+      <tag>messages-api</tag>
+      <tag>streaming</tag>
+      <tag>vision</tag>
+      <tag>multi-turn</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Claude Messages API</title>
+    <summary>The Claude Messages API is the single completion endpoint for all Claude calls. Covers basic request structure, parameters, response object, multi-turn history management, vision (base64 and URL, images and PDFs), streaming (text_stream and event-based), and SSE event format. The core rule: append the full `resp.content` list (not just text) as the assistant turn in multi-turn history — tool_use blocks must be preserved or the next turn gets a 400 error.</summary>
+    <why>
+      <p>The Messages API is the integration point for every Claude-based agent. Its `stop_reason` field drives agent branching logic: `"end_turn"` is normal, `"max_tokens"` is silent truncation, `"tool_use"` means the loop must continue. Without explicit `stop_reason` handling and correct multi-turn history construction, agents silently return truncated text, discard tool state, or break with consecutive same-role messages.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>All direct Claude API calls — Messages is the only completion endpoint.</item>
+        <item>Streaming responses to a user interface or pipeline sink consuming partial text.</item>
+        <item>Multi-turn agent conversations with explicit message history management.</item>
+        <item>Vision tasks: screenshot analysis, document OCR, UI inspection, PDF summarization.</item>
+        <item>When the agent needs to detect `stop_reason` to branch logic.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>When persistent thread storage is needed across sessions — build your own; Anthropic has no Threads equivalent.</item>
+        <item>When guaranteed schema compliance without retry loops is required — use OpenAI `beta.parse` or `instructor`.</item>
+        <item>High-volume batch jobs — prefer the Batch API (50% cost reduction).</item>
+        <item>Computer Use or Extended Thinking inside a stateless lambda — those require multi-turn conversation state.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="basic-request">
+      <p>The Messages API takes model, max_tokens, system prompt, and message history.</p>
+      <example type="good" title="Minimal API call">
+        <code lang="python"><![CDATA[
+import anthropic
+
+client = anthropic.Anthropic()
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    system="You are an expert on Specification-Driven Development. Be concise.",
+    messages=[{"role": "user", "content": "What are the key phases of SDD?"}]
+)
+print(message.content[0].text)
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="parameters">
+      <p>The key parameters that control the request behavior.</p>
+      <rule testable="true">
+        <statement>Always set max_tokens explicitly — silent truncation (stop_reason="max_tokens") is the most common cause of corrupted downstream data.</statement>
+        <rationale>max_tokens is required and easy to set too low; truncation produces parseable but incomplete output that passes format checks and fails semantic ones.</rationale>
+      </rule>
+      <list>
+        <item>model: required — model ID string.</item>
+        <item>max_tokens: required — max response tokens; cannot be omitted; truncates if too low.</item>
+        <item>messages: required — alternating user/assistant turns; consecutive same-role messages → 400 error.</item>
+        <item>system: optional — set behavior; kept stable across calls for Prompt Caching benefit.</item>
+        <item>temperature: optional — 0–1 (not 0–2 like OpenAI); 0=deterministic, 1=creative.</item>
+        <item>stop_sequences: optional — matches on next token boundary; mid-sentence stop is cut silently.</item>
+        <item>metadata: optional — add user_id for abuse detection and cost attribution.</item>
+      </list>
+    </section>
+
+    <section name="response-structure-and-stop-reason">
+      <p>The response object contains content blocks, usage, and stop_reason. Stop_reason drives agent branching.</p>
+      <rule testable="true">
+        <statement>Check stop_reason before accessing content[0].text — if stop_reason is "tool_use", content[0] may be a tool_use block, not text.</statement>
+        <rationale>Content blocks are polymorphic; indexing blindly into content[0].text raises AttributeError when the first block is a tool_use or thinking block.</rationale>
+      </rule>
+      <example type="good" title="Inspecting response fields">
+        <code lang="python"><![CDATA[
+message = client.messages.create(...)
+
+print(message.stop_reason)  # "end_turn" | "max_tokens" | "stop_sequence" | "tool_use"
+print(message.usage.input_tokens, message.usage.output_tokens)
+
+for block in message.content:
+    if block.type == "text":
+        print(block.text)
+    elif block.type == "tool_use":
+        print(f"Tool: {block.name}, Input: {block.input}")
+    elif block.type == "thinking":
+        print(f"Thinking: {block.thinking}")
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="multi-turn-pattern">
+      <p>Multi-turn conversations require careful history management to preserve tool_use blocks.</p>
+      <rule testable="true">
+        <statement>Append the full resp.content list (not just text) as the assistant turn in multi-turn history — tool_use blocks must be preserved or the next turn gets a 400 error.</statement>
+        <rationale>The API reconstructs conversation state from message history; missing tool_use blocks make the history inconsistent and cause an API error.</rationale>
+      </rule>
+      <example type="good" title="Multi-turn with full content preservation">
+        <code lang="python"><![CDATA[
+messages = [
+    {"role": "user", "content": "What is SDD?"},
+    {"role": "assistant", "content": "SDD (Specification-Driven Development) is..."},
+    {"role": "user", "content": "How does it compare to TDD?"}
+]
+response = client.messages.create(model="claude-sonnet-4-20250514",
+    max_tokens=1024, messages=messages)
+# Append full content list, not just text
+messages.append({"role": "assistant", "content": response.content})
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="image-from-base64">
+      <p>Send local files by base64-encoding them.</p>
+      <rule testable="true">
+        <statement>Place image content before text content in multimodal messages — model processes images better when they come first in the content array.</statement>
+        <rationale>Empirically, image comprehension quality improves when the image precedes the question about it; this is consistent across Claude model versions.</rationale>
+      </rule>
+      <example type="good" title="Vision: base64-encoded screenshot">
+        <code lang="python"><![CDATA[
+import base64
+
+def encode_image(path: str) -> str:
+    with open(path, "rb") as f:
+        return base64.standard_b64encode(f.read()).decode("utf-8")
+
+image_data = encode_image("screenshot.png")
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": [
+        {"type": "image", "source": {
+            "type": "base64", "media_type": "image/png", "data": image_data
+        }},
+        {"type": "text", "text": "Describe this screenshot"}
+    ]}]
+)
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="image-from-url">
+      <p>Fetch images directly from URLs.</p>
+      <rule testable="true">
+        <statement>Image URLs are fetched at inference time — if the URL returns a 403 at that moment, the call fails silently with a content error block rather than an API error.</statement>
+        <rationale>URL-based images depend on the URL being accessible at inference time; pre-fetch and base64-encode for reliability in production pipelines.</rationale>
+      </rule>
+      <example type="good" title="Vision: URL-based image">
+        <code lang="python"><![CDATA[
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": [
+        {"type": "image", "source": {"type": "url", "url": "https://example.com/image.jpg"}},
+        {"type": "text", "text": "What's in this image?"}
+    ]}]
+)
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="pdf-documents">
+      <p>Send PDFs for document analysis and summarization.</p>
+      <rule testable="true">
+        <statement>Validate PDF page count before sending — PDFs exceeding 100 pages produce an API error, not a truncation; validate before sending to prevent pipeline failures.</statement>
+        <rationale>The error surfaces at inference time after the full PDF has been base64-encoded and transmitted; validating first avoids wasting the encoding and transmission.</rationale>
+      </rule>
+      <example type="good" title="Vision: PDF document">
+        <code lang="python"><![CDATA[
+pdf_data = encode_image("document.pdf")  # same base64 encoding
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=4096,
+    messages=[{"role": "user", "content": [
+        {"type": "document", "source": {
+            "type": "base64", "media_type": "application/pdf", "data": pdf_data
+        }},
+        {"type": "text", "text": "Summarize this document"}
+    ]}]
+)
+        ]]></code>
+      </example>
+      <list>
+        <item>JPEG / PNG / GIF / WebP: max 20MB each.</item>
+        <item>PDF: max 32MB / 100 pages.</item>
+      </list>
+    </section>
+
+    <section name="text-stream-pattern">
+      <p>Simple streaming pattern for consuming text output incrementally.</p>
+      <example type="good" title="Streaming with text_stream">
+        <code lang="python"><![CDATA[
+with client.messages.stream(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Write a poem about AI"}]
+) as stream:
+    for text in stream.text_stream:
+        print(text, end="", flush=True)
+    # Get usage stats after streaming completes
+    final = stream.get_final_message()
+    print(f"\nTokens: {final.usage.input_tokens} in, {final.usage.output_tokens} out")
+        ]]></code>
+        <note>Use stream.get_final_message() when usage stats are needed — they are not available from individual chunks.</note>
+      </example>
+    </section>
+
+    <section name="event-based-streaming">
+      <p>Fine-grained event-based streaming for tool use and custom control.</p>
+      <rule testable="true">
+        <statement>For streaming + tool use, accumulate input_json_delta events and parse after content_block_stop — never parse partial JSON inline.</statement>
+        <rationale>input_json_delta events carry fragments of JSON that are not individually parseable; parsing before the block stops raises JSONDecodeError.</rationale>
+      </rule>
+      <example type="good" title="Event-based streaming with tool detection">
+        <code lang="python"><![CDATA[
+with client.messages.stream(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Hello"}]
+) as stream:
+    for event in stream:
+        if event.type == "content_block_start":
+            print(f"Block: {event.content_block.type}")
+        elif event.type == "content_block_delta":
+            if event.delta.type == "text_delta":
+                print(event.delta.text, end="", flush=True)
+        elif event.type == "message_stop":
+            print("\n[Complete]")
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="async-streaming">
+      <p>Asynchronous streaming for concurrent pipeline processing.</p>
+      <example type="good" title="Async streaming with AsyncAnthropic">
+        <code lang="python"><![CDATA[
+import asyncio
+import anthropic
+
+async_client = anthropic.AsyncAnthropic()
+
+async def stream_response():
+    async with async_client.messages.stream(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": "Hello"}]
+    ) as stream:
+        async for text in stream.text_stream:
+            print(text, end="", flush=True)
+
+asyncio.run(stream_response())
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="sse-event-format">
+      <p>Raw SSE format reference for custom transport implementations.</p>
+      <list>
+        <item>message_start: message metadata (id, model, usage placeholder).</item>
+        <item>content_block_start: new content block begins (type: text or tool_use).</item>
+        <item>content_block_delta: text_delta or input_json_delta.</item>
+        <item>content_block_stop: block complete.</item>
+        <item>message_delta: final usage stats.</item>
+        <item>message_stop: message complete.</item>
+      </list>
+      <rule testable="true">
+        <statement>Claude SSE format differs from OpenAI SSE — they are not interchangeable without an adapter layer (e.g., LiteLLM).</statement>
+        <rationale>OpenAI uses data: [DONE] to end a stream; Claude uses message_stop event. The delta object structure also differs; treating them as equivalent causes silent parse failures.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>The Messages API is the single integration point for all Claude calls in an agent system. A subagent constructs the message array (system + alternating user/assistant), calls `client.messages.create` or `client.messages.stream`, inspects `stop_reason`, and routes to the appropriate next step. For long-running pipelines, stream responses to a queue and process in a consumer. For multi-turn, append the assistant response to the message array before sending the next user turn.</p>
+      <note>Recommended subagents: faion-sdd-executor-agent (uses Messages API for all Claude calls; explicit stop_reason handling per phase), nero-sdd-executor-agent (multi-turn conversation with accumulated message history for context).</note>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always check `resp.stop_reason` before accessing `resp.content[0].text` — tool_use blocks are not text.</item>
+        <item>Append the full `resp.content` list (not just text) as the assistant turn in multi-turn history — tool_use blocks must be preserved.</item>
+        <item>Use `stream.get_final_message()` when you need usage stats from a streaming call.</item>
+        <item>Place image content before text content in multi-modal messages — model processes images better when they come first.</item>
+        <item>Use `metadata={"user_id": "..."}` to tag calls for abuse detection and cost attribution.</item>
+        <item>For PDF analysis, check page count first; split at 50 pages if near the 100-page limit.</item>
+        <item>Keep `system` prompt stable across calls in a session to enable Prompt Caching benefits.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common failure modes when integrating the Messages API into agent systems.</p>
+      <antipattern>
+        <description>`resp.content` is a `list[ContentBlock]` — content blocks can be `text`, `tool_use`, or `thinking`; always type-check before accessing `.text`.</description>
+        <reason>Blind indexing into content[0].text fails when the first block is not text. Check the type first.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Streaming with tools: `input_json_delta` events carry partial JSON — you must accumulate and parse after `content_block_stop`, not inline.</description>
+        <reason>Partial JSON is not valid; parsing before the block finishes raises JSONDecodeError. Wait for content_block_stop before parsing.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Multi-turn history must alternate user/assistant roles strictly — consecutive same-role messages raise a 400 error.</description>
+        <reason>The API validates role alternation. Appending text instead of the full content block breaks this invariant.</reason>
+      </antipattern>
+      <antipattern>
+        <description>`stop_sequences` match on the next token boundary — if the model generates a stop sequence mid-sentence, the sentence is cut off without warning.</description>
+        <reason>Stop sequences are a hard boundary, not a soft hint. Mid-generation stops lose data without notification.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Image URLs in messages are fetched at inference time — if the URL returns a 403 at that moment, the call fails silently with a content error block.</description>
+        <reason>URL-based access is async. Pre-fetch and base64-encode for reliability.</reason>
+      </antipattern>
+      <antipattern>
+        <description>PDF pages exceeding 100 produce an API error, not a truncation — validate before sending.</description>
+        <reason>Over-limit PDFs fail after encoding and transmission. Validate page count first to avoid wasted bandwidth.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/agent-loop.py" purpose="Multi-turn agent loop with explicit stop_reason branching and max-turns guard."/>
+      <template path="templates/vision.py" purpose="analyze_screenshot() helper using base64 encoding for local files."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.anthropic.com/en/api/messages"/>
+      <link href="https://docs.anthropic.com/en/api/messages-streaming"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/vision"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/pdf-support"/>
+      <link href="https://github.com/anthropics/anthropic-sdk-python"/>
+    </see-also>
+  </content>
+</methodology>
