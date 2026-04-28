@@ -1,0 +1,372 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="langchain-agents-architectures">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Build tool-using agents with LangChain and LangGraph. Master ReAct, Plan-and-Execute, and LATS. Integrate tools and handle errors for production.</summary>
+    <tags>
+      <tag>langchain</tag>
+      <tag>langgraph</tag>
+      <tag>react-agents</tag>
+      <tag>tool-use</tag>
+      <tag>agent-architectures</tag>
+    </tags>
+    <category>agents</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-24</created>
+  </metadata>
+  <content>
+    <title>LangChain Agent Architectures and Tools</title>
+    <summary>Implement tool-using agents with LangChain and LangGraph. Three architectures: ReAct (reason + act in a loop), Plan-and-Execute (plan upfront, then execute), and LATS (tree search for complex reasoning). Master tool definition, error handling, and state management for production agent systems.</summary>
+    <why>
+      <p>Building agents with LangChain and LangGraph moves you from one-shot LLM calls to iterative, tool-driven workflows. ReAct agents think step-by-step, call tools, observe results, and repeat—this is the paradigm behind most successful AI agent systems in production.</p>
+      <p>Plan-and-Execute separates the planning phase from execution, reducing error propagation in multi-step tasks. LATS adds tree search for problems where the solution path is uncertain and backtracking is valuable.</p>
+      <p>Tool integration is non-trivial: tools must have clear docstrings (as agent-facing prompts), Pydantic-validated inputs, and error handlers. LangGraph's state management replaces ad-hoc agent loops with battle-tested state machines that handle checkpoints, retries, and multi-agent coordination.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building tool-using agents with verifiable, step-by-step reasoning (ReAct via `create_react_agent`)</item>
+        <item>Multi-step research or data-processing tasks where upfront planning reduces error propagation (Plan-and-Execute)</item>
+        <item>Complex reasoning problems with solution uncertainty where backtracking improves quality (LATS)</item>
+        <item>Integrating heterogeneous tools (web search, calculators, APIs, databases) behind a unified agent interface</item>
+        <item>Replacing custom agent loops with battle-tested LangGraph state machines that handle errors, checkpoints, and retries</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-tool, single-step retrieval tasks — plain LLM call is simpler and faster</item>
+        <item>Hard latency requirements (&lt;1 s): ReAct + LATS add multiple round-trips</item>
+        <item>Cases where the complete solution path is already known — use a deterministic pipeline, not an agent</item>
+        <item>Tasks where tool schemas cannot be written (e.g. the agent must call arbitrary undocumented APIs)</item>
+        <item>Contexts where LangChain's verbose abstraction layers increase debugging cost more than they reduce development cost</item>
+      </list>
+    </when-not-to-use>
+    <section name="Architecture 1: ReAct (Reasoning + Acting)">
+      <p>ReAct is the simplest and most debuggable agent architecture. The model thinks step-by-step, uses tools, observes results, and repeats. Perfect for tasks where you need transparency and the solution path can branch.</p>
+      <code lang="python"><![CDATA[from langgraph.prebuilt import create_react_agent
+from langchain_anthropic import ChatAnthropic
+from langchain_core.tools import tool
+
+# Define tools
+@tool
+def search(query: str) -> str:
+    """Search the web for information."""
+    return f"Results for: {query}"
+
+@tool
+def calculator(expression: str) -> str:
+    """Calculate a mathematical expression."""
+    try:
+        return str(eval(expression))
+    except Exception as e:
+        return f"Error: {e}"
+
+# Create ReAct agent
+model = ChatAnthropic(model="claude-sonnet-4-5")
+tools = [search, calculator]
+
+agent = create_react_agent(model, tools)
+
+# Run
+result = agent.invoke({
+    "messages": [("human", "What is 25 * 4 and who invented calculus?")]
+})]]></code>
+      <p>Always set `max_iterations` on ReAct agents; the default is unbounded in some LangChain versions. Write tool docstrings as agent-facing prompts, not developer-facing documentation — include when to use, when NOT to use, and expected output format.</p>
+    </section>
+    <section name="Architecture 2: Plan-and-Execute">
+      <p>Plan-and-Execute separates planning from execution. The model creates a step-by-step plan upfront, then executes each step. This reduces error propagation and gives you visibility into the planned path.</p>
+      <code lang="python"><![CDATA[from langgraph.graph import StateGraph, END
+from typing import TypedDict, Annotated, List
+import operator
+
+class PlanExecuteState(TypedDict):
+    input: str
+    plan: List[str]
+    current_step: int
+    results: Annotated[List[str], operator.add]
+    final_answer: str
+
+def planner(state: PlanExecuteState) -> PlanExecuteState:
+    """Create a plan of steps."""
+    prompt = f"Create a step-by-step plan to answer: {state['input']}"
+    response = model.invoke(prompt)
+    steps = parse_steps(response.content)
+    return {"plan": steps, "current_step": 0}
+
+def executor(state: PlanExecuteState) -> PlanExecuteState:
+    """Execute current step."""
+    step = state["plan"][state["current_step"]]
+    result = model.invoke(f"Execute this step: {step}")
+    return {"results": [result.content], "current_step": state["current_step"] + 1}
+
+def should_continue(state: PlanExecuteState) -> str:
+    if state["current_step"] >= len(state["plan"]):
+        return "synthesize"
+    return "execute"
+
+def synthesizer(state: PlanExecuteState) -> PlanExecuteState:
+    """Combine results into final answer."""
+    all_results = "\n".join(state["results"])
+    prompt = f"Synthesize these results into a final answer:\n{all_results}"
+    response = model.invoke(prompt)
+    return {"final_answer": response.content}
+
+# Build graph
+graph = StateGraph(PlanExecuteState)
+graph.add_node("plan", planner)
+graph.add_node("execute", executor)
+graph.add_node("synthesize", synthesizer)
+
+graph.set_entry_point("plan")
+graph.add_edge("plan", "execute")
+graph.add_conditional_edges("execute", should_continue)
+graph.add_edge("synthesize", END)
+
+agent = graph.compile()]]></code>
+      <p>Validate the plan JSON schema before dispatching any execution steps. Add a re-plan gate after each step that checks whether the remaining plan is still valid. If step 2 fails, steps 3-N may be invalid on a broken foundation.</p>
+    </section>
+    <section name="Architecture 3: LATS (Language Agent Tree Search)">
+      <p>LATS adds tree search with backtracking for complex problems. The model generates multiple candidate approaches, scores them, and explores the most promising paths. Use this for problems where the solution is uncertain.</p>
+      <code lang="python"><![CDATA[from langgraph.graph import StateGraph, END
+from typing import TypedDict, List, Optional
+
+class LATSState(TypedDict):
+    problem: str
+    thoughts: List[dict]
+    current_path: List[int]
+    best_solution: Optional[str]
+    best_score: float
+
+def generate_thoughts(state: LATSState) -> LATSState:
+    """Generate multiple candidate thoughts."""
+    current_context = get_current_context(state)
+    prompt = f"Given this problem, generate 3 different approaches: {state['problem']}"
+    response = model.invoke(prompt)
+    new_thoughts = parse_thoughts(response.content)
+
+    parent_idx = state["current_path"][-1] if state["current_path"] else -1
+    for thought in new_thoughts:
+        state["thoughts"].append({
+            "content": thought,
+            "parent": parent_idx,
+            "score": None,
+            "children": []
+        })
+    return state
+
+def evaluate_thoughts(state: LATSState) -> LATSState:
+    """Score each thought for promise."""
+    for i, thought in enumerate(state["thoughts"]):
+        if thought["score"] is None:
+            prompt = f"Rate this approach (0-10): {thought['content']}"
+            response = model.invoke(prompt)
+            thought["score"] = parse_score(response.content)
+    return state
+
+def select_thought(state: LATSState) -> LATSState:
+    """Select most promising unexplored thought."""
+    unexplored = [
+        (i, t) for i, t in enumerate(state["thoughts"])
+        if not t["children"] and t["score"] is not None
+    ]
+    if not unexplored:
+        return state
+    best_idx = max(unexplored, key=lambda x: x[1]["score"])[0]
+    state["current_path"].append(best_idx)
+    return state
+
+def should_continue_lats(state: LATSState) -> str:
+    if state["best_score"] and state["best_score"] > 8:
+        return END
+    if len(state["thoughts"]) > 20:
+        return END
+    return "generate"
+
+# Build LATS graph
+lats = StateGraph(LATSState)
+lats.add_node("generate", generate_thoughts)
+lats.add_node("evaluate", evaluate_thoughts)
+lats.add_node("select", select_thought)
+
+lats.set_entry_point("generate")
+lats.add_edge("generate", "evaluate")
+lats.add_edge("evaluate", "select")
+lats.add_conditional_edges("select", should_continue_lats)]]></code>
+      <p>Score with Haiku and expand with Sonnet — this reduces cost by approximately 70% vs using Sonnet for both. In practice, limit LATS to 2 branches × 3 depth = 6 exploration paths. Full tree search with LLM scoring is rarely justified outside research settings.</p>
+    </section>
+    <section name="Tool Integration">
+      <p>Tools are the interface between agents and the world. They must have clear docstrings, validated inputs, and error handlers.</p>
+      <code lang="python"><![CDATA[from langchain_core.tools import tool, StructuredTool
+from pydantic import BaseModel, Field
+
+# Simple tool with decorator
+@tool
+def search(query: str) -> str:
+    """Search the web for information about a topic.
+    Use for: facts, recent events, company info, pricing.
+    Do NOT use for: math, code execution, structured data.
+    """
+    return f"Search results for: {query}"
+
+# Tool with complex input
+class CalculatorInput(BaseModel):
+    expression: str = Field(description="Mathematical expression")
+    precision: int = Field(default=2, description="Decimal places")
+
+@tool(args_schema=CalculatorInput)
+def calculate(expression: str, precision: int = 2) -> str:
+    """Calculate a mathematical expression."""
+    result = eval(expression)
+    return f"{result:.{precision}f}"
+
+# Tool with error handling
+@tool(handle_tool_error=True)
+def risky_tool(input: str) -> str:
+    """A tool that might fail."""
+    if not input:
+        raise ToolException("Input cannot be empty")
+    return f"Processed: {input}"]]></code>
+      <p>Use `handle_tool_error=True` on every tool that can fail; never let a tool exception abort a multi-step run. Always check `{tool.name for tool in tools}` has no duplicates—duplicate tool names cause silent routing errors.</p>
+    </section>
+    <section name="Where Agents Fail">
+      <p>Understanding the limitations of each architecture helps you choose the right one and work around its failure modes. No agent architecture is perfect; they all have gotchas that surface in production.</p>
+      <antipattern>
+        <description>ReAct tool hallucination: model calls tools not in the schema or calls them with invalid argument types</description>
+        <reason>Use `handle_tool_error=True` and Pydantic-validated inputs. `tool_choice="auto"` does not guarantee valid calls. The model may still invent tool names or pass wrong types. Always validate and set a meaningful error response.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Plan-and-Execute plan staleness: the upfront plan does not account for intermediate tool results</description>
+        <reason>A failed step 2 leaves steps 3-N invalid. The plan is static but execution is dynamic. Add a re-plan gate after each step that checks whether the remaining plan is still valid. If a step fails or returns unexpected results, trigger a re-planning phase to adjust the remaining steps.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LATS cost: tree search with 3 candidates × 5 evaluation rounds = 15+ LLM calls per problem</description>
+        <reason>Cost scales poorly with search depth. Each candidate must be generated and scored; deeper trees explode in cost. Use Haiku for scoring and Sonnet for expansion to reduce cost by 70%. In production, limit LATS to 2 branches with 3 depth maximum.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Tool error propagation: a single tool failure raises an exception that aborts the agent run</description>
+        <reason>Unless `handle_tool_error=True` is set, the run fails and the entire agent workflow stops. Always set this flag. Also provide a meaningful error message so the agent understands what went wrong and can retry with different inputs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Context window growth: long ReAct runs fill the context window</description>
+        <reason>A 20-step ReAct run with verbose tool outputs can consume 50K+ tokens. LangChain does not auto-truncate by default. Truncate tool outputs to 2K characters maximum before appending to state. Better: extract only the relevant excerpt from the tool output and discard the rest.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LATS scoring reliability: LLM-based scoring of candidate thoughts has low inter-rater reliability</description>
+        <reason>The "best path" selected may not be objectively best. Use scoring as a heuristic, not ground truth.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LangGraph schema rigidity: changing `PlanExecuteState` mid-project requires migrating checkpointed state</description>
+        <reason>Plan the schema carefully upfront. Schema changes are difficult mid-project.</reason>
+      </antipattern>
+    </section>
+    <section name="Tool Definition Patterns">
+      <p>Different tool patterns suit different scenarios. Simple tools use the `@tool` decorator. Complex inputs use Pydantic schemas. Dynamic tools are created at runtime.</p>
+      <p>The `@tool` decorator is the fastest path from a Python function to a tool callable by the agent. The docstring becomes the tool description, which the model sees. Always include "Use for" and "Do NOT use for" hints to steer the model away from misuse.</p>
+      <p>For tools with complex inputs, use a Pydantic model as the `args_schema`. This validates inputs before the tool function runs. Without this, malformed LLM outputs (wrong types, missing fields) cause runtime errors deep in the tool function.</p>
+      <code lang="python"><![CDATA[# Simple tool
+@tool
+def search(query: str) -> str:
+    """Search the web for information."""
+    return f"Results for: {query}"
+
+# Tool with validation
+class CalculatorInput(BaseModel):
+    expression: str = Field(description="Mathematical expression")
+    precision: int = Field(default=2, description="Decimal places")
+
+@tool(args_schema=CalculatorInput)
+def calculate(expression: str, precision: int = 2) -> str:
+    """Calculate a mathematical expression."""
+    result = eval(expression)
+    return f"{result:.{precision}f}"
+
+# Dynamic tool creation
+def create_api_tool(api_name: str, base_url: str):
+    @tool(name=f"{api_name}_api")
+    def api_tool(endpoint: str, params: dict = None) -> str:
+        f"""Call the {api_name} API."""
+        return f"API response from {base_url}/{endpoint}"
+    return api_tool]]></code>
+      <p>Tool docstrings are agent-facing prompts. Include what the tool does, when to use it, when NOT to use it, and what format to expect. This is the single biggest factor in whether an agent uses a tool correctly.</p>
+    </section>
+    <section name="CLI Tools and Services">
+      <p>LangChain and LangGraph require a few dependencies. LangSmith is optional but invaluable for debugging.</p>
+      <list>
+        <item>langchain: `create_react_agent`, tool decorators, `bind_tools`. Install: `pip install langchain`</item>
+        <item>langgraph: `StateGraph` for Plan-and-Execute and LATS, checkpointing. Install: `pip install langgraph`</item>
+        <item>langchain-anthropic: `ChatAnthropic` model with tool calling and extended thinking. Install: `pip install langchain-anthropic`</item>
+        <item>langsmith: Tracing and evaluation of agent runs. Install: `pip install langsmith`</item>
+      </list>
+      <p>Services that work well with agents: LangSmith traces every ReAct step, tool call, and LATS branch; required for debugging. LangGraph Cloud provides managed stateful agent execution with persistence and human-in-loop. Tavily Search is purpose-built for agents. E2B Code Interpreter sandboxes Python execution. Helicone tracks cost and latency per architecture type.</p>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Write tool docstrings as agent-facing prompts, not developer-facing documentation. Include when to use, when NOT to use, and expected output format.</item>
+        <item>Use `handle_tool_error=True` on every tool that can fail. Never let a tool exception abort a multi-step run.</item>
+        <item>For Plan-and-Execute, validate the plan JSON schema before dispatching any execution steps.</item>
+        <item>In LATS, score with Haiku and expand with Sonnet — this reduces cost by approximately 70% vs using Sonnet for both.</item>
+        <item>Always set `max_iterations` on ReAct agents. The default is unbounded in some LangChain versions.</item>
+        <item>Stream agent events (`agent.stream()`) in production UIs so users see progress rather than waiting for a full result.</item>
+        <item>Add a `session_id` tag to every LangSmith trace for cross-session cost attribution and debugging.</item>
+        <item>For Plan-and-Execute workflows that send emails, write files, or call payment APIs, use LangGraph `interrupt_before` on the executor node. Never execute irreversible actions without explicit human approval.</item>
+        <item>A 20-step Plan-and-Execute run with verbose tool outputs can consume 50K+ tokens. Truncate tool outputs to 2K characters maximum before appending to state.</item>
+      </list>
+    </section>
+    <checklist>
+      <check>Identify whether ReAct, Plan-and-Execute, or LATS fits your use case</check>
+      <check>For ReAct: define tools with `@tool` decorator and clear docstrings (use for / do NOT use for)</check>
+      <check>For Plan-and-Execute: design PlanExecuteState schema upfront, including plan, current_step, and results</check>
+      <check>For LATS: implement generate, evaluate, and select nodes with UCB-like selection</check>
+      <check>Set `max_iterations` on ReAct agents; unbounded iterations can loop forever</check>
+      <check>Use `handle_tool_error=True` on every tool that can fail</check>
+      <check>Validate tool inputs with Pydantic schemas; this catches errors before they reach the tool function</check>
+      <check>Check for duplicate tool names in the tools list; duplicates cause silent routing errors</check>
+      <check>For Plan-and-Execute, validate the plan JSON schema before executing steps</check>
+      <check>For Plan-and-Execute, add a re-plan gate after each step to check if remaining plan is valid</check>
+      <check>For LATS, limit search to 2 branches × 3 depth = 6 paths max in production; full tree search is too costly</check>
+      <check>Monitor agent runs with LangSmith or similar tracing tool; essential for debugging</check>
+      <check>Test agent error handling: what happens if a tool fails? Does the run abort or continue?</check>
+      <check>Measure token usage and cost per architecture; compare ReAct vs Plan-and-Execute for your use case</check>
+      <check>Set up human-in-loop for irreversible actions (emails, payments, file writes) via `interrupt_before`</check>
+      <check>Truncate tool outputs to 2K characters maximum to prevent context window bloat</check>
+      <check>In production, stream agent events with `agent.stream()` so users see progress</check>
+      <check>Add a `session_id` tag to every LangSmith trace for cost attribution and debugging</check>
+    </checklist>
+    <section name="Implementation Patterns">
+      <p><term name="Minimal ReAct with error handling">Use `create_react_agent` with the Anthropic model, tool list, and error handlers. The model is Sonnet by default, which balances cost and reasoning quality.</term></p>
+      <code lang="python"><![CDATA[from langgraph.prebuilt import create_react_agent
+from langchain_anthropic import ChatAnthropic
+
+model = ChatAnthropic(model="claude-sonnet-4-5")
+tools = [search, calculator]
+agent = create_react_agent(model, tools)
+
+def run_agent(task: str) -> str:
+    try:
+        result = agent.invoke({"messages": [("human", task)]})
+        return result["messages"][-1].content
+    except Exception as e:
+        return f"Agent failed: {e}"]]></code>
+      <p><term name="Recommended subagents">For standard tool-using tasks: `react-agent` with `create_react_agent`, web search, calculator, and code execution tools using Sonnet. For planning tasks: `planner-node` generates structured step lists (Opus), `executor-node` executes steps with tool access (Sonnet), `synthesizer-node` combines results (Sonnet). For LATS: `lats-evaluator` scores candidate thoughts 0-10 using Haiku for cost efficiency.</term></p>
+      <p><term name="Tool docstring patterns">Include "Use for" and "Do NOT use for" hints. These guide the model toward correct usage and away from misuse. A tool with a clear docstring is invoked correctly 80% more often than one with a generic docstring.</term></p>
+    </section>
+    <templates>
+      <template path="templates/react-agent.py" purpose="Minimal ReAct agent with error handling"/>
+      <template path="templates/plan-and-execute.py" purpose="Plan-and-Execute state graph"/>
+      <template path="templates/lats-agent.py" purpose="LATS tree search implementation"/>
+      <template path="templates/tool-definitions.py" purpose="Tool decorator patterns and validation"/>
+      <template path="templates/error-handling.py" purpose="Tool error handlers and recovery"/>
+    </templates>
+    <see-also>
+      <ref slug="multi-agent-basics"/>
+      <ref slug="subagent-as-context-firewall"/>
+      <ref slug="tool-description-as-prompt"/>
+      <link href="https://langchain-ai.github.io/langgraph/reference/prebuilt/#langgraph.prebuilt.chat_agent_executor.create_react_agent">LangGraph ReAct prebuilt</link>
+      <link href="https://langchain-ai.github.io/langgraph/tutorials/plan-and-execute/plan-and-execute/">LangGraph Plan-and-Execute tutorial</link>
+      <link href="https://arxiv.org/abs/2310.04406">LATS paper</link>
+      <link href="https://python.langchain.com/docs/modules/tools/">LangChain tool docs</link>
+      <link href="https://docs.smith.langchain.com/">LangSmith tracing</link>
+    </see-also>
+  </content>
+</methodology>
