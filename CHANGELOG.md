@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (claude-api, cost-optimization, decision-framework; feature-045 batch 261)
 - migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (ai-agent-patterns, chain-of-thought, chunking-strategies; feature-045 batch 260)
 - migrate: 3/3 geek methodologies → methodology.xml (structured-output-patterns, tool-use-basics, agentic-rag; feature-045 batch 259)
 - migrate: 3/3 geek/ai/llm-integration methodologies → methodology.xml (prompt-basics, prompt-techniques, structured-output-basics; feature-045 batch 258)

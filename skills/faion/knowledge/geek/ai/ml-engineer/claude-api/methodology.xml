@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="claude-api">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Production guide for calling Anthropic's Claude API directly via SDKs. Covers Messages API, Tool Use, Prompt Caching, Extended Thinking, Streaming, and Batch API with cost optimization techniques.</summary>
+    <tags>
+      <tag>claude</tag>
+      <tag>api</tag>
+      <tag>llm</tag>
+      <tag>agents</tag>
+      <tag>prompt-caching</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Claude API</title>
+    <summary>Production guide for calling Anthropic's Claude API directly via the Python and TypeScript SDKs. Covers the Messages API, Tool Use (agentic loops with MAX_TURNS guard), Prompt Caching (90% input-cost reduction on repeated system prompts), Extended Thinking (Opus 4.5 only, minimum 1,024 budget tokens), Streaming (SSE), and the Batch API (50% cost savings, 24-hour window). Always cache system prompts; always enforce MAX_TURNS; always use forced tool use for structured output.</summary>
+    <why>
+      <p>The Claude API is the lowest-latency path to Claude without proxy overhead. Direct SDK use exposes all billing-reducing features (caching, batching) and all beta capabilities (extended thinking, interleaved thinking with tools) that higher-level frameworks may not surface. For agentic loops where Claude selects tools, direct SDK control over the conversation array is clearer and more debuggable than framework abstractions.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building an agentic loop that calls tools and needs full control over the message array</item>
+        <item>System prompts or large context blocks repeat across requests — Prompt Caching applies immediately</item>
+        <item>Processing hundreds of documents in batch where 50% cost savings outweigh 24-hour latency</item>
+        <item>Complex reasoning tasks where Extended Thinking (Opus 4.5) meaningfully improves accuracy</item>
+        <item>Existing codebase has no multi-provider requirement — LiteLLM abstraction adds unnecessary overhead</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>The codebase already uses LiteLLM, LangChain, or another multi-provider abstraction — keep that layer</item>
+        <item>Latency budget is under 200ms — streaming still has SSE overhead; Batch API is unsuitable</item>
+        <item>Task complexity does not justify Sonnet or above — route to Haiku or a cheaper provider first (see decision-framework)</item>
+        <item>System is already in production with a working multi-provider setup — don't break it for caching savings</item>
+      </list>
+    </when-not-to-use>
+    <section name="models">
+      <summary>Claude model tiers (2025-2026): Haiku 3.5 for speed/cost, Sonnet 4 for balanced production, Opus 4.5 for complex reasoning and Extended Thinking.</summary>
+      <list>
+        <item>claude-3-5-haiku-20241022 — $0.80/$4.00 per 1M tokens; 200K context; fastest; use for classification, extraction, FAQ</item>
+        <item>claude-sonnet-4-20250514 — $3.00/$15.00 per 1M tokens; 200K context; default choice for generation, code, RAG</item>
+        <item>claude-opus-4-5-20251101 — $15.00/$75.00 per 1M tokens; 200K context; Extended Thinking; use for deep reasoning, contract analysis, research synthesis</item>
+      </list>
+    </section>
+    <section name="messages-api">
+      <summary>Primary API for all Claude interactions. Single endpoint: POST /v1/messages. Handles single-turn, multi-turn, tool use, vision, and streaming.</summary>
+      <rule>
+        <statement>Always pass max_tokens explicitly: 512 for Haiku classification, 4096 for Sonnet generation, 8192+ for Opus extended reasoning.</statement>
+        <rationale>Default behavior is model-dependent and can result in truncated outputs.</rationale>
+      </rule>
+      <rule>
+        <statement>Use the Python SDK (pip install anthropic) or TypeScript SDK (npm install @anthropic-ai/sdk). Do not hand-roll HTTP calls.</statement>
+        <rationale>The SDKs handle retries, streaming SSE parsing, and version headers.</rationale>
+      </rule>
+      <rule>
+        <statement>Load ANTHROPIC_API_KEY from the environment, never hardcode.</statement>
+        <rationale>In production use a secrets manager (1Password, AWS Secrets Manager, Vault).</rationale>
+      </rule>
+      <example type="good" title="Minimal Python call">
+        <code lang="python"><![CDATA[
+import anthropic
+client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from env
+
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Summarize this document."}],
+)
+print(response.content[0].text)
+]]></code>
+      </example>
+    </section>
+    <section name="tool-use">
+      <summary>Claude selects and calls tools by returning tool_use blocks. The agent loop appends results as tool_result blocks and continues until stop_reason == "end_turn".</summary>
+      <rule>
+        <statement>Always enforce a MAX_TURNS cap (recommended: 10).</statement>
+        <rationale>An agent without it can loop indefinitely when Claude never reaches end_turn due to a misbehaving tool or prompt.</rationale>
+      </rule>
+      <rule>
+        <statement>Use forced tool use (tool_choice={"type": "tool", "name": "output_schema"}) for structured JSON output.</statement>
+        <rationale>It is more reliable than prompting for JSON across model updates.</rationale>
+      </rule>
+      <rule>
+        <statement>Provide fewer than 10 tools simultaneously.</statement>
+        <rationale>Tool use reliability degrades with large tool sets — curate the tool list per task rather than passing the full registry.</rationale>
+      </rule>
+      <rule>
+        <statement>Validate tool inputs against the tool's input_schema before executing.</statement>
+        <rationale>Schema drift between Claude's call and the handler's expectations causes silent runtime errors.</rationale>
+      </rule>
+      <example type="good" title="Tool use loop with MAX_TURNS guard">
+        <code lang="python"><![CDATA[
+MAX_TURNS = 10
+messages = [{"role": "user", "content": user_input}]
+
+for _ in range(MAX_TURNS):
+    response = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=4096,
+        tools=TOOLS,
+        messages=messages,
+    )
+    if response.stop_reason == "end_turn":
+        break
+    tool_results = []
+    for block in response.content:
+        if block.type == "tool_use":
+            result = execute_tool(block.name, block.input)
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": block.id,
+                "content": result,
+            })
+    messages.append({"role": "assistant", "content": response.content})
+    messages.append({"role": "user", "content": tool_results})
+]]></code>
+      </example>
+    </section>
+    <section name="prompt-caching">
+      <summary>Marks content blocks with cache_control to reuse them across requests. Cache hit: 90% cost reduction on input tokens. TTL: 5 minutes, extended on each use. Minimum cacheable block: 1,024 tokens.</summary>
+      <rule>
+        <statement>Always cache system prompts and large static context (retrieved documents, tool schemas) that appear in multiple requests.</statement>
+        <rationale>Blocks under 1,024 tokens are silently not cached — do not assume caching on short prompts.</rationale>
+      </rule>
+      <rule>
+        <statement>Cache the longest stable prefix first.</statement>
+        <rationale>Cached blocks must appear in the same order and at the same position across requests — any change before the cached block invalidates the cache.</rationale>
+      </rule>
+      <rule>
+        <statement>Prompt Caching is ineffective for low-traffic applications where the 5-minute TTL expires between requests.</statement>
+        <rationale>Profile cache hit rate via usage.cache_read_input_tokens before committing to a caching strategy.</rationale>
+      </rule>
+      <example type="good" title="Cached system prompt with conversation">
+        <code lang="python"><![CDATA[
+SYSTEM = [
+    {
+        "type": "text",
+        "text": LARGE_SYSTEM_PROMPT,  # must be >= 1024 tokens
+        "cache_control": {"type": "ephemeral"},
+    }
+]
+
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=2048,
+    system=SYSTEM,
+    messages=messages,
+)
+# Check cache hit in usage
+print(response.usage.cache_read_input_tokens)   # > 0 means cache hit
+print(response.usage.cache_creation_input_tokens)  # > 0 means cache write
+]]></code>
+      </example>
+    </section>
+    <section name="extended-thinking">
+      <summary>Extended Thinking lets Claude reason step-by-step before answering, improving accuracy on math, logic, research synthesis, and code debugging. Available on Opus 4.5 only. Minimum budget: 1,024 tokens.</summary>
+      <rule>
+        <statement>Start with a small budget (1,024-5,000 tokens). Increase incrementally until accuracy plateaus.</statement>
+        <rationale>Thinking tokens are billed at Opus input rate ($15/1M).</rationale>
+      </rule>
+      <rule>
+        <statement>Always check for thinking blocks before text blocks when iterating response.content.</statement>
+        <rationale>The SDK delivers them as thinking_delta events during streaming — if you only listen for text_delta, you pay for thinking tokens silently.</rationale>
+      </rule>
+      <rule>
+        <statement>Do not use Extended Thinking for tasks that need very short outputs (under 200 tokens).</statement>
+        <rationale>The minimum 1,024-token budget makes it economically wasteful.</rationale>
+      </rule>
+      <example type="good" title="Extended Thinking call">
+        <code lang="python"><![CDATA[
+response = client.messages.create(
+    model="claude-opus-4-5-20251101",
+    max_tokens=16000,
+    thinking={"type": "enabled", "budget_tokens": 5000},
+    messages=[{"role": "user", "content": complex_problem}],
+)
+thinking_text = ""
+answer_text = ""
+for block in response.content:
+    if block.type == "thinking":
+        thinking_text = block.thinking
+    elif block.type == "text":
+        answer_text = block.text
+]]></code>
+      </example>
+    </section>
+    <section name="streaming">
+      <summary>Server-sent events (SSE) for real-time token delivery. Python SDK: client.messages.stream() context manager. TypeScript SDK: client.messages.stream(). Event types: message_start, content_block_delta (text_delta / input_json_delta), message_stop.</summary>
+      <rule>
+        <statement>Process content_block_delta events incrementally.</statement>
+        <rationale>Accumulate input_json_delta for tool inputs until the block closes — do not parse partial JSON mid-stream.</rationale>
+      </rule>
+      <rule>
+        <statement>On disconnection, resume from the last text block index.</statement>
+        <rationale>The SDK does not handle reconnection automatically — track the last delivered text index and skip already-delivered blocks on reconnect.</rationale>
+      </rule>
+      <example type="good" title="Sync streaming with text callback">
+        <code lang="python"><![CDATA[
+with client.messages.stream(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": prompt}],
+) as stream:
+    for text in stream.text_stream:
+        print(text, end="", flush=True)
+]]></code>
+      </example>
+    </section>
+    <section name="batch-api">
+      <summary>Submit up to 10,000 requests as a batch. 50% cost savings vs synchronous. 24-hour processing window. Results via polling or webhook. Use only for offline workloads.</summary>
+      <rule>
+        <statement>Never route user-facing interactive requests through the Batch API.</statement>
+        <rationale>The 24-hour window is incompatible with real-time response expectations.</rationale>
+      </rule>
+      <rule>
+        <statement>Group requests by deadline.</statement>
+        <rationale>Offline enrichment (document tagging, summarization, embeddings generation) always goes through Batch. Anything with a user waiting never does.</rationale>
+      </rule>
+      <rule>
+        <statement>Poll for completion using client.beta.messages.batches.retrieve(batch_id).</statement>
+        <rationale>Check processing_status == "ended" before streaming results. Do not assume completion before polling confirms it.</rationale>
+      </rule>
+      <example type="good" title="Submit and poll a batch">
+        <code lang="python"><![CDATA[
+import time
+
+batch = client.beta.messages.batches.create(requests=[
+    {
+        "custom_id": f"doc-{i}",
+        "params": {
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": 512,
+            "messages": [{"role": "user", "content": f"Summarize: {doc}"}],
+        },
+    }
+    for i, doc in enumerate(documents)
+])
+
+while True:
+    status = client.beta.messages.batches.retrieve(batch.id)
+    if status.processing_status == "ended":
+        break
+    time.sleep(10)
+
+for result in client.beta.messages.batches.results(batch.id):
+    if result.result.type == "succeeded":
+        print(result.custom_id, result.result.message.content[0].text)
+]]></code>
+      </example>
+    </section>
+    <section name="tool-loop-gotchas">
+      <antipattern name="infinite-tool-loop">
+        <description>An agent without a MAX_TURNS guard calls tools indefinitely. Claude never reaches end_turn when a tool always returns an error, an ambiguous result, or a prompt that drives Claude to call more tools.</description>
+        <reason>Unbounded loops burn tokens at tool_use call rates plus tool result input rates. At Sonnet pricing a 1,000-turn runaway costs ~$5 before hitting rate limits.</reason>
+        <rule>Always enforce MAX_TURNS = 10 as the default. Log the turn count on every loop iteration. Raise RuntimeError with the loop count when the cap is hit so callers can inspect the conversation array.</rule>
+      </antipattern>
+      <antipattern name="tool-schema-drift">
+        <description>A tool's input_schema is updated without updating the agent loop handler. Claude generates inputs matching the new schema; the handler expects the old field names and silently ignores or crashes on unknown fields.</description>
+        <reason>Schema validation is not automatic — the API passes Claude's tool inputs directly without checking them against the registered schema on the server side.</reason>
+        <rule>Validate tool inputs against the tool's input_schema (e.g., with jsonschema.validate) before passing them to the handler. Add a test for each tool that asserts the handler accepts the current schema's required fields.</rule>
+      </antipattern>
+      <antipattern name="side-effects-without-checkpoint">
+        <description>An agentic loop executes irreversible side effects (database mutations, email sends, API POST calls) without a human confirmation step. Claude cannot undo executed side effects.</description>
+        <reason>Claude may misinterpret ambiguous instructions or act on stale context, triggering writes the user did not intend.</reason>
+        <rule>Inject a human-in-loop checkpoint (interrupt_before, confirmation prompt, or dry-run flag) before any tool call with write effects. For automated pipelines, restrict write tools to a sandboxed staging environment until human approval.</rule>
+      </antipattern>
+    </section>
+    <section name="caching-gotchas">
+      <antipattern name="cache-ttl-expiry">
+        <description>Prompt Caching TTL is 5 minutes. Long gaps between requests invalidate the cache. Applications with fewer than ~12 requests per hour may never benefit from caching.</description>
+        <reason>The cache TTL is fixed and not configurable. Low-traffic services pay cache write overhead on every cold request.</reason>
+        <rule>Profile cache hit rate via usage.cache_read_input_tokens before committing to a caching strategy. If hit rate is below 50%, the caching overhead may not justify the savings.</rule>
+      </antipattern>
+      <antipattern name="cache-prefix-mismatch">
+        <description>A cached block is prepended with a dynamic prefix (timestamp, request ID, user name) that changes between requests, invalidating the cache on every call.</description>
+        <reason>Cache matching is prefix-based. Any content before the cached block that changes between requests breaks the prefix.</reason>
+        <rule>Place all dynamic content (user message, retrieved context) after the cached block. Static content — system instructions, tool schemas, long documents — must appear before dynamic content in the message array.</rule>
+      </antipattern>
+    </section>
+    <section name="thinking-gotchas">
+      <antipattern name="silent-thinking-billing">
+        <description>Streaming handler only listens for text_delta events. thinking blocks arrive before text blocks as thinking_delta events. The handler discards thinking tokens while still paying for them.</description>
+        <reason>Extended Thinking tokens are billed at the full model input rate. Ignoring them in the handler does not skip their billing.</reason>
+        <rule>Always iterate response.content (or handle thinking_delta in streaming) and extract both block types. Log thinking token count from usage.thinking_tokens to track cost.</rule>
+      </antipattern>
+      <antipattern name="thinking-on-short-output">
+        <description>Extended Thinking is enabled for a task that requires a short answer (under 200 tokens). The minimum 1,024-token budget makes every call expensive regardless of response length.</description>
+        <reason>Budget tokens are always billed even if the model does not use the full budget.</reason>
+        <rule>Reserve Extended Thinking for tasks where accuracy improvement is measurable: math proofs, multi-step code debugging, research synthesis, contract analysis. Do not apply it to classification, summarization, or FAQ tasks.</rule>
+      </antipattern>
+    </section>
+    <section name="operational-gotchas">
+      <antipattern name="hardcoded-api-key">
+        <description>ANTHROPIC_API_KEY is hardcoded in source code or committed to version control. Key exposure leads to unauthorized usage and billing.</description>
+        <reason>API keys in code are frequently leaked via git history, container images, or CI logs.</reason>
+        <rule>Load keys exclusively from environment variables or a secrets manager. Rotate keys on a schedule. Add ANTHROPIC_API_KEY to .gitignore scanning (e.g., truffleHop, detect-secrets).</rule>
+      </antipattern>
+      <antipattern name="no-retry-on-rate-limit">
+        <description>Agent makes parallel requests without exponential backoff. HTTP 429 responses crash the loop instead of being retried.</description>
+        <reason>Default tier rate limits (requests/minute, tokens/minute) are hit quickly in parallel agentic loops.</reason>
+        <rule>Implement exponential backoff with jitter: wait = min(2**attempt + random.uniform(0, 1), 60). Use the SDK's built-in retry support or a decorator. Maximum 5 retries before propagating the error.</rule>
+      </antipattern>
+      <note>Batch API has a 24-hour processing window. If a batch is submitted and polling stops (process crash, restart), retrieve the batch ID from storage and resume polling. Do not resubmit the batch — it results in duplicate processing and double billing.</note>
+    </section>
+    <section name="agentic-workflow">
+      <p>An agent calls client.messages.create() with a system prompt (cached), a list of tools, and the current conversation. If Claude returns a tool_use block, the agent executes the tool, appends the result as a tool_result content block, and loops until Claude returns a text block as the final response. For Batch API workloads, the agent writes requests to a JSONL file, submits the batch, polls for completion, and streams results back to the caller.</p>
+      <p>Recommended subagents: Tool-use orchestrator subagent manages the tool-call loop, handles is_error on tool results, limits retries to 3 before escalating. Batch processor subagent packages tasks into Batch API requests (up to 10,000), polls until done, parses results, returns structured output.</p>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Always set cache_control: {"type": "ephemeral"} on system prompts or large context blocks that appear in multiple requests — 90% input cost reduction on cache hits</item>
+        <item>Use max_tokens conservatively per model tier: 512 for Haiku classification tasks, 4096 for Sonnet generation, 8192+ only for Opus extended reasoning</item>
+        <item>Implement exponential backoff with jitter for rate limit errors (HTTP 429): wait = min(2**attempt + random.uniform(0,1), 60)</item>
+        <item>For structured output, use forced tool use (tool_choice={"type": "tool", "name": "output"}) rather than prompting for JSON — it's more reliable across model updates</item>
+        <item>Streaming: process content_block_delta events incrementally; store input_json_delta for tool inputs until input_json is complete; don't buffer full response before acting</item>
+        <item>Batch API: group requests by deadline — interactive tasks never go in a batch; offline enrichment tasks always should</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/prompt-caching-agent.py" purpose="Cached system prompt + tool-use loop with MAX_TURNS guard"/>
+      <template path="templates/tool-use-loop.py" purpose="Complete tool-use skeleton with ToolExecutor, retry decorator, forced structured output"/>
+    </templates>
+    <see-also>
+      <link href="https://docs.anthropic.com/en/api"/>
+      <link href="https://docs.anthropic.com/en/api/messages"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching"/>
+      <link href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking"/>
+      <link href="https://docs.anthropic.com/en/api/creating-message-batches"/>
+      <link href="https://platform.claude.com/docs/en/build-with-claude/streaming"/>
+      <ref slug="decision-framework"/>
+    </see-also>
+  </content>
+</methodology>
