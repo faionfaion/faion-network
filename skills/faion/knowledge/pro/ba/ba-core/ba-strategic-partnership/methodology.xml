@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ba-strategic-partnership">
+  <metadata>
+    <tier>pro</tier>
+    <group>ba</group>
+    <domain>ba-core</domain>
+    <summary>Stance reviewer that scores requirements on six axes and rewrites order-taker language as outcome statements tied to OKRs.</summary>
+    <tags>
+      <tag>ba</tag>
+      <tag>strategic-partnership</tag>
+      <tag>stance-review</tag>
+      <tag>requirements</tag>
+      <tag>outcome-focus</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>BA Strategic Partnership</title>
+
+    <summary>A per-artifact stance reviewer that scores requirements documents on six axes (problem_clarity, outcome_orientation, evidence_grounding, enterprise_scope, partner_voice, kill_criterion) and rewrites order-taker language as outcome statements tied to a named OKR. Auto-blocks any artifact where any axis scores below 2 or kill_criterion scores below 1. This is a per-engagement behavior pattern — run it at intake and at spec-review gates, not as a quarterly portfolio loop.</summary>
+
+    <why>
+      <p>BAs who accept requirements as-stated ("please add X") produce features disconnected from business outcomes. A lint-style rubric applied mechanically — quoting the order-taker phrase verbatim, classifying the failure mode, proposing a rewrite tied to a real OKR — shifts the BA posture without relying on individual judgment or managerial feedback cycles.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Intake of a new requirement or "can you just add X" request — reframe as outcome before scope is locked.</item>
+        <item>Re-reading an existing requirements doc, user story, or PRD to detect order-taker language.</item>
+        <item>Onboarding a junior BA: run the stance rubric on their last 5 artifacts and produce coaching deltas.</item>
+        <item>Pre-meeting framing for stakeholder calls: draft 3 strategic questions to ask before accepting the stated requirement.</item>
+        <item>Spec review gate before a ticket goes to engineering — block if no problem statement, no outcome metric, no kill criterion.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Quarterly portfolio-level opportunity mining — use the sibling `business-analyst/ba-strategic-partnership/`.</item>
+        <item>Modeling work (BPMN, use-case decomposition, traceability matrices) — wrong tool.</item>
+        <item>Live stakeholder dialogue — agent prepares, never speaks for the BA.</item>
+        <item>Trivial maintenance tickets (copy edits, dependency bumps) — overhead not justified.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="six-stance-axes">
+      <rule testable="true">
+        <statement>Score each requirements artifact on six axes (0-5): problem_clarity, outcome_orientation, evidence_grounding, enterprise_scope, partner_voice, kill_criterion. Auto-block if any axis scores below 2 OR if kill_criterion scores below 1.</statement>
+        <rationale>Without a kill criterion a "strategic partner" who cannot say when to stop is just a louder order-taker; this is the single most important axis.</rationale>
+      </rule>
+      <list>
+        <item>problem_clarity (0-5) — artifact names the underlying problem, not just the solution feature; score 0 if solution is stated before problem.</item>
+        <item>outcome_orientation (0-5) — requirements tied to measurable business outcomes, not feature completion; score 0 if no KPI or metric present.</item>
+        <item>evidence_grounding (0-5) — each claim anchored to a verbatim user quote, data source, or observation; score 0 if no external anchor exists.</item>
+        <item>enterprise_scope (0-5) — initiative connected to org-level goals or cross-functional impact; score 0 if scope is purely intra-team.</item>
+        <item>partner_voice (0-5) — language proposes, challenges, and recommends; score 0 if language is purely accommodating ("as requested", "please implement").</item>
+        <item>kill_criterion (0-5) — explicit condition under which the initiative is stopped or descoped; score 0 if absent.</item>
+      </list>
+    </section>
+
+    <section name="order-taker-phrase-patterns">
+      <rule testable="true">
+        <statement>Scan for these verbatim phrases before the LLM review; any hit is a guaranteed partner_voice penalty and triggers a rewrite prompt: "as requested", "as per request", "the user asked for", "please implement", "the stakeholder wants", "please add".</statement>
+        <rationale>Mechanical phrase detection via ripgrep is faster and more consistent than LLM judgment alone; it surfaces the most common order-taker signal without model overhead.</rationale>
+      </rule>
+    </section>
+
+    <section name="rewrite-rules">
+      <rule testable="true">
+        <statement>Every rewrite must: (1) quote the order-taker phrase verbatim, (2) classify the failure mode, (3) propose a strategic-partner rewrite tied to one of the org's supplied OKRs — never invent a metric not present in org_context.</statement>
+        <rationale>Rewrites that invent metrics ("reduce churn 12%") without a source are hallucinated outcomes that erode credibility faster than order-taking language.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Always require a linked_okr_id on the rewritten artifact; an outcome statement with no parent OKR is still order-taking, just dressed up.</statement>
+        <rationale>OKR linkage is the only way to verify that the rewrite serves a real strategic objective rather than a BA-invented priority.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations">
+      <antipattern>
+        <description>Running the rubric without org-context (mission, OKRs, customer evidence).</description>
+        <reason>Without real context the agent emits generic "be more strategic" platitudes; the rubric scores evidence_grounding at 0 for any rewrite without an org_context anchor.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Rewrites applied to stakeholder-visible artifacts without human review.</description>
+        <reason>Strategic-partner rewrites read as AI-generated and bland when applied without the BA's voice; ship rewrites as suggestions, never overwrite the source artifact.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using the rubric on solo/startup contexts with shared BA hats.</description>
+        <reason>The full 6-axis rubric over-formalizes one-person teams; collapse to three axes (problem, outcome, kill) for teams under 5 people.</reason>
+      </antipattern>
+    </section>
+
+    <section name="single-pass-architecture">
+      <rule testable="true">
+        <statement>Keep the stance reviewer separate from the rewriter prompt. Two passes, one model: pass 1 judges; pass 2 rewrites. Judging-while-generating dilutes both outputs.</statement>
+        <rationale>A model instructed to simultaneously evaluate and rewrite tends to rationalize the original language rather than surface the real failure mode.</rationale>
+      </rule>
+    </section>
+
+    <section name="prompt-patterns">
+      <example type="good">
+        <note>Stance-reviewer prompt — strict JSON output, no generic advice allowed.</note>
+        <code lang="text"><![CDATA[
+ROLE: BA stance reviewer.
+INPUT: <one requirement artifact> +
+       <org_context: {mission, okrs[3], persona, last_quarter_outcomes}>.
+TASK: Score 0-5 on six axes:
+  problem_clarity, outcome_orientation, evidence_grounding,
+  enterprise_scope, partner_voice, kill_criterion.
+For each finding: quote the order-taker phrase verbatim,
+  classify the failure mode,
+  propose a strategic-partner rewrite tied to one of the supplied OKRs.
+ANTI-PATTERNS: generic "be more strategic" advice,
+  rewrites that invent metrics not in org_context,
+  hedging adjectives ("better", "more aligned"),
+  bullet soup.
+OUTPUT: strict JSON per stance-review-schema.json.
+]]></code>
+      </example>
+      <example type="good">
+        <note>Intake-framer prompt — refuses to produce a solution; outputs problem hypothesis and framing questions only.</note>
+        <code lang="text"><![CDATA[
+ROLE: BA intake framer.
+INPUT: <one-line stakeholder ask>.
+TASK: Produce:
+  (1) the underlying problem hypothesis,
+  (2) three framing questions to ask the stakeholder before accepting the ask,
+  (3) a strawman outcome statement (KPI + delta + horizon months).
+Refuse to produce a solution.
+OUTPUT: JSON: {
+  "problem_hypothesis": "...",
+  "framing_questions": ["q1","q2","q3"],
+  "strawman_outcome": {"kpi":"...","delta":"...","horizon_months":0}
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="recommended-subagents">
+      <list>
+        <item>ba-stance-reviewer (sonnet) — single-artifact per-axis scoring; canonical schema in templates; run before any spec reaches engineering.</item>
+        <item>ba-intake-framer (haiku) — at request intake, expand one-line ask into 3 framing questions and a strawman outcome.</item>
+        <item>faion-sdd-executor-agent — enforce stance-gate as a quality check inside the SDD spec pipeline; reject specs missing problem / outcome / kill criterion.</item>
+        <item>faion-brainstorm — converge phase to pick the best strategic-partner rewrite when the reviewer emits multiple alternatives.</item>
+        <item>faion-improver — monthly aggregation: trend six stance scores per BA, surface regressions, log to .aidocs/memory/patterns.md.</item>
+        <item>password-scrubber-agent — scrub PII from stakeholder transcripts before they enter any reviewer call.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Agent rationalizes order-taker language when the original author's name is in context.</description>
+        <reason>Strip authorship metadata before the prompt; instruct the reviewer to assume the artifact is anonymous.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Strategic-partner rewrites drift toward consultant-speak: vision, alignment, synergy, leverage.</description>
+        <reason>Ban a stoplist in the system prompt; reject and regenerate any rewrite containing these terms.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Confirmation bias: agent finds a doc the user wrote to be strategic.</description>
+        <reason>Red-team pass by a second instance with system prompt "assume this is order-taker until proved otherwise".</reason>
+      </antipattern>
+      <antipattern>
+        <description>Auto-block firing on a regulated or contractually-bound spec without human review.</description>
+        <reason>All three mandatory checkpoints are human: (1) before any rewrite is applied to a stakeholder-visible artifact, (2) before auto-block fires on a regulated spec, (3) before a stance score becomes part of an individual's performance review.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Treat order-taker language as a lint rule, not a moral failing — scan for verbatim phrases (`as per request`, `the user asked for`, `please implement`) and surface them mechanically.</item>
+        <item>Always require a `linked_okr_id` on the rewritten artifact; an outcome with no parent OKR is still order-taking, just dressed up.</item>
+        <item>Keep the stance reviewer separate from the rewriter prompt — judging-while-generating dilutes both. Two passes, one model, cheap.</item>
+        <item>Anchor every rewrite in a verbatim user / data quote already present in the artifact; if no anchor exists, score `evidence_grounding` zero and refuse to rewrite.</item>
+        <item>Make the kill-criterion field non-negotiable. A "strategic partner" who can't say when to stop is just a louder order-taker.</item>
+        <item>For solo / startup contexts, collapse the six axes to three (problem, outcome, kill) — the full rubric over-formalizes a one-person team.</item>
+        <item>Run the audit on artifact diffs (PRs to the docs repo) not on full files — focuses agent attention and avoids re-judging unchanged content.</item>
+        <item>Log every stance score to `.aidocs/memory/patterns.md` so trends per BA / per stakeholder become visible over months, not just per ticket.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>`llm` (Simon Willison) — One-shot stance reviews from CLI: `cat spec.md | llm -m claude-opus-4-7 -t ba-stance`.</item>
+        <item>`aichat` — Interactive stance dialogue with role files for the reviewer and framer subagents.</item>
+        <item>`gh` / `linear-cli` / `jira-cli` — Pull a ticket body for the stance reviewer; comment back the rewrite as suggestion.</item>
+        <item>`pandoc` — Normalize Word/Confluence/Notion exports to markdown the agent can ingest.</item>
+        <item>`markdownlint-cli2` — Enforce structure on the rewritten artifact (headings, sections present).</item>
+        <item>`csvkit` / `duckdb` — Sanity-check that an outcome metric in a rewrite has a real baseline in org data.</item>
+        <item>`ripgrep` — Bulk-scan a docs folder for order-taker phrases (`as requested`, `please add`, `the user wants`) before deeper review.</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>Linear (SaaS, REST + GraphQL) — Outcomes / projects schema fits the rubric; comment the rewrite back via API.</item>
+        <item>Jira + Atlassian Intelligence (SaaS, REST + Forge) — Forge app can run the reviewer at ticket-create time as a quality gate.</item>
+        <item>GitHub Issues + Projects (SaaS, REST + GraphQL) — Cheapest place to host stance-gate as a PR check via `gh` and Actions.</item>
+        <item>Productboard (SaaS, partial API) — Good for capturing the rewritten outcome; limited write API for nested fields.</item>
+        <item>Notion / Confluence (SaaS, API) — Where most order-taker BRDs actually live; bulk-scan via API for stance audits.</item>
+        <item>Dovetail (SaaS, API) — Pull verbatim user quotes for the evidence_grounding axis.</item>
+        <item>OpenProject (OSS, REST API) — Self-host gate for regulated orgs.</item>
+        <item>n8n (OSS) — Schedule the stance audit on a folder cadence (faion-net hosts n8n on port 5678).</item>
+      </list>
+    </section>
+
+    <section name="methodology-posture">
+      <p>This methodology is a posture, not a procedure. Without per-org context (OKRs, business model, P and L, customer evidence) the agent emits generic "be more strategic" platitudes. "Order-taker vs strategic partner" is a rubric that judges artifacts; it cannot judge trust, executive presence, or political capital — those are human-only. The BABOK framing assumes formal BA roles; in solo or startup contexts the BA hat is shared, and the rubric over-formalizes simple decisions. AI-rewritten requirement docs read like AI: balanced, hedged, and bland. A BA's strategic voice is partly stylistic — let the human keep the final pen. Outcome metrics demanded by the rubric require baseline data the org may not have; agent must distinguish "no metric" (red) from "metric not yet instrumented" (yellow).</p>
+      <p>This lives in pro tier; readers may use it on solo tier without enterprise tooling. Keep CLI and flat-file inputs as the primary path so the rubric still works with just `llm` and a markdown file. The six-axis rubric is designed to be applied mechanically — score each axis independently, quote the order-taker language verbatim, and require linked OKRs for every rewrite. This removes the judgment from the individual BA and makes the methodology repeatable across teams and contexts.</p>
+    </section>
+
+    <templates>
+      <template path="templates/stance-review-schema.json" purpose="Canonical JSON schema for stance reviewer output with auto-block logic."/>
+      <template path="templates/ba-frame.sh" purpose="One-liner CLI: turns a stakeholder ask into 3 framing questions + strawman outcome."/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.iiba.org/standards-and-resources/babok/"/>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/sub-agents"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ba-requirements-mgmt">
+  <metadata>
+    <tier>pro</tier>
+    <group>ba</group>
+    <domain>ba-core</domain>
+    <summary>Ongoing maintenance of an approved requirement set, change impact analysis on incoming change requests, and requirements architecture (viewpoints, hierarchy, dependencies).</summary>
+    <tags>
+      <tag>requirements</tag>
+      <tag>ba</tag>
+      <tag>maintenance</tag>
+      <tag>change-impact</tag>
+      <tag>architecture</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-24</created>
+  </metadata>
+
+  <content>
+    <title>BA Requirements Management Methodologies</title>
+
+    <summary>This methodology covers three sub-disciplines of ongoing requirements stewardship: requirements maintenance (version control, attribute management, quality monitoring, archival strategy), change impact analysis (scope, effort, risk, stakeholder impact, decision support), and requirements architecture (viewpoints, decomposition, dependencies, completeness). These practices apply after an initial requirement set exceeds ~50 items and human memory cannot track coherence across changes.</summary>
+
+    <why>
+      <p>Stable products past MVP where the requirement count exceeds ~50 need periodic review cadence to maintain coherence. Requirements evolve continuously; without systematic maintenance they drift from their baseline, creating silent gaps between documented and actual scope. Change impact analysis forces explicit assessment before a change is approved, preventing surprise scope creep and testing effort overruns. Requirements architecture (decomposition into viewpoints and hierarchy) makes the structure explicit so agents and humans can reason about scope changes without consulting team memory.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Stable product past MVP where the requirement count exceeds ~50 and human memory of "what we agreed" no longer scales — periodic review cadence pays off.</item>
+        <item>Change-heavy environments (enterprise integrations, regulated domains) where every CR must be costed and risk-assessed before approval.</item>
+        <item>Multi-team systems where one team's requirements depend on another's; you need an explicit dependency graph and viewpoint partitioning to prevent silent conflicts.</item>
+        <item>Audit / certification preparation (ISO 9001, SOC2, MDR) where reviewers ask "show me your requirements baseline and how it has changed since last audit".</item>
+        <item>Migrating a legacy backlog into a structured architecture (BR → SR → FR decomposition) so AI agents can reason about scope changes.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pre-PMF / discovery: requirements churn faster than maintenance ceremony can follow; use `continuous-discovery` and disposable RFCs instead.</item>
+        <item>Tiny teams (less than 5 people, single product) where Slack + a Linear backlog covers change discussion — formal CIA forms add bureaucracy without payoff.</item>
+        <item>Pure agile shops with no contractual requirement baseline; the user-story backlog already encodes scope, and CIA = a 5-minute estimation chat.</item>
+        <item>One-shot internal tools or research prototypes — the change cost analysis exceeds the change cost.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="requirements-maintenance">
+      <rule testable="true">
+        <statement>Baseline requirements using a deterministic tag (e.g., `req-baseline-2026-Q2`) so that "what changed" is always answerable with one `git diff` command, not a meeting.</statement>
+        <rationale>Baseline tags are the auditable record of scope; without them the change history is narrative and unverifiable.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Assign mandatory attributes to every requirement: status (draft, approved, implemented), priority, owner (person, not team), source, last_review date.</statement>
+        <rationale>Mandatory attributes are the minimal set to detect staleness, ownership gaps, and when a requirement drifts from its source intent.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Periodic review cadence: flag requirements with stale `last_review` (>90 days), missing owner, or no traceability link; open a PR with `needs_review: true`.</statement>
+        <rationale>Without periodic review requirements decay invisibly; the owner field forces a named person to be accountable for freshness.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Archive on tag, not delete: a quarterly tag `req-archive-2026-Q2` snapshots retired REQs; remove from active `requirements/` so daily search stays fast.</statement>
+        <rationale>Deletion loses audit trail; archival preserves history while keeping the active set searchable.</rationale>
+      </rule>
+    </section>
+
+    <section name="change-impact-analysis">
+      <rule testable="true">
+        <statement>Make CIA mandatory for any CR touching ≥2 requirements; under that, allow a one-line note. The threshold prevents form fatigue and focuses rigor on high-impact changes.</statement>
+        <rationale>Small changes introduce bureaucracy costs faster than they reduce risk; large changes need explicit assessment.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>For each CR, assess impact on five areas: requirements touched (count), design components, code modules, test cases, total effort. Use T-shirt sizes (S/M/L/XL) by area, not hours — convert to hours only at planning time.</statement>
+        <rationale>T-shirt sizes reduce false precision; hours are guesses dressed as commitments.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>CIA generation is deterministic walk + LLM phrasing: do NOT invent impact links; use only what is in the traceability JSON. If traceability is empty for a given REQ, return `effort: null, reason: "no trace data"` and refuse to estimate.</statement>
+        <rationale>LLMs hallucinate impacted artifacts when trace data is incomplete; leaving the number empty flags the knowledge gap.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Identify risks (technical, schedule, quality) and stakeholder impact per CR. For each risk, assign probability (H/M/L) and impact (H/M/L); propose mitigation.</statement>
+        <rationale>Risk assessment forces explicit hazard identification before approval; unseen risks degrade to post-incident surprises.</rationale>
+      </rule>
+      <example type="good" title="Change Impact Analysis Template">
+        <code lang="markdown"><![CDATA[
+## Change Impact Analysis
+
+### Change Request: CR-018
+**Description:** Add multi-language support to user dashboard
+
+### Impact Assessment
+| Area | Items | Effort |
+|------|-------|--------|
+| Requirements | REQ-045, REQ-101 | M |
+| Design | DES-12 | M |
+| Code | mod/auth, mod/ui-render | L |
+| Tests | TC-203, TC-204 | M |
+| **Total** | | **L** |
+
+### Risks
+| Risk | Probability | Impact | Mitigation |
+|------|-------------|--------|------------|
+| DB schema complexity | M | H | Spike on i18n patterns |
+| Testing on 5 locales | H | M | Automation + paid translation QA |
+
+### Recommendation
+Accept (prioritized; aligns with Q2 localization OKR)
+]]></code>
+      </example>
+      <antipattern>
+        <description>LLM-generated effort estimates that are suspiciously round numbers (4, 8, 16 hours).</description>
+        <reason>Force a calibration prompt: pass historical CR effort data and require the agent to anchor its estimate to a similar past CR by ID.</reason>
+      </antipattern>
+    </section>
+
+    <section name="requirements-architecture">
+      <rule testable="true">
+        <statement>Decompose requirements into a hierarchy with a hard cap on depth (e.g., 3 levels: BR → SR → FR). Anything deeper is task decomposition and belongs in the implementation plan.</statement>
+        <rationale>Deep hierarchies create maintenance burden; 3 levels cover all coherent scope abstractions.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use four viewpoints (business, user, technical, operational) to partition requirements. Assign single primary viewpoint per requirement plus optional secondary views as labels; avoid duplication across views.</statement>
+        <rationale>Multiple viewpoints allow different stakeholder perspectives; a clear primary viewpoint prevents ambiguity.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Render the requirement hierarchy and dependency graph (Mermaid / Graphviz) on every commit. Detect and flag orphans (no parent), cycles (dependency loops), and single-child chains (collapse candidates).</statement>
+        <rationale>Automated graph detection scales beyond manual review; visual diffs make structural changes explicit.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Architecture agents must never create new hierarchy nodes to "fix" orphans. Only flag and report; let humans decide whether to reparent, delete, or accept the orphan.</statement>
+        <rationale>Automatic repair invents scope; agents can identify but not decide.</rationale>
+      </rule>
+      <example type="good" title="Requirements Architecture">
+        <code lang="markdown"><![CDATA[
+## Requirements Architecture
+
+### Viewpoints
+| Viewpoint | Stakeholders | Key Concerns |
+|-----------|--------------|--------------|
+| Business | Sponsor, Execs | ROI, Strategy |
+| User | End users | Usability, Features |
+| Technical | Developers | Feasibility, Architecture |
+| Operational | DevOps | Deployment, Monitoring |
+
+### Requirement Hierarchy
+- BR-001: Dashboard localization capability
+  - SR-001: User perspective — language switching
+    - FR-001: Language selector in header
+    - FR-002: Persist language preference
+  - SR-002: Technical perspective — message catalog
+    - FR-003: Load i18n files per locale
+
+### Dependencies
+| Requirement | Depends On | Enables |
+|-------------|------------|---------|
+| FR-001 | SR-001 | FR-002, FR-003 |
+| FR-002 | - | FR-001 |
+| FR-003 | - | FR-001, FR-002 |
+]]></code>
+      </example>
+      <antipattern>
+        <description>Two requirements with opposing acceptance criteria in the same hierarchy.</description>
+        <reason>Conflicts indicate structural confusion or unresolved trade-offs; the conflict itself is the signal that the hierarchy needs simplification.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive the three sub-disciplines (maintenance, CIA, architecture) as separate agent loops sharing a single `requirements/` Markdown+YAML store. Maintenance: a scheduled agent walks the repo weekly, flags requirements with stale `last_review`, missing owner, or no traceability link, and opens a PR with `needs_review: true`. Change impact: every CR opens an issue → an agent computes the impact table by querying the traceability graph → a human approves before the CR moves to the lifecycle's `Approved` state. Architecture: an agent renders the current hierarchy and dependency graph (Mermaid / Graphviz) on every commit and detects orphans (no parent), cycles, and conflicts.</p>
+    </section>
+
+    <section name="recommended-subagents">
+      <list>
+        <item>faion-sdd-executor-agent — implements each Change Request as an SDD task with spec → design → test-plan → impl, mirroring the CIA template's "Effort by area" rows.</item>
+        <item>password-scrubber-agent — sweeps requirement bodies before commit; CIA attachments often paste raw stakeholder emails.</item>
+        <item>Custom ba-cia-agent (model: opus): generates the impact assessment table by walking trace links; does not decide accept/reject — produces evidence for a human gate.</item>
+        <item>Custom ba-arch-auditor-agent (model: sonnet): runs nightly, validates the BR/SR/FR hierarchy, flags orphans/cycles, regenerates the dependency diagram.</item>
+        <item>Custom ba-maintenance-agent (model: haiku for triage, escalate to sonnet): scans frontmatter for staleness signals (`last_review > 90d`, missing `owner`, status drift) and files PRs.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>`git diff baseline..HEAD -- requirements/` — Diff current set against an approved baseline tag — the auditable record of "what changed".</item>
+        <item>`yq` — Aggregate frontmatter for periodic-review reports (`yq '.last_review' requirements/REQ-*.md`).</item>
+        <item>`pre-commit` + custom hook — Block commits that bump a requirement without updating the change log or impact table.</item>
+        <item>`mermaid-cli` (`mmdc`) — Render the requirement hierarchy + dependency graph as PNG/SVG on every CI run.</item>
+        <item>`graphviz` (`dot`) — Alternative renderer for large graphs; better for >100 nodes.</item>
+        <item>`strictdoc` — Run requirements lint + traceability checks; emits HTML report with cross-views.</item>
+        <item>`gh issue / gh pr` — CR lifecycle: each CR is an issue, the impact table is the PR description.</item>
+        <item>`jq` — Stitch multiple per-REQ JSON files into a Status / Architecture summary table.</item>
+        <item>`dotenv-linter` / `vale` — Style and prose linting on requirement bodies — keeps wording consistent across maintenance edits.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Anchor every periodic review to a baseline tag (`req-baseline-2026-Q2`). The question "what changed since last review" must be answerable with one `git diff`, not a meeting.</item>
+        <item>Make CIA mandatory for any CR touching ≥2 requirements; under that, allow a one-line note. The threshold prevents form fatigue.</item>
+        <item>Capture effort in T-shirt sizes (S/M/L/XL) by area, not in hours. Convert to hours only at planning time. Stops false precision.</item>
+        <item>Treat the dependency graph as code: store it in a `.mmd` file generated from frontmatter, never hand-drawn. Diff is then meaningful.</item>
+        <item>Single primary viewpoint per requirement (`view: business | user | tech | ops`) plus optional secondary views as labels. Avoids duplication across views.</item>
+        <item>Set a hard cap on hierarchy depth (e.g., 3 levels: BR → SR → FR). Anything deeper is task decomposition and belongs in the implementation plan.</item>
+        <item>Archive on tag, not delete: a quarterly tag `req-archive-2026-Q2` snapshots retired REQs; remove from `requirements/` so daily search stays fast.</item>
+        <item>Owner field is mandatory and personal (not a team). Empty owner = the requirement is dead.</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>Jama Connect (SaaS, REST API, webhooks) — Native CIA report ("Suspect Links"); agents can read suspect set and draft impact tables.</item>
+        <item>IBM DOORS Next (SaaS/on-prem, OSLC API) — "Change Set" workflow maps to CR; OSLC is verbose, write thin adapters.</item>
+        <item>Polarion ALM (SaaS/on-prem, REST + Webservices) — Built-in Wiki-style requirement architecture views; agents update via REST.</item>
+        <item>Jira + Structure plugin (SaaS, REST v3 + Structure API) — Cheapest way to express BR/SR/FR hierarchy; CIA is bespoke.</item>
+        <item>Linear (SaaS, GraphQL API) — Use issue relations for dependencies; weak for formal architecture views.</item>
+        <item>StrictDoc (OSS, CLI + plain-text store) — Deterministic, git-native; ideal target for agent automation.</item>
+        <item>Doorstop (OSS, Python API) — Markdown + YAML; agents script CIA in Python directly against the API.</item>
+        <item>ReqView (Desktop / SaaS, JSON / ReqIF export) — Useful for stakeholders who refuse markdown; agents drive via export round-trip.</item>
+        <item>Modern Requirements (Azure DevOps, SaaS) — "Smart Trace" gives CIA inputs; pair with `az boards`.</item>
+        <item>Helix RM (SaaS/on-prem, REST API) — Strong baselining; agent ecosystem thin.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>LLMs hallucinate impacted artifacts when the trace data is incomplete; the CIA agent must REFUSE to produce numbers if `traceability.json` is empty for a given REQ — return `"effort": null, "reason": "no trace data"`.</item>
+        <item>"Effort_h" hallucination: agents pick suspiciously round numbers (4, 8, 16). Force a calibration prompt: pass historical CR effort data and require the agent to anchor its estimate to a similar past CR by ID.</item>
+        <item>Architecture agents will invent parents to "fix" orphans. Forbid creation of hierarchy nodes; only flag and let a human decide.</item>
+        <item>Periodic review agents will mass-mark `last_review = today` to clear the staleness flag without actual review. Require a human signature (commit author = stakeholder, not the bot) for the field to count.</item>
+        <item>Dependency cycle detection must run server-side; LLMs miss long cycles. Use the script in the templates, then ask the LLM only to phrase the remediation.</item>
+        <item>Bulk archival is destructive — cap any archive run to N requirements per PR with mandatory human review on the diff.</item>
+        <item>Token budget: never load the full requirement bodies for an architecture audit. Aggregate frontmatter only (`yq -o=json`) and load a body on demand.</item>
+        <item>Human-in-the-loop checkpoints (mandatory): CR Accept/Reject/Defer decision, Archival, Hierarchy restructure, Conflict resolution between requirements.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://www.iiba.org/standards-and-resources/babok/"/>
+      <link href="https://www.iso.org/standard/72089.html"/>
+      <link href="https://www.incose.org/products-and-publications/se-handbook"/>
+      <link href="https://strictdoc.readthedocs.io"/>
+      <link href="https://doorstop.readthedocs.io"/>
+    </see-also>
+  </content>
+</methodology>
