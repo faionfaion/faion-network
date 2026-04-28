@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cohort-implementation">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>growth-marketer</domain>
+    <summary>Cohort implementation moves cohort analysis from ad-hoc analytics-tool reports to warehouse-native dbt models that refresh daily, survive schema changes, and feed BI dashboards.</summary>
+    <tags>
+      <tag>cohort-analysis</tag>
+      <tag>retention</tag>
+      <tag>dbt</tag>
+      <tag>warehouse</tag>
+      <tag>analytics</tag>
+    </tags>
+    <category>analytics</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Cohort Analysis Implementation</title>
+
+    <summary>Cohort implementation moves cohort analysis from ad-hoc analytics-tool reports to warehouse-native dbt models that refresh daily, survive schema changes, and feed BI dashboards. The canonical model uses long-format output (cohort_week, user_id, day_offset) and an incremental materialization strategy. Three query types cover the core use cases: acquisition cohorts, behavioral cohorts, and feature-adoption cohorts.</summary>
+
+    <why>
+      <p>Analytics-tool built-ins (Mixpanel, Amplitude) are fast to set up but break when schema changes, cannot join to billing data, and are opaque to data-quality tests. Warehouse-native cohort models give the team a single source of truth, support dbt tests (not-null, retention-pct bounds), and integrate with any BI tool. The incremental + partitioned approach scales to hundreds of millions of rows without full rebuilds.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Completed framing in cohort-basics and ready to ship production tables, dashboards, and refresh jobs.</item>
+        <item>Migrating from analytics-tool reports to warehouse-native models (BigQuery / Snowflake / Redshift).</item>
+        <item>Building executive dashboards that refresh daily and survive schema changes.</item>
+        <item>Embedding cohort tables in a product analytics surface (Metabase, Looker, Hex).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pre-instrumentation: events inconsistent or signup_date unreliable — fix data first.</item>
+        <item>Scale below a few thousand users — analytics-tool built-in or a notebook is sufficient.</item>
+        <item>One-off investigation that will not be re-run — stop at a SQL notebook, do not productionize.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-implementation-rules">
+      <rule testable="true">
+        <statement>Always use COUNT(DISTINCT user_id), never COUNT(*) in cohort queries.</statement>
+        <rationale>Duplicate events from retry logic, client-side buffering, or ETL replays inflate retention percentages. COUNT(DISTINCT) is the only safe aggregate.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Store cohort tables in long-format (cohort, day_offset, retention_pct) and pivot only in BI tools.</statement>
+        <rationale>Wide-pivot in SQL is inflexible — adding a new day_offset value requires a schema change. BI tools pivot interactively. Long-format also enables dbt tests on the retention_pct column.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Materialize cohort_size as a column on every output row.</statement>
+        <rationale>Downstream tools should never recompute cohort_size via subquery. Recomputing is fragile to filter changes and expensive at scale.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Pin the retention metric definition in the model description; a silent change from login to core_action invalidates all historical comparisons.</statement>
+        <rationale>Cohort comparisons are only valid when the retention metric is identical across cohorts. Metric drift is invisible until someone notices a suspicious trend jump.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use LEFT JOIN events ON user_id, not INNER JOIN, to preserve cohort_size denominator.</statement>
+        <rationale>INNER JOIN silently drops users with no activity in the join window, making cohort_size appear smaller than actual and inflating retention percentages.</rationale>
+      </rule>
+    </section>
+
+    <section name="acquisition-cohort-query">
+      <p>Groups users by signup week, tracks login activity, calculates D1/D7/D30 retention.</p>
+      <example type="good" title="Acquisition Cohort with Long-Format Output">
+        <code lang="sql"><![CDATA[
+WITH cohorts AS (
+  SELECT DATE_TRUNC('week', signup_date) AS cohort_week,
+         user_id, signup_date
+    FROM users
+),
+user_activity AS (
+  SELECT c.cohort_week, c.user_id,
+         DATEDIFF('day', c.signup_date, e.event_date) AS days_since_signup
+    FROM cohorts c
+    LEFT JOIN events e ON c.user_id = e.user_id
+   WHERE e.event_type = 'login'
+     AND e.event_date >= c.signup_date
+),
+retention_by_day AS (
+  SELECT cohort_week, days_since_signup,
+         COUNT(DISTINCT user_id) AS active_users
+    FROM user_activity
+   GROUP BY 1, 2
+),
+cohort_sizes AS (
+  SELECT cohort_week, COUNT(DISTINCT user_id) AS cohort_size
+    FROM cohorts GROUP BY 1
+)
+SELECT r.cohort_week, r.days_since_signup,
+       r.active_users, c.cohort_size,
+       ROUND(100.0 * r.active_users / c.cohort_size, 1) AS retention_pct
+  FROM retention_by_day r
+  JOIN cohort_sizes c USING (cohort_week)
+ WHERE r.days_since_signup IN (1, 7, 30)
+ ORDER BY 1, 2;
+        ]]></code>
+        <note>For quick prototyping, this pattern works on any SQL warehouse. Replace DATEDIFF syntax per engine: BigQuery uses DATE_DIFF(end, start, DAY); Snowflake/Redshift use DATEDIFF(day, start, end).</note>
+      </example>
+    </section>
+
+    <section name="behavioral-cohort-query">
+      <p>Splits users by a behavioral milestone (onboarding completion) to compare retention impact.</p>
+      <example type="good" title="Behavioral Cohort Example">
+        <code lang="sql"><![CDATA[
+WITH cohorts AS (
+  SELECT u.user_id, u.signup_date,
+         CASE WHEN oc.user_id IS NOT NULL THEN 'Completed'
+              ELSE 'Not Completed' END AS cohort_type
+    FROM users u
+    LEFT JOIN onboarding_completed oc ON u.user_id = oc.user_id
+   WHERE u.signup_date >= CURRENT_DATE - INTERVAL '30 days'
+)
+-- Join to activity and aggregate as in acquisition cohort pattern above,
+-- grouping by cohort_type instead of cohort_week.
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="feature-adoption-cohort-query">
+      <p>Compares retention of users who adopted a specific feature in their first 7 days vs those who did not.</p>
+      <example type="good" title="Feature-Adoption Cohort Example">
+        <code lang="sql"><![CDATA[
+WITH feature_users AS (
+  SELECT DISTINCT user_id FROM events
+   WHERE event_type = 'feature_x_used'
+     AND event_date <= signup_date + INTERVAL '7 days'
+),
+cohorts AS (
+  SELECT u.user_id, u.signup_date,
+         CASE WHEN fu.user_id IS NOT NULL THEN 'Used Feature X'
+              ELSE 'Did Not Use' END AS cohort_type
+    FROM users u
+    LEFT JOIN feature_users fu ON u.user_id = fu.user_id
+   WHERE u.signup_date >= CURRENT_DATE - INTERVAL '90 days'
+)
+-- Aggregate as in behavioral cohort pattern above.
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Using DATEDIFF without specifying the warehouse; BigQuery and Snowflake/Redshift have opposite argument order.</description>
+        <reason>Silent wrong results — the query runs but returns incorrect day offsets. Always specify the warehouse in agent prompts and validate output against a known cohort week.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using the schedule + while True refresh loop from notebook examples in production code.</description>
+        <reason>A long-running Python process with sleep is not reliable for production. Use Airflow DAG, Cloud Scheduler, or dbt Cloud scheduled runs instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Joining on user PII (email, name) instead of user_id in cohort queries.</description>
+        <reason>PII joins bypass anonymization controls and create GDPR compliance risk. Always join on opaque user_id.</reason>
+      </antipattern>
+    </section>
+
+    <section name="data-infrastructure-setup">
+      <checklist>
+        <check>Validate events are consistently instrumented; signup_date is reliable and in canonical timezone</check>
+        <check>Choose analytics tool (Mixpanel/Amplitude) vs warehouse-native (BigQuery/Snowflake/Redshift)</check>
+        <check>Set up data warehouse if not present; configure user and event table schemas</check>
+        <check>Validate data accuracy: check for duplicate events, missing user_ids, timezone inconsistencies</check>
+      </checklist>
+    </section>
+
+    <section name="build-cohort-models">
+      <checklist>
+        <check>Author dbt model in long-format: cohort_week, user_id, day_offset, active_users, cohort_size, retention_pct</check>
+        <check>Use incremental materialization with cohort_week partition and user_id cluster</check>
+        <check>Add dbt tests: not_null on cohort_week and user_id, accepted_values for day_offset, retention_pct between 0 and 100, cohort_size greater than 0</check>
+        <check>Validate warehouse model matches analytics-tool numbers to within 1pp before trusting dashboard</check>
+        <check>Set up automated daily refresh (dbt Cloud job, Airflow DAG, or Cloud Scheduler)</check>
+      </checklist>
+    </section>
+
+    <section name="segmented-analysis">
+      <checklist>
+        <check>Create cohort split by acquisition channel</check>
+        <check>Create cohort split by signup cohort quarter</check>
+        <check>Create behavioral cohort (onboarding completed vs not)</check>
+        <check>Create feature-adoption cohort for each candidate retention driver</check>
+      </checklist>
+    </section>
+
+    <section name="dashboard-creation">
+      <checklist>
+        <check>Connect long-format cohort table to BI tool (Metabase, Looker, Mode, Hex)</check>
+        <check>Build cohort heatmap with data-driven color scale (not hard-coded vmin/vmax)</check>
+        <check>Add D30 retention trend line per cohort week</check>
+        <check>Configure date-range selection and segment filters</check>
+        <check>Set up automated weekly email reports for retention review</check>
+      </checklist>
+    </section>
+
+    <section name="data-quality-monitoring">
+      <checklist>
+        <check>Run dbt tests on every refresh; alert on failures</check>
+        <check>Monitor for event tracking errors (unexpected event_type values, schema drift)</check>
+        <check>Alert if any cohort_size drops below minimum sample size threshold</check>
+      </checklist>
+    </section>
+
+    <section name="team-adoption">
+      <checklist>
+        <check>Train team on reading cohort heatmaps: time on x-axis, cohort on y-axis, color = retention pct</check>
+        <check>Document retention metric definition in dashboard description</check>
+        <check>Schedule weekly cohort review; assign action items from anomalies</check>
+        <check>Create action planning process: identify drop-off period, hypothesize cause, design experiment</check>
+      </checklist>
+    </section>
+
+    <templates>
+      <template path="templates/cohort-retention-weekly.sql" purpose="dbt incremental model for weekly cohort retention (BigQuery/Snowflake compatible)"/>
+      <template path="templates/schema.yml" purpose="dbt schema tests for cohort model (not_null, accepted_values, retention-pct bounds)"/>
+    </templates>
+
+    <section name="best-practices">
+      <p>Use COUNT(DISTINCT user_id) not COUNT(*) — duplicate events inflate retention. Always store cohort tables as long-format (cohort, day_offset, retention_pct) and pivot in BI; pivoting in SQL kills schema flexibility. Materialize cohort_size as a column on every row — downstream tools should never recompute it. Backfill into a partitioned table; do not rebuild the whole table on every run once you cross 100M rows. Test retention_pct ∈ [0, 100] and cohort_size > 0 with dbt tests — these catch JOIN bugs and survivorship filters early. Pin the retention metric definition in the model's description; a silent change from login to core_action invalidates all historical comparisons. For analytics-tool exports (Mixpanel / Amplitude), validate that the warehouse model matches the tool's number to within 1pp before trusting the dashboard.</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>LLMs love to write DATEDIFF(day, ...) even on warehouses where the canonical signature is DATE_DIFF(end, start, DAY) (BigQuery) or DATEDIFF(day, start, end) (Snowflake/Redshift). Specify the warehouse in the prompt. Time-zone bugs: the agent will silently swap signup_date with signup_ts_utc and break downstream comparisons. Force one canonical column per concept. "Materialized view" suggestions from LLMs ignore engine constraints (BQ has limited DML refresh, Snowflake materialized views cost differently). Validate the materialization choice against engine docs. Survivorship leaks via INNER JOIN on activity tables — agents that omit LEFT JOIN will under-count cohort_size. Visualizations: matplotlib heatmaps from agents bake hard-coded vmin/vmax; insist on data-driven scales or quantiles. Schedulers: the schedule + while True recipe in the README is fine for dev but agents should not paste it into production code. Substitute Airflow DAG / Cloud Scheduler / dbt Cloud job. Privacy: behavioral cohort queries that join on email or unhashed PII bypass anonymization controls. Force agents to use user_id only.</p>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Use subagents to (1) author dbt models from a cohort spec, (2) write tests (unique, not_null, relationships, plus custom retention-pct sanity bounds), (3) propose materialization strategy (view / table / incremental / materialized view), and (4) generate the BI dashboard JSON / LookML / Hex notebook. The agent never edits production warehouse directly — it produces a PR against the dbt repo and a Looker/Hex artifact for review.</p>
+      <section name="recommended-subagents">
+        <list>
+          <item>data-engineer / bi-engineer (sonnet) — dbt models, incremental logic, partitioning.</item>
+          <item>data-analyst (sonnet) — query correctness, retention-pct bounds, sample-size guards.</item>
+          <item>dashboard-author (sonnet) — Metabase/Looker/Hex artifact generation.</item>
+          <item>qa-data (sonnet) — backfill validation against a golden cohort week.</item>
+        </list>
+      </section>
+      <section name="prompt-pattern">
+        <p>Input: warehouse=BigQuery; tables analytics.users(user_id, signup_date_utc, signup_tz), analytics.events(user_id, event_type, event_ts_utc); retention_metric=login. Goal: dbt incremental model 'cohort_retention_weekly' with day_offsets [1,7,14,30,60,90] partitioned by cohort_week, clustered by user_id; tests for not_null, retention_pct between 0 and 100, cohort_size > 0. Output: 1) models/cohort_retention_weekly.sql, 2) schema.yml with tests, 3) Looker view + explore stub.</p>
+      </section>
+    </section>
+
+    <section name="cli-tools-and-services">
+      <p>CLI tools include dbt-core + adapter (cohort models, tests, docs; pip install dbt-bigquery or snowflake/redshift), bq (BigQuery) (run, schedule, materialize cohort views; gcloud components install bq), snowsql (Snowflake runner for cohort SQL; https://docs.snowflake.com/en/user-guide/snowsql), duckdb CLI (local prototyping on Parquet/CSV before warehouse push; brew install duckdb), pandas + pyarrow + seaborn (notebook prototypes, heatmaps; pip install pandas pyarrow seaborn), metabase-api (programmatic dashboard creation; pip install metabase-api), and lkml (generate / parse LookML for cohort views; pip install lkml). Services include BigQuery (SaaS, free quota, materialized views, partitioning), Snowflake (SaaS, Snowpark optional, native dbt support), Redshift (SaaS, materialized views with refresh cadence), Databricks (SaaS, cohorts in Spark / SQL warehouses), dbt Cloud (SaaS, scheduled runs, lineage, tests), Metabase (OSS, lightweight cohort dashboards), Looker (SaaS, strong for governance), Mode / Hex (SaaS, notebook + dashboard hybrid), and Amplitude / Mixpanel / PostHog (SaaS / OSS, built-in retention reports as fallback).</p>
+    </section>
+
+    <section name="references">
+      <list>
+        <item>Brian Balfour, "Retention deep dive" — https://brianbalfour.com</item>
+        <item>dbt Labs, "How we structure our dbt projects" — https://docs.getdbt.com/best-practices</item>
+        <item>BigQuery materialized views — https://cloud.google.com/bigquery/docs/materialized-views-intro</item>
+        <item>Snowflake retention/cohort patterns — https://docs.snowflake.com</item>
+        <item>Mode Analytics, "Cohort analysis with SQL" — https://mode.com/sql-tutorial/sql-cohort-analysis</item>
+        <item>Amplitude / Mixpanel retention docs — https://amplitude.com / https://docs.mixpanel.com</item>
+        <item>Andrew Chen, "Power user curve" — https://andrewchen.com/power-user-curve</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://brianbalfour.com"/>
+      <link href="https://docs.getdbt.com/best-practices"/>
+      <link href="https://cloud.google.com/bigquery/docs/materialized-views-intro"/>
+      <link href="https://docs.snowflake.com"/>
+      <link href="https://mode.com/sql-tutorial/sql-cohort-analysis"/>
+      <link href="https://amplitude.com"/>
+      <link href="https://docs.mixpanel.com"/>
+      <link href="https://andrewchen.com/power-user-curve"/>
+    </see-also>
+  </content>
+</methodology>
