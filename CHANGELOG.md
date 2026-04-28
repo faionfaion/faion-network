@@ -729,3 +729,8 @@
   - Auto-rollback prompt on integrity check failure
 - `scripts/lib/snapshot.sh` — snapshot create/restore/rotate library
 - `scripts/lib/integrity-check.sh` — post-update integrity verification
+
+## [Unreleased]
+
+### Changed
+- chore: migrate scope-management to methodology.xml
