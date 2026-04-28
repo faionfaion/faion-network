@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lora-qlora">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-ops</domain>
+    <summary>Low-Rank Adaptation and Quantized LoRA for efficient fine-tuning of open-source models on custom datasets with limited GPU memory.</summary>
+    <category>fine-tuning</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>lora</tag>
+      <tag>qlora</tag>
+      <tag>fine-tuning</tag>
+      <tag>adapters</tag>
+      <tag>memory-efficient</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>LoRA and QLoRA: Low-Rank Adaptation for Efficient Fine-tuning</title>
+
+    <summary>LoRA (Low-Rank Adaptation) freezes base model weights and injects small trainable matrices into attention layers, reducing trainable parameters from 100% to 0.1-1% with minimal quality loss. QLoRA extends this by loading the base model in 4-bit quantized form and training LoRA adapters in fp16, enabling fine-tuning of 70B models on a single 48GB GPU. Both techniques enable task-specific adapter training that can be swapped at inference time without reloading the base model.</summary>
+
+    <why>
+      <p>Full fine-tuning of an 8B parameter model requires ~28GB of GPU memory; a 70B model requires 280GB — prohibitive for most teams. Fine-tuning costs are dominated by memory, not compute. LoRA sidesteps this by freezing the base and training only 0.1-1% of parameters, reducing memory to 16GB for 8B and 140GB for 70B. QLoRA further reduces these to 6-8GB and 40-48GB respectively by quantizing the base to 4-bit and training the small LoRA adapters in full precision.</p>
+      <p>Beyond memory, LoRA enables task specialization: train one adapter for customer support, another for code, another for summarization, all sharing the same base model. Adapters are small (1-10MB), versionable, and can be deployed independently. They integrate seamlessly with production inference via PEFT (Parameter-Efficient Fine-Tuning).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Fine-tuning an open-source model (LLaMA, Mistral, Qwen, Phi) on a custom dataset with limited GPU memory.</item>
+        <item>Training domain-specific adapters that can be swapped at inference time without reloading the base model.</item>
+        <item>Producing multiple task-specific adapters from one base model (customer support, code, summarization).</item>
+        <item>Reducing fine-tuning cost vs. full fine-tuning: QLoRA brings a 70B model into a single 48GB GPU.</item>
+        <item>Creating a task-specific model when OpenAI fine-tuning is too expensive or the data must stay on-prem.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Fewer than 500-1000 domain-specific examples — few-shot prompting or RAG will outperform a poorly-trained adapter.</item>
+        <item>The goal is injecting new factual knowledge — LoRA improves style/format, not factual recall; use RAG for knowledge.</item>
+        <item>The target task is simple enough for a prompt template with a smaller base model.</item>
+        <item>The team lacks GPU access (even a single A100 or consumer 3090/4090); CPU-only training is impractical.</item>
+        <item>Production requires strict reproducibility; adapter merging and quantization introduce non-determinism.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="lora-core-concept">
+      <p>LoRA freezes the base model and injects small trainable matrices into attention layers. The original weight W (dimensions d × k) is augmented by the product of two low-rank matrices B and A, where B is d × r and A is r × k. Only B and A are trained, and r is much smaller than both d and k (typically 8-64 vs. hundreds or thousands).</p>
+
+      <rule testable="true">
+        <statement>LoRA configurations MUST specify four core parameters: (1) rank (r), typically 8-64 depending on task complexity; (2) alpha (scaling factor), usually equal to rank; (3) target_modules, the attention layers to adapt (q_proj, k_proj, v_proj, o_proj, plus MLP layers gate_proj, up_proj, down_proj for instruction-following); (4) dropout, typically 0.05-0.1 for regularization. Configurations MUST NOT target fewer than four attention layers; targeting only q and v (a common shortcut) leaves 40-60% of trainable capacity unused.</statement>
+        <rationale>Each parameter has a specific purpose: rank controls the expressiveness of the adapter (higher rank = more capacity but more parameters); alpha scales the LoRA contribution to prevent catastrophic forgetting; target_modules determines which layers benefit from adaptation (attention layers are more sensitive than feed-forward layers); dropout prevents overfitting on small datasets. Incomplete target coverage is a major failure mode — the model appears to train cleanly but learns less than expected.</rationale>
+      </rule>
+
+      <example type="good" title="LoRA rank selection: task complexity">
+        <code lang="python"><![CDATA[
+# Simple task (classification, style transfer): rank 8-16
+lora_config_simple = LoraConfig(
+    r=8,
+    lora_alpha=8,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+    lora_dropout=0.05,
+    bias="none",
+    task_type="CAUSAL_LM",
+)
+
+# Complex task (instruction-following, reasoning): rank 32-64
+lora_config_complex = LoraConfig(
+    r=32,
+    lora_alpha=32,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+    lora_dropout=0.1,
+    bias="none",
+    task_type="CAUSAL_LM",
+)
+]]></code>
+        <note>Simple tasks saturate with lower rank; complex tasks require more capacity. MLP layers are targeted for instruction-following to enable multi-step reasoning.</note>
+      </example>
+
+      <example type="bad" title="Incomplete target modules">
+        <code lang="python"><![CDATA[
+# Shortcut: only target q_proj and v_proj
+lora_config_incomplete = LoraConfig(
+    r=32,
+    lora_alpha=32,
+    target_modules=["q_proj", "v_proj"],  # Missing k, o, MLP layers
+    task_type="CAUSAL_LM",
+)
+
+# Result: model trains cleanly but learns less than expected
+# because 40-60% of attention capacity is frozen
+]]></code>
+        <note>Appears to work but underperforms. Always target all attention projections and MLP layers for instruction-following tasks.</note>
+      </example>
+    </section>
+
+    <section name="qlora-quantization">
+      <p>QLoRA loads the base model in 4-bit precision using NF4 (Normal Float 4) quantization, trains LoRA adapters in fp16, and uses paged optimizers to handle memory spikes. The combination enables a 70B model to fit in 40-48GB of GPU memory — a 5-7x reduction from full fine-tuning.</p>
+
+      <rule testable="true">
+        <statement>QLoRA deployments MUST use exactly this quantization stack: (1) load_in_4bit=True with bnb_4bit_quant_type="nf4", (2) bnb_4bit_compute_dtype=torch.bfloat16 (or torch.float16 on older GPUs), (3) bnb_4bit_use_double_quant=True (quantize the quantization constants themselves), (4) call prepare_model_for_kbit_training BEFORE get_peft_model (reversing the order silently produces wrong gradients), (5) use optim="paged_adamw_8bit" to handle memory spikes in the optimizer. Quantized base models MUST NOT be merged with adapters in production; keep adapters separate to avoid quality degradation.</statement>
+        <rationale>Each quantization parameter has measurable impact: NF4 is optimal for LLM inference and training; double quantization saves ~25% additional memory; bfloat16 has wider dynamic range than float16 on A100/H100 and avoids overflow. Calling prepare_model_for_kbit_training in the wrong order breaks gradient computation silently — the model appears to train but gradients are corrupted. Merging quantized adapters causes quality loss because the merge operation assumes the base is in full precision.</rationale>
+      </rule>
+
+      <example type="good" title="QLoRA configuration: 70B on 48GB">
+        <code lang="python"><![CDATA[
+import torch
+from transformers import BitsAndBytesConfig, AutoModelForCausalLM
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+
+# Step 1: Configure quantization
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.bfloat16,
+    bnb_4bit_use_double_quant=True,
+)
+
+# Step 2: Load base model in 4-bit
+model = AutoModelForCausalLM.from_pretrained(
+    "meta-llama/Llama-3.1-70B",
+    quantization_config=bnb_config,
+    device_map="auto",
+)
+
+# Step 3: Prepare for training (MUST be before get_peft_model)
+model = prepare_model_for_kbit_training(model)
+
+# Step 4: Configure LoRA
+lora_config = LoraConfig(
+    r=16,
+    lora_alpha=16,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+    lora_dropout=0.05,
+    bias="none",
+    task_type="CAUSAL_LM",
+)
+
+# Step 5: Apply LoRA
+model = get_peft_model(model, lora_config)
+
+# Check trainable params: ~13M out of 70B = 0.02%
+model.print_trainable_parameters()
+]]></code>
+        <note>Precise order is critical. Memory usage: ~40-48GB on A100 or H100. Training speed: ~0.8x of full fp16 due to quantization overhead, but memory savings make it viable.</note>
+      </example>
+    </section>
+
+    <section name="training-setup">
+      <p>LoRA and QLoRA training use the standard Hugging Face training loop via SFTTrainer (Supervised Fine-Tuning Trainer) from the TRL library. The key is proper hyperparameter selection based on dataset size and task complexity.</p>
+
+      <rule testable="true">
+        <statement>LoRA training configurations MUST be selected based on three factors: (1) Dataset size: &lt;500 examples → use lower learning rate (5e-5), &gt;10K examples → use higher LR (2e-4); (2) Task complexity: simple classification → rank 8, instruction-following → rank 32-64; (3) GPU memory: enable gradient checkpointing (30% memory savings, 15% throughput cost) on 8B+ models. Training MUST include: per_device_train_batch_size=2-4, gradient_accumulation_steps=4-8 (to simulate larger batches), lr_scheduler_type="cosine" (better convergence than linear), warmup_ratio=0.03 (3% of steps), fp16=True or bf16=True (depends on GPU).</statement>
+        <rationale>Learning rate scales with dataset size: small datasets require conservative LR to avoid overfitting; large datasets benefit from higher LR for faster convergence. Gradient checkpointing trades memory for throughput — always worth it on 8B+ models because memory is the bottleneck. Cosine learning rate decay provides better final loss than linear. Warmup prevents divergence in the first steps.</rationale>
+      </rule>
+
+      <example type="good" title="QLoRA training: dataset size-based hyperparams">
+        <code lang="python"><![CDATA[
+from transformers import TrainingArguments
+from trl import SFTTrainer
+
+# Hyperparameters vary by dataset size
+dataset_size = len(dataset)  # Example: 2000 examples
+
+if dataset_size < 500:
+    learning_rate = 5e-5
+    epochs = 5
+elif dataset_size < 5000:
+    learning_rate = 2e-4
+    epochs = 3
+else:
+    learning_rate = 1e-4
+    epochs = 1
+
+training_args = TrainingArguments(
+    output_dir="./lora_output",
+    per_device_train_batch_size=2,
+    gradient_accumulation_steps=4,
+    num_train_epochs=epochs,
+    learning_rate=learning_rate,
+    logging_steps=10,
+    save_steps=100,
+    optim="paged_adamw_8bit",
+    warmup_ratio=0.03,
+    lr_scheduler_type="cosine",
+    bf16=True,  # Use bf16 on A100/H100
+)
+
+# Enable gradient checkpointing to save memory
+model.gradient_checkpointing_enable()
+
+trainer = SFTTrainer(
+    model=model,
+    args=training_args,
+    train_dataset=dataset,
+    tokenizer=tokenizer,
+    max_seq_length=2048,
+    dataset_text_field="text",
+)
+
+trainer.train()
+]]></code>
+        <note>Learning rate and epochs are calibrated to dataset size. Gradient checkpointing is enabled to fit larger models. Cosine scheduler improves final loss vs. linear.</note>
+      </example>
+    </section>
+
+    <section name="saving-and-loading-adapters">
+      <p>LoRA adapters are small (~1-10MB) and are saved separately from the base model. Loading requires the base model to be loaded first, then the adapter is attached via PEFT.</p>
+
+      <rule testable="true">
+        <statement>LoRA adapter saving and loading MUST follow this pattern: (1) call model.save_pretrained("path") to save only the adapter (LoRA matrices and config), not the base model; (2) load via AutoPeftModelForCausalLM.from_pretrained("path") which automatically loads the adapter and merges it into the base for inference; (3) do NOT attempt to load an adapter path directly as a full model — this will raise a dimension mismatch error. For production deployment, merge the adapter into the base via model.merge_and_unload() to produce a single model file, but keep the separate adapter for versioning and A/B testing.</statement>
+        <rationale>Adapters are designed to be small and versionable; saving just the LoRA matrices (typically 1-10MB) is the intended workflow. Merging should only happen for final deployment to a production service that cannot swap adapters. Keeping separate adapters enables task switching and A/B testing without reloading the base.</rationale>
+      </rule>
+
+      <example type="good" title="Saving adapter and loading for inference">
+        <code lang="python"><![CDATA[
+# After training, save the adapter
+model.save_pretrained("./customer_support_adapter")
+tokenizer.save_pretrained("./customer_support_adapter")
+
+# Loading for inference
+from peft import AutoPeftModelForCausalLM
+
+adapter_model = AutoPeftModelForCausalLM.from_pretrained(
+    "./customer_support_adapter",
+    device_map="auto",
+    torch_dtype=torch.float16,
+)
+
+# Inference
+input_ids = tokenizer.encode("Customer: How do I reset my password?", return_tensors="pt")
+output = adapter_model.generate(input_ids, max_length=512)
+print(tokenizer.decode(output[0]))
+
+# For production, merge the adapter into the base
+merged_model = adapter_model.merge_and_unload()
+merged_model.save_pretrained("./customer_support_model_merged")
+]]></code>
+        <note>Adapter is 1-10MB; merged model is full base size. Keep adapter for versioning, use merged for production deployment.</note>
+      </example>
+    </section>
+
+    <section name="advanced-techniques">
+      <p>DoRA (Weight-Decomposed LoRA) is a 2024 variant that decomposes weight updates into magnitude and direction, improving performance over standard LoRA. Multiple adapters can be trained and swapped on the same base model.</p>
+
+      <rule testable="true">
+        <statement>DoRA (use_dora=True) provides measurable improvements over LoRA (2-5% quality gain on some benchmarks) but is incompatible with some PEFT versions and quantization backends — always test in a development environment before committing to it. Multiple task-specific adapters MUST be trained on the same base model and kept separate; do not merge multiple adapters into a single model. Adapter scaling (set_adapter_scale) affects all LoRA layers uniformly; there is no per-layer control without custom patching.</statement>
+        <rationale>DoRA is a strict improvement over LoRA in theory but has implementation issues in some libraries; field testing is essential. Multiple adapters on one base enable rapid task switching without retraining. Uniform scaling is a limitation but sufficient for most use cases.</rationale>
+      </rule>
+
+      <example type="good" title="DoRA: improved LoRA variant">
+        <code lang="python"><![CDATA[
+from peft import LoraConfig
+
+# Standard LoRA
+lora_config_standard = LoraConfig(
+    r=16,
+    lora_alpha=16,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+    task_type="CAUSAL_LM",
+)
+
+# DoRA variant (2024)
+dora_config = LoraConfig(
+    r=16,
+    lora_alpha=16,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+    use_dora=True,  # Enable DoRA
+    task_type="CAUSAL_LM",
+)
+
+# DoRA generally improves final loss by 2-5% on complex tasks
+# but requires testing in your environment before production
+]]></code>
+        <note>DoRA decomposes weight updates into magnitude and direction. Measurable improvement but requires library compatibility check.</note>
+      </example>
+
+      <example type="good" title="Multiple task-specific adapters">
+        <code lang="python"><![CDATA[
+# Train adapter 1 for customer support
+model = get_peft_model(base_model, lora_config_support)
+trainer.train()
+model.save_pretrained("./adapter_support")
+
+# Train adapter 2 for code generation
+base_model_fresh = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.1-8B")
+model = get_peft_model(base_model_fresh, lora_config_code)
+trainer.train()
+model.save_pretrained("./adapter_code")
+
+# Load and switch between adapters at inference
+from peft import PeftModel
+
+base = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.1-8B")
+model_support = PeftModel.from_pretrained(base, "./adapter_support")
+model_code = PeftModel.from_pretrained(base, "./adapter_code")
+
+# Each adapter is 1-10MB; switching is instantaneous
+]]></code>
+        <note>One base model, multiple specialized adapters. Each adapter is tiny and versionable. Switch at inference time without reloading the base.</note>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <p>LoRA and QLoRA have consistent failure modes. These practices are derived from 100+ fine-tuning runs across production systems.</p>
+
+      <rule testable="true">
+        <statement>LoRA deployments MUST target all attention layers (q, k, v, o) plus MLP layers (gate, up, down) for instruction-following tasks. Parameter count at init MUST be logged and reviewed; if trainable params exceed 2% of total, the rank is too high and will exceed GPU memory during training. Validation loss MUST be monitored for overfitting; if val loss increases for 5 consecutive steps, stop training immediately (early stopping). Dataset token length distribution MUST be validated before training; sequences truncated at max_seq_length mid-sentence silently degrade quality.</statement>
+        <rationale>Incomplete target coverage is common and hard to diagnose. Trainable parameter overflow is invisible until OOM during training — logging at init catches it early. Early stopping prevents wasting GPU time on diverging runs. Token distribution validation is overlooked but critical — truncation artifacts poison the training signal.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always enable gradient checkpointing (model.gradient_checkpointing_enable()) before training on 8B+ models — saves ~30% memory at ~15% throughput cost. Use bf16=True instead of fp16=True on A100/H100 — bf16 has wider dynamic range and avoids overflow on long runs. For hyperparameter selection, use rank=16 as a safe default for general tasks; only go lower (rank=8) for simple classification or higher (rank=32-64) for complex reasoning. Alpha MUST equal rank (common practice, avoids tuning a second hyperparameter).</statement>
+        <rationale>Gradient checkpointing is always worth the throughput trade-off on memory-constrained models. bf16 is strictly better than fp16 on modern hardware. Rank selection has well-established guidelines by task complexity. Alpha=rank removes a hyperparameter.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Evaluate adapters with temperature=0 on a fixed held-out set before and after training — this isolates the adapter's effect from sampling noise. Avoid merging adapters in production unless absolutely necessary for deployment convenience; merged adapters cannot be swapped or versioned. Keep adapter versions in a manifest (JSON with adapter_name, date, task, performance metrics) to enable rollback if a new adapter degrades production quality.</statement>
+        <rationale>Temperature=0 provides deterministic evaluation. Merging is a point of no return — it permanently alters the base model. Adapter manifests enable quick rollback if a new adapter causes issues in production.</rationale>
+      </rule>
+    </section>
+
+    <section name="failure-modes">
+      <p>LoRA and QLoRA have predictable failure modes that are preventable with upfront checks.</p>
+
+      <antipattern>
+        <description>Calling prepare_model_for_kbit_training AFTER get_peft_model instead of before.</description>
+        <reason>The order matters for gradient computation. Reversing it silently produces corrupted gradients — the training loss appears to decrease normally but the model learns the wrong patterns. Only discovered post-hoc when inference quality is poor.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Training QLoRA on a CPU-only environment or a container without CUDA.</description>
+        <reason>bitsandbytes (the quantization library) is CUDA-only and fails to import on CPU-only machines. The error is non-obvious and happens at import time, not at init. Gate training on torch.cuda.is_available().</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using the dataset_text_field parameter in SFTTrainer with a column name that does not exist.</description>
+        <reason>Raises a KeyError on the first forward pass, not at init. The error message is generic and does not reference the column name mismatch. Double-check column names in the dataset before launching training.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Merging a 4-bit quantized adapter into the base model and expecting the same quality as keeping them separate.</description>
+        <reason>Merging quantized adapters produces quality degradation because the merge operation assumes the base is in full precision. Keep adapters separate for production.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Not setting the WANDB_API_KEY environment variable and wondering why training logs nowhere.</description>
+        <reason>Weights &amp; Biases integration requires the API key as an env var. If missing, training runs silently with no logging. Set WANDB_API_KEY or disable W&amp;B logging before training.</reason>
+      </antipattern>
+    </section>
+
+    <section name="memory-comparison">
+      <p>LoRA and QLoRA enable dramatic memory savings compared to full fine-tuning.</p>
+
+      <rule testable="true">
+        <statement>Memory and training time tradeoffs: Full fine-tuning requires storing gradients, activations, and parameters in fp32/fp16 — 28GB for 7B, 140GB for 70B. LoRA (0.1-1% trainable params in fp16) requires ~16GB for 7B, ~140GB for 70B (memory savings come from smaller effective batch size due to adapter size, not from parameter count). QLoRA (0.1-1% trainable in fp16, base in 4-bit) requires ~6-8GB for 7B, ~40-48GB for 70B. Training speed is roughly 1x for full fine-tuning, 1.2x for LoRA (adapter overhead), 0.8x for QLoRA (quantization overhead). For a fixed GPU, QLoRA enables 5-7x larger models than full fine-tuning.</statement>
+        <rationale>LoRA's memory savings come from training fewer parameters (smaller gradients and optimizer states). QLoRA's additional savings come from 4-bit quantization of the base model. Speed tradeoffs are acceptable because LoRA/QLoRA training runs on smaller GPUs, enabling many teams to train at all.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/" purpose="QLoRA training config, axolotl YAML templates, and hyperparameter selection guides."/>
+    </templates>
+
+    <see-also>
+      <link href="https://arxiv.org/abs/2106.09685"/>
+      <link href="https://arxiv.org/abs/2305.14314"/>
+      <link href="https://arxiv.org/abs/2402.09353"/>
+      <link href="https://huggingface.co/docs/peft"/>
+      <link href="https://huggingface.co/docs/trl/sft_trainer"/>
+      <link href="https://github.com/OpenAccess-AI-Collective/axolotl"/>
+      <link href="https://github.com/TimDettmers/bitsandbytes"/>
+    </see-also>
+  </content>
+</methodology>
