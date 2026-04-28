@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/comms/hr-recruiter methodologies → methodology.xml (employer-branding, interview-methods, onboarding; feature-045 batch)
+- migrate: 3/3 pro/dev/backend-enterprise C# methodologies → methodology.xml (csharp-dotnet-patterns, csharp-entity-framework, csharp-xunit-testing; feature-045 batch)
 - migrate: 3/3 pro/comms/hr-recruiter methodologies → methodology.xml (onboarding-30-day, onboarding-60-90-day, recruiting-process; feature-045 batch)
 - migrate: 3/3 pro/comms/hr-recruiter methodologies → methodology.xml (star-interview-framework, star-interview-method, structured-interview-design; feature-045 batch)
 - migrate: 3/3 pro/ba/business-analyst methodologies → methodology.xml (solution-assessment, stakeholder-analysis, use-case-modeling; feature-045 batch)
