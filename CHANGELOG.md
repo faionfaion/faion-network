@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/dev methodologies → methodology.xml (event-sourcing-implementation, microservices-design, event-driven-architecture; feature-045 batch)
 - migrate: 3/3 pro/dev/code-quality methodologies → methodology.xml (cqrs-pattern, domain-driven-design, event-sourcing-basics; feature-045 batch)
 - migrate: 3/3 pro/dev/backend-enterprise PHP methodologies → methodology.xml (php-eloquent, php-laravel, php-laravel-patterns; feature-045 batch)
 - migrate: 3/3 pro/dev/backend-systems methodologies → methodology.xml (go-http-handlers, go-project-structure, rust-backend; feature-045 batch)

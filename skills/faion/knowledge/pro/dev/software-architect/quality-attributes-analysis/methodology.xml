@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="quality-attributes-analysis">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Systematic process of identifying, prioritizing, and binding non-functional requirements to architectural decisions using ISO/IEC 25010:2023 characteristics, 6-part quality attribute scenarios, utility trees with (Importance, Difficulty) scoring, and ATAM-style trade-off analysis.</summary>
+    <tags>
+      <tag>quality-attributes</tag>
+      <tag>non-functional-requirements</tag>
+      <tag>architecture</tag>
+      <tag>atam</tag>
+      <tag>utility-trees</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Quality Attributes Analysis</title>
+
+    <summary>Quality Attributes Analysis (QAA) is the systematic process of identifying, prioritizing, and binding non-functional requirements (NFRs) to architectural decisions using ISO/IEC 25010:2023 characteristics, 6-part quality attribute scenarios, utility trees with (Importance, Difficulty) scoring, and ATAM-style trade-off analysis. The concrete rule: every (H,H) scenario must have an executable fitness function (load test, chaos drill, security scan) wired into CI/CD — a scenario without a test is decoration.</summary>
+
+    <why>
+      <p>80% of architectural decisions are driven by quality attributes, not features. When NFRs are treated as informal statements ("must be fast", "must be secure"), teams optimize one attribute and inadvertently sacrifice another without making the trade explicit. Quality issues found in design cost 10-100x less to fix than in production. The utility tree surfaces hidden conflicts between competing quality goals and creates stakeholder alignment before code is written.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Pre-architecture phase of a non-trivial system — surface NFRs that will drive structural decisions.</item>
+        <item>Major architectural pivot (monolith → microservices, on-prem → cloud, sync → async).</item>
+        <item>Investor / customer due diligence requiring evidence the architecture meets SLA / compliance promises.</item>
+        <item>Postmortem after a performance, security, or availability incident that the original architecture did not anticipate.</item>
+        <item>Multi-tenant or regulated domain (healthcare, finance, public sector) requiring ISO/IEC 25010 traceability.</item>
+        <item>New team onboarding — utility tree + scenarios align priorities faster than any wiki page.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Idea / prototype stage with fewer than 5 paying customers — quality attributes are imagined; bottleneck is product-market fit.</item>
+        <item>Tactical sprint planning — utility trees are not a substitute for backlogs.</item>
+        <item>Single-developer side project with no SLA — overhead exceeds value.</item>
+        <item>Team will not revisit the artifact after the workshop — a one-shot ATAM is theater.</item>
+        <item>Trade-offs are already political, not technical — no analysis method survives a pre-decided executive choice.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="scenario-structure">
+      <p>A quality attribute scenario is a 6-part structure that binds an external stimulus to a measurable response, anchored in a specific deployment environment. The parts are: Source (who or what triggers the scenario), Stimulus (the event), Environment (operational context), Artifact (the system or component), Response (what the system does), and Response Measure (numeric bound on the response).</p>
+
+      <rule testable="true">
+        <statement>Every quality attribute scenario MUST contain all six parts: Source, Stimulus, Environment, Artifact, Response, and Response Measure. Response Measure MUST be quantitative (numeric bound, not qualitative like "fast" or "acceptable"). Any scenario missing a part or bearing only a qualitative measure is unverifiable and must be rejected before proceeding to fitness-function binding.</statement>
+        <rationale>A scenario without all six parts is under-specified; the team cannot agree on what "fast enough" means without a measure. Fitness functions (load tests, chaos drills, security scans) require numeric thresholds. Qualitative measures lead to endless debate and failed SLAs because stakeholders have different expectations.</rationale>
+      </rule>
+
+      <example type="good" title="Complete 6-part scenario">
+        <code lang="text"><![CDATA[
+Source: External user with browser cache cleared
+Stimulus: Navigate to /dashboard on high-traffic hour (peak traffic 10x baseline)
+Environment: Network latency p99 100ms, cold cache, database under load (p99 query time 200ms)
+Artifact: Web frontend + dashboard aggregator service
+Response: Dashboard fully renders and is interactive
+Response Measure: p99 time to interactive ≤ 500ms; p99 time to first contentful paint ≤ 200ms
+        ]]></code>
+        <note>Each part is concrete. Measure binds to observable thresholds that can be tested via synthetic load.</note>
+      </example>
+
+      <example type="bad" title="Incomplete scenario">
+        <code lang="text"><![CDATA[
+Source: User
+Stimulus: Uses dashboard
+Environment: Normal operation
+Artifact: The system
+Response: Dashboard is responsive
+Response Measure: Fast performance
+        ]]></code>
+        <note>Stimulus vague, environment unspecified, measure qualitative. Impossible to build a fitness function.</note>
+      </example>
+
+      <antipattern>
+        <description>Workshop produces 30 scenarios when 5–7 drivers would suffice. Teams over-enumerate second-order concerns and dilute focus.</description>
+        <reason>Scenario inflation makes utility trees unwieldy. Prioritization becomes impossible when everything is (H,H). Cap: ≤7 quality attributes, ≤3 scenarios per attribute as drivers.</reason>
+      </antipattern>
+    </section>
+
+    <section name="utility-tree-and-priorities">
+      <p>A utility tree maps ISO/IEC 25010 quality characteristics to prioritized scenarios. Each node is labeled (Importance, Difficulty) where Importance is business criticality (H/M/L) and Difficulty is implementation cost (H/M/L). Drivers are (H,H) scenarios — high business value, high implementation cost — that shape architecture.</p>
+
+      <rule testable="true">
+        <statement>A utility tree MUST enumerate at most 3 (H,H) drivers. For each (H,H) scenario, there MUST be an assigned fitness function: a load test, chaos drill, security scan, or other automated check wired into CI/CD. A scenario without a fitness function is theater and must be removed or demoted to (H,M) or (M,H). Importance scoring MUST include stakeholder sign-off; Difficulty is technical team estimation. Do not derive Importance from Difficulty — they are independent.</statement>
+        <rationale>Every (H,H) scenario drives architectural decisions (caching strategy, async processing, redundancy). Without a fitness function, there is no mechanism to enforce the scenario; architects over-optimize and teams ship with debt. Limiting to 3 (H,H) forces prioritization and prevents scenarios from becoming a wish list. Stakeholder sign-off on Importance prevents the architecture from optimizing technical priorities over business ones.</rationale>
+      </rule>
+
+      <example type="good" title="Utility tree with 3 (H,H) drivers">
+        <code lang="text"><![CDATA[
+Quality Attributes:
+├─ Performance (H, M)
+│  ├─ p99 latency < 200ms (H,H) → load test in CI
+│  ├─ Max concurrent users 10k (H,M) → tracked in metrics, not blocking
+│  └─ Throughput 1000 req/s (M,M) → monitored, not driver
+├─ Availability (H,H)
+│  ├─ 99.95% uptime (H,H) → chaos drill: failover in 30s
+│  └─ Data loss RTO 0, RPO 5min (H,M) → backup tested weekly
+├─ Security (H,M)
+│  ├─ Encrypt data in transit + at rest (H,H) → DAST scan in CI
+│  └─ Audit every user action (M,M) → log schema, no fitness function
+        ]]></code>
+        <note>Exactly 3 (H,H). Each has a fitness function (load test, chaos drill, DAST). (M,M) nodes are tracked but don't drive design.</note>
+      </example>
+
+      <antipattern>
+        <description>Symmetric utility tree where every scenario is (H,H). Teams generate this because "everything matters" and avoid the hard prioritization conversation.</description>
+        <reason>A tree full of (H,H) nodes is not a tree — it is a flat list with no signal. Architecture can be optimized for at most 2–3 conflicting attributes simultaneously; beyond that, you must trade off. Force stakeholders to rank which matters most.</reason>
+      </antipattern>
+    </section>
+
+    <section name="atam-process">
+      <p>ATAM (Architecture Tradeoff Analysis Method) is a structured approach to elicit and analyze quality attributes. The full SEI ATAM is a 2–3 day workshop. For most teams, a slimmed version suffices: (1) discovery: read spec + business model, propose 3+ scenarios per characteristic; (2) stakeholder elicitation: scored priorities via interview or persona; (3) utility tree assembly: scenarios → tree with (H,H) drivers; (4) fitness-function binding: each driver gets a test/monitor in CI/CD.</p>
+
+      <rule testable="true">
+        <statement>Run a slimmed ATAM, not the full SEI version. Allocate: 1–2 hours discovery (read spec, draft scenarios), 1–2 hours stakeholder interviews (score importance), 1 hour tree assembly + driver selection, 1–2 hours fitness-function design + CI/CD integration. Document the outcome in a 2-page utility tree + scenario catalog. Revisit quarterly as priorities shift with growth stage.</statement>
+        <rationale>The full ATAM is heavy for most teams; a 2–3 day workshop produces lengthy documentation that decays. A 4–6 hour slimmed version focuses on the (H,H) drivers that actually drive architecture, produces a lightweight artifact, and is feasible to refresh every quarter as the business evolves.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Run a one-shot ATAM workshop, generate a 50-page artifact, and file it away. The architecture drifts from the original scenarios as priorities shift; nobody revisits the document.</description>
+        <reason>A static utility tree decays in 6 months. Growth stage, customer feedback, and competitive pressure change importance rankings. Treat the tree as a living document; run quarterly reviews and rotate drivers as needed.</reason>
+      </antipattern>
+    </section>
+
+    <section name="common-quality-attribute-conflicts">
+      <p>Quality attributes often compete. Availability (redundancy, replication) increases cost and latency. Security (encryption, audit logging) reduces throughput. Modifiability (loose coupling, abstraction) increases initial development time. Scaling horizontally trades consistency and latency. Explicit trade-off analysis prevents teams from over-optimizing one attribute at the cost of another.</p>
+
+      <rule testable="true">
+        <statement>For each pair of (H,H) scenarios that conflict, produce an explicit trade-off decision: either (i) propose an architectural mechanism that preserves both (e.g., cache-aside pattern satisfies both latency and consistency), or (ii) pick a winner with documented rationale (e.g., "we prioritize availability over latency; we will accept p99 latency ≤ 1s if it means 99.95% uptime"). Trade-off decisions MUST be traceable to architecture review decisions (ADRs) so future architects can revisit the rationale.</statement>
+        <rationale>Blind optimization of one attribute (e.g., latency via in-memory caches) can accidentally violate another (e.g., consistency). Naming the trade-off forces stakeholders to accept the cost explicitly. ADR traceability ensures that three years later, when a new incident surfaces the original trade-off, the team knows why it was made.</rationale>
+      </rule>
+
+      <example type="good" title="CAP theorem trade-off">
+        <code lang="text"><![CDATA[
+Conflict: Scenario A (Consistency) and Scenario B (Availability) both (H,H)
+A: "During failover, no stale reads" → Consistency
+B: "99.95% uptime, <30s failover" → Availability
+Trade-off: Async replication with eventual consistency (RTO 30s, RPO 5s)
+  Mechanism: Write to primary, async WAL to replica. During failover, accept 5s of stale reads.
+Rationale: Consistency over Availability is wrong for our domain (user feed). We accept stale reads during failover in exchange for zero failover latency.
+ADR: decision/0042-replication-strategy.md
+        ]]></code>
+        <note>Explicit choice, named mechanism, rationale tied to ADR.</note>
+      </example>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>When driving QAA via agents, watch for these common failure modes.</p>
+
+      <antipattern>
+        <description>Agents invent "industry-standard 99.99% availability for SaaS dashboards" with no citation or grounding in actual data.</description>
+        <reason>LLMs hallucinate plausible-sounding SLAs. Force every numeric measure to cite a source: competitor SLA (document it), internal data (link to metrics), vendor SLA, or academic study. If an agent cannot cite, reject the measure.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents emit 4-part scenarios (skipping Environment or Artifact) or qualitative-only measures ("acceptable response time").</description>
+        <reason>Lint with the scenario-lint script. Require all 6 parts and numeric measures before the scenario enters the utility tree.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents generate symmetric utility trees (everything is H,H) or scenarios for every ISO characteristic, leading to scenario inflation.</description>
+        <reason>Cap the count: at most 7 quality attributes, at most 3 (H,H) drivers per tree. Force agents to pick the most impactful scenarios and group lower-priority ones under "tracked, not driving."</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents derive Importance from technical difficulty ("this is hard, so it must be important for business").</description>
+        <reason>Importance is stakeholder business judgment; Difficulty is implementation cost. They are independent. Always require human sign-off on Importance before the tree drives architecture.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents reference obsolete standards like ISO 9126 (superseded in 2001) or ISO/IEC 25010:2011 instead of the current 2023 edition.</description>
+        <reason>Pin the standard version in prompts: "Use ISO/IEC 25010:2023 quality characteristics exclusively."</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents ignore accessibility and safety because training data is biased toward performance and security; the resulting tree is incomplete.</description>
+        <reason>Require at least 1 scenario per ISO/IEC 25010 characteristic, including accessibility and safety-critical attributes. If an agent skips them, reject the tree and re-run with explicit coverage requirements.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <p>Distilled lessons from architecture reviews and postmortems.</p>
+
+      <rule>
+        <statement>Scenarios over slogans. Replace "must be fast" or "must be secure" with a 6-part scenario including numeric thresholds and environment.</statement>
+      </rule>
+
+      <rule>
+        <statement>Each (H,H) driver gets a fitness function. Performance → k6 load test in CI. Availability → chaos drill in pre-prod. Security → DAST scan. No fitness function → scenario is decorative and must be removed.</statement>
+      </rule>
+
+      <rule>
+        <statement>Tie scenarios to ADRs. Every architectural decision references the scenarios it addresses; reverse-traceable when revisiting.</statement>
+      </rule>
+
+      <rule>
+        <statement>Cap the utility tree. ≤7 quality attributes, ≤3 (H,H) scenarios per attribute as drivers; everything below is "tracked, not driving."</statement>
+      </rule>
+
+      <rule>
+        <statement>Run a slimmed ATAM, not the full SEI version. 2-hour workshop with utility tree, 5 critical scenarios, sensitivity points, trade-offs. Document in 2 pages.</statement>
+      </rule>
+
+      <rule>
+        <statement>Refresh quarterly. Quality priorities shift with growth stage; what mattered at MVP does not at scale.</statement>
+      </rule>
+
+      <rule>
+        <statement>Trade-offs are first-class. Make explicit which scenario beats which when in conflict; name the loser.</statement>
+      </rule>
+
+      <rule>
+        <statement>Stakeholder mapping. Every (H,H) scenario has a named owner (engineer + business sponsor) and a review cadence.</statement>
+      </rule>
+
+      <rule>
+        <statement>Distinguish risks from requirements. Some scenarios capture risks ("under DDoS, …"); their response measure is "degrade gracefully," not "succeed." Do not over-constrain architecture.</statement>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/scenario-template.md" purpose="6-part scenario template with prompts for each field."/>
+      <template path="templates/utility-tree.md" purpose="Utility tree skeleton with (Importance, Difficulty) legend."/>
+    </templates>
+
+    <see-also>
+      <link href="https://resources.sei.cmu.edu/library/asset-view.cfm?assetid=5177"/>
+      <link href="https://www.iso.org/standard/78176.html"/>
+      <link href="https://www.cs.ubc.ca/~gregor/teaching/papers/4+1view-architecture.pdf"/>
+      <link href="https://martinfowler.com/articles/useOfMetrics.html"/>
+      <link href="https://www.thoughtworks.com/radar"/>
+      <link href="https://www.riskstorming.com"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="error-handling">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>RFC 7807 Problem Details for HTTP APIs: standardized 4xx/5xx error envelope with type, title, status, detail, instance, traceId.</summary>
+    <tags>
+      <tag>error-handling</tag>
+      <tag>rfc-7807</tag>
+      <tag>api</tag>
+      <tag>http</tag>
+      <tag>problem-details</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Error Handling (RFC 7807 Problem Details)</title>
+    <summary>Standardized HTTP API error envelope following RFC 7807 / RFC 9457: every 4xx and 5xx response carries type (URI), title, status, detail, instance, and traceId fields, with an optional errors[] array for field-level validation failures. A single exception handler per framework maps all error types to this shape.</summary>
+    <why>
+      <p>Inconsistent error shapes break API clients, make debugging impossible without log access, and prevent automated SDK generation. RFC 7807 gives clients a machine-readable type URI to branch on, a stable traceId to correlate with backend traces, and a status field that matches the HTTP status — three properties that ad-hoc {"error": "..."} payloads never reliably provide.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing or refactoring HTTP API error responses so every endpoint emits the same envelope.</item>
+        <item>Mapping framework exceptions to HTTP responses (FastAPI, Express, Spring, ASP.NET, Axum).</item>
+        <item>Wiring traceId into responses and logs for Sentry/Datadog/Tempo correlation.</item>
+        <item>Generating OpenAPI/Problem schema components for SDK code-gen.</item>
+        <item>Migrating ad-hoc {"error": "..."} payloads to a documented error contract.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Internal RPC/gRPC paths — use google.rpc.Status instead.</item>
+        <item>WebSocket frames or SSE event streams — design a separate envelope.</item>
+        <item>Hot paths where every byte matters (mobile-bandwidth APIs) — strip to code/message.</item>
+        <item>Public unauthenticated endpoints where instance and traceId leak request topology.</item>
+      </list>
+    </when-not-to-use>
+    <section name="problem-detail-schema">
+      <rule testable="true">
+        <statement>Every 4xx and 5xx response must carry: type (URI identifying the error class), title (short human label, stable per type), status (integer matching HTTP status), detail (per-request human description), instance (request path), traceId (correlation ID from the tracing SDK).</statement>
+        <rationale>Consistent fields let clients, gateways, and monitoring tools parse errors without ad-hoc string matching. traceId is the critical field for correlating client-reported errors with server traces.</rationale>
+      </rule>
+      <example type="good" title="ProblemDetail JSON envelope with validation errors">
+        <code lang="json"><![CDATA[
+{
+  "type": "https://api.example.com/errors/v1/validation-error",
+  "title": "Validation Error",
+  "status": 400,
+  "detail": "The request body contains invalid fields",
+  "instance": "/users/create",
+  "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "errors": [
+    {"field": "email", "code": "invalid_format", "message": "Must be a valid email address"},
+    {"field": "age",   "code": "out_of_range",   "message": "Must be between 18 and 120"}
+  ]
+}
+]]></code>
+      </example>
+    </section>
+    <section name="openapi-component">
+      <rule testable="true">
+        <statement>Define ProblemDetail and FieldError as reusable OpenAPI components. Reference them in every 4xx and 5xx response of every operation. Use application/problem+json as the Content-Type, not application/json.</statement>
+        <rationale>A $ref keeps the schema in one place. Using application/problem+json lets proxies, gateways, and clients distinguish error responses from normal ones by Content-Type alone.</rationale>
+      </rule>
+      <reference path="templates/openapi_problem.yaml">OpenAPI components/schemas definitions for ProblemDetail and FieldError.</reference>
+    </section>
+    <section name="error-code-enum">
+      <rule testable="true">
+        <statement>Define error codes as stable machine-readable slugs (snake_case, versioned per type URI). Codes must be stable across releases — renames break clients silently.</statement>
+        <rationale>Clients branch on codes, not on HTTP status alone (e.g., conflict vs duplicate-key vs optimistic-lock all return 409 but need distinct codes). Stable slugs let clients ship independent of server release cycles.</rationale>
+      </rule>
+      <example type="good" title="Error code enum definition">
+        <code lang="python"><![CDATA[
+class ErrorCode:
+    # Client Errors (4xx)
+    VALIDATION_ERROR   = "validation_error"
+    INVALID_FORMAT     = "invalid_format"
+    MISSING_FIELD      = "missing_field"
+    UNAUTHORIZED       = "unauthorized"
+    FORBIDDEN          = "forbidden"
+    NOT_FOUND          = "not_found"
+    CONFLICT           = "conflict"
+    RATE_LIMITED       = "rate_limited"
+    # Server Errors (5xx)
+    INTERNAL_ERROR     = "internal_error"
+    SERVICE_UNAVAILABLE = "service_unavailable"
+    TIMEOUT            = "timeout"
+]]></code>
+      </example>
+    </section>
+    <section name="exception-handlers">
+      <rule testable="true">
+        <statement>Register three exception handlers: one for ValidationError, one for HTTPException, one for bare Exception (catch-all). Never omit the catch-all — unhandled exceptions must also return ProblemDetail with traceId so support can find the trace.</statement>
+        <rationale>Missing the catch-all breaks the error contract: the client receives a 500 with an HTML or empty body instead of ProblemDetail, and the traceId is lost.</rationale>
+      </rule>
+      <reference path="templates/problem_detail.py">Full FastAPI ProblemDetail model and three exception handlers.</reference>
+    </section>
+    <section name="trace-id-propagation">
+      <rule testable="true">
+        <statement>Set traceId from the active tracing SDK context (OpenTelemetry trace_id, Datadog dd.trace_id), not from uuid.uuid4(). The traceId in the body must match the trace ID in server logs.</statement>
+        <rationale>A freshly generated UUID in the response body never matches any log entry. The OTel trace_id does — it links the client error report directly to the server span.</rationale>
+      </rule>
+      <antipattern>
+        <description>trace_id=str(uuid.uuid4()) in the exception handler.</description>
+        <reason>This UUID is not correlated with any log line, span, or Sentry event. It creates a false sense of traceability.</reason>
+      </antipattern>
+    </section>
+    <section name="info-leakage-prevention">
+      <rule testable="true">
+        <statement>Never put exception messages, stack traces, SQL queries, connection strings, file paths, or internal hostnames in the detail or errors[] fields. Scrub all user-supplied data of newlines and control characters to prevent log injection.</statement>
+        <rationale>Error detail is part of the API response — it reaches browsers, mobile apps, and third-party integrations. DSN strings, table names, and stack frames are confidential and create attack surface.</rationale>
+      </rule>
+      <antipattern>
+        <description>detail=str(exc) on a sqlalchemy.exc.IntegrityError.</description>
+        <reason>SQLAlchemy exceptions include the full query, table name, and constraint — all internal. Return a generic message and log the exception server-side with the traceId.</reason>
+      </antipattern>
+    </section>
+    <section name="coverage-completeness">
+      <rule testable="true">
+        <statement>Reference ProblemDetail in BOTH 4xx AND 5xx responses for every OpenAPI operation. Run spectral or check_problem_refs.py in CI to enforce this.</statement>
+        <rationale>Agents add ProblemDetail to 4xx but forget 5xx. 500 responses without a ProblemDetail body break client SDK code-gen that expects a uniform error shape.</rationale>
+      </rule>
+      <reference path="scripts/check_problem_refs.py">CI script that validates every 4xx/5xx operation response references ProblemDetail.</reference>
+    </section>
+    <section name="type-uri-stability">
+      <rule testable="true">
+        <statement>Pin type URIs to a versioned path (/errors/v1/validation-error). Never rename or delete a type URI after it ships — that breaks clients who branch on the string.</statement>
+        <rationale>RFC 7807 type is a stable identifier, not a display string. Clients may hardcode it in switch/match statements. Version the path so renames introduce a new URI rather than breaking the old one.</rationale>
+      </rule>
+    </section>
+    <section name="limitations-and-tradeoffs">
+      <p>Validation errors don't fit RFC 7807 cleanly; the errors[] extension is non-standard and must be documented. type URIs that 404 are common in practice — keep them stable or move docs behind a permalink. Stack traces in detail leak in non-prod by accident; need an env-gated debug mode. Multi-error responses (batch endpoints) need errors[] with per-item statuses; status at top is then redundant. Localizing messages requires either Accept-Language handling server-side or codes-only payloads with client-side i18n. Some frameworks (Django REST default, Rails) ship their own error shape; integration requires a custom renderer.</p>
+    </section>
+    <section name="agentic-workflow">
+      <p>Drive RFC 7807 adoption with an LLM by handing the agent the existing exception-handler/middleware file plus the OpenAPI spec; the agent (1) inventories existing error shapes, (2) defines ProblemDetail + FieldError schemas, (3) writes framework-specific exception handlers, (4) updates OpenAPI components and per-endpoint responses. Always run a regeneration step on the typed client SDK and a contract test pass to catch consumers that hard-coded the old shape. Trace-ID propagation should be wired through the logging middleware in the same task — otherwise the traceId in the body and the trace in the log won't match.</p>
+    </section>
+    <section name="cli-tools">
+      <p>openapi-generator: Generate typed clients from updated Problem schema. schemathesis: Property-test that every response matches OpenAPI ProblemDetail. dredd: Contract-test API against OpenAPI/HAR. spectral: Lint OpenAPI for missing responses[4xx,5xx] refs. sentry-cli: Upload sourcemaps so trace IDs in Problem responses link to stack traces. httpx / curl -i: Manually verify Problem envelope on each endpoint.</p>
+    </section>
+    <section name="services-and-tools">
+      <p>Sentry (SaaS + OSS): Ingest traceId; tag errors[] codes; alert on type frequency. Datadog APM (SaaS): Use dd.trace_id as traceId so logs+errors join. Grafana Tempo (OSS): Same idea via OTel trace_id. Stoplight Studio (SaaS): Edit Problem schema collaboratively; export OpenAPI. Postman (SaaS): Add tests asserting type/title/status/traceId on every response. Apigee / Kong (SaaS / OSS gateway): Wrap upstream errors in Problem at the edge for legacy services.</p>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Pin the type URI to a versioned docs path (/errors/v1/validation-error) so renames don't break clients.</item>
+        <item>Generate traceId as the same value used by your tracing SDK (OTel trace_id), not a fresh UUID.</item>
+        <item>For validation errors, set code to a stable machine-friendly slug (invalid_format), keep message human and localizable.</item>
+        <item>Keep title short and the same for a given type; let detail carry the per-request specifics.</item>
+        <item>Return application/problem+json Content-Type, not application/json — proxies and clients can branch on it.</item>
+        <item>Add a 5xx response with traceId even on unhandled exceptions so support can find the trace without reproducing.</item>
+        <item>Document every error code in the same OpenAPI doc; agents should regenerate docs in the same PR as the handler change.</item>
+        <item>Strip newlines and control chars from any user-supplied data before placing it in detail to prevent log injection.</item>
+      </list>
+    </section>
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>Adding ProblemDetail only to 422 (validation) and omitting 401, 403, 404, 409, 500.</description>
+        <reason>Every error status a client can receive needs the same envelope. Clients must not branch on Content-Type to detect whether an error is RFC 7807 or ad-hoc.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Reusing a Python RFC 7807 pattern verbatim in Go or Java.</description>
+        <reason>Each language has its own idioms: errors.As in Go, @ControllerAdvice in Spring, ProblemDetail.forRawStatusCode in Spring 6. Require per-language idiomatic implementations.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/problem_detail.py" purpose="Pydantic ProblemDetail model + FastAPI exception handlers."/>
+      <template path="templates/openapi_problem.yaml" purpose="OpenAPI components/schemas for ProblemDetail and FieldError."/>
+      <template path="templates/check_problem_refs.py" purpose="Script verifying every 4xx/5xx op refs ProblemDetail in OpenAPI spec."/>
+    </templates>
+    <scripts>
+      <script path="scripts/check_problem_refs.py" purpose="Validates that every 4xx/5xx response in an OpenAPI doc points at ProblemDetail."/>
+    </scripts>
+    <see-also>
+      <link href="https://www.rfc-editor.org/rfc/rfc7807"/>
+      <link href="https://www.rfc-editor.org/rfc/rfc9457"/>
+      <link href="https://fastapi.tiangolo.com/tutorial/handling-errors/"/>
+      <link href="https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-ann-rest-exceptions.html"/>
+      <link href="https://learn.microsoft.com/aspnet/core/web-api/handle-errors"/>
+      <link href="https://www.w3.org/TR/trace-context/"/>
+    </see-also>
+  </content>
+</methodology>

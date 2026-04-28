@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="database-design">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>PostgreSQL schema design: 3NF normalization, access-pattern indexes, database-layer constraints, migrations with downgrade paths.</summary>
+    <tags>
+      <tag>postgresql</tag>
+      <tag>schema</tag>
+      <tag>database</tag>
+      <tag>migrations</tag>
+      <tag>indexing</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Database Design (PostgreSQL)</title>
+    <summary>Relational schema design for PostgreSQL: normalize to 3NF first, derive indexes from stated query workload (not assumptions), enforce integrity at the database layer (FK, CHECK, NOT NULL, UNIQUE), and emit both forward and backward migrations in the project's migration tool. PK type, ON DELETE semantics, and TIMESTAMPTZ vs TIMESTAMP are decided globally and consistently.</summary>
+    <why>
+      <p>Schema decisions are nearly irreversible on production databases. Missing FK enforcement leads to orphaned rows; missing ON DELETE semantics lead to unexpected cascade wipes; TIMESTAMP without timezone causes cross-timezone bugs; CREATE INDEX without CONCURRENTLY locks large tables. Agents that skip these decisions create technical debt that costs more than the original feature.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Greenfield schema design for a relational backend (PostgreSQL, MySQL, MariaDB).</item>
+        <item>Adding a new bounded context / aggregate needing its own tables.</item>
+        <item>Refactoring a denormalized "god table" into 3NF.</item>
+        <item>Designing audit trails, soft-delete, partitioning, materialized views.</item>
+        <item>Generating migrations (Alembic, Flyway, sqlx, Goose, Prisma) from a target schema.</item>
+        <item>Choosing indexes for a known query workload via pg_stat_statements.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure document/event-sourced systems — use nosql-patterns/ instead.</item>
+        <item>Graph-heavy domains (social, fraud, bill-of-materials) — use Neo4j/Postgres-AGE patterns.</item>
+        <item>Time-series with billions of rows/day — TimescaleDB/InfluxDB design rules dominate.</item>
+        <item>Wide-column analytical workloads — ClickHouse/BigQuery patterns instead.</item>
+      </list>
+    </when-not-to-use>
+    <section name="entity-relationships">
+      <rule testable="true">
+        <statement>Every table must have: UUID or UUIDv7 primary key, NOT NULL on all required columns, UNIQUE constraints for natural keys, FK with explicit ON DELETE semantics, CHECK constraints for bounded domains (enums, ranges, non-negative quantities).</statement>
+        <rationale>Constraints at the database level cannot be bypassed by application bugs or direct SQL access. Missing FK enforcement allows orphaned rows that cause silent data corruption.</rationale>
+      </rule>
+      <reference path="templates/ecommerce_schema.sql">E-commerce DDL: users, products, orders, order_items with all constraints and indexes.</reference>
+    </section>
+    <section name="indexing-strategy">
+      <rule testable="true">
+        <statement>Create indexes derived from stated query patterns only. For skewed data (status IN ('pending', 'processing') where 90% is 'delivered'), use partial indexes. For text search, use GIN with pg_trgm. For time-ordered inserts, prefer UUIDv7 over UUIDv4 to preserve B-tree locality.</statement>
+        <rationale>Over-indexing degrades INSERT/UPDATE/DELETE performance proportionally to the number of indexes. Index for the queries you have, not the queries you might have.</rationale>
+      </rule>
+      <example type="good" title="Access-pattern-driven indexes">
+        <code lang="sql"><![CDATA[
+-- Covers the common "orders by user, sorted by date" query.
+CREATE INDEX idx_orders_user_created ON orders(user_id, created_at DESC);
+
+-- Partial index: only pending orders (a fraction of the table).
+CREATE INDEX idx_orders_pending ON orders(created_at)
+    WHERE status = 'pending';
+
+-- GIN for trigram text search on product names.
+CREATE INDEX idx_products_name_trgm ON products
+    USING gin(name gin_trgm_ops);
+]]></code>
+      </example>
+    </section>
+    <section name="soft-deletes">
+      <rule testable="true">
+        <statement>Add a nullable deleted_at TIMESTAMPTZ column. Create a partial index on the unique key filtered WHERE deleted_at IS NULL. Create a view (active_X) for queries that never need deleted records. Every query on soft-deleted tables must include the WHERE filter.</statement>
+        <rationale>Without the partial index on the unique key, soft-deleted records block re-insertion of the same natural key (e.g., a user re-registering with the same email).</rationale>
+      </rule>
+    </section>
+    <section name="partitioning">
+      <rule testable="true">
+        <statement>Use range partitioning by time column for append-heavy tables (events, logs, orders) where old partitions can be detached and archived. Create indexes on each partition, not just the parent. Document the partition creation and archival schedule in a runbook.</statement>
+        <rationale>Range partitioning allows pg_partman to auto-create future partitions and detach old ones. Without documented partition management, partitions grow unbounded and performance degrades.</rationale>
+      </rule>
+    </section>
+    <section name="index-creation-safety">
+      <rule testable="true">
+        <statement>Use CREATE INDEX CONCURRENTLY outside a transaction block for all index creation on tables with existing data. Standard CREATE INDEX takes an exclusive lock that blocks reads and writes for the duration.</statement>
+        <rationale>On a table with millions of rows, CREATE INDEX can hold an exclusive lock for minutes, causing a complete outage. CONCURRENTLY builds the index without blocking, at the cost of a longer build time.</rationale>
+      </rule>
+      <antipattern>
+        <description>BEGIN; CREATE INDEX idx_... ON large_table(...); COMMIT;</description>
+        <reason>CONCURRENTLY cannot run inside a transaction. Using it in a BEGIN/COMMIT block silently falls back to the locking version.</reason>
+      </antipattern>
+    </section>
+    <section name="timestamp-types">
+      <rule testable="true">
+        <statement>Always use TIMESTAMPTZ (TIMESTAMP WITH TIME ZONE) for all timestamp columns. Never use TIMESTAMP (without time zone) — it stores values without timezone awareness and causes cross-region data corruption.</statement>
+        <rationale>TIMESTAMP stores local time; TIMESTAMPTZ converts to UTC on store and back to session timezone on read. A server that changes timezone (DST, migration) silently mis-interprets TIMESTAMP values.</rationale>
+      </rule>
+    </section>
+    <section name="migration-discipline">
+      <rule testable="true">
+        <statement>Every migration must have both an upgrade and a downgrade path. The downgrade must be tested on a clean copy of the database before merging. A no-op downgrade is forbidden.</statement>
+        <rationale>Without a tested downgrade path, a failed deployment cannot be rolled back. CI must apply the migration, then apply the downgrade, and confirm the schema matches the pre-migration state.</rationale>
+      </rule>
+      <reference path="templates/alembic_migration.py">Alembic migration template with upgrade and downgrade.</reference>
+    </section>
+    <section name="alter-table-safety">
+      <rule testable="true">
+        <statement>ALTER TABLE ... ADD COLUMN NOT NULL DEFAULT ... rewrites the entire table on PostgreSQL versions older than 11 and requires an exclusive lock. On PG 11+ with a non-volatile default it is instant. Confirm the PG version before using this form in production.</statement>
+        <rationale>A table rewrite on a 100GB table can take hours and block all access. On older PG, the pattern is: ADD COLUMN nullable → backfill with UPDATE → ADD NOT NULL constraint (deferred).</rationale>
+      </rule>
+    </section>
+    <section name="primary-key-type">
+      <rule testable="true">
+        <statement>Choose a single PK type globally (UUIDv7 for time-ordered inserts, BIGSERIAL for simplicity, ULID for lexicographic sortability) and document it in the schema constitution. Never mix PK types across tables — mixed types make joins ugly and type-mismatch FKs disable index usage.</statement>
+        <rationale>UUIDv4 random primary keys cause B-tree fragmentation on high-insert workloads. UUIDv7 preserves temporal ordering, matching the access pattern of most CRUD tables.</rationale>
+      </rule>
+    </section>
+    <section name="on-delete-semantics">
+      <rule testable="true">
+        <statement>Specify ON DELETE explicitly for every FK. Never rely on the default (NO ACTION / RESTRICT — they are subtly different across PostgreSQL versions). Require human review for every CASCADE before merging.</statement>
+        <rationale>CASCADE silently deletes related rows. On a production database with 10+ years of data, an unexpected CASCADE can wipe terabytes. Review is the only safeguard.</rationale>
+      </rule>
+      <list>
+        <item>CASCADE — child rows deleted with parent. Review required.</item>
+        <item>RESTRICT — prevents parent delete if children exist (hard error).</item>
+        <item>SET NULL — nullifies FK on parent delete (requires nullable column).</item>
+        <item>SET DEFAULT — sets FK to column default on parent delete.</item>
+      </list>
+    </section>
+    <section name="limitations-and-tradeoffs">
+      <p>"Normalize first, denormalize for performance" assumes you have a query workload to optimize against; new projects don't have one yet — over-normalizing slows the first 6 months. UUID primary keys (especially v4) hurt B-tree locality; prefer UUIDv7 or ULID for time-ordered inserts at scale. Triggers (audit, sync) couple business logic to the DB and silently break tests; many shops ban them. Materialized views need a refresh strategy (concurrent + lock contention); naive REFRESH blocks readers. Range partitioning by date helps reads but complicates UPDATE/DELETE across boundaries; default ON CONFLICT semantics differ. Soft deletes (deleted_at IS NULL) hide data but every query must filter; agents forget. Cross-DB portability is a myth: gen_random_uuid(), JSONB, partial indexes are PG-specific.</p>
+    </section>
+    <section name="agentic-workflow">
+      <p>The agent should (1) read existing migrations and ER diagram (or extract schema via pg_dump --schema-only), (2) propose new tables/columns with constraints (CHECK, NOT NULL, UNIQUE, FK + ON DELETE), (3) propose indexes derived from the stated query patterns, (4) emit a forward+backward migration in the project's migration tool, (5) generate seed/fixture data and a smoke query for each index. The most common failure is choosing PK type and FK ON DELETE semantics late — these are sticky decisions; prompt the agent to surface them up front. For schema audits, the agent should run EXPLAIN (ANALYZE, BUFFERS) against representative queries before recommending an index.</p>
+    </section>
+    <section name="cli-tools">
+      <p>psql: Interactive shell, \d+, EXPLAIN. pg_dump --schema-only: Snapshot current schema for diffs. pgcli: Better psql with autocomplete. alembic: Python migrations (SQLAlchemy). golang-migrate: Language-agnostic migrations. sqlx-cli: Rust migrations + offline check. flyway / liquibase: JVM-world migrations. pgloader: Migrate from MySQL/SQLite/CSV to PG. pgbadger: Slow-query log analyzer. dbdocs / schemaspy: ER diagram from live DB. pg_repack: Online table repacking (no exclusive lock).</p>
+    </section>
+    <section name="services-and-tools">
+      <p>Supabase (SaaS PG): Schema diff + migrations, RLS-first design. Neon (SaaS PG serverless): Branching makes agent-driven schema experiments cheap. Crunchy Bridge (SaaS): PG with extensions exposed. AWS RDS / Aurora (SaaS): Parameter groups matter; agent must read them. pganalyze (SaaS): Index advisor + query insights consumable by agents. dbdocs.io (SaaS): Agent can emit DBML for review docs. DBeaver (OSS GUI): Human-in-loop review of agent-proposed schemas. Atlas (OSS / SaaS): Declarative schema-as-code; great for agents.</p>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Decide PK type globally (UUIDv7, bigserial, ULID) and stick to it; mixed PK types make joins ugly.</item>
+        <item>Always ON DELETE explicit (CASCADE, RESTRICT, SET NULL) — the default NO ACTION surprises people.</item>
+        <item>Prefer TIMESTAMPTZ (UTC always) over TIMESTAMP; agents picking TIMESTAMP is the #1 cross-timezone bug.</item>
+        <item>Use CHECK constraints for enums via varchar; native ENUMs are hard to alter.</item>
+        <item>Index for the queries you have, not the queries you imagine; review pg_stat_statements first.</item>
+        <item>Partial indexes (WHERE deleted_at IS NULL, WHERE status = 'pending') often beat composite indexes for skewed data.</item>
+        <item>Run all migrations on a copy of prod before merge; trivial-looking ALTER TABLE ADD COLUMN NOT NULL DEFAULT rewrites the table on PG &lt;11.</item>
+        <item>Ban triggers in app schema unless explicitly approved; replace with app-level events or pgaudit extension.</item>
+        <item>Document every index purpose in a comment (COMMENT ON INDEX ...); makes future audits cheap.</item>
+      </list>
+    </section>
+    <section name="ai-agent-gotchas">
+      <p>LLMs default to VARCHAR(255) everywhere — the limit is folklore from MySQL pre-5.0.3 and meaningless on PG. Require TEXT with explicit CHECK constraints only when justified. Agents drop FKs "for performance" without measuring; schema integrity erodes silently. Force them to keep FKs unless a benchmark shows greater than 10% impact. Generated CASCADE DELETE chains can wipe terabytes; review every ON DELETE CASCADE against business rules. Migrations from agents commonly omit downgrade or write a no-op; require both directions to apply on a clean DB. LLMs use NOW() in DEFAULT and forget the timezone; insist on now() AT TIME ZONE 'UTC' or use TIMESTAMPTZ. Agents write CREATE INDEX synchronously in production migrations; require CREATE INDEX CONCURRENTLY outside a transaction for big tables. Auto-generated audit triggers reference current_user/session_user which is the DB role, not the app user. Agent must wire app-level user via SET LOCAL app.user_id. Human-in-loop checkpoint: every PK-type, partitioning, or sharding decision; these are nearly impossible to reverse on prod. Type-mismatch FKs (INTEGER referring to BIGINT) silently disable index usage on join — require matching types. Agents propose materialized views without a refresh job; the view becomes a stale liability. Require a documented refresh strategy.</p>
+    </section>
+    <section name="agent-antipatterns">
+      <antipattern>
+        <description>VARCHAR(255) on every string column.</description>
+        <reason>The 255-byte limit is a MySQL pre-5.0.3 artifact with no meaning in PostgreSQL. Use TEXT with explicit CHECK constraints only when a length limit is a business requirement.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Dropping FKs "for performance" without measurement.</description>
+        <reason>FK overhead is negligible for most workloads. Without a benchmark showing &gt;10% impact, removing FKs silently degrades data integrity.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Proposing materialized views without a refresh job and schedule.</description>
+        <reason>A materialized view without refresh becomes stale immediately after creation. Require a documented refresh strategy (CONCURRENTLY + schedule) in the same PR.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Audit trigger using current_user for the app-level user ID.</description>
+        <reason>current_user is the database role (e.g., app_user), not the application user (e.g., user ID 42). Wire app-level identity via SET LOCAL app.user_id = $1 in the transaction.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/ecommerce_schema.sql" purpose="Complete e-commerce DDL: users, products, orders, order_items with constraints + indexes."/>
+      <template path="templates/audit_trigger.sql" purpose="Audit log table + trigger function for INSERT/UPDATE/DELETE tracking."/>
+      <template path="templates/alembic_migration.py" purpose="Alembic migration template with upgrade/downgrade."/>
+    </templates>
+    <scripts>
+      <script path="scripts/schema_diff.sh" purpose="Diffs a proposed DDL file against a live DB and prints the delta."/>
+    </scripts>
+    <see-also>
+      <link href="https://www.postgresql.org/docs/current/"/>
+      <link href="https://use-the-index-luke.com/"/>
+      <link href="https://www.postgresql.org/docs/current/ddl-partitioning.html"/>
+      <link href="https://pganalyze.com/blog"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="java-spring">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Spring Boot 3.x layered architecture for REST APIs: @RestController → @Service → JpaRepository with Pageable, @Async with named executor beans, MapStruct DTO mapping, Bean Validation, and slice tests.</summary>
+    <tags>
+      <tag>spring-boot</tag>
+      <tag>java</tag>
+      <tag>rest-api</tag>
+      <tag>layered-architecture</tag>
+      <tag>jpa</tag>
+    </tags>
+    <category>backend</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <languages>
+      <language>java</language>
+    </languages>
+    <frameworks>
+      <framework>spring-boot</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Java Spring (Layered Architecture)</title>
+
+    <summary>Spring Boot 3.x layered architecture for REST APIs: @RestController → @Service → JpaRepository with Pageable, @Async with named executor beans, MapStruct DTO mapping, Bean Validation, and slice tests (@WebMvcTest, @DataJpaTest). Covers both the MVC/JPA stack and Spring Async patterns.</summary>
+
+    <why>
+      <p>The layered pattern is the dominant Spring Boot idiom, but it produces subtle runtime bugs — lazy-load exceptions after transaction close, @Async swallowing exceptions in void returns, @Transactional on self-invoked methods doing nothing (proxy bypass), and findAll() without Pageable OOMing prod. This methodology encodes the guardrails so agents produce correct, production-safe code on the first pass.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield REST APIs in Spring Boot 3.x, Java 17+, using JPA/Hibernate and constructor injection.</item>
+        <item>Adding async work via @Async with named ThreadPoolTaskExecutor beans per workload.</item>
+        <item>Migration from Spring Boot 2.x / Java EE — the patterns translate cleanly.</item>
+        <item>Full vertical slices: entity, repo, service, controller, mapper, DTOs, tests, Flyway migration in one diff.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Reactive workloads — Spring WebFlux + R2DBC; servlet patterns deadlock in reactive context.</item>
+        <item>Lightweight microservices where JVM boot time / memory footprint hurts — Quarkus, Micronaut.</item>
+        <item>Functions/FaaS — cold start; use GraalVM native image with explicit config.</item>
+        <item>CQRS/event-sourced systems — service+JPA pattern fights write/read separation.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="layer-boundaries">
+      <p>Layer responsibilities, transaction rules, and DTO mapping conventions for the standard Spring Boot MVC/JPA stack.</p>
+
+      <rule>
+        <statement>Controllers accept HTTP requests, call one service method, and return responses. No @Transactional, no repository access, no business logic.</statement>
+        <rationale>Controllers are HTTP adapters. Business logic in controllers cannot be tested without loading the Servlet container.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Service methods that mutate state carry @Transactional. Read-only service methods carry @Transactional(readOnly = true) or the class-level default is readOnly = true overridden per write method.</statement>
+        <rationale>readOnly = true skips flush and enables read-replica routing. Explicit write transactions prevent silent dirty-writes.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Never return JPA entities from service public methods. Map to a DTO at the service boundary using MapStruct.</statement>
+        <rationale>Returning entities exposes schema internals, risks lazy-load exceptions, and prevents computed fields.</rationale>
+      </rule>
+
+      <rule>
+        <statement>DTOs are Java records (Java 17+). Request records carry Bean Validation annotations. Response records carry no logic.</statement>
+        <rationale>Records are immutable, concise, and equal by value — ideal for DTO transfer objects.</rationale>
+      </rule>
+    </section>
+
+    <section name="mapstruct-and-lombok">
+      <p>Annotation processor ordering and dependency management for MapStruct + Lombok integration.</p>
+
+      <rule>
+        <statement>In maven-compiler-plugin annotationProcessorPaths, list lombok first, then mapstruct-processor, then lombok-mapstruct-binding. Never reverse the order.</statement>
+        <rationale>Lombok generates setters that MapStruct reads. If MapStruct runs before Lombok, it reads no setters and produces null mappers at runtime.</rationale>
+      </rule>
+
+      <reference path="templates/maven-annotation-processors.xml">Maven compiler plugin snippet enforcing correct annotation processor order</reference>
+    </section>
+
+    <section name="pagination">
+      <p>Preventing out-of-memory errors by requiring pagination on list endpoints.</p>
+
+      <rule>
+        <statement>Every list endpoint accepts org.springframework.data.domain.Pageable and returns Page&lt;T&gt;. Never expose findAll() without Pageable in a controller.</statement>
+        <rationale>findAll() without pagination loads the entire table into the JVM heap, causing OOM in production.</rationale>
+      </rule>
+    </section>
+
+    <section name="validation-and-error-handling">
+      <p>Standard validation and error response patterns.</p>
+
+      <rule>
+        <statement>Use @Valid on @RequestBody parameters. Use @RestControllerAdvice with ProblemDetail (RFC 7807) for all error responses. Never create custom error envelope classes.</statement>
+        <rationale>RFC 7807 is the industry standard for HTTP problem details. Custom envelopes diverge per endpoint and break client SDKs.</rationale>
+      </rule>
+    </section>
+
+    <section name="controller-example">
+      <example type="good" title="Controller with pagination and validation">
+        <code lang="java"><![CDATA[
+@RestController
+@RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
+public class UserController {
+    private final UserService userService;
+
+    @GetMapping
+    public ResponseEntity<Page<UserResponse>> listUsers(Pageable pageable) {
+        return ResponseEntity.ok(userService.findAll(pageable));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserResponse> getUser(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.findById(id));
+    }
+
+    @PostMapping
+    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest req) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(userService.create(req));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+        ]]></code>
+        <note>No @Transactional, no repository, no business logic. Pageable on list endpoint.</note>
+      </example>
+    </section>
+
+    <section name="service-example">
+      <example type="good" title="Service with transactions and DTO mapping">
+        <code lang="java"><![CDATA[
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class UserService {
+    private final UserRepository userRepository;
+    private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
+
+    public Page<UserResponse> findAll(Pageable pageable) {
+        return userRepository.findAll(pageable).map(userMapper::toResponse);
+    }
+
+    public UserResponse findById(Long id) {
+        return userRepository.findById(id)
+            .map(userMapper::toResponse)
+            .orElseThrow(() -> new ResourceNotFoundException("User", id));
+    }
+
+    @Transactional
+    public UserResponse create(CreateUserRequest req) {
+        var user = userMapper.toEntity(req);
+        user.setPassword(passwordEncoder.encode(req.password()));
+        return userMapper.toResponse(userRepository.save(user));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        if (!userRepository.existsById(id))
+            throw new ResourceNotFoundException("User", id);
+        userRepository.deleteById(id);
+    }
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="test-example">
+      <example type="good" title="WebMvcTest slice">
+        <code lang="java"><![CDATA[
+@WebMvcTest(UserController.class)
+class UserControllerTest {
+    @Autowired private MockMvc mockMvc;
+    @Autowired private ObjectMapper objectMapper;
+    @MockBean private UserService userService;
+
+    @Test
+    void createUser_WithValidData_ReturnsCreated() throws Exception {
+        var req = new CreateUserRequest("John", "john@example.com", "pass123");
+        var resp = new UserResponse(1L, "John", "john@example.com");
+        when(userService.create(any())).thenReturn(resp);
+
+        mockMvc.perform(post("/api/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value(1));
+    }
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <p>Common pitfalls when implementing the layered architecture.</p>
+
+      <antipattern>
+        <description>@Transactional on a controller method or on a private service method.</description>
+        <reason>Spring AOP proxy cannot intercept controller-layer calls or private methods — the annotation is silently ignored.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Self-invocation of @Async method: calling this.sendEmail() from inside the same bean.</description>
+        <reason>The call bypasses the AOP proxy and runs synchronously on the calling thread, ignoring the @Async directive.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Service returns JPA entity instead of DTO.</description>
+        <reason>Exposes schema internals, triggers lazy-load exceptions outside @Transactional, and prevents circular-reference handling.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/maven-annotation-processors.xml" purpose="Maven compiler plugin snippet for Lombok + MapStruct in correct dependency order"/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.spring.io/spring-boot/docs/current/reference/html/"/>
+      <link href="https://docs.spring.io/spring-data/jpa/docs/current/reference/html/"/>
+      <link href="https://vladmihalcea.com/books/high-performance-java-persistence/"/>
+    </see-also>
+  </content>
+</methodology>
