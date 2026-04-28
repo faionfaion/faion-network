@@ -1,0 +1,623 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gemini-api-integration">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Integrate Google Gemini API with its 1M token context window for multimodal tasks like processing entire codebases, videos, and long documents in a single request.</summary>
+    <tags>
+      <tag>gemini</tag>
+      <tag>google-ai</tag>
+      <tag>multimodal</tag>
+      <tag>long-context</tag>
+      <tag>llm-api</tag>
+    </tags>
+    <category>gemini</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <applies-to>both</applies-to>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+  <content>
+    <title>Gemini API Integration</title>
+
+    <summary>Google's Gemini API provides access to multimodal AI models capable of understanding text, images, audio, and video. Gemini 1.5 Pro offers a 1M token context window, making it ideal for processing entire codebases, long documents, or video content. The SDK is straightforward to integrate and supports streaming, function calling, and file uploads via the Files API.</summary>
+
+    <why>
+      <p>Gemini 1.5 Pro's 1M token context window is unique among commercial APIs; it enables genuine one-shot codebase analysis, video understanding, and long document summarization without chunking. The native multimodal support (text + image + audio + video in a single model) eliminates the need for separate vision APIs and reduces integration complexity. Gemini 1.5 Flash provides the same 1M context at lower cost, making it cost-effective for classification and extraction tasks.</p>
+      <p>The key advantage is context length: where Claude 3.5 Sonnet has 200K tokens and GPT-4o has 128K, Gemini's 1M context means you can ask a single question about an entire book, a full GitHub repository, or a 1-hour video without splitting the input. This changes the class of problems you can solve in one model call.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Processing very long documents (1M token context) — entire codebases, long transcripts, technical specifications.</item>
+        <item>Multimodal tasks that combine text, images, audio, and video in a single request.</item>
+        <item>Applications already in the Google Cloud ecosystem requiring Vertex AI integration.</item>
+        <item>YouTube video analysis — the Files API accepts uploaded video files and Gemini can analyze them end-to-end.</item>
+        <item>Code understanding across large repositories in a single model call.</item>
+        <item>Cost-effectiveness at scale where Gemini 1.5 Flash's pricing is significantly lower than alternatives for similar tasks.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pure text tasks where latency is critical — OpenAI GPT-4o-mini and Claude Haiku are faster at P50 percentile latency.</item>
+        <item>Regulated industries that require Anthropic or Azure OpenAI (some regulatory frameworks exclude Google AI).</item>
+        <item>Grounding with Google Search is not in scope — using it unconditionally nearly doubles per-query cost without surfacing cost to users.</item>
+        <item>Fine-tuning is a requirement — Gemini fine-tuning is region-restricted and limited compared to OpenAI's offering.</item>
+        <item>Projects already using Anthropic SDK throughout — mixing Gemini adds provider complexity without clear architectural benefit.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="model-hierarchy">
+      <p>Gemini offers four primary models; choose based on task complexity and context window needs.</p>
+
+      <rule testable="true">
+        <statement>Select Gemini 1.5 Pro for complex multimodal reasoning, long context (>500K tokens), or code analysis. Select Gemini 1.5 Flash for classification, extraction, and simple Q&amp;A where cost matters more than latency. Select gemini-1.0-pro for text-only legacy integration where 32K context is sufficient. Avoid gemini-1.0-pro-vision; Gemini 1.5 models subsume it.</statement>
+        <rationale>Pro handles complex reasoning and cross-file synthesis; Flash prioritizes cost and speed for bounded tasks. The context window is the primary decision factor: tasks exceeding ~100K tokens need Pro; under 100K, Flash is cheaper. Legacy models are deprecated and only used when Vertex AI requires specific model versions.</rationale>
+      </rule>
+
+      <example type="good" title="Selecting Gemini 1.5 Pro for codebase analysis">
+        <code lang="python"><![CDATA[
+import google.generativeai as genai
+
+# Task: analyze a 3000-line Python codebase for architecture
+# 3000 lines at avg 50 tokens per line = ~150K tokens
+# Complex reasoning about module structure needed → use Pro
+
+model = genai.GenerativeModel("gemini-1.5-pro")
+
+response = model.generate_content([
+    f"Codebase:\n{full_code}",
+    "Identify circular dependencies and suggest refactoring."
+])
+print(response.text)
+]]></code>
+        <note>Pro's reasoning handles multi-file architecture questions. Flash would work but Pro is more reliable for nuanced analysis.</note>
+      </example>
+
+      <example type="good" title="Selecting Gemini 1.5 Flash for classification">
+        <code lang="python"><![CDATA[
+import google.generativeai as genai
+
+# Task: classify 100 customer support messages
+# Each message ~50 tokens, 100 messages = ~5K tokens
+# Simple classification task → use Flash for cost
+
+model = genai.GenerativeModel("gemini-1.5-flash")
+
+prompts = [
+    f"Classify this message as urgent/normal/spam: {msg}"
+    for msg in messages
+]
+
+for prompt in prompts:
+    response = model.generate_content(prompt)
+    print(f"Classification: {response.text}")
+]]></code>
+        <note>Flash's cost is ~3x lower than Pro; use it for high-volume simple tasks.</note>
+      </example>
+    </section>
+
+    <section name="unique-features">
+      <p>Gemini offers capabilities not present in competing APIs; leverage them for tasks that require them.</p>
+
+      <rule testable="true">
+        <statement>Use the 1M token context only when the task genuinely requires processing a single large document or codebase whole; do not artificially pad input to justify the model choice. Use native multimodal capabilities (single request with text + image + audio + video) only when all media types are semantically linked; do not mix unrelated video with unrelated text as a way to load both simultaneously. Enable Grounding (Google Search) only when real-time information is required and the user understands the cost impact; do not enable it by default.</statement>
+        <rationale>The 1M context is expensive at scale if you do not need it; use Flash for most tasks and reserve Pro for genuinely large documents. Multimodal in one call is powerful but only when the context is coherent (analyzing a presentation slide + speaker transcript + audio + video of the speaker together makes sense; pasting random images into a coding question does not). Grounding costs add up silently and should be transparent to users.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always check response.prompt_feedback.block_reason before accessing response.text; accessing .text on a safety-blocked response raises ValueError. Wrap access in try-except and log the block reason for audit.</statement>
+        <rationale>Gemini's safety filters are aggressive and block responses silently if you do not check. Accessing the text field on a blocked response crashes; the exception is not informative. Logging block reasons helps identify if a class of prompts is systematically blocked by safety filters.</rationale>
+      </rule>
+    </section>
+
+    <section name="basic-setup">
+      <p>Initialize the Gemini client and make a simple text completion request.</p>
+
+      <example type="good" title="Basic SDK setup">
+        <code lang="python"><![CDATA[
+import google.generativeai as genai
+import os
+
+# Configure API key (from environment or 1Password vault)
+genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
+
+# Initialize model
+model = genai.GenerativeModel("gemini-1.5-pro")
+
+# Simple completion
+response = model.generate_content("Explain quantum entanglement simply.")
+print(response.text)
+]]></code>
+        <note>SDK auto-handles session setup. API key must be provided before any model call.</note>
+      </example>
+    </section>
+
+    <section name="chat-conversations">
+      <p>Build multi-turn conversations where context is maintained across messages.</p>
+
+      <example type="good" title="Multi-turn chat with context">
+        <code lang="python"><![CDATA[
+def create_chat():
+    """Multi-turn chat conversation."""
+    model = genai.GenerativeModel("gemini-1.5-pro")
+    chat = model.start_chat(history=[])
+
+    # First message
+    response = chat.send_message("What is machine learning?")
+    print(f"Gemini: {response.text}")
+
+    # Follow-up (maintains context)
+    response = chat.send_message("How does it differ from deep learning?")
+    print(f"Gemini: {response.text}")
+
+    # Access conversation history
+    for message in chat.history:
+        print(f"{message.role}: {message.parts[0].text[:100]}...")
+
+    return chat
+]]></code>
+        <note>Chat history is maintained by the model; follow-ups reference earlier messages automatically.</note>
+      </example>
+    </section>
+
+    <section name="streaming-responses">
+      <p>Stream responses for real-time output and partial results.</p>
+
+      <example type="good" title="Streaming response">
+        <code lang="python"><![CDATA[
+def stream_response(prompt: str) -> str:
+    """Stream response for real-time output."""
+    model = genai.GenerativeModel("gemini-1.5-pro")
+
+    response = model.generate_content(prompt, stream=True)
+
+    full_text = ""
+    for chunk in response:
+        if chunk.text:
+            print(chunk.text, end="", flush=True)
+            full_text += chunk.text
+
+    return full_text
+]]></code>
+        <note>Streaming allows displaying results as they arrive; useful for long responses or interactive applications.</note>
+      </example>
+    </section>
+
+    <section name="image-analysis">
+      <p>Load and analyze images using vision capabilities.</p>
+
+      <example type="good" title="Local image analysis">
+        <code lang="python"><![CDATA[
+import PIL.Image
+
+def analyze_image(image_path: str, question: str) -> str:
+    """Analyze image with Gemini Vision."""
+    model = genai.GenerativeModel("gemini-1.5-pro")
+
+    # Load image
+    image = PIL.Image.open(image_path)
+
+    # Send image with text prompt
+    response = model.generate_content([question, image])
+
+    return response.text
+]]></code>
+        <note>PIL.Image handles common formats (JPG, PNG, WebP). Pass image and text in a list to combine them.</note>
+      </example>
+
+      <example type="good" title="Remote image analysis">
+        <code lang="python"><![CDATA[
+def analyze_image_url(image_url: str, question: str) -> str:
+    """Analyze image from URL."""
+    import httpx
+
+    model = genai.GenerativeModel("gemini-1.5-pro")
+
+    # Download image
+    image_data = httpx.get(image_url).content
+
+    response = model.generate_content([
+        question,
+        {"mime_type": "image/jpeg", "data": image_data}
+    ])
+
+    return response.text
+]]></code>
+        <note>For URL-based images, download bytes and pass as dict with mime_type; avoids external URL dependencies in the API call.</note>
+      </example>
+    </section>
+
+    <section name="video-analysis">
+      <p>Upload and analyze video files via the Files API.</p>
+
+      <example type="good" title="Video analysis">
+        <code lang="python"><![CDATA[
+def analyze_video(video_path: str, question: str) -> str:
+    """Analyze video content with Gemini."""
+    model = genai.GenerativeModel("gemini-1.5-pro")
+
+    # Upload video file
+    video_file = genai.upload_file(video_path)
+
+    # Wait for processing
+    import time
+    while video_file.state.name == "PROCESSING":
+        time.sleep(5)
+        video_file = genai.get_file(video_file.name)
+
+    if video_file.state.name == "FAILED":
+        raise ValueError("Video processing failed")
+
+    # Analyze
+    response = model.generate_content([video_file, question])
+
+    return response.text
+]]></code>
+        <note>Video uploads are asynchronous; polling state.name == "PROCESSING" is mandatory before analysis. Files expire after 48 hours.</note>
+      </example>
+
+      <antipattern>
+        <description>Calling model.generate_content immediately after upload_file without polling for state == "ACTIVE".</description>
+        <reason>The Files API processes uploads asynchronously; the file is not ready until state transitions to ACTIVE. Calling before it is ready raises an error or gives partial/empty results. Always poll before analysis.</reason>
+      </antipattern>
+    </section>
+
+    <section name="audio-analysis">
+      <p>Upload and transcribe audio files.</p>
+
+      <example type="good" title="Audio transcription">
+        <code lang="python"><![CDATA[
+def transcribe_audio(audio_path: str) -> str:
+    """Transcribe and analyze audio."""
+    model = genai.GenerativeModel("gemini-1.5-pro")
+
+    # Upload audio file
+    audio_file = genai.upload_file(audio_path)
+
+    response = model.generate_content([
+        audio_file,
+        "Transcribe this audio and summarize the key points."
+    ])
+
+    return response.text
+]]></code>
+        <note>Like video, audio upload via Files API is asynchronous; ensure file is ACTIVE before calling generate_content.</note>
+      </example>
+    </section>
+
+    <section name="function-calling">
+      <p>Define functions for Gemini to call and build agentic loops.</p>
+
+      <example type="good" title="Function calling loop">
+        <code lang="python"><![CDATA[
+def get_weather(location: str, unit: str = "celsius") -> dict:
+    """Mock weather function."""
+    return {"location": location, "temperature": 22, "unit": unit}
+
+# Define function for Gemini
+weather_tool = genai.protos.Tool(
+    function_declarations=[
+        genai.protos.FunctionDeclaration(
+            name="get_weather",
+            description="Get current weather for a location",
+            parameters=genai.protos.Schema(
+                type=genai.protos.Type.OBJECT,
+                properties={
+                    "location": genai.protos.Schema(
+                        type=genai.protos.Type.STRING,
+                        description="City name"
+                    ),
+                    "unit": genai.protos.Schema(
+                        type=genai.protos.Type.STRING,
+                        enum=["celsius", "fahrenheit"]
+                    )
+                },
+                required=["location"]
+            )
+        )
+    ]
+)
+
+def chat_with_functions(user_message: str):
+    """Gemini with function calling."""
+    model = genai.GenerativeModel(
+        "gemini-1.5-pro",
+        tools=[weather_tool]
+    )
+
+    chat = model.start_chat()
+    response = chat.send_message(user_message)
+
+    # Check for function calls
+    for part in response.parts:
+        if hasattr(part, "function_call"):
+            fn = part.function_call
+
+            # Execute function
+            if fn.name == "get_weather":
+                result = get_weather(**dict(fn.args))
+
+                # Send result back
+                response = chat.send_message(
+                    genai.protos.Content(
+                        parts=[genai.protos.Part(
+                            function_response=genai.protos.FunctionResponse(
+                                name=fn.name,
+                                response={"result": result}
+                            )
+                        )]
+                    )
+                )
+
+    return response.text
+]]></code>
+        <note>Function definitions use protobuf Schema; the tool loop checks for function_call in response parts and sends results back to the model.</note>
+      </example>
+    </section>
+
+    <section name="system-instructions">
+      <p>Create models with system instructions to specialize behavior.</p>
+
+      <example type="good" title="Specialized model with system instructions">
+        <code lang="python"><![CDATA[
+def create_specialized_model():
+    """Create model with system instructions."""
+    model = genai.GenerativeModel(
+        "gemini-1.5-pro",
+        system_instruction="""You are a senior Python developer.
+        - Always provide code examples
+        - Explain trade-offs
+        - Follow PEP 8 style
+        - Include error handling
+        """
+    )
+
+    return model
+]]></code>
+        <note>System instructions guide model behavior for all requests in the session; this is the Gemini equivalent of system prompts in other APIs.</note>
+      </example>
+    </section>
+
+    <section name="safety-settings">
+      <p>Configure safety filters for different use cases.</p>
+
+      <example type="good" title="Custom safety settings">
+        <code lang="python"><![CDATA[
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
+
+def create_safe_model():
+    """Model with custom safety settings."""
+    model = genai.GenerativeModel(
+        "gemini-1.5-pro",
+        safety_settings={
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        }
+    )
+    return model
+]]></code>
+        <note>Safety settings apply to all requests using this model instance. The threshold determines blocking behavior.</note>
+      </example>
+    </section>
+
+    <section name="long-context-processing">
+      <p>Use Gemini's 1M context to process entire documents or codebases in a single request.</p>
+
+      <example type="good" title="Large document analysis">
+        <code lang="python"><![CDATA[
+def process_large_document(file_path: str, question: str) -> str:
+    """Process documents using Gemini's 1M context."""
+    model = genai.GenerativeModel("gemini-1.5-pro")
+
+    # Read entire file
+    with open(file_path, "r") as f:
+        content = f.read()
+
+    # Gemini can handle very long documents
+    response = model.generate_content([
+        f"Document:\n{content}\n\nQuestion: {question}"
+    ])
+
+    return response.text
+]]></code>
+        <note>The 1M context allows processing books or technical specs whole; no chunking needed.</note>
+      </example>
+
+      <example type="good" title="Codebase analysis">
+        <code lang="python"><![CDATA[
+def analyze_codebase(directory: str, question: str) -> str:
+    """Analyze entire codebase."""
+    import glob
+
+    model = genai.GenerativeModel("gemini-1.5-pro")
+
+    # Collect all Python files
+    code_content = []
+    for filepath in glob.glob(f"{directory}/**/*.py", recursive=True):
+        with open(filepath, "r") as f:
+            code_content.append(f"# File: {filepath}\n{f.read()}")
+
+    full_code = "\n\n".join(code_content)
+
+    response = model.generate_content([
+        f"Codebase:\n{full_code}\n\nQuestion: {question}"
+    ])
+
+    return response.text
+]]></code>
+        <note>Load all source files into a single request; Gemini's context is large enough for repos up to several MB.</note>
+      </example>
+    </section>
+
+    <section name="production-service-class">
+      <p>Build a production-ready service class for Gemini integration.</p>
+
+      <example type="good" title="Production Gemini service">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass
+from typing import Optional, List, Any
+import logging
+
+@dataclass
+class GeminiConfig:
+    model: str = "gemini-1.5-pro"
+    temperature: float = 0.7
+    top_p: float = 0.95
+    top_k: int = 40
+    max_output_tokens: int = 8192
+
+class GeminiService:
+    """Production-ready Gemini service."""
+
+    def __init__(self, api_key: Optional[str] = None):
+        genai.configure(api_key=api_key or os.environ.get("GOOGLE_API_KEY"))
+        self.logger = logging.getLogger(__name__)
+
+    def complete(
+        self,
+        prompt: str,
+        config: Optional[GeminiConfig] = None
+    ) -> dict:
+        """Execute completion."""
+        config = config or GeminiConfig()
+
+        model = genai.GenerativeModel(config.model)
+
+        generation_config = genai.GenerationConfig(
+            temperature=config.temperature,
+            top_p=config.top_p,
+            top_k=config.top_k,
+            max_output_tokens=config.max_output_tokens
+        )
+
+        try:
+            response = model.generate_content(
+                prompt,
+                generation_config=generation_config
+            )
+
+            return {
+                "content": response.text,
+                "usage": {
+                    "prompt_tokens": response.usage_metadata.prompt_token_count,
+                    "output_tokens": response.usage_metadata.candidates_token_count
+                },
+                "finish_reason": response.candidates[0].finish_reason.name
+            }
+        except Exception as e:
+            self.logger.error(f"Gemini API error: {e}")
+            raise
+]]></code>
+        <note>Service class encapsulates configuration, error handling, and logging. Exposes a clean complete() interface.</note>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <rule testable="true">
+        <statement>Always configure generation_config.max_output_tokens explicitly; the default is unlimited and causes runaway costs. Set a reasonable bound based on expected output length.</statement>
+        <rationale>Without explicit max_output_tokens, Gemini can generate responses with tens of thousands of tokens, multiplying cost unexpectedly. Set 1024-8192 depending on task.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use gemini-1.5-flash for classification, extraction, and simple Q&amp;A where cost matters more than latency. Reserve gemini-1.5-pro for complex reasoning or contexts exceeding 500K tokens.</statement>
+        <rationale>Flash costs approximately 3x less than Pro while maintaining good quality for bounded tasks. Pro's reasoning is measurably better for open-ended synthesis and cross-file analysis.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Enable context caching (genai.CachedContent) when the same large document is queried multiple times in a session; the cache reduces token cost by 75% for cached content.</statement>
+        <rationale>Caching amortizes the cost of large document uploads across multiple queries; after two or three questions about the same 1MB codebase, the cache pays for itself.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use response.usage_metadata to log prompt_token_count and candidates_token_count for every call. Gemini's 1M context makes it easy to accidentally send huge prompts without noticing.</statement>
+        <rationale>Logging usage per call reveals cost outliers and helps calibrate prompt sizes. Without logging, a single 500K-token request can blow a budget silently.</rationale>
+      </rule>
+    </section>
+
+    <section name="common-pitfalls">
+      <antipattern>
+        <description>File uploads (video/audio) not waiting for state.name == "PROCESSING" completion before calling model.</description>
+        <reason>Uploads are asynchronous; calling the model before the file transitions to ACTIVE state fails with errors or empty results.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Response blocked by safety filters without checking prompt_feedback.block_reason before accessing response.text.</description>
+        <reason>Accessing .text on a blocked response raises ValueError. Always check block_reason first and log it for audit.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Enabling Google Search grounding by default without surfacing cost to users.</description>
+        <reason>Grounding nearly doubles per-query cost; agents that enable it unconditionally blow budgets. Make it explicit and user-controlled.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mixing google-generativeai SDK (v1) with google-genai SDK (v0.8+) in the same codebase.</description>
+        <reason>Both packages define overlapping types and namespaces; import conflicts cause runtime failures. Standardize on one SDK version per project.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Assuming uploaded files via Files API persist beyond 48 hours.</description>
+        <reason>Files expire after 48 hours; agents that cache file handles across sessions fail silently when the file is deleted. Store file names instead and re-upload if needed.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Not testing multi-tool function calling responses explicitly; assuming parallel tool execution.</description>
+        <reason>Gemini supports function calling but does not guarantee the same parallel-execution semantics as OpenAI. Test your use case explicitly.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-integration">
+      <p>Guidance for using Gemini in agentic workflows.</p>
+
+      <rule testable="true">
+        <statement>When integrating Gemini into an agent, first determine whether the task is multimodal or text-only to select Flash vs. Pro. Then, for file uploads, poll state.name == "ACTIVE" before constructing the analysis prompt. For long-context document analysis, check if chunking is needed (>900K tokens after encoding) or if the full document fits. For function calling loops, cap iteration at a configurable limit (default 10) to prevent infinite tool calls.</statement>
+        <rationale>This workflow reduces cost (Flash where possible), prevents async bugs (polling before use), and prevents runaway loops (iteration caps).</rationale>
+      </rule>
+
+      <example type="good" title="Agentic video analysis prompt">
+        <code lang="python"><![CDATA[
+# Recommended subagent workflow pattern
+prompt = """
+Use Gemini 1.5 Pro with the Files API to analyze the uploaded video.
+Upload the file, poll until state == ACTIVE, then answer: {question}.
+Return structured JSON with keys: summary, key_points, timestamps.
+"""
+]]></code>
+        <note>This pattern encapsulates the async polling requirement and output structure in a single prompt.</note>
+      </example>
+
+      <example type="good" title="Agentic safety-aware prompt">
+        <code lang="python"><![CDATA[
+# Recommended pattern for checking safety blocks
+prompt = """
+Configure a Gemini 1.5 Flash model with safety settings BLOCK_MEDIUM_AND_ABOVE for all harm categories.
+Generate a response to: {prompt}.
+Check response.prompt_feedback.block_reason before accessing response.text.
+If blocked, return structured JSON with keys: blocked=true, reason={block_reason}.
+"""
+]]></code>
+        <note>Explicitly surface safety checks to the agent so it can handle blocks gracefully.</note>
+      </example>
+    </section>
+
+    <see-also>
+      <link href="https://ai.google.dev/docs"/>
+      <link href="https://github.com/google/generative-ai-python"/>
+      <link href="https://github.com/google-gemini/cookbook"/>
+      <link href="https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/gemini"/>
+      <link href="https://ai.google.dev/api/files"/>
+      <ref slug="gemini-basics"/>
+      <ref slug="gemini-function-calling"/>
+    </see-also>
+  </content>
+</methodology>
