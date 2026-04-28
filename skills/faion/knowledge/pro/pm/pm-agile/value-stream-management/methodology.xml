@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="value-stream-management">
+  <metadata>
+    <tier>pro</tier>
+    <group>pm</group>
+    <domain>pm-agile</domain>
+    <summary>VSM maps end-to-end flow from customer request to value using Flow Metrics paired with DORA; reveals cross-functional bottlenecks invisible to per-team metrics and detects productivity paradox.</summary>
+    <category>metrics</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>value-stream</tag>
+      <tag>flow-metrics</tag>
+      <tag>dora</tag>
+      <tag>bottleneck</tag>
+      <tag>theory-of-constraints</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Value Stream Management</title>
+
+    <summary>Value Stream Management (VSM) maps the end-to-end path from customer request to delivered value and measures flow using Lead Time, Cycle Time, Process Time, %Complete/Accurate, and Throughput. Paired with DORA metrics for the DevOps stages, VSM reveals where AI productivity gains evaporate into cross-functional bottlenecks invisible to per-team metrics. The rule: always report Flow Metrics and DORA together; never present one alone to executives.</summary>
+
+    <why>
+      <p>Teams optimize locally while constraints shift upstream or downstream. A team can double deployment frequency (DORA elite) while lead time stays flat because the bottleneck moved to discovery, legal review, or onboarding. VSM is the only frame that makes this visible. Mik Kersten's Flow Framework and the Theory of Constraints provide the empirical anchors — focus on the one biggest constraint per quarter.</p>
+      <p>Lead-time and cycle-time depend on consistent state transitions; if "In Progress" is abused as a parking lot, metrics lie. DORA and Flow are different abstractions; agents that conflate them produce contradictory dashboards (DORA says elite, Flow says blocked). Aggregating across heterogeneous teams hides outliers; medians exceed means; show distributions or you mislead. Tools (Plandek, LinearB, Atlassian Atlas, ValueOps) compute differently — switching vendors causes apparent "regressions" from definition changes alone. Story points multiplied by dollars is not flow efficiency; collapsing them is a common but misleading shortcut. Initial VSM workshops produce fishbone-style insights; converting them to durable metrics requires data-engineering work the methodology underestimates. Customer-side stages (sales hand-off, onboarding, support) are often outside the team's tooling; partial pipelines yield partial insight.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Programs where local team optimization no longer produces business throughput gains.</item>
+        <item>Boards report "green" velocity but customer time-to-value is stuck.</item>
+        <item>AI productivity rollout raised dev velocity but lead time did not decrease (productivity paradox).</item>
+        <item>DevOps maturity reviews requiring a complete picture beyond DORA.</item>
+        <item>Multi-team programs (SAFe Value Streams, ARTs) where VSM is foundational.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single team, single product, short cycle times — VSM overhead exceeds insight value.</item>
+        <item>Data quality too poor to trust (status-field abuse, transitions not captured) — fix discipline first.</item>
+        <item>Culture where metrics will be weaponized for individual performance management — VSM dies on first quarterly review.</item>
+        <item>Pure research / discovery work where "value" is exploratory; VSM optimizes known-work flow.</item>
+        <item>Bottleneck is known and political (approval committee) and leadership won't intervene — measuring changes nothing.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="flow-metrics-definitions">
+      <p>Flow Metrics measure the efficiency and quality of work progression through your value stream stages.</p>
+
+      <rule testable="true">
+        <statement>Define all five Flow Metrics with written definitions pinned in the repository — data source, fields used, entry and exit edges — and require code review on any definition change.</statement>
+        <rationale>Definition drift across tools (LinearB vs Plandek vs Atlas) causes apparent regressions from definition changes alone. Pinning in code makes changes auditable.</rationale>
+      </rule>
+
+      <list>
+        <item>Lead Time: clock-on-wall from customer request accepted to work handed off to customer. Measures end-to-end flow.</item>
+        <item>Process Time: time to complete if work were uninterrupted. Measures pure efficiency excluding wait time.</item>
+        <item>Cycle Time: time within a specific process stage. Measures stage-level efficiency.</item>
+        <item>Percent Complete and Accurate (%C/A): percentage of work items received by the next stage without rework needed. Measures quality at handoff.</item>
+        <item>Throughput: items completed per unit time (per week). Measures delivery rate.</item>
+      </list>
+
+      <example type="good" title="Computing lead time and cycle time from transitions">
+        <code lang="python"><![CDATA[#!/usr/bin/env python3
+"""flow_metrics.py — Lead Time, Cycle Time, Throughput from transitions.csv"""
+from __future__ import annotations
+import sys
+import pandas as pd
+
+def main(path: str) -> int:
+    df = pd.read_csv(path, parse_dates=["ts"])
+    # transitions: issue_id, status, ts
+    pivot = df.pivot_table(index="issue_id", columns="status", values="ts", aggfunc="min")
+    if not {"To Do", "In Progress", "Done"}.issubset(pivot.columns):
+        print("Missing required statuses", file=sys.stderr)
+        return 2
+    pivot["lead_time_days"] = (pivot["Done"] - pivot["To Do"]).dt.total_seconds() / 86400
+    pivot["cycle_time_days"] = (pivot["Done"] - pivot["In Progress"]).dt.total_seconds() / 86400
+    summary = pivot[["lead_time_days", "cycle_time_days"]].dropna().describe(percentiles=[.5, .85, .95])
+    print(summary.to_string())
+    # throughput per ISO week
+    weekly = df[df.status == "Done"].set_index("ts").resample("W").issue_id.nunique()
+    print("\nWeekly throughput:")
+    print(weekly.to_string())
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1]))
+]]></code>
+      </example>
+    </section>
+
+    <section name="dora-metrics-definitions">
+      <p>DORA Metrics measure the engineering efficiency of the DevOps pipeline specifically.</p>
+
+      <list>
+        <item>Deployment Frequency: how often code deploys to production. Elite: multiple per day.</item>
+        <item>Lead Time for Changes: time from commit to production. Elite: under 1 hour.</item>
+        <item>Change Failure Rate: percentage of deployments causing a production failure. Elite: under 5%.</item>
+        <item>Mean Time to Recovery (MTTR): time to restore service after an incident. Elite: under 1 hour.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Use DORA "elite" thresholds as cohort-relative comparisons, not absolute labels — report where your organization sits relative to its industry peers, not whether it is "elite."</statement>
+        <rationale>DORA thresholds shift over time and vary by industry. Absolute labeling misleads executives into treating industry-relative performance as universally excellent or poor.</rationale>
+      </rule>
+    </section>
+
+    <section name="pairing-dora-and-flow">
+      <p>Flow Metrics and DORA together tell the complete story; either alone hides the productivity paradox.</p>
+
+      <rule testable="true">
+        <statement>Always report Flow Metrics and DORA together; never present one alone to executives or stakeholders.</statement>
+        <rationale>DORA covers Development to Release (DevOps efficiency). Flow covers Customer Request to Release to Customer Outcome (business value delivery). Either alone gives a partial picture that can hide the productivity paradox.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Reporting DORA elite status while omitting Lead Time trend.</description>
+        <reason>A team can achieve DORA elite deployment frequency while customer lead time is stuck flat because the bottleneck has shifted outside the dev process — DORA alone declares victory prematurely.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Use medians and 85th/95th percentiles, never means, for flow metric reporting; flow distributions are fat-tailed and means systematically understate worst-case customer experience.</statement>
+        <rationale>A few outlier items with 10x cycle time drive the mean far above the median, making teams appear slower than their typical performance.</rationale>
+      </rule>
+    </section>
+
+    <section name="vsm-mapping-process">
+      <p>Follow this step-by-step process to map and analyze your value stream.</p>
+
+      <rule testable="true">
+        <statement>Map the value stream end-to-end: customer request → discovery → build → release → operate → customer outcome. Tool boundaries are not stream boundaries.</statement>
+        <rationale>Tool-bounded mapping misses cross-functional wait time (sales hand-off, legal review, onboarding) that frequently constitutes the majority of customer lead time.</rationale>
+      </rule>
+
+      <list>
+        <item>Step 1: Map current value stream stages with owners, entry and exit criteria, and data sources per stage.</item>
+        <item>Step 2: Measure all five flow metrics per stage using existing tool data; identify stages with no data (fix data collection first).</item>
+        <item>Step 3: Measure DORA metrics for the DevOps stages within the stream.</item>
+        <item>Step 4: Identify primary bottleneck using Theory of Constraints — the stage with the largest share of total lead time AND %C/A below 90% or queue-to-process ratio above 4.</item>
+        <item>Step 5: Focus one improvement effort on the primary bottleneck per quarter; do not multi-task improvement initiatives.</item>
+        <item>Step 6: Monitor for productivity paradox when AI tooling is rolled out.</item>
+      </list>
+    </section>
+
+    <section name="bottleneck-detection">
+      <p>Theory of Constraints requires identifying the one primary bottleneck and focusing exclusively on it.</p>
+
+      <rule testable="true">
+        <statement>Apply Theory of Constraints: identify the one stage contributing the largest share of total lead time and focus the quarter's improvement effort there exclusively.</statement>
+        <rationale>Improving non-bottleneck stages does not increase system throughput. Multi-tasking improvement efforts dilutes focus without proportional throughput gains.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Proposing multiple "primary bottlenecks" in a VSM analysis.</description>
+        <reason>Theory of Constraints requires one primary constraint at a time. Multiple primary bottlenecks signals the analysis has not been committed to a definitive finding.</reason>
+      </antipattern>
+
+      <example type="good" title="Bottleneck detection with Theory of Constraints">
+        <code lang="text"><![CDATA[You are bottleneck-detector. Inputs: stage_metrics.csv (stage, count,
+mean_wait, mean_process, p95_wait, p95_process, %C/A). Identify the stage
+contributing the largest share of total lead time AND has %C/A < 90 OR
+queue/process > 4. Return STRICT JSON:
+{ "primary_bottleneck": "<stage>", "share_of_lead_time": 0.NN,
+  "rationale": "...", "supporting_metrics": {...},
+  "recommended_focus": ["..."], "non_recommendations": ["..."] }
+Rules: do not propose multiple "primary" bottlenecks. Cite numbers, not vibes.]]></code>
+      </example>
+    </section>
+
+    <section name="ai-productivity-paradox">
+      <p>When AI tooling is introduced, flow metrics often decouple from DORA metrics, revealing a shifted bottleneck rather than a true productivity gain.</p>
+
+      <rule testable="true">
+        <statement>When reporting AI tooling rollout impact, test lead-time distributions before and after with a statistical test (Mann-Whitney); report association, not causation.</statement>
+        <rationale>AI tools often raise developer velocity without reducing customer lead time because the bottleneck moves to adjacent stages (code review, QA, compliance). Claiming causation from observational data is analytically unsound.</rationale>
+      </rule>
+
+      <example type="good" title="Productivity paradox example">
+        <note>Developer velocity increased 40% (commits/day) after Copilot rollout. Customer Lead Time median unchanged at 18 days. Bottleneck detector shows code-review stage grew from 22% to 31% of total lead time — the improvement in coding speed fed a review queue backlog.</note>
+      </example>
+
+      <example type="good" title="Paradox watcher prompt pattern">
+        <code lang="text"><![CDATA[You are paradox-watcher. Inputs: deployment_frequency.csv, lead_time.csv,
+ai_tooling_events.csv (rollout dates). Test if lead-time distribution
+shifted statistically after each rollout (Mann-Whitney).
+Output: { "tool": "...", "rollout_date": "...", "p_value": ...,
+"effect_size": ..., "direction": "improved|degraded|no_change",
+"caveats": [...] }. Do not infer causation; report associations.]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using per-user flow metrics for performance management.</description>
+        <reason>Flow metrics are system-level measures. Individual attribution is both analytically invalid (team dependencies obscure individual contribution) and an HR liability.</reason>
+      </antipattern>
+    </section>
+
+    <section name="vsm-anti-patterns">
+      <p>Common mistakes that undermine VSM effectiveness.</p>
+
+      <antipattern>
+        <description>Running initial VSM workshop without committing to durable data collection.</description>
+        <reason>Fishbone-style workshop insights expire. Converting them to durable metrics requires data-engineering work the methodology underestimates; plan it explicitly.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Re-baselining metrics after switching vendors without treating it as a definition change.</description>
+        <reason>Vendor computation differences create apparent "regressions" that are purely definitional. Pin computation logic in code, not vendor, and treat vendor switch as a definition change event.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflows">
+      <p>When using agents to perform VSM analysis, follow these patterns and watch for these failure modes.</p>
+
+      <list>
+        <item>value-stream-mapper (sonnet) — synthesize stream definition from interviews and tool data; emits stages with owners, entry/exit criteria, data sources.</item>
+        <item>metrics-pipeline (haiku, scheduled) — daily ETL: events to Flow and DORA tables; runs at fixed grain (hour/day aggregation).</item>
+        <item>bottleneck-detector (sonnet) — TOC-style analysis: identifies primary bottleneck with citations to data spans.</item>
+        <item>paradox-watcher (sonnet) — correlates AI-tooling rollout dates with lead-time distribution shifts using statistical testing.</item>
+        <item>narrative-writer (sonnet) — translates metrics into stakeholder briefs with explicit caveats on data quality and confidence.</item>
+      </list>
+
+      <antipattern>
+        <description>Agents inventing VSM stage names or metric definitions not in the provided glossary.</description>
+        <reason>LLMs invent plausible stage names like "Strategic Lead Time" that have no agreed definition. Pin a glossary file and require lookups.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Aggregating flow metrics across heterogeneous teams without segmentation.</description>
+        <reason>Mixed-team aggregation hides outliers and makes team-specific bottlenecks invisible. Require segmentation by team or product stream.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents auto-actioning a bottleneck finding (re-org, hire, deprioritize) without human approval.</description>
+        <reason>Bottleneck findings are recommendations, not orders. Auto-actioning organizational changes without sponsor sign-off causes harm and destroys trust.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Human-in-the-loop checkpoints are mandatory at: stream definition, metric definitions, threshold setting, and any action approval.</statement>
+        <rationale>Each checkpoint gates decisions whose errors compound: wrong stream definition produces all downstream metrics in wrong frames.</rationale>
+      </rule>
+    </section>
+
+    <section name="cli-tools-and-infrastructure">
+      <p>Tools to support VSM data collection, computation, and visualization.</p>
+
+      <list>
+        <item>dvc — Version data snapshots used in VSM analysis. https://dvc.org</item>
+        <item>duckdb — Query parquet/CSV without a warehouse. https://duckdb.org</item>
+        <item>polars / pandas — Tabular wrangling. pip install polars</item>
+        <item>prometheus + grafana — Live flow + DORA dashboards. https://prometheus.io / https://grafana.com</item>
+        <item>pre-commit — Block dashboard PRs without metric-definition docs. https://pre-commit.com</item>
+        <item>mermaid-cli — Render value-stream diagrams from YAML. npm i -g @mermaid-js/mermaid-cli</item>
+        <item>papermill — Parameterized notebooks for stage-by-stage analyses. pip install papermill</item>
+        <item>evidently — Drift on flow metrics over time. https://github.com/evidentlyai/evidently</item>
+      </list>
+
+      <list>
+        <item>Atlassian Atlas / Jira Insights (SaaS) — Native flow + roadmaps; opaque computation. REST API.</item>
+        <item>LinearB (SaaS) — Engineering-metrics with VSM overlay. REST API.</item>
+        <item>Plandek (SaaS) — Delivery-forecast + flow tooling. REST API.</item>
+        <item>Swarmia / Sleuth / Allstacks (SaaS) — DORA + flow. REST API.</item>
+        <item>Broadcom ValueOps Insights (SaaS) — Enterprise VSM, alignment scoring. REST API.</item>
+        <item>Tasktop Viz / Planview (SaaS) — Mik Kersten's original product, flow at scale. REST API.</item>
+        <item>GitLab Value Stream Analytics (SaaS/OSS) — Native VSA on issue/MR events. GraphQL.</item>
+        <item>Azure DevOps Analytics (SaaS) — Powerful query surface for flow. OData.</item>
+        <item>Datadog / Grafana / NewRelic (SaaS/OSS) — DORA-from-CI/CD telemetry. REST API.</item>
+        <item>Looker / Tableau / Power BI (SaaS) — Stakeholder-facing dashboards. REST API.</item>
+      </list>
+    </section>
+
+    <section name="best-practices-summary">
+      <list>
+        <item>Map the value stream end-to-end: customer request → discovery → build → release → operate → outcome. Tool boundaries are not stream boundaries.</item>
+        <item>Anchor every metric to a written definition (data source, fields, edges); pin in repo with code review on changes.</item>
+        <item>Prefer medians + p85/p95 over means; flow distributions are fat-tailed.</item>
+        <item>Pair DORA with Flow Metrics; never report one alone for executives.</item>
+        <item>Call out the productivity paradox explicitly: dev velocity ↑ + lead time → → bottleneck moved, not solved.</item>
+        <item>Apply Theory of Constraints — focus on the one biggest constraint per quarter; do not multi-task improvements.</item>
+        <item>Never use flow metrics for individual performance; aggregate to team or stream.</item>
+        <item>Re-baseline only when the stream definition changes; treat tool changes as definition changes.</item>
+        <item>Visualize cumulative-flow per stage to see queue accumulation; static averages hide it.</item>
+        <item>Wire alerting only on changes large relative to historical noise; avoid alarm fatigue.</item>
+        <item>Run quarterly VSM workshops with cross-functional reps; not just engineering.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/flow-metrics.py" purpose="Compute Lead Time, Cycle Time, and Throughput from transitions CSV."/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.scaledagileframework.com/value-streams/"/>
+      <link href="https://dora.dev"/>
+    </see-also>
+  </content>
+</methodology>
