@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/pm/pm-traditional methodologies → methodology.xml (cost-estimation, earned-value-management, lessons-learned; feature-045 batch 171)
 - migrate: 3/3 pro/dev/software-developer methodologies → methodology.xml (php-phpunit-testing, ruby-activerecord, ruby-rails; feature-045 batch 166)
 
 ### Changed
