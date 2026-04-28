@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="schedule-development">
+  <metadata>
+    <tier>pro</tier>
+    <group>pm</group>
+    <domain>project-manager</domain>
+    <summary>Deterministic process for building a schedule from WBS: define activities, sequence with dependencies, PERT estimation, CPM critical path, buffer placement.</summary>
+    <category>planning</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>scheduling</tag>
+      <tag>critical-path</tag>
+      <tag>pert</tag>
+      <tag>cpm</tag>
+      <tag>critical-chain</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="wbs-development"/>
+      <ref slug="resource-management"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Schedule Development</title>
+
+    <summary>A deterministic process for building a project schedule from WBS work packages: define activities, sequence with dependency types (FS/FF/SS/SF), estimate durations using three-point PERT, run forward and backward pass to compute Early Start/Early Finish/Late Start/Late Finish per activity, identify the critical path (zero float), and place buffers at merge points and project end using Critical Chain methods rather than per-task padding.</summary>
+
+    <why>
+      <p>Without a critical path, delays cascade invisibly. Near-critical paths (float less than 2 days) become critical after one slip and are invisible without slack analysis. Per-task padding hides slack and creates Student Syndrome and Parkinson's Law effects. PERT three-point estimation forces pessimistic cases into the conversation before they happen. The schedule is the primary coordination artefact for multi-resource projects.</p>
+      <p>LLMs default to wildly optimistic durations because training data emphasises happy paths; pessimistic values must be hand-injected. PERT mean assumes a beta distribution but software task duration is heavy-tailed lognormal — P50 schedule will slip approximately 70% of the time. Critical path "longest chain" is brittle: a near-critical path 1 day shorter becomes critical after one slip and is invisible without slack analysis. Resource leveling is NOT part of CPM — same person on parallel critical-path tasks blows the schedule silently. Multi-project portfolios with shared resources need RCPSP, not CPM; agents almost never solve this correctly. Buffer placement (Critical Chain / Goldratt) gives better statistical protection than padding each task; most agent outputs pad tasks instead, hiding slack.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building the initial schedule from a WBS at kickoff (activity definition through CPM baseline)</item>
+        <item>Re-baselining after a change-control event (scope add, vendor slip, milestone shift)</item>
+        <item>Producing PERT three-point estimates for stakeholder communications</item>
+        <item>Solopreneur weekly capacity planning across multiple parallel projects</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pure agile teams with fixed-cadence sprints — velocity and roadmap replace CPM; critical path is overhead</item>
+        <item>Highly creative / R&amp;D work where activity duration is unknowable — use rolling-wave or Kanban instead</item>
+        <item>Tasks under 2 weeks with a single owner — a checklist suffices</item>
+        <item>Fixed-deadline projects where you back-plan from end date — use reverse-pass / time-boxed scope planning</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="step-1-define-activities">
+      <p>Convert each WBS work package into 3-7 specific activities with a clear deliverable. Fewer activities hide risk; more create false-precision overhead. Name activities as verb+noun ("Design auth flow", not "Auth").</p>
+    </section>
+
+    <section name="step-2-sequence-activities">
+      <p>Assign predecessor relationships with dependency types:</p>
+      <list>
+        <item>FS (Finish-to-Start) — predecessor must finish before successor starts; default type, use unless explicitly justified otherwise</item>
+        <item>FF (Finish-to-Finish) — both activities finish together (documentation with development)</item>
+        <item>SS (Start-to-Start) — both start together (testing starts when development starts)</item>
+        <item>SF (Start-to-Finish) — rare; use only when required and document why</item>
+      </list>
+    </section>
+
+    <section name="step-3-pert-three-point-estimation">
+      <p>For each activity collect Optimistic (O), Most Likely (M), and Pessimistic (P) durations. Compute expected duration and standard deviation:</p>
+      <list>
+        <item>Expected duration = (O + 4M + P) / 6</item>
+        <item>Standard deviation = (P - O) / 6</item>
+        <item>Example: O=3d, M=5d, P=10d then Expected = (3 + 20 + 10)/6 = 5.5d</item>
+      </list>
+    </section>
+
+    <section name="step-4-forward-and-backward-pass">
+      <p>Forward pass: traverse activities in topological order, propagating Early Start (ES) and Early Finish (EF). ES of first activity = 0; ES of successor = max(EF of all predecessors + lag). EF = ES + duration.</p>
+      <p>Backward pass: traverse in reverse topological order. LF of last activity = EF of last activity. LF of predecessor = min(LS of all successors - lag). LS = LF - duration. Total float = LF - EF = LS - ES. Critical path: all activities with float = 0.</p>
+    </section>
+
+    <section name="step-5-buffers">
+      <p>Critical Chain buffering: place one project buffer at the project end (typically 50% of critical path standard deviation sum). Place feeding buffers where non-critical paths join the critical path. Do not pad individual activities — hidden per-task slack always gets consumed (Parkinson's Law).</p>
+    </section>
+
+    <section name="concrete-rules">
+      <rule testable="true">
+        <statement>Use FS dependencies by default; use SS/FF/SF only when truly required and document the justification in the activity list.</statement>
+        <rationale>Most "we can parallelize" claims fail at integration; FS is conservative and explicit about ordering.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Track near-critical paths (float less than 2 days) explicitly alongside the critical path; report them at every status review.</statement>
+        <rationale>A near-critical path one day shorter than the critical path becomes critical after one slip and is invisible without slack analysis.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Lock the schedule baseline after kickoff; re-baseline only on approved change requests, never on standup updates.</statement>
+        <rationale>Constant re-baselining hides slip from stakeholders; tracking variance against the original baseline reveals true schedule health.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Effort hours are not duration days; model resource availability explicitly (a 40-hour task for a 50%-available resource takes 10 days, not 5).</statement>
+        <rationale>Effort-vs-duration confusion is the most common single source of schedule slip in agent-generated schedules.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Reject any schedule where activities have no explicit predecessors defined in the source data; agents must not infer dependencies from prose.</statement>
+        <rationale>Hallucinated dependencies produce incorrect critical paths and conceal missing information that the PM must resolve.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use business-calendar libraries for all date arithmetic; never compute working days with raw date math.</statement>
+        <rationale>Raw date math silently skips weekends, public holidays, and half-days, producing schedule dates that do not match calendar reality.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Padding individual activity durations instead of using project-end and feeding buffers.</description>
+        <reason>Per-task padding hides slack, triggers Parkinson's Law (work expands to fill allotted time), and makes the critical path invisible.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Reporting only "the critical path" as a single chain when multiple paths tie at the same finish.</description>
+        <reason>Multi-path criticality means all paths with float less than or equal to 0 must be managed; reporting only one gives false security.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LLM produces wildly optimistic durations because training data emphasises happy paths.</description>
+        <reason>Force three-point estimation with explicit pessimistic values from the project team; reject point estimates for uncertain activities.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>The agent is a deterministic schedule compiler. Feed it WBS work packages with effort + role + dependency edges; it emits an activity-on-node graph, runs forward + backward pass for ES/EF/LS/LF, computes total/free float, identifies critical path, and outputs Gantt-renderable JSON. A second agent runs Monte Carlo over 3-point durations to produce P50/P80/P95 finish dates. Humans approve buffer sizing and resource constraints before the schedule becomes the baseline.</p>
+      <p>Recommended subagents: schedule-builder (ingests wbs.yaml + dependencies.yaml, outputs CPM JSON with float per activity), monte-carlo-scheduler (runs N=10000 simulations over PERT triples, outputs date distribution + sensitivity), resource-leveler (checks no resource is double-booked; flags conflicts with proposed re-sequencing), faion-sdd-executor (once the schedule baseline is approved, drives task-by-task execution under quality gates).</p>
+    </section>
+
+    <section name="prompt-pattern">
+      <p>Inputs: wbs.yaml with [{id, name, effort_hours, role, predecessors:[{id, type:FS|FF|SS|SF, lag_days}]}], calendar.yaml with working days/holidays per resource, start_date YYYY-MM-DD.</p>
+      <p>Output JSON: { "activities": [{id, ES, EF, LS, LF, total_float, free_float, critical:bool}], "critical_path": [id...], "project_finish_p50": "...", "p80": "...", "p95": "...", "near_critical_paths": [[id...]], "resource_conflicts": [...] }.</p>
+      <p>Rules: No invented durations; if missing, return error not guess. Lag in business days, never calendar days unless calendar.yaml says otherwise. Reject WBS containing cycles; report the cycle.</p>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Use Critical Chain buffering (one project buffer at end, feeding buffers at merge points) — not per-task padding. Hidden slack always gets used (Parkinson's Law).</item>
+        <item>Track schedule performance index (SPI from EVM) weekly, not just milestone hits — reveals slip earlier.</item>
+        <item>Lock the baseline once; re-baselining hides slip from stakeholders. Track variance against the original.</item>
+        <item>Keep the WBS-to-activity ratio at approximately 3-7 activities per work package; finer creates a fake-precision schedule, coarser hides risk.</item>
+        <item>Identify near-critical paths (float less than 2 days) explicitly; one slip promotes them. Without this you only see issues post-mortem.</item>
+        <item>Use FS dependencies by default; SS/FF/SF only when truly required and document why. Most "we can parallelize" claims fail integration.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Effort vs duration confusion: 40 effort-hours is NOT 5 working days for a 50%-loaded resource (it's 10). Always model availability.</item>
+        <item>LLMs hallucinate dependencies they cannot verify; require explicit predecessors: in input, never let agent infer them from prose.</item>
+        <item>"How long does X take?" prompts return median industry numbers; force a 3-point with sources or refuse.</item>
+        <item>Calendar arithmetic is a frequent agent bug (skipping weekends, public holidays, half-days). Use business_calendar libraries, never raw date math.</item>
+        <item>Recursive/automatic re-scheduling on every standup creates instability — humans need a stable plan to commit against. Re-baseline only on change-control events.</item>
+        <item>Critical path agents often miss multi-path criticality (two paths tie at the same finish); print all paths whose float less than or equal to 0, not "the" path.</item>
+        <item>Resource calendars in different timezones are a silent slip generator; always assert tz on every date.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/activity-list.md" purpose="Activity table with ID, duration, dependencies, and resource columns"/>
+    </templates>
+
+    <scripts>
+      <script path="scripts/critical-path.py" purpose="CPM forward/backward pass using networkx; validates DAG, computes ES/EF/LS/LF and float per activity"/>
+    </scripts>
+
+    <see-also>
+      <link href="https://taskjuggler.org/"/>
+      <link href="https://plantuml.com/gantt-diagram"/>
+      <link href="https://github.com/mermaid-js/mermaid-cli"/>
+      <link href="https://pypi.org/project/python-gantt/"/>
+      <link href="https://networkx.org/"/>
+      <link href="https://simpy.readthedocs.io/"/>
+      <link href="https://www.pmi.org/standards/pmbok"/>
+      <link href="https://networkx.org/documentation/stable/reference/algorithms/dag.html"/>
+      <ref slug="risk-management"/>
+      <ref slug="resource-management"/>
+    </see-also>
+  </content>
+</methodology>
