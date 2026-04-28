@@ -1,0 +1,400 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="skills">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>claude-code</domain>
+    <summary>Guide to creating and updating Claude Code skills. Covers SKILL.md structure, frontmatter, tool permissions, and best practices for global and project-specific skills.</summary>
+    <tags>
+      <tag>skills</tag>
+      <tag>claude-code</tag>
+      <tag>workflow</tag>
+      <tag>automation</tag>
+      <tag>configuration</tag>
+    </tags>
+    <category>skills</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Creating or Updating Claude Code Skills</title>
+    <summary>Complete guide to skill creation and management in Claude Code. Skills are discoverable workflows that combine tools, permissions, and knowledge into reusable packages. This methodology covers SKILL.md structure, frontmatter fields, tool permissions, naming conventions, and the distinction between global skills (committed to faion-network) and project-specific skills (gitignored locally).</summary>
+    <why>
+      <p>Skills enable Claude Code to discover and execute complex workflows automatically. Instead of manually invoking tools each time, a skill packages related tools, context, and prompts into a single discoverable unit. Skills with clear descriptions and trigger keywords appear in the `/` menu; Claude Code invokes the right skill automatically based on user intent.</p>
+      <p>Skills also scope tool permissions. A read-only research agent might have only `Read, Grep, Glob` permissions, while a deployment skill has full `Bash, Write, Edit` access. This reduces surface area for accidents — a misconfigured agent cannot do more damage than its allowed tools permit.</p>
+      <p>The distinction between global and project-specific skills enables code reuse: shared skills live in faion-network and are distributed to all projects; local skills stay project-specific and are gitignored.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>User explicitly asks to create, edit, update, modify, fix, or improve a skill.</item>
+        <item>A complex workflow needs to be discoverable and reusable across sessions.</item>
+        <item>Tool permissions must be scoped (e.g., read-only agents).</item>
+        <item>Multi-file knowledge needs to be bundled together for Claude Code auto-discovery.</item>
+        <item>A workflow should appear in the `/` menu as a skill option.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>The workflow is a one-time task — use a plain prompt instead.</item>
+        <item>You only need a slash command with arguments — create a command, not a skill.</item>
+        <item>The skill already exists in faion-network and only needs minor wording changes — edit the existing file.</item>
+        <item>The workflow is project-specific business logic that should not be shared across projects.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Skill Structure">
+      <p>Every skill follows this directory structure:</p>
+      <example type="good" title="Skill directory layout">
+        <code lang="text"><![CDATA[skill-name/
+├── SKILL.md         # Required
+├── reference.md     # Optional - detailed content
+└── scripts/         # Optional - utility executables]]></code>
+      </example>
+      <rule>
+        <statement>SKILL.md is required. It contains frontmatter, purpose, workflow, and optional sections like "Failed Attempts" and "Agent Selection".</statement>
+        <rationale>Claude Code reads SKILL.md to discover the skill, extract its description, and determine tool permissions.</rationale>
+      </rule>
+      <rule>
+        <statement>reference.md is optional but recommended for large skills. Splits context into SKILL.md (auto-loaded) + reference.md (on-demand).</statement>
+        <rationale>Keeps SKILL.md under 300 lines; detailed content lives in reference.md to avoid context bloat.</rationale>
+      </rule>
+      <rule>
+        <statement>scripts/ folder holds utility executables (bash, python, etc.). These are never wrapped in XML — they stay as raw files.</statement>
+        <rationale>Scripts are meant to be run directly; wrapping them breaks execution.</rationale>
+      </rule>
+    </section>
+    <section name="SKILL.md Frontmatter">
+      <p>The frontmatter block (YAML between `---` delimiters) controls skill behavior:</p>
+      <example type="good" title="Frontmatter example">
+        <code lang="yaml"><![CDATA[---
+name: skill-name              # lowercase, hyphens, max 64 chars
+description: Third-person description with trigger keywords. Max 1024 chars.
+user-invocable: false          # Show in / menu (default: true)
+disable-model-invocation: false  # Block programmatic Skill tool calls
+context: fork                 # Isolated context (optional)
+agent: general-purpose        # Agent type for forked context
+allowed-tools: Read, Grep, Glob, Bash(cmd:*)  # Optional
+model: claude-sonnet-4-20250514               # Optional
+---]]></code>
+      </example>
+      <rule>
+        <statement>Fields `name` and `description` are required. All others are optional.</statement>
+        <rationale>Claude Code needs at least the name and description to discover and display the skill.</rationale>
+      </rule>
+      <rule>
+        <statement>`name` must be lowercase with hyphens, max 64 chars. Examples: `skill-name`, `my-awesome-skill`.</statement>
+        <rationale>Consistency with faion-network naming convention; long names don't fit in UI menus.</rationale>
+      </rule>
+      <rule>
+        <statement>`description` must be in third person and include trigger keywords. Max 1024 chars.</statement>
+        <rationale>Third person is professional; trigger keywords help Claude Code select the right skill automatically.</rationale>
+      </rule>
+      <rule>
+        <statement>`user-invocable: false` hides the skill from the `/` menu but allows programmatic invocation via the Skill tool.</statement>
+        <rationale>Use for internal orchestration skills that users should never invoke directly.</rationale>
+      </rule>
+      <rule>
+        <statement>`disable-model-invocation: true` completely blocks programmatic invocation. Use only for user-only workflows.</statement>
+        <rationale>Prevents accidental automation loops or privilege escalation.</rationale>
+      </rule>
+      <rule>
+        <statement>`context: fork` runs the skill in isolated context with no prior conversation history.</statement>
+        <rationale>Use for complex tasks that need a clean slate; pass required context through the skill prompt, not from prior messages.</rationale>
+      </rule>
+      <rule>
+        <statement>`allowed-tools` scopes tool permissions. Examples: `Read, Bash(git:*)`, `WebFetch(domain:github.com)`.</statement>
+        <rationale>Restricts skills to their minimum necessary permissions. A read-only research agent shouldn't have Write access.</rationale>
+      </rule>
+    </section>
+    <section name="allowed-tools Syntax">
+      <p>Syntax for scoping tool permissions:</p>
+      <example type="good" title="allowed-tools examples">
+        <code lang="text"><![CDATA[# Read-only tools only
+allowed-tools: Read, Grep, Glob
+
+# Git-specific commands
+allowed-tools: Bash(git:*), Read, Grep
+
+# Pytest with arguments
+allowed-tools: Bash(python -m pytest:*), Read
+
+# WebFetch for specific domains
+allowed-tools: WebFetch(domain:github.com), WebFetch(domain:api.github.com)
+
+# Combined permissions
+allowed-tools: Read, Bash(git:*), WebFetch(domain:github.com), Write]]></code>
+      </example>
+      <rule>
+        <statement>Bash patterns use prefix matching. `Bash(git:*)` matches any git command; `Bash(python -m pytest:*)` matches pytest with args.</statement>
+        <rationale>Prefix matching is simpler than regex and prevents accidental tool escalation.</rationale>
+      </rule>
+      <rule>
+        <statement>Without `:*` suffix, the pattern requires exact match. `Bash(echo)` only matches `echo` exactly, not `echo "text"`.</statement>
+        <rationale>Explicit permission scoping prevents unintended tool expansion.</rationale>
+      </rule>
+    </section>
+    <section name="Description Rules">
+      <p>The `description` field is critical for auto-discovery:</p>
+      <example type="good" title="Good description">
+        <code lang="text"><![CDATA[Extracts text from PDFs, fills forms, merges documents. Use when working with PDF files.]]></code>
+      </example>
+      <example type="bad" title="Bad description">
+        <code lang="text"><![CDATA[I can help you process Excel files]]></code>
+      </example>
+      <rule>
+        <statement>Use third person only. Never "I can", "I will", "I help".</statement>
+        <rationale>Professional, imperative tone; better for skill selection algorithms.</rationale>
+      </rule>
+      <rule>
+        <statement>Include trigger keywords upfront. Examples: "Analyzes code for security", "Generates test cases from code".</statement>
+        <rationale>Keywords help Claude Code match user intent to the right skill.</rationale>
+      </rule>
+      <rule>
+        <statement>Front-load keywords in the first 20 words.</statement>
+        <rationale>Skill selection algorithms scan the beginning of the description; late keywords may be missed.</rationale>
+      </rule>
+    </section>
+    <section name="Naming Convention">
+      <p>Two naming patterns: global (faion-network) and project-specific.</p>
+      <example type="good" title="Global skill naming">
+        <code lang="text"><![CDATA[faion-net                              # Orchestrator
+faion-software-developer               # Role-based
+faion-sdd                              # Process
+faion-claude-code                      # Tool]]></code>
+      </example>
+      <rule>
+        <statement>Global skills in faion-network use pattern: `faion-{context}`. No `-skill` suffix.</statement>
+        <rationale>Consistent with faion ecosystem; name is self-explanatory without suffix.</rationale>
+      </rule>
+      <example type="good" title="Project-specific skill naming">
+        <code lang="text"><![CDATA[myapp-auth                  # Auth logic for myapp
+shopify-sync                # Shopify integration
+acme-deploy                 # ACME Corp deployment]]></code>
+      </example>
+      <rule>
+        <statement>Project-specific skills use pattern: `{project}-{name}`. Must be gitignored.</statement>
+        <rationale>Keeps project logic out of faion-network; prevents accidental commits.</rationale>
+      </rule>
+    </section>
+    <section name="SKILL.md Body Structure">
+      <p>Recommended sections after frontmatter:</p>
+      <example type="good" title="SKILL.md body template">
+        <code lang="markdown"><![CDATA[# Skill Title
+
+**Communication with user: User's language. Skill content: English.**
+
+## Purpose
+One sentence describing what the skill does.
+
+## Workflow
+1. Step one
+2. Step two
+3. Step three
+
+## Degrees of Freedom
+- High: decision X (multiple valid approaches)
+- Low: must follow Y exactly (fragile operation, exact steps required)
+
+## Failed Attempts
+- Approach A - why it fails
+- Approach B - why it fails
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Create new skill from template | haiku | Mechanical task with clear structure |
+| Design agent architecture | opus | Requires reasoning about delegation |
+
+## Sources
+- Reference 1
+- Reference 2]]></code>
+      </example>
+      <rule>
+        <statement>Include "Degrees of Freedom" section. High = multiple valid approaches; Low = exact steps required.</statement>
+        <rationale>Signals to agents whether they have flexibility or must follow instructions strictly.</rationale>
+      </rule>
+      <rule>
+        <statement>Document "Failed Attempts" section. Anthropic guidance: failure paths save more time than success paths.</statement>
+        <rationale>Agents benefit more from knowing what doesn't work than from guessing wrong approaches.</rationale>
+      </rule>
+      <rule>
+        <statement>Include "Agent Selection" table. Recommends which Claude model for which task within the skill's scope.</statement>
+        <rationale>Guides agent selection when multiple approaches are possible.</rationale>
+      </rule>
+    </section>
+    <section name="Global vs Project-Specific Skills">
+      <p>Global skills live in faion-network and are committed to git. Project-specific skills are local and gitignored.</p>
+      <example type="good" title="Global skill setup">
+        <code lang="bash"><![CDATA[# Create a global skill (committed to faion-network)
+mkdir -p ~/.claude/skills/faion-my-skill
+# Edit ~/.claude/skills/faion-my-skill/SKILL.md
+# Commit to faion-network repo]]></code>
+      </example>
+      <example type="good" title="Project-specific skill setup">
+        <code lang="bash"><![CDATA[# Create a project-specific skill (gitignored)
+mkdir -p ~/.claude/skills/myapp-auth
+
+# Add to ~/.gitignore:
+echo ".claude/skills/myapp-*/" >> ~/.gitignore
+
+# Edit ~/.claude/skills/myapp-auth/SKILL.md
+# Never commit to version control]]></code>
+      </example>
+      <rule>
+        <statement>Project-specific skills must be gitignored at ~/.gitignore level, not inside .claude/.</statement>
+        <rationale>Gitignoring inside .claude/ would prevent tracking .claude/ itself. Use home-level .gitignore instead.</rationale>
+      </rule>
+      <rule>
+        <statement>Global skills are always available regardless of cwd. Faion-network skills are distributed via symlink at `~/workspace/.claude`.</statement>
+        <rationale>All projects can access faion-network skills because ~/.claude points to them.</rationale>
+      </rule>
+    </section>
+    <section name="Tool Permissions (allowed-tools)">
+      <p>Scope tool permissions to the minimum necessary for the skill's purpose:</p>
+      <list>
+        <item>Read-only research: `Read, Grep, Glob` only (no file mutation).</item>
+        <item>Code generation: `Read, Write, Edit, Bash(git:*)`.</item>
+        <item>Deployment: `Bash(*)` (full shell access), `WebFetch`, SSH tools if available.</item>
+        <item>API integration: `WebFetch(domain:api.github.com)`, `Bash(curl:*)` for specific domains.</item>
+      </list>
+      <rule>
+        <statement>Never grant full `Bash` to untrusted or experimental skills. Use prefix patterns.</statement>
+        <rationale>Reduces blast radius if the skill has a bug or is compromised.</rationale>
+      </rule>
+      <rule>
+        <statement>Test tool permissions early. A broken permission prevents the skill from working.</statement>
+        <rationale>Tool errors surface immediately; testing discovers permission issues before deployment.</rationale>
+      </rule>
+    </section>
+    <section name="Token Economy &amp; Size Limits">
+      <p>Skills consume context window. Every token must earn its place:</p>
+      <rule>
+        <statement>Keep SKILL.md under 300 lines (ideal), max 500.</statement>
+        <rationale>Larger skills bloat the context window. Split content into reference.md if needed.</rationale>
+      </rule>
+      <rule>
+        <statement>Use bullet lists instead of tables. Use simple markdown without ASCII art borders.</statement>
+        <rationale>Saves tokens; cleaner rendering in Claude Code UI.</rationale>
+      </rule>
+      <rule>
+        <statement>Write in English (smaller tokens than Ukrainian).</statement>
+        <rationale>Token efficiency matters for large skill libraries.</rationale>
+      </rule>
+      <rule>
+        <statement>Challenge each line: "Does Claude need this?" Delete redundant explanations Claude already knows.</statement>
+        <rationale>Context is finite. Trim verbosity.</rationale>
+      </rule>
+    </section>
+    <section name="Creation Workflow">
+      <p>Step-by-step process for creating a skill:</p>
+      <list>
+        <item>Ask requirements: purpose, triggers, tools, scope (local vs global).</item>
+        <item>Decide: is this global (shared, committed) or project-specific (local, gitignored)?</item>
+        <item>Create directory: `mkdir -p ~/.claude/skills/skill-name/` or `.claude/skills/skill-name/`.</item>
+        <item>Write SKILL.md with frontmatter, purpose, workflow, failed attempts, agent selection.</item>
+        <item>Add reference.md if knowledge exceeds 300 lines.</item>
+        <item>If local: add to ~/.gitignore with pattern `{project}-*` or `.claude/skills/{project}-*/`.</item>
+        <item>Test trigger behavior by invoking the skill via the `/` menu or Skill tool.</item>
+      </list>
+    </section>
+    <section name="Update Workflow">
+      <p>For existing skills, follow a different approach:</p>
+      <list>
+        <item>Read the existing SKILL.md to understand its current shape.</item>
+        <item>Identify the change scope: description only? New section? Removed section?</item>
+        <item>Edit in-place if change is small. Rewrite if scope is large.</item>
+        <item>Test the updated skill with the Skill tool to confirm trigger behavior.</item>
+      </list>
+    </section>
+    <section name="Troubleshooting">
+      <antipattern>
+        <description>Skill not triggering — the `/` menu doesn't show it or it doesn't auto-invoke.</description>
+        <reason>Check the `description` field. It must include specific trigger keywords; vague descriptions fail auto-selection. Test with more distinctive keywords.</reason>
+      </antipattern>
+      <antipattern>
+        <description>YAML parse error in frontmatter.</description>
+        <reason>Use spaces not tabs. Check `---` delimiters are exact. YAML is sensitive to indentation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Skill not found or "file not found" error.</description>
+        <reason>Filename must be exactly `SKILL.md` (case-sensitive). Check directory structure and restart Claude Code.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Tools not working (e.g., Bash returns permission error).</description>
+        <reason>Check `allowed-tools` syntax. Missing `:*` suffix breaks Bash patterns. Test with `allowed-tools: Bash(*)` to verify.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Skill context is too large (over 300 lines) and consumes too many tokens.</description>
+        <reason>Split into SKILL.md (auto-loaded) + reference.md (on-demand). Never go three levels deep (A→B→C breaks partial reads).</reason>
+      </antipattern>
+    </section>
+    <section name="Automation &amp; Helper Scripts">
+      <p>Skills can include helper scripts for automation:</p>
+      <example type="good" title="Skill script structure">
+        <code lang="text"><![CDATA[~/.claude/skills/faion-my-skill/
+├── SKILL.md
+├── reference.md
+└── scripts/
+    ├── generate-template.sh
+    └── validate-output.py]]></code>
+      </example>
+      <rule>
+        <statement>Scripts go in `scripts/` folder inside the skill directory. They are called via Bash tool from the skill prompt.</statement>
+        <rationale>Keeps skill logic modular; scripts stay executable and unmodified.</rationale>
+      </rule>
+    </section>
+    <section name="Best Practices">
+      <rule>
+        <statement>Keep `description` under 1024 chars; front-load the most distinctive trigger keywords in the first 20 words.</statement>
+        <rationale>Skill selection algorithms scan the beginning. Late keywords get missed.</rationale>
+      </rule>
+      <rule>
+        <statement>Use `user-invocable: false` for internal/orchestration skills that users should never invoke directly.</statement>
+        <rationale>Prevents accidental user invocation of infrastructure-level skills.</rationale>
+      </rule>
+      <rule>
+        <statement>Split large knowledge into SKILL.md + reference.md; never go three levels deep (A→B→C breaks partial reads).</statement>
+        <rationale>Deep nesting causes partial file reads and context loss.</rationale>
+      </rule>
+      <rule>
+        <statement>For Bash patterns in `allowed-tools`, always append `:*` (e.g., `Bash(git:*)`, `Bash(python -m pytest:*)`).</statement>
+        <rationale>Without `:*`, the pattern requires exact match, which breaks for arguments.</rationale>
+      </rule>
+      <rule>
+        <statement>Document failed approaches in "Failed Attempts" — Anthropic guidance: failure paths save more time than success paths.</statement>
+        <rationale>Agents benefit more from knowing what doesn't work than from reverse-engineering wrong approaches.</rationale>
+      </rule>
+      <rule>
+        <statement>Local/project skills must be gitignored at the parent ~/.gitignore, not inside .claude/.</statement>
+        <rationale>Otherwise the skill leaks into faion-network commits.</rationale>
+      </rule>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <antipattern>
+        <description>Skills do not inherit the parent conversation's tool permissions; `allowed-tools` must be explicitly declared.</description>
+        <reason>Test tool permissions before deploying. A skill without explicit permissions defaults to inheriting, which may be unexpected.</reason>
+      </antipattern>
+      <antipattern>
+        <description>When `context: fork` is set, the skill runs with no prior history. Required context must be passed through the skill prompt, not from earlier messages.</description>
+        <reason>Forked skills are isolated; they don't see prior conversation. Pass all necessary context explicitly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>The `Skill` tool requires user permission the first time per session. Automated pipelines halt for human input.</description>
+        <reason>Pre-approve Skill tool in your setup, or use explicit prompt guidance to let users approve upfront.</reason>
+      </antipattern>
+      <antipattern>
+        <description>If a skill calls another skill without `context: fork`, the inner skill can read the outer conversation, causing unintended context pollution.</description>
+        <reason>Use `context: fork` for nested skill calls to isolate contexts.</reason>
+      </antipattern>
+      <antipattern>
+        <description>The `model` field in frontmatter is advisory. Claude Code may downgrade or override depending on the active plan.</description>
+        <reason>Do not rely on `model: claude-opus` being honored in all environments. Assume model may vary.</reason>
+      </antipattern>
+    </section>
+    <see-also>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/skills">Claude Code Skills Documentation</link>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/slash-commands">Slash Commands Documentation</link>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/sub-agents">Subagents Documentation</link>
+    </see-also>
+  </content>
+</methodology>
