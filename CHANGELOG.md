@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 solo/marketing/smm-manager methodologies → methodology.xml (growth-linkedin-strategy, growth-social-media-strategy, growth-twitter-x-growth)
 - migrate: 3/3 solo/pm/pm-agile methodologies → methodology.xml (dashboard-setup, github-projects, linear-issue-tracking)
 - migrate: 3/3 solo/dev/software-developer methodologies → methodology.xml (rust-tokio-async, security-testing, seo-for-spas)
 - migrate: 3/3 content-marketer methodologies → methodology.xml (growth-email-marketing, growth-newsletter-growth, growth-onboarding-emails)
