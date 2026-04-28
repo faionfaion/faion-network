@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gitlab-boards">
+  <metadata>
+    <tier>pro</tier>
+    <group>pm</group>
+    <domain>pm-agile</domain>
+    <summary>Kanban boards in GitLab's DevOps platform with scoped labels (`::`-syntax) for state-machine semantics. Integrates with CI/CD, MR workflows, and premium iterations for single-platform agile delivery.</summary>
+    <category>pm-tool</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>gitlab</tag>
+      <tag>kanban</tag>
+      <tag>project-management</tag>
+      <tag>devops</tag>
+      <tag>issue-boards</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>GitLab Boards</title>
+
+    <summary>GitLab Issue Boards provide kanban-style project management integrated directly with GitLab's DevOps platform. Boards visualize issues through customizable lists based on scoped labels, assignees, or milestones, enabling workflow management alongside CI/CD pipelines. Unifying source control, CI/CD, and project tracking in one platform eliminates context-switching overhead and enables automation that is impossible across separate tools — for example, auto-transitioning an issue to `workflow::review` when a linked MR is opened. Scoped labels give the board real state-machine semantics rather than tag soup.</summary>
+
+    <why>
+      <p>Unifying source control, CI/CD, and project tracking in one platform eliminates context-switching overhead and enables automation that is impossible across separate tools — for example, auto-transitioning an issue to `workflow::review` when a linked MR is opened. Scoped labels give the board real state-machine semantics rather than tag soup.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Teams using GitLab for source control and CI/CD wanting a single-platform PM workflow.</item>
+        <item>Multi-project / multi-group programs where group-level boards aggregate cross-repo issues.</item>
+        <item>Compliance-conscious organizations that need self-hosted (Omnibus) over SaaS.</item>
+        <item>Workflows tied to MR lifecycle (issue → branch → MR → review → merge → close).</item>
+        <item>Teams running Iterations (sprints) with cadence automation built into GitLab.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Source not in GitLab — adopting boards-only via API is awkward; use a source-aligned tool (Jira, Linear, GitHub Projects).</item>
+        <item>Heavy portfolio + EVM needs — GitLab roadmaps are basic compared to Jira Plans or MS Project.</item>
+        <item>Non-technical stakeholders who refuse Markdown / quick-action syntax — adoption tax exceeds value.</item>
+        <item>Tiny teams that don't need WIP limits or scoped labels — Trello is faster with less ceremony.</item>
+        <item>Budget constrained to free tier but requiring WIP limits, multiple boards, or iterations (all Premium+).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="board-setup">
+      <p>Board types, scoped label scheme, WIP limits, and board configuration rules.</p>
+
+      <rule testable="true">
+        <statement>Use project-level boards for single-repo workflows; use group-level boards for cross-project visibility in multi-team programs.</statement>
+        <rationale>Group boards aggregate issues across subgroups but inherit labels inconsistently — agents moving issues across groups can lose label context.</rationale>
+      </rule>
+
+      <p>Board list types available: Label (workflow stages), Assignee (workload view), Milestone (release planning), Iteration (sprint board). Multiple boards per project requires GitLab Premium.</p>
+
+      <rule testable="true">
+        <statement>Use "::" syntax for all workflow, priority, and type labels to enforce mutual exclusivity — an issue can hold only one label per scope prefix.</statement>
+        <rationale>Without scoped labels, an issue can carry both "workflow::backlog" and "workflow::in-progress" simultaneously, corrupting board state.</rationale>
+      </rule>
+
+      <example type="good" title="Scoped label scheme">
+        <code lang="yaml"><![CDATA[labels:
+  workflow:
+    - "workflow::backlog"
+    - "workflow::ready"
+    - "workflow::in-progress"
+    - "workflow::review"
+    - "workflow::testing"
+    - "workflow::done"
+  priority:
+    - "priority::critical"
+    - "priority::high"
+    - "priority::medium"
+    - "priority::low"
+  type:
+    - "type::feature"
+    - "type::bug"
+    - "type::tech-debt"
+    - "type::docs"]]></code>
+        <note>Scoped labels are mutually exclusive within their prefix. An issue transitions by swapping the label (e.g., workflow::backlog replaced by workflow::in-progress).</note>
+      </example>
+
+      <rule testable="true">
+        <statement>Keep total label count under 25 per project; archive or rename rather than accumulate.</statement>
+        <rationale>Label sprawl makes triage harder and slows label picker rendering in the UI.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set WIP limits at the team's measured throughput, not aspirational capacity; tighten if cycle-time degrades.</statement>
+        <rationale>WIP limits backed by observed data are defensible; aspirational limits get ignored under pressure.</rationale>
+      </rule>
+
+      <example type="good" title="Board configuration with WIP limits">
+        <code lang="yaml"><![CDATA[board_configuration:
+  name: "Development Board"
+  lists:
+    - type: label
+      label: "workflow::backlog"
+      position: 0
+    - type: label
+      label: "workflow::ready"
+      position: 1
+      limit: 10
+    - type: label
+      label: "workflow::in-progress"
+      position: 2
+      limit: 5
+    - type: label
+      label: "workflow::review"
+      position: 3
+      limit: 3
+    - type: label
+      label: "workflow::testing"
+      position: 4
+    - type: closed
+      position: 5
+  filters:
+    milestone: "v1.0"
+    labels: ["type::feature"]]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Issue and MR templates must be version-controlled in ".gitlab/" and reviewed via MR like code, not edited through the UI.</statement>
+        <rationale>UI-only edits produce unreviewed changes to team process with no audit trail.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use GitLab Iteration cadences with automatic creation for sprints; do not create iterations manually one by one.</statement>
+        <rationale>Cadence automation ensures consistent sprint length and reduces admin overhead.</rationale>
+      </rule>
+
+      <example type="good" title="Iteration cadence with automatic creation">
+        <code lang="yaml"><![CDATA[iteration_cadence:
+  title: "Development Sprints"
+  start_date: "2024-01-01"
+  duration: 2  # weeks
+  upcoming: 4
+  automatic: true]]></code>
+      </example>
+    </section>
+
+    <section name="automation">
+      <p>Rules for automating issue transitions via GitLab CI and REST API, including quick-action behavior and webhook routing.</p>
+
+      <rule testable="true">
+        <statement>Auto-transition issues via the REST API labels endpoint from CI jobs, not via quick-action syntax in description bodies created by PUT requests.</statement>
+        <rationale>Quick actions parse on POST (create/comment) but NOT on PUT (description edit) — explicit label API calls are reliable in all contexts.</rationale>
+      </rule>
+
+      <example type="good" title="CI-driven issue transitions via API">
+        <code lang="yaml"><![CDATA[# .gitlab-ci.yml
+update_issue_on_mr:
+  stage: notify
+  script:
+    - |
+      curl --request PUT \
+        --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+        --data "labels=workflow::review" \
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/issues/$ISSUE_ID"
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+      when: always]]></code>
+      </example>
+
+      <antipattern>
+        <description>Putting quick-action strings like "/label ~workflow::review" in a PUT request body to update issue description.</description>
+        <reason>Quick actions only parse on initial POST creation or comment creation. PUTs to description do not re-trigger quick-action parsing, so the label is silently ignored.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Wire "Closes #N" into MR description as a CI lint rule; do not rely on humans to add it manually.</statement>
+        <rationale>Auto-close on merge requires the exact phrase in the MR description. Human compliance without enforcement is near zero on busy teams.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use push options to set MR labels at branch creation time via "-o merge_request.label" instead of manually labeling post-creation.</statement>
+        <rationale>Agents and developers creating branches this way produce consistent label state without UI interaction.</rationale>
+      </rule>
+
+      <example type="good" title="Push options for MR creation with labels">
+        <code lang="bash"><![CDATA[git push -o merge_request.create \
+  -o merge_request.label="workflow::review" \
+  -o merge_request.assign="@reviewer" \
+  origin feature/my-branch]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Subscribe webhooks at the project scope for narrow targeting; subscribe at system scope only when you need all projects and can filter on payload.</statement>
+        <rationale>Broad system webhooks deliver high volume; agents listening must filter carefully or process irrelevant events at cost.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Rotate webhook secret tokens carefully — breaking the signature check breaks all listening agents simultaneously without obvious error.</statement>
+        <rationale>GitLab webhook signature validation is token-based and does not provide a rotation grace period.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Triage Service Desk issues with labels only after content enrichment; never auto-close Service Desk issues without human review.</statement>
+        <rationale>Service Desk emails carry sparse fields and potentially sensitive attachments. Auto-close can permanently dismiss customer requests without resolution confirmation.</rationale>
+      </rule>
+
+      <example type="good" title="Service Desk auto-labeling">
+        <code lang="yaml"><![CDATA[service_desk:
+  enabled: true
+  auto_labels:
+    - "source::service-desk"
+    - "workflow::triage"]]></code>
+      </example>
+    </section>
+
+    <section name="agent-integration">
+      <p>Recommended subagents, prompt patterns, and failure modes for agent-driven GitLab board operations.</p>
+
+      <p>Recommended subagents:</p>
+      <list>
+        <item>board-author (sonnet) — synthesize board lists and scoped labels from a process YAML description.</item>
+        <item>triage-agent (sonnet) — classify and route incoming issues by type, priority, and component; never auto-close.</item>
+        <item>mr-issue-linker (haiku) — enforce "Closes #N" discipline and matching scoped labels before merge.</item>
+        <item>cycle-time-watcher (haiku, scheduled) — pull lead/cycle time from issue events, alert on drift.</item>
+        <item>webhook-router (haiku) — receive GitLab events and route to the appropriate downstream agent.</item>
+        <item>quick-action-generator (haiku) — emit `/label /milestone /weight /estimate` snippets for templates.</item>
+      </list>
+
+      <example type="good" title="Board-author prompt pattern">
+        <code lang="text"><![CDATA[You are board-author. Inputs: process.yaml (stages with WIP limits,
+filters, label scheme). Emit (a) scoped labels to create with "::" syntax,
+(b) an array of board lists with order + WIP limit, (c) a smoke-test plan
+that creates a test issue and walks it through every transition. Return
+STRICT JSON. Refuse if any stage lacks an exit criterion.]]></code>
+      </example>
+
+      <example type="good" title="Triage-agent prompt pattern">
+        <code lang="text"><![CDATA[You are triage-agent. Given an incoming issue (title, body, project
+context, existing labels), output:
+{ "type": "bug|feature|tech-debt|docs|question",
+  "priority": "critical|high|medium|low",
+  "component": "<from project list>",
+  "workflow": "ready|backlog",
+  "reasons": [...] }
+Cite spans from the body that support each tag.
+Do not invent components not in the project's list.]]></code>
+      </example>
+
+      <p>Failure modes and gotchas:</p>
+
+      <antipattern>
+        <description>Using Personal Access Tokens with wide scopes for bot operations.</description>
+        <reason>Prefer Group or Project Access Tokens scoped to "api" + "write_repository" only. Wide-scope PATs create blast radius on compromise.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Bot-created issues notifying all project subscribers.</description>
+        <reason>Bot users create issues as bot-owned; downstream notifications fan out to thousands. Use a dedicated bot user with notifications muted.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Assuming free-tier feature parity for iteration cadences.</description>
+        <reason>Iteration cadence creation requires Premium. Agents written against Premium features break on free-tier customer projects.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Apply human-in-the-loop checkpoints for: board structure changes, label-scheme changes, auto-close rules, and group-level moves.</statement>
+        <rationale>These operations affect all team members simultaneously and are difficult to reverse cleanly.</rationale>
+      </rule>
+    </section>
+
+    <section name="cli-tools">
+      <p>Command-line tools for GitLab board automation:</p>
+      <list>
+        <item>`glab` — First-party GitLab CLI: issues, MRs, labels, boards. Install: https://gitlab.com/gitlab-org/cli</item>
+        <item>`glab-cli/glab issue` — Issue CRUD with quick-action support.</item>
+        <item>`python-gitlab` — Powerful Python client. Install: `pip install python-gitlab`</item>
+        <item>`node-gitlab` — Node client. Install: `npm i @gitbeaker/node`</item>
+        <item>`git push -o ci.skip` / `merge_request.create` — Push-options drive MR creation with labels. Docs: https://docs.gitlab.com/ee/user/project/push_options.html</item>
+        <item>`pre-commit` + `gitlab-ci-lint` — Validate `.gitlab-ci.yml` and label discipline locally.</item>
+        <item>`webhook` (adnanh) — Local webhook receiver for development. Install: https://github.com/adnanh/webhook</item>
+        <item>`mermaid-cli` — Render board state as a Mermaid flow. Install: `npm i -g @mermaid-js/mermaid-cli`</item>
+      </list>
+    </section>
+
+    <section name="services-integrations">
+      <p>Services and integrations for GitLab boards:</p>
+      <list>
+        <item>GitLab.com SaaS (REST + GraphQL) — Easiest to integrate; SaaS rate limits apply.</item>
+        <item>GitLab Self-Managed Omnibus (REST + GraphQL) — Same APIs; admin-configured rate limits.</item>
+        <item>GitLab Dedicated (REST + GraphQL) — Single-tenant Cloud; same APIs.</item>
+        <item>GitLab Service Desk (REST) — Email-to-issue; agents triage; pair with `triage-agent`.</item>
+        <item>GitLab Runner Docker / k8s — Run automation as scheduled CI jobs.</item>
+        <item>Mattermost (REST) — First-class GitLab integration; pair for chatops.</item>
+        <item>Slack / Teams (REST) — Webhook routing for issue events.</item>
+        <item>Jira/Linear cross-link (REST) — Bridge integrations; mark source-of-truth.</item>
+        <item>Confluence / Notion / Wiki.js (REST) — Process and label-scheme docs.</item>
+        <item>LinearB / Swarmia / Sleuth (REST) — Engineering metrics overlay if native is insufficient.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/scoped-labels.py" purpose="Script to seed standard scoped labels (`workflow::*`, `priority::*`, `type::*`) via REST API."/>
+      <template path="templates/issue-template-bug.md" purpose="GitLab issue template for bug reports with quick-action footer."/>
+      <template path="templates/issue-template-feature.md" purpose="GitLab issue template for feature requests with AC checklist."/>
+    </templates>
+
+    <scripts>
+      <script path="scripts/seed_labels.py" purpose="Create the standard scoped-label set on a GitLab project."/>
+    </scripts>
+
+    <see-also>
+      <link href="https://docs.gitlab.com/ee/user/project/issue_board.html"/>
+      <link href="https://docs.gitlab.com/ee/user/project/labels.html"/>
+      <link href="https://docs.gitlab.com/ee/user/group/iterations/"/>
+      <link href="https://docs.gitlab.com/ee/user/project/quick_actions.html"/>
+      <link href="https://docs.gitlab.com/ee/api/"/>
+      <link href="https://docs.gitlab.com/ee/api/graphql/"/>
+    </see-also>
+  </content>
+</methodology>
