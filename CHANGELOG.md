@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 - migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (pm-tool-selection, predictive-analytics-pm, procurement-management; feature-045 batch 183)
-- migrate: 2/3 pro/pm/project-manager methodologies → methodology.xml (project-closure, project-integration; feature-045 batch 184)
+- migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (project-closure, project-integration, quality-management; feature-045 batch 184)
 - migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (jira-workflow-management, lessons-learned, performance-domains-overview; feature-045 batch 181)
 - migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (earned-value-management, gitlab-boards, hybrid-delivery; feature-045 batch 180)
 - migrate: 3/3 pro/pm methodologies → methodology.xml (work-breakdown-structure, agile-ceremonies-setup, agile-hybrid-approaches; feature-045 batch 177)

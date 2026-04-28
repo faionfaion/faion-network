@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="quality-management">
+  <metadata>
+    <tier>pro</tier>
+    <group>pm</group>
+    <domain>project-manager</domain>
+    <summary>Three-process framework (Plan Quality, Manage Quality, Control Quality) applied as code-driven gates with machine-readable DoD, automated defect triage, and weekly metric collection.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>quality-management</tag>
+      <tag>definition-of-done</tag>
+      <tag>defect-management</tag>
+      <tag>quality-metrics</tag>
+      <tag>testing</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Quality Management</title>
+
+    <summary>A three-process framework (Plan Quality → Manage Quality → Control Quality) applied as code-driven gates: DoD checked per PR by an automated validator, defect metrics aggregated weekly by a collector agent, and severity classified by a triager with human confirmation. Quality is built in, not tested in — prevention over detection is the operative principle (Deming).</summary>
+
+    <why>
+      <p>Rework consumes 20-40% of project time when quality is an afterthought. Defects found in production cost 10-100x more to fix than defects found at code review. A machine-readable DoD (quality/dod.yaml) versioned in the repo and enforced by CI makes "done" unambiguous and prevents checklist drift.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting Definition of Done across a multi-team or multi-repo product.</item>
+        <item>Defect-escape rate climbing or production incidents recurring on the same surfaces.</item>
+        <item>Codebase has no quality dashboard and PM/PO cannot answer whether the trend is improving.</item>
+        <item>Pre-release hardening: agent-driven quality audit before a major launch.</item>
+        <item>Compliance kickoff (SOC2, ISO 9001) where evidence trail must be reproducible.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-person prototype before product-market fit — quality gates slow validation loops.</item>
+        <item>Spike or research code marked throwaway — formal QC inflates effort 2-3x.</item>
+        <item>When the team rejects DoD as ceremony — fix the trust issue first, then introduce gates.</item>
+        <item>For aesthetic UX polish — use design review, not quality management process.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="quality-concepts">
+      <p>Foundational definitions and Deming's principle of prevention over detection:</p>
+      <rule>
+        <statement>Build quality in through prevention; do not test it in through detection — prevention costs 10-100x less than production defect resolution.</statement>
+        <rationale>Deming's empirical finding from manufacturing: defects found at code review cost a fraction of defects found in production. Every skipped review is a deferred cost with interest.</rationale>
+      </rule>
+      <list>
+        <item>Quality = degree to which requirements are met (not "high quality" — that conflates grade with conformance).</item>
+        <item>Grade = category of features (premium vs. basic); low grade is a business decision, not a defect.</item>
+        <item>Prevention = building quality in (code review, pair programming, TDD).</item>
+        <item>Detection = finding defects after they exist (testing, inspections, UAT) — necessary but more expensive than prevention.</item>
+      </list>
+    </section>
+
+    <section name="three-quality-processes">
+      <p>The core project quality framework across the project lifecycle:</p>
+      <list>
+        <item>Plan Quality (before work begins): define standards, metrics, and targets. Lock in quality/dod.yaml per repo.</item>
+        <item>Manage Quality (assurance, during work): ensure processes produce quality — code reviews, DoD enforcement, automated testing requirements, retrospectives.</item>
+        <item>Control Quality (verification, at completion): verify deliverables meet standards — testing, inspections, defect tracking.</item>
+      </list>
+    </section>
+
+    <section name="quality-metrics-taxonomy">
+      <p>Metrics taxonomy across product, process, and perception dimensions:</p>
+      <list>
+        <item>Product metrics: performance, reliability, usability, defect escape rate.</item>
+        <item>Process metrics: code coverage %, code review completion rate, DoD compliance %, defect density.</item>
+        <item>Perception metrics: customer satisfaction (NPS, CSAT), uptime SLA, response time SLO.</item>
+      </list>
+      <rule>
+        <statement>Track defect escape rate (bugs found in production / total bugs) as a leading indicator; apply SPC charting to distinguish signal from noise.</statement>
+        <rationale>A single defect count is a lagging snapshot; escape rate trend exposes whether the quality system is improving or degrading before customer impact accumulates.</rationale>
+      </rule>
+    </section>
+
+    <section name="definition-of-done-as-code">
+      <p>Machine-readable Definition of Done that governs deliverable acceptance:</p>
+      <rule>
+        <statement>Lock DoD per repo in quality/dod.yaml and version it — agents and CI read the file, not human prose.</statement>
+        <rationale>Human-prose DoD drift within weeks of authoring; a machine-readable file enforced by CI makes "done" unambiguous and diff-auditable when the team updates standards.</rationale>
+      </rule>
+      <rule>
+        <statement>Separate must items from should items in DoD; only must items block merge — should items open a follow-up issue automatically.</statement>
+        <rationale>A DoD that blocks on every item becomes a bypass incentive under delivery pressure; the must/should split preserves coverage while maintaining merge velocity.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-quality-pipeline">
+      <p>Automated quality assurance workflow using specialized agents:</p>
+      <rule>
+        <statement>Run quality gates twice: pre-commit (fast — lint, format) and pre-merge (full — tests, coverage, security scan); do not duplicate slow checks in both phases.</statement>
+        <rationale>Duplicating slow checks in pre-commit kills developer velocity; duplicating only in pre-merge creates late-stage surprises. The split is the correct trade-off.</rationale>
+      </rule>
+      <p>A quality-auditor subagent reads changed files in a PR, applies the DoD checklist, runs static analysis, and posts a structured review. A metric-collector aggregates coverage, defect rate, escape rate, and MTTR into a weekly dashboard. Human-in-loop is required for severity classification and any waiver decision.</p>
+    </section>
+
+    <section name="recommended-subagents">
+      <p>Specialized agents for different quality management tasks:</p>
+      <list>
+        <item>dod-validator — checks PR against DoD line items from dod.yaml; posts pass/fail per item with evidence link; blocks merge if any must item fails.</item>
+        <item>quality-metric-collector — pulls coverage, lint, defect counts, MTTR; emits dashboard JSON for trend visualization.</item>
+        <item>defect-triager — drafts severity + priority with one-sentence rationale citing user impact, frequency, workaround; awaits human confirmation before assigning.</item>
+        <item>quality-trend-analyst — weekly run; identifies regressions in any metric; opens incident if SPC control limits breached.</item>
+      </list>
+    </section>
+
+    <section name="prompt-patterns">
+      <p>Example prompts for quality agents with emphasis on evidence and human oversight:</p>
+      <example type="good">
+        <note>DoD-validator prompt — blocks on must items, requires evidence links and forbids auto-skip:</note>
+        <code lang="text"><![CDATA[You are a dod-validator subagent. Apply DoD {dod.yaml} to PR diff {diff}.
+For each item return: {item_id, status: pass|fail|n/a, evidence_link}.
+Block merge if any "must" item fails. Do not invent evidence.
+For "n/a" items: flag for human approval — never auto-skip.]]></code>
+      </example>
+      <example type="good">
+        <note>Defect-triager prompt — structured severity output awaiting human confirmation:</note>
+        <code lang="text"><![CDATA[You are a defect-triager. Given bug report {report}, draft:
+- severity: Critical|High|Medium|Low
+- priority: P1|P2|P3
+- rationale: one sentence citing user impact, frequency, workaround availability
+- similar_issue_ids: [ ... ]
+Output JSON. Wait for human confirm before assigning.]]></code>
+      </example>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common failure modes when agents manage quality:</p>
+      <antipattern>
+        <description>Agent writes assertion-free tests to hit the coverage percentage target.</description>
+        <reason>Coverage tools measure lines executed, not assertion correctness. Gate on mutation score (mutmut, stryker) for critical modules to detect tautological tests.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Defect severity consistently classified as "Medium" by the triager.</description>
+        <reason>Medium is the safest answer for an LLM avoiding both over- and under-escalation. Calibrate with rubric examples and force evidence citation per severity choice.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent auto-skips "n/a" DoD items without human approval.</description>
+        <reason>N/a bypass is the most exploited DoD escape hatch; require explicit human approval for any n/a tag to preserve the gate's integrity.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Static analyzer run produces 10,000 legacy issues; agent attempts to fix all in one PR.</description>
+        <reason>Bulk fixes in a single PR are impossible to review and routinely introduce regressions. Chunk by file or module with incremental PRs.</reason>
+      </antipattern>
+      <list>
+        <item>For agent-written code: require 90%+ coverage, mutation testing on critical modules, no warning suppressions without explanatory comment.</item>
+        <item>Quality cost is U-shaped: too little = rework, too much = lost velocity. Re-tune gates quarterly using lead-time and defect data.</item>
+        <item>Sentry/BugSnag rate-limits can drop events during incident spikes; do not trust raw counts for SLO breach declarations.</item>
+        <item>Coverage % becomes Goodhart target (developers write trivial tests to hit 80%); also gate on mutation score.</item>
+        <item>DoD checklists ossify; teams check the box without reading — pair automated enforcement with periodic review.</item>
+        <item>"Zero critical bugs" hides triage bias — severity gets downgraded under pressure; calibrate with historical examples.</item>
+        <item>Quality gates without trend analysis flag noise; root-cause loops are missing — pair gates with weekly trend dashboard.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <p>Command-line tools for quality automation:</p>
+      <list>
+        <item>sonar-scanner — static analysis, code smells, coverage.</item>
+        <item>ruff — Python lint + format; replaces black + flake8.</item>
+        <item>eslint — JS/TS lint.</item>
+        <item>pytest --cov — Python coverage.</item>
+        <item>c8 / nyc — JS/TS coverage.</item>
+        <item>mutmut / stryker — mutation testing for critical modules.</item>
+        <item>gitleaks — secret scanning; required in the quality gate.</item>
+        <item>semgrep — pattern-based static analysis.</item>
+        <item>trivy — container/SBOM vulnerability scan.</item>
+        <item>gh pr checks — read CI quality gate status.</item>
+      </list>
+    </section>
+
+    <section name="services">
+      <p>SaaS and OSS platforms with agent-friendly APIs for quality management:</p>
+      <list>
+        <item>SonarQube / SonarCloud — Web API for issues, quality gates, coverage; OSS and SaaS options.</item>
+        <item>Codacy — REST API, multi-language analysis.</item>
+        <item>Code Climate — maintainability + test coverage, GitHub-native.</item>
+        <item>Codecov — coverage trend API, PR comments.</item>
+        <item>Sentry — defect-in-prod telemetry, API for events; rate-limits apply during spikes.</item>
+        <item>BugSnag — stability score API.</item>
+        <item>TestRail — test case management, REST API; seat-priced.</item>
+        <item>Zephyr — Jira-coupled QA, API exists.</item>
+        <item>BrowserStack — cross-browser test runs via API; physical device testing.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <rule>
+        <statement>Lock DoD per repo in quality/dod.yaml and version it — agents read the file, not human prose.</statement>
+        <rationale>Machine-readable DoD enforced by CI makes "done" unambiguous and diff-auditable.</rationale>
+      </rule>
+      <rule>
+        <statement>Track defect escape rate (bugs found in prod / total bugs) as a leading indicator; SPC chart it.</statement>
+        <rationale>Escape rate trend exposes whether the quality system is improving before customer impact accumulates.</rationale>
+      </rule>
+      <rule>
+        <statement>Separate "must" from "should" in DoD; only "must" blocks merge, "should" opens a follow-up.</statement>
+        <rationale>Preserves coverage while maintaining merge velocity under delivery pressure.</rationale>
+      </rule>
+      <rule>
+        <statement>Run quality gate twice: pre-commit (fast) and pre-merge (full) — do not duplicate slow checks.</statement>
+        <rationale>Avoids killing developer velocity while catching late-stage surprises.</rationale>
+      </rule>
+      <rule>
+        <statement>For agent-written code, raise the bar: 90%+ coverage, mutation testing on critical modules, no warning suppressions without comment.</statement>
+        <rationale>LLM-generated code requires higher scrutiny; mutation testing reveals tautological tests.</rationale>
+      </rule>
+      <rule>
+        <statement>Quality cost is U-shaped: too little = rework, too much = lost velocity. Re-tune gates quarterly using lead-time data.</statement>
+        <rationale>Optimal gate tightness shifts as codebase matures and team size changes; quarterly calibration prevents ossification.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/dod.yaml" purpose="Machine-readable Definition of Done with must/should items and scope tags"/>
+      <template path="templates/dod-validator.py" purpose="PR gate script: tests, coverage, lint, secrets scan"/>
+      <template path="templates/defect-report.md" purpose="Defect report template with severity, steps, environment, root cause"/>
+      <template path="templates/quality-checklist.md" purpose="Pre-ship quality checklist (code, testing, performance, security, accessibility)"/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.iso.org/standard/62085"/>
+      <link href="https://www.pmi.org/pmbok-guide-standards/foundational/PMBOK"/>
+      <link href="https://en.wikipedia.org/wiki/W._Edwards_Deming"/>
+      <link href="https://sre.google/books/"/>
+    </see-also>
+  </content>
+</methodology>
