@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (confidence-thresholded-cascade, embedded-scratchpad-field, eu-ai-act-compliance; feature-045 batch 239)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (field-descriptions-as-prompts, file-reference-passing, langchain-agents-architectures; feature-045 batch 240)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (ai-governance-compliance, autonomous-agents, bundle-vs-split-tools; feature-045 batch 238)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (agent-architectures, agent-patterns, ai-agent-patterns; feature-045 batch 237)
