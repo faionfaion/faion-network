@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-error-handling">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Typed error taxonomy for Go services: a project-wide AppError struct with code, message, HTTP status, and wrapping chain, plus a central Gin middleware that converts domain errors to structured JSON.</summary>
+    <tags>
+      <tag>go</tag>
+      <tag>errors</tag>
+      <tag>middleware</tag>
+      <tag>http</tag>
+      <tag>logging</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Go Error Handling</title>
+    <summary>Typed error taxonomy for Go services: a project-wide AppError struct with code, message, HTTP status, and wrapping chain, plus a central Gin middleware that converts domain errors to structured JSON. Every error crossing a layer boundary must be wrapped, typed, and logged exactly once at the handler boundary.</summary>
+    <why>
+      <p>Go's error interface carries no metadata. Without a typed wrapper, handlers make ad-hoc status decisions, logs miss correlation, and API responses are inconsistent. A single AppError struct + error catalog prevents the three most common drift patterns: untyped 500s, double-logging, and leaking internal messages to clients.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Establishing a project-wide error policy on a new Go service.</item>
+        <item>Refactoring legacy fmt.Errorf strings into typed, classifiable errors.</item>
+        <item>Adding centralized error-handler middleware mapping domain errors to JSON + logs + traces.</item>
+        <item>Building errors.Is / errors.As predicates for cross-package error checks.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Library code for external consumers — exposing AppError leaks internals; use small sentinels.</item>
+        <item>Tiny CLIs / one-shot scripts — fmt.Errorf("%w", err) plus exit code is enough.</item>
+        <item>Teams already standardized on pkg/errors or cockroachdb/errors — don't fork.</item>
+        <item>Greenfield where Go 1.20+ errors.Join + %w already covers the wrapping needs.</item>
+      </list>
+    </when-not-to-use>
+    <section name="apperror-struct">
+      <p>AppError struct design and implementation details.</p>
+      <rule>
+        <statement>Define AppError with Code (string), Message (string), HTTPStatus (int), and Err (error). Implement Error() and Unwrap() to satisfy the error interface and support errors.Is/As chains.</statement>
+        <rationale>A plain error string carries no metadata. Typed errors let middleware read Code and HTTPStatus without a switch on message substrings, and Unwrap() keeps the chain intact for errors.Is predicates.</rationale>
+      </rule>
+      <reference path="templates/apperror.go">Full apperror package with struct, sentinels, Wrap, and IsCode.</reference>
+    </section>
+    <section name="sentinel-variables-and-constructors">
+      <p>Using sentinel errors and factory functions for error creation.</p>
+      <rule>
+        <statement>Declare package-level sentinel variables for each standard error class (ErrNotFound, ErrUnauthorized, ErrValidation). Provide factory functions (NewNotFound, Wrap, AsValidation, AsConflict) that return new pointer instances rather than reusing sentinel pointers.</statement>
+        <rationale>Reusing sentinel pointers allows callers to mutate the struct. Factory functions return fresh instances with per-request context (resource name, inner error) while keeping the sentinel as a comparison target via errors.Is.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="go"><![CDATA[
+var ErrNotFound = &AppError{
+    Code:       "NOT_FOUND",
+    Message:    "Resource not found",
+    HTTPStatus: http.StatusNotFound,
+}
+
+func NewNotFound(resource string) *AppError {
+    return &AppError{
+        Code:       "NOT_FOUND",
+        Message:    fmt.Sprintf("%s not found", resource),
+        HTTPStatus: http.StatusNotFound,
+    }
+}
+]]></code>
+        <note>Factory creates a fresh value; the sentinel is only used as a comparison in errors.Is if needed.</note>
+      </example>
+    </section>
+    <section name="code-predicate-helper">
+      <p>Classification helper using errors.As for robustness across serialization boundaries.</p>
+      <rule>
+        <statement>Add an IsCode(err error, code Code) bool helper using errors.As rather than pointer identity. This makes classification work even after JSON round-trips or struct copies.</statement>
+        <rationale>errors.Is on pointer sentinels breaks when the error is reconstructed (JSON deserialization, gRPC transport). errors.As on the struct type survives reconstruction.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="go"><![CDATA[
+type Code string
+
+const (
+    CodeNotFound     Code = "NOT_FOUND"
+    CodeUnauthorized Code = "UNAUTHORIZED"
+    CodeValidation   Code = "VALIDATION_ERROR"
+    CodeConflict     Code = "CONFLICT"
+)
+
+func IsCode(err error, code Code) bool {
+    var ae *AppError
+    if !errors.As(err, &ae) {
+        return false
+    }
+    return Code(ae.Code) == code
+}
+]]></code>
+      </example>
+      <antipattern>
+        <description>Using pointer equality: if err == apperror.ErrNotFound { ... }</description>
+        <reason>Fails after fmt.Errorf("%w", err) wrapping, JSON deserialization, or struct copy. errors.As handles all cases.</reason>
+      </antipattern>
+    </section>
+    <section name="middleware-pattern">
+      <p>Central Gin middleware that reads the last appended error, type-asserts to AppError, and returns a structured JSON response with the correct HTTP status.</p>
+      <rule>
+        <statement>Register one ErrorHandler middleware at the router root. Handlers call c.Error(err) instead of c.JSON directly for errors. The middleware reads c.Errors.Last() and maps AppError fields to the JSON response.</statement>
+        <rationale>Centralizing the error-to-response mapping ensures consistent JSON shape, prevents duplicate logging, and keeps handlers free of HTTP-status decision logic.</rationale>
+      </rule>
+      <reference path="templates/error_middleware.go">Gin ErrorHandler middleware implementation.</reference>
+      <example type="good">
+        <code lang="go"><![CDATA[
+func ErrorHandler() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        c.Next()
+        if len(c.Errors) == 0 {
+            return
+        }
+        err := c.Errors.Last().Err
+        if appErr, ok := err.(*apperror.AppError); ok {
+            c.JSON(appErr.HTTPStatus, gin.H{
+                "error": gin.H{
+                    "code":    appErr.Code,
+                    "message": appErr.Message,
+                },
+            })
+            return
+        }
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "error": gin.H{
+                "code":    "INTERNAL_ERROR",
+                "message": "An unexpected error occurred",
+            },
+        })
+    }
+}
+]]></code>
+      </example>
+    </section>
+    <section name="multi-error-pitfall">
+      <p>Handling multiple errors in middleware.</p>
+      <antipattern>
+        <description>Reading only c.Errors.Last() when handlers append multiple errors via c.Error().</description>
+        <reason>Earlier errors are silently dropped. If the pattern requires multiple errors (batch validation), iterate c.Errors and aggregate into an errors[] array in the response.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Calling c.JSON(status, ...) inside the handler for error paths instead of c.Error(err).</description>
+        <reason>Bypasses the centralized handler; if multiple middlewares also write responses, the client sees a garbled body or Gin panics on double-write.</reason>
+      </antipattern>
+    </section>
+    <section name="logging-boundary">
+      <p>Where and how to log errors to prevent duplication.</p>
+      <rule>
+        <statement>Log errors exactly once, at the middleware boundary that writes the HTTP response. Do not log in the service or repository layer — those layers return the error up the stack.</statement>
+        <rationale>Logging at every layer produces duplicate log lines for the same request, making noise in aggregated log systems and making trace-ID correlation harder.</rationale>
+      </rule>
+    </section>
+    <section name="wrapping-rules">
+      <p>Best practices for error wrapping and composition.</p>
+      <rule>
+        <statement>Wrap at every layer boundary using fmt.Errorf("&lt;layer&gt; &lt;op&gt;: %w", err). The prefix identifies the caller in the error chain for SRE debugging.</statement>
+        <rationale>An unwrapped error loses its call-site context. A chain of "user lookup: order fetch: db scan: ..." tells on-call exactly which layer failed without opening the profiler.</rationale>
+      </rule>
+      <rule>
+        <statement>Never call Wrap(err, msg) on a known domain error (validation, not-found). Use typed constructors (NewNotFound, AsValidation) so the HTTP status is preserved. Wrap is for unexpected/internal errors only.</statement>
+        <rationale>Wrap always returns HTTPStatus 500. Applying it to a 404 downgrades the status, breaking client error handling.</rationale>
+      </rule>
+      <rule>
+        <statement>Never embed secrets, SQL queries, or PII in AppError.Message. These bubble to clients via middleware. Use apperror.Internal(err) to swap the public message and keep the chain for server-side logging.</statement>
+        <rationale>Error messages that reach clients are part of the API contract and may appear in browser network tabs or mobile app crash logs.</rationale>
+      </rule>
+    </section>
+    <section name="lint-enforcement">
+      <p>Linting rules to enforce error handling discipline.</p>
+      <rule>
+        <statement>Enable errcheck, errorlint, wrapcheck, and nilerr in golangci-lint. These make un-typed errors, unwrapped cross-package errors, and if err != nil { return nil } mistakes fail CI.</statement>
+        <rationale>Manual code review misses missing wrappings; lint enforcement catches them at compile time, before the error reaches production.</rationale>
+      </rule>
+      <list>
+        <item>errcheck — forbids ignored returns</item>
+        <item>errorlint — enforces %w / errors.Is/As style</item>
+        <item>wrapcheck — requires cross-package errors to be wrapped</item>
+        <item>nilerr — catches if err != nil { return nil } mistakes</item>
+        <item>staticcheck SA4006 / SA1019 — misc error misuse</item>
+      </list>
+    </section>
+    <section name="agent-gotchas">
+      <p>Common mistakes made by AI agents when implementing error handling.</p>
+      <antipattern>
+        <description>Returning raw err.Error() to clients: c.JSON(400, gin.H{"error": err.Error()})</description>
+        <reason>Leaks database DSNs, query text, internal hostnames. Always intercept in middleware and return a safe AppError.Message.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Conflating errors.Is (sentinel match) and errors.As (type assertion).</description>
+        <reason>errors.Is checks identity/equality down the chain; errors.As checks type. Using Is on a struct pointer that was reconstructed always returns false.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using Wrap() as a generic wrapper on every error including user errors.</description>
+        <reason>Wrap always produces 500. User-facing errors (400, 404, 409) must use typed constructors that carry the correct status.</reason>
+      </antipattern>
+    </section>
+    <section name="limitations-and-gotchas">
+      <p>Known limitations and common pitfalls when using typed errors.</p>
+      <p>The AppError.Error() includes the wrapped error text; if you log err.Error() AND log err with structured logger, you double-log and may leak PII. Sentinel pattern (var ErrNotFound = &amp;AppError{...}) is mutable — anyone with a pointer can change the message at runtime. Prefer value sentinels or factory functions only. Wrap(err, msg) always returns 500 — agents call it on user errors and lose the right HTTP status (validation 400, not-found 404). errors.Is against pointer sentinels works only because of pointer identity; if a goroutine reconstructs the same struct via JSON or copy, identity breaks. The middleware reads c.Errors.Last() only — if a handler appended multiple errors, earlier ones are dropped silently. Error message localization isn't covered; agents shipping multilingual APIs will hardcode English in apperror.Message.</p>
+    </section>
+    <section name="agentic-workflow">
+      <p>How to apply this methodology with AI agents.</p>
+      <p>Treat errors as a typed subsystem on par with handlers and repositories. One agent designs the error catalog (codes, HTTP statuses, log severity) as a single Markdown table; another wires the middleware and adapter functions; a reviewer agent (Opus) walks every return err in handlers and verifies the error is typed, wrapped, and logged exactly once. Force errcheck and errorlint in CI to make missing wrappings fail at compile time.</p>
+    </section>
+    <section name="cli-tools">
+      <p>Essential tools for error handling enforcement.</p>
+      <list>
+        <item>errcheck — Forbid ignored returns (https://github.com/kisielk/errcheck)</item>
+        <item>errorlint — Enforce %w / errors.Is/As style (https://github.com/polyfloyd/go-errorlint)</item>
+        <item>wrapcheck — Require errors crossing package boundaries to be wrapped (https://github.com/tomarrell/wrapcheck)</item>
+        <item>nilerr — Catch if err != nil { return nil } mistakes (https://github.com/gostaticanalysis/nilerr)</item>
+        <item>staticcheck (SA4006, SA1019) — Misc error misuse (https://staticcheck.dev/)</item>
+        <item>golangci-lint — Aggregator with all of the above (https://golangci-lint.run/)</item>
+        <item>Sentry CLI — Upload sourcemaps / releases (https://docs.sentry.io/cli/)</item>
+        <item>delve — Inspect error chains in panics (https://github.com/go-delve/delve)</item>
+      </list>
+    </section>
+    <section name="best-practices">
+      <p>Proven practices for Go error handling.</p>
+      <list>
+        <item>One error catalog per service, committed as Markdown next to the apperror package — agents read it before adding new codes.</item>
+        <item>Wrap at every layer boundary with fmt.Errorf("user lookup: %w", err). The wrapping prefix tells the SRE who's calling whom in the chain.</item>
+        <item>Log errors exactly once, at the boundary that decides the HTTP/RPC response. Earlier logs duplicate noise.</item>
+        <item>Never embed secrets or full SQL into error messages — those bubble to clients via the middleware. Use apperror.Internal(err) to swap the message and keep the chain.</item>
+        <item>Use errors.Is with a Code predicate, not pointer identity, so deserialized errors still match.</item>
+        <item>Distinguish expected domain errors (404, 409, 422) from unexpected errors (5xx). Only the latter should page on-call.</item>
+        <item>Integrate with tracing: every error crossing the handler boundary should span.RecordError(err) and span.SetStatus(codes.Error, ...).</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/apperror.go" purpose="Full apperror package: AppError, sentinels, Wrap, IsCode predicate."/>
+      <template path="templates/error_middleware.go" purpose="Gin ErrorHandler middleware mapping AppError to JSON."/>
+    </templates>
+    <see-also>
+      <link href="https://go.dev/blog/go1.13-errors"/>
+      <link href="https://go.dev/doc/effective_go#errors"/>
+      <link href="https://www.cockroachlabs.com/blog/error-handling-and-go-1-13/"/>
+      <link href="https://github.com/uber-go/guide/blob/master/style.md#errors"/>
+      <link href="https://github.com/polyfloyd/go-errorlint"/>
+    </see-also>
+  </content>
+</methodology>
