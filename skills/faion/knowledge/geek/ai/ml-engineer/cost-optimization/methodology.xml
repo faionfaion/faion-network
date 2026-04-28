@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cost-optimization">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Reduce LLM costs 60-90% through model routing, prompt caching, response caching, token reduction, and Batch API. Optimize only after measuring per-stage costs.</summary>
+    <tags>
+      <tag>cost-optimization</tag>
+      <tag>llm</tag>
+      <tag>routing</tag>
+      <tag>caching</tag>
+      <tag>budget-control</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>LLM Cost Optimization</title>
+    <summary>LLM costs can be reduced 60-90% through model routing (50-75% savings), prompt caching (80-90% on repeated system prompts), response caching (70-95% for deterministic queries), token reduction (20-40%), and Batch API (50% discount on async workloads). Track cost per pipeline stage from day 1 — you cannot optimize what you cannot attribute. Optimize only after measuring; premature optimization wastes time.</summary>
+    <why>
+      <p>LLM costs scale super-linearly in production: each agent turn, each pipeline stage, each user query multiplies. Output tokens cost 3-5x more than input tokens. Without model routing, every request goes to the most expensive model by default. Without prompt caching, the same 2K-token system prompt is billed repeatedly. Budget runaway is possible within hours on high-traffic agentic pipelines.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Monthly LLM spend exceeds $500 and is growing faster than revenue</item>
+        <item>Agentic pipelines with greater than 10K requests/day where model selection matters</item>
+        <item>Batch workloads with greater than 1h latency tolerance (Batch API = 50% off)</item>
+        <item>System prompts greater than 1K tokens (OpenAI) or greater than 2K tokens (Claude) that repeat across many calls</item>
+        <item>Multi-step pipelines where early stages can use cheap models for routing</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Early prototype phase — optimize only after measuring</item>
+        <item>Tasks where quality degradation from cheaper models is unacceptable (medical, legal, safety-critical)</item>
+        <item>Very low volume (less than 100 calls/day) — savings are negligible, complexity is not worth it</item>
+        <item>When the cost driver is output tokens on complex reasoning tasks — only better prompts help, not routing</item>
+      </list>
+    </when-not-to-use>
+    <section name="model-routing">
+      <summary>Route tasks by complexity to different models, saving 50-75% by avoiding expensive models on simple tasks.</summary>
+      <rule>
+        <statement>Route tasks by complexity: nano/Haiku for classification and routing, mini/Sonnet for standard queries, frontier model (gpt-4o/Opus) only for complex reasoning. Use a cheap classifier to route — even 5% misclassification is acceptable.</statement>
+        <rationale>Typical savings: 50-75%. The classifier itself costs tokens — ensure routing overhead is less than savings. At gpt-4o-mini ($0.15/M) vs gpt-4o ($2.50/M), routing 80% of traffic to mini saves ~$1.88 per 1M input tokens.</rationale>
+      </rule>
+      <example type="good" title="Complexity-based model router">
+        <code lang="python"><![CDATA[
+from anthropic import Anthropic
+
+client = Anthropic()
+
+def classify_complexity(task: str) -> str:
+    """Returns: simple | medium | complex"""
+    resp = client.messages.create(
+        model="claude-haiku-4-5",
+        max_tokens=10,
+        messages=[{"role": "user", "content": f"Classify task complexity (simple/medium/complex): {task[:200]}"}],
+    )
+    return resp.content[0].text.strip().lower()
+
+def route_model(task: str) -> str:
+    tier = classify_complexity(task)
+    return {"simple": "claude-haiku-4-5", "medium": "claude-sonnet-4-5", "complex": "claude-opus-4-5"}.get(tier, "claude-sonnet-4-5")
+]]></code>
+      </example>
+    </section>
+    <section name="prompt-caching">
+      <summary>Mark static content with cache_control to reuse across requests, saving 80-90% on input tokens for repeated system prompts.</summary>
+      <rule>
+        <statement>Enable prompt caching for system prompts greater than 1024 tokens (OpenAI) or greater than 2048 tokens (Claude). Place static content first, dynamic content last. The prefix must match byte-for-byte — even a space invalidates the cache.</statement>
+        <rationale>Typical savings: 80-90% on input tokens for cached prefixes. Second and subsequent calls with the same system prompt pay only for cache read (much cheaper) not full input. Savings compound on high-volume pipelines.</rationale>
+      </rule>
+      <example type="good" title="Prompt caching with Claude">
+        <code lang="python"><![CDATA[
+import anthropic
+
+client = anthropic.Anthropic()
+SYSTEM = "You are an expert analyst. [... 2000+ token static context ...]"
+
+response = client.messages.create(
+    model="claude-sonnet-4-5",
+    max_tokens=1024,
+    system=[{"type": "text", "text": SYSTEM, "cache_control": {"type": "ephemeral"}}],
+    messages=[{"role": "user", "content": "Analyze: ..."}],
+)
+# Second call with same system prompt hits cache: 90% input cost reduction
+]]></code>
+      </example>
+    </section>
+    <section name="response-caching">
+      <summary>Cache deterministic responses to avoid redundant API calls, saving 70-95% for repeated queries.</summary>
+      <rule>
+        <statement>Cache deterministic responses (temperature=0) at exact match: cache key = hash(model + system_prompt + user_message). TTL 24h for most content, shorter for time-sensitive data. Never cache temperature greater than 0 responses.</statement>
+        <rationale>Typical savings: 70-95% for repeated queries. Users often ask the same question. Exact-match caching with Redis has less than 1ms lookup overhead vs 500ms+ API calls. Temperature greater than 0 caching returns stale creative outputs users notice.</rationale>
+      </rule>
+    </section>
+    <section name="token-reduction">
+      <summary>Set output token limits and trim verbose prompts to reduce billable token count by 20-40%.</summary>
+      <rule>
+        <statement>Set max_tokens on every call as both a cost cap and a quality signal — if output truncates, the task is too broad and needs redesign. Remove verbose phrases from prompts but test that removal doesn't degrade output quality.</statement>
+        <rationale>Output tokens cost 3-5x more than input tokens. A hard max_tokens prevents runaway generation. "Please kindly" adds 3 tokens with no value — but aggressive removal of instructions can break models trained on verbose prompting.</rationale>
+      </rule>
+    </section>
+    <section name="batch-api">
+      <summary>Submit jobs for background processing with 50% cost discount for workloads tolerant of greater than 1 hour latency.</summary>
+      <rule>
+        <statement>Use Batch API (OpenAI, Anthropic, Google) for workloads tolerant of greater than 1h latency: 50% discount, no rate limit pressure, JSONL input. Do NOT wait synchronously for batch results — use async polling or a completion-handler agent.</statement>
+        <rationale>Batch API submits jobs for background processing. The 50% discount applies to both input and output tokens with no quality difference. Ideal for: bulk classification, content generation, nightly analysis pipelines.</rationale>
+      </rule>
+    </section>
+    <section name="savings-summary">
+      <list>
+        <item>Model routing: 50-75% cost reduction, low implementation complexity</item>
+        <item>Prompt caching: 80-90% on repeated system prompts, medium complexity</item>
+        <item>Response caching: 70-95% for deterministic queries, medium complexity</item>
+        <item>Token reduction: 20-40%, low complexity</item>
+        <item>Batch API: 50% for async workloads, medium complexity</item>
+        <item>Combined: 60-90% total reduction</item>
+      </list>
+    </section>
+    <section name="budget-control-rules">
+      <summary>Concrete guardrails to prevent cost runaway in production pipelines.</summary>
+      <rule>
+        <statement>Set separate budget caps for non-critical (news summarization) vs. critical (user-facing answers) pipelines. Alert at 80% daily budget; disable non-critical calls at 100%. Never disable critical pipelines automatically.</statement>
+        <rationale>A single runaway non-critical pipeline should not take down user-facing features. Separate caps prevent cascade failures where one pipeline exhausts the shared budget.</rationale>
+      </rule>
+      <rule>
+        <statement>Review the top-10 most expensive agent calls weekly and redesign them. Cost concentrates in a few high-frequency or high-output patterns.</statement>
+        <rationale>Pareto principle applies: 20% of call patterns generate 80% of cost. Weekly review makes cost optimization an ongoing practice rather than a one-time event.</rationale>
+      </rule>
+    </section>
+    <section name="monitoring-rules">
+      <summary>Instrumentation and observability for cost-per-stage attribution.</summary>
+      <rule>
+        <statement>Track cost per pipeline stage from day 1 — not total cost. Use response.usage (OpenAI) or response.usage (Claude) to record input/output tokens per agent step.</statement>
+        <rationale>Total cost is unactionable. Stage-level attribution tells you which steps to optimize. Cost dashboards lag 15-60 minutes — real-time caps require client-side token counting, not API usage data.</rationale>
+      </rule>
+      <rule>
+        <statement>Separately track prompt caching metrics and semantic caching metrics. They have different failure modes and different optimization levers.</statement>
+        <rationale>Prompt caching fails silently when the prefix changes. Semantic caching fails with false positives. Mixing them in a single "cache hit rate" metric obscures which layer is failing.</rationale>
+      </rule>
+    </section>
+    <section name="failure-modes">
+      <antipattern name="semantic-cache-false-positives">
+        <description>Semantic cache false positives: "what is the capital of France?" and "what is the capital of Germany?" may have cosine similarity greater than 0.95 and return the wrong cached answer.</description>
+        <reason>Semantic caching threshold tuning requires offline evaluation on your actual query distribution. A threshold of 0.95 is often too aggressive — test with 0.98+ for factual queries.</reason>
+      </antipattern>
+      <antipattern name="routing-classifier-overhead">
+        <description>Routing classifier overhead exceeds savings on short tasks.</description>
+        <reason>If the classifier takes 200 tokens to route a 50-token task, the overhead can exceed the savings from cheaper model selection. Only route when task token count significantly exceeds classification overhead.</reason>
+      </antipattern>
+      <antipattern name="prompt-caching-prefix-invalidation">
+        <description>Prompt caching invalidated by a single space change in the system prompt.</description>
+        <reason>OpenAI and Claude require exact byte-for-byte prefix matches. Dynamic content injected into the static system prompt prefix (e.g., current date, user name) invalidates the cache on every call.</reason>
+      </antipattern>
+      <antipattern name="budget-alert-timing">
+        <description>Human-in-loop checkpoint: when daily budget hits 80%, alerting after the automatic shutdown has already corrupted pipeline state.</description>
+        <reason>Alert at 80% to allow human intervention before shutdown. Shutdown mid-pipeline corrupts in-flight state. Design graceful shutdown: complete current steps, then pause new intake.</reason>
+      </antipattern>
+      <antipattern name="response-caching-temperature">
+        <description>Response caching with temperature greater than 0 returns stale creative outputs that users notice.</description>
+        <reason>Temperature greater than 0 caching returns stale creative outputs users notice. Cache only at temperature=0.</reason>
+      </antipattern>
+      <antipattern name="aggressive-token-reduction">
+        <description>Aggressive token reduction (removing "please", verbose instructions) can break models trained on verbose instruction-following.</description>
+        <reason>Token reduction saves 20-40%, but removing instructions can degrade output quality. Test that removal doesn't degrade output quality.</reason>
+      </antipattern>
+    </section>
+    <section name="agentic-workflow">
+      <p>Agents apply cost optimization in two layers: routing (which model) and caching (avoid calling at all). A lightweight classifier agent (Haiku/gpt-4o-mini) reads the task complexity score and routes to Sonnet or Opus. Before any LLM call, a cache lookup checks Redis for exact match (temperature=0) or semantic match (embedding similarity greater than 0.95). The agent pipeline itself should be instrumented to emit per-step token counts, enabling offline analysis of which stages drive the most cost. Budget watchdog agents fire alerts at 80% of daily cap and kill non-critical calls at 100%.</p>
+      <p>Recommended subagents: Any routing agent using a nano/mini model as the classifier. faion-sdd-execution uses cheaper models for planning steps, Opus only for critical decisions.</p>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Track cost per pipeline stage from day 1, not total cost — you can't optimize what you can't attribute</item>
+        <item>Use output token limits (max_tokens) as both a cost cap and a quality signal — if output truncates, the task is too broad</item>
+        <item>Classify tasks by complexity with a cheap model before routing; even 5% misclassification is acceptable</item>
+        <item>Cache at temperature=0 only; cache key = hash(model + system + user_message)</item>
+        <item>Set separate budget caps for non-critical (news summarization) vs. critical (user-facing answers) pipelines</item>
+        <item>Review top-10 most expensive agent calls weekly and redesign them — cost concentrates in a few patterns</item>
+        <item>Always separate prompt caching metrics from semantic caching metrics — they have different failure modes</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/model-router.py" purpose="Complexity-based model router (Haiku → Sonnet → Opus)"/>
+      <template path="templates/token-budget.py" purpose="Per-call token cost tracking with daily budget enforcement"/>
+      <template path="templates/prompt-cache-claude.py" purpose="Claude prompt caching with cache_control header"/>
+    </templates>
+    <see-also>
+      <link href="https://openai.com/pricing"/>
+      <link href="https://www.anthropic.com/pricing"/>
+      <link href="https://docs.litellm.ai/docs/budget_manager"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching"/>
+      <link href="https://github.com/openai/tiktoken"/>
+      <link href="https://deepsense.ai/blog/llm-inference-optimization-how-to-speed-up-cut-costs-and-scale-ai-models/"/>
+      <ref slug="claude-api"/>
+      <ref slug="llm-decision-framework"/>
+    </see-also>
+  </content>
+</methodology>
