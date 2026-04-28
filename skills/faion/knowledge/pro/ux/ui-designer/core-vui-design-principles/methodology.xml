@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="core-vui-design-principles">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ui-designer</domain>
+    <summary>Three testable VUI design principles: Simplicity (one idea per turn), Natural Conversation (sound human, offer follow-up), Context Awareness (use history implicitly).</summary>
+    <tags>
+      <tag>voice-ui</tag>
+      <tag>conversation-design</tag>
+      <tag>vui-principles</tag>
+      <tag>llm-output</tag>
+      <tag>dialog-design</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Core VUI Design Principles</title>
+    <summary>Three testable principles for voice user interface design: (1) Simplicity — one idea per turn, no redundant phrasing; (2) Natural conversation — sound human, offer one helpful follow-up; (3) Context awareness — use prior turns implicitly, never restate what the user just said. Voice interfaces fail when designed like visual interfaces: dense information, no follow-up offers, and ignoring conversation history all break the spoken medium.</summary>
+    <why>
+      <p>Voice is ephemeral — users cannot re-read. Dense responses cause cognitive overload and abandonment. LLMs default to verbose and polite; without explicit constraints every system utterance violates principle 1. Encoding the three principles as evaluator rubrics (not free-form review) enables reliable automated checking and measurable improvement across iterations.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing voice-first features (Alexa/Google Assistant skills, IVR, in-car voice, accessibility voice nav).</item>
+        <item>Adding spoken output to multimodal agents where the LLM both listens and speaks.</item>
+        <item>Auditing existing voice flows for verbosity, missing context tracking, or unnatural phrasing.</item>
+        <item>Generating TTS-layer prompt/response copy where SSML, pacing, and turn-taking matter.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure GUI/keyboard apps where voice is not a modality.</item>
+        <item>Backend-only agents with no spoken output (text-chat agents need conversation design, not VUI principles).</item>
+        <item>One-shot transactional bots where users never have a follow-up turn — those need scripts, not principles.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Principle 1: Simplicity">
+      <rule>
+        <statement>One idea per system turn; no redundant phrasing, units, timestamps, or location details unless explicitly requested.</statement>
+        <rationale>Voice is ephemeral — users cannot re-read. Dense responses cause cognitive overload; research shows comprehension drops sharply when spoken output exceeds two clauses.</rationale>
+      </rule>
+      <example type="good" title="Concise Confirmation">
+        <note>Concise confirmation, no redundant detail</note>
+        <code lang="text"><![CDATA[
+System: "Your order is confirmed for delivery tomorrow."
+        ]]></code>
+      </example>
+      <example type="bad" title="Redundant Detail">
+        <note>Redundant detail — date, time window, timezone all unprompted</note>
+        <code lang="text"><![CDATA[
+System: "Your order has been successfully processed and scheduled for delivery on January 20th at a time between 9 AM and 5 PM in your local timezone."
+        ]]></code>
+      </example>
+    </section>
+    <section name="Principle 2: Natural Conversation">
+      <rule>
+        <statement>Sound like a person: use contractions, conversational rhythm, and offer one helpful follow-up after completing a task.</statement>
+        <rationale>Formal language signals a machine and breaks the conversational contract; users disengage or revert to terse commands that hurt NLU coverage.</rationale>
+      </rule>
+      <rule>
+        <statement>Ban stop-list filler phrases from system prompts: "I'd be happy to", "Just to confirm", "I have successfully", "Currently".</statement>
+        <rationale>LLMs default to verbose, apologetic tone and will not self-edit reliably; the stop-list must be enforced via system prompt or post-processing.</rationale>
+      </rule>
+      <example type="good" title="Conversational with Follow-up">
+        <note>Conversational, offers follow-up</note>
+        <code lang="text"><![CDATA[
+User: "What's the weather?"
+System: "It's 72 and sunny. Should I tell you about tomorrow?"
+        ]]></code>
+      </example>
+      <example type="bad" title="Formal with No Follow-up">
+        <note>Formal, no follow-up offer</note>
+        <code lang="text"><![CDATA[
+User: "What's the weather?"
+System: "The current temperature is 72 degrees Fahrenheit with sunny conditions. Humidity is 45 percent."
+        ]]></code>
+      </example>
+    </section>
+    <section name="Principle 3: Context Awareness">
+      <rule>
+        <statement>Use prior turns implicitly; never ask users to repeat information they already provided in the same session.</statement>
+        <rationale>Forgetting prior context is the leading source of VUI frustration; users interpret it as incompetence and abandon flows.</rationale>
+      </rule>
+      <rule>
+        <statement>Track explicit dialog-state slots (intent, last_entity, pending_confirmation) in agent context — never reconstruct state from utterance history alone.</statement>
+        <rationale>Reconstructing state from text is fragile and drifts; explicit slot tracking makes state deterministic and auditable.</rationale>
+      </rule>
+      <example type="good" title="Implicit Update Using Session Context">
+        <note>Implicit update using session context</note>
+        <code lang="text"><![CDATA[
+User: "Set an alarm for 7 AM"
+System: "Alarm set for 7 AM tomorrow."
+User: "Make it 6:30"
+System: "Updated to 6:30 AM."
+        ]]></code>
+      </example>
+    </section>
+    <section name="Evaluator Rubric">
+      <rule>
+        <statement>Encode the three principles as a JSON rubric with scores 0-3; use it in agent critic passes instead of free-form review.</statement>
+        <rationale>Agents apply structured scoring more reliably than prose instructions; a numeric rubric also enables trend tracking across iterations.</rationale>
+      </rule>
+      <example type="good" title="Structured Rubric for Critic Agent">
+        <note>Structured rubric for critic agent</note>
+        <code lang="json"><![CDATA[
+{
+  "simplicity": {"score": 0, "note": "two ideas in one turn"},
+  "naturalness": {"score": 2, "note": "contractions present but no follow-up"},
+  "context":     {"score": 3, "note": "references last entity correctly"}
+}
+        ]]></code>
+      </example>
+    </section>
+    <section name="Subagent Architecture">
+      <rule>
+        <statement>Split VUI generation into a copywriter agent (produces utterances) and a critic agent (scores against the rubric); never merge into one call.</statement>
+        <rationale>A single agent producing and evaluating its own output cannot reliably self-critique; the split enables measurable improvement and independent retraining.</rationale>
+      </rule>
+      <rule>
+        <statement>Co-author every system utterance with a TTS preview; text that reads fine often sounds wrong due to prosody, pacing, or brand-name mispronunciation.</statement>
+        <rationale>Latency between user end-of-speech and first audio matters more for perceived naturalness than utterance length; the TTS preview catches both.</rationale>
+      </rule>
+    </section>
+    <section name="Prompt Patterns">
+      <example type="good" title="VUI Copywriter Prompt with Bounded Constraints">
+        <note>VUI copywriter prompt with bounded constraints</note>
+        <code lang="text"><![CDATA[
+You are vui-copywriter. Rewrite the system response below to satisfy:
+(1) Simplicity — drop redundant phrasing, units, timestamps unless asked.
+(2) Naturalness — sound like a person, offer one helpful follow-up.
+(3) Context — refer back to <last_user_turn> implicitly, do not restate it.
+Max 120 characters. Ban: "I'd be happy to", "Just to confirm", "I have successfully".
+Return JSON: {"utterance": "...", "rationale": "...", "removed_words": N}.
+        ]]></code>
+      </example>
+      <example type="good" title="Disambiguation Prompt for Low-Confidence Intent">
+        <note>Disambiguation prompt for low-confidence intent</note>
+        <code lang="text"><![CDATA[
+Emit a confidence score for the inferred intent.
+If confidence < 0.7, route to a clarification agent instead of generating a response.
+        ]]></code>
+      </example>
+    </section>
+    <section name="Agent Gotchas">
+      <antipattern>
+        <description>LLM generates verbose, apologetic responses despite instructions.</description>
+        <reason>Add a stop-list to the system prompt and enforce max word count in post-processing — models do not reliably self-edit on tone alone.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Context-awareness regressions are silent — the agent answers but ignores the prior turn.</description>
+        <reason>Always include the last 3-5 turns verbatim in the prompt and assert the response references at least one entity from them in the critic pass.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LLM counts words or characters to enforce length limits.</description>
+        <reason>LLMs are unreliable at counting; enforce length limits in code post-generation, not via model instruction.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Single agent decides both "is auth required?" and "speak the response" for sensitive operations.</description>
+        <reason>Split into a policy agent and a response agent; the executor must never see raw sensitive values. See vui-privacy-security methodology for the full pattern.</reason>
+      </antipattern>
+    </section>
+    <section name="When to Use This Methodology">
+      <list>
+        <item>Designing voice-first features (Alexa/Google Assistant skills, IVR menus, in-car voice, accessibility voice nav).</item>
+        <item>Adding voice input/output to multimodal apps where the LLM both listens and speaks.</item>
+        <item>Auditing existing voice flows for verbosity, missing context tracking, or unnatural phrasing.</item>
+        <item>Generating prompt/response copy for an agent's text-to-speech layer where SSML, pacing, and turn-taking matter.</item>
+      </list>
+    </section>
+    <section name="When NOT to Use This Methodology">
+      <list>
+        <item>Pure GUI/keyboard apps where voice is not a modality — visual hierarchy guidance lives elsewhere.</item>
+        <item>Backend-only agents with no spoken output (chat-text agents need conversation design, not VUI principles per se).</item>
+        <item>One-shot transactional bots where users never have a follow-up turn — these need scripts, not principles.</item>
+      </list>
+    </section>
+    <section name="Limitations and Known Failure Modes">
+      <list>
+        <item>Principles are platform-agnostic; they do not encode Alexa-specific certification rules or Google Assistant policy gates.</item>
+        <item>"Natural conversation" is locale/culture-bound — guidance assumes English/Western norms; idioms in UA/RU/PT need re-tuning.</item>
+        <item>Context awareness requires session/state infrastructure outside the principles themselves; principles will be silently violated if the runtime drops state.</item>
+        <item>No coverage of latency budgets — principles say "be brief" but not "&lt;800 ms first token" which actually matters for perceived naturalness.</item>
+      </list>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Use a single specialist subagent that takes a user goal plus dialog turn history and emits the next system utterance plus a short rationale tagged against the three principles. Keep the agent stateless — pass full turn context in each invocation. For larger flow design, run a planner agent that drafts a happy path and 2-3 repair branches, then a critic agent that scores each utterance against simplicity/naturalness/context with concrete edits.</p>
+    </section>
+    <section name="Recommended Subagents">
+      <list>
+        <item>vui-copywriter — sonnet; rewrites system utterances for brevity, natural phrasing, follow-up offers.</item>
+        <item>vui-critic — sonnet; reviews dialog turns against the three principles and flags violations with line refs.</item>
+        <item>dialog-flow-designer — sonnet; produces happy/repair/disambiguation branches from a single intent spec.</item>
+      </list>
+    </section>
+    <section name="CLI Tools">
+      <list>
+        <item>ask-cli (Amazon Alexa Skills Kit CLI v2) — Scaffold/deploy/test Alexa skills, simulate utterances; npm i -g ask-cli</item>
+        <item>gactions (Google Actions Builder CLI) — Deploy Conversational Actions, run preview; gcloud components install gactions</item>
+        <item>voiceflow-cli — Sync Voiceflow projects, export dialog JSON; npm i -g @voiceflow/cli</item>
+        <item>bspeech / Azure speech-cli — TTS/STT round-trip testing for utterance pacing; docs.microsoft.com/azure/cognitive-services/speech-service/spx-overview</item>
+        <item>ffmpeg + sox — Measure response audio length, gaps, peak level; ffmpeg.org / sox.sourceforge.net</item>
+      </list>
+    </section>
+    <section name="Services and External APIs">
+      <list>
+        <item>Voiceflow (SaaS) — Visual dialog builder; agents can mutate flows via /v2/projects; public API available</item>
+        <item>Amazon Alexa (ASK) (SaaS) — SMAPI REST; certification gates require human-in-loop</item>
+        <item>Google Assistant Actions Builder (SaaS, sunset for new in 2024 except for select partners) — Limited gactions CLI support; check current availability</item>
+        <item>Rasa Open Source (OSS) — Self-hosted, full control over NLU+dialog policy; REST + Python SDK</item>
+        <item>ElevenLabs / OpenAI TTS / Azure Neural TTS (SaaS) — Test how copy actually sounds; SSML support varies; REST</item>
+        <item>Botpress (OSS + SaaS) — Conversation design with branchable flows; Studio API</item>
+      </list>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Co-author every system utterance with a TTS preview — text that reads fine often sounds wrong; latency between user end-of-speech and first audio matters more than utterance length.</item>
+        <item>Encode the three principles as evaluator rubrics in a JSON schema, not free-form review — agents apply them more reliably with {simplicity:0..3, naturalness:0..3, context:0..3}.</item>
+        <item>Track explicit dialog-state slots (intent, last_entity, pending_confirmation) in agent context; never reconstruct from utterance history alone — it drifts.</item>
+        <item>Keep VUI copy in a versioned content repo separate from code — designers iterate without merge conflicts; agents fetch latest at runtime.</item>
+        <item>Build a small "ground-truth" set of 30-50 representative dialog snippets and run any new prompt/model change against it before promoting.</item>
+      </list>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <list>
+        <item>LLMs love filler ("Just to confirm...", "I'd be happy to..."). Add a stop-list to the system prompt or post-process — the model will not self-edit reliably.</item>
+        <item>Context-awareness regressions are silent: the agent answers but ignores prior turn. Always include the last 3-5 turns verbatim in the prompt and assert the response references at least one entity from them.</item>
+        <item>Disambiguation prompts ("5 minutes or 5 hours?") are easy to skip when the model is over-confident. Force the model to emit a confidence score and route low-confidence to a clarification agent.</item>
+        <item>Never let the LLM both decide "is auth required?" and "speak the response" in one call for sensitive operations — split into a policy agent and a response agent (see vui-privacy-security).</item>
+        <item>TTS engines mispronounce brand names and codes. Maintain an SSML lexicon side-file; agents must wrap proper nouns with phoneme or sub tags before sending to TTS.</item>
+        <item>Avoid asking the model to count words/characters — it is unreliable. Enforce length limits in code post-generation.</item>
+      </list>
+    </section>
+    <section name="References">
+      <list>
+        <item>Cathy Pearl, "Designing Voice User Interfaces" (O'Reilly, 2016).</item>
+        <item>Google Conversation Design — designguidelines.withgoogle.com/conversation/</item>
+        <item>Amazon Alexa Design Guide — developer.amazon.com/docs/alexa/alexa-design/get-started.html</item>
+        <item>Nielsen Norman Group — "Voice Interaction UX" (nngroup.com/articles/voice-first/)</item>
+        <item>Erika Hall, "Conversational Design" (A Book Apart).</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/vui-copywriter-prompt.txt" purpose="System prompt for the VUI copywriter subagent"/>
+      <template path="templates/vui-utterance-lint.py" purpose="Linter flagging over-long, multi-clause, or filler-filled utterances"/>
+    </templates>
+  </content>
+</methodology>
