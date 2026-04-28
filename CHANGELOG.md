@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (reasoning-first-architectures, structured-output, text-to-speech; feature-045 batch 266)
 - migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (llamaindex, llm-decision-framework, multi-agent-systems; feature-045 batch 264)
 - migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (hybrid-search, image-generation, langchain; feature-045 batch 263)
 - migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (fine-tuning-lora, finetuning, graph-rag; feature-045 batch 262)
