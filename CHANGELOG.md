@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/ml-ops methodologies → methodology.xml (llm-observability-stack-2026, lora-qlora, img-gen-basics; feature-045 batch 271)
 - migrate: 2/3 geek/ai/ml-ops methodologies → methodology.xml (evaluation-benchmarks, evaluation-framework; feature-045 batch 268)
 - migrate: 3/3 geek/ai/ml-ops methodologies → methodology.xml (fine-tuning-lora, fine-tuning-openai-basics, fine-tuning-openai-production; feature-045 batch 269)
 - migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (vector-databases, voice-agents, cost-reduction-strategies; feature-045 batch 267)

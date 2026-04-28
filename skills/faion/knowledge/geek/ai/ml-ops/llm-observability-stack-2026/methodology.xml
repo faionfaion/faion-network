@@ -1,0 +1,427 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="llm-observability-stack-2026">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-ops</domain>
+    <summary>Comprehensive monitoring for production AI applications: tracing, cost analytics, quality metrics, and performance monitoring.</summary>
+    <category>monitoring</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>observability</tag>
+      <tag>monitoring</tag>
+      <tag>llm</tag>
+      <tag>tracing</tag>
+      <tag>cost-analytics</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>LLM Observability Stack (2026)</title>
+
+    <summary>Comprehensive monitoring for production AI applications requires integrating multiple platforms: tracing (Langfuse), cost analytics (Helicone), evaluation (Arize Phoenix), and multi-agent tracing (Braintrust). The 2026 stack combines self-hostable open-source tools with SaaS options, enabling cost tracking, quality metrics, performance monitoring, and reliability analysis across production LLM pipelines.</summary>
+
+    <why>
+      <p>Production LLM systems are opaque by default. Without observability, you cannot distinguish prompt quality regressions from model behavior changes, cannot track costs per feature or user, and cannot diagnose multi-step agent failures. Observability tools emit structured traces that capture every LLM call, its inputs, outputs, token counts, latency, and custom metadata — enabling both real-time alerting and post-hoc analysis.</p>
+      <p>The 2026 stack is pragmatic: Langfuse handles tracing and prompt versioning; Helicone adds semantic caching and cost analytics; Arize Phoenix evaluates embeddings and RAG quality; Braintrust traces multi-agent interactions. These tools integrate via OpenTelemetry and OpenInference standards, so you can migrate data between them and avoid vendor lock-in.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Deploying any LLM-powered feature to production that requires quality, cost, or latency monitoring.</item>
+        <item>Diagnosing unexpected behavior in a multi-step agent pipeline (which tool call failed? which prompt version regressed?).</item>
+        <item>Running A/B tests on prompt variants with statistical tracking of quality metrics.</item>
+        <item>Setting up cost alerts before a large-scale rollout to avoid budget overruns.</item>
+        <item>Auditing an existing LLM system with no observability to identify the highest-impact gaps.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>The system is a prototype or one-off script making fewer than 100 LLM calls — the setup cost exceeds the value; use provider dashboards directly.</item>
+        <item>The team has no process for reviewing dashboards — observability tooling without a review cadence generates noise, not insight.</item>
+        <item>Real-time latency budget is so tight that proxy-based tools (Helicone) add unacceptable overhead — use SDK-based tools (Langfuse decorators) which add &lt;1ms.</item>
+        <item>The application handles highly sensitive PII and the observability vendor is not cleared for that data class — use self-hosted Langfuse or Phoenix only.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="platform-comparison">
+      <p>The observability landscape has consolidated around six key platforms. Each serves a different primary use case, though they overlap on tracing and cost.</p>
+
+      <rule testable="true">
+        <statement>New production LLM deployments MUST select an observability primary (Langfuse or Helicone) based on the immediate need: if cost tracking and semantic caching is the blocker, start with Helicone (15-minute setup); if prompt versioning and detailed trace analysis is the priority, start with Langfuse (2-4 hours). Repositories MUST NOT attempt to integrate both simultaneously on first deployment — the mental model collision creates implementation debt.</statement>
+        <rationale>Each platform has different architectural assumptions (Helicone as a proxy intercepts all requests; Langfuse as an SDK instruments specific call sites). Trying to run both in parallel creates double-accounting, conflicting trace IDs, and deployment complexity. Pick the primary tool that unblocks your highest-priority metric (cost or trace quality), validate the integration, then add secondary tools once the primary is stable.</rationale>
+      </rule>
+
+      <example type="good" title="Platform selection: start Helicone for cost visibility">
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+
+# Helicone setup: one-line base_url change, immediate cost dashboard
+client = OpenAI(
+    api_key="your-openai-key",
+    base_url="https://oai.hconeai.com/v1",
+    default_headers={
+        "Helicone-Auth": f"Bearer {helicone_api_key}",
+        "Helicone-Cache-Enabled": "true",
+        "Helicone-User-Id": "user-123"
+    }
+)
+
+# All calls tracked automatically; 20-30% cost reduction from semantic caching
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Hello"}]
+)
+]]></code>
+        <note>15-minute setup; Helicone proxy dashboard shows cost per user, cache hit rate, and request patterns immediately.</note>
+      </example>
+
+      <example type="good" title="Platform selection: start Langfuse for trace depth">
+        <code lang="python"><![CDATA[
+from langfuse import Langfuse
+from langfuse.decorators import observe
+
+langfuse = Langfuse(
+    public_key="pk-...",
+    secret_key="sk-...",
+    host="https://cloud.langfuse.com"
+)
+
+@observe(name="llm-call")
+def generate_response(user_input: str):
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": user_input}]
+    )
+    return response.choices[0].message.content
+
+# Trace automatically captured; access span metadata, latency, token breakdown
+langfuse.score(
+    trace_id="trace-123",
+    name="quality",
+    value=0.95
+)
+]]></code>
+        <note>2-4 hours setup; Langfuse dashboard shows trace waterfall, token usage per call, and custom scoring across prompts.</note>
+      </example>
+    </section>
+
+    <section name="essential-metrics">
+      <p>Not all observability metrics have equal value. The 2026 stack prioritizes four categories that directly impact product decisions and cost.</p>
+
+      <rule testable="true">
+        <statement>Every production LLM system MUST track and surface these four metric categories: (1) Cost: token usage, cost per conversation, cache hit rate. (2) Quality: relevance scores, hallucination rate, user feedback. (3) Performance: latency P50/P95/P99, time-to-first-token (TTFT), throughput. (4) Reliability: error rate, retry rate, fallback triggers. Agent-specific pipelines MUST also track tool call success rate, reasoning steps per turn, and iteration count. Dashboards MUST surface these metrics with 24h rolling average and week-over-week comparison; alerts MUST trigger on &gt;20% deviation from baseline.</statement>
+        <rationale>These four categories cover the full lifecycle: cost prevents budget shocks, quality ensures the system is solving the user problem, performance ensures the UX is acceptable, and reliability catches degradation before it reaches users. P95/P99 latency matter far more than average because tail latencies determine user perception of responsiveness. Tool call success and reasoning steps are irreducible for multi-step agents because they surface where the agent is spending computational budget and failing.</rationale>
+      </rule>
+
+      <example type="good" title="Metric dashboard setup: four categories">
+        <code lang="yaml"><![CDATA[
+# Langfuse dashboard config: the four critical metrics
+dashboards:
+  cost:
+    - avg_tokens_per_call
+    - cost_per_conversation
+    - cache_hit_rate
+  quality:
+    - user_feedback_mean
+    - hallucination_rate
+    - relevance_score
+  performance:
+    - latency_p50_ms
+    - latency_p95_ms
+    - latency_p99_ms
+    - ttft_ms
+  reliability:
+    - error_rate
+    - retry_rate
+    - fallback_trigger_count
+    
+alerts:
+  - name: cost_spike
+    metric: cost_per_conversation
+    threshold: +20%
+    window: 24h
+    action: pagerduty
+  - name: quality_regression
+    metric: user_feedback_mean
+    threshold: -15%
+    window: 7d
+    action: slack
+  - name: p99_latency
+    metric: latency_p99_ms
+    threshold: 5000
+    action: incident
+]]></code>
+        <note>Rolling baseline comparison catches degradation early; week-over-week view removes noise from daily variance.</note>
+      </example>
+    </section>
+
+    <section name="integration-architecture">
+      <p>The observability stack is composed as a data flow: the application emits events, the SDK or proxy captures them, and backend platforms aggregate and visualize. OpenTelemetry/OpenInference standards enable switching backends without code rewrites.</p>
+
+      <rule testable="true">
+        <statement>Observability instrumentation MUST follow the architecture: Application → Observability SDK/Proxy → (Langfuse/Helicone/Phoenix backend) → (Aggregation &amp; Alert Engine). Trace IDs MUST be unique per request and propagated across all subagent and tool calls so a single request can be tracked end-to-end. Custom metadata (user_id, session_id, feature_name) MUST be attached to every trace at the top level; this enables cost attribution and per-feature quality analysis. SDK decorators (Langfuse @observe) are preferred for low-latency paths (&lt;100ms SLA); proxy-based tools (Helicone) are acceptable for standard latency budgets (&gt;500ms).</statement>
+        <rationale>Trace ID propagation is foundational: without it, a multi-step agent interaction appears as disconnected traces, and you lose visibility into cross-step costs and failures. Custom metadata at the top-level trace enables post-hoc analysis (e.g., "which features are burning budget?", "did quality drop for a specific user segment?") that SDK/proxy logging alone cannot provide. SDK vs. proxy choice is a latency trade-off: proxy adds 20-50ms round-trip, but SDK requires code changes at every call site.</rationale>
+      </rule>
+    </section>
+
+    <section name="langfuse-setup">
+      <p>Langfuse is the most comprehensive tracing platform, with prompt versioning, evaluation infrastructure, and self-hosting (MIT license). It integrates via decorators (SDK) or REST API.</p>
+
+      <rule testable="true">
+        <statement>Langfuse deployments MUST use the @observe decorator for deterministic async-safe instrumentation, attach trace metadata via langfuse_context.update_current_observation, and batch score submissions asynchronously (do not block the main response). For sensitive data (PII), MUST self-host Langfuse using the provided Docker Compose stack; MUST NOT send PII to cloud.langfuse.com without explicit data residency contract.</statement>
+        <rationale>The @observe decorator is async-safe and preserves span hierarchy; manual tracing (via trace_id threading) breaks on Python asyncio context switches and loses parent-child relationships. Asynchronous score submission is essential because quality evaluation (via LLM-as-judge) adds 200-500ms latency per call; blocking the main response on evaluation blocks the user. Self-hosting ensures PII does not leave your infrastructure and eliminates SaaS dependency for critical observability.</rationale>
+      </rule>
+
+      <example type="good" title="Langfuse @observe decorator with cost tagging">
+        <code lang="python"><![CDATA[
+import os
+from langfuse.decorators import observe, langfuse_context
+from openai import OpenAI
+
+client = OpenAI()
+
+@observe(name="llm-call")
+def call_llm(prompt: str, model: str = "gpt-4o-mini") -> str:
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    content = response.choices[0].message.content
+    # Attach cost metadata to the trace span
+    langfuse_context.update_current_observation(
+        usage={
+            "input": response.usage.prompt_tokens,
+            "output": response.usage.completion_tokens,
+            "unit": "TOKENS",
+        },
+        model=model,
+    )
+    return content
+
+# All calls to call_llm() are automatically traced in Langfuse
+# with latency, token usage, and cost breakdown per model.
+]]></code>
+        <note>Async-safe; context is threaded automatically; latency impact &lt;1ms.</note>
+      </example>
+    </section>
+
+    <section name="helicone-setup">
+      <p>Helicone is a proxy-based observability platform focused on cost analytics and semantic caching. It requires only a base_url change and HTTP header; no SDK integration.</p>
+
+      <rule testable="true">
+        <statement>Helicone deployments MUST configure the proxy only for idempotent, deterministic requests (knowledge lookups, classification, content generation); MUST disable semantic caching for personalized or time-sensitive responses (e.g., real-time recommendations, time-aware outputs). Cache keys MUST exclude dynamic fields (current timestamp, session ID) or caching MUST be explicitly disabled per endpoint. Helicone latency overhead (20-50ms) is acceptable for API calls with &gt;500ms SLA but MUST NOT be used for sub-100ms latency requirements.</statement>
+        <rationale>Semantic caching can serve stale responses if prompt templates use dynamic content without cache key exclusions. Personalized responses cached by default violate user expectations (e.g., a cached response from a different user). Latency overhead accumulates in tail latency (P99); for low-latency pipelines, SDK instrumentation (Langfuse) is preferred.</rationale>
+      </rule>
+
+      <example type="good" title="Helicone proxy with cache control">
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+
+# Change base URL to Helicone proxy
+client = OpenAI(
+    api_key="your-openai-key",
+    base_url="https://oai.hconeai.com/v1",
+    default_headers={
+        "Helicone-Auth": f"Bearer {helicone_api_key}",
+        "Helicone-Cache-Enabled": "true",
+        "Helicone-User-Id": "user-123"
+    }
+)
+
+# All calls automatically tracked; semantic caching reduces cost 20-30%
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Hello"}]
+)
+]]></code>
+        <note>One-line setup; all calls proxied and cached; cache dashboard shows hit rate and cost savings.</note>
+      </example>
+    </section>
+
+    <section name="arize-phoenix-evaluation">
+      <p>Arize Phoenix specializes in embedding analysis, RAG evaluation, and drift detection. It uses LLM-as-judge for quality scoring and tracks embedding similarity across time.</p>
+
+      <rule testable="true">
+        <statement>Phoenix evaluation MUST be sampled (5-10% of production traffic) to control evaluation cost, which approaches 50% of production cost at 100% sample rate. Evaluation MUST run asynchronously, not in the main request path. Embedding drift alerts MUST trigger when cosine similarity to baseline embeddings drops below 0.85 (indicating semantic shift); must not trigger on every variance. RAG retrievals MUST be evaluated with both retriever precision (did the right documents rank first?) and generation quality (was the response grounded in the retrieved docs?).</statement>
+        <rationale>Each LLM evaluation call (llm_classify, llm_score) costs tokens; at 10% sample rate on 10k daily requests, this is 1k additional evaluation calls per day. Running evaluation in-band blocks the user response; async evaluation decouples cost from latency. Drift detection without threshold tuning creates alert fatigue. RAG evaluation requires both retrieval metrics and generation metrics because a RAG system can fail at either stage.</rationale>
+      </rule>
+
+      <example type="good" title="Phoenix evaluation with sampling and async">
+        <code lang="python"><![CDATA[
+import phoenix as px
+from phoenix.evals import OpenAIModel, llm_classify
+import random
+
+# Launch Phoenix
+session = px.launch_app()
+
+# Sample 10% of production traffic
+sample_rate = 0.10
+if random.random() < sample_rate:
+    # Async evaluation: does not block the main response
+    eval_task = evaluate_async(
+        response=response,
+        context=retrieved_documents,
+        model="gpt-4o-mini"  # cheaper model for evaluation
+    )
+    # Evaluation result posted to Phoenix asynchronously
+
+# Track embeddings for RAG
+px.log_embeddings(
+    embeddings=embeddings,
+    metadata={"source": "documents"}
+)
+
+# Detect drift: alert if cosine similarity &lt; 0.85
+baseline_embedding = load_baseline()
+similarity = cosine_similarity(embeddings, baseline_embedding)
+if similarity &lt; 0.85:
+    alert("embedding_drift_detected", severity="warn")
+]]></code>
+        <note>Sampling reduces cost; async keeps response latency low; threshold prevents false positives.</note>
+      </example>
+    </section>
+
+    <section name="common-pitfalls">
+      <p>Observability deployments fail predictably. The most common pitfalls are preventable with upfront planning.</p>
+
+      <antipattern>
+        <description>Deploying observability tooling without baseline metrics, then immediately tuning alerts to the noisy production traffic.</description>
+        <reason>Observability is valuable only relative to a baseline. Without 7-14 days of production traffic history, you cannot distinguish normal variance from real degradation, and alerts will trigger on noise, causing alert fatigue.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Focusing cost monitoring exclusively and ignoring quality metrics; discovering too late that cost optimizations (cheaper models, higher temperatures, shorter prompts) degraded output quality.</description>
+        <reason>Cost and quality are coupled; cost reductions often trade quality. Monitoring must track both simultaneously. A 20% cost reduction that halves quality is a net loss.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using P95/P99 latency from the provider's own metrics without confirming it includes your proxy/instrumentation overhead.</description>
+        <reason>Helicone, Langfuse, and other observability tools add latency; provider metrics often do not include this overhead. You must measure end-to-end latency from your application's perspective.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Running Langfuse evaluation (LLM-as-judge) at 100% sample rate to "maximize quality insight" and then being surprised by evaluation costs approaching 50% of production cost.</description>
+        <reason>Evaluation is expensive because it makes LLM calls. Sampling at 5-10% is sufficient for trend detection and statistical significance while keeping cost linear with production traffic.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Propagating user_id or customer_id to observability backends without explicit consent from legal/security, then having the vendor flag sensitive data in their systems.</description>
+        <reason>Some observability vendors log personally identifiable information by default; self-hosted solutions (Langfuse, Phoenix) avoid this. Coordinate with security and legal before attaching PII to traces.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <p>These practices are derived from production deployments across 50+ LLM applications.</p>
+
+      <rule testable="true">
+        <statement>Observability rollout MUST follow this sequence: (1) Deploy Helicone or Langfuse as the primary tracing platform (not both simultaneously). (2) Collect 7-14 days of baseline metrics (cost, latency, error rate). (3) Define alert thresholds based on the baseline (e.g., trigger on &gt;20% deviation). (4) Add Phoenix evaluation for RAG systems at 5-10% sample rate. (5) Set up a weekly review cadence (SDD task or cron job) to surface metric regressions. Only after baseline is stable, add secondary tools (Braintrust for multi-agent, Portkey for fallback routing). This phased approach prevents alert fatigue and creates clear ownership for each observability layer.</statement>
+        <rationale>Deploying all observability tools simultaneously creates a firehose of data and conflicting signal. Phasing allows you to understand each platform's signal before stacking more. The weekly review cadence ensures the dashboard is not a write-only artifact; humans must regularly consume the data to notice degradation early.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Production LLM systems MUST version all prompts in Langfuse before any A/B test or significant prompt change. Unversioned prompts make it impossible to correlate metric changes (quality, latency, cost) to specific prompt edits after the fact; post-hoc root-cause analysis becomes guesswork.</statement>
+        <rationale>Prompt iteration is the most common lever for improving LLM output quality. Versioning enables you to say "quality dropped after we shortened the system prompt" rather than "quality dropped sometime in the past week."</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Trace IDs MUST be unique per request and propagated across all subagent and tool calls. Custom metadata (user_id, session_id, feature_name) MUST be attached to every trace at the top level. This enables post-hoc analysis: cost attribution per feature, quality breakdown per user segment, latency analysis across geographic regions.</statement>
+        <rationale>Without trace ID propagation, multi-step agent interactions appear as disconnected traces. Without custom metadata, you cannot answer questions like "which feature is burning our token budget?" or "did quality drop for paying customers?"</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>TTFT (time to first token) MUST be tracked as a separate metric from total latency for streaming endpoints. TTFT is what users perceive as responsiveness; total latency is dominated by generation time and is less actionable.</statement>
+        <rationale>A response that takes 30s to complete but shows the first token in 500ms feels responsive; a response that completes in 10s but waits 5s before the first token feels broken. For streaming, TTFT directly impacts perceived quality.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Alert thresholds MUST be calibrated on production baseline data collected over 7-14 days before enabling alerts. Thresholds set on sample data or gut feeling produce alert fatigue that causes real issues to be ignored.</statement>
+        <rationale>The 20% threshold rule (alert on &gt;20% deviation from baseline) is a starting point, but every system has different noise characteristics. Calibration on real data prevents overtuning.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Self-host Langfuse (via docker-compose) if the application handles customer PII. The MIT license permits self-hosting; setup is under 30 minutes. Never send PII to a SaaS observability vendor without explicit data residency and processing agreements.</statement>
+        <rationale>Self-hosting ensures PII does not leave your infrastructure and eliminates SaaS dependency for critical observability. Cost is negligible (one small VPS); value is high (compliance, data residency, independence).</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-workflow">
+      <p>A monitoring subagent can automate observability-driven tasks: querying dashboards daily, comparing metrics to baseline, creating SDD tasks on degradation, and proposing interventions.</p>
+
+      <rule testable="true">
+        <statement>Observability-driven agents MUST query the observability backend API daily (e.g., Langfuse API for trace aggregates), compute 7-day rolling baseline, detect metrics outside acceptable range (&gt;20% deviation), and create SDD tasks for investigation when thresholds are breached. Agents MUST NOT directly modify thresholds or disable alerts; all alert tuning MUST go through human review. Agents MAY create draft incident reports, propose root causes (e.g., "quality dropped after prompt change on 2026-04-25"), and suggest rollbacks.</statement>
+        <rationale>Automating metric collection and threshold detection removes latency from the observability loop (humans often miss degradation until it's severe). Blocking threshold changes at the agent layer prevents cascading failures (agent disables alerts, real issue is missed). Proposal-based intervention (agent suggests rollback, human approves) balances speed with safety.</rationale>
+      </rule>
+
+      <example type="good" title="Daily metric monitoring agent">
+        <code lang="python"><![CDATA[
+import requests
+from datetime import datetime, timedelta
+
+# Query Langfuse for the past 24h
+def check_metrics():
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(days=1)
+    
+    response = requests.get(
+        "https://cloud.langfuse.com/api/dashboard/data",
+        headers={"Authorization": f"Bearer {langfuse_key}"},
+        params={
+            "start_time": start_time.isoformat(),
+            "end_time": end_time.isoformat(),
+        }
+    )
+    
+    metrics = response.json()
+    
+    # Compute baseline (7-day rolling average)
+    baseline = fetch_baseline(window_days=7)
+    
+    # Detect deviations
+    alerts = []
+    for metric_name, value in metrics.items():
+        baseline_value = baseline.get(metric_name)
+        if baseline_value and abs(value - baseline_value) / baseline_value > 0.20:
+            alerts.append({
+                "metric": metric_name,
+                "value": value,
+                "baseline": baseline_value,
+                "deviation_pct": (value - baseline_value) / baseline_value * 100
+            })
+    
+    # Create SDD task if alerts exist
+    if alerts:
+        create_sdd_task(
+            title=f"Observability Alert: {len(alerts)} metric(s) degraded",
+            description=format_alerts(alerts),
+            priority="high"
+        )
+    
+    return alerts
+
+# Run daily
+if __name__ == "__main__":
+    check_metrics()
+]]></code>
+        <note>Automated daily check prevents humans from missing degradation; SDD task creates audit trail.</note>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/" purpose="Self-hosted Langfuse Docker Compose stack and alert configuration templates."/>
+    </templates>
+
+    <see-also>
+      <link href="https://langfuse.com/docs"/>
+      <link href="https://docs.helicone.ai"/>
+      <link href="https://docs.arize.com/phoenix"/>
+      <link href="https://www.braintrust.dev/docs"/>
+      <link href="https://opentelemetry.io/docs/languages/python/"/>
+      <link href="https://portkey.ai/docs"/>
+      <link href="https://docs.datadoghq.com/llm_observability/"/>
+    </see-also>
+  </content>
+</methodology>
