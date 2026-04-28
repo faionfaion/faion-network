@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="google-ads-basics">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>ppc-manager</domain>
+    <summary>OAuth 2.0 + developer token auth, account hierarchy (MCC → Customer → Campaign → Ad Group), GAQL queries, and credential storage best practices.</summary>
+    <tags>
+      <tag>google-ads-api</tag>
+      <tag>authentication</tag>
+      <tag>account-hierarchy</tag>
+      <tag>python-client</tag>
+      <tag>oauth</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Google Ads API — Basics</title>
+
+    <summary>OAuth 2.0 + developer token auth, account hierarchy (MCC → Customer → Campaign → Ad Group), GAQL queries, and credential storage best practices.</summary>
+
+    <why>
+      <p>Google Ads API uses a multi-layer auth model (developer token + OAuth refresh token + optional MCC login_customer_id) that is not obvious from the docs. Getting auth wrong blocks all API calls; getting the account hierarchy wrong produces data in the wrong place.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Authenticating a Python app to the Google Ads API for the first time</item>
+        <item>Setting up google-ads.yaml or dict-based credentials</item>
+        <item>Querying the account hierarchy or listing campaigns with metrics</item>
+        <item>Updating campaign status (ENABLED, PAUSED, REMOVED)</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Search, Display, Shopping, or PMax campaign creation — use the campaign-type-specific methodologies</item>
+        <item>Conversion tracking setup — use ads-conversion-tracking methodology</item>
+        <item>Reporting and automation — use google-ads-reporting methodology</item>
+        <item>Single-account hobby spend under $500/month — Google Ads UI plus auto-rules is cheaper than building API plumbing</item>
+        <item>One-off creative/copy decisions where human judgement dominates and there is no batching benefit</item>
+        <item>Smart Bidding tuning during 2-3 week learning phase — let the algorithm finish before agents nudge bids</item>
+        <item>Anything needing developer-token Standard Access if you only have Test or Basic — apply for upgrade first</item>
+      </list>
+    </when-not-to-use>
+
+    <note>Developer-token Basic Access caps at 15,000 ops/day; bulk migrations or hourly polling will get throttled. API versions deprecate every 9 months (v17 → v18 → v19). Hard-coded version strings break agents on rollover. customer.id is NOT the same as login_customer_id (MCC); confusing them returns USER_PERMISSION_DENIED. Refresh tokens silently expire after 6 months of inactivity or after credential rotation — long-lived agents need re-auth flows. Campaign mutations require update_mask field paths in proto-plus; missing the mask silently drops fields. Cost values are cost_micros (1/1,000,000 of currency) — divide by 1,000,000 before display to humans.</note>
+
+    <section name="agentic-workflow">
+      <p>Run a single sub-agent that loads YAML credentials from a secrets manager, calls a thin wrapper around GoogleAdsClient, and emits structured JSON back to the orchestrator. Wrap every mutation in a dry-run preview that lists the diff (fields, old → new) for human approval before commit. Use GAQL search queries for read paths and batched mutate_* operations (up to 5,000 per request) for write paths. Cache the result of list_accessible_customers() per session so the agent does not re-fetch the MCC tree on every turn. Pin the API version in client config (api_version="v18") and bump deliberately, not implicitly. Use search_stream for any query expected to return over 10k rows; the unary search will OOM. Always SELECT explicit fields — GAQL has no SELECT * and listing fewer fields cuts payload meaningfully. Keep MCC tree discovery out of hot paths — cache list_accessible_customers() result for the agent session. Store developer_token, client_secret, refresh_token in env vars or 1Password / Vault; never the YAML in repo. Tag every mutation with a tracking_url_template parameter or label so re-runs are detectable. For multi-account agents, spawn one client per login_customer_id; mutating across MCCs in one client is error-prone.</p>
+    </section>
+
+    <section name="authentication">
+      <p>OAuth 2.0 + developer token authentication model, credential components, token access levels, and security rules.</p>
+      <p>Required credentials:</p>
+      <list>
+        <item>Developer Token: API access identifier from ads.google.com</item>
+        <item>OAuth 2.0 Client ID: application identifier from Google Cloud Console</item>
+        <item>OAuth 2.0 Client Secret: application secret from Google Cloud Console</item>
+        <item>Refresh Token: long-lived token for generating access tokens</item>
+        <item>Login Customer ID: Manager Account (MCC) ID — required only for MCC access</item>
+      </list>
+      <p>Developer token levels:</p>
+      <list>
+        <item>Test Account: unlimited requests against test data — apply in Google Ads UI</item>
+        <item>Basic Access: 15,000 daily requests — requires approved application</item>
+        <item>Standard Access: 10,000 requests per customer — requires company verification</item>
+      </list>
+      <rule testable="true">
+        <statement>Use a Test Account developer token during development. Promote to Basic or Standard Access only when moving to production with real customer accounts.</statement>
+        <rationale>Test Account tokens are approved instantly; Basic and Standard Access require review and verification that blocks development if not planned ahead.</rationale>
+      </rule>
+      <p>Authentication flow:</p>
+      <list>
+        <item>1. Create Google Cloud Project</item>
+        <item>2. Enable Google Ads API in the project</item>
+        <item>3. Create OAuth 2.0 credentials (web or desktop app)</item>
+        <item>4. Get Developer Token from ads.google.com account settings</item>
+        <item>5. Generate Refresh Token via OAuth flow</item>
+        <item>6. Configure client library with google-ads.yaml or dict</item>
+      </list>
+      <templates>
+        <template path="templates/google-ads.yaml" purpose="google-ads.yaml credential file template"/>
+        <template path="templates/client-setup.py" purpose="GoogleAdsClient initialization patterns (YAML and dict)"/>
+      </templates>
+      <p>Security rules:</p>
+      <rule testable="true">
+        <statement>Store all credentials in environment variables or a secrets manager. Never commit credentials to version control.</statement>
+        <rationale>Leaked credentials grant full API access to all linked ad accounts, enabling unauthorized spend.</rationale>
+      </rule>
+      <list>
+        <item>Use separate credentials for test and production environments</item>
+        <item>Rotate refresh tokens periodically (at least annually)</item>
+        <item>Apply least-privilege access — only request scopes needed</item>
+        <item>LLMs frequently hallucinate cost instead of cost_micros; assert in code that values look right (cost > 1e6 likely already micros)</item>
+        <item>Models confuse Google Ads API (advertising) with Google Analytics Data API (reporting) — they have separate auth and resources</item>
+        <item>Agents producing GAQL often forget WHERE segments.date BETWEEN clause and pull lifetime data, blowing the quota</item>
+        <item>Refresh-token rotation: an agent that fixes auth by minting a new refresh token without revoking the old one can leave dangling credentials</item>
+        <item>Human-in-loop checkpoint: any mutate_* that touches over 100 resources, changes campaign status to ENABLED, or modifies budget requires explicit confirmation</item>
+        <item>When parsing enum values from responses, use .name not raw int — agents otherwise emit numeric statuses ("2") to humans</item>
+      </list>
+    </section>
+
+    <section name="account-structure">
+      <p>Resource hierarchy from MCC to keyword, GAQL query patterns for listing customers and campaigns with metrics, and campaign status update pattern.</p>
+      <p>Resource hierarchy:</p>
+      <list>
+        <item>Manager Account (MCC) — top level, optional</item>
+        <item>Customer Account — ad account; parent of all campaigns</item>
+        <item>Campaign — budget and targeting settings</item>
+        <item>Ad Group — container for ads and keywords</item>
+        <item>Ad — creative content</item>
+        <item>Keyword — search targeting</item>
+      </list>
+      <rule testable="true">
+        <statement>When querying or mutating resources, always provide the correct customer_id at the level of the resource being accessed, not the MCC ID.</statement>
+        <rationale>Using the MCC ID for customer-level operations causes authorization errors. The login_customer_id configures MCC context; customer_id targets the specific account.</rationale>
+      </rule>
+      <p>Google Ads uses GAQL (Google Ads Query Language) — a SQL-like query syntax for all report and list operations via GoogleAdsService.search().</p>
+      <example type="good">
+        <note>List campaigns with metrics: SELECT campaign.id, campaign.name, campaign.status, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE campaign.status != 'REMOVED' ORDER BY campaign.name. Divide cost_micros by 1,000,000 to get currency value.</note>
+      </example>
+      <antipattern>
+        <description>Using the REST API directly instead of the Python client library for complex operations.</description>
+        <reason>The client library handles proto-plus marshaling, retry logic, and error code mapping automatically. Raw REST requires manual handling of all edge cases.</reason>
+      </antipattern>
+      <p>Campaign status update:</p>
+      <rule testable="true">
+        <statement>Use CampaignOperation with an update_mask to modify only specified fields. Never send a full campaign object for updates.</statement>
+        <rationale>Without an update_mask, the API resets all unspecified fields to defaults, corrupting campaign settings.</rationale>
+      </rule>
+      <list>
+        <item>Valid status values: ENABLED, PAUSED, REMOVED</item>
+        <item>REMOVED is permanent for campaigns — use PAUSED to stop delivery temporarily</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://developers.google.com/google-ads/api/docs/start"/>
+      <link href="https://github.com/googleads/google-ads-python"/>
+      <link href="https://developers.google.com/google-ads/api/docs/query/overview"/>
+      <link href="https://developers.google.com/google-ads/api/docs/release-notes"/>
+      <link href="https://developers.google.com/identity/protocols/oauth2"/>
+    </see-also>
+  </content>
+</methodology>
