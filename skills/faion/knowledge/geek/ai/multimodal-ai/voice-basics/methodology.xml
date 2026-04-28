@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="voice-basics">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>multimodal-ai</domain>
+    <summary>Building conversational voice agents that chain STT (Whisper) to LLM (GPT-4o) to TTS into a turn-based loop with a 650-1900ms minimum latency floor.</summary>
+    <tags>
+      <tag>voice</tag>
+      <tag>speech-to-text</tag>
+      <tag>text-to-speech</tag>
+      <tag>agents</tag>
+      <tag>realtime</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>Voice Agents - Basics</title>
+    <summary>Building conversational voice agents that chain STT (Whisper) to LLM (GPT-4o) to TTS into a turn-based loop. Covers the basic architecture, latency budget per component, tool-calling integration, and the core pitfalls of fixed-duration recording and unbounded conversation history.</summary>
+    <why>
+      <p>Voice agents expose LLM reasoning through a natural speech interface, but the sequential STT to LLM to TTS pipeline has a hard 650-1900ms minimum latency floor. Every optimization must target each stage independently; streaming and short responses are the primary levers.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Customer service automation requiring natural voice interaction</item>
+        <item>Accessibility tools where text input is not viable</item>
+        <item>Voice-controlled CLI wrappers for internal tools</item>
+        <item>Real-time voice assistants embedded in hardware</item>
+        <item>Adding speech I/O to an existing text agent</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Latency requirements below 800ms end-to-end - use OpenAI Realtime API (WebSocket) instead</item>
+        <item>High-security contexts where audio recording raises GDPR/compliance concerns</item>
+        <item>Noisy environments without pre-processing (SNR below 10dB) - Whisper accuracy degrades significantly</item>
+        <item>Tasks where text output is superior (structured data, code, tables) - voice cannot render formatting</item>
+      </list>
+    </when-not-to-use>
+    <section name="pipeline-architecture">
+      <p>A voice agent chains three components sequentially: STT (Whisper) converts audio to text, an LLM generates a text response, and TTS converts the response back to audio. The pipeline is sequential and parallelizing STT and LLM is not possible.</p>
+      <rule testable="true">
+        <statement>Budget each pipeline component: STT under 300ms, LLM under 500ms, TTS under 200ms targeting under 1000ms total end-to-end.</statement>
+        <rationale>The typical range is 650-1900ms. VAD adds 50-100ms. Total exceeding 2s feels unresponsive for interactive voice.</rationale>
+      </rule>
+      <example type="good" title="Latency targets per component">
+        <code lang="python"><![CDATA[
+# Latency targets per component
+# VAD:  50-100ms  -> target <100ms
+# STT:  200-500ms -> target <300ms
+# LLM:  300-1000ms-> target <500ms
+# TTS:  100-300ms -> target <200ms
+# Total:650-1900ms-> target <1000ms
+        ]]></code>
+      </example>
+    </section>
+    <section name="basic-voice-agent">
+      <reference path="templates/basic-voice-agent.py">BasicVoiceAgent with listen/think/speak loop</reference>
+      <p>BasicVoiceAgent records a fixed-duration audio clip, transcribes via Whisper, sends to GPT-4o, and plays back via TTS.</p>
+      <example type="good" title="BasicVoiceAgent class structure">
+        <code lang="python"><![CDATA[
+class BasicVoiceAgent:
+    def __init__(self, system_prompt: str = "You are a helpful assistant.",
+                 voice: str = "nova", sample_rate: int = 16000):
+        self.conversation_history = [{"role": "system", "content": system_prompt}]
+        self.voice = voice
+        self.sample_rate = sample_rate
+
+    def listen(self, duration: float = 5.0) -> str:
+        """Record and transcribe. Fixed-duration - use VAD in production."""
+        audio = sd.rec(int(duration * self.sample_rate), samplerate=self.sample_rate,
+                       channels=1, dtype='int16')
+        sd.wait()
+        # save to temp .wav - transcribe with whisper-1
+        ...
+
+    def think(self, user_input: str) -> str:
+        self.conversation_history.append({"role": "user", "content": user_input})
+        response = client.chat.completions.create(
+            model="gpt-4o", messages=self.conversation_history)
+        msg = response.choices[0].message.content
+        self.conversation_history.append({"role": "assistant", "content": msg})
+        return msg
+        ]]></code>
+      </example>
+      <antipattern>
+        <description>Using fixed-duration recording (sd.rec with a hardcoded duration).</description>
+        <reason>Truncates long speech; records silence for short utterances. Always use VAD-based recording in production.</reason>
+      </antipattern>
+    </section>
+    <section name="tool-enabled-voice-agent">
+      <reference path="templates/tool-voice-agent.py">ToolEnabledVoiceAgent with function calling</reference>
+      <p>Tool calls inside a voice turn must complete before TTS can begin. Long-running tools (web search, DB queries) should return a brief "thinking" audio response first.</p>
+      <antipattern>
+        <description>Awaiting tool calls synchronously in the voice loop without a "thinking" response.</description>
+        <reason>Long-running tool calls stall TTS - the user hears silence for several seconds with no feedback.</reason>
+      </antipattern>
+    </section>
+    <section name="recording-and-vad">
+      <rule testable="true">
+        <statement>Use VAD-based recording (webrtcvad or Silero VAD) instead of fixed-duration recording in any production deployment.</statement>
+        <rationale>Fixed-duration recording truncates variable-length speech and records silence for short utterances. VAD-based recording stops when the speaker stops.</rationale>
+      </rule>
+      <example type="good" title="VAD-based recording with silence detection">
+        <code lang="python"><![CDATA[
+import webrtcvad, sounddevice as sd, collections
+
+def record_until_silence(sample_rate: int = 16000, silence_ms: int = 1000) -> bytes:
+    vad = webrtcvad.Vad(2)  # aggressiveness 0-3
+    frame_ms, frame_bytes = 30, sample_rate * 30 // 1000 * 2
+    silence_frames = silence_ms // 30
+    ring = collections.deque(maxlen=silence_frames)
+    frames = []
+    with sd.RawInputStream(samplerate=sample_rate, channels=1, dtype='int16') as s:
+        while True:
+            data, _ = s.read(frame_bytes // 2)
+            frame = bytes(data)
+            is_speech = vad.is_speech(frame, sample_rate)
+            ring.append(is_speech)
+            frames.append(frame)
+            if len(frames) > silence_frames and not any(ring):
+                break
+    return b"".join(frames)
+        ]]></code>
+      </example>
+    </section>
+    <section name="response-and-history-management">
+      <rule testable="true">
+        <statement>Keep TTS responses under 50 words per turn. Use tts-1 (not tts-1-hd) for real-time conversation.</statement>
+        <rationale>Longer responses feel unnatural and cannot be interrupted. tts-1-hd latency is not suitable for real-time - use it for pre-generated audio only.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Truncate conversation_history to the last 10 turns to prevent context overflow. Summarize older context into the system prompt.</statement>
+        <rationale>Conversation history grows unboundedly - will hit context limits after 20-50 turns on GPT-4o, causing silent truncation or API errors.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Always specify the language parameter explicitly in Whisper calls (e.g., language="uk", language="en").</statement>
+        <rationale>Auto-detection adds approximately 200ms latency and occasionally misidentifies similar languages (Ukrainian/Russian, Serbian/Croatian).</rationale>
+      </rule>
+    </section>
+    <section name="latency-optimization">
+      <rule testable="true">
+        <statement>Use OpenAI Realtime API (WebSocket) for lowest-latency deployments - it eliminates the STT + LLM + TTS round-trip chain.</statement>
+        <rationale>The Realtime API delivers approximately 200ms end-to-end vs 650-1900ms for the chained approach.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use client.audio.speech.with_streaming_response to stream TTS audio to the speaker as chunks arrive rather than buffering the full response.</statement>
+        <rationale>Streaming reduces perceived TTS latency from full-response time to first-byte time - typically 100-200ms faster.</rationale>
+      </rule>
+      <antipattern>
+        <description>Implementing interrupt detection only as an afterthought.</description>
+        <reason>If new audio is detected during TTS playback and the agent does not stop playback immediately, the user hears overlapping speech - a blocking UX failure.</reason>
+      </antipattern>
+    </section>
+    <section name="agent-integration">
+      <p>Voice agents require a persistent event loop, not a request/response agent pattern. For agent integration, treat voice as an I/O transport layer: the STT output becomes a text message sent to a Claude subagent, and the subagent's text response is passed to TTS. This decouples the reasoning logic from the audio stack. Claude subagents work well for designing the conversation flow, scripting system prompts, and building tool definitions - but the audio loop itself must run in a persistent Python process.</p>
+      <p>Recommended subagents: Custom conversation-design agent - given a use case description, produce the system prompt, tool definitions, and response length guidelines for a voice agent. Also faion-sdd-execution - scaffold the voice agent class with proper VAD, interrupt handling, and context window management.</p>
+      <p>Prompt pattern for conversation design: Design a voice agent for the following use case: {use_case}. Produce: 1. System prompt (max 200 words, natural spoken language, no markdown). 2. List of tool definitions (JSON schema) the agent needs. 3. Response length guideline (target word count per turn). 4. Conversation termination triggers (phrases that end the session).</p>
+      <p>Pattern for voice reasoning: The user said (via STT): "{transcribed_text}" Conversation context: {last_3_turns}. Respond in 1-3 short sentences suitable for TTS. Avoid lists, markdown, or code. If you need to call a tool, do so silently and respond with the result.</p>
+    </section>
+    <section name="cli-tools-and-services">
+      <p>CLI tools: openai (Whisper STT + OpenAI TTS; GPT-4o reasoning) with pip install openai. sounddevice (Cross-platform audio recording/playback) with pip install sounddevice. pyaudio (Alternative audio I/O; better VAD integration) with pip install pyaudio. webrtcvad (WebRTC-based VAD for detecting speech vs. silence) with pip install webrtcvad. pydub (Audio format conversion, trimming, normalization) with pip install pydub. elevenlabs (High-quality TTS with voice cloning) with pip install elevenlabs. deepgram (Real-time streaming STT, lower latency than Whisper API) with pip install deepgram-sdk.</p>
+      <p>Services: OpenAI Whisper API (SaaS, agent-friendly via SDK) is the best general STT at $0.006/min with 25MB file limit. OpenAI TTS (SaaS, agent-friendly via SDK) offers 6 voices with tts-1 (fast) and tts-1-hd (quality). ElevenLabs (SaaS, agent-friendly via REST/SDK) provides best voice quality with voice cloning and multilingual support. Deepgram (SaaS, agent-friendly via WebSocket) offers real-time streaming STT with less than 300ms latency and speaker diarization. AssemblyAI (SaaS, agent-friendly via SDK) provides STT plus LeMUR (LLM on transcripts) with async processing. OpenAI Realtime API (SaaS, agent-friendly via WebSocket) offers native STT+LLM+TTS in one connection with lowest latency. Twilio (SaaS, agent-friendly via REST) provides telephony integration converting phone calls to audio streams.</p>
+    </section>
+    <templates>
+      <template path="templates/basic-voice-agent.py" purpose="BasicVoiceAgent with listen/think/speak loop"/>
+      <template path="templates/tool-voice-agent.py" purpose="ToolEnabledVoiceAgent with function calling"/>
+      <template path="templates/prompt-design.txt" purpose="System prompt and per-turn prompt pattern for voice agents"/>
+      <template path="templates/vad-recording.py" purpose="WebRTC-VAD-based recording (stops on silence)"/>
+    </templates>
+    <see-also>
+      <link href="https://platform.openai.com/docs/guides/speech-to-text"/>
+      <link href="https://platform.openai.com/docs/guides/text-to-speech"/>
+      <link href="https://platform.openai.com/docs/guides/realtime"/>
+      <link href="https://elevenlabs.io/docs/api-reference/text-to-speech"/>
+      <link href="https://developers.deepgram.com/docs/getting-started"/>
+      <link href="https://cookbook.openai.com/examples/how_to_build_a_real_time_voice_agent"/>
+    </see-also>
+  </content>
+</methodology>
