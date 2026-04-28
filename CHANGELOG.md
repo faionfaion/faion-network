@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/pm methodologies → methodology.xml (work-breakdown-structure, agile-ceremonies-setup, agile-hybrid-approaches; feature-045 batch 177)
 - migrate: 3/3 pro/pm/pm-traditional methodologies → methodology.xml (stakeholder-engagement-advanced, stakeholder-register, wbs-creation; feature-045 batch 176)
 - migrate: 3/3 pro/pm/pm-traditional methodologies → methodology.xml (resource-management, risk-management, risk-register; feature-045 batch 174)
 - migrate: 3/3 pro/pm/pm-traditional methodologies → methodology.xml (project-closure, project-integration, quality-management; feature-045 batch 173)
