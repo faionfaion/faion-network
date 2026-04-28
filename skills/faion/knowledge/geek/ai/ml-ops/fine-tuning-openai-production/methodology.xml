@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="fine-tuning-openai-production">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-ops</domain>
+    <summary>Full OpenAI fine-tuning production pipeline: job lifecycle, status polling with exponential backoff, LLM-as-judge evaluation, model ID registry, checkpoint lifecycle management.</summary>
+    <tags>
+      <tag>openai</tag>
+      <tag>fine-tuning</tag>
+      <tag>production</tag>
+      <tag>model-registry</tag>
+      <tag>evaluation</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Fine-tuning OpenAI — Production</title>
+    <summary>Full OpenAI fine-tuning production pipeline: file upload, job creation with hyperparameter control, status polling, LLM-as-judge evaluation against a held-out test set, and model ID registry management. The FineTuningPipeline class encapsulates the complete workflow with human-checkpoint gates before deployment.</summary>
+    <why>
+      <p>OpenAI fine-tuning is asynchronous and opaque — training loss is not available in real time and fine-tuned model IDs are ephemeral strings that become invalid when base model versions are deprecated. A structured pipeline with explicit human approval gates, cost estimation before upload, and post-training evaluation prevents wasted spend and silent quality regressions in production.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Need a fine-tuned model deployable via OpenAI API with zero infrastructure overhead</item>
+        <item>Task has 50-10,000 high-quality JSONL examples with a consistent system prompt</item>
+        <item>Use cases: style consistency, domain-specific tone, structured output format enforcement, task classifier</item>
+        <item>Willing to tolerate 15 minutes to several hours of training latency</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Fewer than 50 examples — base model with few-shot beats fine-tuning; collect more data first</item>
+        <item>Task requires up-to-date factual knowledge — OpenAI fine-tuning does not inject new facts</item>
+        <item>Cost sensitivity: ft:gpt-4o-mini costs 3-6x more per token than base gpt-4o-mini — verify ROI</item>
+        <item>Proprietary data that must not leave your infrastructure — training data is processed on OpenAI servers</item>
+        <item>Need for a fully private model weight — OpenAI retains training data per their data policy</item>
+      </list>
+    </when-not-to-use>
+    <section name="File Upload and Job Submission">
+      <rule>
+        <statement>Validate JSONL locally before upload — the API rejects malformed files after upload, wasting time.</statement>
+        <rationale>Server-side validation error messages are non-descriptive; local validation with tiktoken and structure checks identifies issues in seconds.</rationale>
+      </rule>
+      <rule>
+        <statement>Use the suffix parameter for model naming (e.g., "customer-support-v2") to produce reproducible, traceable model IDs across experiments.</statement>
+        <rationale>OpenAI model IDs contain a random suffix; named suffixes make the ID human-readable and traceable to the dataset version that produced it.</rationale>
+      </rule>
+      <rule>
+        <statement>Set explicit n_epochs (2-3) for small datasets (&lt;200 examples) — n_epochs="auto" selects too many epochs, causing overfitting.</statement>
+        <rationale>OpenAI's auto-selection calibrates for average dataset sizes; at &lt;200 examples, "auto" often selects 5-7 epochs, well past the point of overfitting.</rationale>
+      </rule>
+    </section>
+    <section name="Status Polling and Job Lifecycle">
+      <rule>
+        <statement>Handle all six job status values: validating_files, queued, running, succeeded, failed, cancelled — do not treat only succeeded/failed as terminal states.</statement>
+        <rationale>Missing the "cancelled" state causes a polling loop that runs indefinitely if a job is cancelled externally.</rationale>
+      </rule>
+      <rule>
+        <statement>Use exponential backoff for polling — not a fixed 60-second sleep — to reduce API calls during short jobs and handle rate limits.</statement>
+        <rationale>Fixed 60-second sleep blocks the agent thread and hits rate limits on large polling batches; exponential backoff adapts to job duration.</rationale>
+      </rule>
+      <rule>
+        <statement>Check job.status == "succeeded" before reading job.fine_tuned_model — the field is null until the job succeeds.</statement>
+        <rationale>Reading fine_tuned_model before job completion returns None or raises AttributeError, silently breaking the pipeline.</rationale>
+      </rule>
+    </section>
+    <section name="File Management">
+      <rule>
+        <statement>Delete training files from OpenAI Files API after training completes — uploaded files persist until explicitly deleted and count against storage limits.</statement>
+        <rationale>Undeleted files accumulate; OpenAI has per-organization storage limits, and sensitive training data should not persist on external servers beyond the training run.</rationale>
+      </rule>
+      <rule>
+        <statement>Check file size before upload — OpenAI Files API has a 512MB limit per file; large datasets require splitting across multiple jobs.</statement>
+        <rationale>Upload fails after the entire file is transmitted if it exceeds 512MB; pre-upload size check prevents wasted upload time.</rationale>
+      </rule>
+    </section>
+    <section name="Test Set Protocol and Evaluation">
+      <rule>
+        <statement>Hold out a test set (separate from validation) that is never used during training or hyperparameter tuning — it is the only unbiased post-training quality signal.</statement>
+        <rationale>Validation data used for early stopping is contaminated; evaluating on it produces inflated scores. A held-out test set reveals real generalization quality.</rationale>
+      </rule>
+      <rule>
+        <statement>Run the base model on the held-out test set before fine-tuning to establish a baseline — without it you cannot measure the improvement delta.</statement>
+        <rationale>Fine-tuning job cost is only justified if the improvement over the base model is measurable and exceeds the inference cost premium of the fine-tuned model.</rationale>
+      </rule>
+      <rule>
+        <statement>If improvement over base model is less than 10% on the test set, reconsider fine-tuning — the cost premium may not be justified.</statement>
+        <rationale>Fine-tuned gpt-4o-mini costs 3-6x more per token than base gpt-4o-mini; marginal quality improvement does not justify this cost increase.</rationale>
+      </rule>
+    </section>
+    <section name="LLM-as-Judge Pattern and Limitations">
+      <rule>
+        <statement>Do not use GPT-4o to judge GPT-4o-mini outputs as the sole evaluation criterion — prefer deterministic metrics (exact_match, format_compliance) when possible.</statement>
+        <rationale>GPT-4o-to-GPT-4o-mini judgment has circular bias; the evaluator has self-preference and may inflate or deflate scores for outputs similar to its own style.</rationale>
+      </rule>
+      <rule>
+        <statement>Cap LLM-judge evaluation at 50-100 examples for routine post-training checks — each judge call costs money.</statement>
+        <rationale>Full-set LLM judge eval at 1000 examples can cost as much as the training run itself; sample-based eval provides sufficient signal for routine deployment decisions.</rationale>
+      </rule>
+    </section>
+    <section name="Production Deployment Gate">
+      <rule>
+        <statement>The decision to promote a fine-tuned model to production must be a human checkpoint — agents should write the model ID to a config file and stop; a human approves by updating the production config.</statement>
+        <rationale>Automated promotion bypasses human review of quality, cost, and safety tradeoffs. Fine-tuning decisions have lasting production impact that require human accountability.</rationale>
+      </rule>
+    </section>
+    <section name="Model Registry and Versioning">
+      <rule>
+        <statement>Store fine-tuned model IDs in a config file or database with metadata: base_model, dataset_version, n_epochs, training_date, test_score.</statement>
+        <rationale>OpenAI model IDs are opaque strings (ft:gpt-4o-mini-2024-07-18:org::abc123) that are impossible to manage at scale without a registry. The org slug in the ID becomes invalid if the organization changes.</rationale>
+      </rule>
+      <rule>
+        <statement>Monitor fine-tuned model checkpoints for the 90-day inactivity expiry — OpenAI expires checkpoints after 90 days without API calls; retrain before expiry for production models.</statement>
+        <rationale>Expired checkpoints cannot be recovered; production systems must track checkpoint health and proactively retrain or make periodic inference calls to prevent expiry.</rationale>
+      </rule>
+    </section>
+    <section name="Cost Estimation and Accounting">
+      <rule>
+        <statement>Estimate training token cost before upload with tiktoken: total_tokens * n_epochs * cost_per_1M.</statement>
+        <rationale>A large dataset at 3 epochs with gpt-4o pricing ($25/1M) can cost hundreds of dollars; agents must surface this estimate to humans before submitting.</rationale>
+      </rule>
+      <example type="good" title="Complete Cost Estimation Before Job Submission">
+        <code lang="python"><![CDATA[
+import json, tiktoken
+
+def estimate_ft_cost(jsonl_path: str, model: str = "gpt-4o-mini-2024-07-18",
+                     n_epochs: int = 3, cost_per_1m: float = 3.00) -> dict:
+    enc = tiktoken.encoding_for_model("gpt-4o")  # same encoding family
+    total = 0
+    with open(jsonl_path) as f:
+        for line in f:
+            for msg in json.loads(line)["messages"]:
+                total += len(enc.encode(msg.get("content", "")))
+    training_tokens = total * n_epochs
+    return {
+        "total_tokens": total,
+        "training_tokens": training_tokens,
+        "estimated_cost_usd": round((training_tokens / 1_000_000) * cost_per_1m, 4),
+    }
+]]></code>
+        <note>Always show cost estimate to a human before auto-submitting a job.</note>
+      </example>
+    </section>
+    <section name="Validation File Best Practice">
+      <rule>
+        <statement>Always create a separate validation file (10% of training data) and pass validation_file to the job — OpenAI reports validation loss in job events.</statement>
+        <rationale>Without a validation file, there is no way to detect overfitting during training; OpenAI reports validation loss only when a validation file is provided.</rationale>
+      </rule>
+    </section>
+    <section name="Recommended Subagents and Integration Patterns">
+      <list>
+        <item>faion-sdd-execution — prepare and validate JSONL training data; check format compliance and example count</item>
+        <item>Custom eval agent — after job completion, run fine-tuned model against test set and produce score table vs. base model</item>
+      </list>
+      <section name="Data Validation Prompt Pattern">
+        <p>Validate the following JSONL fine-tuning data for OpenAI format compliance. Check: (1) each line is valid JSON, (2) has "messages" key, (3) contains at least one "user" and one "assistant" role, (4) system prompt is consistent across all examples. Report violations with line numbers. Input: {jsonl_content}</p>
+      </section>
+      <section name="Evaluation Prompt Pattern">
+        <p>Job {job_id} has completed. Fine-tuned model: {model_id}. Run 10 test prompts from {test_file} against both {model_id} and {base_model}. Score each response pair on: format_match (0/1), content_quality (1-5). Return JSON summary with average scores and failing examples.</p>
+      </section>
+    </section>
+    <section name="Best Practices and Operational Guidelines">
+      <list>
+        <item>Validate JSONL format locally before upload — the API rejects malformed files after upload, wasting time</item>
+        <item>Use suffix parameter for model naming: "customer-support-v2" → reproducible model IDs across experiments</item>
+        <item>Always create a validation file (10% of data) and pass validation_file — OpenAI reports val loss in job events</item>
+        <item>Prefer gpt-4o-mini-2024-07-18 for fine-tuning: lowest training cost, fast inference, good quality for structured tasks</item>
+        <item>Hold out a test set (separate from validation) for post-training eval; never evaluate on training or validation data</item>
+        <item>After fine-tuning, compare to few-shot base model on the same test set; if improvement &lt; 10%, reconsider</item>
+        <item>Version and store fine_tuned_model IDs in config/db — OpenAI does not guarantee indefinite availability of base model versions</item>
+        <item>Delete training files from OpenAI Files API after training completes to avoid hitting storage limits</item>
+        <item>Monitor checkpoints for the 90-day inactivity expiry; retrain before expiry or make periodic API calls</item>
+      </list>
+    </section>
+    <section name="Failure Modes and Gotchas">
+      <list>
+        <item>n_epochs: auto with small datasets (&lt;200 examples) often selects too many epochs → overfitting; set explicit n_epochs: 2-3</item>
+        <item>No access to training loss curve in real-time via API — must poll events or wait for job completion</item>
+        <item>Validation loss reported by OpenAI events is not the same as task-specific accuracy; add your own eval step</item>
+        <item>fine_tuned_model ID in job response is ephemeral — model may be deprecated if OpenAI retires the base model version</item>
+        <item>The evaluator-LLM pattern (using GPT-4o to score fine-tuned GPT-4o-mini responses) has circular bias — prefer deterministic eval metrics when possible</item>
+        <item>Job status polling with 60-second sleep loops is blocking for agents — use async polling or webhook if available</item>
+        <item>File upload is synchronous but job creation is async — must poll client.fine_tuning.jobs.retrieve(job_id) with exponential backoff, not a fixed 60-second sleep</item>
+        <item>Training data uploaded via Files API persists until explicitly deleted — agents should clean up after training to avoid hitting storage limits</item>
+        <item>Model IDs contain the organization slug — if the agent stores the ID and the org changes, the ID becomes invalid</item>
+      </list>
+    </section>
+    <section name="CLI Tools and Services">
+      <list>
+        <item>openai Python SDK — Upload files, create jobs, poll status, list events | pip install openai · platform.openai.com/docs/guides/fine-tuning</item>
+        <item>openai CLI — Check fine-tuning job status from terminal | openai api fine_tuning.jobs.list</item>
+        <item>tiktoken — Count tokens to estimate training cost before upload | pip install tiktoken · github.com/openai/tiktoken</item>
+        <item>jsonlines — Read/write JSONL training files cleanly | pip install jsonlines</item>
+        <item>wandb — Log fine-tuning run metadata and eval scores | pip install wandb · wandb.ai</item>
+        <item>OpenAI Fine-tuning API (SaaS, agent-friendly via Python SDK) — Native; no infra; models served at ft:* prefix</item>
+        <item>OpenAI Files API (SaaS, agent-friendly via SDK) — Upload/manage training files; 1GB limit per file</item>
+        <item>Weights &amp; Biases (SaaS, agent-friendly via REST API) — Track eval scores, model versions alongside fine-tuning metadata</item>
+        <item>Helicone (SaaS, agent-friendly as proxy) — Log fine-tuned model inference for cost/quality tracking</item>
+        <item>Portkey (SaaS, agent-friendly as gateway) — Fallback from fine-tuned model to base model on errors</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/finetune-pipeline.py" purpose="FineTuningPipeline class: upload → train → poll → evaluate"/>
+      <template path="templates/estimate-cost.py" purpose="Token count and cost estimate before upload using tiktoken"/>
+      <template path="templates/eval-prompts.txt" purpose="LLM judge prompts for format_match scoring and promotion decision"/>
+    </templates>
+    <see-also>
+      <link href="https://platform.openai.com/docs/guides/fine-tuning">OpenAI Fine-tuning Guide</link>
+      <link href="https://platform.openai.com/docs/guides/fine-tuning/preparing-your-dataset">Fine-tuning Best Practices — Preparing Your Dataset</link>
+      <link href="https://cookbook.openai.com/examples/how_to_finetune_chat_models">OpenAI Cookbook — Fine-tuning Chat Models</link>
+      <link href="https://platform.openai.com/docs/api-reference/fine-tuning">OpenAI Fine-tuning API Reference</link>
+    </see-also>
+  </content>
+</methodology>
