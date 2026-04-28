@@ -1,0 +1,395 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="finetuning">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>General guide covering decision framework, technique selection (Full FT, LoRA, QLoRA, DoRA, OpenAI API), and framework comparison (Unsloth, LLaMA-Factory, Axolotl, TRL, Torchtune).</summary>
+    <category>ml-ops</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>fine-tuning</tag>
+      <tag>decision-tree</tag>
+      <tag>frameworks</tag>
+      <tag>llm</tag>
+      <tag>data-pipeline</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>python</language>
+      <language>yaml</language>
+    </languages>
+    <frameworks>
+      <framework>axolotl</framework>
+      <framework>unsloth</framework>
+      <framework>trl</framework>
+      <framework>llama-factory</framework>
+      <framework>torchtune</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>LLM Fine-tuning (General Guide)</title>
+
+    <summary>A general guide to fine-tuning LLMs covering the decision framework (prompt → RAG → fine-tune), technique selection (Full FT, LoRA, QLoRA, DoRA, OpenAI API), and framework comparison (Unsloth, LLaMA-Factory, Axolotl, TRL, Torchtune). Always follow the decision tree before committing to fine-tuning — it is the most expensive and least reversible enhancement strategy.</summary>
+
+    <why>
+      <p>Fine-tuning internalizes domain jargon, output format constraints, and behavioral style, reducing per-call inference cost through shorter prompts and making behavior more reliable. However, it bakes in a knowledge snapshot (use RAG for live data), requires labeled data (500+ clean examples minimum), and creates a maintenance burden on every model version upgrade. Catastrophic forgetting is the primary failure mode — mix 20-30% general instruction data in training to prevent it.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Prompt engineering and RAG have both been tried and still fail to meet quality bar</item>
+        <item>Domain jargon, output format, or behavioral style needs to be internalized rather than injected per-call</item>
+        <item>Production volume is high enough that shorter prompts reduce inference cost meaningfully</item>
+        <item>You have 500+ verified examples in the target distribution with clear correct/incorrect labels</item>
+        <item>Compliance requires a local or private model with no external API calls</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Fewer than 100 quality examples — fine-tuning will overfit; use few-shot prompting</item>
+        <item>Task requirements are exploratory or changing — fine-tuning creates a liability that degrades as the task evolves</item>
+        <item>Real-time knowledge is required — use RAG for dynamic data</item>
+        <item>Time-to-production is critical — fine-tuning adds days of iteration; try prompting first</item>
+        <item>No labeled data exists — data collection must precede training</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="decision-tree">
+      <rule>
+        <statement>Follow this decision order: (1) Try prompt engineering first — if accuracy meets threshold with few-shot examples, ship it. (2) If knowledge is the bottleneck (private data, up-to-date facts), add RAG. (3) Only fine-tune if prompt + RAG still falls short AND you have 500+ quality examples AND the task pattern is stable.</statement>
+        <rationale>Prompt engineering costs nothing and ships in hours. RAG costs embed+query latency and vector DB infra but adds any knowledge base without training. Fine-tuning costs GPU time, data curation, and ongoing maintenance when the base model updates. Jumping to fine-tuning before exhausting cheaper options is the most common ML engineering mistake.</rationale>
+      </rule>
+
+      <list>
+        <item>Prompt engineering: &lt;1 day, no infra, limited by context window and base model capability</item>
+        <item>RAG: 1-5 days, vector DB required, best for knowledge-intensive tasks with changing data</item>
+        <item>Fine-tuning: 1-2 weeks+, GPU required, best for stable patterns, tone, format, specialized reasoning</item>
+        <item>RAFT (RAG + Fine-tuning): combines both; use when RAG recall is high but synthesis quality is poor</item>
+      </list>
+    </section>
+
+    <section name="finetuning-readiness-checklist">
+      <rule>
+        <statement>Do not start fine-tuning without verifying all four readiness criteria: (1) 500+ labeled examples with consistent quality, (2) clear eval metric that can be measured automatically, (3) task behavior is stable (will not change in 3 months), (4) prompt+RAG was tried and failed the eval metric.</statement>
+        <rationale>Each criterion prevents a specific failure mode. Without 500 examples: overfitting. Without an eval metric: no way to know if fine-tuning helped. With an unstable task: fine-tuned model goes stale and must be re-trained. Without trying prompt+RAG first: fine-tuning solves a problem that didn't need it.</rationale>
+      </rule>
+
+      <list>
+        <item>Examples: minimum 500 for instruction following; 1,000+ for reliable specialization; 5,000+ for behavioral alignment</item>
+        <item>Eval metric: classification accuracy, BLEU/ROUGE, LLM-as-judge score — must be measurable before training</item>
+        <item>Task stability: task description unchanged for 6+ months AND no planned changes in 3 months</item>
+        <item>Prompt baseline: documented prompt+few-shot accuracy with score below acceptable threshold</item>
+      </list>
+    </section>
+
+    <section name="cost-benefit-analysis">
+      <rule>
+        <statement>Estimate total fine-tuning cost as: data_curation_cost + GPU_training_cost + eval_cost + maintenance_cost_per_year. Compare to ongoing RAG inference cost. Fine-tuning is cost-effective when inference volume is &gt;100K calls/month at tasks where RAG reduces quality.</statement>
+        <rationale>Fine-tuned models have lower per-call cost (no retrieval overhead) but high upfront and maintenance cost. For high-volume, stable tasks with fixed knowledge, fine-tuning pays off. For low-volume or frequently updated knowledge, the upfront cost never amortizes.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="python"><![CDATA[
+def estimate_finetuning_roi(
+    monthly_calls: int,
+    rag_cost_per_call: float,   # embed + LLM
+    ft_cost_per_call: float,    # LLM only (no retrieval)
+    training_cost: float,       # one-time GPU cost
+    eval_cost: float,           # monthly eval runs
+    months: int = 12,
+) -> dict:
+    rag_total = monthly_calls * rag_cost_per_call * months
+    ft_total = training_cost + (monthly_calls * ft_cost_per_call + eval_cost) * months
+    return {
+        "rag_total": rag_total,
+        "finetuning_total": ft_total,
+        "breakeven_months": training_cost / ((rag_cost_per_call - ft_cost_per_call) * monthly_calls),
+        "preferred": "fine-tuning" if ft_total < rag_total else "RAG",
+    }
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="when-not-to-finetune">
+      <list>
+        <item>Fewer than 100 labeled examples — use few-shot prompting instead</item>
+        <item>Task requirements change frequently — fine-tuned model will be stale within weeks</item>
+        <item>Knowledge-intensive task where data changes — RAG handles this better</item>
+        <item>No GPU access or budget for ongoing re-training — use prompt engineering + OpenAI fine-tuning API</item>
+        <item>Improving general reasoning or world knowledge — fine-tuning doesn't add new knowledge, it adjusts patterns</item>
+      </list>
+    </section>
+
+    <section name="framework-selection">
+      <rule>
+        <statement>Use Unsloth for single-GPU fine-tuning of models up to 70B with QLoRA. Use Axolotl for multi-GPU distributed training and complex config management. Use TRL (SFTTrainer) for programmatic control in Python without YAML configs. Use LLaMA-Factory when you need a web UI or are not comfortable with code.</statement>
+        <rationale>Unsloth patches Flash Attention and memory management to achieve 2-5x faster training and 60% VRAM reduction vs vanilla HuggingFace. Axolotl provides battle-tested YAML configs for distributed training with FSDP/DeepSpeed. TRL integrates tightly with HuggingFace ecosystem for programmatic pipelines. LLaMA-Factory's WebUI lowers barrier for non-engineers.</rationale>
+      </rule>
+
+      <list>
+        <item>Unsloth: single-GPU, 2-5x speedup, 60% VRAM reduction, supports Llama/Mistral/Qwen/Gemma; open source, active</item>
+        <item>Axolotl: multi-GPU (FSDP/DeepSpeed), YAML configs, 100+ model templates, best for reproducible pipelines</item>
+        <item>TRL (SFTTrainer): HuggingFace native, Python API, supports SFT/DPO/PPO/GRPO, most flexible</item>
+        <item>LLaMA-Factory: WebUI + CLI, quick start, supports 100+ models, built-in evaluation</item>
+        <item>Torchtune: PyTorch native, no HuggingFace dep, best for custom architectures and research</item>
+      </list>
+    </section>
+
+    <section name="unsloth-setup">
+      <example type="good">
+        <code lang="python"><![CDATA[
+from unsloth import FastLanguageModel
+import torch
+
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name="unsloth/Meta-Llama-3.1-8B-Instruct",
+    max_seq_length=2048,
+    dtype=torch.bfloat16,
+    load_in_4bit=True,          # QLoRA
+)
+
+model = FastLanguageModel.get_peft_model(
+    model,
+    r=16,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                    "gate_proj", "up_proj", "down_proj"],
+    lora_alpha=32,
+    lora_dropout=0.05,
+    bias="none",
+    use_gradient_checkpointing="unsloth",  # Unsloth's optimized GC
+    random_state=42,
+)
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="axolotl-config-pattern">
+      <example type="good">
+        <code lang="yaml"><![CDATA[
+base_model: meta-llama/Meta-Llama-3.1-8B-Instruct
+model_type: LlamaForCausalLM
+tokenizer_type: AutoTokenizer
+
+load_in_4bit: true
+adapter: qlora
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_modules:
+  - q_proj
+  - v_proj
+  - k_proj
+  - o_proj
+
+datasets:
+  - path: data/train.jsonl
+    type: alpaca
+
+sequence_len: 2048
+micro_batch_size: 1
+gradient_accumulation_steps: 8
+num_epochs: 3
+learning_rate: 0.0002
+lr_scheduler: cosine
+warmup_ratio: 0.03
+bf16: true
+gradient_checkpointing: true
+
+eval_sample_packing: false
+eval_steps: 100
+save_steps: 200
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="dpo-vs-sft">
+      <rule>
+        <statement>Use SFT (Supervised Fine-Tuning) when you have correct input-output pairs. Use DPO (Direct Preference Optimization) only when you have preference pairs (chosen/rejected) and SFT quality is already acceptable. Do not use DPO as the first step — it requires a strong SFT base to be stable.</statement>
+        <rationale>SFT trains the model to imitate correct outputs. DPO trains the model to prefer correct outputs over incorrect ones — it is a refinement step that requires the model to already know the task domain. Applying DPO to an untrained base model produces unstable results because the reference model (base SFT) is not a reliable anchor.</rationale>
+      </rule>
+    </section>
+
+    <section name="grpo-for-reasoning">
+      <rule>
+        <statement>Use GRPO (Group Relative Policy Optimization) when training reasoning models that must show intermediate steps. GRPO rewards complete reasoning chains, not just correct final answers. Requires a verifiable reward signal (math answer checker, code execution, or rubric).</statement>
+        <rationale>GRPO was used to train DeepSeek R1's reasoning chains. It samples multiple completions per prompt, scores them with a reward function, and trains the model to prefer higher-reward completions. Unlike RLHF, it does not require a separate reward model — the reward signal comes from an external verifier (e.g., Python executor for code, symbolic solver for math).</rationale>
+      </rule>
+    </section>
+
+    <section name="data-format">
+      <rule>
+        <statement>Use JSONL format with one JSON object per line. Each object must have "messages" key with a list of role/content dicts (system, user, assistant). Validate the schema before training — a single malformed line causes training failure after hours of GPU time.</statement>
+        <rationale>JSONL is the standard format accepted by all major fine-tuning frameworks and OpenAI's fine-tuning API. Schema validation upfront catches malformed examples (missing fields, wrong types, empty content) before they cause cryptic mid-training crashes.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="python"><![CDATA[
+import json
+from pathlib import Path
+
+def validate_jsonl(path: str, required_roles: tuple = ("user", "assistant")) -> None:
+    """Validate fine-tuning dataset format before training."""
+    errors = []
+    with open(path) as f:
+        for i, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError as e:
+                errors.append(f"Line {i}: invalid JSON: {e}")
+                continue
+
+            if "messages" not in obj:
+                errors.append(f"Line {i}: missing 'messages' key")
+                continue
+
+            roles = [m.get("role") for m in obj["messages"]]
+            for role in required_roles:
+                if role not in roles:
+                    errors.append(f"Line {i}: missing required role '{role}'")
+
+            for j, msg in enumerate(obj["messages"]):
+                if not msg.get("content", "").strip():
+                    errors.append(f"Line {i}, message {j}: empty content")
+
+    if errors:
+        raise ValueError(f"Dataset validation failed:\n" + "\n".join(errors[:20]))
+        ]]></code>
+      </example>
+
+      <example type="good">
+        <code lang="json"><![CDATA[
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a customer support agent for Acme Corp. Answer questions about products and policies."
+    },
+    {
+      "role": "user",
+      "content": "What is your return policy?"
+    },
+    {
+      "role": "assistant",
+      "content": "Our return policy allows returns within 30 days of purchase with original receipt. Items must be unused and in original packaging. Contact support@acme.com to initiate a return."
+    }
+  ]
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="train-validation-split">
+      <rule>
+        <statement>Use 90/10 train/validation split for datasets under 10K examples. Use 95/5 for datasets over 10K. Stratify the split by task category or difficulty if you have those labels. Never use temporal order as the split criterion — it causes distribution mismatch.</statement>
+        <rationale>Validation set is used for early stopping and eval gating. Too small a validation set (under 50 examples) produces high-variance metrics that cannot reliably detect overfitting. Too large wastes training data. Stratified split ensures all task categories appear in both splits.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Deduplicate training examples using exact hash match before train/val split. Remove near-duplicates (cosine similarity above 0.98) using embedding comparison on examples with more than 1,000 examples. Deduplication before splitting prevents data leakage from train to validation.</statement>
+        <rationale>Duplicate training examples inflate perceived training loss convergence and cause overconfident validation metrics when the duplicate appears in both splits. Near-deduplication removes paraphrased examples that teach the model the same pattern, wasting capacity.</rationale>
+      </rule>
+    </section>
+
+    <section name="data-augmentation">
+      <rule>
+        <statement>Augment fine-tuning data by: (1) paraphrasing user turns with an LLM to create query variation, (2) generating harder negative examples (plausible wrong answers) for preference datasets, (3) back-translating non-English examples. Do not augment assistant turns — preserving output format is critical.</statement>
+        <rationale>User turn variation teaches the model to handle diverse phrasings of the same intent. Assistant turn augmentation introduces format drift and quality degradation. Negative examples for DPO datasets improve contrastive learning signal but must be plausible, not obviously wrong.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Generating synthetic training data entirely from the same model you are fine-tuning.</description>
+        <reason>This creates a circular training loop: the model learns to imitate itself, amplifying existing patterns and errors rather than correcting them. Use a stronger or different model to generate synthetic data, then validate the outputs before including them in the training set.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A subagent executes the fine-tuning pipeline in stages: data validation → config generation → job submission to GPU cloud → training monitoring → eval gate → conditional deployment. Each stage is a checkpoint; the agent does not auto-advance past the eval gate without a passing score. Human review is required before the merged model goes to production inference.</p>
+
+      <note>Recommended subagents: faion-sdd-executor-agent — drives training job lifecycle as an SDD task sequence</note>
+
+      <note>Prompt pattern for decision assessment: Given the following task description and dataset stats, determine whether fine-tuning is the right approach or if prompting/RAG should be tried first. Output: recommendation (fine-tune | prompt | rag) + one-line rationale.</note>
+
+      <note>Framework selection helper:
+def select_framework(vram_gb: int, examples: int, need_webui: bool) -&gt; str:
+    if need_webui:
+        return "llama-factory"
+    if vram_gb &lt; 16:
+        return "unsloth"  # QLoRA, 4-bit
+    if examples &gt; 50_000:
+        return "axolotl"  # handles large datasets well
+    return "trl"          # HuggingFace native, most flexible
+      </note>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>trl: SFT, DPO, ORPO trainers; HuggingFace native. Install: pip install trl. Docs: huggingface.co/docs/trl</item>
+        <item>unsloth: 2-5x faster, 80% less VRAM; drop-in for PEFT. Install: pip install unsloth. Docs: unsloth.ai</item>
+        <item>axolotl: YAML-driven; handles complex multi-dataset configs. Install: pip install axolotl. Docs: github.com/OpenAccess-AI-Collective/axolotl</item>
+        <item>llama-factory: WebUI + CLI; beginner-friendly. Install: pip install llamafactory. Docs: github.com/hiyouga/LLaMA-Factory</item>
+        <item>torchtune: PyTorch-native; clean recipes. Install: pip install torchtune. Docs: github.com/pytorch/torchtune</item>
+        <item>lm-eval: Standardized eval harness. Install: pip install lm-eval. Docs: github.com/EleutherAI/lm-evaluation-harness</item>
+        <item>mergekit: Merge fine-tuned adapters. Install: pip install mergekit. Docs: github.com/arcee-ai/mergekit</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>OpenAI Fine-tuning API (SaaS): No GPU needed; API-only; supports SFT + DPO + RFT</item>
+        <item>Modal (SaaS): Python SDK for GPU jobs; agent-submittable via modal run</item>
+        <item>RunPod (SaaS): REST API; H100/A100 pods on demand</item>
+        <item>Hugging Face AutoTrain (SaaS): REST API; limited config control</item>
+        <item>Weights &amp; Biases (SaaS): Training metrics; agent reads via API for eval gates</item>
+        <item>MLflow (OSS): Self-hosted tracking; log adapters and metrics</item>
+        <item>Together AI (SaaS): Managed fine-tuning API; supports open models</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Follow the decision tree: prompting → RAG → fine-tuning; don't skip steps</item>
+        <item>Validate training data format and balance before any job submission</item>
+        <item>Mix 20-30% general instruction data to prevent catastrophic forgetting</item>
+        <item>Track training and validation loss in W&amp;B or MLflow; stop early if val loss diverges</item>
+        <item>Run task-specific eval (not just perplexity) against a held-out set before deployment</item>
+        <item>Version adapters and base model checkpoints separately; never overwrite checkpoints in-place</item>
+        <item>Keep a golden test set untouched during training — reserve it exclusively for final eval</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agent must validate data format before submitting any training job — bad JSONL fails silently on some platforms</item>
+        <item>Training jobs are async; agent needs polling with exponential backoff (not synchronous wait)</item>
+        <item>Eval gate is mandatory: agent must not auto-deploy on training completion without a passing score</item>
+        <item>GPU spot preemption is common; ensure checkpoint every N steps to allow resume without full restart</item>
+        <item>W&amp;B / MLflow API keys must be injected into the training environment before job start</item>
+        <item>Human-in-loop checkpoint before production deployment is non-negotiable for any model serving real users</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/validate-jsonl.py" purpose="Data quality validation script (JSONL format check, min examples gate)"/>
+      <template path="templates/framework-selector.py" purpose="Framework selection helper (VRAM, dataset size, WebUI need)"/>
+      <template path="templates/data-formats.json" purpose="Training data format examples: Alpaca, ShareGPT, OpenAI Chat, DPO"/>
+    </templates>
+
+    <see-also>
+      <link href="https://huggingface.co/docs/trl">TRL documentation</link>
+      <link href="https://huggingface.co/docs/peft">PEFT documentation</link>
+      <link href="https://github.com/unslothai/unsloth">Unsloth GitHub</link>
+      <link href="https://github.com/OpenAccess-AI-Collective/axolotl">Axolotl GitHub</link>
+      <link href="https://platform.openai.com/docs/guides/fine-tuning">OpenAI Fine-tuning API</link>
+      <link href="https://arxiv.org/html/2408.13296v1">Survey of LLM fine-tuning</link>
+    </see-also>
+  </content>
+</methodology>
