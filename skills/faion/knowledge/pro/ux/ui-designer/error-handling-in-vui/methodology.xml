@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="error-handling-in-vui">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ui-designer</domain>
+    <summary>Voice UI error recovery with three-tier escalation (retry → examples → modality switch) mapped to four error types: never blame user, add information per retry, switch modality after two failures.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>voice-ui</tag>
+      <tag>error-handling</tag>
+      <tag>dialogue-design</tag>
+      <tag>accessibility</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Error Handling in VUI</title>
+
+    <summary>Voice recognition errors are unavoidable; the difference between a frustrating and a recoverable VUI is the error handling design. Repeating the same prompt after a failure provides no new information and drives abandonment. A structured escalation that offers examples and then switches modality (visual, agent) breaks the failure loop.</summary>
+
+    <why>
+      <p>Voice recognition errors are unavoidable; the difference between a frustrating and a recoverable VUI is the error handling design. Repeating the same prompt after a failure provides no new information and drives abandonment. A structured escalation that offers examples and then switches modality (visual, agent) breaks the failure loop.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Designing dialogue flows for any voice interface or voice assistant feature</item>
+        <item>Writing error message scripts for VUI flows</item>
+        <item>Auditing an existing VUI for error recovery patterns</item>
+        <item>Specifying VUI behavior in design documentation for developers</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Backend ASR model tuning — this methodology covers dialogue design, not model training</item>
+        <item>GUI-only error handling — different methodology applies (form validation, toast notifications)</item>
+        <item>Chatbot text error handling with no voice component</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="error-types">
+      <p>VUI errors fall into four categories:</p>
+      <list>
+        <item>No input: user is silent — microphone open but no speech detected</item>
+        <item>No match: speech detected but not recognized as any valid intent</item>
+        <item>Ambiguous: speech matches multiple valid intents with similar confidence</item>
+        <item>System error: technical failure in ASR, NLU, or backend service</item>
+      </list>
+    </section>
+
+    <section name="three-tier-recovery-sequence">
+      <rule testable="true">
+        <statement>Apply a three-tier escalation for any failed recognition: Tier 1 — simple retry prompt; Tier 2 — retry with example phrases; Tier 3 — offer a different modality (visual interface, human agent). Never loop back to Tier 1 after Tier 2 has failed.</statement>
+        <rationale>Repeating the same prompt provides no new information and drives abandonment; each tier must add information or a new path forward to break the failure loop.</rationale>
+      </rule>
+      <example type="good" title="Three-tier escalation for no-input error">
+        <code lang="text"><![CDATA[
+Tier 1 — No input:
+  "I didn't catch that. What's the city?"
+
+Tier 2 — Still no match:
+  "I'm having trouble understanding. Try saying something like
+   'New York' or 'Chicago'."
+
+Tier 3 — Second failure:
+  "Let me try another way. I'll show you a list to choose from."
+  [Switch to visual selection interface]
+        ]]></code>
+        <note>Tier 3 switches the interaction modality entirely rather than repeating voice prompts a third time.</note>
+      </example>
+    </section>
+
+    <section name="per-error-type-responses">
+      <rule testable="true">
+        <statement>For ambiguous input, name the top two interpretations explicitly and ask the user to confirm one — do not guess silently.</statement>
+        <rationale>Silent resolution of ambiguous input is the most common cause of unexpected VUI behavior; users cannot debug what they cannot see.</rationale>
+      </rule>
+      <example type="good" title="Explicit disambiguation">
+        <code lang="text"><![CDATA[
+User: "Call Mary"
+VUI:  "Did you mean Mary Smith or Mary Johnson?"
+        ]]></code>
+      </example>
+      <rule testable="true">
+        <statement>For system errors, acknowledge the failure immediately, apologize without blaming the user, and offer a concrete next action (retry, switch to app, call support).</statement>
+        <rationale>Silent failures or vague "something went wrong" messages leave users without a recovery path and damage trust disproportionately to the severity of the error.</rationale>
+      </rule>
+      <example type="good" title="System error with recovery path">
+        <code lang="text"><![CDATA[
+VUI: "Sorry, I'm having trouble connecting right now.
+      You can try again in a moment, or tap here to use the app."
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="design-principles">
+      <rule testable="true">
+        <statement>Never phrase an error response as the user's fault. Omit "I didn't understand you" in favor of "I didn't catch that" or "I'm having trouble."</statement>
+        <rationale>Blame language increases user anxiety, reduces confidence in the system, and causes abandonment — particularly for non-native speakers and users with speech impediments.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Always provide a visual fallback path — display a list of options, a text input, or a menu — at Tier 3. Voice-only dead-ends must not exist.</statement>
+        <rationale>Some users will never succeed with voice recognition in certain contexts (strong accent, noise, speech impediment); a visual path is mandatory to maintain access.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Repeating the exact same error prompt more than twice without adding new information.</description>
+        <reason>Creates a frustrating loop with no path forward; users abandon the interface after the second identical prompt.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Silently resolving ambiguous input by picking the highest-confidence interpretation without confirmation.</description>
+        <reason>Users experience unexpected behavior with no explanation; trust is damaged and errors compound.</reason>
+      </antipattern>
+      <antipattern>
+        <description>A voice-only interface with no fallback modality at Tier 3.</description>
+        <reason>Users who cannot succeed with voice have no recourse; the interface is inaccessible to them.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-integration">
+      <p>Use Claude as a "reprompt designer" that takes an intent spec and generates a 3-step escalation ladder, multiple utterance variants per step, and the platform-specific schema (Alexa Reprompt, Dialogflow follow-up event, custom JSON). A separate evaluator pass checks each utterance against length / tone / blame-the-user rules. Real conversation logs (anonymized) feed a periodic "reprompt rotation" job that swaps in fresh variants when a step's repeat-rate exceeds threshold.</p>
+      <p>The recommended agentic workflow uses a general-purpose Claude subagent to generate reprompt ladders and variant pools. A "voice-copy-reviewer" specialized prompt scores each utterance on concision, blame-free framing, and time-to-speak. The faion-sdd-executor-agent executes the SDD task that wires the new error flow into the bot's intent handler.</p>
+      <p>Example prompt pattern for generating a reprompt ladder:</p>
+      <code lang="text"><![CDATA[
+Intent: book_flight, slot=destination_city.
+Output 3-step ladder. Each step: 2 utterance variants, max 8s spoken,
+no blame, must end with an example.
+Format: JSON {step, variant, text, est_seconds}.
+      ]]></code>
+      <p>Example prompt for auditing existing reprompts:</p>
+      <code lang="text"><![CDATA[
+Audit these 12 reprompts (input below). For each, return:
+{too_long: bool, blames_user: bool, missing_example: bool, suggested_rewrite}.
+      ]]></code>
+      <p>When using this methodology with LLM agents, be aware of these limitations and gotchas:</p>
+      <list>
+        <item>Agent has no acoustic ground truth; it cannot predict what real users actually mis-say.</item>
+        <item>Generated reprompts often violate platform character / time limits (Alexa 8s, Google 60s).</item>
+        <item>LLMs default to apologetic, verbose language that bloats reprompts past the 15-second attention cliff.</item>
+        <item>Localized error variants need native-speaker review; literal translation breaks prosody.</item>
+        <item>Privacy: shipping raw error logs to an agent for analysis can leak PII captured by ASR.</item>
+        <item>LLM-generated reprompts trend long and polite; enforce a max-words rule in the prompt.</item>
+        <item>"I'm sorry" repeated in every step erodes trust — cap at one apology in the ladder.</item>
+        <item>Agent will invent SSML tags that some platforms reject (e.g., Siri ignores most SSML); validate against target.</item>
+        <item>Sending raw user logs to an external API to "improve reprompts" is a privacy hazard — anonymize first.</item>
+        <item>Agents tend to repeat the same example city/name; force diversity in the prompt or rotate at runtime.</item>
+        <item>Do not let an agent auto-deploy reprompt updates; require human approval and staged rollout — one bad copy line lands on millions of speakers instantly.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Three strikes max — escalate to human / visual / quit; never loop forever.</item>
+        <item>Vary the second and third reprompt; identical retries train users to leave.</item>
+        <item>Always include one concrete example phrase by step 2.</item>
+        <item>Acknowledge the system's failure ("I'm having trouble"), not the user's speech.</item>
+        <item>A/B test reprompts by intent; success rate, not aesthetic preference, is the gate.</item>
+        <item>Track per-step abandonment in analytics — anything > 30% means the prompt is wrong.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://www.nngroup.com/articles/voice-error-handling/"/>
+      <link href="https://designguidelines.withgoogle.com/conversation/conversation-design/error-handling.html"/>
+      <link href="https://developer.amazon.com/en-US/docs/alexa/alexa-design/error-handling.html"/>
+    </see-also>
+  </content>
+</methodology>
