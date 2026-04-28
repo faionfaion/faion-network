@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vui-testing-best-practices">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-researcher</domain>
+    <summary>VUI testing validates voice interfaces across three accuracy tiers (ASR word-error rate, NLU intent+slot F1, dialog task completion) using a two-tier suite: deterministic scripted-fixture assertions and LLM-judge scoring for naturalness and repair quality. The method covers corpus construction, noise-injection stress testing, metric tracking, and CI integration.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>voice-testing</tag>
+      <tag>quality-assurance</tag>
+      <tag>llm-judge</tag>
+      <tag>nlu-testing</tag>
+      <tag>asr</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>VUI Testing Best Practices</title>
+
+    <summary>VUI testing validates voice interfaces across three accuracy tiers (ASR word-error rate, NLU intent+slot F1, dialog task completion) using a two-tier suite: deterministic scripted-fixture assertions and LLM-judge scoring for naturalness and repair quality. The method covers corpus construction, noise-injection stress testing, metric tracking, and CI integration.</summary>
+
+    <why>
+      <p>Voice interfaces fail in ways that standard usability testing misses: ASR provider upgrades shift accuracy silently, no-input and barge-in edge cases break state machines, and naturalness degrades invisibly when prompts are repeated verbatim on retry. Separating test tiers (deterministic vs LLM-judge) and tracking ASR, NLU, and dialog completion independently isolates where regressions originate.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Pre-launch validation of a voice skill or custom agent: stress-test intent recognition and dialog flow.</item>
+        <item>Multilingual/accent expansion: regression-test ASR accuracy and prompt naturalness across locales.</item>
+        <item>Continuous regression: every NLU model or prompt change re-runs utterance fixture corpus.</item>
+        <item>Field testing prep: scripted noise-injection runs before recruiting real users.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Voice is a minor shortcut (tap-to-speak search) — standard usability testing covers it.</item>
+        <item>No working dialog model yet — start with Wizard-of-Oz prototyping.</item>
+        <item>Single-turn command testing only — an NLU benchmark (intent classification F1) is sufficient.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="testing-layers">
+      <p>Five layers in order of granularity: unit (intent recognition accuracy), integration (dialog flow completion), user (real-world usability), stress (noise, interruptions, edge cases), accessibility (accent diversity, speech impairment).</p>
+
+      <rule>
+        <statement>Track three accuracy tiers separately: ASR word-error rate, NLU intent+slot F1, and dialog task completion. A regression in only one tier tells you exactly where to look.</statement>
+        <rationale>Aggregating across tiers hides the root cause. ASR regression means transcription changed; NLU regression means intent model changed; dialog regression means state machine changed. Each has a different fix.</rationale>
+      </rule>
+    </section>
+
+    <section name="key-metrics">
+      <list>
+        <item>Intent accuracy: % correct intent detection per utterance</item>
+        <item>Task completion: % of users completing their goal end-to-end</item>
+        <item>Error rate: dialog failures per conversation</item>
+        <item>Word error rate (WER): ASR transcription accuracy</item>
+        <item>User satisfaction: post-interaction survey (CSAT or 1-5 scale)</item>
+      </list>
+    </section>
+
+    <section name="two-tier-suite">
+      <rule>
+        <statement>Run a two-tier test suite: tier 1 = deterministic assertions over scripted utterance fixtures (intent, slot, dialog-state outcomes); tier 2 = LLM-judge scoring for naturalness, error recovery, and goal completion against a rubric. Never mix the two tiers' outputs into a single pass/fail count.</statement>
+        <rationale>Deterministic assertions catch regressions objectively. LLM-judge scoring evaluates qualitative properties that assertions cannot reach. Mixing them produces an opaque aggregate that hides which type of regression occurred.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Pin ASR model versions in CI. Provider-side ASR upgrades silently shift WER and break tests overnight.</statement>
+        <rationale>Cloud ASR providers update models without notice. A passing suite built against model v1 can fail entirely against model v2 with no code changes. Version-pin prevents silent shifts.</rationale>
+      </rule>
+
+      <reference path="templates/test-plan.md">VUI test plan template</reference>
+    </section>
+
+    <section name="corpus-construction">
+      <rule>
+        <statement>Build the utterance corpus from real anonymized user logs first; synthesize LLM variants second. Pure LLM-generated corpora over-represent grammatical, in-domain phrasings and miss real-user degradation.</statement>
+        <rationale>Real logs capture the messy, elliptical, code-switched, and misspelled phrasings that actual users produce. LLMs trained on clean text generate clean test cases that produce falsely high accuracy numbers.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Include barge-in tests (user interrupts mid-prompt) and no-input tests (timeout) in every suite. These break dialog state machines more reliably than utterance variation.</statement>
+        <rationale>Barge-in and timeout edge cases break state machines at the interrupt handler level, independent of intent recognition. They are structurally different failures requiring different fixes.</rationale>
+      </rule>
+    </section>
+
+    <section name="noise-injection">
+      <rule>
+        <statement>Mix clean utterances with ambient noise (TV, traffic, cafe) at multiple SNR levels (20dB, 10dB, 5dB) for stress testing. Use ffmpeg for mixing.</statement>
+        <rationale>Synthetic noise injection is imperfect (misses room acoustics and beamforming) but captures most recognizable degradation modes: background speech, low SNR, frequency masking.</rationale>
+      </rule>
+
+      <reference path="templates/stress-corpus.sh">Shell script: mix utterances with noise at 3 SNR levels</reference>
+    </section>
+
+    <section name="ci-tiering">
+      <rule>
+        <statement>Tier the suite: smoke (10 utterances, every commit) → full (nightly) → field-replay (release). Do not run the full LLM-judge sweep on every commit — cost and latency are non-trivial.</statement>
+        <rationale>A 1000-utterance x 3-noise x 2-locale x LLM-judge sweep is expensive. Tiering keeps commit feedback fast while ensuring thorough coverage before release.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Run the same suite in at least two locales even for monolingual launches. Reveals locale-leaking copy and fallback bugs.</statement>
+        <rationale>Locale bugs appear at locale boundaries: hardcoded English fallbacks, date/number format assumptions, and ASR models with uneven locale coverage. Single-locale suites miss all of these.</rationale>
+      </rule>
+    </section>
+
+    <section name="llm-judge-antipatterns">
+      <antipattern>
+        <description>LLM judge sees the expected answer when scoring naturalness — anchoring bias inflates scores.</description>
+        <reason>Score naturalness blind, then compute correctness separately. Judges with access to expected answers rate responses as more natural when they are also correct, masking naturalness failures in correct responses.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using absolute 1-5 naturalness scores instead of pairwise comparison.</description>
+        <reason>Absolute LLM scores are unreliable across sessions. Pairwise comparison ("Is A or B more natural?") produces more consistent results and surfaces meaningful differences between prompt variants.</reason>
+      </antipattern>
+    </section>
+
+    <section name="fixture-and-privacy-antipatterns">
+      <antipattern>
+        <description>Using the same TTS vendor for test fixtures as for product output — produces false-high naturalness scores.</description>
+        <reason>Same-vendor TTS creates circular evaluation: the LLM judge finds familiar prosody patterns more natural. Use a different TTS engine for fixture generation than for product rendering.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Sending raw user-recorded audio to a cloud LLM judge.</description>
+        <reason>Raw audio may contain PII, bystander voices, and background conversations. Always transcribe locally first, redact PII, then judge the text. Never pass raw audio to an external model.</reason>
+      </antipattern>
+    </section>
+
+    <section name="infrastructure-antipatterns">
+      <antipattern>
+        <description>Running the full LLM-judge suite concurrently without concurrency caps, hitting 429 rate limits that cause silent test passes.</description>
+        <reason>429 responses can be swallowed as empty results rather than errors. Cap concurrency at provider rate limits and treat any 429 as a test failure, not a skip.</reason>
+      </antipattern>
+
+      <reference path="templates/llm-judge-prompt.txt">Per-turn LLM judge prompt scoring intent_match, naturalness, brevity, error_recovery</reference>
+    </section>
+
+    <templates>
+      <template path="templates/test-plan.md" purpose="VUI test plan: objectives, fixture inventory, metric targets, CI tier schedule."/>
+      <template path="templates/stress-corpus.sh" purpose="Shell script: mix clean utterances with ambient-noise stems at multiple SNR levels."/>
+      <template path="templates/llm-judge-prompt.txt" purpose="Per-turn LLM judge prompt scoring intent_match, naturalness, brevity, error_recovery."/>
+    </templates>
+
+    <checklist>
+      <check>ASR word-error rate is tracked separately from NLU and dialog metrics.</check>
+      <check>Utterance corpus is built from real anonymized user logs first.</check>
+      <check>Corpus includes barge-in tests (user interrupts mid-prompt).</check>
+      <check>Corpus includes no-input tests (timeout).</check>
+      <check>Noise injection covers at least three SNR levels (20dB, 10dB, 5dB).</check>
+      <check>Suite is tiered: smoke (every commit), full (nightly), field-replay (release).</check>
+      <check>Same suite runs in at least two locales.</check>
+      <check>LLM-judge tier is blind to expected answers when scoring naturalness.</check>
+      <check>TTS vendor for fixtures differs from product output vendor.</check>
+      <check>Concurrency caps are set to prevent rate-limit hits.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://www.nngroup.com/articles/testing-voice-usability/"/>
+      <link href="https://developer.amazon.com/en-US/docs/alexa/custom-skills/test-your-skill.html"/>
+      <link href="https://developers.google.com/assistant/conversational/design"/>
+      <link href="https://docs.bespoken.io/"/>
+    </see-also>
+  </content>
+</methodology>
