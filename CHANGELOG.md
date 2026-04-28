@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 solo/sdd/sdd-planning methodologies → methodology.xml (spec-requirements, spec-structure, task-creation-principles)
 - migrate: spec-writing → methodology.xml (solo/product/product-manager, feature-045 batch 1/3)
 - migrate: 3/3 solo/sdd/sdd-planning methodologies → methodology.xml (impl-plan-100k-rule, impl-plan-components, impl-plan-examples)
 - migrate: 3/3 solo/product/product-manager methodologies → methodology.xml (micro-mvps, okr-setting, outcome-based-roadmaps)
