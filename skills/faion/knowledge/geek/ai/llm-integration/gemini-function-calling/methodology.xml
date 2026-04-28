@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gemini-function-calling">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>llm-integration</domain>
+    <summary>Gemini function calling with manual vs. automatic modes, Google Search grounding for live web data, and text-embedding-004 for RAG pipelines.</summary>
+    <tags>
+      <tag>gemini</tag>
+      <tag>function-calling</tag>
+      <tag>tool-use</tag>
+      <tag>grounding</tag>
+      <tag>embeddings</tag>
+    </tags>
+    <category>gemini</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <applies-to>both</applies-to>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+  <content>
+    <title>Gemini Function Calling, Grounding, and Embeddings</title>
+
+    <summary>Gemini function calling lets Python functions serve as LLM tools by using their docstrings and type hints as the tool schema. The SDK supports automatic mode (model executes tools in-process) and manual mode (caller controls execution). Beyond tools, Gemini offers Google Search grounding for live web data and text-embedding-004 (768-dim) for RAG pipelines, plus native JSON schema-constrained output via response_mime_type.</summary>
+
+    <why>
+      <p>Gemini is the preferred choice when the pipeline is already on Google Cloud / Vertex AI, when Google Search grounding is required (live news, prices, current events), or when embedding generation with text-embedding-004 feeds a Qdrant/Chroma index. It removes the need to write JSON tool schemas manually — Python docstrings become the schema automatically. For structured extraction, response_mime_type="application/json" is available on all 1.5+ models without function-forcing.</p>
+      <p>Manual function calling (versus automatic) is critical for production pipelines because it allows logging, validation, and the ability to abort before execution. Automatic mode executes functions directly inside the SDK call, so any exception kills the entire request with no retry opportunity.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Pipelines running on Google Cloud / Vertex AI infrastructure.</item>
+        <item>Tasks requiring Google Search grounding for live web data.</item>
+        <item>RAG pipelines using text-embedding-004 (768-dim, multilingual).</item>
+        <item>Structured extraction with JSON schema (simpler than tool-forcing).</item>
+        <item>Agent loops where manual function calling allows logging, validation, and controlled execution.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>OpenAI or Claude is already in the pipeline — adding Gemini increases vendor surface area without clear benefit unless Search grounding is needed.</item>
+        <item>Production pipelines requiring deterministic, auditable tool execution — automatic function calling is opaque and non-deterministic.</item>
+        <item>Tasks requiring Anthropic Extended Thinking-level transparent reasoning.</item>
+        <item>Complex nested function signatures — Gemini parses docstrings as schema; complex types degrade accuracy.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="function-calling-modes">
+      <p>Gemini supports two modes: automatic (SDK handles execution) and manual (caller controls execution).</p>
+
+      <rule testable="true">
+        <statement>Use manual function calling (enable_automatic_function_calling=False) in agent pipelines to allow logging, validation, and potential veto before execution.</statement>
+        <rationale>Automatic mode executes functions directly inside the SDK call. If a function raises an exception, the entire call fails with no retry opportunity. Manual mode gives the caller control and visibility.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Validate the function name in the response before executing: assert fc.name == expected_name.</statement>
+        <rationale>With tool_config mode="ANY", the model must call a function but may choose the wrong one. Validating the name prevents executing an unintended function.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Every tool function must have a type-annotated signature and a docstring that describes what the function does, its arguments, and its return value.</statement>
+        <rationale>Gemini parses Python docstrings and type hints to build the tool schema. Undocumented or unannotated functions may be ignored or called with wrong arguments.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Treat parallel function calls as non-deterministic in both order and selection. Always validate each call independently before executing.</statement>
+        <rationale>Gemini may call multiple tools in the same response in any order. Code that assumes a specific execution order will fail unpredictably.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Call dict() on fc.args explicitly, or use json_format.MessageToDict, before passing args to the function.</statement>
+        <rationale>fn_call.args returns a MapComposite protobuf object, not a plain Python dict. Passing it directly to **kwargs may silently omit fields or raise a TypeError.</rationale>
+      </rule>
+
+      <example type="good" title="Manual function calling with validation">
+        <code lang="python"><![CDATA[
+import google.generativeai as genai
+
+genai.configure(api_key="GOOGLE_API_KEY")
+
+def call_with_tool(user_query: str, fn) -> str:
+    """Manual function calling — auditable."""
+    model = genai.GenerativeModel("gemini-2.0-flash", tools=[fn])
+    chat = model.start_chat()
+    resp = chat.send_message(user_query)
+
+    for part in resp.candidates[0].content.parts:
+        if hasattr(part, "function_call"):
+            fc = part.function_call
+            assert fc.name == fn.__name__, f"Unexpected tool: {fc.name}"
+            result = fn(**dict(fc.args))
+            follow = chat.send_message(genai.protos.Content(parts=[
+                genai.protos.Part(function_response=genai.protos.FunctionResponse(
+                    name=fc.name, response={"result": result}
+                ))
+            ]))
+            return follow.text
+    return resp.text
+]]></code>
+        <note>Manual mode: function is not executed until the caller explicitly validates the name and calls it. This pattern allows logging and error recovery.</note>
+      </example>
+
+      <antipattern>
+        <description>Using enable_automatic_function_calling=True in a production agent pipeline.</description>
+        <reason>Automatic calling executes functions directly in the SDK call. Any exception kills the entire call with no logging, no retry, and no opportunity to validate arguments before execution.</reason>
+      </antipattern>
+    </section>
+
+    <section name="google-search-grounding">
+      <p>Grounding connects Gemini to live web search results, allowing it to answer questions about current events, prices, and news.</p>
+
+      <rule testable="true">
+        <statement>Use Google Search grounding only when the task genuinely requires current web data — news, live prices, recent events.</statement>
+        <rationale>Grounding adds per-query cost and latency. For static knowledge, use the model's training data or a local RAG index instead.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Check grounding_metadata for source chunks after every grounded call and verify sources before surfacing them to users.</statement>
+        <rationale>Grounded responses cite web sources. Without verification, bad or irrelevant sources can undermine trust.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Do not combine Google Search grounding with custom tools in production — this combination is experimental and may behave unexpectedly.</statement>
+        <rationale>Mixing grounding and function calling is not fully supported on all Gemini models. The model may prefer grounding over tool calls in unspecified ways.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Enabling grounding unconditionally for all queries without surfacing the cost to users.</description>
+        <reason>Grounding adds significant per-query cost. Agents that enable it by default without making the cost visible to users can cause budget blowouts.</reason>
+      </antipattern>
+    </section>
+
+    <section name="text-embedding-004">
+      <p>Gemini's text-embedding-004 model produces 768-dimensional vectors for RAG and semantic search.</p>
+
+      <rule testable="true">
+        <statement>Use task_type="RETRIEVAL_DOCUMENT" for indexing documents and task_type="RETRIEVAL_QUERY" for search queries.</statement>
+        <rationale>Embedding models use separate optimization heads per task type. Using the wrong type (e.g., RETRIEVAL_DOCUMENT for a query) degrades retrieval quality measurably (10–20% lower recall).</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Do not mix text-embedding-004 (768-dim) vectors with indexes built for 1536-dim (OpenAI) or 1024-dim embeddings.</statement>
+        <rationale>Dimension mismatch causes an error at index insert time or silently produces zero-similarity results at query time depending on the vector DB configuration.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Cache computed document embeddings — re-embedding on every request is expensive and the vectors do not change unless the document changes.</statement>
+        <rationale>Embedding API calls have cost and latency. Documents that have not changed produce identical vectors; there is no benefit to re-computing them.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always normalize embeddings before cosine similarity computation using np.linalg.norm.</statement>
+        <rationale>Raw cosine similarity without normalization produces unstable results. Normalized vectors ensure consistent similarity scores across different batch sizes.</rationale>
+      </rule>
+
+      <example type="good" title="Embedding batch helper">
+        <code lang="python"><![CDATA[
+import google.generativeai as genai
+
+def embed_batch(texts: list[str], task: str = "RETRIEVAL_DOCUMENT") -> list[list[float]]:
+    """Embed texts. task: RETRIEVAL_DOCUMENT | RETRIEVAL_QUERY | SEMANTIC_SIMILARITY"""
+    result = genai.embed_content(
+        model="models/text-embedding-004",
+        content=texts,
+        task_type=task
+    )
+    return result["embedding"]
+
+# Index documents
+doc_embeddings = embed_batch(document_texts)
+
+# Query (different task type)
+query_embedding = embed_batch([query], task="RETRIEVAL_QUERY")[0]
+]]></code>
+        <note>Task type is passed explicitly to avoid the default which may not match the intended use. Embeddings are 768-dimensional.</note>
+      </example>
+
+      <antipattern>
+        <description>Using the same task_type for both document indexing and query embedding.</description>
+        <reason>Using RETRIEVAL_DOCUMENT for queries or RETRIEVAL_QUERY for indexing violates the embedding model's optimization. Retrieval quality degrades measurably, typically 10–20% lower recall.</reason>
+      </antipattern>
+    </section>
+
+    <section name="structured-output">
+      <p>Use response_mime_type="application/json" for structured extraction without function calling.</p>
+
+      <rule testable="true">
+        <statement>Always validate extracted JSON against the intended schema using Pydantic before using it downstream. response_mime_type="application/json" does not guarantee schema compliance — Gemini may return valid JSON that violates the schema.</statement>
+        <rationale>JSON mode produces valid JSON syntax, but may miss required fields or add extra fields. Pydantic validation catches these mismatches early.</rationale>
+      </rule>
+
+      <example type="good" title="Structured extraction with JSON schema">
+        <code lang="python"><![CDATA[
+from pydantic import BaseModel
+from typing import List
+import google.generativeai as genai
+
+class Article(BaseModel):
+    title: str
+    topics: List[str]
+    sentiment: str
+
+model = genai.GenerativeModel(
+    "gemini-1.5-pro",
+    generation_config={
+        "response_mime_type": "application/json",
+        "response_schema": Article.model_json_schema()
+    }
+)
+
+resp = model.generate_content("Extract from: " + article_text)
+data = Article.model_validate_json(resp.text)
+]]></code>
+        <note>Pydantic validation after extraction ensures the schema is respected. Simpler than function calling for extraction-only tasks.</note>
+      </example>
+    </section>
+
+    <section name="agent-integration">
+      <p>Guidelines for integrating Gemini function calling into agentic workflows.</p>
+
+      <rule testable="true">
+        <statement>Use manual function calling (not automatic) so the orchestrating agent can log, validate, and potentially veto tool invocations before execution. Pass the function response back using genai.protos.FunctionResponse.</statement>
+        <rationale>Manual mode gives the orchestrator full visibility and control. Automatic mode hides function execution and prevents the agent from reacting to execution failures.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set a maximum iteration count on any agent loop using Gemini tools; the model can loop indefinitely on ambiguous tasks.</statement>
+        <rationale>Without a cap, a poorly phrased query can cause the model to call tools repeatedly without making progress. A sensible default is 10 iterations.</rationale>
+      </rule>
+
+      <example type="good" title="Agentic prompt: manual function calling">
+        <code lang="python"><![CDATA[
+# Recommended subagent workflow for manual function calling
+# This pattern ensures logging, validation, and error recovery
+
+def agent_with_tools(query: str, tools: list, max_iterations: int = 10):
+    model = genai.GenerativeModel("gemini-2.0-flash", tools=tools)
+    chat = model.start_chat()
+
+    for iteration in range(max_iterations):
+        response = chat.send_message(query if iteration == 0 else None)
+
+        tool_calls = [p for p in response.candidates[0].content.parts if hasattr(p, "function_call")]
+        if not tool_calls:
+            return response.text
+
+        results = []
+        for fc in tool_calls:
+            # Validate and execute
+            fn = next((t for t in tools if t.__name__ == fc.name), None)
+            if not fn:
+                results.append(f"Tool not found: {fc.name}")
+                continue
+
+            try:
+                result = fn(**dict(fc.args))
+                results.append(f"{fc.name}: {result}")
+            except Exception as e:
+                results.append(f"{fc.name} failed: {e}")
+
+        # Send results back
+        chat.send_message(genai.protos.Content(parts=[
+            genai.protos.Part(function_response=genai.protos.FunctionResponse(
+                name="results", response={"messages": results}
+            ))
+        ]))
+]]></code>
+        <note>This pattern allows the agent to see tool results and decide what to do next. Errors are logged and returned to the model for recovery.</note>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/manual-tool-call.py" purpose="Auditable manual function calling pattern with validation"/>
+      <template path="templates/structured-extraction.py" purpose="JSON schema extraction via response_mime_type (no tool use)"/>
+      <template path="templates/embed-batch.py" purpose="Batch embedding helper with task type selection"/>
+    </templates>
+
+    <see-also>
+      <link href="https://ai.google.dev/gemini-api/docs/function-calling"/>
+      <link href="https://ai.google.dev/gemini-api/docs/grounding"/>
+      <link href="https://ai.google.dev/gemini-api/docs/embeddings"/>
+      <link href="https://ai.google.dev/gemini-api/docs/structured-output"/>
+      <link href="https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/gemini"/>
+      <ref slug="gemini-api-integration"/>
+      <ref slug="gemini-basics"/>
+    </see-also>
+  </content>
+</methodology>
