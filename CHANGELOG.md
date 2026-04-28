@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 - migrate: 3/3 geek/research methodologies → methodology.xml (perplexity-ai-research, ai-assisted-persona-building, ai-interview-analysis; feature-045 batch 288)
+- migrate: 3/3 geek/research/researcher methodologies → methodology.xml (ai-persona-building, ai-research-tool-categories, ai-research-tools; feature-045 batch 289)
 - migrate: 3/3 geek/ai/rag-engineer + geek/ba methodologies → methodology.xml (reranking-models, vector-database-setup, ai-enabled-business-analysis; feature-045 sonnet-recovery)
 - migrate: 3/3 geek/research/market-researcher methodologies → methodology.xml (ai-research-tool-categories, ai-research-tools, market-sizing-with-ai; feature-045 batch 287)
 - migrate: 3/3 geek/product methodologies → methodology.xml (ai-native-product-development, agentic-ai-product-development, ai-native-product-development; feature-045 batch 286)
