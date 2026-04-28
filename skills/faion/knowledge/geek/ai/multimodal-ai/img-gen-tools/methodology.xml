@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="img-gen-tools">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>multimodal-ai</domain>
+    <summary>Production-grade image generation service covering DALL-E 3, Flux, and SDXL via unified ImageGenerationService with caching, retry, and multi-provider fallback.</summary>
+    <tags>
+      <tag>image-generation</tag>
+      <tag>multi-provider</tag>
+      <tag>caching</tag>
+      <tag>production</tag>
+      <tag>dalle3</tag>
+      <tag>flux</tag>
+      <tag>sdxl</tag>
+    </tags>
+    <category>image-gen</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Image Generation Tools and Production</title>
+    <summary>Production image generation service covering DALL-E 3, Flux, and SDXL with caching, retry, and multi-provider fallback. Includes ImagePipeline for variant sets and A/B testing, and PromptTemplates static methods for common use cases.</summary>
+    <why>
+      <p>Provider URLs expire (~1 hour for DALL-E), rate limits vary per tier, and different providers suit different use cases (DALL-E 3 for photorealism, Flux-schnell for volume, SDXL for controllable composition). A service layer with content-hash caching and provider selection heuristics prevents duplicate costs and silent fallback to lower-quality output.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Running a multi-provider image generation service where one provider may be unavailable</item>
+        <item>Batch-generating style/size variant sets (e.g., 3 styles × 4 sizes = 12 images per concept)</item>
+        <item>Building A/B test image sets automatically from a concept description</item>
+        <item>Caching production image generation to avoid duplicate API costs</item>
+        <item>Automating image generation inside a content pipeline (article images, social cards, etc.)</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single image generation — ImageGenerationService adds overhead not justified for one call</item>
+        <item>When provider selection logic needs human approval — automated fallback can silently produce lower-quality output</item>
+        <item>High-frequency real-time requests (sub-second) — all providers have multi-second latency</item>
+        <item>When DALL-E content policy is frequently triggered — automated pipelines will silently skip images</item>
+      </list>
+    </when-not-to-use>
+    <section name="ImageGenerationService">
+      <p>ImageGenerationService wraps DALL-E 3 and SDXL with SHA-256 content-hash caching, retry logic, and configurable provider selection. The cache stores provider URLs — these expire in ~1 hour for DALL-E. Replace with byte-based caching backed by S3 for production.</p>
+      <example type="good" title="ImageGenerationConfig setup">
+        <code lang="python"><![CDATA[
+@dataclass
+class ImageGenerationConfig:
+    model: ImageModel = ImageModel.DALLE3
+    default_size: str = "1024x1024"
+    default_quality: str = "standard"
+    max_retries: int = 3
+    cache_enabled: bool = True
+    cache_dir: str = "./image_cache"
+        ]]></code>
+      </example>
+      <antipattern>
+        <description>File-based URL caching for DALL-E generated images</description>
+        <reason>DALL-E pre-signed URLs expire in ~1 hour. Agents resuming after 1+ hours get 404 on all cached entries. Cache image bytes to S3 instead.</reason>
+      </antipattern>
+    </section>
+    <section name="MultiProviderImageService">
+      <p>MultiProviderImageService iterates a provider list in order and returns the first success. The result metadata must always include the provider field — silent fallback to lower quality is a hidden failure mode.</p>
+      <example type="good" title="Provider selection heuristic">
+        <code lang="python"><![CDATA[
+def select_provider(use_case: str) -> str:
+    return {
+        "product_photo": "dalle3",    # best photorealism
+        "logo": "dalle3",             # clean vector-like output
+        "social_media": "flux",       # fast + cheap for volume
+        "mockup": "sdxl",             # controllable composition
+    }.get(use_case, "dalle3")
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Always include provider field in generated image result metadata. Silent fallback to a lower-quality provider must be visible to the caller.</statement>
+        <rationale>An agent that receives an image from SDXL when it expected DALL-E 3 may pass it to review logic tuned for higher quality — metadata exposure prevents silent quality degradation.</rationale>
+      </rule>
+    </section>
+    <section name="ImagePipeline">
+      <p>ImagePipeline builds on ImageGenerationService to generate style-by-size variant matrices and A/B test image sets. For A/B tests, generate all variants before surfacing any to avoid partial-set delivery.</p>
+      <example type="good" title="Variant set generation with rate limiting">
+        <code lang="python"><![CDATA[
+class ImagePipeline:
+    def generate_variant_set(self, base_prompt: str,
+                             styles: list[str], sizes: list[str]) -> dict:
+        """Generate styles × sizes matrix. Add rate-limit delay between calls."""
+        results = {}
+        for style in styles:
+            style_results = []
+            for size in sizes:
+                prompt = f"{base_prompt}, {style}"
+                result = self.service.generate(prompt=prompt, size=size)
+                style_results.append({"size": size, "url": result["url"]})
+                time.sleep(12)  # DALL-E tier-1: 5 img/min = 12s/img
+            results[style] = style_results
+        return results
+
+    def a_b_test_images(self, concept: str, variations: list[str]) -> list[dict]:
+        """Label variants A/B/C. Generate all before surfacing any."""
+        results = []
+        for i, variation in enumerate(variations):
+            result = self.service.generate(prompt=f"{concept}, {variation}")
+            results.append({"variant": chr(65 + i), "url": result["url"]})
+        return results  # return complete set
+        ]]></code>
+      </example>
+    </section>
+    <section name="PromptTemplates">
+      <p>PromptTemplates provides static methods for common image use cases. Use these as the single source of truth for prompt construction — avoid ad-hoc prompt strings in pipeline code.</p>
+      <example type="good" title="Common PromptTemplates methods">
+        <code lang="python"><![CDATA[
+class PromptTemplates:
+    @staticmethod
+    def product_photo(product: str, background: str = "white studio background",
+                      lighting: str = "professional studio lighting") -> str:
+        return f"{product}, {background}, {lighting}, product photography, high quality, 4K"
+
+    @staticmethod
+    def logo(concept: str, style: str = "minimalist", colors: str = "modern color palette") -> str:
+        return f"{style} logo design, {concept}, {colors}, vector art, clean, professional"
+
+    @staticmethod
+    def social_media(content: str, platform: str = "instagram", mood: str = "vibrant") -> str:
+        return f"{content}, {mood} mood, social media post, eye-catching, {platform} style"
+        ]]></code>
+      </example>
+    </section>
+    <section name="Known Bugs and Limitations">
+      <rule>
+        <statement>Normalize prompts before hashing for cache keys: strip whitespace and lowercase. Use content-based (byte) cache, not URL cache.</statement>
+        <rationale>SHA-256 of "product photo " and "product photo" are different strings — near-identical prompts miss cache. URLs expire after ~1 hour invalidating all URL-based cache entries.</rationale>
+      </rule>
+      <antipattern>
+        <description>Passing **kwargs directly to multiple providers with incompatible parameter sets</description>
+        <reason>DALL-E 3 accepts quality and style parameters; SDXL does not. Passing unified kwargs causes TypeError on incompatible providers.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Running generate_variant_set without rate-limit delays between DALL-E calls</description>
+        <reason>DALL-E tier-1 rate limit is 5 images/minute (12s/image). Generating 12 variants without delay triggers 429 errors on all but the first few requests.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using output[0] to access Replicate Flux-schnell results</description>
+        <reason>Flux output format varies by model version; some return a URL string, not a list. Use next(iter(output)) instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Relying on file-based cache for image bytes — cached entries go stale when provider URLs expire</description>
+        <reason>Provider URLs expire (~1 hour for DALL-E). Agents resuming after 1+ hours will get 404 on cached entries. Always revalidate before returning cached result or use byte-based cache with S3/Redis backend.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Workflow">
+      <p>An agent receives a content brief with target style and size requirements. It calls ImageGenerationService.generate() with cache enabled — on cache miss, the service calls the configured provider with retry logic and caches the result. For multi-variant campaigns, an orchestrator agent calls ImagePipeline.generate_variant_set(), receives the style × size matrix, then routes each variant to a review subagent that checks dimensions and content before marking it ready. Failed variants are logged with prompt + error for human inspection.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>haiku — Execute single image generation with caching and retry; return structured result</item>
+        <item>haiku — Run batch variant generation for a set of prompts with rate-limit spacing</item>
+        <item>sonnet — Interpret content brief → select provider, style preset, size; call PromptTemplates static methods</item>
+        <item>sonnet — Quality review: load each generated image path, use vision to check against brief criteria</item>
+      </list>
+      <p>Prompt pattern:</p>
+      <code lang="xml"><![CDATA[
+<task>
+Generate production image for:
+<brief>{{BRIEF}}</brief>
+
+Provider: {{PROVIDER}}  (dalle3|sdxl|flux)
+Template: {{TEMPLATE}}  (product_photo|logo|social_media|ui_mockup)
+Size: {{SIZE}}
+Cache: enabled
+
+Return: {"url": "...", "provider": "...", "cached": true|false}
+On error: {"error": "...", "provider": "..."}
+</task>
+      ]]></code>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Replace file-based URL caching with byte-based caching (download image, store bytes) to avoid expiry; use S3 or Redis as backend</item>
+        <item>Normalize prompts before hashing (strip, lowercase) to improve cache hit rate</item>
+        <item>Add rate-limit delays in generate_variant_set: DALL-E tier-1 = 5 img/min → 12s/call minimum</item>
+        <item>Validate kwargs compatibility per provider before passing **kwargs; use provider-specific wrapper functions, not unified kwargs passthrough</item>
+        <item>Log every generation with: provider, prompt, revised_prompt (DALL-E), cost estimate, cache hit/miss, output path</item>
+        <item>For A/B test sets: generate all variants before surfacing any to avoid partial-set delivery</item>
+        <item>Pin Replicate model version hashes in config; update intentionally, not automatically</item>
+        <item>Use PromptTemplates static methods as the single source of truth for prompt construction; avoid ad-hoc prompt strings in pipeline code</item>
+      </list>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <list>
+        <item>MultiProviderImageService silently falls back to lower-quality providers on error — agent output metadata must include provider field so callers know what they got</item>
+        <item>DALL-E 3 revised_prompt can produce substantially different images than intended; downstream agents using vision to validate generated images should compare against the revised prompt, not the original</item>
+        <item>Replicate flux-schnell returns an iterator object, not a list — output[0] raises TypeError; use next(iter(output)) instead</item>
+        <item>File-based cache stores provider URLs which expire — agents resuming after 1+ hour will get 404 on cached entries; always revalidate before returning cached result</item>
+        <item>a_b_test_images returns images labeled A/B/C but does not track which variant was shown to which user — agent must integrate with experiment tracking externally</item>
+        <item>Concurrent agents sharing one API key hit shared rate limits; use a rate-limiter service (Redis + token bucket) not per-process sleep</item>
+        <item>ImageGenerationService._generate_sdxl passes size as {width}x{height} split — Replicate SDXL expects separate width and height integers, correct</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/image-service.py" purpose="ImageGenerationService with SHA-256 caching and DALL-E 3 / SDXL backends"/>
+      <template path="templates/multi-provider.py" purpose="MultiProviderImageService with ordered fallback"/>
+      <template path="templates/prompt-templates.py" purpose="PromptTemplates static methods: product_photo, logo, social_media, ui_mockup"/>
+      <template path="templates/cache-to-s3.py" purpose="Download generated image and upload to S3 to resolve URL expiry"/>
+      <template path="templates/prompt-generate.txt" purpose="Agent task prompt for single image generation with provider and template selection"/>
+    </templates>
+    <section name="Services and Tools">
+      <p>CLI tools for local development and deployment:</p>
+      <list>
+        <item>openai (Python SDK) — DALL-E 3/2 generation; install with pip install openai</item>
+        <item>replicate — SDXL, Flux, other open models; install with pip install replicate</item>
+        <item>Pillow — Local image validation, format check; install with pip install Pillow</item>
+        <item>boto3 — S3 upload for persistent image storage; install with pip install boto3</item>
+        <item>redis-py — Distributed cache for multi-process pipelines; install with pip install redis-py</item>
+      </list>
+      <p>Third-party services and their agent-friendliness:</p>
+      <list>
+        <item>OpenAI DALL-E 3 (SaaS) — Yes, Python SDK available. Best quality; $0.04–$0.12/image; revised_prompt may diverge from original</item>
+        <item>Replicate SDXL (SaaS) — Yes, Python SDK available. Good quality; ~$0.002/image; slower than DALL-E</item>
+        <item>Replicate Flux-schnell (SaaS) — Yes, Python SDK available. Fastest open model; ~$0.001/image; best for high volume</item>
+        <item>Stability AI API (SaaS) — Yes, REST API. Access to SD3, SDXL; fine-tuned model support</item>
+        <item>Cloudinary (SaaS) — Yes. Upload, transform, CDN; resolves URL expiry problem</item>
+        <item>AWS S3 + CloudFront (SaaS) — Yes. Standard production storage; combine with image transform Lambda</item>
+        <item>Redis (OSS/SaaS) — Yes. Replace file-based cache with distributed cache for multi-worker pipelines</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://platform.openai.com/docs/guides/images"/>
+      <link href="https://replicate.com/docs"/>
+      <link href="https://replicate.com/black-forest-labs/flux-schnell"/>
+      <link href="https://replicate.com/stability-ai/sdxl"/>
+      <link href="https://stability.ai/api"/>
+      <link href="https://cloudinary.com/documentation"/>
+    </see-also>
+  </content>
+</methodology>

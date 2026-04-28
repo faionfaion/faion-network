@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/multimodal-ai methodologies → methodology.xml (img-gen-tools, speech-to-text-advanced, speech-to-text-basics; feature-045 batch 272)
 - migrate: 3/3 geek/ai/ml-ops methodologies → methodology.xml (finetuning-basics, finetuning-datasets, llm-cost-basics; feature-045 batch 270)
 - migrate: 3/3 geek/ai/ml-ops methodologies → methodology.xml (llm-observability-stack-2026, lora-qlora, img-gen-basics; feature-045 batch 271)
 - migrate: 2/3 geek/ai/ml-ops methodologies → methodology.xml (evaluation-benchmarks, evaluation-framework; feature-045 batch 268)
