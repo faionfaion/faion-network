@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="csharp-background-services">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>ASP.NET Core in-process background workers using BackgroundService + System.Threading.Channels: queue consumers, periodic cleaners, and cache warmers with bounded channels for back-pressure, scoped DI via CreateScope(), graceful shutdown via CancellationToken, and IHealthCheck integration.</summary>
+    <tags>
+      <tag>csharp</tag>
+      <tag>background-services</tag>
+      <tag>async</tag>
+      <tag>channels</tag>
+      <tag>aspnet-core</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>C# Background Services</title>
+    <summary>Long-running in-process background workers in ASP.NET Core using BackgroundService + System.Threading.Channels for queue consumers, periodic cleanup, and cache warming with bounded channels for back-pressure, scoped DI via CreateScope(), graceful shutdown via CancellationToken, and IHealthCheck integration.</summary>
+    <why>
+      <p>Ad-hoc Task.Run loops are not lifecycle-managed, ignore cancellation, and bypass DI scoping. BackgroundService integrates with IHost shutdown, surfaces health via IHealthCheck, and makes channels first-class. Bounded channels prevent memory bombs; PeriodicTimer prevents drift. Scoped DI via CreateScope() prevents captive-dependency bugs with DbContext.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Long-running in-process workers: queue consumers, periodic cleanup, cache warmers, file watchers</item>
+        <item>In-memory work queues with back-pressure between HTTP requests and a background worker</item>
+        <item>Scheduled tasks at moderate throughput where a separate process (Hangfire, Quartz) is overkill</item>
+        <item>Graceful-shutdown requirements via IHostedService</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Jobs that must survive app restarts — use Hangfire, Quartz.NET with persistence, or a real broker</item>
+        <item>Heavy CPU work — runs in the host process and can starve the HTTP thread pool; use a Worker host</item>
+        <item>Distributed scheduling across replicas — BackgroundService runs on every instance; add leader election first</item>
+        <item>Exactly-once semantics — in-memory channels are lost on shutdown</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="structure">
+      <p>BackgroundService extends IHostedService and is lifecycle-managed by the ASP.NET Core host. It integrates with graceful shutdown via CancellationToken and can report health via IHealthCheck. Always extend BackgroundService (not implement IHostedService directly) and pass stoppingToken into every await call inside ExecuteAsync.</p>
+      <rule>
+        <statement>Always extend BackgroundService (not implement IHostedService directly). Pass stoppingToken into every await call inside ExecuteAsync.</statement>
+        <rationale>BackgroundService handles cancellation plumbing. Without stoppingToken on awaits, shutdown blocks for the default 30-second timeout before forced kill.</rationale>
+      </rule>
+      <rule>
+        <statement>Wrap the per-item handler in try/catch inside ExecuteAsync. Never let exceptions bubble to the loop level — this kills the BackgroundService in older .NET and may stop the host in .NET 6+.</statement>
+        <rationale>.NET 6+ BackgroundServiceExceptionBehavior defaults to StopHost; an unhandled exception in ExecuteAsync brings down the whole process.</rationale>
+      </rule>
+      <rule>
+        <statement>Resolve scoped services (DbContext, scoped repositories) via IServiceProvider.CreateScope() inside the processing loop. Never inject scoped services into the singleton BackgroundService constructor.</statement>
+        <rationale>BackgroundService is registered as a singleton. Injecting a scoped DbContext directly creates a captive dependency — the context is reused across requests, causing concurrency bugs and connection leaks.</rationale>
+      </rule>
+    </section>
+
+    <section name="channel-rules">
+      <p>Channels provide an in-memory queue mechanism with built-in back-pressure. System.Threading.Channels is the modern replacement for BlockingCollection and integrates with async/await. Always use bounded channels with BoundedChannelFullMode.Wait for back-pressure propagation.</p>
+      <rule>
+        <statement>Always use Channel.CreateBounded&lt;T&gt;(new BoundedChannelOptions(capacity) { FullMode = BoundedChannelFullMode.Wait }) for back-pressure. Never use CreateUnbounded.</statement>
+        <rationale>An unbounded channel becomes a memory bomb under producer spikes. Bounded + Wait blocks the producer, propagating back-pressure to the caller.</rationale>
+      </rule>
+      <rule>
+        <statement>One BackgroundService per concern. Never put email dispatch, cleanup, and cache warming in a single class.</statement>
+        <rationale>Mixing concerns makes the service impossible to test in isolation and difficult to scale independently.</rationale>
+      </rule>
+    </section>
+
+    <section name="periodic-timer">
+      <p>For periodic work, use PeriodicTimer instead of Task.Delay loops. PeriodicTimer fires on a wall-clock schedule and does not accumulate drift. Task.Delay(period) adds the work duration to the period, causing scheduled tasks to drift over time.</p>
+      <rule>
+        <statement>Use PeriodicTimer over Task.Delay loops for periodic work. PeriodicTimer does not accumulate drift and integrates with CancellationToken via WaitForNextTickAsync.</statement>
+        <rationale>Task.Delay(period) accumulates drift because the work duration is added to the period. PeriodicTimer fires on a wall-clock schedule.</rationale>
+      </rule>
+    </section>
+
+    <section name="health-checks">
+      <p>Health checks allow Kubernetes liveness probes, load balancer health checks, and operational dashboards to detect stuck background services. Wire an IHealthCheck that tracks the last-success timestamp and reports unhealthy if no successful run occurred within the expected window.</p>
+      <rule>
+        <statement>Wire an IHealthCheck that tracks the last-success timestamp of the BackgroundService. Report Unhealthy if no successful run occurred within the expected window.</statement>
+        <rationale>Without a health check, a stuck background service is invisible to Kubernetes liveness probes and load balancer health checks.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>LLMs and code generation agents have specific failure modes when working with background services. These rules are testing points for code review and agent rejection criteria.</p>
+      <rule testable="false">
+        <statement>Reject diffs that use Task.Run(async () =&gt; { while (true) ... }) instead of BackgroundService. Require the base class.</statement>
+        <rationale>Task.Run bypasses IHost lifecycle, cancellation propagation, and DI scoping.</rationale>
+      </rule>
+      <rule testable="false">
+        <statement>Reject diffs that inject DbContext directly into a BackgroundService constructor. Require CreateScope() in the processing loop.</statement>
+        <rationale>Singleton BackgroundService holds a scoped DbContext for the process lifetime, breaking EF Core's connection management.</rationale>
+      </rule>
+    </section>
+
+    <example type="good" title="Queue consumer with bounded channel">
+      <code lang="csharp"><![CDATA[
+public class BackgroundOrderProcessor : BackgroundService
+{
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<BackgroundOrderProcessor> _logger;
+    private readonly Channel<int> _orderChannel;
+
+    public BackgroundOrderProcessor(
+        IServiceProvider serviceProvider,
+        ILogger<BackgroundOrderProcessor> logger,
+        Channel<int> orderChannel)
+    {
+        _serviceProvider = serviceProvider;
+        _logger = logger;
+        _orderChannel = orderChannel;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        await foreach (var orderId in _orderChannel.Reader.ReadAllAsync(stoppingToken))
+        {
+            try
+            {
+                await ProcessOrderAsync(orderId, stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing order {OrderId}", orderId);
+            }
+        }
+    }
+
+    private async Task ProcessOrderAsync(int orderId, CancellationToken ct)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var orderService = scope.ServiceProvider.GetRequiredService<IOrderService>();
+        await orderService.ProcessAsync(orderId, ct);
+    }
+}
+      ]]></code>
+      <note>CreateScope() per item prevents captive DbContext. stoppingToken passed to ReadAllAsync exits the loop on shutdown.</note>
+    </example>
+
+    <example type="good" title="Periodic timer cleanup">
+      <code lang="csharp"><![CDATA[
+public class CleanupService : BackgroundService
+{
+    private readonly ILogger<CleanupService> _logger;
+
+    public CleanupService(ILogger<CleanupService> logger)
+    {
+        _logger = logger;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromHours(1));
+        while (!stoppingToken.IsCancellationRequested &&
+               await timer.WaitForNextTickAsync(stoppingToken))
+        {
+            try { await DoCleanupAsync(stoppingToken); }
+            catch (Exception ex) { _logger.LogError(ex, "Cleanup failed"); }
+        }
+    }
+
+    private async Task DoCleanupAsync(CancellationToken ct)
+    {
+        _logger.LogInformation("Running cleanup");
+        await Task.Delay(100, ct); // placeholder
+    }
+}
+      ]]></code>
+      <note>PeriodicTimer fires on wall-clock schedule. WaitForNextTickAsync exits on cancellation.</note>
+    </example>
+
+    <example type="good" title="Health check wiring">
+      <code lang="csharp"><![CDATA[
+// Program.cs
+builder.Services.AddSingleton(Channel.CreateBounded<int>(
+    new BoundedChannelOptions(1000) { FullMode = BoundedChannelFullMode.Wait }));
+builder.Services.AddSingleton<OrderProcessorHealth>();
+builder.Services.AddHostedService<BackgroundOrderProcessor>();
+builder.Services.AddHealthChecks()
+    .AddCheck<OrderProcessorHealth>("order-processor");
+
+// OrderProcessorHealth.cs
+public class OrderProcessorHealth : IHealthCheck
+{
+    public DateTime LastSuccess { get; set; } = DateTime.UtcNow;
+    public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext _, CancellationToken __)
+        => Task.FromResult(
+            DateTime.UtcNow - LastSuccess > TimeSpan.FromMinutes(5)
+                ? HealthCheckResult.Unhealthy("No successful run in >5 min")
+                : HealthCheckResult.Healthy());
+}
+      ]]></code>
+    </example>
+
+    <antipattern>
+      <description>Task.Run(async () =&gt; { while (true) { ... await Task.Delay(5000); } }) in Program.cs instead of BackgroundService.</description>
+      <reason>Bypasses IHost lifecycle, cancellation, DI scoping, and health check integration.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Channel.CreateUnbounded&lt;T&gt;() with unbounded capacity.</description>
+      <reason>No back-pressure; producer can enqueue faster than the worker consumes, exhausting memory under load.</reason>
+    </antipattern>
+    <antipattern>
+      <description>DbContext injected into BackgroundService constructor (captive dependency).</description>
+      <reason>Singleton BackgroundService holds a scoped DbContext for the process lifetime, breaking EF Core's connection management.</reason>
+    </antipattern>
+
+    <section name="best-practices">
+      <p>When working with background services, follow these best practices to ensure reliability, testability, and operational visibility.</p>
+      <rule>
+        <statement>Always pass stoppingToken into every await call inside ExecuteAsync — without it, shutdown blocks for 30s before forced kill.</statement>
+        <rationale>CancellationToken is the only mechanism the runtime has to signal graceful shutdown.</rationale>
+      </rule>
+      <rule>
+        <statement>Wrap the work item handler in try/catch; never let exceptions bubble to ExecuteAsync's loop.</statement>
+        <rationale>Unhandled exceptions may stop the entire host or silently kill the background service.</rationale>
+      </rule>
+      <rule>
+        <statement>Use Channel.CreateBounded&lt;T&gt;(…) with FullMode.Wait (back-pressure) or DropOldest (lossy ok). Avoid Unbounded.</statement>
+        <rationale>Unbounded channels are a memory bomb under spikes; bounded channels with Wait provide natural back-pressure to producers.</rationale>
+      </rule>
+      <rule>
+        <statement>Set WaitForShutdownTimeout/ShutdownTimeout to the worst-case in-flight work duration.</statement>
+        <rationale>Prevents forced kill before in-flight operations complete; essential for at-least-once semantics.</rationale>
+      </rule>
+      <rule>
+        <statement>For periodic work, prefer PeriodicTimer over Task.Delay — it doesn't accumulate drift.</statement>
+        <rationale>Task.Delay adds the work duration to the next period, causing scheduled tasks to slowly drift.</rationale>
+      </rule>
+      <rule>
+        <statement>One BackgroundService per concern; avoid stuffing email + cleanup + cache warm into one class.</statement>
+        <rationale>Separation of concerns makes testing, scaling, and debugging independent concerns easier.</rationale>
+      </rule>
+      <rule>
+        <statement>Emit OpenTelemetry/Activity spans around each dequeue so APM shows "request → enqueue → background work" as a linked trace.</statement>
+        <rationale>End-to-end tracing across async boundaries is essential for production debugging and SLA compliance.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/prompt-worker.txt" purpose="Subagent prompt template for generating BackgroundService + queue + DI registration + xUnit test"/>
+    </templates>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/aspnet/core/fundamentals/host/hosted-services"/>
+      <link href="https://devblogs.microsoft.com/dotnet/an-introduction-to-system-threading-channels/"/>
+      <link href="https://github.com/davidfowl/AspNetCoreDiagnosticScenarios"/>
+      <link href="https://docs.hangfire.io"/>
+    </see-also>
+  </content>
+</methodology>

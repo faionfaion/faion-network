@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ruby-rails-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Extract multi-step business workflows from fat controllers into app/services/<BoundedContext>/<Action>Service classes with a single call method that returns ServiceResult (success/failure).</summary>
+    <tags>
+      <tag>rails</tag>
+      <tag>service-objects</tag>
+      <tag>patterns</tag>
+      <tag>refactoring</tag>
+      <tag>transactions</tag>
+    </tags>
+    <category>patterns</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <languages>
+      <language>ruby</language>
+    </languages>
+    <frameworks>
+      <framework>rails</framework>
+    </frameworks>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+  <content>
+    <title>Rails Patterns (Service Objects)</title>
+    <summary>Rails service object pattern: extract multi-step business workflows from fat controllers/models into `app/services/<BoundedContext>/<Action>Service` classes with a single `call` method that returns a `ServiceResult` (success/failure). Keeps controllers as pure HTTP adapters; business logic and transaction management live in services. This enforces a single responsibility, makes transaction boundaries explicit, and lets RSpec test business logic in isolation without loading the full HTTP stack.</summary>
+    <why>
+      <p>Rails controllers balloon when they own database writes, mailer calls, audit logging, and job enqueuing. ActiveRecord callbacks create unmaintainable side-effect chains. Service objects enforce a single responsibility, make transaction boundaries explicit, and let RSpec test business logic in isolation without loading the full HTTP stack.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Controllers that have grown past ~100 lines and need workflow extraction</item>
+        <item>Multi-step business operations (signup, checkout, refund) that span multiple models in one transaction</item>
+        <item>Replacing fat-model callbacks when side effects have become unmanageable</item>
+        <item>Standardizing controller response shapes: every action maps `ServiceResult` → HTTP status</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Trivial CRUD where a `before_action` + `model.save` already does the job — service objects add indirection without value</item>
+        <item>Pure data-access logic — that belongs in Query Objects or scopes, not services</item>
+        <item>One-off rake tasks or scripts — plain Ruby objects without the result wrapper are fine</item>
+      </list>
+    </when-not-to-use>
+    <section name="service-object-structure">
+      <rule>
+        <statement>Each service class has exactly one public method: call. If you need a second public method, extract a new service.</statement>
+        <rationale>A single call entry point makes the service's contract explicit and keeps RSpec tests focused on one responsibility.</rationale>
+      </rule>
+      <rule>
+        <statement>Use keyword arguments in initialize (params:, current_user:). Avoid positional arguments.</statement>
+        <rationale>Keyword args are self-documenting, make mocking explicit, and prevent argument order mistakes when a service gains parameters.</rationale>
+      </rule>
+      <rule>
+        <statement>Services must be free of HTTP/Rails concerns. They accept plain Ruby hashes or value objects; the controller maps ServiceResult to HTTP status codes.</statement>
+        <rationale>HTTP concerns in services prevent unit testing without loading Rails routing or request objects.</rationale>
+      </rule>
+      <rule>
+        <statement>Namespace services by bounded context (Users::CreateService, Billing::RefundService), not by HTTP verb. Never name by REST action.</statement>
+        <rationale>Context namespacing scales to complex domains. HTTP-verb naming (PostsCreateService) couples the domain model to the HTTP layer.</rationale>
+      </rule>
+    </section>
+    <section name="service-result-contract">
+      <rule>
+        <statement>Every service's call method returns a ServiceResult with success?, failure?, data, and errors. Never return raw ActiveRecord objects or raise domain exceptions directly to the controller.</statement>
+        <rationale>A single return type makes controller code uniform and prevents dual error paths (exception vs failure result) from diverging.</rationale>
+      </rule>
+      <reference path="templates/service_result.rb">ServiceResult value object implementation</reference>
+    </section>
+    <section name="transaction-boundaries">
+      <rule>
+        <statement>Wrap multi-step writes (save + mailer + job + audit) in ActiveRecord::Base.transaction. Lock the transaction to a single aggregate to avoid distributed-transaction bugs.</statement>
+        <rationale>Without a transaction, a mailer exception after user.save! leaves the user created but no email queued — silent inconsistency.</rationale>
+      </rule>
+      <rule>
+        <statement>Catch ActiveRecord::RecordInvalid inside the transaction block, not outside. Return ServiceResult.failure with the validation errors.</statement>
+        <rationale>Catching outside the transaction after the rescue block may miss partial writes. RecordInvalid rolls back the transaction automatically.</rationale>
+      </rule>
+    </section>
+    <section name="service-implementation">
+      <example type="good" title="Users::CreateService with transaction and deliver_later">
+        <code lang="ruby"><![CDATA[
+module Users
+  class CreateService
+    def initialize(params:, current_user: nil)
+      @params = params
+      @current_user = current_user
+    end
+
+    def call
+      user = User.new(user_params)
+      ActiveRecord::Base.transaction do
+        user.save!
+        UserMailer.welcome(user).deliver_later
+        AuditLog.create!(
+          action: 'user.created',
+          resource: user,
+          actor: @current_user
+        )
+      end
+      ServiceResult.success(user)
+    rescue ActiveRecord::RecordInvalid => e
+      ServiceResult.failure(e.record.errors.full_messages)
+    end
+
+    private
+
+    def user_params
+      @params.slice(:name, :email, :password)
+    end
+  end
+end
+        ]]></code>
+        <note>Service accepts plain hash, not ActionController::Parameters. Mailer uses deliver_later. Transaction wraps save + audit.</note>
+      </example>
+    </section>
+    <section name="controller-wiring">
+      <example type="good" title="Controller mapping ServiceResult to HTTP response">
+        <code lang="ruby"><![CDATA[
+module Api
+  module V1
+    class UsersController < ApplicationController
+      def create
+        result = Users::CreateService.new(
+          params: user_params,
+          current_user: current_user
+        ).call
+
+        if result.success?
+          render json: UserSerializer.new(result.data), status: :created
+        else
+          render json: { errors: result.errors }, status: :unprocessable_entity
+        end
+      end
+
+      private
+
+      def user_params
+        params.require(:user).permit(:name, :email, :password)
+      end
+    end
+  end
+end
+        ]]></code>
+        <note>Controller only maps ServiceResult to HTTP shape. user_params is permitted before passing to service.</note>
+      </example>
+    </section>
+    <section name="antipatterns">
+      <antipattern>
+        <description>Service has multiple public methods (call, create, update) or no call method at all.</description>
+        <reason>Breaks single-responsibility; unclear which method is the entry point; harder to compose with organizers.</reason>
+      </antipattern>
+      <antipattern>
+        <description>rescue StandardError inside the service, swallowing all exceptions into ServiceResult.failure.</description>
+        <reason>Hides real bugs (NoMethodError, TypeError) as domain failures. Only catch documented domain exceptions.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Service returns raw ActiveRecord object on success, exception on failure — two divergent paths.</description>
+        <reason>Controllers must handle both paths differently; ServiceResult enforces a uniform interface.</reason>
+      </antipattern>
+    </section>
+    <section name="agent-gotchas">
+      <rule testable="false">
+        <statement>Reject services that reference params.require(...) or params.permit(...). The service accepts already-permitted plain hashes from the controller.</statement>
+        <rationale>ActionController::Parameters inside a service couples it to Rails and prevents unit testing.</rationale>
+      </rule>
+      <rule testable="false">
+        <statement>Reject services that call deliver_now or perform_now for mailer/job dispatch. Use deliver_later / perform_later so service specs don't send real emails or run jobs synchronously.</statement>
+        <rationale>Synchronous dispatch in a service makes tests slow, side-effect-prone, and brittle.</rationale>
+      </rule>
+    </section>
+    <templates>
+      <template path="templates/service_result.rb" purpose="ServiceResult value object with success/failure constructors"/>
+      <template path="templates/spec-skeleton.rb" purpose="RSpec request + service spec template covering success, validation failure, DB rollback"/>
+    </templates>
+    <see-also>
+      <link href="https://sustainable-rails.com"/>
+      <link href="https://thoughtbot.com/blog/7-patterns-to-refactor-fat-activerecord-models"/>
+      <link href="https://trailblazer.to/2.1/docs/operation/"/>
+    </see-also>
+  </content>
+</methodology>

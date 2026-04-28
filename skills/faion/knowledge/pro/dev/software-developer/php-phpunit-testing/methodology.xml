@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="php-phpunit-testing">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Feature tests via RefreshDatabase with assertOk/assertJsonPath, fake helpers (Http::fake, Mail::fake, Queue::fake), and five required scenarios per endpoint (happy path, validation, auth, 404s). Mutation testing (Infection) catches logic bugs. One assertion per test.</summary>
+    <category>testing</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>php</tag>
+      <tag>phpunit</tag>
+      <tag>laravel</tag>
+      <tag>testing</tag>
+      <tag>feature-tests</tag>
+    </tags>
+    <languages>
+      <language>php</language>
+    </languages>
+    <frameworks>
+      <framework>laravel</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>PHPUnit Testing (Laravel)</title>
+
+    <summary>Laravel PHPUnit test patterns: feature tests via Tests\TestCase + RefreshDatabase covering happy path, validation failures, auth/authorization failures, and 404s; unit tests mocking dependencies; and Http::fake() / Queue::fake() / Mail::fake() for all outgoing side effects. One assertion concept per test method. Use $response->assertOk() (Laravel-flavored assertions), assertJsonPath for field-level contracts, and Carbon::setTestNow() for time-sensitive assertions.</summary>
+
+    <why>
+      <p>Feature tests that hit routes via actingAs($user)->postJson(...) give the highest confidence for the lowest mocking cost. Laravel's test helpers (RefreshDatabase, Http::fake(), factory system) make it practical to write full-stack tests without hitting real external services. Mutation testing (Infection) catches logic bugs that coverage percent misses. Pairing each new endpoint with a test in the same commit prevents coverage drift.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any Laravel/PHP project shipping to production — feature tests are the bedrock.</item>
+        <item>API regression suites (status code, JSON shape, validation, auth).</item>
+        <item>Service-layer unit tests for business rules independent of HTTP.</item>
+        <item>CI pipelines requiring coverage thresholds and failure tracking.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Browser / end-to-end flows — use Laravel Dusk (Playwright) instead.</item>
+        <item>Performance tests — use k6 or Octane benchmarks.</item>
+        <item>When the team has migrated to Pest — same underlying PHPUnit but the DSL differs; tell the agent which one.</item>
+        <item>Pure static-analysis questions — PHPStan/Larastan catch type bugs faster than a test.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="feature-tests">
+      <p>Every new API endpoint requires at minimum five test methods: happy path, missing required field validation, type/format validation failure, unauthenticated (no token → 401), and forbidden (wrong policy → 403). Tests that only cover the happy path miss the most common production failures: validation gaps let invalid data through, missing auth checks expose endpoints to unauthenticated access.</p>
+
+      <rule testable="true">
+        <statement>Every new API endpoint requires at minimum five test methods: happy path, missing required field validation, type/format validation failure, unauthenticated (no token → 401), and forbidden (wrong policy → 403).</statement>
+        <rationale>Tests that only cover the happy path miss the most common production failures: validation gaps let invalid data through, missing auth checks expose endpoints to unauthenticated access.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always call Http::fake(), Mail::fake(), Queue::fake(), and Notification::fake() before the action under test when the feature dispatches outgoing calls. Assert on what was sent with Http::assertSent(), Mail::assertSent(), etc.</statement>
+        <rationale>Tests that hit real external services are network-dependent, slow, and may have side effects (real emails sent, real charges made). Fake helpers intercept calls in-process and enable assertion on what would have been dispatched.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use $response->assertOk() instead of assertEquals(200, $response->status()). Use assertCreated(), assertUnprocessable(), assertNotFound(), assertForbidden() — never raw status code integers.</statement>
+        <rationale>Laravel's assertion methods produce error messages that show the full response body on failure. assertEquals(200, ...) produces only "Expected 200, got 422" with no indication of what validation failed.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use assertJsonPath('data.email', 'john@example.com') for field-level assertions. Reserve assertJson([...]) for exact-shape contracts only. Never use assertJsonStructure() as the sole assertion — it only checks key presence, not values or types.</statement>
+        <rationale>assertJsonStructure passes even if the response contains unexpected extra fields or wrong values. assertJsonPath asserts the specific field value, catching regressions where a field is present but contains wrong data.</rationale>
+      </rule>
+
+      <example type="good" title="Feature test with five scenarios">
+        <code lang="php"><![CDATA[
+class UserControllerTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_can_create_user(): void
+    {
+        Mail::fake();
+
+        $response = $this->postJson('/api/v1/users', [
+            'name' => 'John Doe',
+            'email' => 'john@example.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.name', 'John Doe')
+            ->assertJsonPath('data.email', 'john@example.com');
+
+        $this->assertDatabaseHas('users', ['email' => 'john@example.com']);
+        Mail::assertSent(WelcomeMail::class, fn($m) => $m->hasTo('john@example.com'));
+    }
+
+    public function test_create_user_validates_email(): void
+    {
+        $response = $this->postJson('/api/v1/users', [
+            'name' => 'John', 'email' => 'not-an-email', 'password' => 'pass',
+        ]);
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['email']);
+    }
+
+    public function test_create_user_requires_auth(): void
+    {
+        $response = $this->postJson('/api/v1/users', ['name' => 'X']);
+        $response->assertUnauthorized();
+    }
+}
+        ]]></code>
+        <note>Feature test demonstrates Mail::fake(), assertCreated(), assertJsonPath(), and unauthenticated 401.</note>
+      </example>
+    </section>
+
+    <section name="unit-tests">
+      <p>Unit tests for service classes must use RefreshDatabase only when the test exercises a real DB operation. For pure business-rule tests (password hashing, event dispatch, transformation logic), use a concrete repository with an in-memory SQLite DB or mock the repository via Mockery. To verify password hashing: assert that $user->password is not equal to the plaintext input AND that Hash::check($plaintext, $user->password) returns true. Do not assert a specific bcrypt hash string — it changes per invocation.</p>
+
+      <rule testable="true">
+        <statement>Unit tests for service classes must use RefreshDatabase only when the test exercises a real DB operation. For pure business-rule tests (password hashing, event dispatch, transformation logic), use a concrete repository with an in-memory SQLite DB or mock the repository via Mockery.</statement>
+        <rationale>RefreshDatabase runs all migrations per test class. For unit tests that only verify logic (not persistence), this is unnecessary overhead. Mockery lets you verify service behavior without any DB at all.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>To verify password hashing: assert that $user->password is not equal to the plaintext input AND that Hash::check($plaintext, $user->password) returns true. Do not assert a specific bcrypt hash string — it changes per invocation.</statement>
+        <rationale>bcrypt output is non-deterministic (random salt per call). assertNotEquals + Hash::check verifies the invariant (the plaintext was hashed correctly) without coupling to a specific hash value.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Test event dispatch with Event::fake() before the action, then Event::assertDispatched(UserCreated::class). Do not assert event count unless the exact number of dispatches is a business rule.</statement>
+        <rationale>assertDispatched checks that the event was dispatched at least once with matching criteria. Count assertions are fragile — internal implementation changes that dispatch an event twice for optimization break the count without breaking the business rule.</rationale>
+      </rule>
+
+      <example type="good" title="Service unit tests for password hashing and event dispatch">
+        <code lang="php"><![CDATA[
+class UserServiceTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private UserService $service;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = new UserService(new UserRepository(new User()));
+    }
+
+    public function test_create_hashes_password(): void
+    {
+        $user = $this->service->create([
+            'name' => 'John',
+            'email' => 'john@example.com',
+            'password' => 'plaintext',
+        ]);
+
+        $this->assertNotEquals('plaintext', $user->password);
+        $this->assertTrue(Hash::check('plaintext', $user->password));
+    }
+
+    public function test_create_fires_event(): void
+    {
+        Event::fake();
+
+        $this->service->create([
+            'name' => 'John',
+            'email' => 'john@example.com',
+            'password' => 'password',
+        ]);
+
+        Event::assertDispatched(UserCreated::class,
+            fn($e) => $e->user->email === 'john@example.com');
+    }
+}
+        ]]></code>
+        <note>Demonstrates Event::fake(), Hash::check() for bcrypt verification, and Event::assertDispatched().</note>
+      </example>
+    </section>
+
+    <section name="time-sensitive-tests">
+      <p>Call Carbon::setTestNow(Carbon::parse('2025-01-01')) in setUp() or at the start of any test that depends on the current time. Reset in tearDown() or use Carbon::setTestNow(null). Tests that use now()->addDay() without freezing time fail intermittently at midnight UTC boundaries. Frozen time makes the assertion deterministic regardless of when CI runs the test.</p>
+
+      <rule testable="true">
+        <statement>Call Carbon::setTestNow(Carbon::parse('2025-01-01')) in setUp() or at the start of any test that depends on the current time. Reset in tearDown() or use Carbon::setTestNow(null).</statement>
+        <rationale>Tests that use now()->addDay() without freezing time fail intermittently at midnight UTC boundaries. Frozen time makes the assertion deterministic regardless of when CI runs the test.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>assertEquals(200, $response->status()) instead of $response->assertOk().</description>
+        <reason>Raw status code comparison produces a minimal error message on failure ("Expected: 200, Actual: 422"). assertOk() prints the full response body when it fails, showing the validation errors or exception message that caused the non-200 status.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>WithoutMiddleware in tests that cover authenticated endpoints.</description>
+        <reason>WithoutMiddleware disables auth:sanctum, throttle, and policy gates globally for the test class. Tests pass but do not verify that the endpoint is actually protected. A separate test class without WithoutMiddleware must cover the auth failure path.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mocking Eloquent query builders with Mockery to return fake results in feature tests.</description>
+        <reason>Query builder mocks are brittle — they break when any internal Eloquent method call order changes. They also produce false-positive tests: the mock returns the expected data regardless of whether the actual query is correct. Use RefreshDatabase + factories for feature tests.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>assertJson([ 'data' => [ 'name' => 'John' ] ]) as the sole response assertion.</description>
+        <reason>assertJson performs a partial match — it passes even if the response contains extra unexpected fields or nested objects. Use assertJsonPath for specific field assertions and assertJsonMissing for fields that must not appear (e.g., 'password').</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Time-dependent tests that call now()->addDay() in production code without freezing time in the test with Carbon::setTestNow().</description>
+        <reason>Tests that depend on wall-clock time are non-deterministic. A test asserting that a token expires at "tomorrow midnight" passes at 10am and fails at 11:59pm UTC if the CI job spans midnight. Always freeze time at the start of the test.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>actingAs($user) without a separate test for the non-owner getting 403.</description>
+        <reason>A test that only acts as the owner verifies the happy path. It does not verify that the policy blocks the wrong user. Without the 403 test, agents can remove or break the policy gate without any test failing.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Feature tests that assert only on the HTTP response status code and not on the DB or the dispatched events.</description>
+        <reason>A controller that returns 201 Created without actually calling the service (due to a DI misconfiguration or early return bug) passes the status assertion. assertDatabaseHas() and Queue::assertPushed() catch this class of bugs.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/phpunit.xml" purpose="phpunit.xml.dist with parallel-safe env: SQLite in-memory, array cache/mail/queue, BCRYPT_ROUNDS=4"/>
+      <template path="templates/feature-test.php" purpose="Feature test skeleton: RefreshDatabase, Http::fake, five test methods per endpoint"/>
+    </templates>
+
+    <see-also>
+      <link href="https://laravel.com/docs/testing"/>
+      <link href="https://phpunit.de/"/>
+    </see-also>
+  </content>
+</methodology>
