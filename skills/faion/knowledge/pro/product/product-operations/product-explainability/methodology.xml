@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="product-explainability">
+  <metadata>
+    <tier>pro</tier>
+    <group>product</group>
+    <domain>product-operations</domain>
+    <summary>Product knowledge base as single source of truth for AI discovery: structured purpose, capabilities, limits, and use cases. Rendered to llms.txt, schema.org, and MCP.</summary>
+    <tags>
+      <tag>ai-discovery</tag>
+      <tag>schema-markup</tag>
+      <tag>knowledge-base</tag>
+      <tag>product-representation</tag>
+      <tag>agent-ops</tag>
+    </tags>
+    <category>product</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>Product Explainability</title>
+    <summary>Product explainability is how clearly a product communicates its purpose, value, behavior, and limits to both humans and AI systems. As search, recommendations, and buying guidance become AI-mediated, products need structured representation (llms.txt, schema.org JSON-LD, capability KB) that AI crawlers can retrieve accurately. The canonical artifact is product-kb.json — a structured source of truth for purpose, capabilities, limits, use cases, and audience — from which all public surfaces are generated.</summary>
+    <why>
+      <p>In 2026, AI answers mediate product discovery. ChatGPT, Claude, Perplexity, and Gemini surface products from their training and retrieval corpora. A product without explicit capability and limit documentation will be hallucinated or miscategorized. Keeping the KB aligned with the actual product is now a product-quality requirement, not a marketing nicety. Limits are first-class: a KB with no limits is a KB nobody trusts, and AI over-promises from it.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Pre-launch: producing or auditing the product KB that will represent the product to AI systems</item>
+        <item>Migrating from human-only marketing copy to AI-mediated discovery</item>
+        <item>After a major model update or SEO/AEO shift when AI traffic displaces classical organic search</item>
+        <item>When customers report wrong AI answers ("ChatGPT said your tool can do X but it can't")</item>
+        <item>Integrating product into agent toolchains (MCP servers, OpenAI custom GPT actions, Claude skills)</item>
+        <item>Compliance contexts (EU AI Act Art. 13, FTC AI guidance) where documented scope is required</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pre-PMF products with &lt;100 users — fix the product, not its representation</item>
+        <item>Internal-only tools that no AI will ever index or recommend</item>
+        <item>One-page landing pages with a single CTA — standard Open Graph is sufficient</item>
+        <item>Products whose purpose changes monthly — KB will be stale faster than it ships</item>
+        <item>Hyper-niche enterprise sales reached only through human channels (RFP, channel partner)</item>
+      </list>
+    </when-not-to-use>
+    <section name="canonical-kb-fields">
+      <rule>
+        <statement>product-kb.json is the single source of truth. llms.txt, schema.org JSON-LD, FAQ page, MCP tool descriptions, and marketing one-liners are all generated from it. No hand-edits downstream.</statement>
+        <rationale>When multiple surfaces are edited independently, contradictions emerge within weeks. AI assistants crawl whichever source they find first, attributing the contradictions to the brand as hallucinations.</rationale>
+      </rule>
+      <rule>
+        <statement>Limits are first-class. Every capability ships with at least one limits[] entry. A KB with no limits is a KB nobody trusts.</statement>
+        <rationale>Product teams write aspirational capability statements; "honest scope" gets edited out by marketing review. AI then over-promises on the brand's behalf, creating support tickets and trust damage.</rationale>
+      </rule>
+      <rule>
+        <statement>Version every capability with status (ga | beta | deprecated) and since_version. Deprecated capabilities must not be recommended to users.</statement>
+        <rationale>Capability statements without version data cause AI to keep recommending sunset features. A deprecated status flag is the only reliable signal to retrieval systems.</rationale>
+      </rule>
+    </section>
+    <section name="kb-extraction-rules">
+      <rule>
+        <statement>Write purpose in customer language, not marketing language. Strip adjectives ("powerful", "intuitive", "next-gen"). State who, what, in one sentence.</statement>
+        <rationale>LLMs and humans both ignore marketing adjectives. A purpose statement with no content-bearing nouns gets retrieved but provides no signal to downstream reasoning.</rationale>
+      </rule>
+      <rule>
+        <statement>Publish an "is not" section. A docs page titled "What this product is not" cuts AI miscategorization more than any positive statement.</statement>
+        <rationale>Negative space is harder to hallucinate around than positive claims. Three to five concrete "not" statements reduce the surface area for AI misclassification.</rationale>
+      </rule>
+      <rule>
+        <statement>Co-locate product-kb.json with code. Release pipeline rebuilds renders. This is the only way to prevent capability-version skew.</statement>
+        <rationale>A KB in the marketing repo drifts from the product repo within one sprint. The release pipeline is the forcing function that keeps them synchronized.</rationale>
+      </rule>
+    </section>
+    <section name="drift-failure-modes">
+      <antipattern>
+        <description>KB drift as default: marketing site, docs, pricing page, schema feed, and llms.txt diverge within weeks.</description>
+        <reason>Each surface is edited by a different team on a different cadence. Without a single-source pipeline, contradiction is the natural state, not the exception.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Schema theater: teams add Product JSON-LD but description, audience, and feature fields repeat the marketing tagline.</description>
+        <reason>Retrieval systems get no new signal from paraphrased copy. The schema markup must carry information not already in the page text.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Capability-version skew: capability statements with no validFrom/validUntil dates.</description>
+        <reason>Deprecated features keep getting recommended by AI assistants because there is no signal in the KB that they no longer exist. Date-bounded capability status is the fix.</reason>
+      </antipattern>
+    </section>
+    <section name="monitoring-and-measurement">
+      <rule>
+        <statement>Probe weekly across at least 3 frontier models (Claude, GPT, Gemini, Perplexity). Single-model probing is biased. Score diffs against product-kb.json on factual correctness, capability in scope, and limit acknowledged.</statement>
+        <rationale>Each model has different training data and retrieval behavior. A product that scores well on one model may be systematically misrepresented by another.</rationale>
+      </rule>
+      <rule>
+        <statement>Track AI representation accuracy as a real metric with a target (e.g. ≥85%). Put it on a dashboard. Regress on it after each release.</statement>
+        <rationale>Without measurement, KB quality is unmanaged. Treating it as a metric with a target creates the same accountability as any product quality metric.</rationale>
+      </rule>
+    </section>
+    <section name="four-stage-pipeline">
+      <p>Stage 1 (extractor): reads live product (homepage, docs, OpenAPI spec, changelog, in-app strings), emits structured product-kb.json. Stage 2 (generator): renders KB into public surfaces — llms.txt, schema.org JSON-LD, sitemap, docs "is not" section. Stage 3 (probe): queries ChatGPT, Claude, Perplexity, Gemini with canonical questions and diffs answers against KB. Stage 4 (drift): cron job comparing live site, docs, and KB — opens tickets when fields disagree.</p>
+      <rule>
+        <statement>Wire stages 1–2 into CI so a release cannot ship without an updated KB. Run stages 3–4 on weekly cron. Persist KB at .aidocs/product_docs/product-kb.json as shared truth for all faion-net agents.</statement>
+        <rationale>Explainability debt accumulates silently after each release. CI enforcement is the only mechanism that makes KB updates a required part of shipping, not an afterthought.</rationale>
+      </rule>
+    </section>
+    <section name="recommended-subagents">
+      <list>
+        <item>faion-research-agent (skills/faion/knowledge/pro/research/researcher/) — runs the AI-probe stage: queries each AI surface with the canonical question set, captures responses, structures the diff. Reuse the existing competitive-intelligence mode template.</item>
+        <item>faion-sdd-executor-agent (agents/faion-sdd-executor-agent.md) — converts drift-agent findings into SDD todo/ tasks (each KB ↔ site contradiction becomes a fix ticket with owner).</item>
+        <item>faion-market-researcher (sub-skill of researcher) — supplies the audience/JTBD vocabulary that feeds the KB's "for whom" section; without this, capability statements lack a buyer-language anchor.</item>
+        <item>faion-marketing-manager skill methodologies (solo/marketing/, pro/marketing/) — own the public-surface copy generated from the KB; explainability is upstream of GTM messaging.</item>
+        <item>password-scrubber-agent (agents/password-scrubber-agent.md) — scrub the KB before publishing llms.txt or pushing to a third-party retrieval index; capability docs frequently leak internal endpoints, vendor names, beta-only flags.</item>
+      </list>
+    </section>
+    <section name="prompt-patterns">
+      <example type="good">
+        <note>KB extraction pass:</note>
+        <code lang="text"><![CDATA[You extract a structured product KB. Inputs: <homepage url>, <docs root>,
+<openapi spec>, <changelog>. Output JSON with fields: purpose (1 sentence,
+no marketing adjectives), capabilities[] (each: name, description, example,
+status: ga|beta|deprecated, since_version), limits[] (each: scope, rationale,
+workaround_or_null), use_cases[] (each: persona, job, success_signal),
+audience (industry, role, company_size), prerequisites[].
+Refuse to invent fields. If a source is missing, write "unknown" -- never fabricate.]]></code>
+      </example>
+      <example type="good">
+        <note>AI-answer probe pass:</note>
+        <code lang="text"><![CDATA[For each question in <question_set>, query <model> with no system prompt,
+plain user role. Capture the full answer. Score against <product-kb.json>
+on three axes: factually_correct (0|1), capability_in_scope (0|1),
+limit_acknowledged (0|1). Output a markdown table sorted by total score asc.
+Flag any answer that recommends a capability with status=deprecated.]]></code>
+      </example>
+    </section>
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>Generator agents producing adjective-heavy copy ("best-in-class", "leading", "revolutionary").</description>
+        <reason>Force a "no adjectives, no superlatives" constraint in the system prompt and lint generated output. These tokens provide no retrieval signal and reduce trust.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Extractor agent fabricating capabilities to fill empty fields.</description>
+        <reason>Refuse-on-unknown must be enforced via prompt and post-hoc validator that cross-checks capability names against the feature flag registry or source code. Invented capabilities create support and legal liability.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Limit array lost across multi-step pipeline summarization passes.</description>
+        <reason>Preserve the limits[] array verbatim across every pipeline stage. Never re-summarize limits — they carry legal and trust-critical precision that compression loses.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Probe agents producing the same response across runs due to same prompt and cached model state.</description>
+        <reason>Vary question phrasing, user role, and timing across probe runs. Stable scores are an artifact of caching, not real representation quality.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hallucinated since_version: agents guess versions if not given a changelog.</description>
+        <reason>Hard requirement: extractor must read a real changelog or refuse. Version strings must be validated against actual release tags.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Schema bloat: generator agents produce maximalist JSON-LD with every optional field.</description>
+        <reason>AI retrieval prefers small, dense, accurate markup. Cap field count; lint with structured-data-testing-tool.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Confidentiality leak: capability statements reveal unlaunched features, internal infra (vendor names, region IDs, partner SKUs).</description>
+        <reason>Run a scrubber agent before any external publish — especially before pushing llms.txt or schema.org markup.</reason>
+      </antipattern>
+      <antipattern>
+        <description>No human checkpoint on deprecated flips: agent autonomously removes a capability from AI-mediated discovery.</description>
+        <reason>Marking a capability deprecated removes it from AI discovery and impacts revenue. Always require a product-owner sign-off before status changes; never let the agent flip status autonomously.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Cross-locale drift via auto-translation: translation agents helpfully translate "limit" in ways that lose legal precision.</description>
+        <reason>Limits and disclaimers go through human review per locale; non-negotiable. Never auto-translate capability limits.</reason>
+      </antipattern>
+      <antipattern>
+        <description>llms.txt echo chamber: many sites copy each other's llms.txt; the agent will follow the herd.</description>
+        <reason>Force a pre-publish diff against the top-3 competitors' llms.txt; if similarity &gt;0.7, regenerate. Avoid herd homogenization.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Probe-set staleness: canonical question sets calcify while the product evolves.</description>
+        <reason>Refresh the question set whenever a new capability ships or a customer reports a wrong AI answer. Stale questions produce artificially flat accuracy.</reason>
+      </antipattern>
+    </section>
+    <section name="limitations-and-failure-modes">
+      <p>KB drift is the default: marketing site, docs, pricing page, schema feed, and llms.txt diverge within weeks. Limits get watered down: product teams write aspirational capability statements; "honest scope" gets edited out by marketing review. AI then over-promises. Schema theater: teams add Product JSON-LD to look compliant, but description/audience/feature fields repeat the marketing tagline. No retrieval system gets new signal. llms.txt is not yet a standard: as of 2026, only ~15-20% of major LLM crawlers (Anthropic, OpenAI, Perplexity tested) honor it; assuming coverage is wrong. Hallucination floor: even a perfectly aligned KB cannot prevent an LLM from confabulating. Explainability lowers the rate; it does not zero it. No measurement primitive: "How well does AI represent us?" has no off-the-shelf metric — teams skip the monitoring loop, KB rots silently. Localization explosion: each language doubles surface area; agents conflate locales when retrieval is multilingual. Capability-version skew: capability statements rarely carry validFrom/validUntil; deprecated features keep getting recommended.</p>
+    </section>
+    <section name="services-and-tools">
+      <p>Algolia / Typesense: SaaS / OSS search, API yes. Best surface for "AI-mediated on-site discovery"; index the KB, not just docs HTML. Mintlify / GitBook / Docusaurus: Docs platform, API yes. Mintlify ships first-class llms.txt and AI-answer telemetry as of 2026. Inkeep / Kapa.ai / Mendable: RAG-as-a-service, API yes. Hosts a chat agent grounded in your KB; useful as the canonical "what we say" reference for probe agents. OpenAI Custom GPT / Anthropic Skill: Agent surface, API yes. Same KB renders as MCP server tool descriptions and capability cards. Profound / Athena AI / SE Ranking AEO: AEO monitoring SaaS, API limited. Track brand mentions and capability accuracy across LLMs over time. schema.org + Google Merchant Center: Standard / SaaS, API yes. Required for any e-commerce or SaaS surfaced via Google AI Overviews. ProductHunt / G2 / Capterra: Discovery SaaS, API limited. Their LLM-readable feeds influence AI buying guidance; keep capability statements identical to your KB. Notion / Airtable: KB host, API yes. Pragmatic place to author product-kb if devs do not own it; export to JSON via API. Linear / GitHub Issues: Drift tickets, API yes. Drift agent files explainability-drift issues; mitigations = subtasks. Tracecat / OSS pipelines: Workflow, yes. Self-hosted scheduling for the four-stage pipeline.</p>
+    </section>
+    <section name="cli-tools">
+      <p>schema-dts + tsc: Type-checked schema.org JSON-LD generation — npm i schema-dts ; https://github.com/google/schema-dts. Google Rich Results Test: Validate Product, SoftwareApplication, FAQPage markup — https://search.google.com/test/rich-results. structured-data-testing-tool (CLI): Lint JSON-LD in CI — npm i -g structured-data-testing-tool. llms.txt generators (e.g. llmstxt-cli): Emit /llms.txt and /llms-full.txt from docs — https://llmstxt.org/ ; npm/pypi packages. screaming-frog CLI: Crawl public site, extract title/description/schema diff — https://www.screamingfrog.co.uk/seo-spider/. gh CLI: File drift findings as labeled issues (label:explainability-drift) — https://cli.github.com. claude (Anthropic CLI): Run extractor + probe prompts headless against Claude — https://docs.anthropic.com. openai CLI / perplexity API: Probe ChatGPT and Perplexity from CI — https://platform.openai.com ; https://docs.perplexity.ai. jq + ajv-cli: Validate product-kb.json against a JSON Schema — npm i -g ajv-cli.</p>
+    </section>
+    <section name="best-practices">
+      <p>Single source of truth, multiple renders: product-kb.json is canonical; llms.txt, JSON-LD, FAQ page, MCP tool descriptions, marketing one-liners are all generated from it. No hand-edits downstream. Limits are first-class: every capability ships with at least one limits[] entry. A KB with no limits is a KB nobody trusts. Version every capability: status: ga|beta|deprecated + since_version lets agents avoid recommending sunset features. Without this, AI keeps surfacing yesterday's product. Probe weekly across ≥3 frontier models: single-model probing is biased; rotate Claude, GPT, Gemini, Perplexity at minimum, score the diff. Track answer accuracy as a real metric: treat "AI representation accuracy" as you would NPS — set a target (e.g. ≥85%), put it on a dashboard, regress on it after each release. Co-locate KB with code: product-kb.json lives in the product repo, not the marketing repo; release pipeline rebuilds renders. This is the only way to prevent capability-version skew. Write purpose in customer language, not marketing language: strip adjectives ("powerful", "intuitive", "next-gen"); LLMs and humans both ignore them. State who, what, in one sentence. Publish an "is not" section: a docs page titled "What this product is not" cuts AI miscategorization more than any positive statement. List 3–5 things customers commonly assume but are false. Keep llms.txt short: ≤200 lines, links to llms-full.txt for depth. Bloat reduces retrieval quality. Localize structurally, not as translation: each locale has its own KB rendering pipeline; never machine-translate capability statements without review — limits and prerequisites mistranslate dangerously.</p>
+    </section>
+    <templates>
+      <template path="templates/product-kb-validate.sh" purpose="Validates product-kb.json against JSON Schema; wire into pre-commit"/>
+    </templates>
+    <see-also>
+      <link href="https://llmstxt.org/">llms.txt — a proposal</link>
+      <link href="https://schema.org/Product">schema.org Product / SoftwareApplication / FAQPage</link>
+      <link href="https://developers.google.com/search">Google Search Central, AI Overviews and your site</link>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude">Anthropic, Building tools and skills</link>
+      <link href="https://platform.openai.com/docs/actions">OpenAI, Custom GPT actions and metadata</link>
+      <link href="https://artificialintelligenceact.eu/article/13/">EU AI Act Article 13 — Transparency obligations</link>
+    </see-also>
+  </content>
+</methodology>
