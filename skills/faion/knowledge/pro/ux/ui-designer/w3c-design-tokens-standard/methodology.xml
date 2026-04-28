@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="w3c-design-tokens-standard">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ui-designer</domain>
+    <summary>The W3C Design Tokens Community Group draft defines a vendor-neutral interchange format for design tokens using $type + $value + $ref fields.</summary>
+    <tags>
+      <tag>design-tokens</tag>
+      <tag>w3c</tag>
+      <tag>design-systems</tag>
+      <tag>style-dictionary</tag>
+      <tag>standards</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>W3C Design Tokens Standard</title>
+    <summary>The W3C Design Tokens Community Group draft defines a vendor-neutral interchange format for design tokens using `$type` + `$value` + `$ref` fields. Adopting the draft format enables token files to survive tool migrations and work across Figma, Style Dictionary v4, and future tooling without conversion. The format is still a Community Group draft — not a W3C Recommendation — so pin a snapshot date and validate in CI on every PR.</summary>
+    <why>
+      <p>Proprietary token formats (Tokens Studio JSON, Adobe Spectrum, old Style Dictionary input) lock systems into specific toolchains. The W3C draft provides a common schema that Style Dictionary v4 already consumes natively. Migration now avoids a forced re-migration when the ecosystem converges; `$description` fields preserve design intent that raw values discard.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Migrating an existing token set to a vendor-neutral, future-proof format.</item>
+        <item>Greenfield design systems aiming for interoperability across Figma, code, and documentation tools.</item>
+        <item>Auditing token files for compliance with the latest community-group draft.</item>
+        <item>Generating Style Dictionary transforms that consume W3C-formatted source.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Locked into a vendor format (Adobe Spectrum, IBM Carbon, Material 3) with no portability need — conversion adds overhead without gain.</item>
+        <item>Pre-MVP products where the token contract is unstable — chasing a moving spec wastes cycles.</item>
+        <item>Single-platform design systems where standardization gives no portability win.</item>
+        <item>Agencies producing one-off campaign tokens — interchange is not worth it.</item>
+      </list>
+    </when-not-to-use>
+    <section name="format-rules">
+      <rule>
+        <statement>Every token must have a `$type` and `$value` field; add `$description` to every semantic token to record design intent.</statement>
+        <rationale>`$description` is the only place intent is recorded; without it, future maintainers (and LLMs) can only guess why a token exists.</rationale>
+      </rule>
+      <rule>
+        <statement>Use `$ref` aliases for primitive-to-semantic-to-component layering; never duplicate values across tokens.</statement>
+        <rationale>Value duplication defeats the migration purpose: when the primitive changes, aliases update automatically; duplicates go stale silently.</rationale>
+      </rule>
+      <example type="good" title="Minimal W3C-compliant token file">
+        <code lang="json"><![CDATA[
+{
+  "$schema": "https://design-tokens.org/schema.json",
+  "color": {
+    "blue": {
+      "500": {
+        "$type": "color",
+        "$value": "#3B82F6",
+        "$description": "Primary brand blue, WCAG AA on white"
+      }
+    },
+    "action": {
+      "primary": {
+        "$type": "color",
+        "$value": "{color.blue.500}",
+        "$description": "Default CTA button background"
+      }
+    }
+  }
+}
+]]></code>
+      </example>
+      <example type="bad" title="Old-style field naming — missing $ prefix">
+        <code lang="json"><![CDATA[
+{
+  "color-primary": {
+    "type": "color",
+    "value": "#3B82F6"
+  }
+}
+]]></code>
+      </example>
+      <section name="supported-types">
+        <list>
+          <item>color — hex, rgb(), oklch(); always include color-space metadata for wide-gamut values.</item>
+          <item>dimension — with unit (px, rem, dp); never unitless.</item>
+          <item>fontFamily — string or array of strings.</item>
+          <item>fontWeight — numeric (100-900) preferred over keyword.</item>
+          <item>shadow — composite type; sub-schema has evolved across draft versions, validate each composite.</item>
+          <item>typography — composite; evolving sub-schema, lint against current draft.</item>
+        </list>
+        <rule>
+          <statement>Pin a draft snapshot date in the repo and validate against that snapshot — do not auto-pull the latest spec.</statement>
+          <rationale>The format is a Community Group draft with possible breaking changes; pinning prevents silent spec-upgrade breakage in CI.</rationale>
+        </rule>
+      </section>
+      <section name="alias-graph">
+        <rule>
+          <statement>Preserve the full alias graph when migrating; never flatten aliases by embedding primitive values in semantic tokens.</statement>
+          <rationale>Flattening defeats the migration purpose: primitive changes stop propagating to semantic and component layers.</rationale>
+        </rule>
+        <antipattern>
+          <description>Migrating tokens by replacing `$ref` aliases with resolved hex values.</description>
+          <reason>The alias graph is the primary value of the W3C format; a flattened file behaves identically to the legacy format being replaced.</reason>
+        </antipattern>
+      </section>
+    </section>
+    <section name="migration-workflow">
+      <rule>
+        <statement>After migrating, run a rendered-output snapshot diff (CSS, Swift, XML) to verify semantic preservation before shipping.</statement>
+        <rationale>A format migration that changes rendered values is a visual regression; the snapshot diff catches it before users do.</rationale>
+      </rule>
+      <list>
+        <item>Audit current token structure: identify primitive, semantic, and component layers.</item>
+        <item>Align naming to `$type`/`$value`/`$ref` fields; add `$description` to every semantic token.</item>
+        <item>Validate alias graph: every `$ref` must resolve within the file without circular references.</item>
+        <item>Run a CI validator against the pinned draft snapshot date on every PR.</item>
+        <item>Pair migration with a rendered-output snapshot test before promoting to production.</item>
+      </list>
+    </section>
+    <section name="ci-validation">
+      <rule>
+        <statement>Gate CI on W3C draft compliance using a schema validator; add a "format date" check to flag when the upstream spec has moved.</statement>
+        <rationale>Without CI gating, non-compliant tokens accumulate; catching them at PR time costs far less than post-migration cleanup.</rationale>
+      </rule>
+    </section>
+    <section name="agent-pitfalls">
+      <antipattern>
+        <description>Agent confuses W3C draft format with Tokens Studio JSON dialect.</description>
+        <reason>Both use `$type` but differ on composite type sub-schemas and alias syntax; explicitly specify the target format and version in every prompt.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Generated `$type` values use older names (e.g., `type` instead of `$type`).</description>
+        <reason>The `$`-prefix is required by the draft; validators reject the unprefixed form. Enforce the `$`-prefixed form in a post-generation lint step.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Composite types (shadow, gradient, typography) generated with incorrect sub-schemas.</description>
+        <reason>Composite type sub-schemas have evolved across draft versions; lint each composite against its specific sub-schema after generation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent assumes Style Dictionary v4 syntax without checking the project version.</description>
+        <reason>v3 and v4 have incompatible transform APIs; pin the version explicitly in every agent prompt to avoid silent no-output bugs.</reason>
+      </antipattern>
+    </section>
+    <section name="agentic-workflow">
+      <p>Use Claude as a "format migrator + validator": it ingests legacy token JSON, emits W3C-compliant output (`$type`, `$value`, `$description`), preserves alias graphs, and produces a JSON Schema-based validator. A second pass diffs old-vs-new render output (CSS, Swift, XML) to verify semantic preservation. The agent maintains a tracking issue listing draft-format deltas so that periodic re-validation catches spec evolution.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>general-purpose Claude subagent — format migration + validator scaffolding.</item>
+        <item>faion-sdd-executor-agent — SDD task to swap legacy source for W3C source in the build pipeline.</item>
+        <item>A "schema-validator" prompt — run draft-format JSON Schema against token files in CI.</item>
+      </list>
+      <p>Prompt patterns:</p>
+      <code lang="text"><![CDATA[
+Migrate this Tokens Studio export (input.json) to W3C draft format.
+Preserve alias graph with $ref notation. Add $type for color, dimension,
+fontFamily, fontWeight, shadow. Emit a JSON Schema for validation.
+]]></code>
+      <code lang="text"><![CDATA[
+Validate tokens.json against the latest W3C draft (date: <YYYY-MM>).
+List violations with path, expected $type, actual value, and severity.
+]]></code>
+    </section>
+    <section name="cli-tools-and-services">
+      <p>CLI tools for W3C token format handling:</p>
+      <list>
+        <item>style-dictionary v4+ — Native W3C source format support. Install: npm i -g style-dictionary@latest</item>
+        <item>@design-tokens/format-validator (community) — JSON Schema validator. Docs: https://github.com/design-tokens/community-group</item>
+        <item>ajv-cli — Generic JSON Schema validation. Install: npm i -g ajv-cli</item>
+        <item>jq — Path-level inspection of token files. Install: apt install jq</item>
+        <item>cosmos-config — Multi-platform build with W3C source. Docs: https://cosmos.jetbrains.com/</item>
+        <item>tokens-studio-cli (community) — Export Figma plugin data → JSON. Docs: https://docs.tokens.studio/</item>
+      </list>
+      <p>Services and applications:</p>
+      <list>
+        <item>Style Dictionary v4 (OSS) — First-class W3C support via Node API.</item>
+        <item>Tokens Studio (SaaS plugin) — Export close to W3C; gaps in composite types.</item>
+        <item>Supernova (SaaS) — Roadmap mentions W3C alignment.</item>
+        <item>Specify (SaaS) — Similar story.</item>
+        <item>Knapsack (SaaS) — Adoption in progress.</item>
+        <item>design-tokens.org reference (OSS) — Canonical source with schemas and examples.</item>
+      </list>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Pin a draft snapshot date in your repo; don't auto-pull `main` of the format spec — breaking changes happen.</item>
+        <item>Always include `$description` on semantic tokens; it's the only place to record intent.</item>
+        <item>Use `$ref` aliases for the primitive→semantic→component layering, not value duplication.</item>
+        <item>Validate in CI on every PR; add a "format date" check to flag when the upstream spec moved.</item>
+        <item>Treat current files as draft-compliant, not standard-compliant; communicate this in design-system docs.</item>
+        <item>Pair migration with a rendered-output snapshot test to catch silent semantic drift.</item>
+      </list>
+    </section>
+    <section name="limitations">
+      <p>The format is still a Community Group draft; no W3C Recommendation, breaking changes possible.</p>
+      <p>Tooling support is partial: Style Dictionary v4 supports it; Tokens Studio export is close-but-not-exact.</p>
+      <p>Composite types (typography, transition, gradient, shadow) have evolving sub-schemas — older files break newer parsers.</p>
+      <p>`$ref` style aliases (`{color.brand}`) resolve differently across implementations.</p>
+      <p>No standard motion / animation type yet — vendor-specific extensions remain necessary.</p>
+    </section>
+    <templates>
+      <template path="templates/tokens-w3c.json" purpose="Minimal W3C-compliant token file with color, dimension, and alias examples."/>
+      <template path="templates/w3c-tokens-validate.sh" purpose="CI shell script that validates a token file against the W3C draft JSON Schema."/>
+    </templates>
+    <see-also>
+      <link href="https://www.w3.org/community/design-tokens/"/>
+      <link href="https://design-tokens.github.io/community-group/format/"/>
+      <link href="https://tr.designtokens.org/format/"/>
+      <link href="https://github.com/design-tokens/community-group"/>
+      <link href="https://styledictionary.com/info/dtcg/"/>
+      <link href="https://www.designsystems.com/w3c-tokens/"/>
+    </see-also>
+  </content>
+</methodology>
