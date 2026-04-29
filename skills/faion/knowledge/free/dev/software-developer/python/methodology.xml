@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Poetry for dependencies, Django models/views/services, FastAPI routes, pytest fixtures, type hints with mypy --strict, ruff formatting, and asyncio concurrency patterns.</summary>
+    <tags>
+      <tag>python</tag>
+      <tag>django</tag>
+      <tag>fastapi</tag>
+      <tag>pytest</tag>
+      <tag>asyncio</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Python Ecosystem</title>
+    <summary>Patterns for the full Python development stack: Poetry for dependency management, Django models/views/services/admin, FastAPI routes/dependencies/schemas, pytest fixtures/mocking/parametrize, type hints with `mypy --strict`, ruff formatting, venv/pyenv, and asyncio concurrency patterns.</summary>
+    <why>
+      <p>Python projects without a locked dependency manager (`poetry.lock`), type annotations, and enforced formatting accumulate technical debt quickly. The services pattern (thin views + business logic in `services.py`) makes Django/FastAPI code testable from Celery and management commands. `asyncio.gather` reduces I/O-bound latency proportionally to the number of concurrent operations.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Setting up a new Python project with Poetry and pyproject.toml</item>
+        <item>Writing Django models, views, serializers, or admin configuration</item>
+        <item>Creating FastAPI routes, Pydantic schemas, and dependency injection</item>
+        <item>Writing pytest tests with fixtures, mocking, and parametrize</item>
+        <item>Adding type hints and running `mypy --strict` on a file or module</item>
+        <item>Configuring ruff for consistent formatting</item>
+        <item>Implementing concurrent I/O with `asyncio.gather` or `TaskGroup`</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Go / Rust / Node.js projects — language-specific skills cover those</item>
+        <item>Data science / ML workflows — pandas, NumPy, and Jupyter patterns are out of scope here</item>
+        <item>Legacy Python 2 codebases — methodology assumes Python 3.11+</item>
+      </list>
+    </when-not-to-use>
+    <section name="Python Project Setup with Poetry">
+      <example type="good" title="Poetry initialization and dependency management">
+        <code lang="bash"><![CDATA[# New project
+poetry new my-project && cd my-project
+
+# Add production and dev dependencies
+poetry add django fastapi
+poetry add --group dev pytest pytest-django pytest-cov mypy ruff
+
+# Install from lock file (CI)
+poetry install --no-root
+
+# Run without activating shell
+poetry run pytest
+poetry run python manage.py migrate
+
+# Export for Docker
+poetry export -f requirements.txt --output requirements.txt --without-hashes]]></code>
+      </example>
+      <example type="good" title="pyenv integration">
+        <code lang="bash"><![CDATA[# Install and pin Python version for project
+pyenv install 3.11.7
+cd my-project
+pyenv local 3.11.7
+poetry env use $(pyenv which python)
+poetry install]]></code>
+      </example>
+      <example type="good" title="Docker pattern">
+        <code lang="dockerfile"><![CDATA[FROM python:3.11-slim
+WORKDIR /app
+RUN pip install poetry
+COPY pyproject.toml poetry.lock ./
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-interaction --only main
+COPY . .
+CMD ["python", "main.py"]]]></code>
+      </example>
+      <reference path="templates/pyproject.toml">Minimal pyproject.toml with dev group and tool stubs</reference>
+    </section>
+    <section name="Django Patterns">
+      <example type="good" title="BaseModel with UUID and timestamps">
+        <code lang="python"><![CDATA[import uuid
+from django.db import models
+
+
+class BaseModel(models.Model):
+    uid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True]]></code>
+      </example>
+      <rule>
+        <statement>Business logic lives in services.py, not views. Services receive domain types (email: str, user: User), not request objects. Wrap multi-step DB operations in @transaction.atomic.</statement>
+        <rationale>Thin views delegate to services. Services are callable from Celery tasks, management commands, and tests without an HTTP request context.</rationale>
+      </rule>
+      <example type="good" title="Services layer for business logic">
+        <code lang="python"><![CDATA[from django.db import transaction
+from .models import User, UserType
+
+
+def create_user(email: str, name: str, *, user_type: str = UserType.REGULAR) -> User:
+    return User.objects.create(email=email, name=name, user_type=user_type)
+
+
+@transaction.atomic
+def transfer_ownership(from_user: User, to_user: User, item_id: int) -> None:
+    from apps.items import models as item_models
+    item = item_models.Item.objects.select_for_update().get(id=item_id)
+    item.owner = to_user
+    item.save()]]></code>
+      </example>
+    </section>
+    <section name="FastAPI Patterns">
+      <example type="good" title="FastAPI app with routing and dependencies">
+        <code lang="python"><![CDATA[from fastapi import FastAPI, Depends
+from pydantic import BaseModel
+
+app = FastAPI()
+
+
+class ItemCreate(BaseModel):
+    name: str
+    price: float
+
+
+async def verify_token(token: str = Header(...)) -> str:
+    if not token.startswith("Bearer "):
+        raise HTTPException(status_code=401)
+    return token.replace("Bearer ", "")
+
+
+@app.post("/items")
+async def create_item(item: ItemCreate, user_id: str = Depends(verify_token)):
+    return {"id": 1, "name": item.name, "user": user_id}]]></code>
+      </example>
+    </section>
+    <section name="pytest Patterns">
+      <example type="good" title="conftest fixtures with factories and mocking">
+        <code lang="python"><![CDATA[import pytest
+from unittest.mock import patch, MagicMock
+from django.contrib.auth import get_user_model
+
+
+User = get_user_model()
+
+
+@pytest.fixture
+def user(db):
+    return User.objects.create_user(username="test", email="test@example.com")
+
+
+@pytest.fixture
+def api_client():
+    from rest_framework.test import APIClient
+    return APIClient()
+
+
+@pytest.mark.django_db
+def test_create_user(api_client):
+    response = api_client.post("/api/users/", {"username": "alice", "email": "alice@ex.com"})
+    assert response.status_code == 201]]></code>
+      </example>
+      <reference path="templates/conftest.py">Standard pytest conftest with mock_db, api_client, authenticated_client</reference>
+    </section>
+    <section name="asyncio Patterns">
+      <rule>
+        <statement>Use asyncio.gather() for independent concurrent I/O operations. Sequential await calls run one at a time; gather runs them concurrently, reducing total latency proportionally.</statement>
+        <rationale>Concurrent I/O patterns minimize wall-clock time when making multiple external API calls or database queries.</rationale>
+      </rule>
+      <example type="good" title="Concurrent I/O with asyncio.gather">
+        <code lang="python"><![CDATA[import asyncio
+
+
+async def fetch_url(url: str) -> str:
+    # Pseudo-code; use aiohttp in practice
+    return f"Response from {url}"
+
+
+async def main():
+    urls = ["http://api1.com", "http://api2.com", "http://api3.com"]
+    results = await asyncio.gather(*[fetch_url(url) for url in urls])
+    return results
+
+
+# Run: asyncio.run(main())]]></code>
+      </example>
+      <example type="good" title="TaskGroup for structured concurrency">
+        <code lang="python"><![CDATA[import asyncio
+
+
+async def task(name: str, delay: int):
+    await asyncio.sleep(delay)
+    return f"Task {name} done"
+
+
+async def main():
+    async with asyncio.TaskGroup() as tg:
+        t1 = tg.create_task(task("A", 1))
+        t2 = tg.create_task(task("B", 2))
+    # Both completed or one raised
+    return await t1, await t2]]></code>
+      </example>
+    </section>
+    <section name="Type Hints and mypy">
+      <rule>
+        <statement>Type the public boundary first: `services/*.py` and route handlers, then internal helpers. Use `X | None` instead of `Optional[X]`. Run `mypy --strict` before commit.</statement>
+        <rationale>Public boundaries are where type safety matters most. Strict mode catches edge cases and improves code clarity for reviewers and future maintainers.</rationale>
+      </rule>
+      <example type="good" title="Typed services with mypy strict">
+        <code lang="python"><![CDATA[from typing import TypeVar
+
+T = TypeVar("T")
+
+
+def get_or_raise(obj: T | None, msg: str) -> T:
+    if obj is None:
+        raise ValueError(msg)
+    return obj
+
+
+async def fetch_user(user_id: int) -> dict[str, str] | None:
+    # Type-checked
+    return None]]></code>
+      </example>
+    </section>
+    <section name="Formatting with ruff">
+      <rule>
+        <statement>Use ruff for linting and formatting. Run `ruff check --fix &amp;&amp; ruff format`. Do NOT use Black/isort/flake8 (deprecated); they conflict with ruff.</statement>
+        <rationale>ruff combines the functionality of Black, isort, and flake8 into a single, fast tool. Using both stacks causes formatting conflicts.</rationale>
+      </rule>
+    </section>
+    <section name="Agent Workflow">
+      <p>Drive Python work as: classify task → pick sub-topic (setup, Django, FastAPI, pytest, or asyncio) → load only the relevant section into context. Execute in a Bash sandbox with `python:*, poetry:*, pytest:*, ruff:*, mypy:*` allow-list. After every code edit, run the project's actual lint command (faion-net = `ruff check --fix &amp;&amp; ruff format`), not Black. Commit only after `pytest -x` is green. Never run `poetry update` without explicit user approval — it rewrites the lockfile.</p>
+      <p>Recommended subagents: faion-code-agent (default executor for Django models/services, FastAPI routes, async handlers), faion-test-agent (owns pytest fixtures, mocking, parametrize, coverage), faion-devtools-developer (sibling skill, owns pre-commit, lint config, Poetry/uv migration), faion-software-architect (sibling, owns Django-vs-FastAPI choice, async/sync boundaries), faion-sdd-execution (wraps the whole loop in spec → impl → test → review for non-trivial tasks).</p>
+      <p>Prompt pattern for sub-topic dispatch: "Task: &lt;short&gt;. Stack: Django 5 + DRF on Python 3.11. Apply ONLY the 'Django Patterns' section. Constraints: thin views, services for business logic, ruff (not black) for format, type hints required, pytest with @pytest.mark.django_db. Return diff + test run output."</p>
+      <p>For mypy onboarding (one file at a time): "Add types to apps/&lt;module&gt;/services.py. Use `X | None` not Optional. Update mypy overrides only if a third-party stub is missing. Do NOT touch other files. Run: mypy apps/&lt;module&gt;/services.py — paste full output."</p>
+    </section>
+    <section name="Best Practices">
+      <p>Use ruff, not the Black/isort/flake8 (deprecated) trio — faion-net mandates this; the methodology may reference legacy patterns. Pin Python in `.python-version` so CI, Docker, and local dev share a version. Match minor across `pyproject.toml requires-python`, `tool.mypy python_version`, and Dockerfile `FROM python:X.Y`. Services own writes; views own HTTP. Never call `Model.objects.create()` from a view. Never raise `HTTPException` from a service. Type the public boundary first. Async is contagious — don't sprinkle `async` into Django code unless the whole stack (ASGI server, ORM calls via `sync_to_async`, middleware) is ready. Use `select_for_update()` only inside `transaction.atomic()` and only when there's an actual race. Use `uv` for new projects, Poetry only when existing lockfile. uv is dramatically faster and `pip`-compatible. Lock `pyproject.toml` and lockfile together in one commit. Splitting them breaks reproducible builds. Use `pytest -x --lf` during iterative dev (stop on first fail, then run last-failed).</p>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <p>README contradicts faion-net repo standard on the linter (Black vs ruff) — trust repo `AGENTS.md` over knowledge base when they disagree. Mixing `Optional[X]` and `X | None` in one file makes mypy noisy and hurts diffs. Pick one per project (modern: `X | None`). Django `transaction.atomic` as decorator vs context manager — only the context-manager form respects custom `using=` databases. Default to context manager. Async DB calls in Django require `sync_to_async`; calling `User.objects.get()` directly inside `async def` raises `SynchronousOnlyOperation`. Easy to miss in code review. `@pytest.mark.django_db` without `transaction=True` rolls back fixtures between tests — but mixing it with `select_for_update` deadlocks under SQLite. Use Postgres for those. `asyncio.gather` swallows exceptions unless `return_exceptions=False` is paired with a try/except around the await. `TaskGroup` is safer; prefer it on 3.11+. `BackgroundTasks` in FastAPI runs in the request lifecycle — long jobs block the worker. Use Celery / arq / dramatiq for >1s work. Test discovery + Django settings: `pytest-django` needs `DJANGO_SETTINGS_MODULE` set in `pyproject.toml` OR env. Forgetting this causes "Apps aren't loaded yet" with zero useful traceback. Print statements (T20) — ruff blocks `print()` in faion-net code. Use `logging`. Tests are exempt via per-file overrides. Cross-app imports — always alias to avoid circular imports that silently break Django app loading.</p>
+    </section>
+    <section name="Tools and Services">
+      <p>Tools: poetry (dep + venv mgmt; lockfile), uv (10-100x faster Poetry alt; pip-compat), ruff (lint + format; replaces black/isort/flake8), mypy (static type checking), pyright (faster mypy alt), pytest + pytest-django + pytest-cov (test runner), pre-commit (git hook orchestrator), pyenv (multiple Python versions), pipx (install Python CLIs in isolated venvs), python -m venv (stdlib venv), safety / pip-audit (CVE scan).</p>
+      <p>Services: PyPI (OSS registry), ReadTheDocs (OSS docs via sphinx-build CLI), Codecov / Coveralls (SaaS coverage tracking), Sentry (SaaS APM via sentry-sdk + middleware), Render / Fly.io / Railway (SaaS PaaS with automatic pyproject.toml detection).</p>
+    </section>
+    <templates>
+      <template path="templates/pyproject.toml" purpose="Minimal Poetry pyproject.toml with dev group and tool stubs"/>
+      <template path="templates/conftest.py" purpose="Standard pytest conftest with mock_db, api_client, authenticated_client"/>
+      <template path="templates/pytest.ini.toml" purpose="[tool.pytest.ini_options] block with Django settings and addopts"/>
+    </templates>
+    <see-also>
+      <link href="https://python-poetry.org/docs"/>
+      <link href="https://docs.astral.sh/uv/"/>
+      <link href="https://docs.astral.sh/ruff/configuration/"/>
+      <link href="https://mypy.readthedocs.io/en/stable/getting_started.html#strict-mode"/>
+      <link href="https://docs.pytest.org"/>
+      <link href="https://pytest-django.readthedocs.io"/>
+      <link href="https://fastapi.tiangolo.com/async/"/>
+      <link href="https://docs.djangoproject.com/en/5.0/topics/async/"/>
+    </see-also>
+  </content>
+</methodology>
