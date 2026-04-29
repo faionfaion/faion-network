@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="websocket-design">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>api-developer</domain>
+    <summary>Versioned WebSocket envelope, server heartbeat with disconnect on missed beats, exponential reconnect with full jitter, and Redis Pub/Sub fan-out for horizontal scale.</summary>
+    <tags>
+      <tag>websocket</tag>
+      <tag>realtime</tag>
+      <tag>heartbeat</tag>
+      <tag>redis-pubsub</tag>
+      <tag>reconnect</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+      <language>typescript</language>
+    </languages>
+    <frameworks>
+      <framework>fastapi</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>WebSocket Design</title>
+
+    <summary>WebSockets provide full-duplex persistent connections for real-time features. Define a versioned message envelope (`{v, type, channel, seq, ts, payload}`), implement heartbeat/ping-pong with server-side disconnect on missed beats, reconnect with exponential backoff and full jitter, and scale fan-out horizontally via Redis Pub/Sub or NATS.</summary>
+
+    <why>
+      <p>Without heartbeats, stale connections accumulate silently until the server runs out of file descriptors. Without jitter on reconnect, a deploy redeploys all clients simultaneously, creating a thundering herd that DDoSes the auth endpoint. Without Redis Pub/Sub, WebSocket connections are pinned to one process and fan-out breaks under horizontal scaling.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Server-pushed events at sub-second latency: chat, presence, live cursors, order book updates, multiplayer state.</item>
+        <item>Bidirectional streams where the client also sends frequently (collab editing, voice control loops).</item>
+        <item>High-frequency updates where polling would burn 10x bandwidth.</item>
+        <item>LLM streaming when SSE is not enough (binary frames, two-way tool calls). Otherwise prefer SSE — simpler, proxy-friendly.</item>
+        <item>Agent pipelines that need a long-lived control channel (workers reporting progress to a dashboard).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-shot CRUD or rare polls (every &gt;5s) — REST is cheaper.</item>
+        <item>Server-only push, no client→server traffic — SSE wins on simplicity, HTTP/2 multiplexing, and resume.</item>
+        <item>Behind misconfigured proxies / corporate firewalls that strip Upgrade headers — fall back to SSE or long-poll.</item>
+        <item>Mobile networks with aggressive NAT timeouts unless you commit to heartbeats and resumption.</item>
+        <item>When you cannot run a stateful tier — pure serverless (Lambda) supports WS only via API Gateway, with state in DynamoDB.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="message-envelope">
+      <rule>
+        <statement>Define a versioned message envelope: {v, type, channel, seq, ts, payload}. Bump v for breaking protocol changes. Clients deduplicate by seq across reconnects.</statement>
+        <rationale>Without a versioned envelope, protocol changes cannot be rolled out gradually. Without seq, clients cannot detect duplicate delivery after reconnect.</rationale>
+      </rule>
+    </section>
+
+    <section name="heartbeat">
+      <rule>
+        <statement>Implement server-side ping/pong: server disconnects a client after 2 missed pong responses. Client sends ping every 25–30 seconds.</statement>
+        <rationale>Without heartbeats, stale connections accumulate silently. NAT gateways and load balancers close idle TCP connections without RST, leaving the server with zombie sockets.</rationale>
+      </rule>
+    </section>
+
+    <section name="authentication">
+      <rule>
+        <statement>Authenticate WebSocket connections at the HTTP upgrade stage using a short-lived ticket obtained from a REST endpoint, or via a signed cookie. Never put JWT tokens in query strings.</statement>
+        <rationale>Query strings appear in server access logs; JWT tokens in logs are a credential leak. Cookies with HttpOnly/Secure are not accessible to JavaScript XSS.</rationale>
+      </rule>
+    </section>
+
+    <section name="redis-pubsub-scale-out">
+      <rule>
+        <statement>For horizontal scaling, broadcast messages via Redis Pub/Sub instead of local fan-out. Each server node subscribes to channels and delivers to its locally connected clients.</statement>
+        <rationale>Connections are pinned to one process. Without a shared pubsub bus, a message published to node A never reaches clients connected to node B.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+import redis.asyncio as redis
+import asyncio, json
+
+class DistributedConnectionManager:
+    def __init__(self, redis_url: str = "redis://localhost:6379"):
+        self.active_connections: dict = {}
+        self.channel_subscriptions: dict = {}
+        self.redis_url = redis_url
+
+    async def start(self):
+        self.redis = await redis.from_url(self.redis_url)
+        self.pubsub = self.redis.pubsub()
+        asyncio.create_task(self._listen())
+
+    async def _listen(self):
+        await self.pubsub.psubscribe("ws:channel:*")
+        async for message in self.pubsub.listen():
+            if message["type"] != "pmessage":
+                continue
+            channel = message["channel"].decode().removeprefix("ws:channel:")
+            data = json.loads(message["data"])
+            await self._local_broadcast(channel, data)
+
+    async def broadcast(self, channel: str, message: dict):
+        await self.redis.publish(f"ws:channel:{channel}", json.dumps(message))
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="reconnect-with-full-jitter">
+      <rule>
+        <statement>Implement reconnect with exponential backoff and full jitter: delay = random(0, min(cap, base * 2^n)). Cap retries to a maximum attempt count.</statement>
+        <rationale>Reconnect without jitter causes thundering herds: all clients reconnect simultaneously after a server restart, creating a DoS on the auth endpoint. Full jitter spreads reconnect attempts uniformly.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[
+private handleReconnect() {
+  if (this.reconnectAttempts >= this.maxReconnectAttempts) return;
+  const cap = 30000;
+  const base = 1000;
+  const delay = Math.random() * Math.min(cap, base * Math.pow(2, this.reconnectAttempts));
+  this.reconnectAttempts++;
+  setTimeout(() => this.connect().catch(console.error), delay);
+}
+        ]]></code>
+      </example>
+      <example type="bad">
+        <code lang="typescript"><![CDATA[
+// No jitter — all clients reconnect at the same time after a deploy
+setTimeout(() => this.connect(), 1000 * this.reconnectAttempts);
+        ]]></code>
+        <note>Self-DDoS in prod: 10k clients all hit /ws-ticket simultaneously.</note>
+      </example>
+    </section>
+
+    <section name="bounded-offline-message-queue">
+      <rule>
+        <statement>Buffer outbound messages when disconnected. Cap the queue at a fixed size (e.g., 100 messages) and drop the oldest when full.</statement>
+        <rationale>An unbounded queue accumulates indefinitely during outages; when the connection restores, the client floods the server with stale messages.</rationale>
+      </rule>
+    </section>
+
+    <section name="subscription-lifecycle">
+      <rule>
+        <statement>The subscribe() method must return an unsubscribe function that removes the local handler and sends an unsubscribe message to the server. Clean up on component unmount.</statement>
+        <rationale>Leaked subscriptions accumulate channel listeners, preventing GC and delivering stale data to unmounted components.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations">
+      <list>
+        <item>Stickiness: sockets are pinned to one process — naive horizontal scaling breaks fan-out without a pubsub bus.</item>
+        <item>Backpressure is silent: a slow client fills the server's send buffer and the message loop blocks. Always cap with bounded queues + drop policy.</item>
+        <item>Reconnect storms after a deploy can DoS your own auth endpoint. Stagger with jitter + cap exponential backoff.</item>
+        <item>No native message ordering guarantees across reconnects; clients must dedupe by sequence ID.</item>
+        <item>Auth on Upgrade is fiddly — browsers can't send custom headers. Use cookie auth or short-lived ticket in query string.</item>
+        <item>Long-lived connections amplify memory leaks; restart bleeds users on every deploy unless you implement graceful drain.</item>
+        <item>WebSocket frame size limits in proxies (nginx default 1MB) silently truncate or close; set `proxy_max_temp_file_size` etc.</item>
+        <item>Without rate limiting per connection, one bad client can consume an entire CPU.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Treat the WS protocol as a typed contract: define the message envelope (type, channel, seq, payload) in shared schema (Zod / Pydantic / protobuf). Agents that add a new message type must update both server handler and client union, plus a contract test. For scale, push fan-out to Redis Pub/Sub or NATS so any worker can serve any client; the agent only writes per-process logic.</p>
+
+      <p>Recommended subagents:</p>
+      <list>
+        <item>`faion-feature-executor` — drives ordered tasks: schema → server handler → client handler → reconnect test.</item>
+        <item>`faion-sdd-execution` — quality gate enforcing heartbeat, auth, bounded queue, reconnect with jitter.</item>
+        <item>A `protocol-reviewer` agent (Opus) — checks new message types for backward compatibility and missing ack/seq.</item>
+        <item>`nero-tools` — when WS feeds into NERO pipelines, hooks for `tg-send` on backpressure events.</item>
+      </list>
+    </section>
+
+    <section name="prompt-patterns">
+      <prompt purpose="add-message-type"><![CDATA[
+Add a `presence` message type to ws/protocol.ts and ws/protocol.py.
+Server: on receive, broadcast {type:"presence", userId, status, ts} to
+channel `presence:<orgId>` via Redis Pub/Sub. Client: subscribe in
+PresenceProvider.tsx, expose useUsersOnline() hook. Add a vitest that
+spins two clients and asserts cross-broadcast within 200ms. No new deps.
+]]></prompt>
+
+      <prompt purpose="backpressure-audit"><![CDATA[
+Audit ConnectionManager.ts for backpressure handling. If send buffer is
+unbounded or there is no drop/disconnect on slow consumer, propose a
+patch using a 64-message bounded queue and disconnect-on-overflow.
+]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>`websocat` — curl for WS — connect, pipe stdin, debug (`cargo install websocat` or `brew install websocat`).</item>
+        <item>`wscat` — Node-based WS client (`npm i -g wscat`).</item>
+        <item>`autobahn-testsuite` — RFC 6455 conformance fuzz (`pip install autobahntestsuite`).</item>
+        <item>`k6` — load test WS connections + messages (k6.io/docs/using-k6/protocols/websockets).</item>
+        <item>`artillery` — scenario-based WS load testing (`npm i -g artillery`).</item>
+        <item>`wrk2-ws` / `tsung` — sustained-load WS testing (OSS).</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>Pusher Channels — SaaS, REST trigger API; hosted WS broker, generous free tier.</item>
+        <item>Ably — SaaS, REST + SDK; realtime + history, message ordering guarantees.</item>
+        <item>Soketi — OSS; self-hosted Pusher-compatible drop-in.</item>
+        <item>Centrifugo — OSS, HTTP API for publish; Go server, Redis/Nats engine, JWT auth.</item>
+        <item>AWS API Gateway WebSocket — SaaS, IaC; pairs with Lambda, state in DynamoDB.</item>
+        <item>Cloudflare Durable Objects + WebSockets — SaaS, wrangler CLI; stateful at edge; pricing per duration.</item>
+        <item>Supabase Realtime — SaaS + OSS, postgres-driven; Postgres CDC over WS.</item>
+        <item>LiveKit — OSS + SaaS, CLI + SDK; built on WebRTC but WS for signaling.</item>
+      </list>
+    </section>
+
+    <section name="quick-load-and-reconnect-smoke">
+      <p>Quick load + reconnect smoke (k6):</p>
+      <example type="good">
+        <code lang="javascript"><![CDATA[
+// ws-smoke.js  →  k6 run --vus 200 --duration 60s ws-smoke.js
+import ws from 'k6/ws';
+import { check } from 'k6';
+
+export default function () {
+  const url = `wss://api.example.com/ws/${__VU}`;
+  const res = ws.connect(url, { headers: { Cookie: __ENV.COOKIE } }, (socket) => {
+    socket.on('open', () => {
+      socket.send(JSON.stringify({ type: 'subscribe', channel: 'feed:global' }));
+      socket.setInterval(() => socket.ping(), 25000);
+    });
+    socket.on('message', (m) => check(m, { 'has type': (x) => JSON.parse(x).type }));
+    socket.setTimeout(() => socket.close(), 50000);
+  });
+  check(res, { 'status 101': (r) => r && r.status === 101 });
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Define a versioned message envelope: `{v, type, channel, seq, ts, payload}`. Bump `v` for breaking changes.</item>
+        <item>Heartbeat: client pings every 25–30s, server disconnects after 2 missed. Inside any LB / NAT idle timeout.</item>
+        <item>Exponential reconnect with full jitter (`min(cap, base*2^n) * random()`); cap retries to avoid storms.</item>
+        <item>Auth on Upgrade: short-lived ticket from REST `/ws-ticket` exchanged for a session cookie. Don't ship JWTs in query strings to logs.</item>
+        <item>Bounded send queue per connection (e.g. 64 messages). On overflow: drop, mark, or disconnect — never block the loop.</item>
+        <item>Per-connection rate limit (msgs/sec) and per-user connection cap (3–5).</item>
+        <item>Horizontal scale via pubsub fan-out (Redis, NATS, Kafka). Clients reconnect to any node, state is shared.</item>
+        <item>Graceful drain on deploy: set `Connection: close`, broadcast `server-shutting-down`, wait for clients to reconnect to a healthy node.</item>
+        <item>Compress only large payloads (`permessage-deflate`); for short, frequent messages it adds latency.</item>
+        <item>Log: connect, disconnect (with reason code), backpressure drops, auth failures. Not every message.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>LLM-generated WS code often forgets `await ws.close()` on errors → file descriptor leak. Inspect every disconnect path.</item>
+        <item>"Helpful" agents reintroduce module-global state for connections, breaking horizontal scale. Force per-process plus pubsub.</item>
+        <item>Heartbeat code is frequently dropped during refactors because tests still pass — wire a 60s integration test that asserts ping/pong.</item>
+        <item>Reconnect logic without jitter looks fine in unit tests and self-DDoSes in prod after a deploy. Reject any reconnect PR without `jitter` or `random` in the diff.</item>
+        <item>Subscription cleanup is invisible: an agent adding a new subscriber must also remove it on unmount/disconnect. Use a linter rule that requires paired `subscribe/unsubscribe`.</item>
+        <item>Agents debugging WS issues may try to "just reconnect" rather than diagnose. Surface disconnect reason codes (1006, 1011, 4xxx) in logs and require the agent to cite the code before patching.</item>
+        <item>For LLM streaming over WS, agents may forget to send a terminal frame, leaving clients spinning. Always send a `done` frame and a close code; test the cancel path.</item>
+        <item>Cloudflare/nginx default idle timeouts (100s) silently drop connections. Document the proxy config alongside the server code so the agent does not "fix" the symptom in app code.</item>
+      </list>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Storing session tokens or JWTs in query string parameters of the WebSocket URL.</description>
+        <reason>Query strings appear in server access logs and proxy logs; credentials leak immediately.</reason>
+      </antipattern>
+      <antipattern>
+        <description>No rate limit per connection — one bad client consumes an entire CPU core.</description>
+        <reason>WebSocket message handlers run in the same event loop; a client flooding messages starves all other connections.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/connection_manager.py" purpose="FastAPI ConnectionManager with channel subscriptions and graceful disconnect"/>
+      <template path="templates/ws_client.ts" purpose="TypeScript WebSocketClient: reconnect with exponential jitter, offline queue"/>
+    </templates>
+
+    <see-also>
+      <link href="https://datatracker.ietf.org/doc/html/rfc6455"/>
+      <link href="https://developer.mozilla.org/en-US/docs/Web/API/WebSocket"/>
+      <link href="https://fastapi.tiangolo.com/advanced/websockets/"/>
+      <link href="https://redis.io/docs/manual/pubsub/"/>
+      <link href="https://centrifugal.dev/"/>
+      <link href="https://k6.io/docs/using-k6/protocols/websockets/"/>
+      <link href="https://www.ably.com/topic/websockets-vs-sse"/>
+      <link href="https://en.wikipedia.org/wiki/Thundering_herd_problem"/>
+    </see-also>
+  </content>
+</methodology>
