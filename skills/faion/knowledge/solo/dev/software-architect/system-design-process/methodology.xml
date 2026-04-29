@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="system-design-process">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Five-phase system design process for turning product briefs into buildable architecture packages: requirements, NFR targets, C4 diagrams, and ADRs.</summary>
+    <tags>
+      <tag>system-design</tag>
+      <tag>architecture-process</tag>
+      <tag>nfr</tag>
+      <tag>c4-model</tag>
+      <tag>adr</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>System Design Process</title>
+
+    <summary>A five-phase process (Understand → Scope → Design → Validate → Document) for turning a product brief into a buildable architecture package: requirements list, NFR targets with numeric back-of-envelope estimates, C4 diagrams (L1+L2 minimum), and ADRs per non-obvious decision. LLMs accelerate each phase but require human sign-off at NFR finalization and ADR acceptance.</summary>
+
+    <why>
+      <p>Greenfield systems fail most often from skipped NFR quantification and single-option design: the team builds the first idea without comparing alternatives against measurable targets. Forcing back-of-envelope (DAU → RPS → storage → bandwidth) before any diagram prevents over-engineering. The C4 model provides four zoom levels so every audience gets the right abstraction without a whiteboard session.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield system design where requirements, NFRs, and scale assumptions are still being captured.</item>
+        <item>Replacement/replatform decisions that need a spec, ADRs, and C4 diagrams before code.</item>
+        <item>Pre-implementation handoff: turning a product brief into a package the dev agent can execute.</item>
+        <item>Internal design exercises where a reviewable artifact (not a whiteboard sketch) is the deliverable.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Small bug fixes or localized refactors — overkill; use the relevant pattern methodology directly.</item>
+        <item>Prototype/spike code where the goal is to learn, not commit to an architecture.</item>
+        <item>Domains the team operates daily (CRUD admin tools) — skip to templates.</item>
+        <item>Operational incidents — use reliability-architecture and observability instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="five-phase-flow">
+      <p>Execute design in five phases in order: Understand (requirements list), Scope (in/out of scope), Design (architecture + diagrams), Validate (adversarial review), Document (ADRs + C4). The Validate phase must be a separate agent call — never a closing paragraph of the Design phase.</p>
+
+      <rule testable="true">
+        <statement>Execute design in five phases in order: Understand (requirements list), Scope (in/out of scope), Design (architecture + diagrams), Validate (adversarial review), Document (ADRs + C4). The Validate phase must be a separate agent call — never a closing paragraph of the Design phase.</statement>
+        <rationale>Agents that skip the Validate phase produce designs without identified single points of failure, hot partitions, or data-loss windows. Adversarial review requires a different prompt persona, not an afterthought.</rationale>
+      </rule>
+
+      <list>
+        <item>Understand: user stories with acceptance criteria, use cases with actors and flows, API contracts, integration points, clarifying questions.</item>
+        <item>Scope: explicitly list what is in scope AND what is out of scope. Out-of-scope items prevent scope creep in design.</item>
+        <item>Design: architecture diagrams (C4 L1+L2 minimum), data model, API contracts, pattern selection with trade-off matrix.</item>
+        <item>Validate: stress-test the design — single points of failure, hot partitions, data-loss windows, fan-out amplifiers, silent-failure modes. Reject mitigations that are "add monitoring" without a concrete metric and threshold.</item>
+        <item>Document: ADR per non-obvious decision, C4 diagrams in code (Mermaid/Structurizr), spec.md with NFRs and scale estimates.</item>
+      </list>
+    </section>
+
+    <section name="nfr-quantification">
+      <p>Force NFR numerics before any diagram: an LLM with vague NFRs will always over-engineer. Every NFR must have a measurable target and a source (user-impact analysis or competitive benchmark).</p>
+
+      <rule testable="true">
+        <statement>Force NFR numerics before any diagram: an LLM with vague NFRs will always over-engineer. Every NFR must have a measurable target and a source (user-impact analysis or competitive benchmark).</statement>
+        <rationale>Vague NFRs ("it should be fast") produce architectures sized for 100x the actual load because the LLM defaults to the largest example in its training data.</rationale>
+      </rule>
+
+      <list>
+        <item>Scalability: DAU, RPS at peak, concurrent users. Typical formula: Peak_RPS = (DAU * requests_per_user / 86400) * 3.</item>
+        <item>Availability: 99.9% = 8.76h downtime/year, 99.99% = 52min/year. Source from business SLA, not aspiration.</item>
+        <item>Latency: p50, p95, p99 in milliseconds. Typical targets: p50 &lt; 100ms, p95 &lt; 200ms, p99 &lt; 500ms for web APIs.</item>
+        <item>Durability: RPO (max data loss window), RTO (max recovery time). Source from business impact analysis.</item>
+        <item>Consistency: strong vs eventual (CAP: CP vs AP). Driven by the data's business invariant, not convenience.</item>
+        <item>Security: threat model completed, compliance scope identified (GDPR, SOC2, PCI). Not optional.</item>
+      </list>
+    </section>
+
+    <section name="back-of-envelope-calculations">
+      <p>Write RPS/storage/bandwidth calculations in the design prompt; do not let the agent skip to architecture without these numbers. LLM scale estimates without anchors are off by an order of magnitude.</p>
+
+      <rule testable="true">
+        <statement>Write RPS/storage/bandwidth calculations in the design prompt; do not let the agent skip to architecture without these numbers. LLM scale estimates without anchors are off by an order of magnitude.</statement>
+        <rationale>Architecture choices are load-sensitive: a service at 10 RPS can be a single-instance monolith; at 100k RPS it needs sharding. Getting this wrong at design time is expensive to reverse.</rationale>
+      </rule>
+
+      <example type="good" title="Example back-of-envelope calculations">
+        <code lang="text"><![CDATA[
+# Traffic
+DAU = 100,000
+RPS = DAU * 10 requests/user / 86400 = ~11.6 RPS
+Peak_RPS = 11.6 * 3 = ~35 RPS
+
+# Storage per year
+objects_per_day = DAU * 2 = 200,000
+avg_object_size = 1 KB
+storage_per_day = 200,000 * 1 KB = ~200 MB
+storage_per_year = 200 MB * 365 * 3 (replication) = ~219 GB
+
+# Cache
+cache_size = 0.20 * total_data  # 20% hot data rule of thumb
+]]></code>
+        <note>Use these numbers as inputs to the architecture prompt before generating any diagram.</note>
+      </example>
+    </section>
+
+    <section name="quality-gates">
+      <p>Quality gates before finalizing architecture to ensure design completeness and correctness.</p>
+
+      <checklist>
+        <check>All NFRs have measurable numeric targets.</check>
+        <check>Scale estimates calculated (RPS, storage, bandwidth).</check>
+        <check>Single points of failure identified.</check>
+        <check>Data model supports all use cases.</check>
+        <check>API contracts defined.</check>
+        <check>Security threat model completed.</check>
+        <check>Cost estimation done.</check>
+        <check>Migration path defined if replacing an existing system.</check>
+      </checklist>
+    </section>
+
+    <section name="architecture-styles">
+      <p>Common architecture patterns and when to use each based on team size and requirements.</p>
+
+      <rule testable="true">
+        <statement>Always produce three architecture options with explicit NFR scores before committing to one. Single-option output is the failure signature of an under-constrained prompt.</statement>
+        <rationale>LLMs default to microservices and event-driven architectures regardless of scale; requiring three options with NFR trade-offs surfaces the simpler alternatives.</rationale>
+      </rule>
+
+      <list>
+        <item>MVP / small team: Monolith. Growing with clear seams: Modular Monolith.</item>
+        <item>Multiple teams, independent deploy needs: Microservices.</item>
+        <item>Event-driven workflows, audit trail: Event Sourcing + CQRS.</item>
+        <item>Real-time data processing: Streaming (Kafka, Flink).</item>
+        <item>Unclear boundaries: Modular Monolith — extract services later when boundaries are proven.</item>
+      </list>
+    </section>
+
+    <section name="common-design-patterns">
+      <p>Patterns commonly used in system designs with their pros and cons.</p>
+
+      <list>
+        <item>Load Balancer: distribute traffic. Pro: scalability. Con: single point of failure without HA config.</item>
+        <item>CDN: serve static content from edge. Pro: latency. Con: cache invalidation complexity.</item>
+        <item>Cache (Redis): reduce DB load. Pro: speed. Con: data staleness.</item>
+        <item>Message Queue: async processing. Pro: decoupling. Con: eventual consistency.</item>
+        <item>Database Replication: read scaling. Pro: availability. Con: replication lag.</item>
+        <item>Sharding: write scaling. Pro: throughput. Con: cross-shard queries.</item>
+        <item>Rate Limiting: abuse protection. Pro: security. Con: user experience degradation.</item>
+        <item>Circuit Breaker: fault tolerance. Pro: resilience. Con: complexity.</item>
+      </list>
+    </section>
+
+    <section name="c4-model">
+      <p>The C4 Model provides four levels of abstraction for communicating architecture to different audiences.</p>
+
+      <rule testable="true">
+        <statement>Start at Context (L1), zoom to Container (L2) for all designs. Add Component (L3) only for containers that are architecturally significant. Code (L4) is rarely needed.</statement>
+        <rationale>Most projects only need L1-L2 to communicate architecture to all stakeholders; L3 and L4 add maintenance burden for marginal clarity gains.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Pin the agent to actual repo structure (paste tree -L 2 output) before asking for component diagrams — LLM-generated C4 diagrams frequently invent components not present in the codebase.</statement>
+        <rationale>Fabricated services in architecture diagrams create false expectations and mislead new engineers about what actually exists.</rationale>
+      </rule>
+
+      <list>
+        <item>L1 Context: system + external actors. Audience: everyone. Shows: what the system does and who uses it.</item>
+        <item>L2 Container: apps, DBs, services inside the system. Audience: tech leads. Shows: technology choices and communication paths.</item>
+        <item>L3 Component: modules within a container. Audience: developers. Shows: internal structure of one container.</item>
+        <item>L4 Code: classes and functions. Audience: developers. Rarely worth maintaining.</item>
+      </list>
+
+      <reference path="templates/c4-mermaid.md">C4 Context, Container, Component, Dynamic, and Deployment diagram skeletons in Mermaid syntax.</reference>
+    </section>
+
+    <section name="llm-assisted-workflow">
+      <p>Six-step workflow for using LLMs to generate system designs and diagrams.</p>
+
+      <list>
+        <item>Step 1: Define spec.md with LLM via iterative Q&amp;A until NFRs are numeric and scope is bounded.</item>
+        <item>Step 2: Brainstorm 3+ architecture options; ask for one trade-off per option against NFRs.</item>
+        <item>Step 3: Evaluate trade-offs; score each option against NFRs explicitly. Require differentiation — reject "8/10 for every option."</item>
+        <item>Step 4: Generate C4 L1+L2 diagrams in Mermaid; lint with mmdc -i before committing.</item>
+        <item>Step 5: Create one ADR per non-obvious decision. Use MADR template.</item>
+        <item>Step 6: Separate adversarial Validate call — identify SPOFs, hot partitions, data-loss windows.</item>
+      </list>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Generating C4 diagrams without a repo structure reference.</description>
+        <reason>LLMs invent components based on training data patterns; the resulting diagram describes a fictional system, not the actual one.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Merging the Validate phase into the Design phase as a closing paragraph.</description>
+        <reason>The same persona that designed the system cannot adversarially attack it; the critic role requires a separate prompt with explicit failure-finding instructions.</reason>
+      </antipattern>
+    </section>
+
+    <section name="failure-modes">
+      <p>Common failure modes when applying this process.</p>
+
+      <list>
+        <item>LLM scale estimates anchor on examples in training data; numbers can be off by an order of magnitude. Always validate with real product metrics.</item>
+        <item>The 5-phase flow assumes stable requirements; with shifting product direction, design churn explodes. Pause and re-spec instead of redesigning component-by-component.</item>
+        <item>Pattern recommendations bias toward popular solutions (microservices, Kafka, K8s) even when a monolith would do. Force the agent to argue against its first suggestion.</item>
+        <item>C4 diagrams generated by LLMs frequently invent components. Must be reviewed against actual repo structure.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive this process as a sequential pipeline: spec agent → architecture diverge agent → trade-off converge agent → ADR/C4 author agent → reviewer. Use faion-brainstorm for the diverge/converge cycle on architecture style and key components, then hand the chosen design to faion-feature-executor for SDD task breakdown. Keep the human in the loop at two checkpoints: NFR sign-off and ADR acceptance — everything else can be agent-driven against templates.md</p>
+
+      <list>
+        <item>faion-brainstorm — diverge/converge on architecture options and trade-offs.</item>
+        <item>faion-sdd-execution — turn accepted design into spec.md/design.md/test-plan.md per SDD lifecycle.</item>
+        <item>faion-feature-executor — execute the implementation plan once the design is locked.</item>
+        <item>faion-improver — post-build audit against the original NFRs and ADRs.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Force NFR numerics before any diagram: an LLM with vague NFRs will always over-engineer.</item>
+        <item>Make the agent produce three options for every non-trivial choice and explicitly score them against NFRs — single-option output is the failure signature.</item>
+        <item>Keep ADRs in-repo as Markdown; route every PR that changes architecture-relevant code through an ADR review check.</item>
+        <item>Pin the agent to actual repo structure (paste tree -L 2) before asking for component diagrams — eliminates fabricated services.</item>
+        <item>Run mmdc in CI to fail builds when Mermaid in docs/ no longer parses; treat diagrams as code.</item>
+        <item>Do back-of-envelope math in the prompt; do not let the agent skip to architecture without writing RPS/storage/bandwidth.</item>
+      </list>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>AI-agent specific issues to watch for when automating this process.</p>
+
+      <list>
+        <item>Agents will often skip the "validate" phase. Make it an explicit subagent call with a different prompt, not a closing paragraph.</item>
+        <item>Long Q&amp;A "understand" phases blow context windows; checkpoint into spec.md and have the next agent re-read from disk.</item>
+        <item>Mermaid C4 syntax has version drift — agents mix C4Context keywords with classic flowchart. Lint with mmdc -i.</item>
+        <item>Trade-off matrices generated by LLMs frequently use the same scores for every option ("8/10" everywhere). Require differentiation in the prompt.</item>
+        <item>Human-in-loop checkpoints: NFR sign-off (before design), ADR review (before implementation), pre-launch validation (against initial NFRs). Agents should halt and request approval at these gates.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/adr-madr.md" purpose="MADR-format ADR template with status, context, decision, consequences."/>
+      <template path="templates/adr-compact.md" purpose="Compact ADR template with alternatives table."/>
+      <template path="templates/c4-mermaid.md" purpose="C4 Context, Container, Component, Dynamic, and Deployment diagram skeletons in Mermaid syntax."/>
+      <template path="templates/design-doc.md" purpose="Full design document template: requirements, high-level design, detailed design, security, trade-offs."/>
+    </templates>
+
+    <see-also>
+      <ref slug="quality-attributes"/>
+      <ref slug="trade-off-analysis"/>
+      <ref slug="architecture-decision-records"/>
+      <ref slug="c4-model"/>
+      <link href="https://github.com/donnemartin/system-design-primer"/>
+      <link href="https://c4model.com/"/>
+      <link href="https://adr.github.io/"/>
+      <link href="https://arc42.org/"/>
+      <link href="https://structurizr.com/"/>
+    </see-also>
+  </content>
+</methodology>
