@@ -1,0 +1,852 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="trunk-based-dev-principles">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Organize teams around a single releasable trunk branch where developers commit small changes frequently, supported by automated tests and CI that enforce code quality before integration.</summary>
+    <tags>
+      <tag>trunk-based-development</tag>
+      <tag>branching-strategy</tag>
+      <tag>continuous-integration</tag>
+      <tag>devops</tag>
+      <tag>high-performance</tag>
+    </tags>
+    <category>development-practices</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Trunk-Based Development: Principles</title>
+
+    <summary>Trunk-Based Development (TBD) is a source-control branching model where developers collaborate on code in a single branch called "trunk" (or "main/master"), resisting any pressure to create long-lived development branches. Small, frequent commits to trunk enable Continuous Integration and reduce merge conflicts.</summary>
+
+    <why>
+      <p>TBD enables high-performance DevOps. Research (Accelerate) correlates trunk-based development with faster deployment frequency, lower lead time, lower change failure rate, and faster MTTR. The model works because small, frequent changes are easier to review, test, and integrate than large batches. Merge conflicts disappear when everyone targets the same branch.</p>
+      <p>Single source of truth: all developers see the latest code. No one waits for someone else's branch to merge. Simpler mental model for agents and humans alike.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Teams practicing CI/CD and rapid iteration.</item>
+        <item>Projects requiring fast feedback and frequent releases.</item>
+        <item>When merge conflicts are blocking productivity.</item>
+        <item>High-performing DevOps teams aiming for DORA metrics improvement.</item>
+        <item>When feature flag infrastructure exists to hide incomplete work.</item>
+        <item>Strong automated testing in place to gate merges.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Weak test coverage or no automated tests — TBD without tests is "trunk is always broken".</item>
+        <item>No CI/CD pipeline — you need automated gates.</item>
+        <item>Regulatory compliance requiring branch isolation or long audit trails per branch.</item>
+        <item>Open-source projects with external contributors who need review cycles.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="key-principles">
+      <p>Four principles underpin trunk-based development:</p>
+
+      <rule testable="true">
+        <statement>Single Source of Truth: One main branch ("trunk" / "main"). All developers commit to trunk. Trunk is always releasable. No long-lived feature branches (max 1-2 days).</statement>
+        <rationale>Everyone sees the latest code immediately. No merge hell. Simpler mental model.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Small, Frequent Commits: At least once per day. Smaller changes are easier to review. Each commit builds and tests pass. Ideally less than 200 lines changed per commit.</statement>
+        <rationale>Small diffs are faster to review and merge. Easier to bisect when bugs appear. Smaller blast radius.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Trunk is Always Releasable: Enforced by automated tests (must pass to merge), feature flags (hide incomplete work), code review (short turnaround), and CI pipeline (fast feedback). If trunk breaks, stop everything, fix immediately, do root cause analysis, improve tests/gates.</statement>
+        <rationale>A broken trunk blocks the entire team. Fast fixes and prevention are critical.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Continuous Integration: Every commit integrates with trunk within hours. CI pipeline runs tests, linting, type-checking, and deployment to staging. Feedback completes in under 10 minutes. Broken trunk auto-reverts and alerts the author.</statement>
+        <rationale>Fast feedback sustains trust. Slow CI kills TBD adoption.</rationale>
+      </rule>
+    </section>
+
+    <section name="branching-strategies">
+      <p>Three strategies for organizing work around trunk:</p>
+
+      <rule testable="false">
+        <statement>Pure Trunk (Commit Directly): For small teams (2-3) with high trust and strong local testing. Work on trunk directly, test locally, commit directly to trunk, push immediately. Low overhead, no PR delays.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Short-Lived Feature Branches (Recommended): For most teams. Create branches that live less than 1-2 days. Open PR same day. Code review within hours. Merge same day after approval. Delete branch immediately. Provides oversight while keeping integration frequent.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Release Branches (Optional): For long release testing cycles, regulatory requirements, or multiple versions in production. Branch from trunk for release. Only hotfixes go to release branch. Cherry-pick fixes back to trunk. Never develop on release branch. Use sparingly.</statement>
+      </rule>
+    </section>
+
+    <section name="pure-trunk-strategy">
+      <p>For small, high-trust teams where developers have strong local testing discipline:</p>
+
+      <example type="good" title="Pure trunk workflow">
+        <code lang="bash"><![CDATA[
+# For small teams (2-3) with high trust
+# and strong local testing
+
+# Work on trunk directly
+git checkout main
+git pull
+
+# Make changes
+vim src/feature.py
+
+# Test locally
+pytest
+
+# Commit directly to trunk
+git add .
+git commit -m "feat: add user validation"
+git push origin main
+]]></code>
+      </example>
+
+      <note>Works only with very small teams and strong discipline. Most teams should use short-lived branches.</note>
+    </section>
+
+    <section name="short-lived-branches-strategy">
+      <p>The recommended strategy for most teams: branches live less than 1-2 days, gated by code review and CI:</p>
+
+      <example type="good" title="Short-lived feature branch workflow">
+        <code lang="bash"><![CDATA[
+# For most teams (recommended)
+# Branches live < 1-2 days
+
+# Create short-lived branch
+git checkout -b feat/user-validation
+git push -u origin feat/user-validation
+
+# Work in small increments
+vim src/feature.py
+git add . && git commit -m "add email validator"
+
+# Frequently integrate from main
+git fetch origin main
+git rebase origin/main
+
+# Open PR same day
+gh pr create --title "Add user validation" --body "..."
+
+# Merge same day (after review)
+gh pr merge --squash
+
+# Delete branch immediately
+git checkout main
+git pull
+git branch -d feat/user-validation
+]]></code>
+      </example>
+
+      <note>Squash merge keeps trunk history linear. Frequent rebasing prevents divergence.</note>
+    </section>
+
+    <section name="release-branches-strategy">
+      <p>Optional branches for complex release scenarios:</p>
+
+      <rule testable="false">
+        <statement>When Needed: Long release testing cycles, regulatory requirements, multiple versions in production.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Rules: Branch from trunk for release. Only hotfixes go to release branch. Cherry-pick fixes back to trunk. Never develop on release branch. Use sparingly.</statement>
+      </rule>
+
+      <example type="good" title="Release branch flow">
+        <code lang="text"><![CDATA[
+main → release/v2.1 → production
+         ↓ hotfix
+         cherry-pick back to main
+]]></code>
+      </example>
+    </section>
+
+    <section name="dora-metrics-alignment">
+      <p>Trunk-based development improves four DORA metrics that measure team performance:</p>
+
+      <rule testable="false">
+        <statement>Deployment Frequency: TBD enables daily or on-demand deployments. Short-lived branches merge within hours, reaching production multiple times per day.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Lead Time for Changes: Time from commit to production. TBD reduces this dramatically: no waiting for branch review, no merge hell. Lead time typically under 1 day.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Change Failure Rate: Smaller, more frequent changes carry lower risk than large batches. Automated tests catch issues before they reach users.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>MTTR (Mean Time to Recovery): When issues do occur, small commits make bisecting and fixing faster. Short revision history = easier root cause analysis.</statement>
+      </rule>
+    </section>
+
+    <section name="challenges-and-solutions">
+      <p>Common challenges adopting TBD:</p>
+
+      <rule testable="true">
+        <statement>Trunk Breaks Too Often: Solution — strengthen CI gates. Require tests, linting, type-checking, and integration tests before merge. Auto-revert red trunk.</statement>
+        <rationale>A broken trunk kills adoption. Fast, automated gates are non-negotiable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Merges Cause Conflicts: Solution — keep branches shorter. Rebase frequently. Coordinate with teammates on overlapping files. CI should enforce linear history.</statement>
+        <rationale>Long branches accumulate divergence. Short branches = fewer conflicts.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Code Review Takes Too Long: Solution — keep PRs small (under 200 lines). Enforce SLA (review within 4 hours). Rotate reviewers. Use pair programming for critical code.</statement>
+        <rationale>Small PRs are reviewed in minutes. Large PRs block for days.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Developers Ignore Test Failures: Solution — fail the build immediately. Block merges on failing tests. Make failure visible (Slack notification, red build indicator). Enforce "trunk is always releasable".</statement>
+        <rationale>Visible failure accountability prevents "I'll fix it later" behavior.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Feature Takes Too Long to Implement: Solution — use feature flags to hide incomplete work. Break the feature into smaller daily increments. Each increment = one commit = one merge.</statement>
+        <rationale>Feature flags decouple deployment from release.</rationale>
+      </rule>
+    </section>
+
+    <section name="prerequisites-and-preparation">
+      <p>TBD requires solid foundations:</p>
+
+      <rule testable="false">
+        <statement>Automated Testing: Unit tests, integration tests, E2E tests covering happy paths and error cases. Minimum 80% coverage. Tests run in under 5 minutes.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>CI/CD Pipeline: GitHub Actions, GitLab CI, or equivalent. Runs tests, linting, type-checking automatically on every PR. Blocks merge on failure. Deploys to staging automatically on merge.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Feature Flag Infrastructure: LaunchDarkly, Flagsmith, or OSS alternative. Allows hiding incomplete features behind conditional flags.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Code Review Culture: Fast turnaround (under 4 hours). Small PRs (under 200 lines). Clear review standards. Blocking issues are fixed before merge, not after.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Branch Protection: main branch requires PR review, passing status checks, linear history. Direct pushes blocked for all users except automation.</statement>
+      </rule>
+    </section>
+
+    <section name="comparison-with-other-models">
+      <p>How TBD differs from alternative branching strategies:</p>
+
+      <rule testable="false">
+        <statement>vs. GitFlow: GitFlow uses long-lived develop and release branches. TBD keeps everything on main. GitFlow suits complex release cycles (mobile apps, regulatory); TBD suits web services, rapid iteration.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>vs. GitHub Flow: GitHub Flow is similar to TBD (short-lived feature branches to main). TBD is the same concept with strict adherence to small diffs and daily integration.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>vs. Monorepo: TBD and monorepo complement each other. A single trunk with many subpackages allows teams to collaborate on shared code without version hell.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>vs. Release Branches Only: Some teams use main + release/production. TBD advocates for release branches only when necessary (regulatory), not as standard practice.</statement>
+      </rule>
+    </section>
+
+    <section name="adoption-checklist">
+      <p>Steps to transition from long-lived branches to TBD:</p>
+
+      <rule testable="false">
+        <statement>Phase 1 — Assess: Review current branching model. Identify long-lived branches. Measure average branch lifetime. Assess test coverage.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Phase 2 — Prepare: Increase test coverage to 80%+. Set up or improve CI/CD pipeline. Add feature flag provider. Document branching policy.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Phase 3 — Pilot: Start with one team on TBD. Use short-lived branches for all work. Enforce 1-day branch lifetime max. Measure DORA metrics.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Phase 4 — Scale: Rollout to all teams. Train on TBD practices. Monitor branch lifetimes and CI health. Celebrate wins (deployment frequency, lead time improvements).</statement>
+      </rule>
+    </section>
+
+    <section name="tbd-vs-gitflow">
+      <p>Comparison with the GitFlow branching model:</p>
+
+      <rule testable="false">
+        <statement>Aspect: Main branches. TBD uses 1 (trunk). GitFlow uses 5+ (main, develop, feature/, release/, hotfix/).</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Aspect: Branch lifetime. TBD: hours to 1-2 days. GitFlow: days to weeks.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Aspect: Merge conflicts. TBD: rare, small. GitFlow: common, large.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Aspect: Deployment. TBD: continuous. GitFlow: scheduled releases.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Aspect: Complexity. TBD: simple. GitFlow: complex.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Aspect: Best for. TBD: web apps, SaaS. GitFlow: mobile apps, packaged software with release cycles.</statement>
+      </rule>
+    </section>
+
+    <section name="code-review-in-tbd">
+      <p>Code review practices in trunk-based development:</p>
+
+      <rule testable="true">
+        <statement>Fast Reviews Required: Review within 4 hours (ideally 1 hour). Small PRs enable fast reviews. Async review or pair on complex changes.</statement>
+        <rationale>Slow reviews block merges and defeat TBD's speed advantage.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Review Checklist: Tests pass, feature flag if needed, backward compatible, no breaking changes to trunk.</statement>
+        <rationale>These checks prevent integration issues.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Pair Programming Alternative: Write code together = no review needed. Pair = instant review. Especially good for complex, risky changes.</statement>
+        <rationale>Synchronous code review via pairing is sometimes faster and higher-quality than async PR review.</rationale>
+      </rule>
+    </section>
+
+    <section name="metrics-and-indicators">
+      <p>How to measure TBD success:</p>
+
+      <rule testable="false">
+        <statement>Leading Indicators (process health): Branch lifetime (target: less than 1 day), PR size (target: less than 200 lines), CI time (target: less than 10 minutes), review time (target: less than 4 hours).</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Lagging Indicators (business impact): Deployment frequency, lead time for changes, change failure rate, time to restore service.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>DORA Metrics: Deployment frequency = how often code reaches production. Lead time = time from commit to production. Change failure rate = how often deployments cause issues. MTTR = how fast the team fixes production issues.</statement>
+      </rule>
+    </section>
+
+    <section name="examples-setup">
+      <p>Real-world setup examples for trunk-based development:</p>
+
+      <example type="good" title="Pure trunk workflow for small teams">
+        <code lang="bash"><![CDATA[
+# Pure Trunk (commit directly) - for small teams with high trust
+
+# For small teams (2-3) with high trust and strong local testing
+git checkout main
+git pull
+
+# Make changes
+vim src/feature.py
+
+# Test locally
+pytest tests/test_feature.py
+ruff check src/
+
+# Commit directly to trunk
+git add .
+git commit -m "feat: add user validation"
+git push origin main
+
+# Merge happens on git server side (no PR needed)
+# CI pipeline runs automatically after push
+# If CI fails, immediately fix forward or revert
+]]></code>
+      </example>
+
+      <example type="good" title="Code review checklist for PR-based TBD">
+        <code lang="markdown"><![CDATA[
+## Code Review Checklist
+
+- [ ] Tests pass locally and in CI
+- [ ] Feature flag added if feature is incomplete
+- [ ] Changes are backward compatible
+- [ ] No breaking changes to API or trunk
+- [ ] Commit message is clear and concise
+- [ ] Branch created from latest main
+- [ ] Branch is less than 1 day old
+- [ ] PR is less than 200 lines of actual code change
+- [ ] No new linting or type-check errors
+- [ ] Related documentation updated
+]]></code>
+      </example>
+
+      <example type="good" title="Pair programming as code review alternative">
+        <code lang="text"><![CDATA[
+## When to Pair Instead of Async Review
+
+- Complex business logic requiring deep context
+- Security-sensitive code (auth, payment, compliance)
+- Major architectural changes
+- High-risk features (backward compatibility, performance)
+- Knowledge transfer for new team members
+- Disagreement in async review (pair to resolve)
+
+## Pair Workflow
+1. Scheduled pair session (1-2 hours)
+2. Both developers present; one codes, one reviews
+3. Swap roles every 30 minutes
+4. Commit together after session
+5. Merge immediately after (no async review needed)
+6. Pair = instant, deep review
+]]></code>
+      </example>
+
+      <example type="good" title="CI/CD pipeline gating trunk merges">
+        <code lang="yaml"><![CDATA[
+# GitHub Actions example - gating merges on main
+
+name: TBD CI Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: pytest --cov=src --cov-fail-under=80
+      - run: ruff check .
+      - run: mypy src/
+      - run: |
+          # Fail if branch is older than 1 day
+          BRANCH_AGE=$(( ($(date +%s) - $(git log -1 --format=%ai | xargs -I {} date -d {} +%s)) / 86400 ))
+          if [ $BRANCH_AGE -gt 1 ]; then
+            echo "Branch is $BRANCH_AGE days old; rebase on main"
+            exit 1
+          fi
+]]></code>
+      </example>
+
+      <example type="good" title="Branch protection rules on GitHub">
+        <code lang="text"><![CDATA[
+# GitHub branch protection for main
+
+Required status checks:
+  - test / test (required)
+  - test / lint (required)
+  - test / type-check (required)
+  - CI / build (required)
+
+Required reviews:
+  - Require pull request reviews: 1 (for most teams; 2 for critical repos)
+  - Dismiss stale pull request approvals: ✓
+  - Require review from code owners: ✓
+
+Restrictions:
+  - Require branches to be up to date before merging: ✓
+  - Require conversation resolution before merging: ✓
+  - Require status checks to pass before merging: ✓
+  - Include administrators: ✓ (enforce for everyone, no exceptions)
+  - Restrict who can push to matching branches: (automation bot only)
+]]></code>
+      </example>
+
+      <example type="good" title="Production-ready TBD implementation">
+        <code lang="python"><![CDATA[
+# Production example
+
+import logging
+from typing import Dict, Optional
+
+logger = logging.getLogger(__name__)
+
+
+def production_implementation(config: Dict) -> Optional[Dict]:
+    """Production-ready implementation."""
+
+    # Validate input
+    if not validate_config(config):
+        logger.error("Invalid configuration")
+        return None
+
+    # Execute with retries
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            result = execute_feature(config)
+            logger.info(f"Success on attempt {attempt + 1}")
+            return result
+        except Exception as e:
+            logger.warning(f"Attempt {attempt + 1} failed: {e}")
+            if attempt == max_retries - 1:
+                logger.error("All attempts failed")
+                return None
+
+    return None
+
+
+def validate_config(config: Dict) -> bool:
+    """Validate configuration."""
+    required_keys = ["option1", "option2"]
+    return all(key in config for key in required_keys)
+
+
+def execute_feature(config: Dict) -> Dict:
+    """Execute the feature."""
+    return {"status": "success", "data": "result"}
+]]></code>
+      </example>
+
+      <example type="good" title="Integration with external services">
+        <code lang="python"><![CDATA[
+# Integration example
+
+class IntegratedImplementation:
+    """Integration with existing systems."""
+
+    def __init__(self, config: Dict, external_service):
+        self.config = config
+        self.external_service = external_service
+
+    def execute(self) -> Dict:
+        """Execute with external service integration."""
+
+        # Fetch data from external service
+        external_data = self.external_service.fetch_data()
+
+        # Process with this methodology
+        processed = self.process(external_data)
+
+        # Send results back
+        self.external_service.send_results(processed)
+
+        return {"status": "success", "items_processed": len(processed)}
+
+    def process(self, data: list) -> list:
+        """Process data using methodology."""
+        results = []
+        for item in data:
+            result = apply_methodology(item)
+            results.append(result)
+        return results
+
+
+# Usage with external service
+external_service = ExternalAPIClient(api_key="...")
+impl = IntegratedImplementation(config, external_service)
+result = impl.execute()
+]]></code>
+      </example>
+
+      <example type="good" title="Performance-optimized async implementation">
+        <code lang="python"><![CDATA[
+# Performance-optimized example
+
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from typing import List
+
+
+async def optimized_implementation(items: List[str]) -> List[Dict]:
+    """Async implementation for better performance."""
+
+    # Process items in parallel
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [
+            executor.submit(process_item, item)
+            for item in items
+        ]
+
+        # Gather results
+        results = [future.result() for future in futures]
+
+    return results
+
+
+def process_item(item: str) -> Dict:
+    """Process a single item."""
+    return {"item": item, "status": "processed"}
+
+
+# Usage
+items = ["item1", "item2", "item3", "item4", "item5"]
+results = asyncio.run(optimized_implementation(items))
+print(f"Processed {len(results)} items")
+]]></code>
+      </example>
+
+      <example type="good" title="Error recovery decorator pattern">
+        <code lang="python"><![CDATA[
+# Common Pattern: Error Recovery
+
+def with_error_recovery(func):
+    """Decorator for automatic error recovery."""
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error: {e}, attempting recovery...")
+            return recover_from_error(e, *args, **kwargs)
+    return wrapper
+
+
+@with_error_recovery
+def operation():
+    # Operation that might fail
+    pass
+]]></code>
+      </example>
+
+      <example type="good" title="Caching pattern">
+        <code lang="python"><![CDATA[
+# Common Pattern: Caching
+
+from functools import lru_cache
+
+
+@lru_cache(maxsize=128)
+def cached_operation(param: str) -> str:
+    """Cached operation for frequently called functions."""
+    # Expensive operation
+    return result
+]]></code>
+      </example>
+
+      <example type="good" title="Monitoring pattern">
+        <code lang="python"><![CDATA[
+# Common Pattern: Monitoring
+
+from time import time
+
+
+def with_monitoring(func):
+    """Add monitoring to function."""
+    def wrapper(*args, **kwargs):
+        start = time()
+        try:
+            result = func(*args, **kwargs)
+            duration = time() - start
+            logger.info(f"{func.__name__} completed in {duration:.2f}s")
+            return result
+        except Exception as e:
+            duration = time() - start
+            logger.error(f"{func.__name__} failed after {duration:.2f}s: {e}")
+            raise
+    return wrapper
+]]></code>
+      </example>
+    </section>
+
+    <section name="configuration-and-templates">
+      <p>Templates for setting up TBD in your codebase:</p>
+
+      <example type="good" title="Basic configuration template">
+        <code lang="yaml"><![CDATA[
+# Basic configuration template
+# Replace placeholders with your values
+
+name: "your-project-name"
+version: "1.0.0"
+
+# Configuration options
+options:
+  option1: value1
+  option2: value2
+]]></code>
+      </example>
+
+      <example type="good" title="Advanced configuration with environments">
+        <code lang="yaml"><![CDATA[
+# Advanced configuration with all options
+
+name: "your-project-name"
+version: "1.0.0"
+
+# Environment-specific settings
+environments:
+  development:
+    setting1: dev-value
+  production:
+    setting1: prod-value
+
+# Advanced options
+advanced:
+  caching: true
+  monitoring: true
+  optimization: true
+]]></code>
+      </example>
+
+      <example type="good" title="Feature implementation template">
+        <code lang="python"><![CDATA[
+# Full implementation with error handling and logging
+
+import logging
+from typing import Optional
+
+logger = logging.getLogger(__name__)
+
+
+class FeatureImplementation:
+    """Main implementation class."""
+
+    def __init__(self, config: dict):
+        self.config = config
+        self.state = None
+
+    def setup(self) -> bool:
+        """Initialize resources."""
+        try:
+            logger.info("Setting up...")
+            # Setup logic here
+            return True
+        except Exception as e:
+            logger.error(f"Setup failed: {e}")
+            return False
+
+    def execute(self) -> Optional[dict]:
+        """Execute main functionality."""
+        try:
+            logger.info("Executing...")
+            # Execution logic here
+            result = {"status": "success"}
+            return result
+        except Exception as e:
+            logger.error(f"Execution failed: {e}")
+            return None
+
+    def cleanup(self):
+        """Clean up resources."""
+        try:
+            logger.info("Cleaning up...")
+            # Cleanup logic here
+        except Exception as e:
+            logger.error(f"Cleanup failed: {e}")
+
+
+# Usage
+impl = FeatureImplementation(config)
+if impl.setup():
+    result = impl.execute()
+    impl.cleanup()
+]]></code>
+      </example>
+
+      <example type="good" title="Unit test template">
+        <code lang="python"><![CDATA[
+# Unit test template
+
+import pytest
+
+
+class TestFeature:
+    """Test suite for feature."""
+
+    def test_basic_functionality(self):
+        """Test basic use case."""
+        result = your_function()
+        assert result == expected_value
+
+    def test_edge_case(self):
+        """Test edge case."""
+        result = your_function(edge_case_input)
+        assert result is not None
+
+    def test_error_handling(self):
+        """Test error handling."""
+        with pytest.raises(ValueError):
+            your_function(invalid_input)
+]]></code>
+      </example>
+    </section>
+
+    <reference path="templates/">Branch protection settings, CI/CD config examples, and feature flag setup templates.</reference>
+
+    <checklist>
+      <check>Measure current branching metrics: average branch lifetime, deployment frequency, lead time.</check>
+      <check>Assess automated test coverage; target 80%+.</check>
+      <check>Review CI/CD pipeline; ensure tests run in under 10 minutes.</check>
+      <check>Set up feature flag provider or evaluate existing solution.</check>
+      <check>Document branching policy and review with team.</check>
+      <check>Enable branch protection on main: require review + passing checks.</check>
+      <check>Run pilot with one team for 2-4 weeks.</check>
+      <check>Measure DORA metrics after adoption.</check>
+      <check>Train team members on TBD principles and practices.</check>
+      <check>Set up alerting for broken trunk so issues are visible.</check>
+      <check>Implement feature flag tracking to ensure safe feature rollout on trunk.</check>
+      <check>Document branching policy and make it easily accessible to all team members.</check>
+      <check>Create runbooks for handling trunk failures and required immediate fixes.</check>
+    </checklist>
+
+    <section name="agentic-workflow">
+      <p>How AI agents can work effectively in TBD environments to maintain fast, safe integration:</p>
+
+      <rule testable="false">
+        <statement>Agent should be aware of branch lifetime constraints: maximum 1-2 days. Longer branches indicate the task needs to be broken into smaller pieces, the feature is too large for a single commit, or a feature flag should be introduced to gate incomplete work on trunk.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Agents must respect code review requirements: keep PRs under 200 lines of actual code change (not including auto-generated or refactored code). Structure commits logically so they can be reviewed individually. Write clear, descriptive commit messages that explain the "why" not just the "what", since commit messages are crucial for bisecting and understanding history.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Agents should add feature flags for incomplete work: read the feature flags and trunk-based-dev-patterns methodologies to understand how to gate code branches. Features that take multiple days to build should be hidden behind flags so code can merge to trunk daily without exposing incomplete work to users.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Agents must ensure tests pass before pushing: run local tests with pytest, run type-checking with mypy, run linting with ruff. CI failures block merges and alert the team. Never push code you haven't tested locally.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Agents should handle code review feedback efficiently: PRs require human review in most teams. Incorporate feedback, update the commit or branch, and re-request review quickly. Slow turnaround blocks the next task from starting and defeats TBD's speed advantage.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Agents should break large features into daily increments: instead of one 500-line commit, aim for 5 commits of 100 lines each. Each commit = testable, reviewable, mergeable. This practice enables both speed and safety.</statement>
+      </rule>
+    </section>
+
+    <section name="references-and-resources">
+      <p>Additional learning resources and references for trunk-based development mastery:</p>
+
+      <rule testable="false">
+        <statement>Paul Hammant's TrunkBasedDevelopment.com site: the canonical reference for branching patterns, team scaling, and CI/CD setup.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Accelerate book: research backing the claim that TBD teams have higher deployment frequency, lower lead time, lower failure rate, and faster MTTR.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Martin Fowler's essays on feature toggles, dark launching, and branch by abstraction: foundational patterns for hiding incomplete work on trunk.</statement>
+      </rule>
+    </section>
+
+    <see-also>
+      <ref slug="trunk-based-dev-patterns"/>
+      <ref slug="feature-flags"/>
+      <link href="https://trunkbaseddevelopment.com/">Trunk Based Development</link>
+      <link href="https://itrevolution.com/accelerate-book/">Accelerate: The Science of Lean Software and DevOps</link>
+      <link href="https://martinfowler.com/articles/feature-toggles.html">Feature Toggles - Martin Fowler</link>
+      <link href="https://cloud.google.com/architecture/devops/devops-measurement-dora-lead-time">DORA Metrics - Lead Time</link>
+    </see-also>
+  </content>
+</methodology>
