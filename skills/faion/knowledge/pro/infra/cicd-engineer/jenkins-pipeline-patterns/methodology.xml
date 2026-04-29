@@ -1,0 +1,612 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="jenkins-pipeline-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Production-grade Jenkins pipeline patterns: declarative vs scripted, shared libraries, parallel stages, and agentic workflows for brownfield organizations.</summary>
+    <tags>
+      <tag>jenkins</tag>
+      <tag>pipeline</tag>
+      <tag>cicd</tag>
+      <tag>groovy</tag>
+      <tag>shared-libraries</tag>
+    </tags>
+    <category>cicd</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Jenkins Pipeline Patterns</title>
+
+    <summary>Advanced Jenkins pipeline patterns for production-grade declarative pipelines, shared libraries, scripted pipelines, and reusable components throughout organizations. This guide covers best practices for 2025-2026, including proper separation between declarative (structured, team-maintainable) and scripted (complex, flexible Groovy) approaches, shared library directory structure and Groovy serialization rules for CPS safety, parallel stages with resource management and workspace isolation, Kubernetes pod templates for dynamic provisioning, and agentic workflow for autonomous pipeline authoring with validation checkpoints.</summary>
+
+    <why>
+      <p>Jenkins remains the default CI/CD system in brownfield organizations with 50+ pipeline investments, multi-team governance requirements, and tight integration with on-prem infrastructure and legacy systems. Declarative syntax with shared libraries standardizes pipeline patterns across teams; scripted pipelines unlock complex conditional logic when declarative cannot express it. Groovy's Continuation-Passing Style (CPS) serialization rules and plugin matrix instability require explicit patterns to avoid opaque runtime failures. Shared libraries enforce DRY principles and make audit/test/version control tractable at scale.</p>
+      <p>The patterns in this methodology directly apply to brownfield scenarios: multi-team Jenkins controllers with 50+ pipelines, air-gapped Vault/Artifactory integration, Kubernetes agent provisioning, and Configuration-as-Code governance. They also address the single biggest failure mode for agents: CPS serialization mismatches that compile fine but explode at runtime with `NotSerializableException` on random checkpoints.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Brownfield organization running Jenkins controller (LTS) where migration to GitHub Actions or GitLab CI is not on the roadmap.</item>
+        <item>You need a Groovy shared library to enforce conventions across 50+ pipelines (build/test/deploy/notify steps).</item>
+        <item>Matrix or fan-out builds across multiple JDK, Node, or OS axes that GitHub Actions matrices cannot express cheaply.</item>
+        <item>Heavy on-prem, air-gapped scenarios with self-hosted agents and tight Vault or Artifactory integration.</item>
+        <item>Existing investment in Jenkinsfile, plugin ecosystem (Blue Ocean, Configuration as Code, Job DSL), and team familiarity with Groovy.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Greenfield repo on GitHub or GitLab — use native CI; Jenkins adds operator burden with no upside. GitHub Actions is simpler to set up and requires no infrastructure.</item>
+        <item>Solo dev or small team — Jenkins controller maintenance (plugin upgrades, JVM tuning, agent provisioning) outweighs benefits. GitHub Actions is serverless.</item>
+        <item>Workloads that fit cleanly into GitHub Actions reusable workflows or composite actions. Most modern pipelines do.</item>
+        <item>Ephemeral or serverless CI requirements — Jenkins is stateful and assumes long-lived controllers. Lambda-based CI is incompatible with Jenkins architecture.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="declarative-vs-scripted">
+      <p>Declarative syntax is structured, predefined, and enforces best practices with built-in error handling via post sections. Scripted pipelines are free-form Groovy with full language power but require manual try-catch and lack syntax validation. The recommendation is to use Declarative for the vast majority of pipelines (95%+ of teams) and only use Scripted when Declarative cannot express the required logic. Declarative pipelines enable pre-merge syntax checking (jenkins-cli declarative-linter), making them CI/CD-safe. Scripted pipelines require local testing and hide complexity from automated validation.</p>
+
+      <p>Declarative advantages: agent/stage/post syntax is uniform across all Jenkins installations, enforces a clean flow (checkout → stages → post), enables Blue Ocean visualization, supports when-expressions for conditional stages, integrates with Configuration-as-Code. Scripted advantages: full Groovy power for complex branching/loops/dynamic stages, lower learning curve for Groovy developers, but CPS limitations and no linter support require discipline.</p>
+
+      <rule testable="true">
+        <statement>Pipelines MUST use Declarative syntax as the default structure. Scripted blocks MUST only appear inside script { ... } sections when Declarative cannot express the required logic; such blocks MUST include a code comment explaining why scripted is required. Linters MUST reject pipelines with top-level scripted blocks (outside stage declarations). The declarative when-expression can express most conditional logic: when { branch 'main' }, when { expression { env.BUILD_NUMBER.toInteger() % 2 == 0 } }, when { changeset 'src/**/*.groovy' }.</statement>
+        <rationale>Declarative enforces team readability and enables pre-merge syntax validation via jenkins-cli declarative-linter. Scripted blocks are opaque to linters, introduce CPS serialization risks, and require agents to test locally before submission. Top-level scripted pipelines hide the entire pipeline structure from governance tooling and Blue Ocean visualization. Declarative when-expressions cover 95% of conditional needs without resorting to scripted blocks.</rationale>
+      </rule>
+
+      <example type="good" title="Declarative pipeline with minimal scripted logic">
+        <code lang="groovy"><![CDATA[pipeline {
+    agent any
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                script {
+                    // Scripted only to extract git commit message; declarative has no built-in method
+                    env.GIT_COMMIT_MSG = sh(
+                        script: 'git log -1 --pretty=%B',
+                        returnStdout: true
+                    ).trim()
+                }
+            }
+        }
+        stage('Build') {
+            steps {
+                sh 'npm ci && npm run build'
+            }
+        }
+    }
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}]]></code>
+      </example>
+
+      <example type="bad" title="Overuse of scripted blocks">
+        <code lang="groovy"><![CDATA[pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            steps {
+                script {
+                    // Entire logic in scripted block; no visibility to linter
+                    def branch = env.GIT_BRANCH.replace('origin/', '')
+                    def isMaster = branch == 'master'
+                    if (isMaster) {
+                        sh 'npm run build:prod'
+                    } else {
+                        sh 'npm run build:dev'
+                    }
+                }
+            }
+        }
+    }
+}]]></code>
+        <note>This logic should be expressed as parallel conditional stages or via Declarative when-expressions (Declarative 1.7+).</note>
+      </example>
+
+      <antipattern>
+        <description>Writing entire pipeline logic inside a single large scripted block because "Groovy is more powerful than Declarative".</description>
+        <reason>Scripted blocks hide logic from CI/CD governance, syntax checking, and team review. Build errors reference internal CPS class names (org.jenkinsci.plugins.workflow.cps.CpsThread) that agents misinterpret as application errors. Maintenance burden increases dramatically when the next team member touches the pipeline. The pipeline becomes unmaintainable as team size grows. New team members cannot understand the flow without running the build and reading error messages.</reason>
+      </antipattern>
+    </section>
+
+    <section name="shared-libraries">
+      <p>Shared libraries centralize reusable pipeline code (build, test, deploy, notify steps) across teams and enforce consistency. They must follow strict Groovy serialization rules and live in a dedicated Git repository with version-pinned imports. Shared libraries reduce duplication across 50+ team pipelines, enforce team standards, and make updates propagate immediately (when versioning is pinned correctly).</p>
+
+      <rule testable="true">
+        <statement>Shared libraries MUST be stored in a dedicated Git repository separate from application code. All classes MUST implement java.io.Serializable. Functions MUST be placed in vars/ directory with one verb per function (e.g., buildApp, deployToK8s, notifySlack). The library MUST be version-pinned in @Library annotations (e.g., @Library('platform@v1.4.2') _). Never use floating @main in production pipelines. Library configuration MUST be set in Manage Jenkins > Configure System, with implicit loading disabled (require explicit @Library annotation).</statement>
+        <rationale>Dedicated repos enable independent versioning, testing, and rollback. A library change can be tested in isolation before propagating to all pipelines. Serialization rules prevent opaque NotSerializableException at CPS checkpoints (random failures after hours of build work). Version pinning prevents non-deterministic builds caused by upstream library changes — floating @main picks the latest commit every build, causing subtle behavior changes. Implicit loading disabled ensures visibility: developers see exactly which library version their pipeline uses.</rationale>
+      </rule>
+
+      <p>Shared library directory structure (vars/, src/, resources/, test/) enables scalable organization and growth. The vars/ directory is global scope (functions auto-import), enabling simple @Library calls like buildApp(). The src/ directory holds Groovy classes with package structure (com/example/...), used by vars/ functions for shared logic. The resources/ directory holds templates (Kubernetes YAML, deployment scripts) referenced by library code. The test/ directory holds JUnit-style tests using JenkinsPipelineUnit, enabling validation before library release. This separation of concerns makes the library maintainable as it grows to 50+ shared functions across 100+ pipelines.</p>
+
+      <rule testable="true">
+        <statement>Shared library directory structure MUST follow: `vars/` (global functions), `src/` (Groovy classes), `resources/` (templates), `test/` (unit tests). Classes in `src/` MUST NOT override built-in Jenkins Pipeline steps. Libraries MUST have a README with usage examples.</statement>
+        <rationale>Standard structure enables consistent discovery and testing. Overriding built-in steps silently breaks when Jenkins LTS upgrades plugin versions. Testing discipline catches serialization issues early.</rationale>
+      </rule>
+
+      <example type="good" title="Shared library with proper structure">
+        <code lang="groovy"><![CDATA[// jenkins-shared-library/vars/buildApp.groovy
+def call(String language, String buildCommand) {
+    if (!language || !buildCommand) {
+        error("buildApp requires language and buildCommand parameters")
+    }
+
+    try {
+        timeout(time: 15, unit: 'MINUTES') {
+            sh "${buildCommand}"
+        }
+    } catch (Exception e) {
+        currentBuild.result = 'FAILURE'
+        throw e
+    }
+}]]></code>
+        <note>Function placed in `vars/`, takes only primitive parameters (no non-Serializable objects), uses built-in `timeout` and `sh` without overriding them.</note>
+      </example>
+
+      <example type="bad" title="Non-serializable state in shared library">
+        <code lang="groovy"><![CDATA[// WRONG: Pattern object is not Serializable; will explode at CPS checkpoint
+def call(String text, String regex) {
+    Pattern pattern = Pattern.compile(regex)
+    def matcher = pattern.matcher(text)
+    return matcher.findAll()
+}]]></code>
+        <note>This code compiles but fails at runtime. Fix: wrap in `@NonCPS def helper() { ... }` returning only primitives.</note>
+      </example>
+
+      <antipattern>
+        <description>Storing shared library code directly in the application repository alongside Jenkinsfiles instead of a dedicated library repo.</description>
+        <reason>Complicates versioning and testing. When the application repo is cloned for a build, the library code is checked out at the same commit, preventing independent rollback. Multi-team governance becomes impossible. Updates to the library must coordinate with application releases, slowing down fix deployment. A library bug in shared library breaks all 50+ pipelines simultaneously with no quick rollback path.</reason>
+      </antipattern>
+    </section>
+
+    <section name="parallel-stages">
+      <p>Parallel stages run independent tasks simultaneously, improving throughput for cross-platform builds, multi-environment testing, and independent tasks like lint + test + scan. Resource exhaustion, shared workspace races, and unclear failure attribution are the main pitfalls.</p>
+
+      <rule testable="true">
+        <statement>Parallel stages MUST be used for cross-platform builds (Linux, Windows, macOS), multi-environment testing (Chrome, Firefox, Safari), and independent tasks (lint, test, scan). Each parallel branch MUST have a clear name. Resource limits MUST be set via agent labels or Kubernetes pod templates to prevent executor starvation. Shared resources (databases, credentials, files) MUST be protected via lock(resource: '...') or dir() to prevent race conditions. Parallel branches MUST NOT share the same workspace by default; use dir(unique_subdir) or ws() to isolate.</statement>
+        <rationale>Parallelism reduces overall pipeline duration significantly (parallel test stages execute wall-clock time faster). Resource limits prevent the common failure where one team's build exhausts all executors and blocks other teams (executor starvation). Explicit naming and locking prevents silent failures from workspace corruption: unit tests writing to target/ and integration tests reading simultaneously cause flaky failures that are hard to reproduce. Jenkins shares workspace by default across parallel branches, requiring explicit isolation via dir(EXECUTOR_NUMBER) or separate ws() blocks.</rationale>
+      </rule>
+
+      <example type="good" title="Parallel stages with resource limits">
+        <code lang="groovy"><![CDATA[pipeline {
+    agent any
+    stages {
+        stage('Test') {
+            parallel {
+                stage('Unit Tests') {
+                    agent { label 'linux-fast' }
+                    steps {
+                        sh 'npm run test:unit'
+                    }
+                }
+                stage('Integration Tests') {
+                    agent { label 'linux-large' }
+                    steps {
+                        sh 'npm run test:integration'
+                    }
+                }
+                stage('Lint') {
+                    agent { label 'linux-fast' }
+                    steps {
+                        sh 'npm run lint'
+                    }
+                }
+            }
+        }
+    }
+}]]></code>
+        <note>Each branch has a label (linux-fast, linux-large) for resource management. Tasks are independent; lint does not block tests.</note>
+      </example>
+
+      <antipattern>
+        <description>Parallel branches sharing the same workspace without `dir()` or `ws()` isolation, causing file races.</description>
+        <reason>Jenkins shares workspace by default across parallel branches. A unit test writing to `target/` and integration test reading from `target/` simultaneously causes corruption. Always use `dir('unique-dir-${env.EXECUTOR_NUMBER}')` or separate workspaces.</reason>
+      </antipattern>
+    </section>
+
+    <section name="pipeline-options">
+      <p>Pipeline options control timeouts, logging, build retention, concurrency, and output formatting. Stuck builds and unbounded log retention are the top two operator pain points in Jenkins operations. Well-configured options dramatically improve cluster stability and observability. Options block appears at pipeline level and applies to all stages unless overridden per-stage.</p>
+
+      <rule testable="true">
+        <statement>All pipelines MUST declare options { timeout(...) buildDiscarder(...) } to prevent stuck builds and unbounded log retention. Production pipelines MUST have disableConcurrentBuilds() or use lock(resource: 'shared-resource') for pipelines that touch shared state. Timestamps and colored output (ansiColor) MUST be enabled for readability. Stage-level timeouts MAY override global timeout for long-running stages (e.g., integration tests).</statement>
+        <rationale>A single stuck build can starve the queue for hours, blocking all team members. Unbounded log retention fills disk in weeks and slows Jenkins UI. timeout prevents hung steps (network timeouts, hung processes); buildDiscarder limits history (typically 50 builds, 10 artifacts); disableConcurrentBuilds prevents race conditions on deploy pipelines that modify shared resources. Timestamps enable performance analysis (which stages are slow); colored output makes human log review 10x faster.</rationale>
+      </rule>
+
+      <example type="good" title="Production-ready pipeline options">
+        <code lang="groovy"><![CDATA[pipeline {
+    agent any
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '50', artifactNumToKeepStr: '10'))
+        disableConcurrentBuilds()
+        ansiColor('xterm')
+        skipDefaultCheckout()
+    }
+    stages {
+        // ...
+    }
+}]]></code>
+      </example>
+
+      <antipattern>
+        <description>Omitting `timeout` and `buildDiscarder`, relying on manual Jenkins administration to kill stuck builds and archive old logs.</description>
+        <reason>Leaves the system vulnerable to queue starvation and disk exhaustion. New team members do not understand the cleanup rules.</reason>
+      </antipattern>
+    </section>
+
+    <section name="kubernetes-agents">
+      <p>Kubernetes pod templates provide dynamic agent provisioning, eliminating static node labels and resource exhaustion. Pod templates can be cached for reuse, reducing startup time. Each pod template defines containers, resource requests/limits, volumes, and service account bindings.</p>
+
+      <rule testable="true">
+        <statement>Kubernetes agent declarations MUST use the kubernetes {} agent block with an inline pod template. The pod template MUST specify resource requests and limits (CPU, memory). Multiple containers MUST be defined only if parallel tasks use distinct tools (e.g., one Node container, one Docker container). Service accounts MUST be restricted to minimal permissions. Pod templates SHOULD use labels for organization and filtering.</statement>
+        <rationale>Pod templates enable auto-scaling and per-pipeline resource isolation. Limits prevent memory leaks in one pipeline from crashing the entire cluster. Minimal service accounts follow least-privilege security. Labels enable scheduler affinity rules and cost center tagging.</rationale>
+      </rule>
+
+      <p>Pod template structure includes apiVersion, kind, metadata, and spec sections. The spec defines containers (with image, command, tty, securityContext), volumes for persistent state, and resource declarations. Common containers include language runtimes (node, python, go), build tools (maven, gradle), and utility containers (docker, kubectl).</p>
+
+      <p>Resource management in Kubernetes agents: Every container MUST declare both requests (minimum guaranteed) and limits (maximum allowed). CPU is measured in millicores (1000m = 1 core); memory in Mi or Gi. Requests determine scheduler placement; limits prevent runaway consumption. Typical values: requests 100m CPU/256Mi memory for lightweight containers, 500m/512Mi for build containers, 1000m/1Gi for Docker-in-Docker containers. Set limits 2-4x the requests to allow temporary spikes.</p>
+
+      <example type="good" title="Kubernetes pod template with resource limits">
+        <code lang="groovy"><![CDATA[agent {
+    kubernetes {
+        yaml '''
+            apiVersion: v1
+            kind: Pod
+            spec:
+              serviceAccount: jenkins-agent
+              containers:
+              - name: node
+                image: node:20-alpine
+                command: [cat]
+                tty: true
+                resources:
+                  requests:
+                    memory: "256Mi"
+                    cpu: "100m"
+                  limits:
+                    memory: "512Mi"
+                    cpu: "500m"
+              - name: docker
+                image: docker:24-dind
+                securityContext:
+                  privileged: true
+                resources:
+                  requests:
+                    memory: "512Mi"
+                    cpu: "500m"
+                  limits:
+                    memory: "1Gi"
+                    cpu: "1000m"
+        '''
+    }
+}]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using static node labels (agent { label 'ubuntu-builder' }) on-prem instead of Kubernetes pod templates.</description>
+        <reason>Static labels require manual node provisioning and do not scale. Pod templates auto-scale with cluster load and isolate resource contention per-pipeline.</reason>
+      </antipattern>
+    </section>
+
+    <section name="security-and-credentials">
+      <p>Jenkins credentials store secrets in an encrypted vault. The withCredentials step binds them into the environment; values are masked in console output (replaced with ****). However, bash set -x in shell scripts leaks masked values because variable expansion happens before masking. Hardcoded secrets are the top vulnerability in Jenkinsfiles, even when committed to private repos (they appear in build logs, which are often shared with teams and retained for audit).</p>
+
+      <rule testable="true">
+        <statement>No credentials MUST be hardcoded in Jenkinsfile or shared libraries. All secrets MUST be stored in Jenkins Credentials store and bound via withCredentials step. Secrets MUST NOT be passed as command-line arguments (use environment variables or stdin, which are masked). Bash set -x MUST be banned inside withCredentials blocks; linters MUST reject this pattern. Log rotation MUST limit history retention to prevent long-term secret exposure via build logs. Credentials binding MUST use usernamePassword, sshUserPrivateKey, or file types (never raw strings).</statement>
+        <rationale>withCredentials masks values in logs by doing name-based replacement (PASS variable name becomes ****), but set -x evaluates environment variables before masking happens in output. Jenkins Credentials store uses encrypted storage at rest (using the Jenkins instance key), RBAC for access control, and audit logs for credential reads. Retention limits prevent archived logs from becoming a long-term attack surface. Specific credential types (usernamePassword, sshUserPrivateKey) enable masking of multiple fields and prevent accidental exposure of partial secrets.</rationale>
+      </rule>
+
+      <example type="good" title="Secure credential binding">
+        <code lang="groovy"><![CDATA[stage('Deploy') {
+    steps {
+        withCredentials([
+            usernamePassword(credentialsId: 'docker-registry', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS'),
+            file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')
+        ]) {
+            sh '''
+                docker login -u "$DOCKER_USER" -p "$DOCKER_PASS" registry.example.com
+                kubectl apply -f deployment.yaml
+            '''
+        }
+    }
+}]]></code>
+      </example>
+
+      <antipattern>
+        <description>Logging environment variables inside `withCredentials` or using `sh -x` to debug, which leaks secrets despite masking.</description>
+        <reason>Even though Jenkins masks values in final output, intermediate debug logs and log aggregation systems may capture unmasked values. The pipeline becomes a vector for credential theft.</reason>
+      </antipattern>
+    </section>
+
+    <section name="error-handling-and-notifications">
+      <p>The `post` section handles pipeline completion states (success, failure, always, unstable, aborted, cleanup). Notifications (Slack, email, webhooks) inform stakeholders of build outcomes. Retry logic handles flaky operations (network, external services).</p>
+
+      <rule testable="true">
+        <statement>All pipelines MUST have a post { always { cleanWs() } } block to clean workspace after every build. Production pipelines MUST have post sections for success (deploy notification), failure (alert on-call), and always (metrics). Timeout MUST be set for long-running stages (e.g., integration tests). Flaky operations (e.g., API calls) MUST use retry(3) { ... } for idempotent retries. Post sections support multiple conditions: success (build passed, artifacts published), failure (build failed, alert sent), unstable (tests failed but compiled), aborted (cancelled by user), cleanup (always runs, cleanup operations).</statement>
+        <rationale>Workspace cleanup prevents disk exhaustion from hundreds of accumulated builds. Post sections ensure stakeholders are informed of outcomes and enable automation (deploy on success, rollback on failure, alert on-call, publish metrics). Retries reduce false failures from transient network issues and external service unavailability. The cleanup step must run regardless of pipeline outcome, preventing zombie workspace processes and disk fragmentation.</rationale>
+      </rule>
+
+      <example type="good" title="Post section with cleanup and notifications">
+        <code lang="groovy"><![CDATA[pipeline {
+    agent any
+    stages {
+        stage('Test') {
+            steps {
+                retry(3) {
+                    sh 'npm run test'
+                }
+            }
+            post {
+                always {
+                    junit 'test-results.xml'
+                }
+            }
+        }
+    }
+    post {
+        success {
+            slackSend(
+                color: 'good',
+                message: "Pipeline <${env.BUILD_URL}|#${env.BUILD_NUMBER}> succeeded"
+            )
+        }
+        failure {
+            slackSend(
+                color: 'danger',
+                message: "Pipeline <${env.BUILD_URL}|#${env.BUILD_NUMBER}> failed"
+            )
+        }
+        always {
+            cleanWs()
+        }
+    }
+}]]></code>
+      </example>
+
+      <antipattern>
+        <description>Omitting `post { always { cleanWs() } }` because "Jenkins will clean up eventually".</description>
+        <reason>Workspace accumulates over hundreds of builds, filling disk very quickly. Operator intervention becomes urgent. The pipeline becomes slow to start due to workspace size.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Subagents are useful for three concrete jobs: (1) generating a fresh Jenkinsfile from a declarative template based on the repo's stack, (2) extracting recurring shell blocks into a shared library (vars/buildApp.groovy) and writing the JUnit-style test for it under test/groovy/..., (3) diagnosing a failing build by reading the console log and Stage View JSON via the Jenkins REST API. Keep the agent loop bounded: render Jenkinsfile, run declarative-linter, fix, submit. Do not let the agent keep retrying live builds; that burns executor time and pollutes history.</p>
+
+      <p>Recommended subagents for Jenkins automation: faion-sdd-executor drives Jenkinsfile changes through the SDD quality gate (lint, unit test, integration test). A purpose-built jenkins-pipeline-author subagent has narrow scope: edit Jenkinsfile or vars/*.groovy, run linter, never push to main. A password-scrubber sweeps generated Jenkinsfiles for credentials before commit, since Jenkins encourages inline withCredentials blocks but secrets often leak into echo statements or build log output.</p>
+
+      <p>The typical agent prompt pattern for Jenkinsfile authoring includes clear constraints: Declarative pipeline only (no scripted blocks at top level), use shared library annotations, wrap any sh step that touches secrets in withCredentials(), validate after edit using jenkins-cli declarative-linter, output unified diff only (never push). This constraint set prevents the most common agent failures: over-use of scripted blocks (which hide logic from linters), hardcoded secrets, and accidental commits to main. When an agent encounters a build failure, instruct it to use Stage View JSON (curl to /wfapi/runs) for compact status rather than tailing the console log, which breaks context windows.</p>
+
+      <rule testable="true">
+        <statement>Agents authoring Jenkinsfiles MUST validate syntax using jenkins-cli declarative-linter before submission (piping Jenkinsfile to stdin). Agents MUST NOT run live builds for validation; use jenkinsfile-runner locally if needed. Agents MUST NOT modify plugins.txt or trigger plugin installs on shared controllers. Agents MUST scan generated Jenkinsfiles for hardcoded credentials using a password-scrubber (grep for patterns, check withCredentials wrapping).</statement>
+        <rationale>Linting catches structural errors before submission. Live build validation burns executor time and pollutes build history with generated builds. Plugin installs are global state mutations that affect all users. Credential scrubbing prevents accidental secret commits.</rationale>
+      </rule>
+
+      <example type="good" title="Agentic Jenkinsfile linting">
+        <code lang="bash"><![CDATA[#!/usr/bin/env bash
+set -euo pipefail
+JENKINSFILE="${1:-Jenkinsfile}"
+
+# Lint using jenkins-cli
+jenkins-cli -s "$JENKINS_URL" declarative-linter < "$JENKINSFILE" || {
+    echo "Linting failed. Review the Jenkinsfile and try again."
+    exit 1
+}
+
+# Scan for hardcoded credentials
+if grep -qE '(password|token|secret|key)\s*=' "$JENKINSFILE"; then
+    echo "WARNING: Possible hardcoded credentials detected. Check withCredentials wrapping."
+    exit 1
+fi
+
+echo "Jenkinsfile validated successfully."
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Allowing agents to push Jenkinsfile changes directly to main and then run the build to "validate in real-time".</description>
+        <reason>Pollutes build history with generated/test builds. Slow feedback loop. If the generated Jenkinsfile has a credential leak, it is already committed.</reason>
+      </antipattern>
+    </section>
+
+    <section name="cps-pitfalls">
+      <p>Jenkins Groovy runs under Continuation-Passing Style (CPS) transformation to support pipeline durability (save/restore state on controller crash). Non-serializable objects (Pattern, Matcher, JsonSlurperResult, custom classes) compile fine but explode with NotSerializableException at random checkpoints during the build. The @NonCPS annotation disables CPS for a method, allowing non-serializable objects but breaking durability. Understanding CPS is critical because the error messages reference internal class names (org.jenkinsci.plugins.workflow.cps.CpsThread) that agents misinterpret as application errors.</p>
+
+      <p>Common non-serializable types in Jenkins: java.util.regex.Pattern and java.util.regex.Matcher (created by =~ operator), groovy.json.JsonSlurperResult (from JsonSlurper.parseText), java.io.File objects, closure objects capturing non-serializable state. The CPS transformer asynchronously serializes all local variables and fields after each step boundary, causing builds to fail with opaque messages like "cannot find symbol" or "NotSerializableException" after a plugin call, parallel stage boundary, or timeout. These failures are non-deterministic (depend on which step boundary the exception happens at) and appear only at runtime, not during compilation.</p>
+
+      <rule testable="true">
+        <statement>Any Groovy object that holds a reference to a non-serializable type (Pattern, Matcher, JsonSlurperResult, custom objects) MUST be wrapped in a @NonCPS def helper() { ... } method that returns only primitives or lists. Methods without @NonCPS MUST only operate on Serializable types. Closures capturing non-serializable objects MUST be avoided entirely. The @NonCPS wrapper should be idempotent (call it twice, get the same result) because durability restore will not include its state.</statement>
+        <rationale>CPS transformation makes durability possible but introduces hidden serialization requirements. Errors only surface at runtime after hours of build work. @NonCPS methods run in-process without CPS wrapping, but restore-after-crash won't include their state — design them to be idempotent helpers that return values, not side-effect containers. Agents authoring shared libraries must be trained to recognize this pattern and apply it immediately when Pattern or custom objects appear.</rationale>
+      </rule>
+
+      <example type="good" title="CPS-safe helper method">
+        <code lang="groovy"><![CDATA[// vars/extractBuildVersion.groovy
+def call() {
+    return extractVersion()
+}
+
+@NonCPS
+def extractVersion() {
+    // Pattern objects are not serializable; wrap in @NonCPS
+    def versionString = sh(script: 'cat version.txt', returnStdout: true).trim()
+    def matcher = versionString =~ /v(\d+\.\d+\.\d+)/
+    if (matcher.find()) {
+        return matcher.group(1)  // Return primitive string
+    }
+    return 'unknown'
+}]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using Pattern or Matcher objects directly in the main pipeline flow without `@NonCPS` wrapping.</description>
+        <reason>Compiles fine, but the CPS transformer cannot serialize the Pattern object. At a random checkpoint (after a parallel stage, after a timeout, after a plugin API call), the build fails with `NotSerializableException: java.util.regex.Pattern`. The error is opaque and difficult to diagnose.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices-summary">
+      <p>Key practices for production-ready Jenkins pipelines:</p>
+      <list>
+        <item>One vars/*.groovy function = one verb. buildApp, deployToK8s, notifySlack. Never doEverything.</item>
+        <item>Pin shared library by tag in production: @Library('platform@v1.4.2') _. Floating @main causes non-deterministic builds.</item>
+        <item>Always declare options block with timeout and buildDiscarder. Stuck builds and unbounded log retention are the top two operator pain points.</item>
+        <item>Use lock(resource: 'shared-db') instead of disabling concurrent builds globally.</item>
+        <item>Prefer Kubernetes plugin pod templates over static node labels for parallel stages. Eliminates resource exhaustion.</item>
+        <item>Treat Jenkinsfile as application code: PR review, unit tests via JenkinsPipelineUnit, integration tests via jenkinsfile-runner.</item>
+        <item>Configuration-as-Code (JCasC) for the controller itself. Agents read/edit YAML, never click through UI.</item>
+        <item>Mirror Jenkinsfile syntax updates into a doc snippet repo so agents have ground truth, not stale examples.</item>
+      </list>
+
+      <p>Pipeline options control timeouts, logging, build retention, concurrency, and output formatting. Every option serves a specific purpose and solves a known operational pain point in large Jenkins deployments:</p>
+      <list>
+        <item>timeout — prevents stuck builds from starving the queue. Set per-pipeline or per-stage.</item>
+        <item>timestamps — adds human-readable wall-clock time to console output, crucial for diagnosing performance issues.</item>
+        <item>buildDiscarder — limits build history to N most recent (default 10-50), preventing unbounded disk usage. Always include artifactNumToKeepStr to separate artifact retention from log retention.</item>
+        <item>disableConcurrentBuilds — prevents parallel executions of the same pipeline, critical for deploy jobs touching shared resources.</item>
+        <item>ansiColor — enables colored output in logs, improving human readability (shows red for errors, green for success).</item>
+        <item>skipDefaultCheckout — manual git checkout control, useful when a shared library handles checkout or multiple repos are needed.</item>
+        <item>preserveStashes — keeps stash artifacts after build completes, enabling stash inspection for troubleshooting.</item>
+      </list>
+
+      <p>Agent selection guidance for different task complexities:</p>
+      <list>
+        <item>Set up GitHub Actions workflow from template — use haiku model. Pattern application, simple configuration.</item>
+        <item>Design CI/CD pipeline architecture — use opus model. Complex system design with many variables.</item>
+        <item>Write terraform code for infrastructure — use sonnet model. Implementation with moderate complexity.</item>
+        <item>Debug failing pipeline step — use sonnet model. Debugging and problem-solving.</item>
+        <item>Implement AIOps anomaly detection — use opus model. Novel ML approach, complex decision.</item>
+        <item>Configure webhook and secret management — use haiku model. Mechanical setup using checklists.</item>
+      </list>
+    </section>
+
+    <section name="tools-and-integration">
+      <p>Essential tools for Jenkinsfile authoring, validation, and troubleshooting:</p>
+      <list>
+        <item>`jenkins-cli.jar` — Linter, job CRUD, reload config. https://www.jenkins.io/doc/book/managing/cli/</item>
+        <item>`jcasc-validator` — Validate Configuration-as-Code YAML. https://github.com/jenkinsci/configuration-as-code-plugin</item>
+        <item>`jenkinsfile-runner` — Run a Jenkinsfile in CLI / container without a controller. https://github.com/jenkinsci/jenkinsfile-runner</item>
+        <item>`jenkins-job-builder` (jjb) — Generate jobs from YAML (legacy XML jobs). https://docs.openstack.org/infra/jenkins-job-builder/</item>
+        <item>`JenkinsPipelineUnit` — Unit test framework for shared library functions. https://github.com/jenkinsci/JenkinsPipelineUnit</item>
+        <item>`groovy` — Validate `vars/*.groovy` syntax locally. https://groovy-lang.org/</item>
+        <item>Jenkins REST API — curl to $URL/job/name/wfapi/runs for stage timing JSON. https://www.jenkins.io/doc/book/using/remote-access-api/</item>
+      </list>
+    </section>
+
+    <section name="pipeline-templates">
+      <p>Ready-to-use templates for common Jenkins pipeline patterns.</p>
+
+      <p>Basic Declarative Pipeline structure:</p>
+      <code lang="groovy"><![CDATA[pipeline {
+    agent any
+
+    environment {
+        APP_NAME = 'myapp'
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    stages {
+        stage('Build') {
+            steps {
+                sh 'npm ci'
+                sh 'npm run build'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh 'npm test'
+            }
+            post {
+                always {
+                    junit 'test-results/*.xml'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sh './deploy.sh'
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        failure {
+            // Add notification here
+            echo 'Build failed!'
+        }
+    }
+}
+]]></code>
+
+      <p>Standard directory structure for a Jenkins shared library:</p>
+      <code lang="text"><![CDATA[jenkins-shared-library/
+├── vars/                    # Global variables/functions
+│   ├── buildApp.groovy
+│   ├── deployToK8s.groovy
+│   ├── notifySlack.groovy
+│   └── runTests.groovy
+├── src/                     # Groovy classes
+│   └── com/
+│       └── example/
+│           ├── Docker.groovy
+│           └── Kubernetes.groovy
+├── resources/               # Non-Groovy files
+│   └── templates/
+│       └── deployment.yaml
+└── test/                    # Unit tests
+    └── groovy/
+        └── com/example/
+            └── DockerTest.groovy
+]]></code>
+    </section>
+
+    <checklist>
+      <check>Pipeline validated with `jenkins-cli declarative-linter`</check>
+      <check>All stages have meaningful names and are grouped logically</check>
+      <check>No hardcoded credentials; all secrets via `withCredentials`</check>
+      <check>Timeout and buildDiscarder configured in options</check>
+      <check>Parallel stages have resource limits (agent labels or Kubernetes)</check>
+      <check>Post section includes cleanup (`cleanWs()`), success/failure notifications</check>
+      <check>Shared library functions are one verb each and version-pinned</check>
+      <check>All non-serializable Groovy wrapped in `@NonCPS` methods</check>
+      <check>Retry logic for flaky operations (3 retries recommended)</check>
+      <check>Kubernetes pod template has resource requests and limits</check>
+      <check>Security scanning (SAST, container image scan) in pipeline stages</check>
+      <check>Unit tests for shared library functions under `test/groovy/`</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://www.jenkins.io/doc/book/pipeline/syntax/"/>
+      <link href="https://www.jenkins.io/doc/book/pipeline/shared-libraries/"/>
+      <link href="https://github.com/jenkinsci/configuration-as-code-plugin"/>
+      <link href="https://github.com/jenkinsci/jenkinsfile-runner"/>
+      <link href="https://www.jenkins.io/doc/book/pipeline/cps-method-mismatches/"/>
+      <link href="https://docs.cloudbees.com/docs/cloudbees-ci/latest/"/>
+    </see-also>
+  </content>
+</methodology>
