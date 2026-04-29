@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="mcp-gateway-composition">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Compose multiple MCP servers via gateway patterns (virtual-server, federation, per-client visibility) to centralize auth, rate-limiting, audit, and namespace collision resolution.</summary>
+    <tags>
+      <tag>mcp</tag>
+      <tag>tool-composition</tag>
+      <tag>gateway-patterns</tag>
+      <tag>multi-server</tag>
+      <tag>scaling</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>MCP Gateway Composition — Five-Server Threshold</title>
+    <summary>When an agent connects to more than 5 MCP servers, put a gateway in front and compose them via one of three patterns: virtual server (gateway exposes a curated subset of upstream tools as one logical server), federation (gateways consume gateways in a tree), or per-client visibility (gateway filters the tool list by user/role). The gateway centralizes auth, rate limiting, audit, namespace collision resolution, and tool-list trimming — without it, each client re-implements all five concerns and the agent's tool catalog explodes past the ~25-tool selection-accuracy cliff.</summary>
+    <why>
+      <p>A flat list of MCP servers has three failure modes that compound: (1) schema bloat — 6 servers × ~10 tools each = 60 schemas in the system prompt every turn, burning thousands of tokens and tanking selection accuracy; (2) namespace collisions — every server ships its own search and create_issue, the model picks wrong; (3) fan-out auth — each client maintains N OAuth flows, audit trails, rate limits. A gateway collapses all three: one auth perimeter, one tool list (trimmed per client), one audit log. ContextForge, Lunar, MCPJungle, and the IBM Q1 2026 reference designs converge on this pattern as the production default once you cross the threshold.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Agent connects to &gt;5 MCP servers (or ≥3 from different vendors).</item>
+        <item>Multi-tenant deployment where different users/roles need different tool subsets.</item>
+        <item>Cross-team setup where namespace collisions are likely (github.search vs linear.search).</item>
+        <item>Compliance requirement to centralize audit / rate limit / OAuth across tools.</item>
+        <item>Tool catalog already breaks the ~25-tool selection-accuracy threshold — gateway can lazy-load toolkits.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Solo dev or single agent with 1–3 servers — gateway is overhead, not value.</item>
+        <item>Single-vendor stack where all MCP servers ship from one team and namespaces are pre-coordinated.</item>
+        <item>Hard latency budget where every hop matters and the tool surface is small.</item>
+        <item>Prototype phase — get the agent working flat first, add the gateway when pain appears.</item>
+      </list>
+    </when-not-to-use>
+    <section name="three-patterns">
+      <rule testable="true">
+        <statement>When you put an MCP gateway in front of multiple servers, pick exactly one composition pattern per agent: (a) virtual server — gateway exposes a curated subset of upstream tools as one logical server; (b) federation — gateways consume other gateways in a tree (used for org-wide rollouts); (c) per-client visibility — gateway filters the tool list by user/role/scope. Mixing patterns inside one gateway instance creates tool-list cycles and ambiguous deny rules.</statement>
+        <rationale>Each pattern has a different failure mode if applied to the wrong shape: virtual server breaks for hierarchical orgs (no nesting), federation breaks for end-user filtering (no per-call identity), per-client visibility breaks for static catalogs (overhead with no benefit). One pattern per gateway keeps deny rules unambiguous.</rationale>
+      </rule>
+      <example type="good" title="Virtual server — tool curation">
+        <code lang="yaml"><![CDATA[
+# Virtual server — one logical surface, curated tools, deny destructive verbs
+virtual_servers:
+  - name: dev_workspace
+    expose:
+      - github.create_issue
+      - github.search_issues
+      - linear.create_ticket
+      - sentry.search_events
+    deny: ["github.delete_*", "linear.archive_*"]
+        ]]></code>
+        <note>Agent sees 4 tools, namespaced; gateway enforces deny list before the call hits upstream.</note>
+      </example>
+      <example type="bad" title="Anti-shape: passthrough proxy">
+        <code lang="yaml"><![CDATA[
+# Anti-shape: passthrough proxy (no curation, no deny rules, no namespacing)
+proxy:
+  upstreams: [github, linear, sentry, jira, gitlab, slack, notion]
+  expose: "*"
+        ]]></code>
+        <note>Tool list explodes (60+ schemas), namespace collisions on search, no audit trail. Just push servers directly to the agent and skip the broken gateway.</note>
+      </example>
+      <list>
+        <item>Virtual server: bundle GitHub + Linear + Sentry as dev_workspace; agent sees one server, ~12 curated tools.</item>
+        <item>Federation: org-level gateway federates per-team gateways; team additions do not require central reconfig.</item>
+        <item>Per-client visibility: same gateway exposes read_* to support agents and write_* only to engineers.</item>
+      </list>
+      <antipattern>
+        <description>Mixing virtual-server curation with per-client visibility in one config block (filter rules apply to a tool that has been renamed by curation).</description>
+        <reason>Deny rules become ambiguous — the renamed tool may match neither the original nor the new name, silently leaking access.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Federation gateway that re-exposes downstream tools without re-namespacing.</description>
+        <reason>Two team gateways both named search collide at the org level. Agent picks at random.</reason>
+      </antipattern>
+      <reference path="templates/virtual-server.yaml">Reference virtual-server config with curation + deny.</reference>
+    </section>
+    <section name="five-server-threshold">
+      <rule testable="true">
+        <statement>If an agent connects to more than 5 MCP servers OR sees more than 25 tools in its catalog, route through a gateway. Below those thresholds, connect directly. Measure tool count from the agent's perspective — sum of unique tools across all connected servers, after any client-side filtering.</statement>
+        <rationale>Tool selection accuracy degrades sharply past ~25 flat tools (Anthropic, Composio guidance). 6 average MCP servers × ~10 tools each crosses both thresholds simultaneously. The gateway lets you lazy-load toolkits and trim the catalog per client without rewriting upstream servers.</rationale>
+      </rule>
+      <example type="good" title="7 servers with lazy toolkit loading">
+        <code lang="yaml"><![CDATA[
+# 7 upstream servers behind a gateway; agent sees one
+gateway:
+  upstreams: [github, linear, sentry, jira, gitlab, slack, notion]
+  toolkits:
+    issue_tracking: [linear.create_ticket, jira.create_issue, github.create_issue]
+    code_search:    [github.search_code, gitlab.search_code]
+    incidents:      [sentry.search_events, slack.post_to_channel]
+  loaded_per_agent: 1   # agent loads exactly one toolkit per task
+        ]]></code>
+        <note>Agent's tool catalog stays under 5 tools per turn; selection accuracy preserved; switch toolkit by task class.</note>
+      </example>
+      <example type="bad" title="Flat connection past threshold">
+        <code lang="text"><![CDATA[
+# Flat connection: client connects to 7 MCP servers, all tools live in system prompt
+client.mcp_servers = [github, linear, sentry, jira, gitlab, slack, notion]
+# 70+ tool schemas, ~5k tokens per turn, accuracy collapses
+        ]]></code>
+        <note>Past the threshold; cost per turn rises and the model picks wrong tools more often.</note>
+      </example>
+      <section name="what-gateway-centralizes">
+        <list>
+          <item>Auth: one OAuth perimeter instead of N per-server flows.</item>
+          <item>Rate limiting: per-tenant + per-tool quotas at one place.</item>
+          <item>Audit: single append-only log across all upstream calls.</item>
+          <item>Namespace collision resolution: gateway prefixes upstream tool names (github_search vs linear_search).</item>
+          <item>Lazy toolkit loading: agent loads only the toolkit relevant to the task; schemas not in the catalog do not cost tokens.</item>
+        </list>
+      </section>
+      <antipattern>
+        <description>Adding a gateway in front of 2 servers "for future-proofing".</description>
+        <reason>Below the threshold the gateway is pure latency and one more thing that can break. Add it when the threshold is crossed, not preemptively.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Treating the gateway as a security boundary while letting agents bypass it via direct MCP connections.</description>
+        <reason>If clients can dial servers directly, the gateway's deny rules are decorative. Enforce gateway-only access at the network layer.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/virtual-server.yaml" purpose="ContextForge-style virtual-server config bundling 3 backends with deny rules."/>
+    </templates>
+  </content>
+</methodology>
