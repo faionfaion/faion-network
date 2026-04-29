@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="docker-compose">
+  <metadata>
+    <tier>solo</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Production-grade Docker Compose patterns for multi-container infrastructure stacks: no version: field, named volumes, custom networks with internal: true for database tiers, health checks on every service with depends_on: condition: service_healthy, resource limits via deploy.resources, and restart: unless-stopped.</summary>
+    <tags>
+      <tag>docker</tag>
+      <tag>docker-compose</tag>
+      <tag>infrastructure</tag>
+      <tag>production</tag>
+      <tag>deployment</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Docker Compose (Infrastructure)</title>
+    <summary>Production Docker Compose for multi-container stacks: no version: field, named volumes, custom networks with internal: true, health checks with service_healthy, resource limits, restart: unless-stopped.</summary>
+    <why>
+      <p>Compose without health checks causes race conditions where the app starts before the database is ready. Without custom networks, all containers share the default bridge and databases are reachable from any container. Without resource limits, a runaway container starves the host. These three patterns prevent the most common production failures in Compose-based infrastructure.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Defining multi-container application stacks (app + DB + cache + worker)</item>
+        <item>Provisioning shared infrastructure services on a VPS (PostgreSQL, Redis, RabbitMQ)</item>
+        <item>Setting up isolated per-project stacks with own networks, volumes, and resource limits</item>
+        <item>Rolling out infrastructure updates requiring orchestrated service restarts with health-check ordering</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-container deployments — docker run + systemd unit is simpler and more observable</item>
+        <item>Production at scale requiring multi-host orchestration — use Kubernetes or Docker Swarm</item>
+        <item>Zero-downtime blue-green deploys — Compose lacks traffic shifting; use Kubernetes or a load balancer pair</item>
+        <item>Stateless functions or serverless workloads</item>
+      </list>
+    </when-not-to-use>
+    <section name="Modern Compose File">
+      <rule>
+        <statement>Omit the version: field entirely. Name the file compose.yaml (not docker-compose.yml). Use the docker compose CLI (not docker-compose). Pin image tags to specific versions, never latest.</statement>
+        <rationale>The version: field is obsolete in Compose v2 and triggers deprecation warnings. compose.yaml is the canonical modern filename. Unpinned latest tags cause silent breaking changes on docker compose pull.</rationale>
+      </rule>
+      <antipattern>
+        <description>Using version: "3.9" at the top of compose.yaml and naming the file docker-compose.yml.</description>
+        <reason>Both are legacy patterns. version: is ignored by modern Compose and adds confusion about which features are available.</reason>
+      </antipattern>
+    </section>
+    <section name="Health Checks">
+      <rule>
+        <statement>Define a healthcheck on every service. Use depends_on with condition: service_healthy (not service_started). Set start_period generously — at least 60s for databases on first boot when no volume exists yet.</statement>
+        <rationale>Without health checks, depends_on: service_started only waits for the container process to start, not for the service to be ready. The app will connect to the database before it accepts connections, causing startup failures.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[services:
+  db:
+    image: postgres:16-alpine
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  app:
+    depends_on:
+      db:
+        condition: service_healthy]]></code>
+      </example>
+    </section>
+    <section name="Resource Limits">
+      <rule>
+        <statement>Set deploy.resources.limits for every service from day one. Without limits, a single runaway container can exhaust all host memory, killing all other services. Resource limits require cgroups v2 (verify with: docker info | grep "Cgroup Driver").</statement>
+        <rationale>A container with no memory limit will use all available host RAM before the OOM killer terminates it, taking down other containers in the process.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[services:
+  app:
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+          pids: 100
+        reservations:
+          cpus: "0.25"
+          memory: 128M]]></code>
+      </example>
+    </section>
+    <section name="Restart Policies">
+      <rule>
+        <statement>Use restart: unless-stopped for long-running services (not always). always restarts even during intentional maintenance stops. Use restart: "no" for one-shot init containers.</statement>
+        <rationale>unless-stopped allows graceful maintenance without constant restart loops. A service stopped with docker compose stop stays stopped, unlike always which restarts it immediately.</rationale>
+      </rule>
+    </section>
+    <section name="Destructive Operations">
+      <antipattern>
+        <description>Running docker compose down -v in production or without explicit confirmation.</description>
+        <reason>The -v flag deletes all named volumes including database data. This is irreversible. Agents must never run this command against production without explicit operator confirmation.</reason>
+      </antipattern>
+    </section>
+    <section name="Custom Networks">
+      <rule>
+        <statement>Define custom named networks instead of using the default bridge. Mark database networks as internal: true to prevent containers on that network from making outbound internet connections.</statement>
+        <rationale>The default bridge network gives every container network access and puts all containers on the same flat network. Custom networks enforce tier separation (frontend, backend, database) and prevent database containers from making outbound connections.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+  db-network:
+    driver: bridge
+    internal: true  # No outbound internet access
+
+services:
+  nginx:
+    networks: [frontend]
+  app:
+    networks: [frontend, backend]
+  db:
+    networks: [db-network, backend]]]></code>
+      </example>
+    </section>
+    <section name="Service Discovery">
+      <rule>
+        <statement>Services reach each other by service name as hostname. Use service names in connection strings: postgres://db:5432/app, redis://redis:6379/0. Never use container IP addresses — they change on restart.</statement>
+        <rationale>Docker Compose creates DNS entries for each service on shared networks. Service names are stable across restarts; IP addresses are not.</rationale>
+      </rule>
+    </section>
+    <section name="Project Name Collisions">
+      <rule>
+        <statement>Set COMPOSE_PROJECT_NAME in the .env file or use the -p flag when running docker compose to give each project a unique name. Without it, two projects with the same service names create network name conflicts.</statement>
+        <rationale>Compose uses the directory name as the default project name. Two projects in directories with the same name (e.g., both named "app") will create conflicting network names.</rationale>
+      </rule>
+    </section>
+    <section name="Named Volumes">
+      <rule>
+        <statement>Use named volumes (postgres-data:) for all persistent data. Never use anonymous volumes (just /app/data) — they are hard to identify, back up, and clean up. Use bind mounts (./src:/app) only in development, not production.</statement>
+        <rationale>Named volumes appear in docker volume ls with meaningful names. Anonymous volumes are identified only by UUID. Bind mounts in production create host-path coupling and UID/GID permission mismatches between the container user and host user.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[services:
+  db:
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:
+    driver: local]]></code>
+      </example>
+    </section>
+    <section name="Security Hardening">
+      <rule>
+        <statement>For production services: set user: "1000:1000" to run as non-root, read_only: true with tmpfs for /tmp and /var/run, cap_drop: [ALL], and security_opt: [no-new-privileges:true].</statement>
+        <rationale>Root containers can modify host files via volume mounts. Read-only filesystems prevent tampering with application binaries. Dropping all capabilities removes privileged operations that most app containers never need.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[services:
+  app:
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+      - /var/run:size=10M
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true]]></code>
+      </example>
+    </section>
+    <section name="Secrets and Environment">
+      <rule>
+        <statement>Use env_file: .env to load secrets. Never hardcode credentials in compose.yaml. The compose.yaml file should be safe to commit to version control; .env must be in .gitignore with a .env.example provided.</statement>
+        <rationale>Hardcoded credentials in compose.yaml are committed to version history and visible to anyone with repo access. env_file keeps secrets out of the repo entirely.</rationale>
+      </rule>
+    </section>
+    <section name="Logging">
+      <rule>
+        <statement>Configure log rotation on every service with the json-file driver: max-size: "10m", max-file: "5". Without rotation, container log files grow without bound and fill the host disk.</statement>
+        <rationale>Docker stores container logs as JSON files on the host. A verbose service with no log rotation can fill /var/lib/docker with gigabytes of log data.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[services:
+  app:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"]]></code>
+      </example>
+    </section>
+    <templates>
+      <template path="templates/compose.yaml" purpose="Production compose file with health checks, network isolation, resource limits"/>
+    </templates>
+  </content>
+</methodology>
