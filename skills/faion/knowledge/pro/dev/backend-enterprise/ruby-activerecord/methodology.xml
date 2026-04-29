@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ruby-activerecord">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>Patterns for Rails ActiveRecord optimization: Query Objects for complex filter chains, named scopes for simple primitives, eager loading with includes/preload/eager_load, and N+1 prevention.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>activerecord</tag>
+      <tag>rails</tag>
+      <tag>query-objects</tag>
+      <tag>orm</tag>
+      <tag>performance</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>ruby</language>
+    </languages>
+    <frameworks>
+      <framework>rails</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>ActiveRecord Patterns for Rails</title>
+
+    <summary>Patterns for Rails ActiveRecord optimization: Query Objects for complex filter chains, named scopes for simple primitives, eager loading with includes/preload/eager_load, and N+1 prevention. Covers model callbacks, find_each for bulk operations, and mandatory eager-load-by-default in controllers. Use the bullet + prosopite gems to gate N+1 regressions in CI.</summary>
+
+    <why>
+      <p>Lazy loading is ActiveRecord's primary production trap. A missing includes in a controller that renders a list fires N additional SELECT statements — invisible in code review and undetected without a dedicated N+1 detector. Query Objects extract complex filter logic from controllers into testable, composable units under app/queries/.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Rails apps where models exceed ~150 lines and inline where chains scatter across controllers.</item>
+        <item>Multi-tenant Rails apps where global scopes and tenant-aware queries must be enforced consistently.</item>
+        <item>Measured ORM hot paths (>30% of request time in AR) — query objects + eager loading measurably improve.</item>
+        <item>LLM-driven feature work where each AR query must be reviewable in isolation.</item>
+        <item>Codebases adopting Trailblazer / dry-rb partials — Query Objects play nicely as ingest into the new architecture.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple CRUD admin (Rails Admin / ActiveAdmin) — the framework manages queries; query objects add ceremony.</item>
+        <item>Rails apps under 1k LOC — direct AR scope blocks plus thin controllers are fine.</item>
+        <item>Read-replicas or sharded DBs needing raw connected_to(role: :reading) — query object DSL hides the switch.</item>
+        <item>Background workers operating on enqueued IDs via find_each — no benefit from a chained query object.</item>
+        <item>Reporting/analytics — drop to ActiveRecord::Base.connection.execute with explicit SQL.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="query-object-pattern">
+      <rule testable="true">
+        <statement>Query Objects must accept a relation in the constructor (default Model.all), chain methods that return self, and expose a terminal results method returning the relation — never an array.</statement>
+        <rationale>Returning self allows callers to compose filters. Returning the relation instead of to_a defers SQL execution and allows further scoping at the controller level.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Cap Query Objects at approximately 10 chainable methods; if more are needed, split by use case into multiple query objects.</statement>
+        <rationale>A 30-method query object that covers every one-off filter becomes a god class — harder to read than inline where chains and impossible to test in isolation.</rationale>
+      </rule>
+
+      <example type="good" title="Fluent Query Object with chainable methods">
+        <code lang="ruby"><![CDATA[
+# app/queries/users_query.rb
+class UsersQuery
+  def initialize(relation = User.all)
+    @relation = relation
+  end
+
+  def active
+    @relation = @relation.where(active: true)
+    self
+  end
+
+  def with_role(role)
+    @relation = @relation.where(role: role)
+    self
+  end
+
+  def search(term)
+    return self if term.blank?
+    @relation = @relation.where(
+      'name ILIKE :term OR email ILIKE :term', term: "%#{term}%"
+    )
+    self
+  end
+
+  def ordered
+    @relation = @relation.order(created_at: :desc)
+    self
+  end
+
+  def with_associations
+    @relation = @relation.includes(:profile, :roles)
+    self
+  end
+
+  def paginate(page:, per_page: 20)
+    @relation = @relation.page(page).per(per_page)
+    self
+  end
+
+  def results
+    @relation
+  end
+end
+
+# Controller usage
+users = UsersQuery.new
+  .active
+  .with_role('admin')
+  .search(params[:q])
+  .with_associations
+  .ordered
+  .paginate(page: params[:page])
+  .results
+        ]]></code>
+      </example>
+
+      <antipattern>
+        <description>includes vs eager_load confusion: User.includes(:posts).where('posts.flagged = true') without references(:posts).</description>
+        <reason>includes heuristically picks strategy; adding a where on the joined table silently switches to eager_load (one big LEFT OUTER JOIN). Use references(:posts) or split the query explicitly to make the join type visible.</reason>
+      </antipattern>
+    </section>
+
+    <section name="model-scopes-callbacks">
+      <rule testable="true">
+        <statement>Eager-load at the controller boundary, never in views. A view triggering a query is invisible in code review.</statement>
+        <rationale>View-triggered queries are rendered as template output, not as SQL log entries in the request cycle that code reviewers check. Eager loading in controllers makes query cost reviewable.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Avoid default_scope; use named scopes (scope :active) and force callers to opt in.</statement>
+        <rationale>A default_scope { where(deleted_at: nil) } is invisible at every call site. Agents debugging "missing data" rarely think to call withoutGlobalScopes — it costs an hour per incident.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use find_each / in_batches for any loop over 1k+ records; never User.all.each.</statement>
+        <rationale>User.all.each loads the entire result set into memory. find_each streams in batches of 1000, keeping memory constant.</rationale>
+      </rule>
+
+      <example type="good" title="Model with named scopes and proper callbacks">
+        <code lang="ruby"><![CDATA[
+class User < ApplicationRecord
+  has_one  :profile, dependent: :destroy
+  has_many :orders, dependent: :nullify
+  has_many :roles, through: :user_roles
+
+  validates :email, presence: true, uniqueness: { case_sensitive: false }
+  validates :name,  presence: true, length: { minimum: 2, maximum: 100 }
+
+  # Named scopes — callers opt in
+  scope :active,  -> { where(active: true) }
+  scope :admins,  -> { joins(:roles).where(roles: { name: 'admin' }) }
+  scope :recent,  -> { where('created_at > ?', 30.days.ago) }
+
+  before_validation :normalize_email
+  after_create_commit :send_welcome_email
+
+  private
+
+  def normalize_email
+    self.email = email&.downcase&.strip
+  end
+
+  def send_welcome_email
+    UserMailer.welcome(self).deliver_later
+  end
+end
+        ]]></code>
+      </example>
+
+      <antipattern>
+        <description>update_all used on audited or paper-trailed models.</description>
+        <reason>update_all bypasses callbacks silently — counter_cache, paper_trail, and audit logs break without any error. Use update! per record or explicitly disable callbacks with a comment explaining why.</reason>
+      </antipattern>
+    </section>
+
+    <section name="mandatory-rules">
+      <p>Concrete rules for ActiveRecord safety that prevent common regressions:</p>
+      <list>
+        <item>Indexes for every where and order_by column; verify with lol_dba:missing_indexes after every migration.</item>
+        <item>counter_cache: true + touch: true on belongs_to; otherwise parent caches go stale.</item>
+        <item>Keep callbacks idempotent — after_create_commit may fire twice in edge cases.</item>
+        <item>pluck(:id) instead of map(&amp;:id) — 100x faster at scale; lint via Rubocop Rails/Pluck.</item>
+        <item>Test scopes in isolation: RSpec.describe '.active' block; never only via the controller.</item>
+        <item>Force Postgres in CI from day 1; test DB != prod DB (JSON, full-text, case sensitivity).</item>
+        <item>scope only for parameterless or primitive queries. Anything taking a model/relation goes into a Query Object.</item>
+        <item>Counter caches with counter_cache: true + touch: true. Otherwise list endpoints recount every render.</item>
+        <item>includes for read paths; joins for filter-only paths (where you don't need the joined object). Document the choice in a comment.</item>
+        <item>Avoid update_all on audited or paper-trailed models. Use update! per record or temporarily disable callbacks explicitly.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Hidden default_scope causes missing rows; agent writes User.where(...) and gets fewer results than expected.</description>
+        <reason>Force agents to grep for default_scope before any query change. Agents debugging "missing data" rarely reach for withoutGlobalScopes.</reason>
+      </antipattern>
+      <antipattern>
+        <description>save vs save! — agent uses save and does not check return; record silently fails validation.</description>
+        <reason>Standardize on save! + rescue at the boundary, or always check .persisted? after save.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Memoization on a relation: @users ||= User.where(...) returns a relation that re-queries on each .each.</description>
+        <reason>Memoize .to_a not the relation; otherwise memoization has no effect.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Strong migrations bypass: add_index :users, :email blocks writes for minutes on large tables.</description>
+        <reason>Use algorithm: :concurrently and disable_ddl_transaction! — strong_migrations gem enforces this in development.</reason>
+      </antipattern>
+      <antipattern>
+        <description>first without order is non-deterministic in Postgres under concurrent inserts.</description>
+        <reason>Always specify an explicit order: User.order(:created_at).first — or use find(id) when you have the ID.</reason>
+      </antipattern>
+      <antipattern>
+        <description>N+1 by default. Lazy associations are AR's killer trap. Without includes / preload / eager_load, agents copy patterns straight into prod regressions.</description>
+        <reason>Use Bullet and Prosopite gems to gate N+1 detections in CI. Run every test with both enabled.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Callback chains explode. before_save → after_commit → after_create_commit-driven logic re-fires on tests, on fixture loads, and at the wrong transactional boundary.</description>
+        <reason>Keep callbacks simple and idempotent. Test callbacks separately in isolation. Use after_create_commit not after_create for email/notification side effects.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Caching invalidation gaps. AR cache_key_with_version invalidates on updated_at; agents forget touch: true on belongs_to, parent caches go stale.</description>
+        <reason>Always add touch: true on belongs_to associations that have counter_cache. Test cache behavior explicitly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Query object growing into a god class. Agent adds a method per use case; the query object grows to 30 methods covering one-off filters.</description>
+        <reason>Cap at ~10 chainable methods; if more needed, split by use case into multiple query objects. Review query objects for single responsibility.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Polymorphic belongs_to typos. Wrong as: argument silently writes wrong type strings; integrity is not enforced.</description>
+        <reason>Add a before_validation to enforce the type from a constant list. Test polymorphic associations in specs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Test DB ≠ prod DB. Agents test on sqlite, ship to Postgres; case sensitivity, JSON column behavior, and array types diverge.</description>
+        <reason>Force Postgres in CI from day 1. Run migrations in CI and on a real Postgres instance before merging.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Schema drift across branches. Two agents add migrations with the same timestamp on parallel branches; merge produces non-deterministic order.</description>
+        <reason>Use bin/rails db:migrate:status in CI to catch timestamp collisions. Enforce migration naming to prevent conflicts.</reason>
+      </antipattern>
+      <antipattern>
+        <description>destroy cascade through dependent: :destroy can fan out to thousands of records.</description>
+        <reason>Force agents to find_each + explicit destroy when chains are deep, or switch to soft delete + background cleanup job.</reason>
+      </antipattern>
+    </section>
+
+    <section name="tools-and-services">
+      <p>CLI tools for working with ActiveRecord:</p>
+      <list>
+        <item>rails generate model / rails db:migrate: Scaffold + migrate (bundled with Rails).</item>
+        <item>bin/rails console: Headless REPL for relation testing (bundled).</item>
+        <item>bullet: N+1 + unused eager-load detector (gem 'bullet').</item>
+        <item>prosopite: Newer N+1 detector, lower noise than Bullet (gem 'prosopite').</item>
+        <item>rails-erd: Generate ERD diagrams from schema (gem 'rails-erd').</item>
+        <item>strong_migrations: Block dangerous migrations (gem 'strong_migrations').</item>
+        <item>rubocop-rails / rubocop-rspec: Style + lint, runs in pre-commit (gem 'rubocop-rails').</item>
+        <item>bundle exec rake db:rollback: Reversibility check before commit (bundled).</item>
+        <item>lol_dba: Find missing indexes (gem 'lol_dba').</item>
+        <item>pg_query / EXPLAIN ANALYZE: Query plan inspection (Postgres builtins).</item>
+      </list>
+      <p>SaaS and OSS services that work with ActiveRecord:</p>
+      <list>
+        <item>Heroku Postgres / RDS / Neon: Managed Postgres with API support (agent-friendly).</item>
+        <item>Skylight / Scout APM / NewRelic: SaaS APM with per-AR-query timing (agent-friendly).</item>
+        <item>Sentry: SaaS error tracking; catches ActiveRecord::* exceptions (agent-friendly).</item>
+        <item>pgHero: OSS Postgres dashboard; slow queries, unused indexes (agent-friendly).</item>
+        <item>ActiveRecord-Reset: Helper for test isolation around default_scope (OSS).</item>
+        <item>Trailblazer: Operation/Query objects upgrade path (OSS).</item>
+        <item>dry-rb (dry-validation, dry-monads): Query object inputs validated; results as monads (OSS).</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive AR work as a multi-stage pipeline:</p>
+      <list>
+        <item>(1) A planner subagent reads app/models/*.rb and db/schema.rb and emits target query/scope changes.</item>
+        <item>(2) A code-writer subagent generates model + scopes + query object + RSpec specs in one pass.</item>
+        <item>(3) A perf subagent runs the test suite under bullet and prosopite and fails on any detection.</item>
+        <item>(4) A migration subagent generates indexes for new where-columns and verifies via EXPLAIN.</item>
+      </list>
+      <p>Persist changes as app/models/*.rb + app/queries/*.rb + db/migrate/*.rb; agents must touch all three or schema drifts.</p>
+      <p>Recommended prompt patterns for subagents:</p>
+      <code lang="text"><![CDATA[
+You are a Rails 7.1 backend engineer. Move all `User.where(...)` chains in app/controllers/admin/users_controller.rb into a UsersQuery class under app/queries/. Output: query class, model scopes for primitives (active, search), updated controller. Keep each method ≤8 lines. Run: bundle exec rspec spec/queries/.
+      ]]></code>
+      <code lang="text"><![CDATA[
+Run `BULLET=true bundle exec rspec`. For each Bullet warning, report: spec file, model, association, and propose `.includes(...)` on the relevant query. Do not modify specs; only modify controllers, queries, or models. Re-run until zero warnings.
+      ]]></code>
+    </section>
+
+    <templates>
+      <template path="templates/ar-budget.sh" purpose="CI gate: fail on N+1 (Bullet/Prosopite) and per-spec query budget."/>
+    </templates>
+
+    <see-also>
+      <link href="https://guides.rubyonrails.org/active_record_querying.html"/>
+      <link href="https://guides.rubyonrails.org/active_record_callbacks.html"/>
+      <link href="https://github.com/flyerhzm/bullet"/>
+      <link href="https://github.com/charkost/prosopite"/>
+      <link href="https://github.com/ankane/strong_migrations"/>
+      <link href="https://github.com/amatsuda/kaminari"/>
+      <link href="https://thoughtbot.com/blog"/>
+    </see-also>
+  </content>
+</methodology>
