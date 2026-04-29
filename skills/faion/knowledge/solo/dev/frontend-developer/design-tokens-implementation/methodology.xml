@@ -1,0 +1,432 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="design-tokens-implementation">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>frontend-developer</domain>
+    <summary>Build a token pipeline from JSON source to CSS, JS, iOS, Android. Style Dictionary compiles primitives, semantics, modes to platform artifacts. Mode switching resolves at build time.</summary>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <tags>
+      <tag>design-tokens</tag>
+      <tag>style-dictionary</tag>
+      <tag>token-pipeline</tag>
+      <tag>theming</tag>
+      <tag>multi-platform</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>json</language>
+      <language>typescript</language>
+      <language>css</language>
+      <language>javascript</language>
+    </languages>
+    <related>
+      <ref slug="design-tokens-basics"/>
+      <ref slug="css-in-js-basics"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Design Tokens Implementation</title>
+
+    <summary>Design tokens form a three-layer hierarchy — primitives (raw hex/rem), semantic (bg.surface.default), and component (button.primary.bg) — built from JSON/DTCG sources and compiled to CSS custom properties, TypeScript, iOS Swift, and Android XML via Style Dictionary or Terrazzo. App code consumes only the semantic and component layers. Mode switching (light/dark/high-contrast) lives in separate mode files per mode; the semantic alias layer resolves at build time. Without a token pipeline, color and spacing scatter across component files and become impossible to theme, migrate, or verify for WCAG contrast.</summary>
+
+    <why>
+      <p>Without tokens, design decisions scatter across component files as hardcoded hex values and magic numbers. When a color or spacing value needs to change, the developer must hunt through dozens or hundreds of files. When adding dark mode or white-label theming, every component needs conditional logic — if (theme === 'dark') then useColor('...') else useColor('...'). This is expensive, error-prone, and creates maintenance debt.</p>
+      <p>A token pipeline separates what a value is (primitive) from what it means (semantic) and where it applies (component). Build-time mode resolution removes runtime overhead. One JSON source compiles to CSS custom properties for web, JavaScript modules for React, Swift for iOS, and XML for Android. A single primitive color change propagates through all semantic aliases to all outputs in all modes, instantly.</p>
+      <p>Token pipelines also enable automated contract validation. JSON schema checks catch broken alias references before they produce cryptic build errors. Contrast-ratio validation in CI prevents dark mode from accidentally failing WCAG AA. Semantic naming enforces intent, making later migrations and rebrand work O(1) instead of O(N).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Multi-platform product (web + iOS + Android) needing a single source of truth for color, typography, and spacing.</item>
+        <item>Migrating ad-hoc CSS variables or Sass $color-* maps to a centralized pipeline.</item>
+        <item>Wiring Tailwind theme, CSS custom properties, and native platform outputs from one JSON source without duplication.</item>
+        <item>Light/dark/high-contrast/brand modes via a semantic alias layer that switches at build time.</item>
+        <item>Connecting Figma Variables → Tokens Studio → Style Dictionary → app codegen for design-to-dev automation.</item>
+        <item>Teams that need auditable token changes (git diff on JSON before and after rebuilds).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-app, single-platform project with stable styling — over-engineering for solos. Use Tailwind config or CSS custom properties directly.</item>
+        <item>Prototype/MVP where design churn outpaces token churn — the abstraction adds overhead without payoff.</item>
+        <item>Static marketing sites with no design system to maintain — direct CSS suffices.</item>
+        <item>When the organization will never use more than one platform or theme variant.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="three-layer-hierarchy">
+      <p>A token pipeline has three mandatory layers: primitives (raw hex/rem values), semantics (intent-named aliases like bg.surface.default), and components (component-scoped like button.primary.bg). App code must consume only semantic and component layers. Never expose primitives to component code; always alias through the semantic layer.</p>
+
+      <rule testable="true">
+        <statement>Organise tokens in three layers: primitives (raw hex/rem values), semantic (intent-named aliases like bg.surface.default), and component (component-scoped like button.primary.bg). App code must consume only semantic and component layers.</statement>
+        <rationale>Consuming primitives directly couples components to raw values. When a brand color changes, only the primitive file and semantic aliases need updating — not every component. The semantic layer is the public contract between design and code.</rationale>
+      </rule>
+
+      <p>Each layer serves a purpose:</p>
+      <list>
+        <item>Primitives: raw hex/rem values. Names describe what they are (color.gray.50 = #f9fafb). Change only when rebranding.</item>
+        <item>Semantic: purpose aliases (color.bg.primary, color.text.secondary). Names describe intent. References primitives by alias. This is what components consume. Mode switching happens here.</item>
+        <item>Component: component-scoped overrides (button.bg.primary, card.padding). Names describe the slot. References semantic by alias. Rarely needed; most state lives in semantic layer.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Never expose primitive tokens to app code. Components must reference semantic and component tokens only.</statement>
+        <rationale>Primitive tokens are implementation details. Semantic tokens are the public contract. Separating them enables rebrand work and mode switching without rewriting components.</rationale>
+      </rule>
+    </section>
+
+    <section name="mode-files">
+      <p>Each mode (light, dark, high-contrast, brand) lives in a separate token file (tokens/modes/light.json, dark.json, high-contrast.json). Never inline multi-mode values as {light: ..., dark: ...} inside a single token entry. Inlined modes drift: updating one side silently breaks the other's contrast pair or visual balance.</p>
+
+      <rule testable="true">
+        <statement>Store each mode (light, dark, high-contrast, brand) in a separate file (tokens/modes/light.json, dark.json). Never inline multi-mode values as {light: ..., dark: ...} inside a single token entry.</statement>
+        <rationale>Inlined modes drift: updating one side silently breaks the other's contrast pair. Separate files make mode changes auditable in PR diffs. Style Dictionary builds each mode into a separate CSS selector or JS export.</rationale>
+      </rule>
+
+      <example type="good" title="Separate light and dark mode files">
+        <code lang="json"><![CDATA[
+// tokens/modes/light.json
+{
+  "color": {
+    "bg": { "primary": { "value": "#ffffff" } },
+    "text": { "primary": { "value": "#111827" } }
+  }
+}
+
+// tokens/modes/dark.json
+{
+  "color": {
+    "bg": { "primary": { "value": "#111827" } },
+    "text": { "primary": { "value": "#f9fafb" } }
+  }
+}
+        ]]></code>
+        <note>Each mode is complete and self-contained. Style Dictionary builds light mode to :root and dark mode to [data-theme="dark"].</note>
+      </example>
+
+      <antipattern>
+        <description>Inlining modes inside a single token entry: {"color.bg.primary": { "light": "#fff", "dark": "#111" }}.</description>
+        <reason>Inlined modes drift: updating dark without light breaks contrast. No audit trail in git diff. Runtime mode switching requires conditional logic in components.</reason>
+      </antipattern>
+    </section>
+
+    <section name="generated-artifacts">
+      <p>CSS, JavaScript, iOS Swift, and Android XML outputs are generated from JSON sources via Style Dictionary or Terrazzo. Generated artifacts must live in dist/ and be listed in .gitignore (unless the package is the published artifact itself, e.g., @company/design-tokens npm package). Never hand-edit generated files; rebuild in CI and commit JSON sources only.</p>
+
+      <rule testable="true">
+        <statement>Generated files (CSS, JS, XML, Swift) must be in dist/ and listed in .gitignore unless this package IS the published artifact. Rebuild in CI; never hand-edit generated outputs.</statement>
+        <rationale>Agents that commit generated CSS alongside source JSON create dirty repo state on the next build. The source of truth is the JSON; outputs are artifacts. CI should be the only place that builds.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For packages published to npm (e.g., @company/design-tokens), commit the dist/ folder so consumers get built artifacts. For internal monorepo usage, add dist/ to .gitignore.</statement>
+        <rationale>npm packages ship artifacts; internal monorepos rebuild per project. Make this distinction explicit in your repo's README.</rationale>
+      </rule>
+
+      <note>Add a .gitignore rule for dist/ or commit it deliberately. Ambiguity causes confusion: is the CSS source or generated?</note>
+    </section>
+
+    <section name="validation">
+      <p>Token JSON must be validated against a schema in CI before running the build. Catch broken alias references ({color.brand.500} that don't exist) before they produce cryptic build errors or silent output loss. A JSON schema check fails fast with a readable error message.</p>
+
+      <rule testable="true">
+        <statement>Validate token JSON against a schema in CI before running the build. Catch broken alias references ({color.brand.500} cycles) before they produce cryptic build errors.</statement>
+        <rationale>Style Dictionary silently drops or errors on unresolvable references. A JSON schema check fails fast with a readable message. Catch the error early.</rationale>
+      </rule>
+
+      <checklist>
+        <check>JSON schema enforces {$value, $type, $description} for W3C DTCG tokens.</check>
+        <check>Alias references are validated: {color.primary.500} must resolve to a real primitive token.</check>
+        <check>No circular aliases (color.action.primary → color.primary → color.action.primary).</check>
+        <check>Mode files are complete: if light has color.bg.primary, dark must too.</check>
+        <check>Token names follow naming rules: category.role.state for semantics, category.value for primitives.</check>
+      </checklist>
+    </section>
+
+    <section name="dtcg-vs-tokens-studio">
+      <p>The W3C Design Tokens Format Module (DTCG) uses $value and $type prefixes. Tokens Studio for Figma uses value and type (no $ prefix) and exports in its own format. If using Tokens Studio, add @tokens-studio/sd-transforms to the Style Dictionary pipeline; without it, the build silently drops styles and produces empty CSS.</p>
+
+      <rule testable="true">
+        <statement>For new projects, use the W3C DTCG format ($value, $type). For Tokens Studio exports, add @tokens-studio/sd-transforms to the Style Dictionary pipeline; without it, the build silently drops styles.</statement>
+        <rationale>Tokens Studio uses value and type (no $ prefix). Missing the transform adapter produces empty CSS with no error. The $ prefix is the W3C standard and ensures future tool compatibility.</rationale>
+      </rule>
+
+      <note>If migrating from Tokens Studio to code-first DTCG, the transforms bridge is not needed. Standard DTCG tokens work with Style Dictionary v3+ directly.</note>
+    </section>
+
+    <section name="style-dictionary-version">
+      <p>Style Dictionary has two major versions with incompatible APIs. v3 uses formatter: function({dictionary, file}); v4 uses format: ({dictionary, options}) => string. Agents trained on v3 examples emit broken v4 configs. Do not mix APIs.</p>
+
+      <rule testable="true">
+        <statement>Pin the Style Dictionary major version explicitly. v3 uses formatter: function({dictionary, file}); v4 uses format: ({dictionary, options}) => string. Do not mix APIs.</statement>
+        <rationale>The API breaking change between v3 and v4 is silent. Agents trained on v3 examples emit broken v4 configs that fail at build time. Pinning the version prevents accidental upgrade breakage.</rationale>
+      </rule>
+
+      <example type="good" title="Style Dictionary v3 formatter function">
+        <code lang="javascript"><![CDATA[
+// config for v3
+formatter: function({dictionary, file}) {
+  return dictionary.allProperties
+    .map(token => `--${token.name}: ${token.value};`)
+    .join('\n');
+}
+        ]]></code>
+        <note>v3 injects {dictionary, file} into the formatter function.</note>
+      </example>
+
+      <example type="bad" title="v4 format function in v3 config">
+        <code lang="javascript"><![CDATA[
+// BROKEN in v3
+format: ({dictionary, options}) => {
+  return dictionary.allProperties.map(...);
+}
+        ]]></code>
+        <note>This is v4 syntax and will fail silently or with cryptic errors in v3.</note>
+      </example>
+
+      <reference path="templates/style-dictionary.config.js">Style Dictionary v3 config emitting CSS, SCSS, JS, TS outputs.</reference>
+    </section>
+
+    <section name="css-custom-properties-output">
+      <p>CSS custom properties (CSS variables) are the primary output for web apps. Style Dictionary compiles semantic tokens to :root and mode-specific selectors like [data-theme="dark"]. App CSS then consumes variables: color: var(--color-text-primary).</p>
+
+      <example type="good" title="CSS custom properties output">
+        <code lang="css"><![CDATA[
+/* dist/css/variables.css — generated, do not edit */
+:root {
+  /* Primitives */
+  --color-gray-50: #f9fafb;
+  --color-gray-900: #111827;
+  --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+
+  /* Semantic — light theme */
+  --color-bg-primary: #ffffff;
+  --color-text-primary: #111827;
+  --color-action-primary: #2563eb;
+  --color-status-error: #dc2626;
+  --spacing-4: 1rem;
+  --radius-md: 0.375rem;
+}
+
+[data-theme="dark"] {
+  /* Semantic — dark theme */
+  --color-bg-primary: #111827;
+  --color-text-primary: #f9fafb;
+  --color-action-primary: #3b82f6;
+  --color-status-error: #fca5a5;
+}
+        ]]></code>
+        <note>Primitives are optional in CSS output; many teams omit them. The key is semantic tokens are available in both :root (light) and [data-theme="dark"] (dark).</note>
+      </example>
+
+      <rule testable="true">
+        <statement>CSS custom properties output must include all semantic tokens at :root and all mode-specific overrides at [data-theme="..."] selectors.</statement>
+        <rationale>Web apps toggle [data-theme] attribute to switch modes. CSS custom properties cascade, so dark mode only needs to override changed variables; light values from :root carry over.</rationale>
+      </rule>
+    </section>
+
+    <section name="tailwind-integration">
+      <p>Tailwind expects a flat config: {colors: {'action-primary': '#2563eb'}}. Style Dictionary outputs nested JS objects by default. A flatten helper transforms the nested structure to Tailwind's flat shape before loading into the config.</p>
+
+      <example type="good" title="Tailwind integration with flattening">
+        <code lang="javascript"><![CDATA[
+// tailwind.config.js — reads from generated JS tokens
+const tokens = require('./dist/js/tokens');
+
+function flattenTokens(obj, prefix = '') {
+  return Object.entries(obj).reduce((acc, [key, value]) => {
+    const newKey = prefix ? `${prefix}-${key}` : key;
+    if (typeof value === 'object' && value !== null && !value.value) {
+      return { ...acc, ...flattenTokens(value, newKey) };
+    }
+    return { ...acc, [newKey]: value.value ?? value };
+  }, {});
+}
+
+module.exports = {
+  theme: {
+    colors: flattenTokens(tokens.color),
+    spacing: flattenTokens(tokens.spacing),
+    borderRadius: flattenTokens(tokens.borderRadius),
+  },
+};
+        ]]></code>
+        <note>The flatten function turns {color: {action: {primary: {value: '#2563eb'}}}} into {color-action-primary: '#2563eb'} for Tailwind.</note>
+      </example>
+
+      <rule testable="true">
+        <statement>Generate Style Dictionary JS output in nested form, then flatten before loading into tailwind.config.js. Do not generate flat output directly; the nested form is reusable across platforms.</statement>
+        <rationale>Nested output is platform-agnostic. Flattening at the point of consumption (Tailwind config) keeps the token source versatile.</rationale>
+      </rule>
+    </section>
+
+    <section name="figma-sync-ci">
+      <p>Many teams use Tokens Studio for Figma with GitHub sync. The workflow is: designers edit tokens in Figma, GitHub sync creates a branch with updated tokens.json, CI runs Style Dictionary build and creates a PR with generated CSS/JS, and the team reviews both the JSON diff and the build artifacts before merging.</p>
+
+      <example type="good" title="GitHub Actions workflow for Figma token sync">
+        <code lang="yaml"><![CDATA[
+name: Sync Figma Tokens
+on:
+  pull_request:
+    paths:
+      - 'tokens/**/*.json'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+      - uses: actions/setup-node@v4
+        with: { node-version: '18' }
+      - run: pnpm install
+      - run: pnpm run build:tokens
+      - uses: actions/upload-artifact@v4
+        with:
+          name: built-tokens
+          path: dist/
+      - run: git diff --exit-code dist/  # Fail if dist/ changed without rebuild
+        ]]></code>
+        <note>This workflow validates that the JSON → CSS/JS build is deterministic and artifacts are rebuilt from sources, not committed directly.</note>
+      </example>
+
+      <reference path="templates/sync-tokens.yml">GitHub Actions workflow syncing Figma tokens.</reference>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Large language models frequently make mistakes with token pipelines. Common errors include flattening the hierarchy "for simplicity", committing generated CSS, forgetting to test dark mode contrast, and copying deprecated Style Dictionary v2 examples.</p>
+
+      <antipattern>
+        <description>Agents flatten the primitive→semantic→component hierarchy "for simplicity", removing the alias layer.</description>
+        <reason>Without aliases, mode switching requires editing every component file instead of one semantic token file. The entire point of the pipeline is lost.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents commit generated CSS into the same repo as sources.</description>
+        <reason>On the next CI run the generated file matches HEAD and the repo is dirty. The build is non-deterministic. Add dist/ to .gitignore and always commit JSON only.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent updates dark mode tokens but forgets the light mode pair, breaking contrast ratio.</description>
+        <reason>Pair every mode change with an a11y check (axe, jest-dom). WCAG failures on one theme are invisible until tested. Require agents to test both modes.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents copy Style Dictionary v2 examples (transformGroup, .buildAllPlatforms()) into v3 configs.</description>
+        <reason>v2 and v3 have incompatible APIs. v2 examples fail silently or with cryptic errors. Require agents to read Style Dictionary v3 docs.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents generate output in both CSS and JavaScript but forget to update the Tailwind config to use the JS output.</description>
+        <reason>Duplicated token definitions in Tailwind config and CSS variables cause divergence. Always consume from one output (usually JS for Tailwind, CSS for app HTML).</reason>
+      </antipattern>
+    </section>
+
+    <section name="recommended-subagents">
+      <list>
+        <item>faion-feature-executor — set up the token pipeline: create JSON structure, Style Dictionary config, build script, and test outputs.</item>
+        <item>faion-sdd-executor-agent — when building from scratch, the architecture/design cycle is significant; use a full SDD executor.</item>
+      </list>
+    </section>
+
+    <section name="build-script-example">
+      <p>A minimal build script for Style Dictionary:</p>
+
+      <example type="good" title="Style Dictionary build script">
+        <code lang="javascript"><![CDATA[
+// build-tokens.mjs
+import StyleDictionary from 'style-dictionary';
+
+const config = {
+  source: ['tokens/**/*.json'],
+  platforms: {
+    css: {
+      transformGroup: 'css',
+      buildPath: 'dist/css/',
+      files: [
+        {
+          destination: 'variables.css',
+          format: 'css/variables',
+        },
+      ],
+    },
+    js: {
+      transformGroup: 'js',
+      buildPath: 'dist/js/',
+      files: [
+        {
+          destination: 'tokens.js',
+          format: 'javascript/es6',
+        },
+      ],
+    },
+  },
+};
+
+const sd = new StyleDictionary.default(config);
+sd.buildAllPlatforms();
+console.log('Tokens built successfully');
+        ]]></code>
+        <note>This config reads all JSON files from tokens/, builds CSS custom properties, and outputs JS modules.</note>
+      </example>
+
+      <reference path="templates/style-dictionary.config.js">Full Style Dictionary v3 config with multiple platforms.</reference>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Three layers only. Primitives are implementation details. Semantics are the public contract. Components are scoped tweaks.</item>
+        <item>Mode files are separate. Never inline {light: ..., dark: ...}. Separate files are auditable, validatable, and complete.</item>
+        <item>Generated artifacts go in dist/ and are not committed (unless the package is the published artifact).</item>
+        <item>Validate token JSON in CI before building. Catch broken aliases, naming violations, and incomplete modes.</item>
+        <item>Always test dark mode output with a contrast checker. WCAG AA/AAA is a requirement, not a suggestion.</item>
+        <item>Pin the Style Dictionary major version. v3 and v4 have incompatible APIs; mixing them produces silent failures.</item>
+        <item>For Figma sync, use Tokens Studio GitHub integration. CI validates the JSON, builds outputs, and creates a PR for review.</item>
+        <item>Flatten tokens only at the point of consumption (Tailwind config, React context). Keep the token source nested and versatile.</item>
+        <item>Document the token schema (JSON structure, naming rules, required fields) in the README. Agents need the spec to generate correctly.</item>
+      </list>
+    </section>
+
+    <section name="output-platforms">
+      <p>Style Dictionary and Terrazzo support multiple output platforms. Common outputs include CSS custom properties, JavaScript modules, Tailwind config, iOS Swift, Android XML, and JSON. Each platform has a specific format that agents must understand.</p>
+
+      <rule testable="true">
+        <statement>Configure at least two outputs: CSS for web and JS for tooling/Tailwind. iOS/Android outputs are optional but valuable for multi-platform products.</statement>
+        <rationale>CSS custom properties are the standard for web. JavaScript modules are needed for Tailwind and runtime consumption in JS. Native platform outputs keep mobile teams in sync with web design.</rationale>
+      </rule>
+
+      <list>
+        <item>CSS: --color-text-primary: #111827; consumed in HTML/CSS</item>
+        <item>JavaScript: {color: {text: {primary: '#111827'}}} consumed in Node/Tailwind</item>
+        <item>Tailwind: {colors: {'text-primary': '#111827'}} flat structure in tailwind.config.js</item>
+        <item>iOS Swift: let primaryText = Color(#111827) in .swift files</item>
+        <item>Android XML: &lt;color name="text_primary"&gt;#111827&lt;/color&gt; in res/values/colors.xml</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/style-dictionary.config.js" purpose="Style Dictionary v3 config emitting CSS, SCSS, JS, TS outputs. Configurable for multiple platforms."/>
+      <template path="templates/tokens-semantic.json" purpose="Semantic token layer example with alias references and $description fields."/>
+      <template path="templates/sync-tokens.yml" purpose="GitHub Actions workflow: detect tokens/ changes, build artifacts, create PR for review."/>
+    </templates>
+
+    <see-also>
+      <link href="https://styledictionary.com/"/>
+      <link href="https://styledictionary.com/latest/getting-started/"/>
+      <link href="https://styledictionary.com/latest/formats/"/>
+      <link href="https://terrazzo.app"/>
+      <link href="https://design-tokens.github.io/community-group/format/"/>
+      <link href="https://tokens.studio"/>
+      <link href="https://www.w3.org/community/design-tokens/"/>
+      <ref slug="design-tokens-basics"/>
+      <ref slug="css-in-js-basics"/>
+      <ref slug="tailwind-css-patterns"/>
+    </see-also>
+  </content>
+</methodology>

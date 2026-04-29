@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="nextjs-app-router">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>javascript-developer</domain>
+    <summary>App Router file-based routing on Server Components. Direct DB access in pages; Server Actions replace API routes. Explicit 'use client' for interactivity.</summary>
+    <tags>
+      <tag>nextjs</tag>
+      <tag>react</tag>
+      <tag>server-components</tag>
+      <tag>routing</tag>
+      <tag>app-router</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-24</created>
+    <frameworks>
+      <framework>nextjs</framework>
+      <framework>react</framework>
+    </frameworks>
+    <languages>
+      <language>typescript</language>
+      <language>javascript</language>
+    </languages>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+  <content>
+    <title>Next.js App Router</title>
+    <summary>The App Router is the file-system routing model introduced in Next.js 13, built on React Server Components. Every file under app/ is a Server Component by default; client interactivity requires an explicit 'use client' directive. Pages, layouts, loading skeletons, and error boundaries are separate colocated files (page.tsx, layout.tsx, loading.tsx, error.tsx). Data fetching happens directly in Server Components via async/await.</summary>
+    <why>
+      <p>Server Components eliminate unnecessary client JS: the component renders on the server, sends HTML, and ships zero React hydration cost unless the component needs interactivity. Colocation of loading.tsx and error.tsx enables per-segment streaming and error isolation without global state. Server Actions replace the POST API route pattern for form submissions, keeping validation and DB writes server-side with automatic revalidation.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Starting a new Next.js 13+ project from scratch</item>
+        <item>Converting Pages Router routes to App Router (layout nesting, loading.tsx, error.tsx)</item>
+        <item>Generating Server Actions for forms that currently use client-side fetch + API routes</item>
+        <item>Setting up route groups (group), parallel routes @slot, or intercepted routes for modal patterns</item>
+        <item>Adding per-page streaming with Suspense and skeleton loading states</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Projects already on Pages Router with no planned migration — mixing routers in one app is supported but creates cognitive overhead</item>
+        <item>Applications with heavy client-side state that re-renders on every user action (complex canvas editors) — Server Components add serialization overhead with no render benefit</item>
+        <item>REST API backends that use Next.js only for API routes — a dedicated Express/Fastify service is simpler</item>
+        <item>Middleware that needs full Node.js API surface — middleware runs on Edge runtime, not Node.js</item>
+      </list>
+    </when-not-to-use>
+    <section name="App Router file conventions and project layout">
+      <rule>
+        <statement>Place exactly one file per reserved name per route segment: page.tsx (route UI), layout.tsx (persistent shell), loading.tsx (streaming skeleton), error.tsx (error boundary, must be 'use client'), not-found.tsx (404), global-error.tsx (root error boundary).</statement>
+        <rationale>Missing loading.tsx causes the entire layout tree to block on navigation. Missing error.tsx lets exceptions bubble to the nearest parent boundary.</rationale>
+      </rule>
+      <rule>
+        <statement>Wrap a folder in parentheses — (group-name) — to share a layout without adding a URL segment.</statement>
+        <rationale>Avoids duplicating providers (auth wrappers, theme) across logically separate sections like (auth) and (marketing).</rationale>
+      </rule>
+      <example type="good" title="Route Groups Without URL Nesting">
+        <code lang="text"><![CDATA[
+app/
+├── (marketing)/
+│   ├── layout.tsx      # marketing layout, no /marketing in URL
+│   ├── about/page.tsx  # /about
+│   └── contact/page.tsx # /contact
+├── (auth)/
+│   ├── layout.tsx      # centered auth layout
+│   ├── login/page.tsx  # /login
+│   └── register/page.tsx # /register
+└── dashboard/
+    ├── layout.tsx
+    └── page.tsx        # /dashboard
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Name dynamic folders with square brackets: [id]. Access the segment value via the params prop. In Next.js 15 params is a Promise — always await it.</statement>
+        <rationale>Next.js 15 made params async; synchronous access (params.id) silently returns undefined in builds targeting the new runtime.</rationale>
+      </rule>
+      <example type="good" title="Dynamic Segment with Async Params (Next.js 15)">
+        <code lang="tsx"><![CDATA[
+// app/users/[id]/page.tsx — Next.js 15 style
+export default async function UserPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const user = await getUser(id);
+  if (!user) notFound();
+  return <div>{user.name}</div>;
+}
+        ]]></code>
+      </example>
+      <example type="bad" title="Synchronous Params Access (Next.js 13/14 — Breaks in 15)">
+        <code lang="tsx"><![CDATA[
+export default async function UserPage({ params }: { params: { id: string } }) {
+  const user = await getUser(params.id); // synchronous access removed in 15
+}
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Use @slot folders for parallel routes (multiple pages in one layout). Use (.)path or (..)path prefixes for intercepted routes (modal patterns that show a page without full navigation).</statement>
+        <rationale>Parallel routes allow dashboards with independent loading states per panel. Intercepted routes enable photo/modal patterns where the URL changes but layout stays.</rationale>
+      </rule>
+      <rule>
+        <statement>Create route.ts (not page.tsx) for API endpoints. Export named HTTP method functions (GET, POST, PUT, DELETE). Only create route.ts for webhooks or third-party integrations — internal data access goes through Server Components or Server Actions.</statement>
+        <rationale>Routing data through an API route from a Server Component adds an unnecessary HTTP round-trip; direct DB access in Server Components is faster and simpler.</rationale>
+      </rule>
+    </section>
+    <section name="Server vs client components and data fetching">
+      <rule>
+        <statement>Do not add 'use client' to a page or layout unless it directly uses hooks, event handlers, or browser APIs. Move the directive to the smallest child component that needs interactivity.</statement>
+        <rationale>Adding 'use client' to a page converts the entire subtree to client-rendered code, eliminating streaming and server data fetching benefits for the whole page.</rationale>
+      </rule>
+      <example type="good" title="Server Component with Client Child">
+        <code lang="tsx"><![CDATA[
+// app/dashboard/page.tsx — Server Component, no directive needed
+import { Suspense } from 'react';
+import { DashboardStats } from '@/components/dashboard/stats';
+import { Counter } from '@/components/counter'; // client component lives inside
+
+export default async function DashboardPage() {
+  const session = await getServerSession();
+  if (!session) redirect('/login');
+
+  return (
+    <div className="container py-8">
+      <Suspense fallback={<div>Loading stats...</div>}>
+        <DashboardStats userId={session.user.id} />
+      </Suspense>
+      <Counter /> {/* 'use client' is in counter.tsx, not here */}
+    </div>
+  );
+}
+        ]]></code>
+      </example>
+      <example type="bad" title="Unnecessary 'use client' on a page">
+        <code lang="tsx"><![CDATA[
+'use client'; // wrong — kills SSR for the entire page
+export default function DashboardPage() {
+  return <div><Counter /></div>;
+}
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Fetch data directly in async Server Components with await. Do not route internal data through an API route. Wrap fetch/DB helper functions with React.cache() to deduplicate identical calls within the same request.</statement>
+        <rationale>Without React.cache(), two Server Components in the same render tree calling getUser(id) with the same argument make two DB round-trips. React.cache() memoizes per-request.</rationale>
+      </rule>
+      <example type="good" title="Deduplicating DB Calls with React.cache()">
+        <code lang="tsx"><![CDATA[
+// lib/queries.ts — deduplicated with React.cache
+import { cache } from 'react';
+import { db } from '@/lib/db';
+
+export const getUser = cache(async (id: string) => {
+  return db.user.findUnique({ where: { id } });
+});
+
+// Server Component — direct DB access
+export async function UserCard({ id }: { id: string }) {
+  const user = await getUser(id); // cached per-request
+  return <div>{user?.name}</div>;
+}
+        ]]></code>
+      </example>
+      <example type="bad" title="Client-Side Data Fetch">
+        <code lang="tsx"><![CDATA[
+'use client';
+export function UserList() {
+  const [users, setUsers] = useState([]);
+  useEffect(() => {
+    fetch('/api/users').then(r => r.json()).then(setUsers);
+  }, []);
+  return <ul>{users.map(u => <li key={u.id}>{u.name}</li>)}</ul>;
+}
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Do not pass fetched data as props through layouts to children. Each Server Component that needs data should fetch it directly.</statement>
+        <rationale>Layouts re-render on every navigation; prop-drilling forces the layout to fetch data it does not own and creates tight coupling between parent and child components.</rationale>
+      </rule>
+      <example type="good" title="Fetching Data Independently in Components">
+        <code lang="tsx"><![CDATA[
+// layout.tsx — no data props, children fetch their own
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return <div><Header />{children}</div>;
+}
+
+// Header fetches session independently
+async function Header() {
+  const session = await getServerSession();
+  return <header>{session?.user.name}</header>;
+}
+        ]]></code>
+      </example>
+    </section>
+    <section name="Server Actions: authoring, validation, and revalidation">
+      <rule>
+        <statement>Place Server Actions in a dedicated actions.ts file colocated with the route (e.g., app/posts/new/actions.ts), not inlined in the page component. Add 'use server' at the top of the file, not per-function.</statement>
+        <rationale>Colocated actions.ts files are easier to test and review. File-level 'use server' marks all exports as server-only without requiring per-function directives.</rationale>
+      </rule>
+      <rule>
+        <statement>Always validate Server Action input with Zod before touching the database. Return { error } on validation failure so the client can display field errors.</statement>
+        <rationale>Server Actions receive FormData which is untyped. Without Zod validation, invalid data reaches the DB silently.</rationale>
+      </rule>
+      <example type="good" title="Server Action with Zod Validation and Revalidation">
+        <code lang="ts"><![CDATA[
+// app/posts/new/actions.ts
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { z } from 'zod';
+import { db } from '@/lib/db';
+
+const CreatePostSchema = z.object({
+  title: z.string().min(1).max(100),
+  content: z.string().min(1),
+});
+
+export async function createPost(formData: FormData) {
+  const parsed = CreatePostSchema.safeParse({
+    title: formData.get('title'),
+    content: formData.get('content'),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.flatten() };
+  }
+
+  const post = await db.post.create({ data: parsed.data });
+
+  revalidatePath('/posts');
+  redirect(`/posts/${post.id}`);
+}
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Do not wrap redirect() or notFound() calls in try/catch. Both functions throw internally to signal navigation; a try/catch block swallows the throw and navigation never happens.</statement>
+        <rationale>redirect() and notFound() use the NEXT_REDIRECT and NEXT_NOT_FOUND throw signals. Catching them silently breaks the navigation flow with no visible error.</rationale>
+      </rule>
+      <example type="bad" title="Wrapping redirect() in try/catch (Breaks Navigation)">
+        <code lang="ts"><![CDATA[
+try {
+  await db.post.create({ data });
+  redirect('/posts'); // WRONG: redirect() throws internally
+} catch (error) {
+  // this catches the redirect throw, navigation never fires
+  return { error: 'Failed' };
+}
+        ]]></code>
+      </example>
+      <example type="good" title="Correct Navigation Pattern">
+        <code lang="ts"><![CDATA[
+// Validate and write first, then redirect outside try/catch
+const post = await db.post.create({ data: parsed.data });
+revalidatePath('/posts');
+redirect(`/posts/${post.id}`); // not wrapped in try/catch
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Do not add 'use server' to functions called directly from Server Components — those are normal async functions with no RPC overhead. Server Actions only provide the RPC transport when called from client event handlers or form actions.</statement>
+        <rationale>Calling a 'use server' function from a Server Component is just a regular await; the 'use server' directive has no effect in that context and misleads readers.</rationale>
+      </rule>
+    </section>
+    <section name="Common App Router antipatterns and agent gotchas">
+      <antipattern>
+        <description>Adding 'use client' to a page or layout that only needs interactivity in one child component.</description>
+        <reason>Converts the entire route segment to client-rendered code, breaking SSR, streaming, and direct DB access for the whole page.</reason>
+      </antipattern>
+      <rule>
+        <statement>Move 'use client' to the smallest child component that actually uses useState, useEffect, event handlers, or browser APIs.</statement>
+        <rationale>Keeps parent pages as Server Components so they can stream, fetch directly from the DB, and ship zero client JS for their own markup.</rationale>
+      </rule>
+      <antipattern>
+        <description>Accessing params.id synchronously in a dynamic page component trained on Next.js 13/14 patterns.</description>
+        <reason>Next.js 15 changed params and searchParams to be Promises. Synchronous access returns undefined at runtime without a visible compile error.</reason>
+      </antipattern>
+      <rule>
+        <statement>Always type params as Promise and await it before accessing fields in Next.js 15+ projects.</statement>
+        <rationale>The async change was introduced to support streaming and partial prerendering; synchronous access is a deprecated behavior.</rationale>
+      </rule>
+      <antipattern>
+        <description>Sending file uploads through a Server Action form.</description>
+        <reason>Server Actions have a 1 MB default payload limit. Files larger than this will silently fail or error at runtime.</reason>
+      </antipattern>
+      <rule>
+        <statement>Use presigned URL upload (e.g., Uploadthing, S3 presigned POST) for file uploads. The Server Action only receives the resulting file URL, not the binary data.</statement>
+        <rationale>Presigned URLs bypass the Server Action payload limit by uploading directly from the browser to storage.</rationale>
+      </rule>
+      <antipattern>
+        <description>Importing Node.js-only modules (e.g., fs, path, crypto) in middleware.ts.</description>
+        <reason>Middleware runs on the Edge runtime which has a limited Node.js API surface. Importing unavailable modules causes silent build failures.</reason>
+      </antipattern>
+      <rule>
+        <statement>Middleware must only use Edge-compatible APIs. Use next-auth/jwt getToken (Edge-compatible) for auth checks; do not import full Node.js auth libraries.</statement>
+        <rationale>Edge runtime is a subset of Node.js APIs. The build may succeed locally with experimental flags but fail in production deployment.</rationale>
+      </rule>
+      <antipattern>
+        <description>Using matcher: ['/'] or matcher: ['/:path*'] in middleware config, intercepting static assets and API routes.</description>
+        <reason>Running middleware on every request including _next/static assets and public files adds latency and can break static asset delivery.</reason>
+      </antipattern>
+      <rule>
+        <statement>Scope middleware matchers to specific path prefixes (e.g., '/dashboard/:path*', '/api/protected/:path*'). Explicitly exclude static assets if using a broad pattern.</statement>
+        <rationale>Middleware runs at the edge on every matched request; broad matchers multiply unnecessary latency.</rationale>
+      </rule>
+    </section>
+    <section name="Agentic Workflow">
+      <p>An agent scaffolds a new page by reading the root app/layout.tsx to understand existing providers and font setup, then generating the page file, a loading skeleton, and an error boundary in the correct directory. For data-fetching pages, the agent determines whether to use a Server Component with direct DB access or a client component with React Query based on interactivity requirements. Server Actions are generated as separate actions.ts files colocated with the route, not inlined in the page.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent (executes multi-step page scaffolding tasks with type-check gates).</p>
+      <p>Prompt pattern: "Generate a Next.js App Router page for route &lt;route-path&gt;. Requirements: Server Component (no 'use client' unless interactive), Auth check using getServerSession, redirect to /login if no session, Suspense boundaries with skeleton loading states, generateMetadata export with page title, Data fetching: read from &lt;data source&gt; directly (no API route needed). Output files: app/&lt;route&gt;/page.tsx, app/&lt;route&gt;/loading.tsx, app/&lt;route&gt;/error.tsx" / "Convert this form from client-side fetch to a Next.js Server Action. Current: POST /api/&lt;endpoint&gt; with JSON body. Target: app/actions.ts with 'use server', Zod validation, revalidatePath, redirect on success. Return { error } object on validation failure so the client can show field errors."</p>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Use React.cache() to deduplicate identical DB calls made in multiple Server Components during the same request — agents must wrap fetch/DB helper functions with it</item>
+        <item>Colocate loading.tsx and error.tsx with every page that fetches data asynchronously; missing loading.tsx causes the entire layout to block during navigation</item>
+        <item>Route groups (group-name) allow multiple layouts without URL nesting; use them to avoid duplicating providers across auth and non-auth sections</item>
+        <item>API routes (route.ts) should only be created for webhook endpoints or third-party integrations; all internal data access goes through Server Components or Server Actions</item>
+        <item>Middleware matcher pattern must be explicit — avoid matcher: '/' patterns that catch static assets and API routes unnecessarily</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://nextjs.org/docs/app"/>
+      <link href="https://nextjs.org/docs/app/building-your-application/rendering/server-components"/>
+      <link href="https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations"/>
+      <link href="https://nextjs.org/learn"/>
+      <link href="https://vercel.com/docs/frameworks/nextjs"/>
+    </see-also>
+    <templates>
+      <template path="templates/root-layout.tsx" purpose="Root app/layout.tsx with metadata, font, and Providers wrapper"/>
+      <template path="templates/dynamic-page.tsx" purpose="Dynamic [id] page with generateStaticParams, generateMetadata, notFound()"/>
+      <template path="templates/server-action.ts" purpose="Server Action with 'use server', Zod validation, revalidatePath, redirect"/>
+      <template path="templates/api-route.ts" purpose="route.ts handler (GET + POST) with auth check and Zod validation"/>
+      <template path="templates/middleware.ts" purpose="Auth middleware with getToken, matcher config, callback URL"/>
+      <template path="templates/prisma-singleton.ts" purpose="Prisma client singleton preventing connection pool exhaustion in dev"/>
+      <template path="templates/prompt-scaffold-page.txt" purpose="Prompt for scaffolding a new App Router page"/>
+      <template path="templates/prompt-convert-action.txt" purpose="Prompt for converting a client-side form to a Server Action"/>
+    </templates>
+  </content>
+</methodology>
