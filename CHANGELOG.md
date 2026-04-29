@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 2/3 geek/ai/ml-engineer methodologies → methodology.xml (eu-ai-act-compliance, gemini-api; feature-045 batch AA)
 - migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (llm-observability-stack, model-evaluation, multi-agent-design-patterns; feature-045 batch AB)
 - migrate: 3/3 geek/ai/llm-integration + geek/ai/ml-engineer methodologies → methodology.xml (semantic-xml-content, ai-governance-compliance, embedding-generation; feature-045 batch Z)
 - migrate: 3/3 geek/ai/claude-code + geek/ai/ai-agents methodologies → methodology.xml (weak-model-preselection, agents, commands; feature-045 batch Y)
