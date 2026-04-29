@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ads-attribution-models">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>ppc-manager</domain>
+    <summary>Use GA4 as unified source of truth for attribution. Compare platform-reported, GA4-modeled, and warehouse-deduped numbers per channel. Flag variances above 15% before budget decisions.</summary>
+    <tags>
+      <tag>attribution</tag>
+      <tag>analytics</tag>
+      <tag>conversion</tag>
+      <tag>multi-touch</tag>
+      <tag>ga4</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Ads Attribution Models</title>
+
+    <summary>Attribution models define how conversion credit is distributed across ad touchpoints in a customer journey. Each platform (Meta, Google, LinkedIn) claims its own conversions using different windows and logic, causing totals to exceed actual sales. Use GA4 as a unified source of truth and compare platform-reported, GA4-modeled, and warehouse-deduped numbers per channel. Flag variances above 15% before making budget decisions.</summary>
+
+    <why>
+      <p>Platform over-attribution leads to misallocated budgets: channels appear more efficient than they are, spending increases on the wrong channels, and ROAS targets are met on paper while revenue stagnates. A warehouse-deduped view with a documented lookback window matched to the sales cycle is the only defensible basis for reallocation. Data-driven attribution (GA4) outperforms last-click for most journeys but requires at least 50 conversions/month per channel to train reliably.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Multi-channel paid programs (2+ platforms) where platform totals do not match the warehouse</item>
+        <item>Setting up GA4 or BigQuery export pipelines that produce reconciled CPA and ROAS per channel</item>
+        <item>Designing and scheduling quarterly geo-holdout (incrementality) tests</item>
+        <item>Auto-generating weekly variance reports (platform vs. GA4 vs. warehouse) for human review</item>
+        <item>Budget reallocation reviews requiring a defensible model</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-channel programs — use the platform default model; cross-channel attribution adds no signal</item>
+        <item>Pre-revenue or fewer than 50 conversions/month — data is too sparse for any model to be reliable</item>
+        <item>Optimizing inside a single platform (bids, ad copy) — use native attribution; switching models mid-flight confuses the bidding algorithm</item>
+        <item>Tactical creative decisions — attribution informs strategy and budget, not which thumbnail to ship</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="attribution-models">
+      <p>Attribution models define how conversion credit is distributed across ad touchpoints in a customer journey.</p>
+
+      <rule>
+        <statement>Select an attribution model based on sales cycle length and available conversion volume, not platform convenience.</statement>
+        <rationale>Each model assigns credit differently and will produce different CPA and ROAS numbers for the same spend. Using the wrong model leads to systematically over- or under-investing in channels.</rationale>
+      </rule>
+
+      <p>Model comparison for a journey: FB click → Google click → Email click → Purchase</p>
+
+      <list>
+        <item>Last-click: FB 0% / Google 0% / Email 100% — conservative, ignores journey</item>
+        <item>First-click: FB 100% / Google 0% / Email 0% — awareness focus only</item>
+        <item>Linear: FB 33% / Google 33% / Email 33% — equal credit across all touches</item>
+        <item>Position-based: FB 40% / Google 20% / Email 40% — weights first and last touch</item>
+        <item>Time-decay: FB 10% / Google 30% / Email 60% — more credit to recent touches</item>
+        <item>Data-driven: ML-based — requires 50+ conversions/channel/month to train reliably</item>
+      </list>
+    </section>
+
+    <section name="platform-defaults">
+      <p>Each platform uses different attribution defaults and lookback windows.</p>
+
+      <rule>
+        <statement>Document the attribution model and lookback window for every platform in use; never assume defaults are consistent across platforms.</statement>
+        <rationale>Each platform uses different defaults: Meta counts 7-day click + 1-day view, Google Ads uses last Google click at 30 days, GA4 uses data-driven at 90 days. Comparing numbers without knowing this is meaningless.</rationale>
+      </rule>
+
+      <list>
+        <item>Meta: 7-day click, 1-day view (view-through counted)</item>
+        <item>Google Ads: last Google click, 30-day window</item>
+        <item>GA4: data-driven, 90-day window</item>
+        <item>LinkedIn: 30-day click, 7-day view (view-through counted)</item>
+      </list>
+    </section>
+
+    <section name="overlap-problem">
+      <p>Cross-channel attribution overlap causes platform totals to exceed actual sales.</p>
+
+      <p>When a user clicks a Meta ad then a Google ad before purchasing, both platforms record the conversion. Platform totals routinely exceed actual sales by 20-40%.</p>
+
+      <antipattern>
+        <description>Comparing platform-reported conversions directly across channels to determine which channel is "winning."</description>
+        <reason>Platform totals are not deduplicated. A user clicking both Meta and Google appears in both reports as a unique conversion. The comparison is meaningless without a unified view.</reason>
+      </antipattern>
+
+      <rule>
+        <statement>Use GA4 or a warehouse-deduped view as the single source of truth for cross-channel performance; use platform data only for in-platform optimization.</statement>
+        <rationale>GA4 deduplicates across channels using the same user session. Platform data remains useful for optimizing bids and creative within that platform's ecosystem.</rationale>
+      </rule>
+    </section>
+
+    <section name="lookback-window-guidelines">
+      <p>Lookback window recommendations based on sales cycle length.</p>
+
+      <list>
+        <item>Impulse purchase (under 1 day): 1-day click window</item>
+        <item>Short cycle (1-7 days): 7-day click window</item>
+        <item>Medium cycle (1-4 weeks): 30-day click window</item>
+        <item>Long cycle (1-3 months): 90-day click window</item>
+      </list>
+
+      <rule>
+        <statement>Match lookback window to actual sales cycle; never use a shorter window to make numbers look better.</statement>
+        <rationale>A 7-day window on a 30-day SaaS trial cycle will miss the majority of attributed conversions and undercount channel contribution.</rationale>
+      </rule>
+    </section>
+
+    <section name="attribution-strategy">
+      <p>Choosing a unified source of truth and configuring GA4 attribution settings.</p>
+
+      <rule>
+        <statement>Pick one attribution source of truth (usually GA4 data-driven or warehouse on top of GA4 export) and apply it consistently across all budget decisions.</statement>
+        <rationale>Switching models mid-flight invalidates historical comparisons and causes confusion during budget reviews. A documented, locked model is more valuable than the theoretically best model.</rationale>
+      </rule>
+
+      <list>
+        <item>Trust GA4 (data-driven): unified view, misses view-through — best for most teams</item>
+        <item>Warehouse-deduped: most accurate, requires ETL pipeline — best for $10k+/month spend</item>
+        <item>Trust platform data: detailed but over-counts — use only for within-platform optimization</item>
+        <item>Incrementality (geo-holdout): true causal lift — use quarterly to validate model</item>
+      </list>
+
+      <list title="GA4 Attribution Configuration">
+        <item>Admin → Attribution settings → Reporting attribution model: Data-driven</item>
+        <item>Lookback window: 30-90 days (match to sales cycle)</item>
+        <item>Acquisition conversion events: configure explicitly</item>
+      </list>
+    </section>
+
+    <section name="incrementality-testing">
+      <p>Geo-holdout and conversion lift testing to validate attribution models.</p>
+
+      <rule>
+        <statement>Run a geo-holdout incrementality test at least once per quarter when spending $10k+/month to validate the attribution model.</statement>
+        <rationale>Data-driven attribution drifts over time and cannot detect true causal lift. A geo-holdout measures actual revenue lift vs. a control region, providing ground truth that no model can replicate.</rationale>
+      </rule>
+
+      <list>
+        <item>Geo holdout: no ads in test regions, compare conversion lift vs. control</item>
+        <item>Conversion lift: platform-native measurement of lift over holdout</item>
+        <item>Ghost ads: control group sees placebo ads, not the tested campaign</item>
+      </list>
+
+      <rule>
+        <statement>Run incrementality tests for at least 4 weeks and do not change budgets or targeting during the test period.</statement>
+        <rationale>Short tests produce noise, not signal. Budget changes mid-test contaminate the treatment-control comparison and invalidate results.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Running an incrementality test for less than 2 weeks or adjusting budgets during the test.</description>
+        <reason>Insufficient runtime produces statistically noisy results. Mid-test budget changes alter the treatment condition and make the holdout comparison invalid.</reason>
+      </antipattern>
+    </section>
+
+    <section name="common-mistakes">
+      <p>Attribution modeling mistakes to avoid.</p>
+
+      <antipattern>
+        <description>Trusting platform-reported totals for cross-channel budget decisions.</description>
+        <reason>Platform totals are over-counted by 20-40% due to cross-channel overlap. Decisions based on them systematically overspend on channels that appear more efficient than they are.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using last-click as the sole attribution model for a multi-touch journey.</description>
+        <reason>Last-click assigns zero credit to all upper-funnel touchpoints, leading to systematic under-investment in awareness and consideration channels.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Ignoring view-through attribution entirely.</description>
+        <reason>Display and video channels drive brand recall that appears as direct traffic. Excluding view-through undervalues awareness spend.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-rules-attribution">
+      <p>Concrete rules for agents building attribution pipelines, including variance thresholds, human-in-loop checkpoints, and failure modes specific to LLM agents.</p>
+
+      <rule>
+        <statement>Always present three numbers per channel (platform-reported, GA4-modeled, warehouse-deduped) and flag if any two diverge by more than 15%.</statement>
+        <rationale>Below 15% variance is noise. Above 15% indicates a structural issue — mismatched windows, missing dedup key, or a tracking gap — that must be investigated before budget decisions.</rationale>
+      </rule>
+
+      <reference path="templates/variance-check.py">Python helper that computes platform-vs-warehouse and GA4-vs-warehouse divergence per channel and sets alert flag above 15%</reference>
+
+      <rule>
+        <statement>Require human sign-off before any budget reallocation exceeding 10% of total spend, any change to the canonical attribution model, or any retroactive re-attribution.</statement>
+        <rationale>These actions have irreversible consequences: retroactive re-attribution destroys audit trail, model changes invalidate historical comparisons, and large reallocations cannot be easily undone.</rationale>
+      </rule>
+
+      <list title="Human-in-Loop Checkpoints">
+        <item>Budget reallocation &gt; 10% of total spend: human approval required</item>
+        <item>Change of canonical attribution model: human approval required</item>
+        <item>Retroactive re-attribution of historical conversions: snapshot first, human approval required</item>
+        <item>New geo-holdout test design: human approval required before budget changes execute</item>
+      </list>
+
+      <antipattern>
+        <description>Agent explains small variances (under 15%) with elaborate narratives before a minimum-variance threshold is met.</description>
+        <reason>Small variances are noise from lookback window differences, timezone offsets, and sampling. Narratives on noise mislead decision-makers.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent presents platform-reported and GA4-modeled numbers side-by-side as comparable values without labeling the model and window for each.</description>
+        <reason>They use different lookback windows and deduplication logic. An unlabeled table implies comparability where none exists.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent computes a single "today" number using GA4 property timezone and Google Ads account timezone interchangeably.</description>
+        <reason>GA4 uses property timezone; Google Ads uses account timezone. These can differ by hours and produce off-by-one date errors in daily reports.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent reports data-driven attribution point estimates without confidence intervals or sample-size caveats.</description>
+        <reason>Data-driven models have uncertainty that grows with low conversion volume. Point estimates without CIs create false precision and overconfident recommendations.</reason>
+      </antipattern>
+
+      <rule>
+        <statement>When uploading offline conversions, SHA-256 hash lowercase-trimmed email addresses before sending; verify match rate is above 30% before declaring the upload successful.</statement>
+        <rationale>Agents that skip email normalization (lowercase + trim) see near-zero match rates silently. A match rate below 30% indicates a normalization or hashing bug.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/attribution-analysis.md" purpose="Weekly variance report: platform vs. GA4 vs. warehouse per channel"/>
+      <template path="templates/variance-check.py" purpose="Python helper flagging platform/GA4/warehouse drift above 15%"/>
+    </templates>
+
+    <see-also>
+      <link href="https://support.google.com/analytics/answer/9868681"/>
+      <link href="https://support.google.com/analytics/answer/10596230"/>
+      <link href="https://support.google.com/google-ads/answer/10596230"/>
+    </see-also>
+  </content>
+</methodology>
