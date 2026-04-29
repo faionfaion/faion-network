@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/infra/devops-engineer methodologies → methodology.xml (kubernetes-deployment, nginx-configuration, prometheus-monitoring; feature-045 batch AU)
 - migrate: 3/3 pro/infra/devops-engineer methodologies → methodology.xml (gitlab-cicd, gitops, grafana-dashboards; feature-045 batch AT)
 - migrate: 3/3 pro/infra/devops-engineer methodologies → methodology.xml (finops, gcp, github-actions-cicd; feature-045 batch AS)
 - migrate: 3/3 pro/infra/devops-engineer methodologies → methodology.xml (backup-strategies, docker, dora-metrics; feature-045 batch AR)
