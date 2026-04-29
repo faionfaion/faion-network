@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="reflexion-learning">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd</domain>
+    <summary>LLM agents improve through accumulated episodic memory via reflexion learning (PDCA cycle) with patterns, mistakes, and confidence calibration.</summary>
+    <tags>
+      <tag>reflexion</tag>
+      <tag>reinforcement-learning</tag>
+      <tag>memory-architecture</tag>
+      <tag>sdd</tag>
+      <tag>pdca</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Reflexion Learning</title>
+
+    <summary>Reflexion (NeurIPS 2023) is a verbal reinforcement learning paradigm where LLM agents improve through accumulated episodic memory rather than weight updates. Applied to SDD, it maps to the PDCA cycle: Plan (load patterns.md + mistakes.md), Do (execute with context), Check (evaluate against AC, generate verbal reflection), Act (write new PAT-NNN or MIS-NNN entries). External feedback signals — tests, linter, type checker — are mandatory; self-evaluation alone has a 64.5% blind-spot rate.</summary>
+
+    <why>
+      <p>LLMs start fresh each session without memory of prior failures. Reflexion bridges this gap by maintaining persistent pattern and mistake files that are loaded at task start and updated at task end. Benchmark results: +10.9% on HumanEval, +22% on AlfWorld, +30% on HotpotQA compared to non-reflexion baselines. Gains come from the external feedback loop, not from self-evaluation.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any multi-task SDD workflow where agent quality must improve across tasks within a project</item>
+        <item>When an agent has failed the same task type more than once</item>
+        <item>Setting up a new project's `.aidocs/memory/` structure — Reflexion defines the memory architecture</item>
+        <item>Unattended overnight agent batches where no human is available to correct mid-task failures</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-shot one-off tasks with no follow-up — no memory to accumulate</item>
+        <item>Tasks where external ground truth is unavailable (no tests, no linter, no type checker) — self-evaluation degrades quality</item>
+        <item>Projects under 1 week old with fewer than 10 completed tasks — corpus too thin</item>
+        <item>When PDCA overhead exceeds the value of the learning loop (very small tasks under ~5k tokens)</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pdca-cycle">
+      <p>The four phases of the Reflexion learning loop mapped to SDD task execution.</p>
+
+      <rule>
+        <statement>Every SDD task execution must follow Plan → Do → Check → Act. Skipping any phase degrades the learning signal.</statement>
+        <rationale>Reflexion only improves agent quality when all four phases complete. Skipping Check means no reflection is generated; skipping Act means no memory is updated.</rationale>
+      </rule>
+
+      <section name="plan-phase">
+        <rule>
+          <statement>Load session.md (if continuing), keyword-filter patterns.md for relevant patterns, keyword-filter mistakes.md for domain warnings. Summarize in 5 bullets before proceeding.</statement>
+          <rationale>Loading the entire patterns.md and mistakes.md burns 5-15k tokens of context budget. Keyword filtering to 3-5 relevant entries is both faster and more precise.</rationale>
+        </rule>
+      </section>
+
+      <section name="do-phase">
+        <rule>
+          <statement>Execute the task with loaded patterns applied. Deviate from patterns only with a documented reason. Track which patterns are used.</statement>
+          <rationale>Pattern tracking enables usage-count updates in the Act phase, which in turn updates confidence scores.</rationale>
+        </rule>
+      </section>
+
+      <section name="check-phase">
+        <rule>
+          <statement>Evaluate output against each acceptance criterion using external signals (test results, linter, type checker). Report each AC as PASS or FAIL with evidence. Do not self-report PASS without external signal.</statement>
+          <rationale>LLMs in self-evaluation exhibit systematic optimism — they report AC as PASS when they would fail against an independent test suite. External tests must be the authoritative signal.</rationale>
+        </rule>
+      </section>
+
+      <section name="act-phase">
+        <rule>
+          <statement>After any PASS: extract a PAT-NNN entry for patterns.md if a novel successful approach was used. After any FAIL: append a MIS-NNN entry to mistakes.md. Update session.md.</statement>
+          <rationale>Reflections written immediately after task completion are accurate. Reflections written at session end produce generic patterns ("write tests first") without project-specific context.</rationale>
+        </rule>
+      </section>
+
+      <section name="sdd-quality-gate-integration">
+        <list>
+          <item>L1 (Spec review): load domain patterns before analysis</item>
+          <item>L2 (Design review): load architecture patterns</item>
+          <item>L4 (Pre-code): load coding patterns and mistakes for the task domain</item>
+          <item>L5 (Post-code): run external tests, generate verbal reflection</item>
+          <item>L6 (Complete): update memory files, close or update session.md</item>
+        </list>
+      </section>
+
+      <section name="retry-limit">
+        <rule>
+          <statement>Set a maximum of 3 Reflexion retry attempts per task. After 3 cycles, escalate to human review.</statement>
+          <rationale>Reflexion improves on first and second retry but has diminishing returns. A third failure with updated reflections indicates a gap that verbal reinforcement cannot fix alone.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="memory-architecture">
+      <p>Structure and update rules for the four memory files in .aidocs/memory/.</p>
+
+      <rule>
+        <statement>Maintain exactly four memory files in `.aidocs/memory/`: patterns.md, mistakes.md, decisions.md, session.md. Keep them in the same repository as the code they govern.</statement>
+        <rationale>Memory files in a different repo from the code produce context drift — patterns reference files and patterns that no longer exist in the agent's working tree.</rationale>
+      </rule>
+
+      <section name="patterns-md">
+        <rule>
+          <statement>A PAT-NNN entry must include: domain, context (when it applies), problem it solves, solution (actionable steps or code), confidence score, usage count, and source task ID.</statement>
+          <rationale>Patterns without context cannot be retrieved accurately. Patterns without confidence scores cannot be prioritized by the agent during Plan phase loading.</rationale>
+        </rule>
+
+        <rule>
+          <statement>Write patterns in "When X, do Y" format, not as descriptions of what worked. "When migrating tables with >100k rows, batch the update" not "batching worked well".</statement>
+          <rationale>Prescriptive patterns are directly actionable. Descriptive patterns require the agent to re-derive the action, introducing drift.</rationale>
+        </rule>
+      </section>
+
+      <section name="session-md">
+        <rule>
+          <statement>Clear session.md at the start of each new project. Session context from a previous project causes the agent to apply irrelevant patterns and miss-attribute mistakes.</statement>
+          <rationale>Session.md is project-scoped. Multi-agent pipelines sharing session.md across projects produce write conflicts and corrupted context.</rationale>
+        </rule>
+      </section>
+
+      <section name="memory-maintenance">
+        <rule>
+          <statement>Archive patterns with confidence below 0.3 or unused for 90+ days into patterns-archive.md. Do not delete — archived patterns may be relevant again if the domain returns.</statement>
+          <rationale>Stale patterns loaded in context introduce noise. High-scoring but untouched patterns may have been invalidated by framework upgrades or architectural changes.</rationale>
+        </rule>
+
+        <antipattern>
+          <description>Loading the full patterns.md without keyword filtering before a task.</description>
+          <reason>A mature project's patterns.md can reach 15-20k tokens. Full loads exceed the practical context budget before the task description is even added.</reason>
+        </antipattern>
+      </section>
+    </section>
+
+    <section name="confidence-calibration">
+      <p>Confidence scoring levels, update formula, decay rules, and common calibration errors.</p>
+
+      <section name="confidence-levels">
+        <list>
+          <item>0.9+: High — 5+ uses, validated across contexts, no recent failures</item>
+          <item>0.7-0.89: Medium — 2-4 uses, context-specific, minor issues</item>
+          <item>0.5-0.69: Low — 1-2 uses, limited validation</item>
+          <item>0.3-0.49: Experimental — newly identified, not yet validated</item>
+        </list>
+      </section>
+
+      <section name="update-formula">
+        <rule>
+          <statement>Apply the confidence update formula after each task outcome: success → min(0.95, score + 0.05); partial → score * 0.95; failure → max(0.30, score - 0.15).</statement>
+          <rationale>Symmetric updates would allow a single failure to destroy high-confidence patterns. The asymmetric formula requires consistent failures to reduce confidence significantly.</rationale>
+        </rule>
+
+        <example type="good">
+          <code lang="python"><![CDATA[def update_confidence(score: float, outcome: str) -> float:
+    if outcome == "success":
+        return min(0.95, score + 0.05)
+    elif outcome == "partial":
+        return score * 0.95
+    else:  # failure
+        return max(0.30, score - 0.15)]]></code>
+        </example>
+
+        <reference path="templates/update-confidence.py">Full confidence updater script that patches patterns.md in place</reference>
+      </section>
+
+      <section name="calibration-gotchas">
+        <antipattern>
+          <description>Agents assign initial confidence of 0.9 to new patterns because the first use succeeded.</description>
+          <reason>One success does not validate cross-context applicability. New patterns start at 0.5 regardless of first-use outcome.</reason>
+        </antipattern>
+
+        <antipattern>
+          <description>Confidence scores over 90 days old treated as current without verification.</description>
+          <reason>Framework upgrades, architecture changes, and library version bumps can invalidate high-confidence patterns silently. Treat scores older than 90 days as unreliable until re-validated.</reason>
+        </antipattern>
+
+        <antipattern>
+          <description>Multiple agents writing to patterns.md concurrently.</description>
+          <reason>Concurrent writes produce last-write-wins corruption of confidence scores. In multi-agent workflows, serialize memory writes through a single coordinator agent.</reason>
+        </antipattern>
+      </section>
+    </section>
+
+    <templates>
+      <template path="templates/pattern-entry.md" purpose="PAT-NNN entry template with confidence and metadata"/>
+      <template path="templates/update-confidence.py" purpose="Python script to update a pattern's confidence score after task outcome"/>
+    </templates>
+  </content>
+</methodology>
