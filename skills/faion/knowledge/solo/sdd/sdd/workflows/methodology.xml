@@ -1,0 +1,444 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="workflows">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd</domain>
+    <summary>Step-by-step workflows for LLM-assisted SDD with decision points, state transitions, quality gates, and prompts for spec, design, implementation, and review.</summary>
+    <tags>
+      <tag>sdd</tag>
+      <tag>workflows</tag>
+      <tag>phases</tag>
+      <tag>llm</tag>
+      <tag>agents</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>SDD Workflows</title>
+    <summary>SDD workflows guide the progression from idea to deployed code through structured phases. Each workflow includes decision points, state transitions, quality gates, and LLM prompts covering spec, design, implementation, and review phases.</summary>
+    <why>
+      <p>Structured workflows prevent common failures in LLM-assisted development: spec drift (requirements changing mid-implementation), phase skipping (jumping to code without design), hidden dependencies (parallel agents creating incompatible implementations), and unvalidated decisions (architectural choices made but never documented). The four-phase structure (SPEC → DESIGN → IMPLEMENTATION → REVIEW) forces clarity that code and diagrams cannot.</p>
+      <p>The workflow enforces confidence gates between phases — agents must validate 90%+ confidence before transitioning — preventing overconfident execution against incomplete specifications. Context budgets (100k tokens per task) prevent context window exhaustion, the most common cause of incomplete or broken agent outputs.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Starting a new multi-day feature that needs structured progression from idea to deployed code.</item>
+        <item>An agent needs to orchestrate multiple sub-agents across spec → design → implementation → review phases.</item>
+        <item>The codebase already has `.aidocs/` structure and the team follows SDD lifecycle.</item>
+        <item>Resuming mid-session work: agent reads `session.md` to restore state and continue from last checkpoint.</item>
+        <item>Producing auditable artifacts: regulated domains, client deliverables, or systems requiring traceability.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Task estimated at under 2 hours — direct implementation is faster than full SDD overhead.</item>
+        <item>Pure bug fix with a known root cause — fix + test is sufficient without spec and design phases.</item>
+        <item>Exploratory spike or prototype — throwaway code does not benefit from full SDD overhead.</item>
+        <item>Configuration-only change — editing a config file needs no spec or design phase.</item>
+      </list>
+    </when-not-to-use>
+    <section name="workflow-state-machine">
+      <p>The SDD workflow follows a state machine with five phases and transition gates enforcing confidence thresholds before moving forward:</p>
+      <list>
+        <item>BRAINSTORM: Diverge on problem definition and approach (Five Whys, alternatives generation).</item>
+        <item>SPECIFICATION: Define WHAT to build with functional requirements (FR-X) and acceptance criteria (AC-X).</item>
+        <item>DESIGN: Define HOW to build with architectural decisions (AD-X), file structure, data models, and API contracts.</item>
+        <item>IMPLEMENTATION-PLAN: Break design into ordered, token-budgeted work units optimized for LLM agent execution; identify parallel execution waves.</item>
+        <item>TASK-CREATION and EXECUTION: Create individual tasks; execute in wave order; report completion with code + tests.</item>
+        <item>REVIEW: Validate completeness, extract patterns and mistakes, update team memory.</item>
+      </list>
+      <p>Transition gates between phases enforce confidence thresholds:</p>
+      <list>
+        <item>Idea → Spec: 70%+ confidence. Action if below: More research, user interviews.</item>
+        <item>Spec → Design: 90%+ confidence. Action if below: Clarify requirements, add examples.</item>
+        <item>Design → Plan: 90%+ confidence. Action if below: Review architecture, check patterns.</item>
+        <item>Plan → Execute: 95%+ confidence. Action if below: Resolve blockers, simplify tasks.</item>
+      </list>
+    </section>
+    <section name="confidence-calculation">
+      <p>Confidence is calculated from five equally weighted checks:</p>
+      <list>
+        <item>Requirements clear and testable (25%)</item>
+        <item>No contradictions or gaps (25%)</item>
+        <item>Dependencies identified (20%)</item>
+        <item>Patterns established (15%)</item>
+        <item>Risks documented (15%)</item>
+      </list>
+      <p>Agents report confidence numerically in `session.md` before each phase transition. Vague "feels ready" is not a gate criterion.</p>
+    </section>
+    <section name="parallel-workflow-patterns">
+      <p>Five patterns for structuring SDD execution to exploit parallelization and improve velocity:</p>
+      <rule>
+        <statement>Pattern 1: Vertical with Horizontal Brainstorming — diverge at a brainstorm point to explore 2-3 alternative approaches in parallel, reconverge by synthesizing best elements.</statement>
+        <rationale>Use for architecture decisions, novel problems, and design trade-offs where multiple approaches deserve evaluation before commitment.</rationale>
+      </rule>
+      <rule>
+        <statement>Pattern 2: Parallel Preparation with Checkpoints — code review, documentation, and phase 2 planning run in parallel after phase 1 reaches a checkpoint gate.</statement>
+        <rationale>Use for feature development with multiple deliverables when code, tests, and docs can be drafted independently before merge.</rationale>
+      </rule>
+      <rule>
+        <statement>Pattern 3: Spec-Driven Parallel Development — write one spec; dispatch four feature branches (git worktrees) in parallel, each implementing different components to the shared contract.</statement>
+        <rationale>Use for cleanly decomposable features and sprint work. The shared spec contract prevents incompatible implementations from parallel agents.</rationale>
+      </rule>
+      <rule>
+        <statement>Pattern 4: Async Parallel Spec Generation — one shared spec document with parallel tabs (architecture, UX flows, data models, security) drafted by sub-agents, periodic consolidation.</statement>
+        <rationale>Use for large specifications spanning multiple domains and expertise areas. Periodic consolidation merges updates and resolves conflicting decisions.</rationale>
+      </rule>
+      <rule>
+        <statement>Pattern 5: Multi-Perspective Planning — generate four alternative plans optimizing for speed, risk, cost, and learning respectively; review and synthesize final consolidated plan.</statement>
+        <rationale>Use for high-stakes decisions and stress-testing approaches. Parallel plan generation reveals trade-offs hidden in single-perspective planning.</rationale>
+      </rule>
+    </section>
+    <section name="llm-agent-orchestration">
+      <p>LLM agents are assigned to phases based on model capabilities. Fast models execute code generation; reasoning models solve architecture problems; balanced models structure requirements.</p>
+      <list>
+        <item>Brainstorming: Reasoning models (o1, Opus) — complex problem-solving.</item>
+        <item>Spec Writing: Balanced models (Sonnet, GPT-4) — structure + creativity.</item>
+        <item>Design: Reasoning models — architecture decisions.</item>
+        <item>Implementation: Fast models (Sonnet, Claude) — code generation speed.</item>
+        <item>Review: Multiple models — cross-validation.</item>
+      </list>
+      <p>Total context budget: 100k tokens. Typical allocation:</p>
+      <list>
+        <item>Research: ~20k (read existing code)</item>
+        <item>Task Context: ~5k (spec, design, plan)</item>
+        <item>Implementation: ~50k (generated code)</item>
+        <item>Buffer: ~25k (iterations, fixes)</item>
+      </list>
+      <p>Feedback loops feed execution results back to agents: test failures, linter errors, type checking failures, code review comments, and user acceptance testing results all drive correction loops.</p>
+    </section>
+    <section name="quality-gates">
+      <p>Six quality gate levels checkpoint code progression from syntax to acceptance. Each gate has pass/fail/blocked outcomes.</p>
+      <list>
+        <item>L1 Syntax: Linting zero errors.</item>
+        <item>L2 Types: Type checking zero errors.</item>
+        <item>L3 Unit Tests: 100% pass, coverage met.</item>
+        <item>L4 Integration: Integration tests pass.</item>
+        <item>L5 Review: Code review approved.</item>
+        <item>L6 Acceptance: All AC criteria verified.</item>
+      </list>
+      <p>Gate actions: Pass → proceed to next phase. Fail (fixable) → retry with feedback. Fail (blocking) → escalate, document blocker.</p>
+    </section>
+    <section name="memory-and-learning">
+      <p>The SDD workflow generates learning artifacts at three levels: session state (current execution), pattern memory (successful techniques), and mistake memory (failure modes and recovery).</p>
+      <rule>
+        <statement>Track session state in .aidocs/memory/session.md during workflow execution: current phase, last action, blockers, and decisions made.</statement>
+        <rationale>Session state allows agents to resume interrupted work and provides continuity when work spans multiple sessions or agents.</rationale>
+      </rule>
+      <rule>
+        <statement>After successful completion, extract one or more patterns: context (when this applies), pattern (what worked), and evidence (success metrics).</statement>
+        <rationale>Pattern memory accumulates reusable solutions. Over time, teams develop a library of "when we did X, it worked well" patterns that accelerate future features.</rationale>
+      </rule>
+      <rule>
+        <statement>After failures, record mistakes: error (what went wrong), root cause (why), prevention (how to avoid), and recovery (how to fix if it happens again).</statement>
+        <rationale>Mistake memory prevents repeated failures. A team that tracks mistakes compounds learning; a team that does not repeats them.</rationale>
+      </rule>
+    </section>
+    <section name="project-structure">
+      <p>SDD lifecycle directories mirror workflow phases:</p>
+      <list>
+        <item>.aidocs/constitution.md — project-wide tech decisions and standards.</item>
+        <item>.aidocs/roadmap.md — feature timeline, releases, success metrics.</item>
+        <item>.aidocs/backlog/ — features in queue awaiting spec phase.</item>
+        <item>.aidocs/todo/ — features ready for execution (spec approved); each feature has spec.md, design.md, implementation-plan.md, and task subdirectories.</item>
+        <item>.aidocs/in-progress/ — features currently executing; tasks move from todo/ to in-progress/ to done/ within a feature folder.</item>
+        <item>.aidocs/done/ — completed features; all tasks in done/ subfolder.</item>
+        <item>.aidocs/memory/ — learning artifacts (patterns.md, mistakes.md, session.md, decisions.md).</item>
+      </list>
+    </section>
+    <section name="workflow-invocation">
+      <rule>
+        <statement>To start a new feature: invoke the spec-workflow with the initial idea, brainstorm, draft spec.md, review and approve, then transition to design-workflow.</statement>
+        <rationale>Spec-first prevents design rework. Only approved specs enter design phase.</rationale>
+      </rule>
+      <rule>
+        <statement>To resume work: read .aidocs/memory/session.md, identify current phase, load relevant context (spec.md, design.md, or implementation-plan.md), and continue from the last checkpoint.</statement>
+        <rationale>Session resumption allows multi-session features without context loss. Agents can pick up work and restore state without human re-briefing.</rationale>
+      </rule>
+      <rule>
+        <statement>To handle blockers: document blocker in session.md, create improvement suggestion for the blockers section, then either: (a) resolve blocker and continue, (b) mark task as blocked, or (c) escalate to user.</statement>
+        <rationale>Blocker tracking provides audit trail. Escalations are visible in the task record.</rationale>
+      </rule>
+    </section>
+    <section name="model-selection-rationale">
+      <p>Model selection by phase reflects the cognitive demands of each phase:</p>
+      <list>
+        <item>Writing specification templates — haiku model: form completion, mechanical setup.</item>
+        <item>Reviewing specifications for clarity — sonnet model: language analysis, logical consistency.</item>
+        <item>Architecting complex system specs — opus model: holistic design, novel combinations.</item>
+      </list>
+    </section>
+    <section name="ai-agent-gotchas-and-prevention">
+      <p>Six common failure modes occur when agents execute the SDD workflow without safeguards:</p>
+      <antipattern>
+        <description>Agents drift into implementation during spec phase, solving HOW instead of defining WHAT.</description>
+        <reason>Agents default to action-oriented thinking. Enforce "WHAT not HOW" strictly in the spec prompt and reject spec documents that contain architectural decisions (those belong in design).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Context window exhaustion mid-phase causes the agent to silently drop requirements, producing incomplete specs or designs.</description>
+        <reason>Break large features into sub-specs before execution begins. If a feature requires 60k tokens for the spec alone, split it into two or three smaller spec documents before entering design.</reason>
+      </antipattern>
+      <antipattern>
+        <description>The "one task, one focus" rule is violated: research ("figure out how") is combined with implementation ("build it") in a single agent call.</description>
+        <reason>Agents degrade when context is mixed between research and execution. These are two separate tasks with separate quality gates: (1) research phase outputs a design.md; (2) implementation phase executes it.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Phase transition confidence scores are self-assessed; an overconfident agent moves to design with an incomplete spec.</description>
+        <reason>Add a reviewer sub-agent as a check. The orchestrating agent should invoke a second pass from a fresh agent with prompt "Review this spec for completeness against the acceptance criteria. List gaps." before proceeding.</reason>
+      </antipattern>
+      <antipattern>
+        <description>`session.md` is written at phase boundaries but crashes occur between phases, leaving inconsistent state (session.md says "in design" but no design.md exists).</description>
+        <reason>Always re-read session.md at session start and validate that claimed artifacts exist. If they do not, ask the user whether to roll back to the previous phase or re-run the incomplete phase.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Workflow state stored in markdown files can diverge if multiple agents write concurrently without locking.</description>
+        <reason>Use file-based locking (flock) when multiple agents run in parallel. The primary agent acquires a lock on .aidocs/memory/session.md before reading or writing it.</reason>
+      </antipattern>
+    </section>
+    <section name="specification-workflow-basics">
+      <p>The spec workflow is the first phase and covers problem definition, requirement gathering, and acceptance criteria. Spec-first prevents design rework and scope creep. Specifications define WHAT to build and WHY, using functional requirements (FR-X) and acceptance criteria (AC-X). A completed specification answers: What is the user problem? What are the success criteria? How do we test it?</p>
+      <rule>
+        <statement>Apply the Five Whys technique during brainstorming to uncover the root problem, not the surface symptom.</statement>
+        <rationale>The surface problem (e.g., "users complain the page is slow") often masks a root cause (e.g., "authentication query N+1 loop"). Solving the symptom without the cause produces incomplete implementations.</rationale>
+      </rule>
+      <rule>
+        <statement>Generate 3 alternative approaches to every problem specification; document pros, cons, effort, and risk for each.</statement>
+        <rationale>Single-path specs hide trade-offs. Parallel alternatives reveal options the team may not have considered and justify the chosen approach through explicit comparison.</rationale>
+      </rule>
+      <p>Key outputs of spec phase: spec.md document with FR-X list, AC-X criteria, alternatives considered, and confidence score for design gate.</p>
+    </section>
+    <section name="design-workflow-basics">
+      <p>The design workflow defines HOW to build based on an approved specification. Design documents record architectural decisions (AD-X), file structure, data models, and API contracts before implementation begins. Every FR-X from the spec must trace to at least one AD-X. Design decisions marked Proposed must not be implemented until human-approved.</p>
+      <rule>
+        <statement>Write design after spec is approved and before implementation-plan. Never reverse this order.</statement>
+        <rationale>The spec defines intent; the design defines mechanism; the implementation plan defines sequence. Reversing the order produces implementations without explicit decision records.</rationale>
+      </rule>
+      <rule>
+        <statement>Every AD-X decision must include Status, Context, Decision, Rationale, and Alternatives Considered table. Decisions marked Proposed must not be implemented.</statement>
+        <rationale>The alternatives table prevents pseudo-documentation — a decision with only one option is not a real decision. Proposed status blocks premature implementation of uncertain decisions.</rationale>
+      </rule>
+      <p>Key outputs: design.md document with AD-X decisions fully traced to FR-X, file structure, data models, API contracts, and design confidence score.</p>
+    </section>
+    <section name="implementation-workflow-basics">
+      <p>The implementation workflow executes design through ordered, token-budgeted tasks. Wave analysis identifies parallel execution opportunities. The 100k token rule ensures each task fits within a focused context window. Every task must trace to an AD-X or FR-X — orphan tasks are a quality gate failure.</p>
+      <rule>
+        <statement>Transform architectural decisions (AD-X) into ordered, token-budgeted work units. Identify parallel execution waves. Every task must fit within 100k tokens.</statement>
+        <rationale>Without an implementation plan, agents execute tasks in arbitrary order, creating merge conflicts. Wave analysis enables 1.8-3.5x parallelization. Token budgets prevent context exhaustion.</rationale>
+      </rule>
+      <rule>
+        <statement>Build the dependency graph from design.md file operations, not from task descriptions. For each file, ask: what must exist before this can be created?</statement>
+        <rationale>Inferring dependencies from task prose introduces hidden assumptions. Grounding the DAG in actual file operations produces complete, objective dependencies.</rationale>
+      </rule>
+      <p>Key outputs: implementation-plan.md with wave table, task list, critical path, and traceability matrix; individual TASK-XXX-*.md files with acceptance criteria.</p>
+    </section>
+    <section name="review-workflow-basics">
+      <p>The review workflow validates completeness, extracts patterns and mistakes, and updates team memory. After execution completes, the team reviews code quality against quality gates, confirms all acceptance criteria pass, and extracts reusable patterns.</p>
+      <rule>
+        <statement>After successful completion, extract one or more patterns: context (when does this apply), pattern (what worked), and evidence (success metrics and artifacts).</statement>
+        <rationale>Pattern memory accumulates reusable solutions. Teams that document patterns compound learning; teams that do not repeat mistakes.</rationale>
+      </rule>
+      <rule>
+        <statement>After failures, record mistakes: error (what went wrong), root cause (why), prevention (how to avoid), and recovery (how to fix).</statement>
+        <rationale>Mistake records prevent repeated failures and provide a knowledge base for onboarding agents into the team's processes.</rationale>
+      </rule>
+      <p>Key outputs: code + tests passing all quality gates, pattern entries in .aidocs/memory/patterns.md, mistake records in .aidocs/memory/mistakes.md.</p>
+    </section>
+    <section name="prompt-patterns-for-each-phase">
+      <p>Five Whys brainstorming prompt: "Apply the Five Whys technique to the following problem statement. For each why, provide the answer. Identify the root cause, then suggest how this changes our approach."</p>
+      <p>Alternatives analysis prompt: "Generate 3 alternative approaches to solve this problem. For each, provide description, pros, cons, effort estimate, and risk level. Recommend which approach and justify."</p>
+      <p>Codebase research prompt: "Search for similar implementations in [directories]. Identify patterns to follow, reusable components, and integration points. Output a table with file references and what to copy."</p>
+      <p>Specification clarity prompt: "Review this specification for clarity. Check that every FR-X has associated AC-X acceptance criteria that are verifiable. List any gaps."</p>
+      <p>Design traceability prompt: "Verify that every FR-X from the spec has at least one corresponding AD-X in the design. Every AD-X must have alternatives considered and clear status. Report gaps."</p>
+      <p>Task dependency verification prompt: "Build the dependency graph for these tasks. For each task, verify dependencies are grounded in actual file operations from the design.md. Identify false dependencies and missing ones."</p>
+    </section>
+    <section name="agentic-orchestration-patterns">
+      <p>When integrating the SDD workflow into an agentic system, one orchestrating agent reads session.md to find the current phase, then delegates each phase to a specialized sub-agent. Between phases, the orchestrator runs the transition gate checklist and records confidence scores in session.md. The workflow is inherently sequential per feature but multiple features can run in parallel worktrees.</p>
+      <rule>
+        <statement>Use recommended sub-agents: faion-task-executor-agent for driving the full pipeline, faion-feature-executor skill for executing individual tasks with quality gates, faion-sdd-execution skill for handling quality gate validation and reflexion learning.</statement>
+        <rationale>Specialized sub-agents avoid context pollution. Each agent has a focused prompt and specific quality gates for its phase.</rationale>
+      </rule>
+      <rule>
+        <statement>For session resumption, use this prompt: "You are resuming an SDD workflow. Current state is in .aidocs/memory/session.md. Read it, identify the current phase, load the relevant artifacts, and continue. Do not skip transition gates. Report confidence score before moving to the next phase."</statement>
+        <rationale>Explicit resumption prompts prevent agents from skipping phases or gates due to context shortcuts.</rationale>
+      </rule>
+      <rule>
+        <statement>For phase-specific gates, use: "Phase: DESIGN → IMPL-PLAN transition check. Read spec.md and design.md. Verify: all FR-X have AD-X decisions, file structure defined, API contracts specified. Report confidence (0-100%). If >= 90%, output PROCEED."</statement>
+        <rationale>Explicit gate prompts enforce confidence thresholds and produce clear pass/fail decisions the orchestrator can evaluate programmatically.</rationale>
+      </rule>
+    </section>
+    <section name="workflow-state-transitions-detailed">
+      <p>The workflow defines explicit transitions between phases with gates and confidence checks. Transition gates prevent premature phase advancement and ensure quality at each step.</p>
+      <list>
+        <item>BRAINSTORM → SPECIFICATION: Problem validated (70%+ confidence), stakeholder identified, root cause clear.</item>
+        <item>SPECIFICATION → DESIGN: All FR-X defined, acceptance criteria complete, spec approved (90%+ confidence).</item>
+        <item>DESIGN → IMPL-PLAN: All AD-X documented, file structure defined, no TBD entries, design approved (90%+ confidence).</item>
+        <item>IMPL-PLAN → TASK-CREATION: Dependencies mapped, waves identified, all tasks in INVEST format (95%+ confidence).</item>
+        <item>TASK-CREATION → EXECUTION: Task fits 100k tokens, no blockers, acceptance criteria clear.</item>
+        <item>EXECUTION → REVIEW: Tests pass, quality gates cleared, code reviewed.</item>
+        <item>REVIEW → DONE: Patterns extracted, memory updated, artifacts archived.</item>
+      </list>
+    </section>
+    <section name="confidence-validation-checklist">
+      <p>Before each phase transition, agents validate confidence using this rubric:</p>
+      <list>
+        <item>Requirements clear and testable (25% of confidence score) — acceptance criteria are concrete and measurable.</item>
+        <item>No contradictions or gaps (25%) — requirements do not conflict; no unaddressed requirements remain.</item>
+        <item>Dependencies identified (20%) — internal and external dependencies listed; no hidden coupling.</item>
+        <item>Patterns established (15%) — design or implementation pattern references given; codebase patterns followed.</item>
+        <item>Risks documented (15%) — known risks listed with mitigation approaches.</item>
+      </list>
+      <p>Confidence calculation: sum of weighted scores. Thresholds: idea→spec 70%, spec→design 90%, design→plan 90%, plan→execute 95%.</p>
+    </section>
+    <section name="worktree-and-parallel-execution">
+      <p>When running parallel feature branches or multiple agents on different tasks, use git worktrees to isolate work. Each feature gets its own worktree and branch. Worktrees allow multiple agents to execute tasks in parallel without merge conflicts on the main branch.</p>
+      <rule>
+        <statement>For parallel task execution within a wave, dispatch each task to a separate worktree with a sub-agent. After all wave tasks complete, merge worktree commits to main branch before starting the next wave.</statement>
+        <rationale>Isolated worktrees prevent merge conflicts during parallel execution. Sequential wave execution with parallel commits ensures dependency ordering.</rationale>
+      </rule>
+      <rule>
+        <statement>Use file-based locking (flock) when merging worktrees to main to prevent concurrent push races.</statement>
+        <rationale>Lock serialization prevents concurrent pushes from colliding on the server.</rationale>
+      </rule>
+    </section>
+    <section name="common-workflow-gotchas">
+      <p>Workflows fail when agents or teams ignore these common pitfalls:</p>
+      <list>
+        <item>Skipping spec phase — jumping directly to code without written requirements produces scope creep and rework.</item>
+        <item>Spec drift — requirements changing during design without updating spec.md, causing design/code misalignment.</item>
+        <item>False confidence — agents report 95%+ confidence before resolving design ambiguities, leading to execution failures.</item>
+        <item>Token exhaustion — tasks exceeding 100k tokens silently degrade or produce incomplete code.</item>
+        <item>Hidden dependencies — task A states no dependencies but actually needs file from task B; causes merge conflicts.</item>
+        <item>Untestable acceptance criteria — criteria like "works correctly" cannot be verified, so quality gates always pass falsely.</item>
+        <item>No traceability — tasks not traced to FR-X or AD-X, making it impossible to verify completeness.</item>
+        <item>Ignored anti-patterns — agents repeat known mistakes because team mistakes.md is not reviewed at workflow start.</item>
+      </list>
+    </section>
+    <section name="best-practices-summary">
+      <list>
+        <item>Use wave-based parallelization for large features: Wave 1 tasks run concurrently, their summaries propagate to Wave 2.</item>
+        <item>Include "do nothing" as a baseline alternative in design docs — mirrors Google's practice of validating that change is needed.</item>
+        <item>Record confidence scores numerically in session.md; vague "feels ready" is not a gate criterion.</item>
+        <item>Keep one commit per task completion; git history doubles as workflow audit log.</item>
+        <item>When using multi-model review (Claude + GPT), run reviewers in parallel and merge findings before fix step.</item>
+        <item>Review patterns and mistakes from previous features at workflow start; agent can apply learned patterns and avoid repeated failures.</item>
+        <item>Use fresh sub-agents as review gates; an agent that authored a spec should not be the sole reviewer of its own clarity.</item>
+        <item>Document all blockers and escalations in session.md; escalations are visible in the workflow record.</item>
+      </list>
+    </section>
+    <section name="when-to-avoid-or-modify-workflow">
+      <p>The full four-phase workflow is designed for features with meaningful architectural decisions and multiple tasks. Smaller changes require less ceremony:</p>
+      <list>
+        <item>For bug fixes with a known root cause: skip spec and design; go directly to task creation and execution.</item>
+        <item>For configuration changes: skip all design phases; update config file and test.</item>
+        <item>For small single-file changes: use lightweight spec (one-page problem + proposed fix) instead of full spec.</item>
+        <item>For exploratory prototypes: use discovery-only spec with "spike" status; skip formal design and implementation plan.</item>
+      </list>
+      <p>Overhead scales with feature size. A 2-hour task does not benefit from a 1-hour workflow overhead. A 3-week feature benefits greatly.</p>
+    </section>
+    <section name="sub-workflows-overview">
+      <p>The SDD workflow encompasses four specialized sub-workflows, each with its own entry state, phases, quality gates, and output deliverable. Each sub-workflow is a complete end-to-end process optimized for its phase of the larger SDD cycle.</p>
+      <rule>
+        <statement>Each sub-workflow outputs a self-contained deliverable: spec.md (spec-workflow), design.md (design-workflow), implementation-plan.md (implementation-workflow), and code + tests (review-workflow).</statement>
+        <rationale>Sub-workflows are independently invocable and resumable. An agent can start spec-workflow and run to completion, then hand off to another agent for design-workflow, without the design agent needing to re-run specification phases.</rationale>
+      </rule>
+      <list>
+        <item>spec-workflow: transforms vague idea into structured testable specification with FR-X requirements and AC-X acceptance criteria. Phases: brainstorming (Five Whys, alternatives), research (codebase patterns, existing solutions), clarification (edge cases, assumptions), drafting (structured sections), review (completeness check), approval gate.</item>
+        <item>design-workflow: transforms approved spec into architecture with decisions, file structure, data models, API contracts. Phases: decision generation (alternatives for each FR-X), architecture synthesis, file structure definition, API contract specification, traceability check, review gate.</item>
+        <item>implementation-workflow: transforms approved design into ordered executable tasks with dependencies and waves. Phases: task generation (one task per AD-X or FR-X), dependency analysis (DAG construction, wave identification), critical path analysis, token budgeting, traceability 100% check, execution gate.</item>
+        <item>review-workflow: validates completed work against acceptance criteria and extracts patterns and lessons. Phases: acceptance testing (verify all AC pass), quality gate check (L1-L6), code review, pattern extraction (what worked), mistake recording (what failed), memory update.</item>
+      </list>
+    </section>
+    <section name="spec-workflow-detail">
+      <p>The specification workflow transforms a vague idea into a structured spec.md. It consists of seven sequential phases: Brainstorming (surface the real problem), Research (find existing solutions and patterns), Clarification (handle edge cases and assumptions), Drafting (write structured sections), Review (completeness check), Approval, and Save.</p>
+      <rule>
+        <statement>During brainstorming, apply Five Whys to surface root causes, not symptom fixes. Generate 3+ alternative approaches for each solution. Have the user select direction.</statement>
+        <rationale>Brainstorming prevents solutions in search of problems. Five Whys uncovers root causes; alternatives prevent tunnel vision.</rationale>
+      </rule>
+      <rule>
+        <statement>During research, search the codebase for similar implementations, existing patterns, and reusable components. Document references to actual code.</statement>
+        <rationale>Codebase research prevents reinventing solved problems. Code references allow implementation agents to follow existing patterns.</rationale>
+      </rule>
+      <rule>
+        <statement>During clarification, ask "What if we DON'T do this?" for each major feature. Identify edge cases and list assumptions explicitly.</statement>
+        <rationale>Scope clarity prevents scope creep. Explicit assumptions make dependencies and risks visible.</rationale>
+      </rule>
+      <rule>
+        <statement>Drafting produces spec.md with sections: Summary, Functional Requirements (FR-X), Acceptance Criteria (AC-X), Constraints, Dependencies, Risks.</statement>
+        <rationale>Structured sections force completeness and enable traceability checking in later phases.</rationale>
+      </rule>
+      <rule>
+        <statement>Review gate checks: Is every FR-X testable? Does every FR-X have at least one AC-X? Are all dependencies listed? Are assumptions documented? Is the problem statement clear enough for design-phase architects to proceed?</statement>
+        <rationale>Quality at the spec gate prevents rework in design and implementation.</rationale>
+      </rule>
+    </section>
+    <section name="design-workflow-detail">
+      <p>The design workflow transforms an approved spec into architecture. It consists of six phases: Problem restatement (understand spec intent), Decision generation (options for each FR-X), Architecture synthesis (integrated whole), File structure definition, API contract specification, Traceability check, and Review/approval gate.</p>
+      <rule>
+        <statement>For each functional requirement in the spec, generate 2-3 architectural options with pros/cons/trade-offs. Document which is chosen and why.</statement>
+        <rationale>Options document prevent pseudo-decisions. Architects must consider alternatives before committing to an approach.</rationale>
+      </rule>
+      <rule>
+        <statement>Define the file structure explicitly: which files exist, what each contains, how they relate. Use existing code as reference patterns where possible.</statement>
+        <rationale>Explicit file structure prevents parallel agents from creating conflicting files or missing critical files.</rationale>
+      </rule>
+      <rule>
+        <statement>Specify API contracts with concrete examples: request payload, response payload, error codes. Every endpoint must have success and error examples.</statement>
+        <rationale>Concrete examples are more unambiguous than prose. Parallel frontend and backend agents using the same contract produce compatible code.</rationale>
+      </rule>
+      <rule>
+        <statement>Verify traceability: every FR-X from spec has at least one AD-X; every AD-X traces back to FR-X. Zero orphan decisions.</statement>
+        <rationale>Traceability ensures the design actually addresses the spec and no extra work is planned.</rationale>
+      </rule>
+      <rule>
+        <statement>Review gate checks: Does every FR-X have an AD-X? Do AD-X sections have alternatives, clear status, and rationale? Is file structure complete? Are API contracts concrete? Are security considerations addressed?</statement>
+        <rationale>Design quality gates prevent ambiguity that would derail implementation.</rationale>
+      </rule>
+    </section>
+    <section name="implementation-plan-workflow-detail">
+      <p>The implementation-plan workflow transforms approved design into executable tasks. It consists of five phases: Task generation (create TASK-XXX for each AD-X and FR-X), Dependency analysis (build DAG), Wave identification (parallel grouping), Token budgeting (estimate and validate), and Traceability 100% check.</p>
+      <rule>
+        <statement>For each architectural decision and requirement, create one or more tasks. Every task must fit in 100k tokens and trace to at least one FR-X or AD-X.</statement>
+        <rationale>100k token budget prevents context window exhaustion. Traceability ensures all design decisions are implemented.</rationale>
+      </rule>
+      <rule>
+        <statement>Build the dependency graph by asking: what must exist before each file can be created? Answers are dependencies. Do not invent false dependencies.</statement>
+        <rationale>False dependencies serialize work unnecessarily. Grounding dependencies in actual file operations avoids this.</rationale>
+      </rule>
+      <rule>
+        <statement>Identify waves: Wave 1 = no dependencies. Wave N = tasks whose dependencies are in Waves 1 through N-1. Waves can execute in parallel.</statement>
+        <rationale>Wave identification enables parallelization. The algorithm is deterministic and reproducible.</rationale>
+      </rule>
+      <rule>
+        <statement>Validate traceability: every AD-X and FR-X must have at least one task. Count FR-X in spec, count AD-X in design, count task references in plan. Counts should match (or plan should have more tasks if one task covers multiple decisions).</statement>
+        <rationale>100% traceability ensures nothing is missed and no orphan tasks are created without requirement backing.</rationale>
+      </rule>
+    </section>
+    <section name="review-workflow-detail">
+      <p>The review workflow validates completed work and extracts learning. It consists of six phases: Acceptance testing (verify all AC pass), Quality gate check (L1-L6), Code review, Pattern extraction, Mistake recording, and Memory update.</p>
+      <rule>
+        <statement>For each acceptance criterion in the spec, verify it passes. An AC that claims "system is fast" or "code is clean" cannot be verified; reject such criteria at spec review.</statement>
+        <rationale>Testable criteria enable objective validation. Subjective criteria hide failures.</rationale>
+      </rule>
+      <rule>
+        <statement>Run quality gate checks L1-L6: syntax (linting), types (type checking), tests (100% pass, coverage met), integration, review, acceptance. Do not proceed until all gates pass.</statement>
+        <rationale>Quality gates prevent shipping broken code. The gate sequence makes fixes easier at earlier stages.</rationale>
+      </rule>
+      <rule>
+        <statement>After passing all gates, extract at least one pattern: context (when does this apply), pattern (what worked), and evidence (metrics and artifacts proving it worked).</statement>
+        <rationale>Pattern accumulation accelerates future features. Teams with strong pattern libraries compound learning.</rationale>
+      </rule>
+      <rule>
+        <statement>If failures occurred (L1-L6 gate failures, mistakes during execution), record them: error (what went wrong), root cause (why), prevention (how to avoid), recovery (how to fix if it happens again).</statement>
+        <rationale>Mistake records prevent repeats. A team that documents failures improves faster than one that ignores them.</rationale>
+      </rule>
+    </section>
+    <see-also>
+      <link href="https://addyosmani.com/blog/ai-coding-workflow/"/>
+      <link href="https://www.webuild-ai.com/insights/five-workflow-patterns-to-multiply-your-development-capacity-with-ai-coding-assistants"/>
+      <link href="https://thenewstack.io/5-key-trends-shaping-agentic-development-in-2026/"/>
+      <link href="https://boredhacking.com/coding-with-llms-2026/"/>
+    </see-also>
+  </content>
+</methodology>
