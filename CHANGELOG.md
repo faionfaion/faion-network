@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 solo/comms/communicator methodologies → methodology.xml (active-listening, brainstorming-ideation, brainstorming-techniques; feature-045 batch CN)
 - migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (azure-devops-boards, benefits-realization, change-control; feature-045 batch CA)
 - migrate: solo/comms/communicator/negotiation → methodology.xml (feature-045 batch CQ)
 - migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (pm-certification-changes-2026, raci-matrix, ref-pmbok; feature-045 batch CB)
