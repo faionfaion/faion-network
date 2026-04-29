@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 - migrate: 3/3 pro/marketing/growth-marketer methodologies → methodology.xml (aarrr-pirate-metrics, ab-testing-basics, activation-metrics; feature-045 batch BG)
+- migrate: 3/3 pro/marketing/growth-marketer methodologies → methodology.xml (activation-tactics, growth-loops, north-star-metric; feature-045 batch BH)
 - migrate: 3/3 pro/marketing/conversion-optimizer methodologies → methodology.xml (onboarding-flows, plg-basics, plg-implementation-guide; feature-045 batch BF)
 - migrate: 3/3 pro/infra/infrastructure-engineer methodologies → methodology.xml (gcp-storage, helm-basics, helm-advanced; feature-045 batch BB)
 - migrate: 3/3 pro/infra/infrastructure-engineer methodologies → methodology.xml (iac-basics, k8s-basics, terraform-state; feature-045 batch BE)
