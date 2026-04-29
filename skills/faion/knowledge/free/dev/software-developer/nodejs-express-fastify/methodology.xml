@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="nodejs-express-fastify">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Production Node.js HTTP APIs with Express or Fastify: middleware stack, validation, error handling, graceful shutdown. Choose Express for ecosystem; Fastify for performance and TypeScript-first.</summary>
+    <tags>
+      <tag>nodejs</tag>
+      <tag>express</tag>
+      <tag>fastify</tag>
+      <tag>http-api</tag>
+      <tag>typescript</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2024-04-25</created>
+  </metadata>
+  <content>
+    <title>Express / Fastify Patterns</title>
+    <summary>A methodology for building production Node.js HTTP APIs with Express or Fastify: structured middleware stack (helmet, cors, rate-limit, pino), centralized error handler, schema-validated routes (Zod for Express, TypeBox for Fastify), JWT auth decorator, and graceful shutdown on SIGTERM/SIGINT. Choose Express for ecosystem breadth; Fastify for high-throughput TypeScript-first JSON APIs.</summary>
+    <why>
+      <p>Express's implicit middleware order and lack of built-in validation cause silent security gaps and inconsistent error shapes. Fastify's plugin encapsulation and schema-first design prevent these but introduce non-obvious scoping rules. Both frameworks require a deliberate middleware stack to be production-safe — missing any one piece (rate-limit, error handler, graceful shutdown) creates either reliability or security issues that only manifest under load or during deploys.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a Node.js HTTP API needing a known-good middleware stack.</item>
+        <item>Choosing between Express (ecosystem) and Fastify (performance, schema, TS-first).</item>
+        <item>Migrating an Express app to TypeScript-strict + Zod or Fastify + TypeBox.</item>
+        <item>Greenfield service with fewer than 10 routes where full Nest/Adonis is overkill.</item>
+        <item>Designing route, error-handler, and auth boundaries an agent can extend safely.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Heavy realtime / streaming workloads — uWebSockets or Go service is cheaper.</item>
+        <item>Edge-runtime targets (Cloudflare Workers, Vercel Edge) — use Hono or itty-router.</item>
+        <item>Frontend-only / full-stack frameworks (Next.js Route Handlers, Remix, SvelteKit).</item>
+        <item>Codebases already standardized on Nest or tRPC — mixing is double-tooling.</item>
+        <item>Python or Go shops without Node expertise — unnecessary runtime to operate.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="middleware-order-express">
+      <rule>
+        <statement>Register middleware in this exact order: security (helmet) → cors → body parsing → logging → rate-limit → routes → 404 handler → error handler. The error handler must be last.</statement>
+        <rationale>Express middleware executes in registration order. Placing the error handler before routes means it never receives route errors. Placing rate-limit after logging means log entries exist for blocked requests without rate-limit headers.</rationale>
+      </rule>
+      <rule>
+        <statement>Never register errorHandler before routes. An error handler with 4 arguments (err, req, res, next) is only invoked when a route calls next(err).</statement>
+        <rationale>Express identifies error handlers by arity (4 arguments). Registering before routes means route-thrown errors fall through to Express's default handler, which returns HTML error pages.</rationale>
+      </rule>
+    </section>
+
+    <section name="validation">
+      <rule>
+        <statement>Every route that accepts a request body, params, or query must validate against a schema. Use Zod for Express; TypeBox for Fastify.</statement>
+        <rationale>Without validation, malformed input reaches business logic and produces unpredictable behavior. Schema validation also generates a single source of truth for both TypeScript types and runtime checks.</rationale>
+      </rule>
+      <rule>
+        <statement>In Fastify, compile schemas at module scope, not inside the handler registration. Define TypeBox schemas once per module.</statement>
+        <rationale>Defining schemas inside the handler causes Fastify to recompile the Ajv schema on every request, tanking throughput. Module-scope definition compiles once at startup.</rationale>
+      </rule>
+    </section>
+
+    <section name="error-handling">
+      <rule>
+        <statement>All errors must flow to the centralized error handler via next(err) (Express) or by throwing (Fastify). Never call res.status().json() with an error shape inside a handler.</statement>
+        <rationale>Per-handler error responses create inconsistent shapes. One centralized handler enforces one shape, one content-type, and one logging strategy across all endpoints.</rationale>
+      </rule>
+      <rule>
+        <statement>In Express 4, wrap async handlers with try/catch and call next(err) in the catch block. In Express 5+, unhandled promise rejections propagate automatically.</statement>
+        <rationale>Express 4 does not catch rejected promises from async route handlers. Forgotten next(err) leaves the response hanging indefinitely.</rationale>
+      </rule>
+    </section>
+
+    <section name="fastify-plugin-encapsulation">
+      <rule>
+        <statement>Wrap any plugin that decorates the Fastify instance with fastify-plugin (fp) when the decorator must be visible outside the plugin's scope.</statement>
+        <rationale>Fastify's encapsulation model isolates plugins by default. A decorator registered inside a plain plugin is invisible to sibling routes. fastify-plugin opts out of encapsulation for that specific plugin.</rationale>
+      </rule>
+    </section>
+
+    <section name="graceful-shutdown">
+      <rule>
+        <statement>Listen for SIGTERM and SIGINT. On signal: stop accepting new connections, drain in-flight requests via server.close(), close DB pools, then exit.</statement>
+        <rationale>Container orchestrators (Kubernetes, Docker Compose) send SIGTERM and give the process 10-30 seconds to drain. Without graceful shutdown, mid-request termination causes client errors and data corruption.</rationale>
+      </rule>
+    </section>
+
+    <section name="express-application-setup">
+      <example type="good" title="Express application setup">
+        <code lang="typescript"><![CDATA[
+export function createApp(): Express {
+  const app = express();
+  app.set('trust proxy', 1);
+  app.use(helmet());
+  app.use(cors({ origin: config.corsOrigins, credentials: true }));
+  app.use(compression());
+  app.use(express.json({ limit: '10kb' }));
+  app.use(pinoHttp({ logger: config.logger }));
+  app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true }));
+  app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  app.use('/api/v1', router);
+  app.use(notFoundHandler);
+  app.use(errorHandler);  // must be last
+  return app;
+}
+]]></code>
+        <note>Middleware order is explicit. errorHandler registered last. Rate-limit after logging.</note>
+      </example>
+    </section>
+
+    <section name="express-graceful-shutdown">
+      <example type="good" title="Express graceful shutdown">
+        <code lang="typescript"><![CDATA[
+function shutdown(signal: string) {
+  logger.info(`${signal} received`);
+  server.close(() => {
+    logger.info('HTTP server closed');
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(1), 30000);
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT',  () => shutdown('SIGINT'));
+]]></code>
+        <note>Forced exit after 30 seconds prevents hanging if connections don't drain.</note>
+      </example>
+    </section>
+
+    <section name="fastify-typebox-route">
+      <example type="good" title="Fastify TypeBox route">
+        <code lang="typescript"><![CDATA[
+const CreateUserSchema = Type.Object({
+  email: Type.String({ format: 'email' }),
+  name: Type.String({ minLength: 1, maxLength: 100 }),
+  password: Type.String({ minLength: 8 }),
+});
+
+export const userRoutes: FastifyPluginAsync = async (app) => {
+  app.post<{ Body: Static<typeof CreateUserSchema> }>(
+    '/',
+    {
+      schema: {
+        body: CreateUserSchema,
+        response: { 201: Type.Object({ data: UserSchema }) },
+      },
+    },
+    async (request, reply) => {
+      const user = await app.userService.createUser(request.body);
+      reply.status(201);
+      return { data: user };
+    }
+  );
+};
+]]></code>
+        <note>TypeBox schema is the source of truth for both runtime validation and TypeScript types. Handler is thin: bind → service → return.</note>
+      </example>
+    </section>
+
+    <section name="fastify-auth-plugin">
+      <example type="good" title="Fastify auth plugin">
+        <code lang="typescript"><![CDATA[
+// plugins/auth.ts — must use fastify-plugin to escape encapsulation
+import fp from 'fastify-plugin';
+
+const authPlugin: FastifyPluginAsync = async (app) => {
+  app.decorate('authenticate', async (request: FastifyRequest) => {
+    const header = request.headers.authorization;
+    if (!header?.startsWith('Bearer '))
+      throw app.httpErrors.unauthorized('Missing authorization');
+    try {
+      const payload = jwt.verify(header.slice(7), app.config.jwtSecret);
+      request.user = payload as { userId: string; email: string };
+    } catch {
+      throw app.httpErrors.unauthorized('Invalid token');
+    }
+  });
+};
+export default fp(authPlugin, { name: 'auth' });
+]]></code>
+        <note>fp() wrapper is mandatory for the decorator to be visible to routes registered in sibling plugins.</note>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Callback-based async handler in Express: User.findById(id, (err, user) => {...}).</description>
+        <reason>Callback-based code cannot use try/catch for error propagation. Errors require explicit res.status(500) calls in every callback, creating inconsistent shapes and missed error paths. Use async/await with next(err) in catch.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Async Express handler without try/catch and next(err): async (req, res) => { const u = await find(); res.json(u); }.</description>
+        <reason>Express 4 does not catch rejected promises from async handlers. If find() rejects, the response hangs indefinitely. Wrap in try/catch and call next(err), or use Express 5 / express-async-errors.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Route handler without a schema in Fastify or validate() middleware in Express.</description>
+        <reason>Unvalidated request bodies reach business logic and databases with arbitrary shapes. Schema validation is the only reliable defense against malformed input.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>CORS configured with origin: '*' and credentials: true.</description>
+        <reason>This combination is invalid per the CORS spec and causes a browser error at runtime. Browsers block credentialed cross-origin requests when the server responds with a wildcard origin.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Hardcoded port, JWT secret, or database URL as string literals in application code.</description>
+        <reason>Secrets committed to source or bundled into images are leaked to anyone with repository or container access. Use process.env and validate at startup; reject missing required config.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Fastify auth decorator registered in a plain plugin (not wrapped with fastify-plugin).</description>
+        <reason>Fastify's encapsulation isolates decorators to the plugin's scope. Routes outside the plugin cannot call app.authenticate. The failure is silent — the decorator simply does not exist on the outer instance.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Logging raw req.body or req.headers without redacting authorization, cookie, and password fields.</description>
+        <reason>Production logs containing credentials create audit failures and enable credential theft via log aggregation systems. Use pino's redact option to strip sensitive fields before logging.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Pin versions exactly (package.json no carets) for the Fastify ecosystem; minor releases of @fastify/* plugins occasionally rename hooks.</item>
+        <item>Use fastify-plugin (fp) for any decorator that must escape encapsulation — forgetting this is the #1 Fastify bug agents introduce.</item>
+        <item>Centralize error class hierarchy (AppError → ValidationError, NotFoundError, UnauthorizedError) and map them in one error handler. Don't res.status(...).json(...) in handlers.</item>
+        <item>Validate at the edge with the same schema you use for types. Zod (Express) or TypeBox (Fastify) gives one source of truth; never hand-write a TypeScript interface for a payload.</item>
+        <item>Log a request ID + user ID with every line via pino-http genReqId or Fastify's requestIdHeader; without it, prod debugging is impossible.</item>
+        <item>Graceful shutdown is non-negotiable. Listen for SIGTERM, stop accepting new connections, drain in-flight, close DB pools, then exit. Container orchestrators give you 10-30s — use them.</item>
+        <item>Set app.set('trust proxy', 1) in Express behind a single proxy (Nginx, ALB); without it req.ip and rate-limit see the proxy IP only.</item>
+        <item>Guard secrets at boundary. Never log req.body or req.headers raw; redact authorization, cookie, password via Pino's redact option.</item>
+        <item>Use @fastify/sensible for httpErrors rather than throwing raw Error; status codes stay consistent without per-route boilerplate.</item>
+        <item>Compile schemas once. In Fastify, define schemas at module scope; redefining inside the handler tanks throughput.</item>
+      </list>
+    </section>
+
+    <section name="framework-choice">
+      <p>Choose Express when: team has existing Express/middleware knowledge, you need maximum ecosystem breadth (e.g., passport strategies), or the codebase is already Express. Choose Fastify when: building a new TypeScript-first JSON API, throughput matters (>10k req/s per core), or you value schema-as-contract (TypeBox → types + validation + OpenAPI). Both are suitable for cloud-native deployments; Fastify edges out Express in cold-start latency.</p>
+    </section>
+
+    <section name="where-it-fails-limitations">
+      <list>
+        <item>Express's middleware order is implicit. Reorder one app.use and 4xx/5xx behavior changes silently. Newer engineers (and LLMs) misplace errorHandler ahead of routes.</item>
+        <item>No built-in validation in Express. Without zod / joi the API ships unvalidated bodies; error shape becomes a per-route snowflake.</item>
+        <item>Async error swallowing. Forgetting next(err) in an async Express handler hangs the response. Express 5 fixes most cases; Express 4 still bites.</item>
+        <item>Fastify schema lock-in. TypeBox / Ajv schemas double as runtime validators and TS types — great until you need a dynamic schema; serialization shortcuts can also drop fields silently if the response schema omits them.</item>
+        <item>Plugin scoping in Fastify. app.register creates encapsulation contexts; decorators leak in non-obvious ways. LLMs frequently forget fastify-plugin wrappers.</item>
+        <item>Performance ceiling. Both frameworks plateau around 30-80k req/s on a single core; CPU-heavy work (JSON parsing, JWT verify) dominates. Don't expect a framework swap to fix architectural bottlenecks.</item>
+        <item>Ecosystem rot. Express middlewares often unmaintained (body-parser, morgan, custom CSRF). Audit before adopting; many have CVEs or have been superseded.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>LLMs love deprecated Express middleware. Models still emit body-parser, morgan, cookie-parser separately even though express.json() and structured pino replace them. Pin the prompt to "Express ≥4.18, no body-parser import."</item>
+        <item>Async error handlers in Express 4. Agents forget next(err) in async functions; use express-async-errors or wrap with asyncHandler. Express 5 mostly fixes this — confirm the version.</item>
+        <item>Fastify plugin encapsulation. Agents place auth decorators in a normal plugin (encapsulated) and then can't use them in sibling routes. Force-prompt: "wrap with fastify-plugin if it must be visible outside this scope."</item>
+        <item>Schema-less agent code. Without explicit schemas, generated routes pass any body. Reject any handler PR without schema (Fastify) or validate(...) middleware (Express + Zod).</item>
+        <item>Hardcoded ports / origins. Agents inline 3000 and http://localhost:3000; force config via process.env and reject string literals in route or app code.</item>
+        <item>CORS wildcard. Default LLM output is cors({ origin: '*' }) with credentials: true — that's a runtime error in modern browsers. Specify origins explicitly.</item>
+        <item>JWT secret length. Agents pick weak HS256 secrets in examples; reject anything less than 32 chars in JWT_SECRET or push to RS256 with KMS-backed keys.</item>
+        <item>Logging the request body. Pino's default with pino-http may include req.body; agents forget to enable redaction. Mandate the redact list.</item>
+        <item>Graceful shutdown swallowed. Agents register SIGTERM but don't wait for server.close()'s callback; container kills mid-request. Verify the close→exit chain in review.</item>
+        <item>Test-only auth bypass leaking. Agents add if (process.env.NODE_ENV === 'test') skip auth and forget the env check on prod; treat as a security gate, not a convenience.</item>
+        <item>Streaming responses break Fastify schema serialization. Agents wire response: { 200: SomeSchema } then return a stream — Fastify drops the body. Disable response schema for streamed routes.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>pnpm / npm / bun — Package management; pnpm recommended for monorepos</item>
+        <item>tsx — Run TypeScript without compile step (dev/watch)</item>
+        <item>tsup / esbuild — Production bundle to single ESM file</item>
+        <item>pino-pretty — Local log formatter for pino JSON logs</item>
+        <item>vitest — Test runner; works with both frameworks; supports fastify.inject and supertest</item>
+        <item>supertest / @fastify/inject — HTTP integration testing</item>
+        <item>autocannon — Built-in benchmarking (Fastify devs maintain it)</item>
+        <item>clinic.js — Node.js performance profiling (flame, doctor, bubbleprof)</item>
+        <item>eslint --fix + @typescript-eslint — Static analysis; pair with eslint-plugin-security and eslint-plugin-node</item>
+        <item>npm-check-updates (ncu) — Detect outdated middleware / plugin versions</item>
+        <item>swagger-cli / redocly — Validate / preview the generated OpenAPI from @fastify/swagger</item>
+      </list>
+    </section>
+
+    <section name="services-apps">
+      <list>
+        <item>@fastify/swagger + @fastify/swagger-ui — OSS plugin. Auto-generates OpenAPI from TypeBox schemas — excellent agent input/output contract.</item>
+        <item>Stoplight / Redocly — SaaS / OSS. Render OpenAPI as docs portal; CLI-driven.</item>
+        <item>Sentry / Highlight — SaaS APM. Both frameworks have first-class SDKs; agents can wire @sentry/node in less than 10 lines.</item>
+        <item>Datadog APM / OpenTelemetry SDK — SaaS / OSS. OTel auto-instruments Express + Fastify; preferred for vendor-neutral telemetry.</item>
+        <item>Better Stack / Logtail — SaaS log + uptime. Pino transport ships JSON logs directly.</item>
+        <item>Render / Railway / Fly.io / Hetzner — PaaS / IaaS. All deploy a Node Dockerfile in one command — match to budget.</item>
+        <item>Cloudflare Workers / Vercel Edge — Serverless. No for Express. Use Hono instead; Fastify v5 has partial Edge support but not recommended.</item>
+        <item>AWS Lambda + @fastify/aws-lambda / serverless-http — SaaS. Cold-start tax; only worth it for spiky traffic.</item>
+        <item>PM2 — OSS process manager. Cluster mode + zero-downtime reload; less needed if already in Docker/K8s.</item>
+        <item>Auth0 / Clerk / Supabase Auth — SaaS auth. Drop-in JWT issuer; pair with the Fastify decorator pattern.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive Node API work as a 4-stage pipeline. (1) An architect agent reads the README + existing repo and decides Express vs Fastify, validation lib (Zod vs TypeBox), and folder layout. (2) A scaffolder agent (haiku-class sufficient) emits app.ts, server.ts, routes/, middleware/, and a Dockerfile from templates. (3) A route-builder agent generates handlers, schemas, and tests one resource at a time, gated by contract spec (OpenAPI or TypeBox source-of-truth). (4) A reviewer / SDD agent verifies error handling, logging context, auth scoping, and graceful shutdown before merge. Persist decisions to .aidocs/decisions/ so subsequent agents stay consistent.</p>
+    </section>
+
+    <templates>
+      <template path="templates/audit-routes.sh" purpose="Script: flag route handlers missing schema, auth, or error wiring"/>
+    </templates>
+
+    <see-also>
+      <link href="https://expressjs.com/en/guide/"/>
+      <link href="https://fastify.dev/docs/latest/"/>
+      <link href="https://github.com/goldbergyoni/nodebestpractices"/>
+      <link href="https://github.com/sinclairzx81/typebox"/>
+      <link href="https://zod.dev"/>
+      <link href="https://getpino.io"/>
+      <link href="https://fastify.dev/docs/latest/Reference/Plugins/"/>
+      <link href="https://cheatsheetseries.owasp.org/cheatsheets/Nodejs_Security_Cheat_Sheet.html"/>
+    </see-also>
+  </content>
+</methodology>
