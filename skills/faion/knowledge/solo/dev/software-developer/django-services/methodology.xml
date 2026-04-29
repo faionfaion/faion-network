@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-services">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Isolate Django business logic into plain Python functions (not classes unless DI required). Services own DB mutations, API calls, transactions. Views/serializers stay HTTP-only.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>architecture</tag>
+      <tag>services</tag>
+      <tag>testing</tag>
+      <tag>clean-code</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Django Services Architecture</title>
+    <summary>Pattern for isolating Django business logic into a services/ layer of plain Python functions (or classes only when DI is required). Services own all DB-mutating operations, outbound API calls, and transactional boundaries; views/serializers stay HTTP-only. Core rule: service functions take domain primitives (never request), use keyword-only optional args, wrap multi-write paths in transaction.atomic(), and raise domain exceptions — never DRF ones.</summary>
+    <why>
+      <p>Fat views hide business logic behind HTTP context, making it untestable without a DRF client and unreusable from Celery tasks or management commands. A thin service function with a clear signature and Google-style docstring is testable with a plain pytest call, reusable from any entry point, and reviewable for import-boundary violations by an automated agent.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Adding any DB-mutating logic (create/update/delete) that would otherwise live in a view.</item>
+        <item>Coordinating multi-model writes needing a single transactional boundary.</item>
+        <item>Wrapping outbound API/SMTP/SMS calls so views/serializers stay thin.</item>
+        <item>Making business logic unit-testable without HTTP or DRF context.</item>
+        <item>Sharing an operation between a view, Celery task, and management command.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure functions (validation, formatting, calculation) — those go in utils/.</item>
+        <item>Trivial single-model obj.field = x; obj.save() called from one view.</item>
+        <item>Read-only queryset chaining — keep on the manager / objects.</item>
+        <item>DRF view-only concerns (permission checks, serializer wiring).</item>
+      </list>
+    </when-not-to-use>
+    <section name="placement-decision-tree">
+      <title>Placement Decision Tree</title>
+      <rule>
+        <statement>Place logic in services/ when it changes the DB, makes outbound calls, or needs to be called from views AND Celery tasks. Place pure functions in utils/.</statement>
+        <rationale>Views calling queryset methods directly couple business logic to HTTP context and make it impossible to reuse from management commands or async tasks without importing Django's request machinery.</rationale>
+      </rule>
+      <p>Decision: Changes DB (CREATE/UPDATE/DELETE)? → services/. Makes outbound API calls? → services/ or integrations/. Pure function (validation, calculation)? → utils/. Data transformation? → utils/.</p>
+    </section>
+    <section name="function-vs-class">
+      <title>Function vs Class</title>
+      <rule>
+        <statement>Default to service functions; use a class only when dependency injection is required (e.g., a swappable payment gateway).</statement>
+        <rationale>Classes with no DI are fake-OO: they have no state beyond what a function argument could carry. Function-first keeps the call site simple and avoids instantiation ceremony.</rationale>
+      </rule>
+      <example type="good" title="Function-Style vs Class-Style">
+        <code lang="python"><![CDATA[
+# Function-style (preferred)
+def activate_user_item(user: "User", item_code: str, *, activated_by: "Admin") -> "Item":
+    """Activate item for user."""
+    from apps.inventory.models import Item
+    item = Item.objects.get(code=item_code)
+    item.user = user
+    item.is_active = True
+    item.save(update_fields=["user", "is_active", "updated_at"])
+    return item
+
+# Class-style only when DI is needed
+class OrderProcessingService:
+    def __init__(self, payment_gateway: PaymentGateway):
+        self.payment_gateway = payment_gateway
+
+    def process(self, order: "Order") -> ProcessingResult: ...
+]]></code>
+      </example>
+    </section>
+    <section name="lazy-imports">
+      <title>Lazy Imports</title>
+      <rule>
+        <statement>Import Django models inside the function body or under TYPE_CHECKING to prevent app-loading order errors in large codebases.</statement>
+        <rationale>Django apps load in a defined order. A service module that imports models at top-level triggers an AppRegistryNotReady error if it's imported before its app is ready.</rationale>
+      </rule>
+      <example type="good" title="TYPE_CHECKING and Lazy Imports">
+        <code lang="python"><![CDATA[
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from apps.inventory.models import Item
+    from apps.users.models import User
+
+def activate_item(user: "User", code: str) -> "Item":
+    from apps.inventory.models import Item  # lazy import
+    ...
+]]></code>
+      </example>
+    </section>
+    <section name="keyword-only-arguments">
+      <title>Keyword-Only Arguments</title>
+      <rule>
+        <statement>Mark all optional parameters as keyword-only with * in the signature to prevent positional-arg drift across versions.</statement>
+        <rationale>Positional optional parameters can be silently passed in the wrong order by callers; * enforces named call sites that break loudly when signatures change.</rationale>
+      </rule>
+      <example type="good" title="Keyword-Only Optional Parameters">
+        <code lang="python"><![CDATA[
+def create_order(
+    user: "User",
+    amount: "Decimal",
+    order_type: str,
+    *,
+    item: "Item | None" = None,
+    notify: bool = True,
+) -> "Order":
+    ...
+]]></code>
+      </example>
+    </section>
+    <section name="docstrings">
+      <title>Docstrings</title>
+      <rule>
+        <statement>Write Google-style docstrings on every service function listing the business rules as bullets, then Args, Returns, and Raises.</statement>
+        <rationale>Business rules in comments are visible to reviewers and LLM agents without reading the implementation. Raises section lets view code handle domain exceptions cleanly.</rationale>
+      </rule>
+      <example type="good" title="Google-Style Service Docstring">
+        <code lang="python"><![CDATA[
+def create_order(user: "User", amount: "Decimal") -> "Order":
+    """Create order for user.
+
+    Business logic:
+    - Validates user daily limits
+    - Creates Transaction and Order records
+    - Sends confirmation notification
+
+    Args:
+        user: User placing the order.
+        amount: Order amount in base currency.
+
+    Returns:
+        Created Order instance.
+
+    Raises:
+        LimitExceededError: If daily limit is exceeded.
+    """
+    ...
+]]></code>
+      </example>
+    </section>
+    <section name="transactions-and-save-discipline">
+      <title>Transactions and Save Discipline</title>
+      <rule>
+        <statement>Wrap multi-write paths in @transaction.atomic; always pass update_fields=[] on partial model saves.</statement>
+        <rationale>Without atomic, a crash between two writes leaves the DB in a partial state. Without update_fields, Django fires every pre_save/post_save signal and does a full UPDATE even for unrelated fields — expensive and bug-prone.</rationale>
+      </rule>
+      <example type="good" title="Atomic Transactions with update_fields">
+        <code lang="python"><![CDATA[
+from django.db import transaction
+
+@transaction.atomic
+def transfer_item(from_user: "User", to_user: "User", item_id: str) -> "Item":
+    from apps.inventory.models import Item
+    item = Item.objects.select_for_update().get(id=item_id, user=from_user)
+    item.user = to_user
+    item.save(update_fields=["user", "updated_at"])  # not full save
+    return item
+]]></code>
+      </example>
+    </section>
+    <section name="domain-exceptions">
+      <title>Domain Exceptions</title>
+      <rule>
+        <statement>Define a &lt;Feature&gt;Error exception per service module; raise domain errors — never DRF ValidationError or Http404 — inside service code.</statement>
+        <rationale>DRF exceptions in services couple business logic to HTTP. Views map domain errors to HTTP responses cleanly; Celery tasks can log them differently.</rationale>
+      </rule>
+      <example type="good" title="Domain Exception Hierarchy">
+        <code lang="python"><![CDATA[
+class InventoryError(Exception):
+    """Domain errors raised by inventory service."""
+
+class ItemNotAvailableError(InventoryError):
+    pass
+
+def activate_item(user, code):
+    from apps.inventory.models import Item
+    try:
+        item = Item.objects.get(code=code)
+    except Item.DoesNotExist:
+        raise ItemNotAvailableError(f"Item {code!r} not found")
+    if item.is_active:
+        raise ItemNotAvailableError(f"Item {code!r} already active")
+    ...
+]]></code>
+      </example>
+      <antipattern>
+        <description>Importing DRF's Response, serializers.ValidationError, or any Django HttpResponse into service modules.</description>
+        <reason>Services become untestable without a full DRF request context and unreusable from non-HTTP entry points like Celery.</reason>
+      </antipattern>
+    </section>
+    <section name="limitations-and-tradeoffs">
+      <title>Limitations and Tradeoffs</title>
+      <list>
+        <item>Service-as-class with heavy DI tends to drift toward fake-OO; prefer functions until DI is justified.</item>
+        <item>from __future__ import annotations + lazy imports are required to avoid Django app-loading order errors when services reference models at module top-level.</item>
+        <item>Functions taking request couple business logic to HTTP — pass extracted primitives instead.</item>
+        <item>LLMs frequently inline DB writes into views; reviewers must enforce the services/ boundary.</item>
+        <item>"Fat services" with 200+ line functions hide multiple responsibilities — split by use case, not by model.</item>
+      </list>
+    </section>
+    <section name="agentic-workflow">
+      <title>Agentic Workflow</title>
+      <p>Drive Django service extraction with a two-phase agent: first a planner reads the view/serializer, identifies side effects, and emits a service contract (signature + business rules); then an implementer writes the services/&lt;feature&gt;.py function and rewrites the caller to delegate. A reviewer subagent enforces import direction (services may import models/utils, never views/serializers) and the keyword-only-args convention.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-sdd-executor-agent — plan-then-implement loop with quality gates; ideal for converting fat views to service functions.</item>
+        <item>nero-sdd-executor-agent — same loop wired to NERO project conventions.</item>
+        <item>A custom code-reviewer agent (sonnet) — verifies import boundaries, docstring style, update_fields=, transaction wrapping.</item>
+      </list>
+      <p>Prompt pattern: Task: Extract activation logic from apps/inventory/views.py:ActivateItemView into services/. Constraints: Function-style service, keyword-only optional args, Google-style docstring. Lazy import of models inside the function body. Return the mutated model; raise domain exceptions, never DRF exceptions. Wrap multi-write paths in transaction.atomic(). Output: file diff for services/&lt;name&gt;.py + the rewritten view.</p>
+    </section>
+    <section name="best-practices">
+      <title>Best Practices</title>
+      <list>
+        <item>Keep services pure-Python signatures (no request, no DRF Response, no HttpResponse).</item>
+        <item>Use keyword-only args (*, ) for every optional parameter — prevents positional-arg drift across versions.</item>
+        <item>Always pass update_fields= on partial saves; LLMs default to full saves which trigger every signal.</item>
+        <item>Wrap multi-write paths in transaction.atomic(); isolate select_for_update() to the service, never the view.</item>
+        <item>Define a &lt;Feature&gt;Error exception per service module so views can map to HTTP cleanly.</item>
+        <item>Lazy-import models inside the function body to dodge app-loading cycles in larger codebases.</item>
+        <item>Co-locate service tests in tests/services/test_&lt;feature&gt;.py — one file per service module.</item>
+      </list>
+    </section>
+    <section name="ai-agent-gotchas">
+      <title>AI-Agent Gotchas</title>
+      <list>
+        <item>Agents over-eagerly create classes; require a function-first rule unless DI is needed.</item>
+        <item>LLMs leak DRF imports (Response, serializers.ValidationError) into services — block in code review.</item>
+        <item>from __future__ import annotations is mandatory; without it, type aliases of unloaded models crash at import.</item>
+        <item>Agents forget update_fields= and bulk_* opportunities; add them as an SDD checklist item.</item>
+        <item>Human-in-loop checkpoint: any service that issues outbound payments, emails, or destructive deletes must require explicit approval before merge.</item>
+        <item>Multi-step refactors (view → service) should be one PR per service to keep diffs reviewable.</item>
+      </list>
+    </section>
+    <section name="cli-tools">
+      <title>CLI Tools</title>
+      <list>
+        <item>ruff — Lint + format (E/F/I/B/UP/SIM/DJ/T20) — repo standard. pip install ruff · https://docs.astral.sh/ruff/</item>
+        <item>mypy / pyright — Type-check service signatures. pip install mypy · https://mypy.readthedocs.io</item>
+        <item>django-stubs — Type stubs for Manager/QuerySet. pip install django-stubs[compatible-mypy]</item>
+        <item>pytest-django — Run service-layer tests without DRF client overhead. pip install pytest-django</item>
+        <item>factory_boy — Build fixtures for service inputs. https://factoryboy.readthedocs.io</item>
+        <item>django-extensions shell_plus — Iterate service calls with autoloaded models. pip install django-extensions</item>
+        <item>coverage.py — Verify services hit ≥90% — they hold the rules. pip install coverage</item>
+      </list>
+    </section>
+    <section name="services-and-apps">
+      <title>Services &amp; Apps</title>
+      <list>
+        <item>Sentry — SaaS, REST API + SDK. Capture domain exceptions raised by services for observability.</item>
+        <item>Celery + Redis/Valkey — OSS. Reuse the same service function from views and tasks.</item>
+        <item>Datadog APM / OpenTelemetry — SaaS / OSS. Auto-trace services.* modules; agents can wire decorators.</item>
+        <item>pytest-django + GitHub Actions — OSS. Standard CI loop for service test suites.</item>
+        <item>ruff pre-commit hook — OSS. Repo-wide gate; agents must ruff check --fix before commit.</item>
+      </list>
+    </section>
+    <section name="service-module-starter">
+      <title>Service Module Starter</title>
+      <example type="good" title="Service Module Skeleton">
+        <code lang="python"><![CDATA[
+# services/<feature>.py
+from __future__ import annotations
+from typing import TYPE_CHECKING
+from django.db import transaction
+
+if TYPE_CHECKING:
+    from apps.<app>.models import <Model>
+    from apps.users.models import User
+
+class <Feature>Error(Exception):
+    """Domain error raised by <feature> service."""
+
+@transaction.atomic
+def <verb>_<noun>(
+    user: "User",
+    *,
+    <param>: str,
+) -> "<Model>":
+    """One-line summary.
+
+    Business logic:
+    - bullet
+    - bullet
+    """
+    from apps.<app>.models import <Model>
+    obj = <Model>.objects.select_for_update().get(<lookup>=<param>)
+    # mutate
+    obj.save(update_fields=[...])
+    return obj
+]]></code>
+      </example>
+    </section>
+    <templates>
+      <template path="templates/service-module.py" purpose="Service module skeleton with lazy imports and domain exception"/>
+    </templates>
+    <see-also>
+      <link href="https://www.dabapps.com/insights/django-models-and-encapsulation/"/>
+      <link href="https://www.feldroy.com/books/two-scoops-of-django-3-x"/>
+      <link href="https://www.b-list.org/weblog/2020/mar/16/no-service/"/>
+      <link href="https://google.github.io/styleguide/pyguide.html"/>
+      <link href="https://peps.python.org/pep-3102/"/>
+    </see-also>
+  </content>
+</methodology>

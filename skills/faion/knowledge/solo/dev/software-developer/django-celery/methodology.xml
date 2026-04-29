@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-celery">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Celery integration for Django: explicit task names, idempotency guards, retry policies, time limits. Tasks receive IDs only. Queues map to workload classes; workers deployed as systemd services.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>celery</tag>
+      <tag>async</tag>
+      <tag>task-queue</tag>
+      <tag>redis</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Django Celery Tasks</title>
+    <summary>A methodology for integrating Celery into Django applications: every async task must declare explicit name, idempotency guard, retry policy (max_retries, retry_backoff, retry_jitter), and time limits (soft_time_limit, time_limit). Tasks receive primitive IDs only — never model instances. Queues map to workload classes; workers are deployed as systemd services per queue.</summary>
+    <why>
+      <p>HTTP requests must respond in milliseconds; Celery moves slow work (emails, reports, API calls) into background workers over a message broker. Idempotency prevents duplicate side effects on retry. Time limits protect worker slots from long-running jobs. Passing IDs instead of objects prevents stale-data bugs from ORM serialization. Without explicit queue routing, fast and slow tasks share workers and starve each other.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Offloading work that exceeds ~500ms inside an HTTP request (emails, PDF gen, image processing).</item>
+        <item>Scheduled jobs (Celery beat) replacing cron for deploy-portable scheduling.</item>
+        <item>Fan-out workloads (nightly digests, batch notifications) with concurrency limits.</item>
+        <item>Webhook receivers that must return 200 immediately and process async.</item>
+        <item>Retry-with-backoff for flaky upstreams without poisoning the request thread.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Sub-second jobs already inside the request — Celery overhead dominates.</item>
+        <item>Strict-ordering pipelines with stateful dependencies — use Prefect/Temporal/Dagster.</item>
+        <item>Streaming or exactly-once semantics — Celery is at-least-once; design idempotency or use Kafka.</item>
+        <item>Tasks needing mid-flight cancellation across many workers — Celery revoke is best-effort.</item>
+        <item>Apps already on django-q2, huey, dramatiq, or arq where switching costs don't pay back.</item>
+      </list>
+    </when-not-to-use>
+    <section name="mandatory-task-attributes">
+      <title>Mandatory Task Attributes</title>
+      <rule>
+        <statement>Every task must declare: explicit name, bind=True, max_retries, autoretry_for with retry_backoff=True and retry_jitter=True, soft_time_limit, and time_limit. Tasks without these attributes are rejected in code review.</statement>
+        <rationale>Implicit names break on module rename. Missing bind=True makes self.retry() crash. Missing time limits let slow tasks block worker slots indefinitely. Missing retry config turns transient failures into permanent ones.</rationale>
+      </rule>
+      <example type="good" title="Complete Task Definition with Idempotency">
+        <code lang="python"><![CDATA[
+from celery import shared_task
+import requests
+
+@shared_task(
+    name="emails.send_welcome",
+    bind=True,
+    max_retries=5,
+    autoretry_for=(requests.RequestException,),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    retry_jitter=True,
+    soft_time_limit=300,
+    time_limit=360,
+)
+def send_welcome(self, user_id: int) -> bool:
+    """Send welcome email. Idempotent — checks sent flag before action."""
+    from apps.users.models import User
+    user = User.objects.only("id", "email", "welcome_email_sent").get(pk=user_id)
+    if user.welcome_email_sent:
+        return False  # already done
+    send_email(user.email, "Welcome!")
+    User.objects.filter(pk=user_id, welcome_email_sent=False).update(
+        welcome_email_sent=True
+    )
+    return True
+]]></code>
+        <note>The idempotency guard uses UPDATE WHERE not_done=True — a DB-level atomic check-and-set, not a read-then-write race.</note>
+      </example>
+    </section>
+    <section name="argument-rule">
+      <title>Argument Rule</title>
+      <rule>
+        <statement>Tasks accept only primitive arguments (int, str, float, bool, dict of primitives). Never pass model instances — they serialize to stale data and fail to deserialize on worker restart.</statement>
+        <rationale>ORM objects serialized into the queue carry the state at call time. By the time the worker runs, the DB row may have changed. IDs force a fresh query inside the task.</rationale>
+      </rule>
+      <example type="bad" title="Wrong: Pass Instance">
+        <code lang="python"><![CDATA[
+# WRONG: passes User instance
+send_welcome.delay(user=request.user)
+]]></code>
+      </example>
+      <example type="good" title="Correct: Pass ID">
+        <code lang="python"><![CDATA[
+# CORRECT: passes primitive ID
+send_welcome.delay(user_id=request.user.id)
+]]></code>
+      </example>
+    </section>
+    <section name="queue-routing">
+      <title>Queue Routing</title>
+      <rule>
+        <statement>Route tasks by workload class: emails, webhooks, reports, long_running. Each queue maps to one SLA. Never mix fast and slow tasks on the default queue.</statement>
+        <rationale>Long-running tasks block worker concurrency slots. A slow report task sharing a queue with email tasks can delay all email delivery.</rationale>
+      </rule>
+      <example type="good" title="Task Routes Configuration">
+        <code lang="python"><![CDATA[
+# config/celery.py
+app.conf.task_routes = {
+    "emails.*":    {"queue": "emails"},
+    "reports.*":   {"queue": "reports"},
+    "webhooks.*":  {"queue": "webhooks"},
+}
+]]></code>
+      </example>
+    </section>
+    <section name="calling-conventions">
+      <title>Calling Conventions</title>
+      <rule>
+        <statement>Use .delay() for simple async dispatch. Use .apply_async() when you need countdown, eta, or explicit queue. Never call tasks synchronously in production request paths.</statement>
+        <rationale>Synchronous task execution in a request thread defeats the purpose of async processing and blocks the web worker.</rationale>
+      </rule>
+    </section>
+    <section name="periodic-tasks">
+      <title>Periodic Tasks</title>
+      <rule>
+        <statement>Use RedBeat or django-celery-beat with leader election for periodic tasks. Never run multiple naive celery beat processes — they produce duplicate executions.</statement>
+        <rationale>On HA deployments, two beat processes both fire the same schedule, causing duplicate emails, double-charges, or corrupt aggregations.</rationale>
+      </rule>
+    </section>
+    <section name="stale-object-antipattern">
+      <title>Stale Object Antipattern</title>
+      <antipattern>
+        <description>Passing a Django model instance to a task via .delay(user=user_obj).</description>
+        <reason>Celery serializes the object at call time. The worker deserializes stale data or fails entirely on restart. Always pass the primary key and fetch fresh inside the task.</reason>
+      </antipattern>
+    </section>
+    <section name="missing-bind-true">
+      <title>Missing bind=True</title>
+      <antipattern>
+        <description>Calling self.retry() inside a task defined without bind=True.</description>
+        <reason>Without bind=True, self is undefined. The task crashes on the first retry attempt with a NameError, not a retry.</reason>
+      </antipattern>
+    </section>
+    <section name="missing-time-limits">
+      <title>Missing Time Limits</title>
+      <antipattern>
+        <description>Defining tasks without soft_time_limit and time_limit.</description>
+        <reason>Without limits, a hung task (blocked network call, deadlocked DB query) holds a worker slot indefinitely, starving all other tasks in that queue.</reason>
+      </antipattern>
+      <example type="bad" title="Task Without Time Limits">
+        <code lang="python"><![CDATA[
+@shared_task
+def generate_report(report_id: int):
+    # no time limits — can run forever
+    run_expensive_report(report_id)
+]]></code>
+      </example>
+    </section>
+    <section name="beat-without-leader-election">
+      <title>Beat Without Leader Election</title>
+      <antipattern>
+        <description>Running multiple celery beat processes without RedBeat or django-celery-beat for leader election on multi-replica deployments.</description>
+        <reason>Each beat process fires the full schedule independently. N replicas produce N copies of every periodic task, causing duplicate side effects.</reason>
+      </antipattern>
+    </section>
+    <section name="chord-and-chain-abuse">
+      <title>Chord and Chain Abuse</title>
+      <antipattern>
+        <description>Building deeply nested Celery chains/chords on a Redis broker without monitoring back-pressure.</description>
+        <reason>Redis-backed chord results accumulate in memory. Deep nesting stalls the entire workflow when intermediate results expire or the broker fills up.</reason>
+      </antipattern>
+    </section>
+    <section name="secrets-in-task-code">
+      <title>Secrets in Task Code</title>
+      <antipattern>
+        <description>Inlining API keys or credentials directly in task function bodies or as default argument values.</description>
+        <reason>Task code is deployed to all workers. Secrets in code appear in logs, tracebacks, and version history. Use environment variables loaded via systemd EnvironmentFile.</reason>
+      </antipattern>
+    </section>
+    <section name="fan-out-without-approval">
+      <title>Fan-out Without Approval</title>
+      <antipattern>
+        <description>Dispatching tasks across all users (User.objects.all().iterator()) without an explicit human approval gate.</description>
+        <reason>A single typo or bug fan-outs to every user. Require an explicit approval checkpoint before any task that sends to more than N users.</reason>
+      </antipattern>
+    </section>
+    <section name="best-practices">
+      <title>Best Practices</title>
+      <list>
+        <item>Pass primitive IDs, never model instances; tasks fetch fresh state to avoid stale serialized objects.</item>
+        <item>Every side-effecting task is idempotent: check-then-act with a DB-level guard (UPDATE ... WHERE not_done=true).</item>
+        <item>Always set soft_time_limit and time_limit (soft fires SoftTimeLimitExceeded, hard SIGKILLs) — defaults are dangerous.</item>
+        <item>Set --max-tasks-per-child=N to recycle workers and dodge slow memory leaks.</item>
+        <item>Route by workload class: emails, webhooks, reports. One queue = one SLA.</item>
+        <item>Use acks_late=True and task_reject_on_worker_lost=True for tasks that must not lose work on worker crash.</item>
+        <item>Disable result backend unless you actually consume results; reduces broker pressure.</item>
+        <item>Beat: use RedBeat or django-celery-beat with leader election; never run multiple naive beat processes.</item>
+        <item>Monitor queue depth and task age, not just success rate; agents should alert on backlog growth.</item>
+      </list>
+    </section>
+    <section name="agentic-workflow">
+      <title>Agentic Workflow</title>
+      <p>A task agent first asks: "must this be async?" If yes, generates the task module with idempotency guard, retry policy, time limits, and a paired test that asserts both happy path and retry path. A queue-router agent updates task_routes and ensures workers exist for each queue. A monitoring agent integrates Sentry and Flower / OpenTelemetry. Treat any new task as a deploy artifact: it needs a queue, a worker process, and an alert.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-sdd-executor-agent — design + implement + verify with idempotency test as quality gate.</item>
+        <item>A custom task-auditor (sonnet) — finds tasks lacking bind=True, retry config, time limits, idempotency guards.</item>
+        <item>A custom queue-balancer (haiku) — reads task_routes and worker --queues= flags, flags mismatches.</item>
+      </list>
+      <p>Prompt pattern: Implement async task: Trigger: &lt;event&gt;; Inputs: pass primitive IDs only, never model instances; Idempotency: check &lt;field&gt; before side effect; Retries: exponential backoff, max 5; Time limits: soft 300s, hard 360s; Queue: &lt;queue-name&gt;. Output: tasks.py module, test_tasks.py, task_routes patch, worker --queues line.</p>
+    </section>
+    <section name="ai-agent-gotchas">
+      <title>AI-Agent Gotchas</title>
+      <list>
+        <item>Agents pass User instance into .delay(user); pickling fails or worker uses stale data — enforce primitive args.</item>
+        <item>LLMs forget bind=True and try self.retry() without it — task crashes on retry.</item>
+        <item>Agents pick delay() for time-sensitive jobs without confirming a worker for that queue runs in production.</item>
+        <item>"I added a beat schedule" with no leader election → duplicate executions in HA — require RedBeat.</item>
+        <item>Agents add chains/chords without considering broker memory; deeply nested chords stall on Redis broker.</item>
+        <item>Time-limit agents skip: long-running tasks then block worker slots indefinitely.</item>
+        <item>Human-in-loop checkpoint: tasks that send to many users (User.objects.all().iterator()) must require explicit approval; otherwise a typo fan-outs to everyone.</item>
+        <item>Agents tend to inline secrets into task code; require env-var indirection so workers reload via systemd EnvironmentFile.</item>
+      </list>
+    </section>
+    <section name="cli-tools">
+      <title>CLI Tools</title>
+      <list>
+        <item>celery — Worker + beat + control commands. pip install celery · https://docs.celeryq.dev</item>
+        <item>celery -A app inspect / control — Live worker introspection. celery -A proj inspect active</item>
+        <item>flower — Web dashboard for queues/workers. pip install flower · https://flower.readthedocs.io</item>
+        <item>celery-prometheus-exporter / celery-exporter — Metrics for Prometheus. https://github.com/danihodovic/celery-exporter</item>
+        <item>redbeat — Reliable Beat scheduler with Redis-backed leader election. pip install celery-redbeat</item>
+        <item>pytest-celery — Test fixtures for Celery in CI. https://docs.celeryq.dev/projects/pytest-celery</item>
+        <item>valkey-cli / redis-cli — Inspect broker queues and DLQs. https://valkey.io</item>
+        <item>aioamqp / rabbitmq-management — RabbitMQ broker introspection. https://rabbitmq.com</item>
+      </list>
+    </section>
+    <section name="services-and-apps">
+      <title>Services &amp; Apps</title>
+      <list>
+        <item>Redis / Valkey — OSS, agent-friendly. Common broker + result backend for solo deployments.</item>
+        <item>RabbitMQ / CloudAMQP — OSS / SaaS, agent-friendly. More robust broker for fan-out and DLQs.</item>
+        <item>Amazon SQS — SaaS, agent-friendly. Managed; supported by Celery as broker.</item>
+        <item>Sentry — SaaS, agent-friendly. First-class Celery integration; auto-captures task exceptions.</item>
+        <item>Flower — OSS, agent-friendly. UI + REST API to inspect/cancel tasks.</item>
+        <item>OpenTelemetry-Python — OSS, agent-friendly. Auto-instrument Celery for traces.</item>
+        <item>Honeybadger / Bugsnag — SaaS, agent-friendly. Alternatives to Sentry.</item>
+      </list>
+    </section>
+    <section name="systemd-service">
+      <title>Systemd Service Configuration</title>
+      <example type="good" title="Celery Worker Systemd Unit">
+        <code lang="ini"><![CDATA[
+# /etc/systemd/system/celery-orders.service
+[Unit]
+Description=Celery worker (orders queue)
+After=network.target redis.service
+
+[Service]
+Type=simple
+User=app
+EnvironmentFile=/etc/app/celery.env
+WorkingDirectory=/srv/app
+ExecStart=/srv/app/.venv/bin/celery -A config worker \
+  -Q orders -n orders@%%h \
+  --concurrency=4 --max-tasks-per-child=200 \
+  --soft-time-limit=300 --time-limit=360 \
+  --without-gossip --without-mingle
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+]]></code>
+      </example>
+    </section>
+    <templates>
+      <template path="templates/task-idempotent.py" purpose="Canonical idempotent task with full retry and time-limit config"/>
+      <template path="templates/celery-worker.service" purpose="Systemd unit for a single-queue Celery worker"/>
+    </templates>
+    <see-also>
+      <link href="https://docs.celeryq.dev"/>
+      <link href="https://docs.celeryq.dev/en/stable/django/first-steps-with-django.html"/>
+      <link href="https://denibertovic.com/posts/celery-best-practices/"/>
+      <link href="https://docs.celeryq.dev/en/stable/userguide/tasks.html#retrying"/>
+      <link href="https://flower.readthedocs.io"/>
+      <link href="https://github.com/sibson/redbeat"/>
+      <link href="https://docs.sentry.io/platforms/python/integrations/celery/"/>
+      <link href="https://www.cloudamqp.com/blog/celery-and-rabbitmq-tutorial.html"/>
+    </see-also>
+  </content>
+</methodology>

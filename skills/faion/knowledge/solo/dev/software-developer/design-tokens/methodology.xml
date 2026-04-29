@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="design-tokens">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Atomic design system values (colors, spacing, typography) in a three-tier hierarchy: primitive → semantic → component. One JSON source of truth emits per-platform outputs via Style Dictionary.</summary>
+    <tags>
+      <tag>design-system</tag>
+      <tag>tokens</tag>
+      <tag>style-dictionary</tag>
+      <tag>theming</tag>
+      <tag>figma</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Design Tokens</title>
+    <summary>Design tokens are the atomic values of a design system — colors, spacing, typography, shadows — stored as structured data with a three-tier hierarchy: primitive (raw values) → semantic (purpose-based aliases) → component (usage-specific). One JSON source of truth emits per-platform outputs (CSS vars, JS constants, iOS Swift, Android XML) via Style Dictionary.</summary>
+    <why>
+      <p>Without tokens, hardcoded hex values and magic numbers scatter across codebases, making theming impossible and brand changes surgical nightmares. The three-tier model separates "what the value is" from "what it means" from "where it's used," allowing dark mode, white-labeling, and platform consistency without forking components. Agents benefit because they pick values from a constrained vocabulary instead of inventing hex literals.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building or extending a design system for web + mobile.</item>
+        <item>Introducing dark mode or white-label theming.</item>
+        <item>Bridging Figma to code so design and engineering stay in sync.</item>
+        <item>Standardizing brand across multiple apps in a monorepo.</item>
+        <item>Connecting a token pipeline to Tailwind config or platform constants.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single one-off marketing page — overhead beats payoff.</item>
+        <item>Apps fully delegating to a UI library (Material, Mantine) with no re-skinning.</item>
+        <item>Prototype work where designers iterate hourly — token churn outpaces pipeline cost.</item>
+        <item>Pure server-rendered emails using external template SaaS that owns tokens.</item>
+      </list>
+    </when-not-to-use>
+    <section name="three-tier-model">
+      <title>Three-Tier Model</title>
+      <rule>
+        <statement>Organize tokens in three tiers: primitive (raw values), semantic (purpose aliases), component (usage-specific). Never skip a tier by referencing primitives from components.</statement>
+        <rationale>Skipping tiers couples component styling to raw values. A brand color change then requires touching every component instead of one semantic token.</rationale>
+      </rule>
+      <p>Tier definitions: Primitive = the raw value (color-blue-500: #3b82f6). Semantic = the purpose (color-action-primary references color-blue-500). Component = the slot (button-bg-primary references color-action-primary).</p>
+    </section>
+    <section name="naming-rules">
+      <title>Naming Rules</title>
+      <rule>
+        <statement>Primitive token names describe what the value is (color-blue-500, spacing-4, font-size-base). Semantic token names describe purpose, never a value (color-text-primary, color-bg-secondary). Component token names describe usage (button-padding-horizontal).</statement>
+        <rationale>Value-bearing names in semantic tokens (color-blue-primary) break when the brand color changes — the name becomes a lie.</rationale>
+      </rule>
+      <antipattern>
+        <description>Using a value-bearing name as a semantic token: color-blue-500-action.</description>
+        <reason>When brand blue changes to teal, the token name is wrong and callers must be renamed too.</reason>
+      </antipattern>
+    </section>
+    <section name="json-structure">
+      <title>JSON Structure</title>
+      <rule>
+        <statement>Store all token tiers as JSON files in a tokens/ directory. Primitive values use string or numeric values. Semantic tokens reference primitives using {category.name} syntax. Generate all platform outputs (CSS, JS, iOS, Android) from this source — never edit generated files.</statement>
+        <rationale>A single JSON source of truth means one edit propagates to all platforms automatically.</rationale>
+      </rule>
+      <example type="good" title="Primitive and Semantic Token Structure">
+        <code lang="json"><![CDATA[
+// tokens/primitive.json
+{
+  "color": {
+    "blue": {
+      "500": { "value": "#3b82f6" },
+      "600": { "value": "#2563eb" }
+    },
+    "gray": {
+      "50":  { "value": "#f9fafb" },
+      "900": { "value": "#111827" }
+    }
+  },
+  "spacing": {
+    "4": { "value": "1rem" },
+    "6": { "value": "1.5rem" }
+  }
+}
+
+// tokens/semantic.json (light theme)
+{
+  "color": {
+    "action": {
+      "primary":      { "value": "{color.blue.600}" },
+      "primaryHover": { "value": "{color.blue.700}" }
+    },
+    "text": {
+      "primary":   { "value": "{color.gray.900}" },
+      "secondary": { "value": "{color.gray.600}" }
+    },
+    "bg": {
+      "primary":   { "value": "{color.white}" },
+      "secondary": { "value": "{color.gray.50}" }
+    }
+  }
+}
+]]></code>
+        <note>Dark theme is a separate semantic-dark.json that overrides the same keys with different primitive references.</note>
+      </example>
+    </section>
+    <section name="token-organization">
+      <title>Token Organization</title>
+      <rule>
+        <statement>Store tokens in a tokens/ directory: primitive.json, semantic.json, semantic-dark.json, and a components/ subfolder for component-specific tokens. Version the token package separately so consumers adopt at their own pace.</statement>
+        <rationale>Separating light and dark themes as distinct files prevents merge conflicts and makes theme-switching logic explicit.</rationale>
+      </rule>
+    </section>
+    <section name="generation-rules">
+      <title>Generation Rules</title>
+      <rule>
+        <statement>Generate CSS custom properties, JS constants, Tailwind config, and platform-native constants from the token JSON via Style Dictionary. Never hand-write generated files.</statement>
+        <rationale>Hand-written outputs drift from the source JSON within weeks. Style Dictionary build as a pre-commit hook keeps outputs always in sync.</rationale>
+      </rule>
+      <rule>
+        <statement>Make Style Dictionary build a pre-commit hook. Any token JSON edit that does not regenerate outputs must fail CI.</statement>
+        <rationale>Agents edit token JSON and forget to rebuild outputs, shipping inconsistent platform CSS and JS.</rationale>
+      </rule>
+      <example type="good" title="Style Dictionary Build Pipeline">
+        <code lang="js"><![CDATA[
+// build-tokens.mjs
+import StyleDictionary from 'style-dictionary';
+const sd = new StyleDictionary({
+  source: ['tokens/primitive.json', 'tokens/semantic.json'],
+  platforms: {
+    css:  { transformGroup: 'css', buildPath: 'dist/css/',
+            files: [{ destination: 'tokens.css', format: 'css/variables' }] },
+    js:   { transformGroup: 'js',  buildPath: 'dist/js/',
+            files: [{ destination: 'tokens.js', format: 'javascript/es6' }] },
+    ios:  { transformGroup: 'ios-swift', buildPath: 'dist/ios/',
+            files: [{ destination: 'Tokens.swift', format: 'ios-swift/class.swift', className: 'Tokens' }] },
+  },
+});
+await sd.buildAllPlatforms();
+]]></code>
+      </example>
+    </section>
+    <section name="contrast-and-accessibility">
+      <title>Contrast and Accessibility</title>
+      <rule>
+        <statement>Run WCAG 2.2 AA contrast checks in CI for every semantic text-on-background pairing. Block PRs that drop any pairing below 4.5:1 for normal text or 3:1 for large text.</statement>
+        <rationale>Tokens do not enforce contrast — agents compose text-primary on bg-secondary without checking ratios. CI must be the gate.</rationale>
+      </rule>
+      <rule>
+        <statement>Require both light and dark semantic tokens for every new semantic key. CI must fail if a key exists in semantic.json but is absent from semantic-dark.json.</statement>
+        <rationale>Dark-mode parity gaps produce invisible text or broken UI in dark mode that only shows up in production.</rationale>
+      </rule>
+    </section>
+    <section name="versioning-and-lifecycle">
+      <title>Versioning and Lifecycle</title>
+      <rule>
+        <statement>Mark deprecated tokens with "$deprecated": "use color.bg.primary" in JSON. Linters must reject new usages while allowing old code to compile. Provide migration guides for major version bumps.</statement>
+        <rationale>Without deprecation markers, dead tokens accumulate silently and no one knows which are safe to remove.</rationale>
+      </rule>
+      <rule>
+        <statement>Add a "search before add" rule: before creating a new token, grep the existing JSON for a token with equivalent purpose. Token count above ~200 requires a lifecycle process (deprecate/merge/split).</statement>
+        <rationale>Agents create new tokens instead of reusing, causing token explosion where no one can grep the design vocabulary.</rationale>
+      </rule>
+    </section>
+    <section name="antipatterns">
+      <title>Antipatterns</title>
+      <antipattern>
+        <description>Hardcoding raw hex values or pixel sizes in component code instead of referencing tokens.</description>
+        <reason>Hardcoded values are invisible to the token pipeline. Brand changes require grep-and-replace across all components.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Flat token structure without hierarchy (one level of keys, no primitive/semantic split).</description>
+        <reason>Theming becomes impossible: every consumer must be updated individually instead of changing a semantic alias.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Syncing tokens by hand between Figma and code (copy-pasting hex values).</description>
+        <reason>Manual sync rots within days. Figma should be a view onto the JSON, not the source of truth.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents writing bg-[#3b82f6] arbitrary Tailwind values instead of token-backed utilities.</description>
+        <reason>Arbitrary values bypass the token pipeline entirely. Lint with eslint-plugin-tailwindcss no-custom-classname.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Changing a primitive value to fix a single component without reviewing all consumers.</description>
+        <reason>Primitives are shared. Changing color-blue-500 may break N other semantic tokens referencing it.</reason>
+      </antipattern>
+    </section>
+    <section name="best-practices">
+      <title>Best Practices</title>
+      <list>
+        <item>Three tiers, not two: primitive → semantic → component. Mixing primitive into components hides drift.</item>
+        <item>Forbid value-bearing names in semantic tokens (color-primary not color-blue-500-primary).</item>
+        <item>One source of truth — the JSON. Figma is a view onto it, not the truth itself.</item>
+        <item>Generate, don't write: CSS variables, Tailwind config, and platform constants are build outputs, not source files.</item>
+        <item>Run contrast checks in CI for every semantic text-on-bg pairing; block PRs that drop below WCAG 2.2 AA.</item>
+        <item>Visual-regression test the theme switch path; tokens that look right alone often clash in composition.</item>
+        <item>Version the token package separately (@org/tokens@x.y.z) so consumers can adopt at their own pace; semver carefully.</item>
+        <item>Mark deprecations in JSON with "$deprecated": "use color.bg.primary"; lints can refuse new usages while letting old code compile.</item>
+      </list>
+    </section>
+    <section name="agentic-workflow">
+      <title>Agentic Workflow</title>
+      <p>A token agent maintains the canonical JSON, runs Style Dictionary to emit per-platform outputs (CSS vars, JS const, Tailwind config, iOS/Android), and runs a contrast-check pass on every semantic pairing. A second agent watches Figma via the Tokens Studio plugin or Variables API and proposes a PR diff for the JSON. A reviewer agent checks naming rules and flags dead tokens.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-sdd-executor-agent — design + implement + verify with visual regression as quality gate.</item>
+        <item>A custom token-linter (haiku) — enforces naming rules and detects unused tokens via repo grep.</item>
+        <item>A custom contrast-auditor (sonnet) — reads semantic pairings (text-primary on bg-primary) and runs WCAG 2.2 contrast math.</item>
+        <item>A custom figma-syncer (sonnet) — pulls Figma Variables → emits JSON diff PR.</item>
+      </list>
+      <p>Prompt pattern: Audit tokens/ in this repo: list primitive vs semantic vs component tiers; find primitives referenced 0 times (dead tokens); find semantic pairings whose contrast &lt; 4.5:1 for body text; propose rename PR: any name containing a value (e.g. blue-500 used as semantic). Output: report.md + suggested diff. Do not auto-apply.</p>
+    </section>
+    <section name="ai-agent-gotchas">
+      <title>AI-Agent Gotchas</title>
+      <list>
+        <item>Agents create new tokens instead of reusing — require a "search before add" rule with rg against the JSON.</item>
+        <item>LLMs invent semantic names that bake in values (color-blue-action) — token-linter must reject.</item>
+        <item>Agents change a primitive value to "fix" a single component, breaking N other consumers — require ownership review per primitive.</item>
+        <item>Agents skip dark-mode entries, leaving theme parity gaps; CI must require both light and dark for every semantic key.</item>
+        <item>Tailwind: agents bypass tokens by writing bg-[#3b82f6] arbitrary values — lint with eslint-plugin-tailwindcss no-custom-classname.</item>
+        <item>Human-in-loop checkpoint: any change to brand-tier primitives (logo color, brand blue) must require explicit design owner approval.</item>
+        <item>Agents forget to regenerate platform outputs on token edits — make Style Dictionary build a pre-commit hook.</item>
+      </list>
+    </section>
+    <section name="cli-tools">
+      <title>CLI Tools</title>
+      <list>
+        <item>style-dictionary — Compile token JSON to per-platform outputs. npm i -D style-dictionary · https://styledictionary.com</item>
+        <item>token-transformer — Tokens Studio → Style Dictionary bridge. npm i -D token-transformer</item>
+        <item>terrazzo (formerly Cobalt) — Modern token compiler with W3C DTCG support. https://terrazzo.app</item>
+        <item>theo — Salesforce's token compiler (legacy but stable). https://github.com/salesforce-ux/theo</item>
+        <item>figma-tokens / Tokens Studio plugin — Authoring tokens inside Figma. https://tokens.studio</item>
+        <item>axe-core / pa11y — A11y/contrast checks against rendered components. https://github.com/dequelabs/axe-core</item>
+        <item>chromatic / loki / playwright — Visual regression for theme switches. https://www.chromatic.com</item>
+        <item>tailwindcss — Consume token JSON via tailwind.config. https://tailwindcss.com</item>
+      </list>
+    </section>
+    <section name="services-and-apps">
+      <title>Services &amp; Apps</title>
+      <list>
+        <item>Tokens Studio (Figma plugin) — SaaS, agent-friendly. Has REST/Sync API; agents can read JSON exports.</item>
+        <item>Specify — SaaS, agent-friendly. Token sync platform with API.</item>
+        <item>Supernova — SaaS, agent-friendly. Design system platform; CLI for export.</item>
+        <item>Knapsack — SaaS, partial agent support. Design system docs; less agent-driven.</item>
+        <item>Storybook + addon-themes — OSS, agent-friendly. Theme-switch playground + docs.</item>
+        <item>Chromatic — SaaS, agent-friendly. CI gate for theme regressions.</item>
+        <item>GitHub Actions — SaaS, agent-friendly. Run Style Dictionary on every PR; commit generated outputs.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/build-tokens.mjs" purpose="Style Dictionary pipeline emitting CSS vars, JS ES6, and iOS Swift from token JSON"/>
+      <template path="templates/primitive.json" purpose="Primitive token JSON structure with color, spacing, typography, radius, and shadow scales"/>
+      <template path="templates/semantic.json" purpose="Semantic token JSON with light-theme aliases and dark-theme extension pattern"/>
+    </templates>
+    <see-also>
+      <link href="https://styledictionary.com"/>
+      <link href="https://tr.designtokens.org/format/"/>
+      <link href="https://www.designtokens.dev"/>
+      <link href="https://tokens.studio"/>
+      <link href="https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum"/>
+      <link href="https://primer.style/foundations/design-tokens"/>
+      <link href="https://spectrum.adobe.com/page/design-tokens"/>
+    </see-also>
+  </content>
+</methodology>
