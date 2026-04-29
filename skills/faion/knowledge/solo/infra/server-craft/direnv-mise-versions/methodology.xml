@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="direnv-mise-versions">
+  <metadata>
+    <tier>solo</tier>
+    <group>infra</group>
+    <domain>server-craft</domain>
+    <summary>Per-project environment management with direnv (auto-loads .envrc) and mise (runtime manager replacing pyenv/nvm/asdf). Pattern: `use mise` + `layout python-venv .venv` in .envrc.</summary>
+    <tags>
+      <tag>direnv</tag>
+      <tag>mise</tag>
+      <tag>python</tag>
+      <tag>environment</tag>
+      <tag>versioning</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+
+  <content>
+    <title>direnv + mise Version Management</title>
+    <summary>Per-project environment management on Ubuntu 24.04 with direnv (auto-loads .envrc on directory entry) and mise (polyglot runtime manager replacing pyenv/nvm/asdf). Key pattern: `use mise` + `layout python-venv .venv` in .envrc auto-activates the correct Python version and virtualenv when entering a project directory. Shell integration order is critical: mise hook must come BEFORE direnv hook in .bashrc.</summary>
+    <why>
+      <p>Servers running multiple Python projects need isolated runtimes — Python 3.11 for one project, 3.12 for another, without manual `source .venv/bin/activate`. direnv automates activation and de-activation on directory change. mise replaces three separate tools (pyenv, nvm, asdf) with one binary and integrates cleanly with direnv via `use mise`.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Multiple Python/Node projects on the same server needing different runtime versions</item>
+        <item>Automatically activating virtualenvs when entering project directories</item>
+        <item>Loading project-specific .env variables securely without shell leakage</item>
+        <item>Setting up a new development server with reproducible runtime environments</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-project servers where a single system Python or one venv is sufficient</item>
+        <item>Managed platforms (Heroku, Railway) that provide runtime isolation at the container level</item>
+        <item>When the project already uses Docker for isolation — runtime pinning is handled in the image</item>
+        <item>Production systemd services — pin the venv path explicitly in ExecStart, don't rely on direnv</item>
+      </list>
+    </when-not-to-use>
+    <section name="direnv-trust-model">
+      <rule>
+        <statement>Run `direnv allow` once in every directory with a new or modified .envrc before it executes.</statement>
+        <rationale>direnv runs arbitrary shell code from .envrc. Without explicit trust, cloning a repo with a malicious .envrc would execute code on cd. This is the key security mechanism.</rationale>
+      </rule>
+    </section>
+    <section name="mise-as-asdf-replacement">
+      <p>mise replaces pyenv, nvm, and asdf with a single tool. Reads .tool-versions (asdf-compatible) or mise.toml. Integrates with direnv via `use mise` directive in .envrc.</p>
+      <list>
+        <item>`mise install python@3.12.8` — download and compile Python 3.12.8</item>
+        <item>`mise use python@3.12.8` — set version for current directory (writes .tool-versions)</item>
+        <item>`mise use --global python@3.12.8` — set system-wide fallback</item>
+        <item>`mise current` — show active versions in current directory</item>
+      </list>
+    </section>
+    <section name="activation-order-in-bashrc">
+      <rule>
+        <statement>mise hook must appear BEFORE direnv hook in .bashrc. direnv must be the LAST hook in .bashrc.</statement>
+        <rationale>direnv re-evaluates the shell environment on every directory change. If mise activates after direnv, the runtime versions set by mise won't be visible to direnv's `use mise` directive.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="bash"><![CDATA[# ~/.bashrc — correct order
+eval "$(mise activate bash)"    # 1. mise first
+eval "$(direnv hook bash)"      # 2. direnv LAST]]></code>
+      </example>
+      <example type="bad">
+        <code lang="bash"><![CDATA[# Wrong order
+eval "$(direnv hook bash)"
+eval "$(mise activate bash)"]]></code>
+      </example>
+    </section>
+    <section name="complete-python-envrc">
+      <example type="good">
+        <code lang="bash"><![CDATA[# .envrc
+use mise
+layout python-venv .venv
+dotenv_if_exists .env
+watch_file requirements.txt
+watch_file pyproject.toml
+PATH_add scripts
+export PYTHONDONTWRITEBYTECODE=1
+export PYTHONUNBUFFERED=1]]></code>
+      </example>
+    </section>
+    <section name="direnv-stdlib-functions">
+      <list>
+        <item>`dotenv` — load .env file (error if missing)</item>
+        <item>`dotenv_if_exists .env` — load .env if it exists (no error)</item>
+        <item>`layout python-venv .venv` — create .venv with current Python, activate</item>
+        <item>`use mise` — activate mise-managed runtimes</item>
+        <item>`PATH_add bin` — prepend ./bin to PATH</item>
+        <item>`watch_file requirements.txt` — reload .envrc when file changes</item>
+        <item>`source_env ../base.envrc` — inherit parent env</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/bashrc-integration.sh" purpose="Shell hook lines for .bashrc: mise activate before direnv hook"/>
+      <template path="templates/envrc-python-project" purpose="Full .envrc for Python project: use mise, layout python-venv, dotenv, watch_file"/>
+      <template path="templates/envrc-node-project" purpose=".envrc for Node project: use mise, layout node, dotenv"/>
+      <template path="templates/tool-versions" purpose=".tool-versions example: python + node pinned versions"/>
+      <template path="templates/mise.toml" purpose="mise-native config with tools, env vars, and task definitions"/>
+      <template path="templates/gitignore-additions" purpose=".gitignore entries for .direnv/, .venv/, .mise.local.toml"/>
+    </templates>
+  </content>
+</methodology>
