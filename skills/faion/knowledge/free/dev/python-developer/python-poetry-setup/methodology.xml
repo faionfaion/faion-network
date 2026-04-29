@@ -1,0 +1,2717 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-poetry-setup"><metadata><tier>free</tier><group>dev</group><domain>python-developer</domain><summary>Modern Python dependency management with Poetry 2.x: deterministic lock files, virtual environment management, PEP 621 metadata, and reproducible builds.</summary><difficulty>intermediate</difficulty><created>2026-04-27</created><tags><tag>poetry</tag><tag>dependencies</tag><tag>packaging</tag><tag>python</tag><tag>pep-621</tag></tags></metadata><content><title>Poetry Project Setup</title><summary><p>Poetry is the modern standard for Python dependency management, providing deterministic builds through lock files, virtual environment management, and streamlined publishing. As of 2025-2026, Poetry 2.x introduces PEP 621 compliance, making pyproject.toml portable across build tools.</p></summary><why><p># Poetry Project Setup
+
+## Overview
+
+Poetry is the modern standard for Python dependency management, providing deterministic builds through lock files, virtual environment management, and streamlined publishing. As of 2025-2026, Poetry 2.x introduces PEP 621 compliance, making pyproject.toml portable across build tools.
+
+**Key capabilities:**
+- Dependency resolution with lock files
+- Virtual environment management
+- Package building and publishing
+- Dependency groups (dev, test, docs)
+- PEP 621-compliant metadata
+
+## When to Use
+
+| Scenario | Use Poetry |
+|----------|------------|
+| New Python project | Yes |
+| Complex dependency trees | Yes |
+| Publishing to PyPI | Yes |
+| Reproducible builds | Yes |
+| Monorepo (with plugins) | Yes |
+| Quick scripts/experiments | Consider uv |
+| CI/CD where speed is critical | Consider uv |
+
+## Poetry 2.x Key Changes
+
+Poetry 2.0 (released January 2025) introduced significant changes:
+
+| Feature | Poetry 1.x | Poetry 2.x |
+|---------|-----------|------------|
+| Metadata location | `[tool.poetry]` | `[project]` (PEP 621) |
+| Dependencies | `tool.poetry.dependencies` | `project.dependencies` |
+| Python version | `python = "^3.11"` | `requires-python = "&gt;=3.11,&lt;4.0"` |
+| Authors | String format | Table format |
+| Build backend | `poetry.core.masonry.api` | Same (unchanged) |
+
+### Migration from Poetry 1.x
+
+```bash
+# Install migration plugin
+poetry self add poetry-plugin-migrate
+
+# Run migration (creates backup)
+poetry migrate
+```
+
+## Poetry vs uv vs pip
+
+| Feature | Poetry | uv | pip |
+|---------|--------|-----|-----|
+| Speed | Medium | Very Fast (10-100x) | Slow |
+| Lock file | Yes (poetry.lock) | Yes (uv.lock) | No (manual) |
+| Virtual env mgmt | Yes | Yes | No |
+| Dependency groups | Yes | Yes | No |
+| Publishing | Yes | Yes | Requires twine |
+| Python version mgmt | No (use pyenv) | Yes (built-in) | No |
+| Maturity | High | Medium | High |
+| Ecosystem | Large | Growing | Largest |
+| Memory usage | High (1-2GB) | Low (10-50MB) | Medium |
+
+### When to Choose Each
+
+**Poetry:**
+- Long-term, structured projects
+- Publishing libraries to PyPI
+- Teams familiar with Poetry
+- Need mature ecosystem
+
+**uv:**
+- New projects (2025+)
+- CI/CD where speed matters
+- Quick experiments
+- Memory-constrained environments
+
+**pip:**
+- Simple scripts
+- Legacy projects
+- Minimal tooling needed
+
+## Core Concepts
+
+### 1. pyproject.toml
+
+Central configuration file (PEP 518/621):
+
+```toml
+[project]
+name = "my-project"
+version = "1.0.0"
+requires-python = "&gt;=3.11,&lt;4.0"
+
+[tool.poetry]
+package-mode = true
+
+[build-system]
+requires = ["poetry-core&gt;=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+```
+
+### 2. poetry.lock
+
+Deterministic dependency snapshot:
+- Always commit to version control
+- Contains exact versions of all dependencies
+- Ensures reproducible builds
+
+### 3. Dependency Groups
+
+Organize dependencies by purpose:
+
+```toml
+# Main dependencies (runtime)
+[project.dependencies]
+
+# Development dependencies
+[tool.poetry.group.dev.dependencies]
+
+# Optional groups
+[tool.poetry.group.docs]
+optional = true
+```
+
+### 4. Virtual Environments
+
+Poetry manages isolated environments per project:
+
+```bash
+# Create venv in project directory
+poetry config virtualenvs.in-project true
+
+# Environment commands
+poetry env info
+poetry env use python3.12
+poetry shell
+```
+
+## Directory Structure
+
+```
+my-project/
+├── pyproject.toml          # Project configuration
+├── poetry.lock             # Locked dependencies (COMMIT THIS)
+├── README.md
+├── .gitignore
+│
+├── src/                    # Source directory (recommended)
+│   └── my_project/
+│       ├── __init__.py
+│       ├── main.py
+│       └── ...
+│
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py
+│   └── test_*.py
+│
+├── docs/
+│   └── index.md
+│
+└── .venv/                  # Virtual environment (gitignored)
+```
+
+## Common Commands
+
+| Command | Description |
+|---------|-------------|
+| `poetry new project` | Create new project |
+| `poetry init` | Initialize in existing directory |
+| `poetry install` | Install all dependencies |
+| `poetry add package` | Add dependency |
+| `poetry add -G dev package` | Add dev dependency |
+| `poetry remove package` | Remove dependency |
+| `poetry update` | Update dependencies |
+| `poetry lock` | Update lock file |
+| `poetry shell` | Activate virtual environment |
+| `poetry run cmd` | Run command in venv |
+| `poetry build` | Build package |
+| `poetry publish` | Publish to PyPI |
+| `poetry show --tree` | Show dependency tree |
+| `poetry export` | Export to requirements.txt |
+
+## Monorepo Support
+
+Poetry supports monorepos through plugins:
+
+| Plugin | Description |
+|--------|-------------|
+| poetry-monoranger-plugin | Shared lockfiles, venvs |
+| poetry-workspace-plugin | Yarn-like workspaces |
+| poetry-multiproject-plugin | Shared code between services |
+| poetry-polylith-plugin | Polylith architecture |
+
+Basic monorepo pattern (without plugins):
+
+```toml
+[tool.poetry.group.packages.dependencies]
+shared-lib = { path = "../shared-lib", develop = true }
+```
+
+## LLM Usage Tips
+
+### For Claude/Cursor/Copilot
+
+1. **Provide context:** Include your pyproject.toml when asking about dependencies
+2. **Specify Poetry version:** "Using Poetry 2.x with PEP 621"
+3. **Be specific about groups:** "Add to dev group" or "Add as optional"
+4. **Request lock file check:** "Verify compatibility with existing dependencies"
+
+### Effective Prompts
+
+```
+"Generate pyproject.toml for a FastAPI project with Poetry 2.x:
+- Python 3.12
+- Dependencies: fastapi, uvicorn, sqlalchemy, asyncpg
+- Dev: pytest, pytest-asyncio, mypy, ruff
+- Docs: mkdocs (optional group)"
+```
+
+### Avoid
+
+- Asking to edit poetry.lock manually
+- Mixing pip and poetry commands
+- Skipping lock file in version control
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Analyze and assess | sonnet | Evaluation and planning |
+| Execute implementation | haiku | Apply established patterns |
+| Review and validate | sonnet | Quality assurance |
+| Strategic decision | opus | Novel scenarios |
+| Optimize and refine | haiku | Performance tuning |
+| Document approach | haiku | Create documentation |
+
+## External Resources
+
+### Official Documentation
+- [Poetry Documentation](https://python-poetry.org/docs/)
+- [Poetry CLI Reference](https://python-poetry.org/docs/cli/)
+- [Poetry 2.0 Announcement](https://python-poetry.org/blog/announcing-poetry-2.0.0/)
+
+### Standards
+- [PEP 517 - Build System](https://peps.python.org/pep-0517/)
+- [PEP 518 - pyproject.toml](https://peps.python.org/pep-0518/)
+- [PEP 621 - Project Metadata](https://peps.python.org/pep-0621/)
+- [PEP 735 - Dependency Groups](https://peps.python.org/pep-0735/)
+
+### Tutorials &amp; Guides
+- [Real Python: Dependency Management](https://realpython.com/dependency-management-python-poetry/)
+- [Migrating to Poetry 2.x](https://therenegadecoder.com/code/migrating-to-poetry-2-x-with-some-best-practices/)
+- [Poetry vs uv Comparison](https://medium.com/@hitorunajp/poetry-vs-uv-which-python-package-manager-should-you-use-in-2025-4212cb5e0a14)
+
+### Tools
+- [Poetry GitHub](https://github.com/python-poetry/poetry)
+- [poetry-plugin-migrate](https://github.com/zyf722/poetry-plugin-migrate)
+- [uv Documentation](https://docs.astral.sh/uv/)
+
+## Related Methodologies
+
+- [python-fastapi/](../python-fastapi/) - FastAPI project setup
+- [django-coding-standards/](../django-coding-standards/) - Django with Poetry
+- [python-modern-2026.md](../python-modern-2026.md) - Modern Python patterns
+
+---
+
+*Last updated: 2026-01*
+</p><p># Agent Integration — Poetry Project Setup
+
+## When to use
+
+- Bootstrapping a new Python service that will live for years and be published or vendored (lock file + PEP 621 metadata required).
+- Migrating a Python 1.x Poetry project to Poetry 2.x (PEP 621 layout) — the migration is mechanical and ideal for an agent run.
+- Adding/removing dependencies on an established repo where `poetry.lock` is the source of truth and CI fails on drift.
+- Splitting deps into groups (`dev`, `test`, `docs`) when ad-hoc `requirements*.txt` files have multiplied and started to disagree.
+- Producing a deterministic build artifact (wheel/sdist) for PyPI or an internal index.
+
+## When NOT to use
+
+- One-shot scripts, notebooks, throwaway experiments — `uv` or plain `pip install` is faster and the lock file overhead is not worth it.
+- CI hot paths where install time matters (Poetry resolves slowly on large trees; `uv pip install -r` or `uv lock` is 10-100x faster).
+- Memory-constrained agents/containers (&lt;512 MB) — Poetry resolver can spike to 1-2 GB on big trees and OOM-kill the agent.
+- Repos already standardised on `uv` / `pdm` / `hatch` — don't introduce a second tool; convert via `poetry export -f requirements.txt` or migrate fully.
+- Cross-language monorepos where a Bazel/Pants build graph already pins versions.
+
+## Where it fails / limitations
+
+- **Resolver explosions.** Big scientific stacks (numpy + scipy + torch + tensorflow) can take 5-30 min to resolve; agents time out and retry, corrupting `poetry.lock`. Mitigate with `poetry lock --no-update` and constraining version ranges.
+- **`poetry.lock` merge conflicts** are unsolvable by line edits — must regenerate. Agents that try `Edit` on lock files always break it.
+- **Mixed `pip` + `poetry` in same venv** silently desyncs. `poetry install` will not see packages added with `pip install` and may "fix" them away.
+- **Private indexes.** `[[tool.poetry.source]]` config is order-sensitive (`primary` vs `supplemental` vs `explicit`); a wrong order causes Poetry to publish to the wrong index or hang on auth.
+- **Plugin churn.** `poetry-plugin-export`, `poetry-plugin-bundle`, monorepo plugins each pin to a Poetry minor version. After upgrading Poetry, plugins may break silently.
+- **Poetry 2.0 migration** of the `[tool.poetry]` table to `[project]` is partial; some fields (e.g. dynamic versioning, plugins) still live under `[tool.poetry]`. Agents that "fully migrate" by deleting `[tool.poetry]` will lose config.
+- **`poetry shell`** was removed/renamed across versions. Agents memorising `poetry shell` will fail on 2.x where `poetry env activate` is the new path.
+
+## Agentic workflow
+
+Drive Poetry as a deterministic CLI runner: never edit `pyproject.toml` dependency tables by hand — call `poetry add/remove/update` and let the tool rewrite the file plus the lock together. After every mutation, run `poetry check`, `poetry lock --check`, and `poetry install --sync` to keep the venv canonical. Commit `pyproject.toml` and `poetry.lock` together in the same commit; reject any diff that touches one without the other. For long-running resolves, dispatch them as background bash with a timeout and a status file the orchestrator polls.
+
+### Recommended subagents
+
+- `faion-python-developer` — Owns Python project bootstrap; knows Poetry 2.x layout and group conventions used in this workspace.
+- `faion-devops-engineer` / `faion-cicd-engineer` — Wires `poetry install --no-root --only main` into CI, caches `~/.cache/pypoetry`, configures private index auth.
+- `faion-sdd-executor-agent` — Runs the bootstrap as an SDD task: read spec, run commands, validate gates (lock present, `poetry check` clean, tests run via `poetry run pytest`).
+- General-purpose `Task` subagent for migrations — given `llm-prompts.md` from this methodology and the existing `pyproject.toml`, produce a migration plan + apply it sequentially.
+
+### Prompt pattern
+
+Bootstrap a new package:
+
+```
+Goal: bootstrap Python 3.12 package "&lt;name&gt;" with Poetry 2.x.
+Steps: poetry new --src &lt;name&gt;; cd &lt;name&gt;; poetry config virtualenvs.in-project true;
+poetry add fastapi uvicorn[standard] sqlalchemy[asyncio] asyncpg;
+poetry add -G dev pytest pytest-asyncio mypy ruff pre-commit;
+poetry install --sync; poetry run pre-commit install.
+Commit pyproject.toml + poetry.lock together. Run `poetry check` as gate.
+Do not hand-edit poetry.lock. If resolver fails, paste error verbatim, do not retry blindly.
+```
+
+Add a dependency safely:
+
+```
+Run: poetry add "&lt;pkg&gt;@^&lt;version&gt;" --group &lt;main|dev|docs&gt;.
+After success: poetry lock --check; poetry install --sync; poetry run pytest -x.
+If resolver picks an unexpected version, run: poetry show &lt;pkg&gt; --tree.
+Stage pyproject.toml + poetry.lock in one commit.
+```
+
+## CLI tools
+
+| Tool | Purpose | Install / docs |
+|------|---------|----------------|
+| `poetry` | Core CLI: deps, lock, build, publish | https://python-poetry.org/docs/ (use `pipx install poetry`) |
+| `pipx` | Install Poetry isolated from project venvs | `apt install pipx` / https://pipx.pypa.io |
+| `uv` | Fast alternative resolver; can run `uv pip install` against `poetry export` output for CI | `pipx install uv` / https://docs.astral.sh/uv/ |
+| `poetry-plugin-export` | Export `requirements.txt` for Docker/CI that doesn't speak Poetry | `poetry self add poetry-plugin-export` |
+| `poetry-plugin-bundle` | Build self-contained venv bundles for offline deploy | `poetry self add poetry-plugin-bundle` |
+| `poetry-plugin-up` | Upgrade dependencies respecting constraints | `poetry self add poetry-plugin-up` |
+| `poetry-plugin-shell` | Restores `poetry shell` on 2.x | `poetry self add poetry-plugin-shell` |
+| `poetry-monoranger-plugin` | Shared lock + venv across monorepo packages | `poetry self add poetry-monoranger-plugin` |
+| `pre-commit` | Hook `poetry-check` + `poetry-lock --check` into git | https://pre-commit.com |
+| `pyenv` | Manage Python versions Poetry will use | https://github.com/pyenv/pyenv |
+| `cibuildwheel` | Build wheels in CI for native-extension packages | https://cibuildwheel.pypa.io |
+| `twine` | Fallback to publish if `poetry publish` is restricted | https://twine.readthedocs.io |
+
+## Services &amp; apps
+
+| Service | Type (SaaS/OSS) | Agent-friendly? | Notes |
+|---------|-----------------|-----------------|-------|
+| PyPI | OSS index | Yes — token auth via `poetry config pypi-token.pypi &lt;token&gt;` | Default publish target |
+| Test PyPI | OSS index | Yes — `poetry config repositories.testpypi https://test.pypi.org/legacy/` | Use for pre-publish dry runs |
+| GitHub Packages (PyPI) | SaaS | Yes — supplemental source + token | Per-org private packages |
+| Artifactory / Nexus / Azure Artifacts | SaaS/self-host | Yes — `[[tool.poetry.source]]` | Enterprise private index |
+| Cloudsmith | SaaS | Yes — REST + Poetry source | Smaller orgs |
+| Read the Docs | SaaS | Indirect — uses `poetry export` to feed `requirements.txt` | Doc builds |
+| Renovate / Dependabot | SaaS | Yes — both understand `poetry.lock` | Auto-PRs for upgrades |
+| GitHub Actions / GitLab CI | SaaS | Yes — official `snok/install-poetry` action | Cache `~/.cache/pypoetry` and `.venv` |
+| Docker Hub / GHCR | SaaS | Yes — multi-stage with `poetry export` then `pip install` for slim runtime images | Avoid Poetry in final image |
+| `pypi-stubs` / `mypy --install-types` | OSS | Indirect — agent runs after `poetry install` | Type-stub bootstrap |
+
+## Templates &amp; scripts
+
+See methodology `templates.md` for full `pyproject.toml` examples. Inline helper to verify Poetry health on any repo (≤30 lines):
+
+```bash
+#!/usr/bin/env bash
+# poetry-doctor.sh — fails non-zero if repo is not Poetry-clean.
+set -euo pipefail
+test -f pyproject.toml || { echo "no pyproject.toml"; exit 2; }
+test -f poetry.lock    || { echo "no poetry.lock";    exit 2; }
+poetry --version
+poetry check                                   # validates pyproject.toml
+poetry lock --check                            # lock matches pyproject
+poetry env info --path &gt;/dev/null              # venv exists / can be created
+poetry run python -c "import sys; assert sys.version_info &gt;= (3, 11)"
+poetry run pip check                           # no broken deps
+poetry show --outdated || true                 # informational
+echo "OK: poetry repo is healthy"
+```
+
+Multi-stage Docker build that produces a Poetry-free runtime (≤25 lines):
+
+```dockerfile
+FROM python:3.12-slim AS builder
+RUN pip install --no-cache-dir poetry==2.0.1 poetry-plugin-export
+WORKDIR /src
+COPY pyproject.toml poetry.lock ./
+RUN poetry export -f requirements.txt --without-hashes --only main -o /tmp/req.txt
+COPY src/ ./src/
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /wheels -r /tmp/req.txt &amp;&amp; \
+    pip wheel --no-cache-dir --no-deps --wheel-dir /wheels ./
+
+FROM python:3.12-slim
+COPY --from=builder /wheels /wheels
+RUN pip install --no-cache-dir /wheels/*.whl &amp;&amp; rm -rf /wheels
+USER 1000
+CMD ["python", "-m", "myapp"]
+```
+
+## Best practices
+
+- **Pin Poetry itself** in CI (`pipx install poetry==2.0.1`); agents that use "latest" introduce non-reproducible breakage.
+- **`poetry config virtualenvs.in-project true`** so the venv is `./.venv` — agents can introspect `python -c` without `poetry run` overhead.
+- **One commit = pyproject + lock.** Add a pre-commit hook that fails if only one of the two changed.
+- **Use `poetry add --lock --no-update`** when adding to a frozen lock during hotfixes — prevents the resolver from "helpfully" upgrading siblings.
+- **Cache `~/.cache/pypoetry`** keyed on `poetry.lock` hash in CI, not on date — invalidates correctly.
+- **Never put `poetry` in the runtime container.** Export to `requirements.txt` or wheels and `pip install` at runtime — slimmer image, no resolver in prod.
+- **Group convention:** `dev` for lint/format/type, `test` for pytest stack, `docs` for mkdocs, `notebook` optional. One purpose per group, all named consistently across repos.
+- **Use `^` only for libraries you trust to follow semver**; `~` for pre-1.0 packages; pin exact (`==`) for tools whose output matters (e.g. `ruff`, `black`).
+- **Do `poetry update --dry-run`** before `poetry update`; review the diff. Bulk update without review is the #1 source of CI breakage.
+
+## AI-agent gotchas
+
+- **Agents will try to `Edit` `poetry.lock`.** Block it: lock is generated, never hand-edited. If the agent's "fix" is to tweak the lock, reject the patch.
+- **Agents conflate `poetry add` and `pip install`.** Mixing in the same venv silently desyncs. Enforce: any dependency change must go through `poetry add/remove`.
+- **Long resolves get killed.** A 5-15 min resolve looks like a hang; agents kill and retry, corrupting state. Set `POETRY_REQUESTS_TIMEOUT=60` and run `poetry lock` in `run_in_background` with a status file.
+- **`poetry shell` doesn't exist on Poetry 2.x by default.** Either install `poetry-plugin-shell` or use `poetry env activate` (returns shell-eval string). Agents copy-pasting blogs from 2023 will get errors.
+- **Migration partials.** Migrating from 1.x to 2.x via `poetry-plugin-migrate` keeps `[tool.poetry]` as a transition table. Agents that "clean it up" by deleting the section will lose plugin config and dynamic versioning.
+- **PEP 621 vs Poetry 1.x dep syntax.** `python = "^3.11"` is Poetry 1.x; `requires-python = "&gt;=3.11,&lt;4.0"` is PEP 621. Mixing both yields contradictory constraints. Pick one tree.
+- **Authentication for private indexes** is split across `poetry config` and env vars. Agents that set only env vars miss `keyring` lookups. Always run `poetry config --list` to verify.
+- **Network-flaky resolves** look identical to "package doesn't exist". Agents must distinguish HTTP 5xx (retry) from 4xx (real error). `poetry add -vvv` exposes the distinction.
+- **`poetry install` without `--sync`** leaves stale packages from previous installs; tests pass locally, fail in clean CI. Always `--sync` in CI; `--sync` warns locally.
+- **Lock-file churn from `poetry update`** can rewrite hundreds of lines for unrelated transitives. Diff review is mandatory; auto-merging is dangerous.
+
+## References
+
+- Poetry docs (2.x): https://python-poetry.org/docs/
+- Poetry 2.0 announcement: https://python-poetry.org/blog/announcing-poetry-2.0.0/
+- PEP 621 (project metadata): https://peps.python.org/pep-0621/
+- PEP 735 (dependency groups): https://peps.python.org/pep-0735/
+- `snok/install-poetry` GitHub Action: https://github.com/snok/install-poetry
+- `poetry-plugin-export`: https://github.com/python-poetry/poetry-plugin-export
+- `poetry-plugin-bundle`: https://github.com/python-poetry/poetry-plugin-bundle
+- `poetry-plugin-shell`: https://github.com/python-poetry/poetry-plugin-shell
+- `poetry-plugin-migrate`: https://github.com/zyf722/poetry-plugin-migrate
+- `poetry-monoranger-plugin`: https://github.com/ag14774/poetry-monoranger-plugin
+- uv (alt resolver): https://docs.astral.sh/uv/
+- Renovate Poetry config: https://docs.renovatebot.com/modules/manager/poetry/
+</p><p># Poetry Setup Checklist
+
+Step-by-step guide for setting up Poetry in Python projects.
+
+---
+
+## 1. Installation
+
+### Install Poetry
+
+```bash
+# Official installer (recommended)
+curl -sSL https://install.python-poetry.org | python3 -
+
+# Or via pipx (isolated)
+pipx install poetry
+
+# Verify installation
+poetry --version
+```
+
+### Configure Poetry
+
+```bash
+# Create venv in project directory (recommended)
+poetry config virtualenvs.in-project true
+
+# Show current config
+poetry config --list
+```
+
+---
+
+## 2. Project Initialization
+
+### New Project
+
+- [ ] Create project structure
+  ```bash
+  poetry new my-project
+  cd my-project
+  ```
+
+### Existing Project
+
+- [ ] Initialize Poetry in existing directory
+  ```bash
+  cd existing-project
+  poetry init
+  ```
+
+### Migrate from Poetry 1.x to 2.x
+
+- [ ] Install migration plugin
+  ```bash
+  poetry self add poetry-plugin-migrate
+  ```
+
+- [ ] Run migration (creates backup)
+  ```bash
+  poetry migrate
+  ```
+
+- [ ] Review changes in pyproject.toml
+
+---
+
+## 3. Configure pyproject.toml (Poetry 2.x)
+
+### Project Metadata (PEP 621)
+
+- [ ] Set project name and version
+  ```toml
+  [project]
+  name = "my-project"
+  version = "0.1.0"
+  ```
+
+- [ ] Set Python version
+  ```toml
+  requires-python = "&gt;=3.11,&lt;4.0"
+  ```
+
+- [ ] Add description and readme
+  ```toml
+  description = "Project description"
+  readme = "README.md"
+  ```
+
+- [ ] Configure authors
+  ```toml
+  authors = [
+      {name = "Your Name", email = "you@example.com"}
+  ]
+  ```
+
+- [ ] Add license
+  ```toml
+  license = "MIT"
+  ```
+
+### Build System
+
+- [ ] Configure build backend
+  ```toml
+  [build-system]
+  requires = ["poetry-core&gt;=2.0.0"]
+  build-backend = "poetry.core.masonry.api"
+  ```
+
+### Package Mode
+
+- [ ] Set package mode
+  ```toml
+  [tool.poetry]
+  package-mode = true  # or false for non-package projects
+  ```
+
+---
+
+## 4. Dependencies Setup
+
+### Main Dependencies
+
+- [ ] Add runtime dependencies
+  ```bash
+  poetry add fastapi uvicorn pydantic
+  ```
+
+- [ ] Add with extras
+  ```bash
+  poetry add "uvicorn[standard]"
+  poetry add "sqlalchemy[asyncio]"
+  ```
+
+- [ ] Add with version constraints
+  ```bash
+  poetry add "fastapi&gt;=0.100.0,&lt;1.0.0"
+  poetry add "pydantic@^2.0"
+  ```
+
+### Development Dependencies
+
+- [ ] Create dev group
+  ```bash
+  poetry add -G dev pytest pytest-cov mypy ruff
+  ```
+
+### Testing Dependencies
+
+- [ ] Create test group
+  ```bash
+  poetry add -G test pytest pytest-asyncio pytest-mock
+  ```
+
+### Documentation Dependencies (Optional)
+
+- [ ] Create optional docs group
+  ```toml
+  # In pyproject.toml
+  [tool.poetry.group.docs]
+  optional = true
+
+  [tool.poetry.group.docs.dependencies]
+  mkdocs = "^1.6"
+  mkdocs-material = "^9.5"
+  ```
+
+- [ ] Or via CLI
+  ```bash
+  poetry add -G docs mkdocs mkdocs-material
+  ```
+
+---
+
+## 5. Virtual Environment
+
+### Setup
+
+- [ ] Install all dependencies
+  ```bash
+  poetry install
+  ```
+
+- [ ] Install with specific groups
+  ```bash
+  poetry install --with dev,test
+  poetry install --without docs
+  poetry install --only main
+  ```
+
+### Activate
+
+- [ ] Activate shell
+  ```bash
+  poetry shell
+  ```
+
+- [ ] Or run commands directly
+  ```bash
+  poetry run python script.py
+  poetry run pytest
+  ```
+
+### Verify
+
+- [ ] Check environment info
+  ```bash
+  poetry env info
+  poetry env info --path
+  ```
+
+---
+
+## 6. Lock File Management
+
+### Generate/Update Lock
+
+- [ ] Create/update lock file
+  ```bash
+  poetry lock
+  ```
+
+- [ ] Preview changes without modifying
+  ```bash
+  poetry update --dry-run
+  ```
+
+### Commit Lock File
+
+- [ ] Add poetry.lock to git
+  ```bash
+  git add poetry.lock
+  git commit -m "chore: add poetry.lock"
+  ```
+
+### Export (for Docker/legacy)
+
+- [ ] Export requirements.txt
+  ```bash
+  poetry export -f requirements.txt --output requirements.txt --without-hashes
+  poetry export -f requirements.txt --output requirements-dev.txt --with dev --without-hashes
+  ```
+
+---
+
+## 7. Tool Configuration
+
+### Ruff (Linter)
+
+- [ ] Add Ruff config
+  ```toml
+  [tool.ruff]
+  line-length = 88
+  target-version = "py311"
+
+  [tool.ruff.lint]
+  select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+  ignore = ["E501"]
+  ```
+
+### MyPy (Type Checker)
+
+- [ ] Add MyPy config
+  ```toml
+  [tool.mypy]
+  python_version = "3.11"
+  strict = true
+  warn_return_any = true
+  warn_unused_ignores = true
+  ```
+
+### Pytest
+
+- [ ] Add pytest config
+  ```toml
+  [tool.pytest.ini_options]
+  asyncio_mode = "auto"
+  testpaths = ["tests"]
+  addopts = "-v --tb=short --cov=src"
+  ```
+
+### Coverage
+
+- [ ] Add coverage config
+  ```toml
+  [tool.coverage.run]
+  source = ["src"]
+  omit = ["tests/*"]
+
+  [tool.coverage.report]
+  exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:"]
+  ```
+
+---
+
+## 8. Scripts and Entry Points
+
+### CLI Scripts
+
+- [ ] Add CLI entry point
+  ```toml
+  [project.scripts]
+  my-cli = "my_project.cli:main"
+  ```
+
+### Custom Commands
+
+- [ ] Add in pyproject.toml (Poetry 2.x uses project.scripts)
+  ```toml
+  [project.scripts]
+  serve = "my_project.main:serve"
+  migrate = "my_project.db:migrate"
+  ```
+
+---
+
+## 9. Publishing Setup
+
+### Configure Package
+
+- [ ] Set package includes
+  ```toml
+  [tool.poetry]
+  packages = [{include = "my_project", from = "src"}]
+  ```
+
+- [ ] Add classifiers
+  ```toml
+  [project]
+  classifiers = [
+      "Development Status :: 4 - Beta",
+      "Intended Audience :: Developers",
+      "Programming Language :: Python :: 3.11",
+      "Programming Language :: Python :: 3.12",
+  ]
+  ```
+
+### Configure PyPI
+
+- [ ] Set PyPI token
+  ```bash
+  poetry config pypi-token.pypi your-token-here
+  ```
+
+### Build and Publish
+
+- [ ] Build package
+  ```bash
+  poetry build
+  ```
+
+- [ ] Publish to PyPI
+  ```bash
+  poetry publish
+  ```
+
+- [ ] Or publish to test PyPI first
+  ```bash
+  poetry config repositories.testpypi https://test.pypi.org/legacy/
+  poetry publish -r testpypi
+  ```
+
+---
+
+## 10. Version Management
+
+### Bump Version
+
+- [ ] Patch version (0.1.0 -&gt; 0.1.1)
+  ```bash
+  poetry version patch
+  ```
+
+- [ ] Minor version (0.1.1 -&gt; 0.2.0)
+  ```bash
+  poetry version minor
+  ```
+
+- [ ] Major version (0.2.0 -&gt; 1.0.0)
+  ```bash
+  poetry version major
+  ```
+
+- [ ] Specific version
+  ```bash
+  poetry version 2.0.0
+  ```
+
+---
+
+## 11. CI/CD Setup
+
+### GitHub Actions
+
+- [ ] Create workflow file
+  ```yaml
+  # .github/workflows/ci.yml
+  name: CI
+
+  on: [push, pull_request]
+
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - uses: actions/setup-python@v5
+          with:
+            python-version: "3.12"
+        - uses: snok/install-poetry@v1
+          with:
+            version: "2.0.1"
+            virtualenvs-in-project: true
+        - uses: actions/cache@v4
+          with:
+            path: .venv
+            key: venv-${{ hashFiles('**/poetry.lock') }}
+        - run: poetry install
+        - run: poetry run pytest
+  ```
+
+### GitLab CI
+
+- [ ] Create .gitlab-ci.yml
+  ```yaml
+  test:
+    image: python:3.12
+    before_script:
+      - pip install poetry
+      - poetry install
+    script:
+      - poetry run pytest
+  ```
+
+---
+
+## 12. Docker Setup
+
+### Multi-stage Dockerfile
+
+- [ ] Create Dockerfile
+  ```dockerfile
+  FROM python:3.12-slim AS builder
+  WORKDIR /app
+  RUN pip install poetry==2.0.1
+  COPY pyproject.toml poetry.lock ./
+  RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
+
+  FROM python:3.12-slim
+  WORKDIR /app
+  COPY --from=builder /app/requirements.txt .
+  RUN pip install --no-cache-dir -r requirements.txt
+  COPY src/ ./src/
+  CMD ["python", "-m", "my_project.main"]
+  ```
+
+---
+
+## 13. Verification
+
+### Final Checks
+
+- [ ] Verify lock file is committed
+  ```bash
+  git status | grep poetry.lock
+  ```
+
+- [ ] Check for outdated dependencies
+  ```bash
+  poetry show --outdated
+  ```
+
+- [ ] Validate pyproject.toml
+  ```bash
+  poetry check
+  ```
+
+- [ ] Test installation in clean environment
+  ```bash
+  poetry env remove --all
+  poetry install
+  poetry run pytest
+  ```
+
+---
+
+## Quick Reference
+
+| Task | Command |
+|------|---------|
+| Install deps | `poetry install` |
+| Add dep | `poetry add package` |
+| Add dev dep | `poetry add -G dev package` |
+| Remove dep | `poetry remove package` |
+| Update all | `poetry update` |
+| Update one | `poetry update package` |
+| Show tree | `poetry show --tree` |
+| Export | `poetry export -f requirements.txt -o requirements.txt` |
+| Build | `poetry build` |
+| Publish | `poetry publish` |
+| Version bump | `poetry version patch/minor/major` |
+
+---
+
+*Last updated: 2026-01*
+</p><p># Poetry Examples
+
+Real-world pyproject.toml configurations for common project types.
+
+---
+
+## 1. FastAPI Application (Poetry 2.x)
+
+Modern async API with SQLAlchemy and testing.
+
+```toml
+[project]
+name = "fastapi-app"
+version = "1.0.0"
+description = "Production-ready FastAPI application"
+readme = "README.md"
+requires-python = "&gt;=3.11,&lt;4.0"
+license = "MIT"
+authors = [
+    {name = "Your Name", email = "you@example.com"}
+]
+keywords = ["api", "fastapi", "async"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "fastapi&gt;=0.115.0,&lt;1.0.0",
+    "uvicorn[standard]&gt;=0.32.0",
+    "pydantic&gt;=2.10.0",
+    "pydantic-settings&gt;=2.6.0",
+    "sqlalchemy[asyncio]&gt;=2.0.36",
+    "asyncpg&gt;=0.30.0",
+    "alembic&gt;=1.14.0",
+    "httpx&gt;=0.28.0",
+    "python-jose[cryptography]&gt;=3.3.0",
+    "passlib[bcrypt]&gt;=1.7.4",
+]
+
+[project.scripts]
+serve = "app.main:serve"
+
+[build-system]
+requires = ["poetry-core&gt;=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+package-mode = true
+packages = [{include = "app", from = "src"}]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+pytest-asyncio = "^0.24"
+pytest-cov = "^6.0"
+httpx = "^0.28"
+mypy = "^1.13"
+ruff = "^0.8"
+pre-commit = "^4.0"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "^1.6"
+mkdocs-material = "^9.5"
+mkdocstrings = {extras = ["python"], version = "^0.27"}
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM", "ASYNC"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+addopts = "-v --tb=short --cov=src/app --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src/app"]
+omit = ["tests/*", "*/__init__.py"]
+```
+
+---
+
+## 2. Django Application (Poetry 2.x)
+
+Full Django setup with DRF and Celery.
+
+```toml
+[project]
+name = "django-app"
+version = "2.0.0"
+description = "Django REST API with Celery"
+readme = "README.md"
+requires-python = "&gt;=3.11,&lt;4.0"
+license = "MIT"
+authors = [
+    {name = "Your Team", email = "team@example.com"}
+]
+dependencies = [
+    "django&gt;=5.1,&lt;6.0",
+    "djangorestframework&gt;=3.15.0",
+    "django-cors-headers&gt;=4.6.0",
+    "django-filter&gt;=24.3",
+    "drf-spectacular&gt;=0.28.0",
+    "psycopg[binary]&gt;=3.2.0",
+    "redis&gt;=5.2.0",
+    "celery&gt;=5.4.0",
+    "django-celery-beat&gt;=2.7.0",
+    "gunicorn&gt;=23.0.0",
+    "whitenoise&gt;=6.8.0",
+    "python-dotenv&gt;=1.0.0",
+]
+
+[project.scripts]
+manage = "config.manage:main"
+
+[build-system]
+requires = ["poetry-core&gt;=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+package-mode = false  # Django projects typically don't need packaging
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+pytest-django = "^4.9"
+pytest-cov = "^6.0"
+factory-boy = "^3.3"
+django-debug-toolbar = "^4.4"
+mypy = "^1.13"
+django-stubs = "^5.1"
+djangorestframework-stubs = "^3.15"
+ruff = "^0.8"
+
+[tool.poetry.group.prod.dependencies]
+sentry-sdk = "^2.19"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "DJ"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+strict = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+testpaths = ["tests"]
+addopts = "-v --tb=short --reuse-db"
+```
+
+---
+
+## 3. Python Library (Poetry 2.x)
+
+Publishable library with full metadata.
+
+```toml
+[project]
+name = "my-awesome-lib"
+version = "1.2.3"
+description = "A comprehensive Python library for awesome things"
+readme = "README.md"
+requires-python = "&gt;=3.10,&lt;4.0"
+license = "Apache-2.0"
+authors = [
+    {name = "Your Name", email = "you@example.com"}
+]
+maintainers = [
+    {name = "Maintainer", email = "maintainer@example.com"}
+]
+keywords = ["library", "utility", "awesome"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = [
+    "pydantic&gt;=2.0",
+    "httpx&gt;=0.25",
+]
+
+[project.optional-dependencies]
+async = ["aiohttp&gt;=3.9"]
+cli = ["typer&gt;=0.13", "rich&gt;=13.0"]
+all = ["aiohttp&gt;=3.9", "aiohttp&gt;=3.9", "typer&gt;=0.13", "rich&gt;=13.0"]
+
+[project.urls]
+Homepage = "https://github.com/you/my-awesome-lib"
+Documentation = "https://my-awesome-lib.readthedocs.io"
+Repository = "https://github.com/you/my-awesome-lib.git"
+Changelog = "https://github.com/you/my-awesome-lib/blob/main/CHANGELOG.md"
+
+[project.scripts]
+awesome-cli = "my_awesome_lib.cli:main"
+
+[build-system]
+requires = ["poetry-core&gt;=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+package-mode = true
+packages = [{include = "my_awesome_lib", from = "src"}]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+pytest-cov = "^6.0"
+pytest-xdist = "^3.5"
+mypy = "^1.13"
+ruff = "^0.8"
+pre-commit = "^4.0"
+tox = "^4.21"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+sphinx = "^8.1"
+sphinx-rtd-theme = "^3.0"
+sphinx-autodoc-typehints = "^2.5"
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unreachable = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --cov=src/my_awesome_lib --cov-report=xml"
+
+[tool.coverage.run]
+source = ["src/my_awesome_lib"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 90
+```
+
+---
+
+## 4. CLI Application with Typer
+
+Interactive CLI tool with rich output.
+
+```toml
+[project]
+name = "my-cli"
+version = "0.5.0"
+description = "A powerful CLI tool"
+readme = "README.md"
+requires-python = "&gt;=3.11,&lt;4.0"
+license = "MIT"
+dependencies = [
+    "typer&gt;=0.13.0",
+    "rich&gt;=13.9.0",
+    "httpx&gt;=0.28.0",
+    "pydantic&gt;=2.10.0",
+    "pyyaml&gt;=6.0.0",
+    "tomli&gt;=2.0.0; python_version &lt; '3.11'",
+]
+
+[project.scripts]
+mycli = "my_cli.main:app"
+
+[build-system]
+requires = ["poetry-core&gt;=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+packages = [{include = "my_cli", from = "src"}]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+pytest-cov = "^6.0"
+mypy = "^1.13"
+ruff = "^0.8"
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+strict = true
+```
+
+---
+
+## 5. Data Science Project
+
+ML/Data project with Jupyter support.
+
+```toml
+[project]
+name = "ml-project"
+version = "0.1.0"
+description = "Machine learning experiment"
+readme = "README.md"
+requires-python = "&gt;=3.11,&lt;4.0"
+license = "MIT"
+dependencies = [
+    "numpy&gt;=2.0",
+    "pandas&gt;=2.2",
+    "scikit-learn&gt;=1.5",
+    "polars&gt;=1.15",
+    "matplotlib&gt;=3.9",
+    "seaborn&gt;=0.13",
+]
+
+[build-system]
+requires = ["poetry-core&gt;=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+package-mode = false  # Non-package mode for experiments
+
+[tool.poetry.group.dev.dependencies]
+jupyter = "^1.1"
+jupyterlab = "^4.3"
+ipywidgets = "^8.1"
+nbformat = "^5.10"
+pytest = "^8.3"
+mypy = "^1.13"
+ruff = "^0.8"
+
+[tool.poetry.group.ml.dependencies]
+torch = "^2.5"
+transformers = "^4.46"
+datasets = "^3.1"
+
+[tool.poetry.group.viz.dependencies]
+plotly = "^5.24"
+altair = "^5.4"
+
+[tool.ruff]
+line-length = 100  # Wider for notebooks
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]  # Allow long lines in data science
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true  # Many ML libs lack stubs
+```
+
+---
+
+## 6. Monorepo with Shared Libraries
+
+Workspace configuration with shared code.
+
+### Root pyproject.toml
+
+```toml
+[project]
+name = "monorepo-root"
+version = "0.0.0"
+requires-python = "&gt;=3.11,&lt;4.0"
+
+[build-system]
+requires = ["poetry-core&gt;=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+package-mode = false
+
+# Shared dev dependencies
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+mypy = "^1.13"
+ruff = "^0.8"
+
+# Path dependencies to workspace packages
+[tool.poetry.group.packages.dependencies]
+shared-lib = {path = "packages/shared-lib", develop = true}
+service-api = {path = "services/api", develop = true}
+service-worker = {path = "services/worker", develop = true}
+```
+
+### packages/shared-lib/pyproject.toml
+
+```toml
+[project]
+name = "shared-lib"
+version = "1.0.0"
+requires-python = "&gt;=3.11,&lt;4.0"
+dependencies = [
+    "pydantic&gt;=2.10",
+]
+
+[build-system]
+requires = ["poetry-core&gt;=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+packages = [{include = "shared_lib", from = "src"}]
+```
+
+### services/api/pyproject.toml
+
+```toml
+[project]
+name = "service-api"
+version = "1.0.0"
+requires-python = "&gt;=3.11,&lt;4.0"
+dependencies = [
+    "fastapi&gt;=0.115",
+    "uvicorn[standard]&gt;=0.32",
+]
+
+[build-system]
+requires = ["poetry-core&gt;=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+packages = [{include = "api", from = "src"}]
+
+[tool.poetry.dependencies]
+shared-lib = {path = "../../packages/shared-lib", develop = true}
+```
+
+---
+
+## 7. Minimal Non-Package Project
+
+Scripts and tools without packaging.
+
+```toml
+[project]
+name = "my-scripts"
+version = "0.1.0"
+requires-python = "&gt;=3.11"
+
+[build-system]
+requires = ["poetry-core&gt;=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+requests = "^2.32"
+click = "^8.1"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.8"
+```
+
+---
+
+## 8. Legacy Poetry 1.x (for reference)
+
+Pre-PEP 621 format (still supported with deprecation warnings).
+
+```toml
+[tool.poetry]
+name = "legacy-project"
+version = "1.0.0"
+description = "Legacy Poetry 1.x format"
+authors = ["Your Name &lt;you@example.com&gt;"]
+readme = "README.md"
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.32.0"}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+mypy = "^1.13"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+```
+
+---
+
+## Version Constraint Reference
+
+| Constraint | Meaning | Example |
+|------------|---------|---------|
+| `^1.2.3` | Compatible releases (&gt;=1.2.3, &lt;2.0.0) | `^2.0` = &gt;=2.0.0, &lt;3.0.0 |
+| `~1.2.3` | Approximately (&gt;=1.2.3, &lt;1.3.0) | `~2.0` = &gt;=2.0.0, &lt;2.1.0 |
+| `&gt;=1.2,&lt;2.0` | Range | Explicit bounds |
+| `==1.2.3` | Exact | Pinned version |
+| `*` | Any | Latest compatible |
+
+### PEP 508 vs Poetry Syntax
+
+| Poetry 1.x | PEP 508 (Poetry 2.x) |
+|------------|----------------------|
+| `python = "^3.11"` | `requires-python = "&gt;=3.11,&lt;4.0"` |
+| `fastapi = "^0.115"` | `"fastapi&gt;=0.115.0,&lt;0.116.0"` |
+| `uvicorn = {extras = ["standard"], version = "^0.32"}` | `"uvicorn[standard]&gt;=0.32.0"` |
+
+---
+
+*Last updated: 2026-01*
+</p><p># LLM Prompts for Poetry
+
+Effective prompts for LLM-assisted Python dependency management.
+
+---
+
+## Project Setup Prompts
+
+### Create New Project
+
+```
+Create a pyproject.toml for a [FastAPI/Django/CLI/Library] project using Poetry 2.x:
+
+Requirements:
+- Python version: 3.12
+- Main dependencies: [list your dependencies]
+- Dev dependencies: pytest, mypy, ruff
+- Optional docs group: mkdocs
+
+Include:
+- PEP 621 compliant [project] section
+- Proper build-system configuration
+- Ruff, mypy, pytest, coverage configs
+- Appropriate classifiers for [PyPI/internal use]
+```
+
+### Migrate to Poetry 2.x
+
+```
+Migrate this pyproject.toml from Poetry 1.x to Poetry 2.x format:
+
+[paste your current pyproject.toml]
+
+Requirements:
+- Convert tool.poetry.dependencies to project.dependencies (PEP 508)
+- Use [project] section for metadata (PEP 621)
+- Keep dev/test groups in tool.poetry.group
+- Update build-system to poetry-core&gt;=2.0.0
+- Preserve all functionality
+```
+
+### Add Feature Dependencies
+
+```
+I'm adding [authentication/caching/async tasks/etc.] to my Python project.
+
+Current pyproject.toml:
+[paste relevant sections]
+
+Recommend:
+1. Best packages for this feature (2025-2026)
+2. Poetry add commands
+3. Version constraints (compatible with existing deps)
+4. Any optional extras needed
+5. Config changes if required
+```
+
+---
+
+## Dependency Management Prompts
+
+### Resolve Conflicts
+
+```
+I'm getting dependency conflicts with Poetry:
+
+Error message:
+[paste error]
+
+Current pyproject.toml dependencies:
+[paste dependencies section]
+
+Help me:
+1. Understand the conflict
+2. Find compatible versions
+3. Suggest version constraints to resolve
+4. Identify which package to pin/relax
+```
+
+### Audit Dependencies
+
+```
+Audit my Python project dependencies:
+
+[paste pyproject.toml]
+
+Check for:
+1. Outdated packages (major updates available)
+2. Security concerns (known vulnerabilities)
+3. Redundant dependencies
+4. Missing dev dependencies (testing, linting, typing)
+5. Packages with better alternatives
+6. Proper version constraints (not too loose/tight)
+```
+
+### Optimize Lock File
+
+```
+My poetry.lock is getting large and installs are slow.
+
+Dependencies:
+[paste project.dependencies section]
+
+Help me:
+1. Identify heavy dependencies
+2. Find lighter alternatives
+3. Check for unnecessary transitive dependencies
+4. Suggest optional extras instead of full packages
+```
+
+---
+
+## Configuration Prompts
+
+### Setup Tool Configs
+
+```
+Add tool configurations to my pyproject.toml:
+
+Project type: [FastAPI API / Django app / CLI tool / Library]
+Python version: 3.12
+Style: [strict / moderate / minimal]
+
+Include configs for:
+- Ruff (linting + formatting)
+- MyPy (strict mode with [pydantic/django/etc.] plugin)
+- Pytest (with [asyncio/django/etc.])
+- Coverage (minimum [80/90]%)
+```
+
+### Setup CI/CD
+
+```
+Create GitHub Actions workflow for my Poetry project:
+
+Requirements:
+- Python versions: 3.11, 3.12
+- Run: lint, type check, tests with coverage
+- Cache Poetry dependencies
+- [Optional: publish to PyPI on tags]
+
+My project uses:
+- Poetry 2.x
+- [pytest-asyncio / pytest-django / etc.]
+- [Additional requirements]
+```
+
+### Setup Docker
+
+```
+Create Dockerfile for my Poetry project:
+
+Type: [multi-stage production / development]
+Base image: python:3.12-slim
+Application: [FastAPI / Django / CLI / etc.]
+
+Requirements:
+- Fast builds with caching
+- Small final image
+- Non-root user
+- [Additional requirements]
+```
+
+---
+
+## Troubleshooting Prompts
+
+### Debug Installation Issues
+
+```
+Poetry install is failing:
+
+Error:
+[paste full error]
+
+Environment:
+- OS: [Ubuntu/macOS/Windows]
+- Python: [version]
+- Poetry: [version]
+
+pyproject.toml:
+[paste file]
+
+What's wrong and how to fix it?
+```
+
+### Fix Lock File Issues
+
+```
+My poetry.lock seems corrupted or out of sync:
+
+Symptoms:
+[describe the issue]
+
+I've tried:
+- poetry lock
+- poetry install
+
+pyproject.toml:
+[paste file]
+
+How do I regenerate a clean lock file?
+```
+
+### Virtual Environment Issues
+
+```
+Poetry virtual environment problems:
+
+Issue:
+[describe - wrong Python, can't activate, missing packages, etc.]
+
+Environment info:
+[paste output of: poetry env info]
+
+Configuration:
+[paste output of: poetry config --list]
+
+How do I fix this?
+```
+
+---
+
+## Publishing Prompts
+
+### Prepare for PyPI
+
+```
+Review my library's pyproject.toml before publishing to PyPI:
+
+[paste pyproject.toml]
+
+Check:
+1. Required metadata (name, version, description, readme)
+2. Author/maintainer info
+3. License specification
+4. Python version range (wide enough?)
+5. Classifiers (appropriate?)
+6. URLs (homepage, docs, repo)
+7. Package includes (src layout?)
+8. Entry points (if CLI)
+```
+
+### Private Registry Setup
+
+```
+Configure Poetry for a private PyPI registry:
+
+Registry URL: [your registry URL]
+Authentication: [token / basic auth]
+
+I need:
+1. poetry config commands
+2. pyproject.toml source configuration
+3. CI/CD environment variable setup
+4. Authentication best practices
+```
+
+---
+
+## Monorepo Prompts
+
+### Setup Monorepo
+
+```
+Setup a Python monorepo with Poetry:
+
+Structure:
+- packages/shared-lib (common code)
+- services/api (FastAPI)
+- services/worker (Celery)
+
+Requirements:
+- Shared lock file (or separate?)
+- Local path dependencies
+- Single dev environment
+- Independent versioning
+
+Recommend:
+1. Directory structure
+2. Root pyproject.toml
+3. Package pyproject.toml templates
+4. Which monorepo plugin to use (if any)
+```
+
+### Add Package to Monorepo
+
+```
+Add a new package to my Poetry monorepo:
+
+Current structure:
+[paste tree output]
+
+New package:
+- Name: [package-name]
+- Type: [library / service / cli]
+- Depends on: [existing packages]
+
+Generate:
+1. Directory structure
+2. pyproject.toml
+3. Updates to root pyproject.toml
+```
+
+---
+
+## Migration Prompts
+
+### From pip/requirements.txt
+
+```
+Migrate from requirements.txt to Poetry:
+
+requirements.txt:
+[paste file]
+
+requirements-dev.txt:
+[paste file if exists]
+
+Project info:
+- Name: [project-name]
+- Python version: [version]
+- Type: [app/library]
+
+Generate complete pyproject.toml with:
+- All dependencies with proper version constraints
+- Appropriate dependency groups
+- Tool configs (ruff, mypy, pytest)
+```
+
+### From Pipenv
+
+```
+Migrate from Pipenv to Poetry:
+
+Pipfile:
+[paste file]
+
+Pipfile.lock (partial):
+[paste if relevant]
+
+Generate:
+1. pyproject.toml
+2. Migration commands
+3. Differences to be aware of
+```
+
+### To uv
+
+```
+I want to migrate from Poetry to uv:
+
+Current pyproject.toml:
+[paste file]
+
+Help me:
+1. Understand key differences
+2. Convert pyproject.toml format
+3. Migrate lock file (poetry.lock -&gt; uv.lock)
+4. Update CI/CD workflows
+5. Things that work differently in uv
+```
+
+---
+
+## Best Practice Prompts
+
+### Code Review
+
+```
+Review my pyproject.toml for best practices:
+
+[paste pyproject.toml]
+
+Check:
+1. Poetry 2.x / PEP 621 compliance
+2. Version constraint style
+3. Dependency organization
+4. Tool config completeness
+5. Missing recommended configs
+6. Security considerations
+```
+
+### Version Constraints
+
+```
+Help me set proper version constraints:
+
+Dependencies:
+[list your key dependencies]
+
+Project stability: [experimental / production / library]
+
+For each dependency, recommend:
+1. Version constraint style (^ ~ &gt;= ==)
+2. Specific constraint
+3. Reasoning
+```
+
+---
+
+## Quick Reference Prompts
+
+### Command Help
+
+```
+What's the Poetry command to:
+[describe what you want to do]
+
+Include:
+- Full command syntax
+- Common options
+- Example usage
+```
+
+### Compare Options
+
+```
+Compare these Python packaging options for my use case:
+
+Use case: [describe project]
+Requirements: [list key requirements]
+
+Compare:
+- Poetry 2.x
+- uv
+- PDM
+- pip + pip-tools
+
+For each, provide:
+1. Pros/cons for my use case
+2. Setup complexity
+3. CI/CD considerations
+4. Team adoption ease
+```
+
+---
+
+## Prompt Templates with Context
+
+### Full Context Template
+
+```
+[CONTEXT]
+Project: [name and description]
+Type: [application / library / cli / monorepo]
+Python: [version]
+Poetry: [version]
+CI/CD: [GitHub Actions / GitLab CI / etc.]
+
+Current pyproject.toml:
+```toml
+[paste file]
+```
+
+Current issue/goal:
+[describe what you're trying to do]
+
+[REQUEST]
+[specific ask]
+
+[CONSTRAINTS]
+- [any constraints or preferences]
+```
+
+### Minimal Context Template
+
+```
+Poetry 2.x, Python 3.12, [FastAPI/Django/etc.]
+
+[paste relevant pyproject.toml section]
+
+Question: [your question]
+```
+
+---
+
+## Anti-patterns to Avoid
+
+When prompting LLMs about Poetry, avoid:
+
+1. **Asking to edit poetry.lock directly**
+   - Lock files are auto-generated
+   - Use `poetry lock` to regenerate
+
+2. **Mixing pip and Poetry**
+   - Don't ask for `pip install` alongside Poetry
+   - Use `poetry add` for all dependencies
+
+3. **Skipping version context**
+   - Always specify Poetry 1.x vs 2.x
+   - PEP 621 syntax differs significantly
+
+4. **Forgetting environment**
+   - Specify OS if relevant
+   - Include Python version
+   - Mention if Docker/CI environment
+
+5. **Incomplete error context**
+   - Include full error messages
+   - Show relevant pyproject.toml sections
+   - Mention what you've already tried
+
+---
+
+*Last updated: 2026-01*
+</p><p># Poetry Templates
+
+Copy-paste ready configurations for common scenarios.
+
+---
+
+## pyproject.toml Templates
+
+### Minimal Application (Poetry 2.x)
+
+```toml
+[project]
+name = "my-app"
+version = "0.1.0"
+requires-python = "&gt;=3.11,&lt;4.0"
+dependencies = []
+
+[build-system]
+requires = ["poetry-core&gt;=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+package-mode = false
+```
+
+### Standard Application
+
+```toml
+[project]
+name = "my-app"
+version = "0.1.0"
+description = "Application description"
+readme = "README.md"
+requires-python = "&gt;=3.11,&lt;4.0"
+license = "MIT"
+authors = [
+    {name = "Your Name", email = "you@example.com"}
+]
+dependencies = []
+
+[build-system]
+requires = ["poetry-core&gt;=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+package-mode = false
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+mypy = "^1.13"
+ruff = "^0.8"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+```
+
+### Publishable Library
+
+```toml
+[project]
+name = "my-library"
+version = "1.0.0"
+description = "Library description"
+readme = "README.md"
+requires-python = "&gt;=3.10,&lt;4.0"
+license = "MIT"
+authors = [
+    {name = "Your Name", email = "you@example.com"}
+]
+keywords = ["keyword1", "keyword2"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/you/my-library"
+Documentation = "https://my-library.readthedocs.io"
+Repository = "https://github.com/you/my-library.git"
+
+[build-system]
+requires = ["poetry-core&gt;=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+packages = [{include = "my_library", from = "src"}]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+pytest-cov = "^6.0"
+mypy = "^1.13"
+ruff = "^0.8"
+pre-commit = "^4.0"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "^1.6"
+mkdocs-material = "^9.5"
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --cov=src/my_library --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src/my_library"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+```
+
+---
+
+## Dependency Group Templates
+
+### Development Group
+
+```toml
+[tool.poetry.group.dev.dependencies]
+# Testing
+pytest = "^8.3"
+pytest-cov = "^6.0"
+pytest-mock = "^3.14"
+
+# Type checking
+mypy = "^1.13"
+
+# Linting/Formatting
+ruff = "^0.8"
+pre-commit = "^4.0"
+
+# Debugging
+ipdb = "^0.13"
+```
+
+### Testing Group (Separate)
+
+```toml
+[tool.poetry.group.test.dependencies]
+pytest = "^8.3"
+pytest-asyncio = "^0.24"
+pytest-cov = "^6.0"
+pytest-mock = "^3.14"
+pytest-xdist = "^3.5"
+factory-boy = "^3.3"
+faker = "^33.0"
+httpx = "^0.28"
+```
+
+### Documentation Group (Optional)
+
+```toml
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+# MkDocs
+mkdocs = "^1.6"
+mkdocs-material = "^9.5"
+mkdocstrings = {extras = ["python"], version = "^0.27"}
+
+# OR Sphinx
+# sphinx = "^8.1"
+# sphinx-rtd-theme = "^3.0"
+# sphinx-autodoc-typehints = "^2.5"
+```
+
+### CI/Production Group
+
+```toml
+[tool.poetry.group.prod.dependencies]
+sentry-sdk = "^2.19"
+structlog = "^24.4"
+prometheus-client = "^0.21"
+```
+
+---
+
+## Tool Configuration Templates
+
+### Ruff (Linter + Formatter)
+
+```toml
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "migrations",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "W",      # pycodestyle warnings
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "ASYNC",  # flake8-async
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["my_package"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # Allow assert in tests
+```
+
+### MyPy (Type Checker)
+
+```toml
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+warn_unreachable = true
+show_error_codes = true
+plugins = []
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "some_untyped_lib.*",
+]
+ignore_missing_imports = true
+```
+
+### MyPy with Django
+
+```toml
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = [
+    "mypy_django_plugin.main",
+    "mypy_drf_plugin.main",
+]
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
+```
+
+### MyPy with Pydantic
+
+```toml
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+```
+
+### Pytest
+
+```toml
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks tests as integration tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+```
+
+### Pytest with Async
+
+```toml
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+addopts = "-v --tb=short --cov=src"
+```
+
+### Pytest with Django
+
+```toml
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+testpaths = ["tests"]
+addopts = "-v --tb=short --reuse-db"
+python_files = ["test_*.py", "*_test.py"]
+```
+
+### Coverage
+
+```toml
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "tests/*",
+    "*/__init__.py",
+    "*/migrations/*",
+]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@abstractmethod",
+]
+```
+
+---
+
+## CI/CD Templates
+
+### GitHub Actions - Basic
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: "2.0.1"
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Load cached venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Run linting
+        run: poetry run ruff check .
+
+      - name: Run type checking
+        run: poetry run mypy src/
+
+      - name: Run tests
+        run: poetry run pytest --cov --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+```
+
+### GitHub Actions - Release
+
+```yaml
+# .github/workflows/release.yml
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: "2.0.1"
+
+      - name: Build package
+        run: poetry build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+```
+
+### GitLab CI
+
+```yaml
+# .gitlab-ci.yml
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  paths:
+    - .cache/pip
+    - .venv/
+
+test:
+  stage: test
+  image: python:3.12
+  before_script:
+    - pip install poetry
+    - poetry config virtualenvs.in-project true
+    - poetry install
+  script:
+    - poetry run ruff check .
+    - poetry run mypy src/
+    - poetry run pytest --cov
+
+build:
+  stage: build
+  image: python:3.12
+  before_script:
+    - pip install poetry
+  script:
+    - poetry build
+  artifacts:
+    paths:
+      - dist/
+
+deploy:
+  stage: deploy
+  image: python:3.12
+  only:
+    - tags
+  before_script:
+    - pip install poetry
+  script:
+    - poetry config pypi-token.pypi $PYPI_TOKEN
+    - poetry publish
+```
+
+---
+
+## Docker Templates
+
+### Multi-stage Dockerfile
+
+```dockerfile
+# Build stage
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+# Install Poetry
+RUN pip install poetry==2.0.1
+
+# Copy dependency files
+COPY pyproject.toml poetry.lock ./
+
+# Export requirements (faster than Poetry in production)
+RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
+
+# Production stage
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY --from=builder /app/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY src/ ./src/
+
+# Create non-root user
+RUN useradd --create-home appuser
+USER appuser
+
+# Run
+CMD ["python", "-m", "src.main"]
+```
+
+### Development Dockerfile
+
+```dockerfile
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install Poetry
+RUN pip install poetry==2.0.1
+
+# Configure Poetry
+RUN poetry config virtualenvs.in-project true
+
+# Copy dependency files
+COPY pyproject.toml poetry.lock ./
+
+# Install dependencies
+RUN poetry install --no-root
+
+# Copy application
+COPY . .
+
+# Install project
+RUN poetry install
+
+CMD ["poetry", "run", "python", "-m", "src.main"]
+```
+
+### Docker Compose
+
+```yaml
+# docker-compose.yml
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=true
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: myapp
+      POSTGRES_USER: myapp
+      POSTGRES_PASSWORD: myapp
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+```
+
+---
+
+## .gitignore Template
+
+```gitignore
+# Poetry
+.venv/
+poetry.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+
+# Type checking
+.mypy_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+*.local
+
+# OS
+.DS_Store
+Thumbs.db
+```
+
+---
+
+## Pre-commit Config
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - pydantic&gt;=2.0
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+```
+
+---
+
+## poetry.toml (Local Config)
+
+```toml
+# poetry.toml (project-local config, can be gitignored)
+[virtualenvs]
+in-project = true
+create = true
+
+[installer]
+parallel = true
+```
+
+---
+
+*Last updated: 2026-01*
+</p></why><when-to-use><list><item>New Python project expected to live for years and be published or vendored.</item><item>Migrating Poetry 1.x to Poetry 2.x with PEP 621 layout.</item><item>Adding/removing dependencies on established repo with CI/CD validation.</item><item>Splitting deps into groups (dev, test, docs).</item><item>Producing deterministic build artifacts (wheel/sdist) for PyPI or internal indexes.</item><item>Complex dependency trees requiring deterministic resolution.</item><item>Reproducible builds across dev, CI, and production.</item></list></when-to-use><when-not-to-use><list><item>One-shot scripts or throwaway experiments.</item><item>CI hot paths where install speed is critical (use uv instead).</item><item>Memory-constrained environments (&lt;512 MB).</item><item>Repos already using uv/pdm/hatch.</item><item>Cross-language monorepos with Bazel/Pants build graphs.</item></list></when-not-to-use><section name="Templates &amp; Scripts"><see-also><link href="https://python-poetry.org/docs/" /><link href="https://python-poetry.org/blog/announcing-poetry-2.0.0/" /><ref slug="python-fastapi" /><ref slug="python-type-hints" /></see-also></section></content></methodology>
