@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="php-phpunit-testing">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-enterprise</domain>
+    <summary>Layered PHPUnit/Pest testing for Laravel: Feature tests drive HTTP endpoints via getJson/postJson/assertJsonPath; Unit tests cover services and value objects without booting Laravel.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>phpunit</tag>
+      <tag>pest</tag>
+      <tag>laravel</tag>
+      <tag>testing</tag>
+      <tag>feature-tests</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>php</language>
+    </languages>
+    <frameworks>
+      <framework>laravel</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>PHPUnit Testing for Laravel</title>
+
+    <summary>Layered PHPUnit/Pest testing for Laravel: Feature tests drive HTTP endpoints via getJson/postJson/assertJsonPath; Unit tests cover services and value objects without booting Laravel. *::fake() calls go before the action under test. assertJsonPath over assertJsonStructure — path checks values, structure only checks key existence. One behavior per test method; name describes the behavior.</summary>
+
+    <why>
+      <p>Feature tests are the highest-value signal for API correctness: they exercise routing, middleware, validation, and the service layer together via the HTTP interface. Separating Feature (tests/Feature/) from Unit (tests/Unit/) keeps the RefreshDatabase trait off pure logic tests, which cuts suite time significantly. assertJsonPath('data.email', $expected) is specific enough to fail on wrong values; assertJsonStructure passes even if all values are null. Calling *::fake() after the action is a silent false positive — the fake captures nothing.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Feature tests against Laravel HTTP endpoints (getJson, postJson, etc.).</item>
+        <item>Unit tests for services, value objects, or domain logic that should not boot the full framework.</item>
+        <item>Database integration tests with RefreshDatabase on Feature tests touching real DB.</item>
+        <item>CI regression suites gating PRs with --coverage --min=80.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Browser/end-to-end UI tests — use Laravel Dusk or Playwright.</item>
+        <item>Performance/load testing — use k6, Locust, or Apache Bench.</item>
+        <item>Code with no business logic (thin Eloquent calls only) — testing here is low-value; cover at integration level instead.</item>
+        <item>Tests that need real third-party APIs hit live — use VCR-style cassettes (spatie/laravel-http-recorder) or contract tests.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="classification">
+      <rule testable="true">
+        <statement>Classify every test as Feature (HTTP-driven, uses RefreshDatabase) or Unit (single class, no framework boot) before writing it.</statement>
+        <rationale>Feature tests use the full Laravel app kernel; Unit tests should use plain PHPUnit TestCase. Mixing RefreshDatabase into Unit tests boots the database and slows pure logic tests by 10x.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Place Feature tests in tests/Feature/ and Unit tests in tests/Unit/; mirror the app/ directory structure.</statement>
+        <rationale>Mismatched paths break test suite filtering (--filter=Feature) and make coverage grouping unreliable.</rationale>
+      </rule>
+    </section>
+
+    <section name="assertions">
+      <rule testable="true">
+        <statement>Use assertJsonPath('data.email', $expected) not assertJsonStructure(['data' => ['email']]) for value assertions.</statement>
+        <rationale>assertJsonStructure verifies key existence only; it passes when the value is null, 0, or the wrong type. assertJsonPath checks the actual value.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>One behavior per test method; name the method test_&lt;state&gt;_&lt;action&gt;_&lt;expected&gt;.</statement>
+        <rationale>test_index is ambiguous; test_listing_returns_paginated_results_when_authenticated is self-documenting in failure output without reading the test body.</rationale>
+      </rule>
+    </section>
+
+    <section name="fake-ordering">
+      <rule testable="true">
+        <statement>Call all *::fake() (Queue::fake, Mail::fake, Event::fake, Bus::fake, Storage::fake) before the action under test; assertions go after.</statement>
+        <rationale>Fakes replace the real implementation only from the point of the call; calling fake() after the action means the real implementation ran and the fake captured nothing — silent false positive.</rationale>
+      </rule>
+    </section>
+
+    <section name="data-setup">
+      <rule testable="true">
+        <statement>Build test data via factories with relationships: User::factory()->has(Order::factory()->count(3))->create().</statement>
+        <rationale>Manual new Model() chains break when factories gain defaults or global states; factory relationships stay in sync with factory definitions automatically.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use actingAs($user) for authentication in feature tests; never use Auth::login() directly in tests.</statement>
+        <rationale>actingAs() short-circuits middleware correctly and works with both session and token guards; Auth::login() may bypass important middleware checks.</rationale>
+      </rule>
+    </section>
+
+    <section name="examples">
+      <example type="good" title="Feature test covering CRUD endpoints">
+        <code lang="php"><![CDATA[
+class UserControllerTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_authenticated_user_can_create_user(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin)->postJson('/api/v1/users', [
+            'name'     => 'John Doe',
+            'email'    => 'john@example.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.name', 'John Doe')
+            ->assertJsonPath('data.email', 'john@example.com');
+
+        $this->assertDatabaseHas('users', ['email' => 'john@example.com']);
+    }
+
+    public function test_create_user_fails_with_invalid_email(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin)->postJson('/api/v1/users', [
+            'name'     => 'John Doe',
+            'email'    => 'not-an-email',
+            'password' => 'password123',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['email']);
+    }
+
+    public function test_can_soft_delete_user(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $user  = User::factory()->create();
+
+        $this->actingAs($admin)->deleteJson("/api/v1/users/{$user->id}")
+            ->assertNoContent();
+
+        $this->assertSoftDeleted('users', ['id' => $user->id]);
+    }
+}
+        ]]></code>
+        <note>actingAs for auth. assertJsonPath not assertJsonStructure. assertSoftDeleted for delete. One behavior per method.</note>
+      </example>
+
+      <example type="good" title="Unit test with Event::fake() and Mockery">
+        <code lang="php"><![CDATA[
+class UserServiceTest extends TestCase
+{
+    private UserService $service;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $repository    = Mockery::mock(UserRepository::class);
+        $this->service = new UserService($repository);
+
+        $repository->shouldReceive('create')
+            ->andReturn(User::factory()->make());
+    }
+
+    public function test_create_dispatches_user_created_event(): void
+    {
+        Event::fake(); // BEFORE the action
+
+        $this->service->create([
+            'name'     => 'Alice',
+            'email'    => 'alice@example.com',
+            'password' => 'password',
+        ]);
+
+        Event::assertDispatched(UserCreated::class);
+    }
+
+    public function test_create_hashes_password(): void
+    {
+        $user = $this->service->create([
+            'name'     => 'Alice',
+            'email'    => 'alice@example.com',
+            'password' => 'plaintext',
+        ]);
+
+        $this->assertNotEquals('plaintext', $user->password);
+        $this->assertTrue(Hash::check('plaintext', $user->password));
+    }
+}
+        ]]></code>
+        <note>No RefreshDatabase. Event::fake() before action. Mockery for repository. Two separate behaviors in two methods.</note>
+      </example>
+
+      <example type="bad" title="Fake after action">
+        <code lang="php"><![CDATA[
+public function test_create_user(): void
+{
+    $this->service->create([...]); // action BEFORE fake
+    Event::fake();                 // too late — real event already fired
+    Event::assertDispatched(UserCreated::class); // always passes (nothing captured)
+}
+        ]]></code>
+        <note>fake() after action: the assertion sees an empty fake and passes regardless of event dispatch.</note>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>assertJsonStructure(['data' => ['email', 'name']]) used instead of assertJsonPath for value verification.</description>
+        <reason>assertJsonStructure confirms keys exist but passes when values are null, 0, or wrong types. It provides almost no behavioral signal. Use assertJsonPath('data.email', $expected) to verify the actual value.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Calling Mail::fake(), Queue::fake(), or Event::fake() after the action under test.</description>
+        <reason>Fakes intercept calls only from the moment they are set. If the action runs first, the real implementation fires and the fake captures nothing. The assertion then passes on an empty fake — a silent false positive.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using RefreshDatabase in a Unit test: trait drops and re-migrates the schema for every test method, making fast logic tests 100x slower.</description>
+        <reason>Unit tests should not touch the database. Use Mockery to mock repositories. Reserve RefreshDatabase for Feature tests that exercise the HTTP + DB path together.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mixing Pest function syntax (it(), describe()) and PHPUnit class syntax in the same file.</description>
+        <reason>Pest and PHPUnit parsers are separate; mixing syntax within one file causes parse errors or unexpected test discovery. Pick one syntax per project and enforce via code review.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Missing RefreshDatabase on Feature tests that write to the DB, causing state pollution across test methods run in random order.</description>
+        <reason>PHPUnit randomizes method execution order by default when executionOrder="random" is set. A test that depends on clean state fails intermittently when another test has left records behind.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mail::fake() on a mail that is dispatched via a queued job: the fake captures sync sends only; the queued job runs asynchronously and the assertion sees nothing.</description>
+        <reason>For queued mail, assert the job was pushed (Queue::assertPushed) or use Notification::fake() if the mail goes via a Notification channel. Mail::fake() only intercepts direct Mail::send() calls.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>RefreshDatabase is per-test reset — slow on large schemas. DatabaseTransactions is faster but breaks for code that opens its own transactions.</description>
+        <reason>Understand the tradeoff: RefreshDatabase guarantees isolation but takes time; DatabaseTransactions is faster but incompatible with code that starts its own transactions. Test the combination and measure suite time.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using expectsExceptionMessage with unstable strings like timestamps or generated IDs.</description>
+        <reason>expectsExceptionMessage matches substring — if the exception message includes a timestamp or ID, the test becomes flaky. Use expectExceptionMessageMatches with a regex instead for stability.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LLM places fake() calls AFTER the action — the assertion then sees an empty fake, false positives.</description>
+        <reason>Hard rule: fakes go at the top of the test method, before the act. Calling fake() after the action captures nothing.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mail::fake() plus Mail::send inside a queued job — fake captures only sync sends.</description>
+        <reason>For queued mail, use Notification::fake() or Queue::fake() and assert the job was pushed instead. Mail::fake() only intercepts direct Mail::send() calls, not jobs.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Coverage targets the LLM proposes (often 100%) lead to brittle tests. Pick semantic coverage: every public method has at least one happy + one failure path.</description>
+        <reason>Aiming for 100% coverage often means testing implementation details instead of behavior. Semantic coverage (happy + failure paths for public methods) is more maintainable and catches regressions better.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <rule testable="true">
+        <statement>One behavior per test. Name describes the behavior, not the method (test_listing_returns_paginated_users, not test_index).</statement>
+        <rationale>Descriptive names in failures save debugging time and make the test intent clear without reading the body.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Prefer assertJsonPath('data.0.email', $expected) over assertJsonStructure([...]). Path checks values; structure only checks keys.</statement>
+        <rationale>assertJsonPath is the strongest assertion available for HTTP responses; it catches wrong values, nulls, and type mismatches.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Always call *::fake() before the action under test; assertions go after.</statement>
+        <rationale>Fakes must be set up before the code that uses them runs, or they capture nothing.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use factories with relationships: User::factory()->has(Post::factory()->count(3))->create() over manual chaining.</statement>
+        <rationale>Factory relationships stay in sync with factory definitions automatically; manual chaining breaks when factories change.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Mark slow integration tests with PHPUnit groups (@group slow) and exclude from default CI.</statement>
+        <rationale>Slow tests block PRs; move them to a separate job that runs nightly on real database drivers to catch dialect-specific bugs.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use actingAs($user) for auth, not manual Auth::login — it short-circuits middleware correctly.</statement>
+        <rationale>actingAs() is designed for testing and properly activates guard middleware; Auth::login may bypass checks.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Keep DB tests on SQLite :memory: for speed, but run nightly on the real DB driver to catch dialect-specific bugs.</statement>
+        <rationale>SQLite is fast locally but behaves differently from Postgres/MySQL; nightly real-DB runs catch edge cases early.</rationale>
+      </rule>
+    </section>
+
+    <section name="tools-and-services">
+      <p>CLI tools for running, analyzing, and improving tests:</p>
+      <list>
+        <item>php artisan test --parallel --recreate-databases: Parallel run with isolated DBs (bundled).</item>
+        <item>php artisan test --filter=&lt;TestMethod&gt;: Single test selector (bundled).</item>
+        <item>php artisan test --coverage --min=80: Code coverage with threshold gate (requires Xdebug or PCOV).</item>
+        <item>vendor/bin/pest --parallel: Pest runner alternative syntax (https://pestphp.com).</item>
+        <item>vendor/bin/phpstan analyse tests/: Static analysis on tests with Larastan (https://github.com/larastan/larastan).</item>
+        <item>vendor/bin/infection: Mutation testing — measure assertion strength (https://infection.github.io).</item>
+        <item>vendor/bin/paratest: Parallel runner without Laravel wrapper (https://github.com/paratestphp/paratest).</item>
+      </list>
+      <p>Services and integrations:</p>
+      <list>
+        <item>GitHub Actions / GitLab CI: Standard Laravel matrix: PHP × DB × Redis (SaaS/OSS, agent-friendly).</item>
+        <item>Codecov / Coveralls: Coverage badges + PR diff coverage (SaaS, agent-friendly).</item>
+        <item>Testcontainers PHP: Real Postgres/MySQL/Redis in CI without docker-compose juggling (OSS, agent-friendly).</item>
+        <item>Laravel Dusk: Browser/UI tests — adjacent, complementary to unit/feature tests (OSS, agent-friendly).</item>
+        <item>Mockery / Prophecy: Mocking libraries; pick one per project (OSS, agent-friendly).</item>
+        <item>Mockoon / WireMock: Mock external APIs at the network layer when Http::fake() is too coarse (OSS, agent-friendly).</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A coding subagent should follow this sequence when writing tests:</p>
+      <list>
+        <item>(1) Classify the test as Feature (HTTP-driven) or Unit (single class) before writing.</item>
+        <item>(2) Place under tests/Feature/ or tests/Unit/ accordingly.</item>
+        <item>(3) Use RefreshDatabase only on Feature tests touching DB.</item>
+        <item>(4) Fake the right facade (Queue::fake(), Mail::fake(), Notification::fake(), Bus::fake(), Event::fake(), Storage::fake('public'), Http::fake()) before the act.</item>
+        <item>(5) Assert on the strongest available API (assertJsonPath over assertJsonStructure).</item>
+        <item>(6) Factory-driven setup via User::factory()->has(Order::factory()->count(3))->create().</item>
+        <item>(7) One behavior per test, named test_&lt;state&gt;_&lt;action&gt;_&lt;expected&gt;.</item>
+        <item>Run php artisan test --parallel and vendor/bin/phpstan analyse tests/ after each batch.</item>
+      </list>
+    </section>
+
+    <section name="prompt-patterns">
+      <p>Recommended prompt patterns for subagents:</p>
+      <code lang="text"><![CDATA[
+Generate Feature test tests/Feature/<Resource>ControllerTest.php covering: index (auth + pagination), store (valid + validation failures per field), show (existing + 404), update (auth + ownership), destroy (auth + soft delete). Use RefreshDatabase. Use User::factory(). Use postJson/getJson/putJson/deleteJson. Assert with assertOk/assertCreated/assertUnprocessable + assertJsonPath. No assertJsonStructure unless asserting array shapes alongside paths.
+      ]]></code>
+      <code lang="text"><![CDATA[
+Generate Unit test tests/Unit/Services/<Service>Test.php for <method>: arrange via factory or stub, act, assert. Mock dependencies via Mockery::mock(<Interface>::class). Use Event::fake() before service call to assert dispatched events. Do NOT use RefreshDatabase here — it's a unit test.
+      ]]></code>
+    </section>
+
+    <templates>
+      <template path="templates/FeatureTest.php" purpose="Feature test skeleton: RefreshDatabase, actingAs, assertJsonPath, all HTTP verbs."/>
+      <template path="templates/UnitServiceTest.php" purpose="Unit test skeleton: Mockery mock, Event::fake() before act, no RefreshDatabase."/>
+      <template path="templates/phpunit.xml" purpose="PHPUnit config: SQLite in-memory, sync queue, random execution order, strict warnings."/>
+    </templates>
+
+    <see-also>
+      <link href="https://laravel.com/docs/testing"/>
+      <link href="https://phpunit.de/documentation.html"/>
+      <link href="https://pestphp.com/"/>
+    </see-also>
+  </content>
+</methodology>

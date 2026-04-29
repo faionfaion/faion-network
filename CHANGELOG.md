@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/dev/backend-enterprise methodologies → methodology.xml (php-phpunit-testing, ruby-activerecord, go-backend; feature-045 batch AF)
 - migrate: 3/3 geek/pm/pro/ba methodologies → methodology.xml (ai-in-project-management, kb-agents-md-context-pyramid/templates, requirements-prioritization; feature-045 batch AE)
 - migrate: 3/3 geek methodologies → methodology.xml (tool-use-function-calling, google-ai-overviews-optimization, technical-seo-for-ai; feature-045 batch AD)
 - migrate: llm-observability → methodology.xml (feature-045 sonnet-retry; 89% parity)
