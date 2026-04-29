@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="brainstorming-ideation">
+  <metadata>
+    <tier>solo</tier>
+    <group>comms</group>
+    <domain>communicator</domain>
+    <summary>Using brainstorming as a generative input for automated pipelines that produce scored shortlists through diverge-dedup-cluster-score workflow, with persona injection for diversity.</summary>
+    <tags>
+      <tag>ideation</tag>
+      <tag>brainstorming</tag>
+      <tag>agentic-pipeline</tag>
+      <tag>diverge-converge</tag>
+      <tag>feature-generation</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Brainstorming Ideation (Agentic Pipeline)</title>
+    <summary>Brainstorming-ideation covers using brainstorming techniques as a generative input for automated pipelines — where the output is a scored shortlist, not a facilitated group session. The agent receives a problem statement, runs a structured generation pass (Classic, Reverse, or Brainwriting-simulated), deduplicates semantically, clusters by theme, and scores against an impact/effort rubric. For facilitated group sessions, see brainstorming-techniques which covers the human-facilitation angle.</summary>
+    <why>
+      <p>Agent-generated idea lists plateau in novelty around 30-40 ideas without persona switching or domain constraint injection. The critical failure points are: (1) mixing generation and evaluation in the same prompt — causes premature convergence; (2) using the generating agent to also score ideas — circular bias toward first-pass outputs; (3) semantic clustering silently merging two distinct viable ideas — human review at the cluster stage is mandatory before scoring.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Product feature generation: given a persona + pain point, produce candidate features to evaluate against backlog</item>
+        <item>Content ideation: bulk-generating article topics, campaign angles, or ad copy variants for human selection</item>
+        <item>Risk surfacing: Reverse Brainstorming to enumerate failure modes before a launch or deployment</item>
+        <item>Feeding a scored shortlist into a downstream pipeline (Linear backlog, Notion idea database)</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>When human group dynamic is the point (team alignment, buy-in, psychological safety) — agentic bulk generation skips the relational work</item>
+        <item>When the problem is too narrow for divergent thinking; use direct prompting or SCAMPER instead</item>
+        <item>When ideas require domain-expert validation that an LLM cannot reliably provide (medical, legal, engineering safety)</item>
+        <item>When you need the dot-voting or scoring to be done by the same agent that generated the ideas — circular bias invalidates the prioritization</item>
+      </list>
+    </when-not-to-use>
+    <section name="Pass 1: Diverge (generation)">
+      <rule>
+        <statement>Send the generation prompt with only the problem statement and constraints. Do NOT include scoring criteria, evaluation language, or ranking instructions. The output must be a numbered list with no justification text.</statement>
+        <rationale>Including evaluation language in the generation prompt causes premature convergence — the model self-censors and produces fewer, safer ideas than an unconstrained generation pass.</rationale>
+      </rule>
+      <rule>
+        <statement>Seed the generation pass with persona injection to force diverse viewpoints: "Generate from the perspective of a skeptic, an optimist, a first-time user, and an engineer." This produces more diverse output than an anonymous generation pass.</statement>
+        <rationale>Agent-generated ideas plateau in novelty around 30-40 without persona switching. Training data bias causes clustering around the most common solutions in the domain.</rationale>
+      </rule>
+      <reference path="templates/prompt-diverge.txt">Diverge-pass prompt</reference>
+    </section>
+    <section name="Pass 2: Semantic deduplication">
+      <rule>
+        <statement>Remove near-duplicate ideas before clustering using semantic similarity (cosine similarity threshold 0.82 with sentence-transformers). Do not rely on exact string matching — paraphrased duplicates survive it.</statement>
+        <rationale>Duplicate ideas inflate cluster size and give false confidence in idea frequency. A cluster with 8 ideas that are all paraphrases of one idea is not 8 independent signals.</rationale>
+      </rule>
+      <reference path="templates/semantic-dedup.py">Sentence-transformers dedup script</reference>
+    </section>
+    <section name="Pass 3: Cluster and score">
+      <rule>
+        <statement>Cluster deduplicated ideas into 5-7 semantic themes in a separate pass. Score each cluster on Impact (3x weight) and Feasibility (2x weight). Return a scored shortlist of top 5-10 clusters for human review.</statement>
+        <rationale>Scoring before clustering produces per-idea scores that ignore the compound value of a theme. Scoring after clustering evaluates the best implementation of each direction.</rationale>
+      </rule>
+      <rule>
+        <statement>Require human review of cluster boundaries before finalizing scores. The clustering pass can silently merge two distinct viable approaches that share domain vocabulary.</statement>
+        <rationale>Semantic clustering by cosine similarity groups by surface word overlap, not conceptual distinctiveness. Two approaches can share words while being strategically opposed.</rationale>
+      </rule>
+    </section>
+    <section name="Reverse Brainstorm variant">
+      <rule>
+        <statement>For risk surfacing: invert the problem ("How would we make X fail?"), generate negative ideas, then reverse each into a positive mitigation. Run as two sequential passes — inversion then reversal — not combined.</statement>
+        <rationale>Groups generate more honest and specific negative ideas than positive ones, especially when they are politically constrained from criticizing directly.</rationale>
+      </rule>
+      <reference path="templates/prompt-reverse.txt">Reverse Brainstorm two-pass prompt</reference>
+    </section>
+    <section name="Circular scoring bias">
+      <antipattern>
+        <description>Using the same agent that generated the ideas to also dot-vote or rank them.</description>
+        <reason>The generating agent has higher confidence in ideas it produced with higher certainty in the first pass. Self-scoring compounds this into a self-reinforcing ranking with no independent judgment.</reason>
+      </antipattern>
+      <rule>
+        <statement>Scoring must be done by a separate agent or human. The generating agent provides the list; a fresh agent or human applies the scoring rubric.</statement>
+        <rationale>Separation of generation and evaluation is the most important architectural rule in agentic brainstorming pipelines.</rationale>
+      </rule>
+    </section>
+    <section name="Premature convergence">
+      <antipattern>
+        <description>Including evaluation language ("good idea because...", "this works better than option B") in the generation prompt.</description>
+        <reason>The model self-censors and produces fewer, safer ideas. The generation pass becomes a mixed pass that produces a filtered list masquerading as a brainstorm.</reason>
+      </antipattern>
+      <rule>
+        <statement>Generation prompt must contain only: problem statement, constraints, format instructions, and quantity target. No evaluation language.</statement>
+        <rationale>Strict format enforcement (numbered list only, no explanations) prevents evaluation language from contaminating output even when the model defaults to justification.</rationale>
+      </rule>
+    </section>
+    <section name="Semantic clustering failures">
+      <antipattern>
+        <description>Accepting cluster assignments without human review, particularly when two conceptually distinct approaches share domain vocabulary.</description>
+        <reason>Cosine similarity clusters by word overlap. "Automate onboarding email sequence" and "Automate onboarding task assignment" may cluster together despite being architecturally different solutions.</reason>
+      </antipattern>
+    </section>
+    <section name="Positional bias in large lists">
+      <antipattern>
+        <description>Passing a list of 50+ ideas to a scoring prompt in a single call.</description>
+        <reason>Ideas in positions 1-15 receive systematically higher scores than identical ideas in positions 35-50 due to positional bias in LLM attention. The first batch is not comparable to the last batch.</reason>
+      </antipattern>
+      <rule>
+        <statement>Chunk idea lists into batches of 25 for scoring. Score each batch against the rubric independently, then compare top-scored ideas across batches in a final pass.</statement>
+        <rationale>Chunking equalizes positional treatment. Cross-batch comparison in the final pass is a manageable 25-item set with no positional artifact.</rationale>
+      </rule>
+    </section>
+    <section name="When to use agents for ideation">
+      <list>
+        <item>Feeding an ideation pipeline where the output is a scored shortlist, not a facilitated group session</item>
+        <item>Product feature generation: given a persona + pain point, produce candidate features to evaluate</item>
+        <item>Content ideation: bulk-generating article topics, campaign angles, or ad copy variants</item>
+        <item>Risk surfacing: Reverse Brainstorming to enumerate failure modes before a launch</item>
+      </list>
+    </section>
+    <section name="Agent workflow">
+      <p>Agent receives a problem statement, a target idea count, and an optional technique flag (classic / reverse / brainwriting-simulated). It runs a generation pass with enforced formatting (one idea per line, no justification), then a dedup pass (semantic similarity), then a cluster-and-score pass. Output is a scored shortlist (top 5-10) with cluster labels, ready for human review. The human selects finalists and the agent generates one-line implementation notes per finalist.</p>
+    </section>
+    <section name="Limitations and failure modes">
+      <list>
+        <item>Agent-generated idea lists are biased toward patterns already common in training data; genuinely novel ideas require cross-domain prompting or persona injection</item>
+        <item>Brainwriting round-by-round simulation loses the "build on others" benefit because the agent reads its own prior ideas, creating an echo chamber</item>
+        <item>Convergence (clustering, dot voting, scoring) is where agent errors compound — misclassified clusters lead to wrong shortlists</item>
+        <item>Quantity is trivially achieved (100 ideas in seconds) but quality filtering requires human judgment at the evaluation gate</item>
+      </list>
+    </section>
+    <section name="Best practices">
+      <list>
+        <item>Always separate the generation prompt from the evaluation prompt — same-call mixing causes premature pruning.</item>
+        <item>Inject domain constraints into the generation prompt rather than the evaluation prompt: "ideas must be implementable by a 2-person team" up front produces better raw lists than filtering later.</item>
+        <item>Run a Reverse Brainstorm variant on the same problem as a sanity check — if the negatives are hard to reverse into positives, the problem framing may be wrong.</item>
+        <item>Store raw idea lists (pre-dedup, pre-score) in a scratch doc for future re-use; today's rejected idea may be valuable in a different context.</item>
+      </list>
+    </section>
+    <section name="AI-Agent gotchas">
+      <list>
+        <item>"Brainwriting simulation" (agent pretends to be 6 different people passing ideas) consistently produces less diverse output than a single well-seeded prompt with persona injection.</item>
+        <item>Dot voting by the same agent that generated the ideas is circular — the agent will favor ideas it generated with higher confidence.</item>
+        <item>Human checkpoint required before finalizing shortlist: the agent's semantic clustering can silently merge two distinct viable ideas into one cluster, eliminating a viable option.</item>
+        <item>Long idea lists (50+) that get passed to a scoring prompt often see the first 10-15 ideas scored more generously due to positional bias.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/prompt-diverge.txt" purpose="Diverge-pass prompt (generation only, no evaluation)"/>
+      <template path="templates/prompt-reverse.txt" purpose="Reverse Brainstorm prompt with inversion step"/>
+      <template path="templates/semantic-dedup.py" purpose="Sentence-transformers semantic deduplication for idea lists"/>
+    </templates>
+    <see-also>
+      <link href="https://www.ideo.com/post/design-thinking-methods">IDEO Design Thinking</link>
+      <link href="https://dschool.stanford.edu/resources/brainstorm-rules">Stanford d.school Brainstorming Rules</link>
+      <link href="https://www.sbert.net">sentence-transformers docs</link>
+      <ref slug="brainstorming-techniques"/>
+      <ref slug="ideation-methods"/>
+    </see-also>
+  </content>
+</methodology>
