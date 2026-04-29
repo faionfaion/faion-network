@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="e2e-testing">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>testing-developer</domain>
+    <summary>End-to-end testing with Playwright and Cypress: real browser automation, POM architecture, and CI/CD integration.</summary>
+    <tags>
+      <tag>e2e</tag>
+      <tag>playwright</tag>
+      <tag>cypress</tag>
+      <tag>testing</tag>
+      <tag>browser-automation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>E2E Testing</title>
+    <summary>Guides writing maintainable E2E tests using the Page Object Model, handling authentication, API mocking, visual regression, and sharded CI pipelines. Covers Playwright (primary) and Cypress (secondary).</summary>
+    <why>
+      <p>E2E tests validate full user journeys across real browsers. Without structure (POM, fixtures, data factories), suites become brittle and slow. This methodology enforces patterns that reduce flakiness and keep CI times bounded.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Writing or reviewing Playwright / Cypress test suites</item>
+        <item>Setting up E2E infrastructure from scratch (config, auth, CI sharding)</item>
+        <item>Debugging flaky tests or selector failures</item>
+        <item>Adding visual regression checks</item>
+        <item>Migrating from Cypress to Playwright</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Unit or integration tests (no browser needed) → use unit-testing or testing-pytest</item>
+        <item>API-only testing → use HTTP client directly</item>
+        <item>OAuth flows with real external providers (use storageState workaround instead)</item>
+      </list>
+    </when-not-to-use>
+    <section name="test-pyramid">
+      <rule>Follow the 70/20/10 pyramid: 70% unit, 20% integration, 10% E2E.</rule>
+      <rationale>E2E tests are the most expensive to maintain and slowest to run. Reserve them for critical user journeys only.</rationale>
+      <rule>Each E2E test must cover a complete user journey, not an individual UI component.</rule>
+      <example type="good" title="E2E test covers the checkout flow end-to-end">
+        <code lang="typescript"><![CDATA[
+test('complete checkout flow', async ({ page, authenticatedUser }) => {
+  await page.goto('/products');
+  await page.getByRole('button', { name: 'Add to cart' }).first().click();
+  await page.getByRole('link', { name: 'Cart' }).click();
+  await page.getByRole('button', { name: 'Checkout' }).click();
+  await expect(page.getByText('Order confirmed')).toBeVisible();
+});
+        ]]></code>
+      </example>
+      <example type="bad" title="E2E test checks a single button's CSS — use a unit/component test instead">
+        <code lang="typescript"><![CDATA[
+test('button has correct color', async ({ page }) => {
+  await page.goto('/products');
+  const color = await page.getByRole('button').evaluate(el =>
+    getComputedStyle(el).backgroundColor
+  );
+  expect(color).toBe('rgb(0, 128, 0)');
+});
+        ]]></code>
+      </example>
+    </section>
+    <section name="page-object-model">
+      <rule>Every page or major feature section must have a corresponding Page Object class.</rule>
+      <rule>Page Objects expose actions and assertions, not raw selectors.</rule>
+      <rule>Page Objects must not contain test assertions — return values instead.</rule>
+      <example type="good" title="LoginPage with POM pattern">
+        <code lang="typescript"><![CDATA[
+export class LoginPage {
+  readonly page: Page;
+  readonly emailInput: Locator;
+  readonly passwordInput: Locator;
+  readonly submitButton: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.emailInput = page.getByLabel('Email');
+    this.passwordInput = page.getByLabel('Password');
+    this.submitButton = page.getByRole('button', { name: 'Sign in' });
+  }
+
+  async login(email: string, password: string) {
+    await this.emailInput.fill(email);
+    await this.passwordInput.fill(password);
+    await this.submitButton.click();
+  }
+}
+        ]]></code>
+      </example>
+    </section>
+    <section name="selector-strategy">
+      <rule>Prefer role-based selectors: getByRole, getByLabel, getByPlaceholder.</rule>
+      <rule>Use data-testid only when semantic selectors are not feasible.</rule>
+      <rule>Never use CSS class selectors — they change with refactors.</rule>
+      <rule>Never use XPath in Playwright tests.</rule>
+    </section>
+    <section name="project-layout">
+      <rule>Co-locate POM files with tests: tests/e2e/pages/, tests/e2e/fixtures/, tests/e2e/specs/.</rule>
+      <rule>Place shared fixtures and auth setup in tests/e2e/fixtures/.</rule>
+    </section>
+    <section name="authentication-with-storagestate">
+      <rule>Never log in through the UI for every test — use storageState to reuse authenticated sessions.</rule>
+      <rule>Create a global auth setup that runs once and saves storageState to a file.</rule>
+      <example type="good" title="storageState auth setup">
+        <code lang="typescript"><![CDATA[
+// tests/e2e/fixtures/auth-setup.ts
+import { test as setup } from '@playwright/test';
+
+setup('authenticate', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(process.env.TEST_USER_EMAIL!);
+  await page.getByLabel('Password').fill(process.env.TEST_USER_PASSWORD!);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.waitForURL('/dashboard');
+  await page.context().storageState({ path: 'playwright/.auth/user.json' });
+});
+        ]]></code>
+      </example>
+      <note>For OAuth providers, use API-based token injection instead of UI login — UI OAuth flows change frequently and cannot be reliably automated.</note>
+    </section>
+    <section name="api-mocking-with-route">
+      <rule>Mock external APIs with page.route() to isolate E2E tests from third-party services.</rule>
+      <rule>Mock only external boundaries — test your own API with real calls.</rule>
+      <example type="good" title="Payment error on gateway failure">
+        <code lang="typescript"><![CDATA[
+test('shows payment error on gateway failure', async ({ page }) => {
+  await page.route('**/api/payments', route =>
+    route.fulfill({ status: 503, body: JSON.stringify({ error: 'gateway unavailable' }) })
+  );
+  await page.goto('/checkout');
+  await page.getByRole('button', { name: 'Pay now' }).click();
+  await expect(page.getByText('Payment service unavailable')).toBeVisible();
+});
+        ]]></code>
+      </example>
+    </section>
+    <section name="data-factories">
+      <rule>Use factory functions with faker to generate test data — never hardcode user emails or IDs.</rule>
+      <rule>Factories must be deterministic within a test run but vary between runs.</rule>
+      <example type="good" title="User data factory with faker">
+        <code lang="typescript"><![CDATA[
+import { faker } from '@faker-js/faker';
+
+export function createUserData(overrides: Partial<User> = {}): User {
+  return {
+    email: faker.internet.email(),
+    name: faker.person.fullName(),
+    role: 'user',
+    ...overrides,
+  };
+}
+        ]]></code>
+      </example>
+    </section>
+    <section name="visual-regression">
+      <rule>Use toHaveScreenshot() for components, not full pages — full-page snapshots break on dynamic content.</rule>
+      <rule>Always mask dynamic regions (timestamps, avatars) before taking screenshots.</rule>
+      <example type="good" title="Visual regression with masked regions">
+        <code lang="typescript"><![CDATA[
+await expect(page.getByRole('main')).toHaveScreenshot('dashboard.png', {
+  mask: [page.getByTestId('timestamp'), page.getByRole('img', { name: 'avatar' })],
+});
+        ]]></code>
+      </example>
+    </section>
+    <section name="mobile-testing">
+      <rule>Use Playwright device descriptors, not viewport resizing, to test mobile layouts.</rule>
+      <example type="good" title="Mobile device projects in Playwright">
+        <code lang="typescript"><![CDATA[
+// playwright.config.ts
+projects: [
+  { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+  { name: 'mobile-safari', use: { ...devices['iPhone 14'] } },
+],
+        ]]></code>
+      </example>
+    </section>
+    <section name="flakiness-prevention">
+      <rule>Never use fixed sleep() — use page.waitForSelector(), expect().toBeVisible(), or waitForURL().</rule>
+      <rule>Never rely on network timing — mock external APIs or use waitForResponse().</rule>
+      <rule>Avoid test interdependence — each test must set up its own state.</rule>
+      <rule>Use test.describe.configure({ mode: 'parallel' }) only when tests are fully isolated.</rule>
+      <antipattern>
+        <description>Fixed sleep causes flakiness across different CI machine speeds</description>
+        <code lang="typescript"><![CDATA[
+await page.click('#submit');
+await page.waitForTimeout(2000); // BAD: arbitrary wait
+await expect(page.getByText('Success')).toBeVisible();
+        ]]></code>
+        <reason>Replace with: await expect(page.getByText('Success')).toBeVisible() — Playwright waits automatically.</reason>
+      </antipattern>
+    </section>
+    <section name="retry-strategy">
+      <rule>Set retries: 2 in CI, retries: 0 in local dev to surface failures quickly.</rule>
+      <rule>Enable trace: 'on-first-retry' to capture failure context without storing traces for every run.</rule>
+      <example type="good" title="Playwright config with retries and traces">
+        <code lang="typescript"><![CDATA[
+// playwright.config.ts
+export default defineConfig({
+  retries: process.env.CI ? 2 : 0,
+  use: {
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+  },
+});
+        ]]></code>
+      </example>
+    </section>
+    <section name="ci-sharding">
+      <rule>Shard large suites across multiple CI machines to keep total wall time under 10 minutes.</rule>
+      <rule>Use --shard=N/total with merge-reports to combine results.</rule>
+      <example type="good" title="GitHub Actions matrix sharding">
+        <code lang="yaml"><![CDATA[
+# GitHub Actions matrix sharding
+strategy:
+  matrix:
+    shard: [1, 2, 3, 4]
+steps:
+  - run: npx playwright test --shard=${{ matrix.shard }}/4
+  - uses: actions/upload-artifact@v4
+    with:
+      name: blob-report-${{ matrix.shard }}
+      path: blob-report/
+      retention-days: 1
+        ]]></code>
+      </example>
+    </section>
+    <section name="trace-artifacts">
+      <rule>Always upload Playwright reports as CI artifacts for debugging failures.</rule>
+      <rule>Merge blob reports before publishing the HTML report when using sharding.</rule>
+    </section>
+    <templates>
+      <template path="templates/playwright.config.ts" purpose="Full Playwright config: projects, sharding, reporter, retries"/>
+      <template path="templates/pom-base.ts" purpose="Abstract base Page class with navigation helpers"/>
+      <template path="templates/auth-setup.ts" purpose="storageState auth setup fixture"/>
+      <template path="templates/factory.ts" purpose="Data factory with faker, builder pattern"/>
+      <template path="templates/ci-workflow.yml" purpose="GitHub Actions sharded Playwright workflow"/>
+    </templates>
+  </content>
+</methodology>
