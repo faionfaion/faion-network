@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="product-development-trends">
+  <metadata>
+    <tier>pro</tier>
+    <group>research</group>
+    <domain>market-researcher</domain>
+    <summary>Market-side trend brief producing TAM/pricing/positioning implications from scored signals. Three-stage pipeline filters noise before synthesis and writes audit trail for quarterly diffs.</summary>
+    <tags>
+      <tag>market-trends</tag>
+      <tag>competitive-intelligence</tag>
+      <tag>signal-scoring</tag>
+      <tag>market-implications</tag>
+      <tag>trend-research</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Product Development Trends (Market-Side Brief)</title>
+    <summary>A market-side trend brief that produces TAM/pricing/positioning implications from a scored signal set. A three-stage pipeline (wide signal collection → scored synthesis → human checkpoint) writes a dated trend-report.md and a signals.jsonl audit trail so next-quarter runs diff rather than re-scrape.</summary>
+    <why>
+      <p>Trend articles are written for SEO, not signal. LLM training data lags real markets by 6-18 months, so any unsourced trend claim is likely stale. A recency × evidence × applicability scoring rubric (0-3 each, threshold ≥5) filters noise before paying for Opus synthesis, and forces the deliverable to carry market implications (TAM shift, pricing power, positioning) rather than duplicating product-roadmap advice.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Quarterly market-trend refresh feeding GTM positioning, pricing tier design, or category framing</item>
+        <item>Pre-investment decision: separating hype from durable adoption before budget is committed</item>
+        <item>When competitive intel uncovers a methodology shift and you need to decide whether to follow or counter-position</item>
+        <item>Annual board memo where the market lens (TAM expansion, sub-segment emergence, pricing-power shifts) is the deliverable</item>
+        <item>Inside faion-research-agent mode=market when the team explicitly asks for a "what's changing" overlay</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Product roadmap or sprint planning — use researcher/product-development-trends or pm-agile</item>
+        <item>Pure pricing benchmark — use market-researcher/pricing-research</item>
+        <item>Single-feature validation — use user-researcher/problem-validation or continuous-discovery</item>
+        <item>Competitive tear-down of one named rival — use competitor-analysis and competitive-intelligence</item>
+        <item>Less than 90 days since the last trends pass with no triggering event (funding round, regulatory shift, major launch)</item>
+      </list>
+    </when-not-to-use>
+    <how-to>
+      <step>Execute the three-stage pipeline: Stage 1 runs a Sonnet subagent for wide signal collection using WebSearch and WebFetch to dump raw signals to .aidocs/research/raw/signals.jsonl without pre-filtering. Stage 2 applies cheap scoring (Sonnet or local signal-scorer.py script) on each signal using recency × evidence × applicability metrics, filtering out any signal scoring below 5. Stage 3 pays for Opus synthesis only on the filtered set, reducing context bloat and token cost.</step>
+      <step>Persist signals.jsonl as an audit trail so that next-quarter runs diff against it rather than re-scraping from scratch. Re-scraping each quarter misses the delta — the change between quarters is more informative than the absolute list. Save to .aidocs/research/raw/signals.jsonl with a quarterly timestamp to enable historical tracking.</step>
+      <step>Enforce the JSONL schema at ingest: each signal row must contain trend (string description of the trend), source (URL), published (YYYY-MM-DD ISO date), primary_source (boolean, true if signal is from a primary source not a secondary aggregator), citations (count of supporting citations), applicability (0-3 ordinal on market relevance to your category), region (US|EU|APAC|global), and market_impl (string describing the market implication).</step>
+      <step>Score each signal: recency (3 if ≤30 days old, 2 if ≤90 days, 1 if ≤180 days, 0 if older) + evidence (3 if primary_source, 2 if citations ≥3, 1 otherwise) + applicability (0-3 as provided). Drop signals with total score below 5 — they are too stale or low-evidence to synthesize.</step>
+      <step>For each passing trend, write the MARKET implication (TAM shift, pricing power, positioning change) — not product roadmap implications. The product sibling methodology at researcher/product-development-trends handles feature requests and roadmap signals; this methodology is investor-audience focused.</step>
+      <step>Require a kill-list: for every adopted trend, name one current GTM/pricing assumption to retire. Trend memos without subtractions are theater. Adding new implications without retiring stale ones creates an ever-growing backlog with no prioritization signal.</step>
+      <step>Separate consumer trends (slow-moving, demographic, 5-10 year adoption cycles) from platform trends (fast, technology, 6-18 month cycles) into two distinct tables. Mixing them produces misleading urgency signals where a slow consumer trend gets treated as an immediate platform priority.</step>
+    </how-to>
+    <section name="Three-Stage Pipeline">
+      <p>The core workflow divides signal collection, scoring, and synthesis into distinct stages to control token cost and improve quality. Stage 1 runs a Sonnet subagent for wide signal collection — WebSearch and WebFetch dumps to .aidocs/research/raw/signals.jsonl without filtering. Stage 2 runs a cheaper scoring pass (Sonnet or local script) to filter signals by recency, evidence, and applicability, dropping any signal scoring below 5. Stage 3 pays for Opus synthesis only on the filtered, scored set — this reduces context bloat and improves output quality while cutting token cost by 80%.</p>
+      <rule>
+        <statement>Run in three sequential stages: (1) wide signal collection — sonnet subagent does WebSearch + WebFetch and dumps to .aidocs/research/raw/signals.jsonl; (2) scored synthesis — opus subagent scores each signal on recency × evidence × applicability and proposes a market implication; (3) human checkpoint — accept/reject before writing into .aidocs/product_docs/trend-report.md.</statement>
+        <rationale>Paying for opus synthesis on unfiltered signals is wasteful and overwhelms context. The scoring pass (cheap) before synthesis (expensive) reduces token cost and improves output quality.</rationale>
+      </rule>
+      <rule>
+        <statement>Persist signals.jsonl as an audit trail. Next-quarter run must diff against it rather than re-scraping from scratch.</statement>
+        <rationale>Re-scraping each quarter misses the delta — the change between quarters is more informative than the absolute list. Diffing the raw signal log provides both the delta and a reproducibility record.</rationale>
+      </rule>
+    </section>
+    <section name="Signal JSONL Schema">
+      <p>Every signal must conform to a strict schema enforced at ingest time. Heterogeneous signal shapes break batch scoring and quarterly diffing. The schema ensures that all required fields are present and standardized, making the audit trail queryable and the quarterly diff meaningful.</p>
+      <rule>
+        <statement>Each signal row must contain: trend (string), source (URL), published (YYYY-MM-DD), primary_source (bool), citations (int), applicability (0-3), region (US|EU|APAC|global), market_impl (market implication string). Drop signals with total score below 5.</statement>
+        <rationale>Without a schema enforced at ingest, signals arrive in heterogeneous shapes that make batch scoring and quarterly diffing unreliable.</rationale>
+      </rule>
+    </section>
+    <section name="Scoring Rubric">
+      <p>The scoring rubric balances freshness (recency), credibility (evidence), and relevance (applicability). A threshold of 5 filters out weak signals before expensive synthesis. Signals below 5 are archived in the audit trail but not synthesized; this prevents hallucinated vendor names and fabricated data points from reaching decision-makers.</p>
+      <rule>
+        <statement>Score each signal: recency (3 if ≤30 days, 2 if ≤90 days, 1 if ≤180 days, 0 if older) + evidence (3 if primary_source, 2 if citations ≥3, 1 otherwise) + applicability (0-3 as provided). Threshold ≥5 to include in synthesis.</statement>
+        <rationale>The threshold prevents paying for opus synthesis on stale, low-evidence signals. A signal scoring 4 or below is too weak to anchor a market implication.</rationale>
+      </rule>
+    </section>
+    <section name="Market Implication Output">
+      <p>Market-side trends differ fundamentally from product-side trends. Market trends focus on TAM shifts, pricing power, and category positioning. Product trends focus on feature timing, user request signals, and roadmap implications. The two methodologies are distinct deliverables with different audiences (investors vs product team) and should never be conflated in a single document.</p>
+      <rule>
+        <statement>For each passing trend, write the MARKET implication (TAM shift, pricing power, positioning) — not product/roadmap implications. Product implications belong in researcher/product-development-trends.</statement>
+        <rationale>The two sibling methodologies are distinct deliverables. Mixing market and product implications in the same document produces a document that satisfies neither the investor audience nor the product team.</rationale>
+      </rule>
+      <rule>
+        <statement>Require a kill-list: for every adopted trend, name one current GTM/pricing assumption to retire. Trend memos without subtractions are theater.</statement>
+        <rationale>Adding new trend implications without retiring stale ones creates an ever-growing list of "things to do" with no prioritization signal. The kill-list forces explicit trade-offs.</rationale>
+      </rule>
+      <rule>
+        <statement>Separate consumer trends (slow, demographic) from platform trends (fast, technology) into two tables. Mixing them is the most common failure mode.</statement>
+        <rationale>Consumer trends (sustainability, "brands that do good") operate on 5-10 year cycles; platform trends (AI-native tooling) operate on 6-18 month cycles. Mixing cadences produces misleading urgency signals.</rationale>
+      </rule>
+    </section>
+    <section name="Source and Freshness Rules">
+      <p>LLM training data lags real markets by 6-18 months. Trend articles are written for SEO, not empirical rigor. These rules force quantifiable anchors, regional balance, and bullet-level date stamps to produce a document that withstands investor scrutiny and remains useful quarterly.</p>
+      <rule>
+        <statement>Anchor every macro trend to one quantifiable market datapoint — funding round, traffic-share delta, review-count trajectory. Label trends without such an anchor as "watch", not "act".</statement>
+        <rationale>Trend articles are written for SEO. Without a quantifiable anchor, a trend claim is indistinguishable from a well-cited opinion piece.</rationale>
+      </rule>
+      <rule>
+        <statement>Force at least one EU and one APAC primary source per trend or reject the brief as regionally biased. Never blend US + EU + APAC CPC into one number.</statement>
+        <rationale>LLMs over-index on US/SF sources; training data overweights US benchmarks. For non-US markets, a US-only brief actively misleads decision-making.</rationale>
+      </rule>
+      <rule>
+        <statement>Date-stamp at the bullet level, not just the document. Future agents diff bullet-dates to detect staleness without re-reading the full document.</statement>
+        <rationale>Document-level dates hide which specific bullets have gone stale. Bullet-level dates let a quarterly diff agent flag individual claims without a full re-research pass.</rationale>
+      </rule>
+    </section>
+    <section name="Scope Guardrails">
+      <p>Running trend research more frequently than quarterly produces noise. Macro market trends do not shift week-to-week; re-runs without triggering events re-confirm the last snapshot at significant token cost. Keeping summaries short (≤3 sentences) forces the agent to find strong evidence; long summaries indicate weak evidence padded with adjectives.</p>
+      <rule>
+        <statement>Do not run this methodology less than 90 days after the previous run unless a triggering event occurred (funding round, regulatory shift, major launch). Trend churn faster than 90 days is noise.</statement>
+        <rationale>Macro market trends do not materially change week-to-week. Running more frequently produces re-confirmation of the last snapshot at significant token cost without new information.</rationale>
+      </rule>
+      <rule>
+        <statement>Keep each trend's executive summary to ≤3 sentences. Long entries always indicate weak evidence padded with adjectives.</statement>
+        <rationale>Evidence-dense trend claims are short by nature. If you cannot express the market implication in 3 sentences, the evidence is not strong enough to warrant a claim.</rationale>
+      </rule>
+    </section>
+    <section name="Agent Gotchas">
+      <antipattern>
+        <description>WebSearch ranked by SEO not freshness — sorting by published date is skipped, producing stale results summarized as current</description>
+        <reason>Sort by published date in the signal scraper before summarizing. Freshness of source is the primary quality signal in trend research.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Rapid pivots, quarterly cycles added as an unsourced cadence claim generated from LLM defaults rather than evidence</description>
+        <reason>Treat any unsourced cadence claim as hallucinated. Require a named study (DORA, Stack Overflow) with cohort label before accepting a cadence benchmark.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Three citations to the same secondary article (HBR, McKinsey blog) inflating confidence for a claim</description>
+        <reason>Multiple citations to the same source ≠ multiple sources. Require independent primary sources; citations to the same base article count as one.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Human-in-the-loop checkpoint missing before the synthesis lands in .aidocs/product_docs/</description>
+        <reason>Without the gate, hallucinated vendor names and fabricated market data points land in deliverables that get circulated to investors and boards. The checkpoint is non-negotiable.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Token cost blowup: synthesis on opus with 50+ raw signals exceeds 100k tokens</description>
+        <reason>Pre-filter with the signal-scorer.py script before paying for opus synthesis. A scored and trimmed set of signals produces better output at 20% of the cost.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Duplicate-content trap: both market and product sibling methodologies produce a file called trend-report.md and one silently overwrites the other</description>
+        <reason>Explicitly namespace files: market side writes to trend-report-market.md, product side to trend-report-product.md. Ask "is the deliverable a market memo or a product memo?" before running.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/signal-scorer.py" purpose="Score signals.jsonl on recency/evidence/applicability, drop below threshold, render markdown table"/>
+      <template path="templates/trend-report.md" purpose="Trend report skeleton with market implications, kill-list, and separated consumer vs platform trend tables"/>
+    </templates>
+  </content>
+</methodology>

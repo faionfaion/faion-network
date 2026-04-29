@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: solo/comms/communicator/negotiation → methodology.xml (feature-045 batch CQ)
+- migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (pm-certification-changes-2026, raci-matrix, ref-pmbok; feature-045 batch CB)
+- migrate: 3/3 API developer methodologies → methodology.xml (api-rate-limiting, api-rest-design, api-testing; feature-045 batch CT)
 - migrate: 3/3 paths to methodology.xml (storytelling, api-authentication, api-contract-first; feature-045 batch 3-final)
 - migrate: 3/3 pro/research/researcher methodologies → methodology.xml (methodologies-index, opportunity-solution-trees, risk-assessment; feature-045 batch CJ)
 - migrate: 3/3 pro/pm/pm-traditional methodologies → methodology.xml (schedule-development, scope-management, stakeholder-engagement; feature-045 batch 1)
