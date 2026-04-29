@@ -1,0 +1,824 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="accessibility">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>frontend-developer</domain>
+    <summary>WCAG 2.1/2.2 AA compliance: semantic HTML, ARIA, keyboard navigation, color contrast, screen reader testing. Default practice for all web development.</summary>
+    <category>accessibility</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+    <tags>
+      <tag>accessibility</tag>
+      <tag>wcag</tag>
+      <tag>aria</tag>
+      <tag>a11y</tag>
+      <tag>semantic-html</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Accessibility (WCAG)</title>
+
+    <summary>Web accessibility: make interfaces perceivable, operable, understandable, and robust for all users including those using assistive technologies. WCAG 2.1/2.2 AA is the target conformance level. Accessibility is a default practice, not an opt-in feature.</summary>
+
+    <why>
+      <p>Accessible web applications serve legal compliance (ADA, EAA, Section 508, AODA), protect revenue (assistive-tech failures = lost users + lawsuits in fintech/e-commerce), and improve UX for everyone: smaller touch targets hurt mobile users, auto-playing media irritates anyone, and poor color contrast fails in bright sunlight.</p>
+      <p>For agent-generated UI, LLMs systematically under-deliver on accessibility unless forced. The three-gate workflow (author-time semantic HTML, commit-time axe/jsx-a11y lint, release-time screen-reader pass) closes the gap.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Every web project — accessibility is a default, not an opt-in.</item>
+        <item>Public-facing apps subject to ADA, EAA (June 2025 EU mandate), Section 508, AODA.</item>
+        <item>Enterprise/government RFPs that require WCAG 2.1 AA or 2.2 AA conformance.</item>
+        <item>E-commerce and fintech where assistive-tech failures convert directly into lost revenue + lawsuits.</item>
+        <item>Any agent-generated UI: LLMs systematically under-deliver on a11y unless forced.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Internal CLI/server-only tools with no UI surface (still apply for any web admin panel).</item>
+        <item>Throwaway experiments — but even then, accessible markup is rarely more expensive than div soup.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="wcag-principles">
+      <title>WCAG Core Principles</title>
+      <p>Perceivable: information presentable to all users. Operable: interface components must be operable. Understandable: information and UI must be clear. Robust: content works with assistive technologies.</p>
+    </section>
+
+    <section name="semantic-html">
+      <title>Semantic HTML Foundation</title>
+      <p>Use native semantic elements: header, nav, main, article, aside, footer, section, figure, figcaption. Avoid div soup. Use h1-h6 with proper hierarchy (no skips). Use lists (ul/ol/dl) for list content. Use table for tabular data with proper thead/tbody/tfoot and th with scope.</p>
+      <example type="good" title="Semantic HTML structure">
+        <code lang="html"><![CDATA[
+<header>
+  <nav aria-label="Main navigation">
+    <ul>
+      <li><a href="/">Home</a></li>
+      <li><a href="/products">Products</a></li>
+    </ul>
+  </nav>
+</header>
+<main>
+  <article>
+    <h1>Welcome</h1>
+    <p>Content here</p>
+  </article>
+</main>
+<footer>
+  <p>&copy; 2026</p>
+</footer>
+        ]]></code>
+      </example>
+      <example type="bad" title="Div soup (inaccessible)">
+        <code lang="html"><![CDATA[
+<div class="header">
+  <div class="nav-item" onclick="goHome()">Home</div>
+  <div class="nav-item" onclick="goProducts()">Products</div>
+</div>
+<div class="main">
+  <div class="article">
+    <div class="h1">Welcome</div>
+    <div>Content here</div>
+  </div>
+</div>
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="keyboard-navigation">
+      <title>Keyboard Navigation</title>
+      <p>Ensure logical tab order following visual layout. Use tabindex="0" for custom interactive elements. Use tabindex="-1" for programmatically focusable elements. Avoid positive tabindex values. Test full site navigation with Tab key only.</p>
+      <p>Implement standard keyboard patterns: Enter and Space on buttons, Escape to close modals/dropdowns, arrow keys in lists and composites. Trap focus in modals (Tab cycles between first and last element). Return focus to trigger element when closing modals. Move focus to main content on page load for SPAs.</p>
+      <rule testable="true">
+        <statement>Every mouse action must have a keyboard equivalent. Tab and Shift-Tab must traverse all interactive elements in logical order. Esc must close modals and dropdowns.</statement>
+        <rationale>Screen reader users and motor-impaired users navigate via keyboard. Logical tab order prevents confusion; Escape is the universal "cancel" signal.</rationale>
+      </rule>
+    </section>
+
+    <section name="aria-implementation">
+      <title>ARIA Implementation</title>
+      <p>Use ARIA roles, states, and properties to enhance semantics when native HTML is insufficient. Set aria-expanded for expandable elements, aria-pressed for toggle buttons, aria-checked for custom checkboxes. Set aria-hidden="true" for decorative elements.</p>
+      <p>Use aria-label for elements without visible text, aria-labelledby to reference visible labels, aria-describedby for additional descriptions. Use aria-required for required form fields, aria-invalid for validation errors. Use aria-live="polite" (default) for non-critical dynamic content and aria-live="assertive" (sparingly) for urgent announcements.</p>
+      <example type="good" title="ARIA in forms">
+        <code lang="tsx"><![CDATA[
+<label htmlFor="email">Email Address</label>
+<input
+  id="email"
+  type="email"
+  required
+  aria-required="true"
+  aria-invalid={!!errors.email}
+  aria-describedby={errors.email ? "email-error" : "email-hint"}
+/>
+<span id="email-hint" className="hint">We'll never share your email</span>
+{errors.email && (
+  <span id="email-error" className="error" role="alert">{errors.email}</span>
+)}
+        ]]></code>
+      </example>
+      <antipattern>
+        <description>Using aria-label to replace missing semantic meaning (e.g., role="button" on a div without keyboard handlers).</description>
+        <reason>ARIA cannot fix broken semantics. A div with role="button" is still a div; it won't receive keyboard focus by default or respond to Enter/Space. Use native button elements.</reason>
+      </antipattern>
+    </section>
+
+    <section name="color-contrast">
+      <title>Color and Contrast</title>
+      <p>WCAG 2.1 AA minimum contrast ratios: normal text 4.5:1, large text (18px+ or 14px+ bold) 3:1, UI components and graphics 3:1.</p>
+      <p>Never use color alone to convey information. Pair color with text icons or symbols. Test contrast in real composition, not just on white backgrounds — text over images, gradients, and secondary surfaces may fail even if tokens pass.</p>
+      <rule testable="true">
+        <statement>All text and interactive elements must meet WCAG AA contrast. Test in context (not in isolation). Never relay information with color alone.</statement>
+        <rationale>Color-blind users and low-vision users cannot distinguish color-only indicators. Testing in isolation misses real-world failures (text over gradients, secondary surfaces).</rationale>
+      </rule>
+      <example type="good" title="Semantic color with symbols">
+        <code lang="css"><![CDATA[
+.status-indicator.success {
+  color: var(--color-success);
+}
+.status-indicator.success::before {
+  content: "✓";
+}
+
+.status-indicator.error {
+  color: var(--color-error);
+}
+.status-indicator.error::before {
+  content: "✕";
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="images-media">
+      <title>Images and Media</title>
+      <p>Write meaningful alt text describing the image content. Decorative images: alt="" (empty) or role="presentation". Complex images: provide description via aria-describedby or figcaption.</p>
+      <p>Video must include captions (required for WCAG AA). Audio must include transcript. Images containing charts or data must have long descriptions or structured data alternatives.</p>
+      <example type="good" title="Alt text and captions">
+        <code lang="html"><![CDATA[
+<!-- Meaningful alt text -->
+<img src="/product.jpg" alt="Red wireless headphones with noise cancellation" />
+
+<!-- Decorative image -->
+<img src="/border.svg" alt="" role="presentation" />
+
+<!-- Complex image with description -->
+<figure>
+  <img src="/chart.png" alt="Bar chart showing quarterly sales" aria-describedby="chart-desc" />
+  <figcaption id="chart-desc">Q1: $1.2M, Q2: $1.5M, Q3: $1.8M, Q4: $2.1M (75% YoY growth)</figcaption>
+</figure>
+
+<!-- Video with captions -->
+<video controls>
+  <source src="/demo.mp4" type="video/mp4" />
+  <track kind="captions" src="/captions-en.vtt" srclang="en" label="English" default />
+</video>
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="forms-validation">
+      <title>Forms and Validation</title>
+      <p>Form inputs must have programmatic labels (label for or aria-labelledby). Placeholder is not a label. Fieldsets and legends must be used for grouped inputs. Error messages must be linked via aria-describedby and aria-invalid.</p>
+      <p>When validation errors occur, move focus to the error summary. List all errors with links to the fields. Use role="alert" on error messages so screen readers announce them immediately.</p>
+      <rule testable="true">
+        <statement>All form fields must have associated labels. Errors must be announced to screen readers via aria-invalid and aria-describedby. Focus must move to error summary on submission failure.</statement>
+        <rationale>Screen reader users cannot infer field purpose from placeholder text. Error announcements prevent silent failures. Focus management ensures users see the error without manual navigation.</rationale>
+      </rule>
+    </section>
+
+    <section name="testing-accessibility">
+      <title>Testing Accessibility</title>
+      <p>Use multiple testing layers: (1) static linting (eslint-plugin-jsx-a11y), (2) automated scanning (axe, Lighthouse), (3) integration testing (axe + Playwright), (4) manual screen-reader testing (NVDA/VoiceOver/TalkBack).</p>
+      <p>Automated tools catch ~30-40% of WCAG issues. Manual + assistive-tech testing is non-negotiable. Run keyboard-only walkthrough: if Tab/Shift-Tab traverses logically and Esc dismisses overlays, you are ~80% there.</p>
+      <example type="good" title="Playwright + axe accessibility test">
+        <code lang="typescript"><![CDATA[
+import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+
+const routes = ['/', '/pricing', '/login'];
+
+for (const r of routes) {
+  test(`a11y: ${r}`, async ({ page }) => {
+    await page.goto(r);
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+      .analyze();
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+  });
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="common-patterns">
+      <title>Common Patterns</title>
+      <p>Visually hidden text (screen readers only): position absolute, 1px width/height, clip rect(0, 0, 0, 0), white-space nowrap.</p>
+      <p>Reduced motion support: @media (prefers-reduced-motion: reduce) with 0.01ms animations and transitions.</p>
+      <p>High contrast mode support: @media (prefers-contrast: high) with adjusted color tokens.</p>
+      <p>Skip links: position absolute, top: -40px, visible on focus. Keyboard users can bypass navigation blocks.</p>
+      <example type="good" title="Utility CSS classes">
+        <code lang="css"><![CDATA[
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #0066cc;
+  color: #ffffff;
+  padding: 0.5rem 1rem;
+  z-index: 100;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="anti-patterns">
+      <title>Anti-Patterns</title>
+      <antipattern>
+        <description>Div with onclick for interactive elements.</description>
+        <reason>Native button elements receive keyboard focus by default and respond to Enter/Space. Divs require manual keyboard handler code.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Placeholder as label.</description>
+        <reason>Placeholders disappear when typing, leaving users confused. Use explicit labels.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Color-only status indicators (red = error, green = success).</description>
+        <reason>Color-blind users cannot distinguish. Add text, icons, or symbols.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Auto-playing media or infinite carousels.</description>
+        <reason>Respects user preferences and prevents cognitive overload. Use autoplay="false" and provide pause controls.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Disabled or invisible focus outlines.</description>
+        <reason>Keyboard users need visible focus indicators. Use :focus-visible for better UX than removing outline.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hand-rolled custom components with incorrect ARIA.</description>
+        <reason>ARIA cannot fix broken semantics. Use native elements (button, a, nav) or Radix/headlessui primitives with built-in accessibility.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Generated aria-label strings duplicating text content.</description>
+        <reason>Screen readers read the label twice. Use aria-label only when visual label doesn't exist (icon buttons).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Missing focus trap in modals or focus restoration on close.</description>
+        <reason>Screen reader users get lost when focus escapes the modal. Tab must cycle within the modal; Esc returns to opener.</reason>
+      </antipattern>
+    </section>
+
+    <section name="phase-1-semantic-html-foundation">
+      <title>Phase 1: Semantic HTML Foundation Checklist</title>
+      <p>Document Structure: use proper DOCTYPE declaration. Set lang attribute on html element. Include viewport meta tag. Use semantic HTML5 elements (header, nav, main, article, aside, footer). Ensure heading hierarchy (h1 → h2 → h3, no skips). Use section elements with aria-labelledby. Avoid div/span soup — use semantic alternatives.</p>
+      <p>Landmarks: add role="banner" or use header for site header. Add role="navigation" or use nav for primary navigation. Add role="main" or use main for main content (only one per page). Add role="complementary" or use aside for sidebars. Add role="contentinfo" or use footer for site footer. Add role="search" for search functionality. Use aria-label to distinguish multiple landmarks of same type.</p>
+      <p>Lists and Tables: use ul/ol for lists, not div with bullets. Use dl/dt/dd for definition lists. Use table element for tabular data. Include caption or aria-label for tables. Use thead, tbody, tfoot for table structure. Use th with scope attribute for headers. Avoid layout tables or use role="presentation".</p>
+    </section>
+
+    <section name="phase-2-keyboard-navigation">
+      <title>Phase 2: Keyboard Navigation Checklist</title>
+      <p>Tab Order: ensure logical tab order follows visual layout. Set tabindex="0" for custom interactive elements. Use tabindex="-1" for programmatically focusable elements. Avoid positive tabindex values. Test full site navigation with Tab key only.</p>
+      <p>Focus Management: ensure visible focus indicators on all interactive elements. Use :focus-visible for better UX. Trap focus in modals (cycle between first/last element). Return focus to trigger element when closing modals. Move focus to main content on page load for SPAs. Use skip links for bypass blocks.</p>
+      <p>Keyboard Shortcuts: implement standard keyboard patterns (Enter, Space, Escape, Arrow keys). Support Home/End keys in lists and composites. Add keyboard shortcuts documentation. Avoid conflicts with browser/screen reader shortcuts. Provide keyboard alternative for every mouse action.</p>
+      <p>Interactive Elements: use button for actions (not div with onclick). Use a for navigation (with valid href). Support Enter key on buttons, Space and Enter on custom buttons. Support Escape key to close modals/dropdowns. Implement roving tabindex for composite widgets.</p>
+    </section>
+
+    <section name="phase-3-aria-implementation">
+      <title>Phase 3: ARIA Implementation Checklist</title>
+      <p>ARIA Roles: use role="button" for custom buttons. Use role="dialog" for modals. Use role="alert" for critical announcements. Use role="status" for non-critical status updates. Use role="tablist/tab/tabpanel" for tabs. Use role="menu/menuitem" for application menus (not site navigation). Avoid redundant roles on semantic HTML.</p>
+      <p>ARIA States: set aria-expanded for expandable elements. Set aria-pressed for toggle buttons. Set aria-checked for custom checkboxes. Set aria-selected for selected items. Set aria-hidden="true" for decorative elements. Set aria-disabled for disabled interactive elements.</p>
+      <p>ARIA Properties: use aria-label for elements without visible text. Use aria-labelledby to reference visible labels. Use aria-describedby for additional descriptions. Use aria-required for required form fields. Use aria-invalid for validation errors. Use aria-live="polite" for dynamic content. Use aria-busy for loading states. Use aria-controls to link control elements to their targets. Use aria-owns for parent-child relationships. Use aria-haspopup to indicate popups. Use aria-modal="true" for modal dialogs. Use aria-relevant for live region change handling.</p>
+    </section>
+
+    <section name="agentic-workflow">
+      <title>Agentic Workflow</title>
+      <p>Bake a11y into three gates: (1) author-time — agents must use semantic HTML and reach for native elements first; (2) commit-time — eslint-plugin-jsx-a11y + axe Playwright sweep on changed pages; (3) release-time — manual screen-reader pass (NVDA on Win, VoiceOver on macOS/iOS, TalkBack on Android) on top user journeys.</p>
+      <p>Never let an agent ship role="button" on a div without a paired keyboard handler test. Never accept aria-label="bg-blue-600" or other token values. Always require "why not native?" justification in PR description when custom ARIA is used.</p>
+      <p>Recommended subagents: faion-frontend-component-agent (author with semantic HTML + ARIA where required). faion-sdd-executor-agent (run axe, jsx-a11y, focus-trap tests as gates). faion-storybook-agent (generate @storybook/addon-a11y reports per story).</p>
+      <p>Prompt pattern: Build &lt;DropdownMenu&gt; meeting WCAG 2.2 AA. Constraints: use Radix or @headlessui/react primitive (do not hand-roll). Keyboard map: Tab focus, Enter/Space open, Esc close, arrow navigate, type-ahead. aria-expanded, aria-controls, role=menu/menuitem wired correctly. Visible focus indicator at 3:1 contrast against adjacent color. Test: axe violations==0, keyboard-only walkthrough, focus restoration on close.</p>
+    </section>
+
+    <section name="agent-integration-details">
+      <title>Agent Integration and Limitations</title>
+      <p>When to use accessibility methodologies: every web project — accessibility is a default, not an opt-in. Public-facing apps subject to ADA, EAA (June 2025 EU mandate), Section 508, AODA. Enterprise/government RFPs that require WCAG 2.1 AA or 2.2 AA conformance. E-commerce and fintech where assistive-tech failures convert directly into lost revenue + lawsuits. Any agent-generated UI: LLMs systematically under-deliver on a11y unless forced.</p>
+      <p>When NOT to use: internal CLI/server-only tools with no UI surface (still apply for any web admin panel). Throwaway experiments — but even then, accessible markup is rarely more expensive than div soup.</p>
+      <p>Where accessibility fails or has limitations: automated tools (axe, Lighthouse) catch ~30-40% of WCAG issues; manual + assistive-tech testing is non-negotiable. Agent-generated ARIA is often wrong and worse than no ARIA (e.g., role="button" on a div without keyboard handlers). Color-contrast checks pass on token sheets but fail in real composition (text over images, gradients). Focus management in SPAs is invisible to crawlers; route changes silently break screen readers. Translated content (i18n) breaks alt text, ARIA labels, and live-region politeness if not checked per locale.</p>
+      <p>AI-agent gotchas: agents reach for role="button" and ARIA before considering native elements; require a "why not native?" justification in PR description. Generated aria-label strings are often duplicated, English-only, or contain Tailwind tokens (aria-label="bg-blue-600"); add a regex lint. Focus trap inside modals is frequently missing; require an integration test that Tab cycles inside the modal and Esc returns focus to opener. Live-region (aria-live) misuse: assertive for everything spams screen readers. Default to polite. Skip links and landmark regions disappear after refactors; pa11y or axe in CI catches regressions agents introduced. Color-contrast tokens that pass on white may fail on the secondary surface; test contrast in context, not in isolation. i18n: agents copy ARIA labels literally; long German/Ukrainian translations break truncated labels and tooltips.</p>
+    </section>
+
+    <section name="best-practices">
+      <title>Best Practices</title>
+      <p>Semantic HTML first; reach for button, a, nav, main before any role=. One h1 per page; outline must be hierarchical (no h2 → h4 jumps).</p>
+      <p>Keyboard-only walkthrough is the cheapest sanity check; if Tab/Shift-Tab traverses logically and Esc dismisses overlays, you are 80% there.</p>
+      <p>Focus management on route change: move focus to main heading or skip-link target; announce via aria-live on SPA navigations.</p>
+      <p>All interactive elements: ≥44×44 CSS px touch target (WCAG 2.5.5).</p>
+      <p>Respect prefers-reduced-motion and prefers-color-scheme; do not autoplay or auto-rotate.</p>
+      <p>Form inputs must have programmatic labels (label for or aria-labelledby); placeholder is not a label.</p>
+      <p>Provide visible error messaging linked via aria-describedby and aria-invalid.</p>
+    </section>
+
+    <section name="limitations">
+      <title>Limitations and Failures</title>
+      <p>Automated tools (axe, Lighthouse) catch ~30-40% of WCAG issues; manual + assistive-tech testing is non-negotiable.</p>
+      <p>Agent-generated ARIA is often wrong and worse than no ARIA (e.g., role="button" on a div without keyboard handlers).</p>
+      <p>Color-contrast checks pass on token sheets but fail in real composition (text over images, gradients).</p>
+      <p>Focus management in SPAs is invisible to crawlers; route changes silently break screen readers.</p>
+      <p>Translated content (i18n) breaks alt text, ARIA labels, and live-region politeness if not checked per locale.</p>
+    </section>
+
+    <section name="tools-and-services">
+      <title>CLI Tools and Services</title>
+      <p>eslint-plugin-jsx-a11y: static a11y lint for JSX (npm i -D eslint-plugin-jsx-a11y). @axe-core/cli / axe-core: audit deployed pages (npm i -D @axe-core/cli). @axe-core/playwright: per-test a11y check (npm i -D @axe-core/playwright). pa11y / pa11y-ci: batch a11y CI runs (npm i -D pa11y-ci). lighthouse: a11y score in CI (npm i -D lighthouse). @storybook/addon-a11y: per-story a11y panel (npm i -D @storybook/addon-a11y). NVDA/VoiceOver/TalkBack: manual screen reader testing (OS-native).</p>
+      <p>Services: Deque axe DevHub / axe Monitor (SaaS, industry standard). WAVE WebAIM (SaaS, visual reports). AssistivLabs (SaaS, cloud-hosted screen readers). Siteimprove (SaaS, enterprise governance). Stark (SaaS, Figma plugin + CLI). Pa11y Dashboard (OSS, self-hosted CI). Chromatic + a11y addon (SaaS, story-level in PR review).</p>
+    </section>
+
+    <section name="form-patterns">
+      <title>Accessible Form Patterns</title>
+      <p>Icon Button with Label: use aria-label="Close dialog" on buttons with icon-only content, set aria-hidden="true" on the icon. Toggle Button: set aria-pressed attribute based on state. Button with Loading State: set disabled and aria-busy="true" during loading, use visually-hidden span for "Loading..." announcement.</p>
+      <example type="good" title="Accessible button patterns">
+        <code lang="tsx"><![CDATA[
+// Icon button with label
+<button aria-label="Close dialog">
+  <CloseIcon aria-hidden="true" />
+</button>
+
+// Toggle button
+<button
+  aria-pressed={isPressed}
+  onClick={() => setPressed(!isPressed)}
+>
+  {isPressed ? 'Mute' : 'Unmute'}
+</button>
+
+// Button with loading state
+<button disabled={loading} aria-busy={loading}>
+  {loading ? (
+    <>
+      <span className="visually-hidden">Loading...</span>
+      <Spinner aria-hidden="true" />
+    </>
+  ) : (
+    'Submit'
+  )}
+</button>
+        ]]></code>
+      </example>
+      <p>Modal Dialog: use role="dialog", aria-modal="true", aria-labelledby for heading. Manage focus: on open, focus first focusable element; on close, restore focus to trigger. Trap Tab/Shift-Tab within modal. Keyboard: Escape closes modal. Example Modal implementation:</p>
+      <example type="good" title="Modal with focus management">
+        <code lang="tsx"><![CDATA[
+import { useEffect, useRef } from 'react';
+
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}
+
+export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Store previous focus
+    previousFocusRef.current = document.activeElement as HTMLElement;
+
+    // Focus first focusable element
+    const focusable = dialogRef.current?.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    focusable?.focus();
+
+    // Trap focus
+    const trapFocus = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const focusableElements = dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusableElements || focusableElements.length === 0) return;
+      const first = focusableElements[0];
+      const last = focusableElements[focusableElements.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    // Handle Escape key
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      } else {
+        trapFocus(e);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+      previousFocusRef.current?.focus();
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <>
+      <div className="modal-backdrop" onClick={onClose} aria-hidden="true" />
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        className="modal"
+      >
+        <h2 id="modal-title">{title}</h2>
+        {children}
+        <button onClick={onClose}>Close</button>
+      </div>
+    </>
+  );
+}
+        ]]></code>
+      </example>
+      <p>Form Validation: error summary at page/form top with role="alert". List all errors with links to fields. Set aria-invalid="true" and aria-describedby="error-id" on invalid inputs. Move focus to error summary on submission failure. Use visually-hidden "(required)" and "(optional)" for screen readers when symbol-only indicators used.</p>
+      <example type="good" title="Form error handling">
+        <code lang="tsx"><![CDATA[
+<form onSubmit={handleSubmit} noValidate>
+  {Object.keys(errors).length > 0 && (
+    <div ref={errorSummaryRef} role="alert" tabIndex={-1} className="error-summary">
+      <h2>There are {Object.keys(errors).length} errors in the form</h2>
+      <ul>
+        {Object.entries(errors).map(([field, message]) => (
+          <li key={field}>
+            <a href={`#${field}`}>{message}</a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )}
+
+  <div className="form-group">
+    <label htmlFor="email">
+      Email Address
+      <span aria-hidden="true">*</span>
+      <span className="visually-hidden">(required)</span>
+    </label>
+    <input
+      id="email"
+      type="email"
+      required
+      aria-required="true"
+      aria-invalid={!!errors.email}
+      aria-describedby={errors.email ? "email-error" : "email-hint"}
+    />
+    <span id="email-hint" className="hint">We'll never share your email</span>
+    {errors.email && (
+      <span id="email-error" className="error" role="alert">{errors.email}</span>
+    )}
+  </div>
+
+  <button type="submit">Submit</button>
+</form>
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="mobile-and-touch">
+      <title>Mobile and Touch Accessibility</title>
+      <p>Touch targets: all interactive elements must be at least 44×44 CSS pixels (WCAG 2.5.5). Spacing: provide adequate space between touch targets to prevent accidental activation. Gestures: provide keyboard and non-gesture alternatives. Orientation: support portrait and landscape; avoid locking to one orientation without user opt-in. Text sizing: allow up to 200% zoom without loss of functionality.</p>
+    </section>
+
+    <section name="internationalization-a11y">
+      <title>Internationalization and Accessibility</title>
+      <p>Language: set lang attribute on html. Use lang="xx" on content in other languages. Alt text: translate meaningfully, not literally. ARIA labels: test with translated text to ensure they fit in UI space and make sense in context. Live regions: aria-live="polite" may behave differently in different screen reader/language combinations; test.</p>
+      <p>RTL (right-to-left) languages: use dir="rtl" on html or parent. Flexbox and Grid handle RTL automatically. Test logical order with RTL navigation. Icons and images: some icons are culturally sensitive; test in target locales.</p>
+    </section>
+
+    <section name="motion-and-animation">
+      <title>Motion and Animation</title>
+      <p>Respect prefers-reduced-motion: @media (prefers-reduced-motion: reduce). Remove or significantly reduce animations, transitions, and autoplaying carousels. Auto-play: do not auto-play video or audio. Provide pause controls. Carousels: do not auto-rotate without pause control. Parallax: reduce or disable under prefers-reduced-motion.</p>
+      <example type="good" title="Respecting motion preferences">
+        <code lang="css"><![CDATA[
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (prefers-contrast: high) {
+  :root {
+    --color-text-primary: #000000;
+    --color-bg-primary: #ffffff;
+    --color-brand: #0000cc;
+  }
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="contenteditable-and-custom-widgets">
+      <title>Contenteditable and Custom Widgets</title>
+      <p>Contenteditable: extremely difficult to make accessible. Avoid unless absolutely necessary. If used: expose full list of supported keys in documentation. Test thoroughly with screen readers. Consider using an accessible rich text editor library instead.</p>
+      <p>Custom widgets (tabs, accordions, tooltips, date pickers): use Radix, Headless UI, or other accessible component libraries that provide built-in ARIA and keyboard handling. Hand-rolling a custom widget requires extensive testing and is error-prone.</p>
+    </section>
+
+    <section name="performance-and-accessibility">
+      <title>Performance and Accessibility</title>
+      <p>Slow pages harm accessibility: screen reader users wait for content; cognitive disabilities can be exacerbated by slow interactions. Optimize: lazy-load images below the fold, minimize JavaScript, code-split, use server-side rendering for critical content.</p>
+      <p>Focus management: announce dynamic content changes via aria-live or aria-busy. Prefer aria-live="polite" to avoid spamming screen readers. For critical updates (errors, alerts), use role="alert" with aria-live="assertive".</p>
+    </section>
+
+    <section name="react-accessibility-examples">
+      <title>React Accessibility Examples</title>
+      <p>ARIA Labels and Roles: button with clear purpose using aria-label and aria-describedby. Form with proper labeling using aria-required and aria-invalid. Live regions for dynamic content using role="status" with aria-live="polite" and role="alert" with aria-live="assertive". Navigation landmarks using aria-label. Custom interactive component using role="button" with keyboard handlers.</p>
+      <example type="good" title="Complete React form component">
+        <code lang="tsx"><![CDATA[
+// Form with accessibility features
+<form aria-labelledby="form-title">
+  <h2 id="form-title">Contact Us</h2>
+
+  <label htmlFor="name">Full Name</label>
+  <input
+    id="name"
+    aria-required="true"
+    aria-invalid={errors.name ? "true" : "false"}
+    aria-describedby={errors.name ? "name-error" : undefined}
+  />
+  {errors.name && (
+    <span id="name-error" role="alert">{errors.name}</span>
+  )}
+
+  <div role="status" aria-live="polite" aria-atomic="true">
+    {statusMessage}
+  </div>
+
+  <div role="alert" aria-live="assertive">
+    {errorMessage}
+  </div>
+
+  <nav aria-label="Main">...</nav>
+  <nav aria-label="Footer">...</nav>
+
+  <div
+    role="button"
+    tabIndex={0}
+    aria-pressed={isPressed}
+    onClick={handleClick}
+    onKeyDown={(e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleClick();
+      }
+    }}
+  >
+    Toggle Feature
+  </div>
+</form>
+        ]]></code>
+      </example>
+      <p>Keyboard Navigation in Lists: roving tabindex for tabs. Focus management with useRef and useEffect. Arrow key navigation for composite widgets like tab lists and menu bars.</p>
+      <example type="good" title="Tab list with keyboard navigation">
+        <code lang="tsx"><![CDATA[
+function TabList({ tabs, activeTab, onSelect }) {
+  const [focusIndex, setFocusIndex] = useState(0);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    let newIndex = index;
+
+    switch (e.key) {
+      case 'ArrowRight': newIndex = (index + 1) % tabs.length; break;
+      case 'ArrowLeft': newIndex = (index - 1 + tabs.length) % tabs.length; break;
+      case 'Home': newIndex = 0; break;
+      case 'End': newIndex = tabs.length - 1; break;
+      default: return;
+    }
+
+    e.preventDefault();
+    setFocusIndex(newIndex);
+    tabRefs.current[newIndex]?.focus();
+  };
+
+  return (
+    <div role="tablist">
+      {tabs.map((tab, index) => (
+        <button
+          key={tab.id}
+          ref={(el) => (tabRefs.current[index] = el)}
+          role="tab"
+          aria-selected={activeTab === tab.id}
+          aria-controls={`panel-${tab.id}`}
+          tabIndex={focusIndex === index ? 0 : -1}
+          onClick={() => onSelect(tab.id)}
+          onKeyDown={(e) => handleKeyDown(e, index)}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="lighthouse-and-ci-integration">
+      <title>Lighthouse and CI Integration</title>
+      <p>Automated accessibility audits: Lighthouse CI for automated accessibility audits. Configure lighthouserc.json with assertions. Set categories:accessibility minimum score to 0.9. Require color-contrast, document-title, html-has-lang, image-alt, link-name assertions.</p>
+      <example type="good" title="Lighthouse CI configuration">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/a11y.yml
+name: Accessibility
+on: [push, pull_request]
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm run build
+      - uses: treosh/lighthouse-ci-action@v10
+        with:
+          configPath: ./lighthouserc.json
+          uploadArtifacts: true
+        ]]></code>
+      </example>
+      <example type="good" title="Lighthouserc.json configuration">
+        <code lang="json"><![CDATA[
+{
+  "ci": {
+    "assert": {
+      "assertions": {
+        "categories:accessibility": ["error", { "minScore": 0.9 }],
+        "color-contrast": "error",
+        "document-title": "error",
+        "html-has-lang": "error",
+        "image-alt": "error",
+        "link-name": "error"
+      }
+    }
+  }
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="form-checklist">
+      <title>Form and Validation Checklist</title>
+      <p>Form Structure: use label element for all inputs (not placeholder as label). Connect label with for/id attributes. Group related fields with fieldset/legend. Mark required fields with required attribute and aria-required. Use autocomplete attribute for common fields. Provide clear field instructions.</p>
+      <p>Input Types: use appropriate input types (email, tel, url, number, date). Use type="search" for search inputs. Use type="checkbox" and type="radio" correctly. Use select for dropdowns, not custom divs. Use textarea for multi-line text.</p>
+      <p>Validation: validate on blur and submit, not on keystroke. Set aria-invalid="true" on fields with errors. Use aria-describedby to link errors to fields. Display errors in live region with role="alert". Provide error summary at top of form. Focus first error field on validation failure. Clear aria-invalid when error is fixed.</p>
+      <p>Form Submission: use button type="submit" for submit buttons. Disable submit button during submission. Provide loading state announcement. Announce success/failure with live regions. Return focus appropriately after submission.</p>
+    </section>
+
+    <section name="color-and-contrast-checklist">
+      <title>Color and Contrast Checklist</title>
+      <p>Contrast Ratios: normal text minimum 4.5:1 contrast ratio. Large text (18px+) minimum 3:1 contrast ratio. UI components minimum 3:1 contrast ratio. Test with contrast checker tools. Test in dark mode if supported.</p>
+      <p>Color Independence: never rely on color alone to convey information. Add icons or text labels alongside color indicators. Use patterns or textures in charts. Provide text alternatives for color-coded elements. Test in grayscale mode.</p>
+      <p>Focus Indicators: ensure focus indicators have 3:1 contrast. Make focus indicators at least 2px wide. Use outline-offset for better visibility. Test focus visibility on all backgrounds. Avoid removing focus styles without replacement.</p>
+    </section>
+
+    <section name="images-and-media-checklist">
+      <title>Images and Media Checklist</title>
+      <p>Images: provide alt text for all meaningful images. Use alt="" for decorative images. Use aria-hidden="true" for decorative SVGs. Describe complex images in surrounding text or aria-describedby. Avoid text in images (use CSS or overlay text). Use figure/figcaption for complex images.</p>
+      <p>Icons: hide decorative icons with aria-hidden="true". Provide aria-label for icon-only buttons. Use aria-labelledby for icon + text buttons. Ensure icon fonts have text fallback. Test without icon fonts loaded.</p>
+      <p>Video and Audio: provide captions for all videos. Provide transcripts for audio content. Provide audio descriptions for video if needed. Ensure media controls are keyboard accessible. Don't autoplay media.</p>
+    </section>
+
+    <section name="wcag-checklist-quick-reference">
+      <title>WCAG 2.1 AA Quick Reference Checklist</title>
+      <p>Perceivable: provide text alternatives (alt text, captions, transcripts). Use proper colors with 4.5:1 contrast (normal) or 3:1 (large). Ensure audio and video have captions. Make text resizable. Provide accessible names and descriptions.</p>
+      <p>Operable: keyboard accessible (no keyboard trap). Sufficient time for interactions. No seizure-inducing content (no more than 3 flashes per second). Provide skip links and landmarks. Support multiple input modes (keyboard, mouse, touch). Resizable text and spacing.</p>
+      <p>Understandable: predictable navigation (consistent placement). Consistent naming and labeling. Clear language and reading level appropriate to audience. Help and error prevention. Error messages that suggest corrections.</p>
+      <p>Robust: valid HTML. Proper semantic meaning. ARIA correctly implemented. Compatibility with assistive technologies. Tested with screen readers and keyboard navigation.</p>
+    </section>
+
+    <section name="document-structure-checklist">
+      <title>Document Structure Checklist</title>
+      <p>Use proper DOCTYPE declaration. Set lang attribute on html element. Include viewport meta tag. Use semantic HTML5 elements (header, nav, main, article, aside, footer). Ensure heading hierarchy (h1 → h2 → h3, no skips). Use section elements with aria-labelledby. Avoid div/span soup — use semantic alternatives.</p>
+      <p>Landmarks and Structure: add role="banner" or use header for site header. Add role="navigation" or use nav for primary navigation. Add role="main" or use main for main content (only one per page). Add role="complementary" or use aside for sidebars. Add role="contentinfo" or use footer for site footer. Add role="search" for search functionality. Use aria-label to distinguish multiple landmarks of same type.</p>
+      <p>Lists and Tables: use ul/ol for lists, not div with bullets. Use dl/dt/dd for definition lists. Use table element for tabular data. Include caption or aria-label for tables. Use thead, tbody, tfoot for table structure. Use th with scope attribute for headers. Avoid layout tables or use role="presentation".</p>
+    </section>
+
+    <section name="dynamic-content-checklist">
+      <title>Dynamic Content Checklist</title>
+      <p>Live Regions: use aria-live="polite" for non-urgent updates. Use aria-live="assertive" for urgent updates. Use role="status" for status updates. Use role="alert" for errors/warnings. Set aria-atomic="true" for complete announcements. Test announcements with screen readers.</p>
+      <p>Single Page Applications: announce route changes to screen readers. Update document title on route change. Move focus to main content on navigation. Use aria-current="page" for current nav item. Manage focus on dynamic content insertion. Provide loading states during transitions.</p>
+      <p>Modals and Overlays: trap focus within modal. Set aria-modal="true" on dialogs. Set aria-labelledby pointing to modal title. Return focus to trigger element on close. Close on Escape key. Add backdrop click to close (optional). Prevent body scroll when modal is open.</p>
+    </section>
+
+    <section name="mobile-and-responsive-checklist">
+      <title>Mobile and Responsive Checklist</title>
+      <p>Touch Targets: minimum touch target size 44x44 pixels. Add spacing between adjacent touch targets. Ensure buttons are easy to tap on mobile. Avoid hover-only interactions. Test on actual mobile devices.</p>
+      <p>Responsive Design: test at 200% zoom level. Ensure text reflows without horizontal scroll. Avoid fixed positioning that blocks content. Test portrait and landscape orientations. Support text resizing without breakage.</p>
+      <p>Device Testing: test on iPhone, Android, iPad with actual screen readers. Verify zoom works on all pages. Test with largest and smallest available text sizes. Verify all touch interactions work with one hand.</p>
+    </section>
+
+    <section name="automated-testing">
+      <title>Automated Testing for Accessibility</title>
+      <example type="good" title="Jest and Testing Library with axe-core">
+        <code lang="typescript"><![CDATA[
+// Jest + Testing Library
+import { render, screen } from '@testing-library/react';
+import { axe, toHaveNoViolations } from 'jest-axe';
+
+expect.extend(toHaveNoViolations);
+
+describe('Accessibility', () => {
+  it('should have no accessibility violations', async () => {
+    const { container } = render(<MyComponent />);
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+  it('should have proper heading hierarchy', () => {
+    render(<Page />);
+    const headings = screen.getAllByRole('heading');
+    expect(headings[0]).toHaveAttribute('aria-level', '1');
+  });
+
+  it('should have accessible form labels', () => {
+    render(<ContactForm />);
+    const emailInput = screen.getByLabelText(/email/i);
+    expect(emailInput).toBeInTheDocument();
+    expect(emailInput).toHaveAttribute('type', 'email');
+  });
+
+  it('should announce errors to screen readers', async () => {
+    render(<ContactForm />);
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent(/email is required/i);
+  });
+
+  it('should be keyboard navigable', async () => {
+    render(<Navigation />);
+
+    await userEvent.tab();
+    expect(screen.getByRole('link', { name: /home/i })).toHaveFocus();
+
+    await userEvent.tab();
+    expect(screen.getByRole('link', { name: /products/i })).toHaveFocus();
+  });
+});
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="testing-with-screen-readers">
+      <title>Testing with Screen Readers</title>
+      <p>NVDA (Windows): free, open source. VoiceOver (macOS, iOS): built-in. TalkBack (Android): built-in. Test on actual devices or use cloud screen reader services (AssistivLabs).</p>
+      <p>Test scenarios: navigate entire page with Tab only. Use screen reader navigation (H for headings, L for lists, R for regions). Test form filling and validation. Test dynamic content updates. Verify alt text is meaningful. Check that landmarks are named. Confirm error messages are announced.</p>
+      <p>Manual screen reader testing is essential because automated tools only catch ~30-40% of WCAG issues. For each major user journey, test with at least one screen reader on at least one platform.</p>
+    </section>
+
+    <see-also>
+      <link href="https://www.w3.org/WAI/WCAG22/quickref/"/>
+      <link href="https://www.deque.com/axe/"/>
+      <link href="https://www.a11yproject.com/checklist/"/>
+      <link href="https://inclusive-components.design/"/>
+      <link href="https://webaim.org/resources/contrastchecker/"/>
+      <link href="https://www.w3.org/WAI/ARIA/apg/"/>
+      <link href="https://accessibility.huit.harvard.edu/screen-reader-testing"/>
+    </see-also>
+  </content>
+</methodology>
