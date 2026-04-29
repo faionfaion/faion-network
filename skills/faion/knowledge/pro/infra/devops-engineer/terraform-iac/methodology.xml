@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="terraform-iac">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Terraform manages cloud infrastructure declaratively using HCL; state in remote backend; flat module tree; one logical component per module; isolation per environment.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>terraform</tag>
+      <tag>infrastructure-as-code</tag>
+      <tag>iac</tag>
+      <tag>modules</tag>
+      <tag>state-management</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Terraform IaC</title>
+
+    <summary>Terraform manages cloud infrastructure declaratively using HCL, tracking state in a remote backend and applying changes via the plan-apply workflow. The module tree must stay flat (prefer composition over deep nesting), modules must be sized to one logical component (e.g., VPC with subnets/NAT/routing — not single security group rules, not entire application stacks). State must always use a remote backend with encryption, locking, and per-environment isolation.</summary>
+
+    <why>
+      <p>Terraform's plan step produces a diff against current state before any mutation, making infrastructure changes reviewable and reversible. Remote state with locking prevents concurrent apply conflicts. Provider version pinning and .terraform.lock.hcl committed to git ensure reproducible runs across machines and CI. The testing framework (Terraform 1.6+) enables unit and integration tests against modules without full infra spins.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Multi-cloud or cloud-agnostic infrastructure provisioning</item>
+        <item>Team environments where concurrent applies must be serialized (state locking)</item>
+        <item>Infrastructure that needs policy-as-code gates (Sentinel, OPA)</item>
+        <item>GitOps-style infra where plan output becomes a PR comment</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>AWS-only shops already deep in CloudFormation — migration cost may not justify switch</item>
+        <item>Teams preferring general-purpose languages — use Pulumi (TypeScript/Python/Go)</item>
+        <item>Pure Kubernetes resource management — Crossplane or Helm is more native</item>
+        <item>Single-developer local prototyping with throwaway infra — local state is acceptable</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-concepts">
+      <list>
+        <item>Provider: plugin for cloud API interaction (AWS, GCP, Azure, Kubernetes)</item>
+        <item>Resource: infrastructure object managed by Terraform (aws_instance, google_compute_instance)</item>
+        <item>Data Source: read-only reference to existing infrastructure not managed by this config</item>
+        <item>Module: reusable collection of resources; never configure providers inside child modules</item>
+        <item>State: mapping between HCL config and real-world resource IDs; must never be local for teams</item>
+        <item>Backend: remote storage for state (S3, GCS, Azure Blob, Terraform Cloud)</item>
+        <item>Workspace: named state environments within one backend (prefer directory-per-environment instead)</item>
+      </list>
+    </section>
+
+    <section name="workflow-commands">
+      <list>
+        <item>terraform init: download providers, configure backend — required after any provider/backend change</item>
+        <item>terraform validate: check syntax and configuration (run in CI on every PR)</item>
+        <item>terraform fmt -recursive: standardize formatting (run as pre-commit check)</item>
+        <item>terraform plan -out=tfplan: preview changes, save plan to file</item>
+        <item>terraform apply tfplan: execute saved plan (never apply without reviewing plan first)</item>
+        <item>terraform destroy: remove all managed infrastructure (requires explicit confirmation)</item>
+      </list>
+    </section>
+
+    <section name="module-design-rules">
+      <rule testable="true">
+        <statement>Keep the module tree flat; prefer composition over deep nesting.</statement>
+        <rationale>Deep module nesting creates hard-to-trace dependency chains and makes plan output unreadable. Compose root modules from flat child modules rather than nesting child modules inside each other.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Size modules to one logical component — not single resources, not entire application stacks.</statement>
+        <rationale>Too-small modules (single security group) provide no encapsulation benefit. Too-large modules (entire application stack) cannot be selectively applied and create blast radius for unrelated changes. Right size: VPC with subnets, NAT, and routing tables.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Never configure providers inside child modules; provider configuration belongs in root modules only.</statement>
+        <rationale>Provider config in child modules makes the module non-reusable across provider versions and authentication methods. Root modules own provider config; child modules inherit it.</rationale>
+      </rule>
+    </section>
+
+    <section name="state-security-requirements">
+      <rule testable="true">
+        <statement>Remote backend required for all team environments; never commit state files to version control.</statement>
+        <rationale>State files contain plaintext resource IDs, ARNs, and sometimes secrets. Local state causes concurrent apply conflicts. Committed state leaks sensitive infrastructure details.</rationale>
+      </rule>
+      <list>
+        <item>Enable encryption at rest on state backend (S3: SSE-KMS or SSE-S3)</item>
+        <item>Enable state locking: S3 use_lockfile=true (Terraform 1.10+), GCS built-in, Azure built-in</item>
+        <item>Enable versioning on state storage bucket for recovery</item>
+        <item>Restrict bucket access via IAM to Terraform execution role only</item>
+        <item>Separate state per environment (separate key or bucket prefix per env)</item>
+        <item>Commit .terraform.lock.hcl to version control for reproducible provider versions</item>
+      </list>
+    </section>
+
+    <section name="project-structure">
+      <example type="good" title="Infrastructure directory hierarchy">
+        <code lang="text"><![CDATA[
+infrastructure/
+├── environments/
+│   ├── dev/
+│   │   ├── main.tf        # root module: calls child modules
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   ├── terraform.tfvars
+│   │   └── backend.tf
+│   ├── staging/
+│   └── prod/
+├── modules/
+│   ├── vpc/               # main.tf, variables.tf, outputs.tf, versions.tf
+│   ├── eks/
+│   └── rds/
+└── tests/
+    └── vpc.tftest.hcl
+]]></code>
+      </example>
+    </section>
+
+    <section name="new-project-setup">
+      <list>
+        <item>Create infrastructure/ with environments/{dev,staging,prod}/ and modules/ directories</item>
+        <item>Add .gitignore for .terraform/, *.tfstate, *.tfstate.backup, .terraform.lock.hcl exclusion (wait — commit lock file)</item>
+        <item>Create remote state bucket with versioning, encryption, and access-restricted IAM</item>
+        <item>Configure S3 use_lockfile=true (Terraform 1.10+) or equivalent per cloud</item>
+        <item>Define required_providers with version constraints and required_version for Terraform</item>
+        <item>Configure provider authentication via environment variables or IAM roles, never hardcoded</item>
+        <item>Set default_tags on provider for automatic resource tagging</item>
+      </list>
+    </section>
+
+    <section name="module-development">
+      <list>
+        <item>main.tf: primary resource definitions</item>
+        <item>variables.tf: all inputs with description, type, default, validation blocks</item>
+        <item>outputs.tf: all managed resource outputs with descriptions; mark sensitive outputs sensitive=true</item>
+        <item>versions.tf: provider version constraints (no provider config — root module only)</item>
+        <item>tests/*.tftest.hcl: unit tests covering happy path and error conditions</item>
+        <item>No hardcoded environment-specific values in modules</item>
+      </list>
+    </section>
+
+    <section name="pre-apply-review">
+      <list>
+        <item>Review terraform plan output completely before any apply</item>
+        <item>Verify no unexpected destroys or recreates (-/+)</item>
+        <item>Verify correct environment is targeted</item>
+        <item>Confirm state backend accessible and no concurrent operations in progress</item>
+        <item>Validate credentials are valid and not expired</item>
+        <item>Prepare rollback procedure before applying to production</item>
+      </list>
+    </section>
+
+    <section name="security-audit">
+      <list>
+        <item>No secrets in .tf files or committed .tfvars files</item>
+        <item>State encryption enabled and verified</item>
+        <item>Provider credentials via environment variables or IAM roles only</item>
+        <item>Security groups follow least privilege (no 0.0.0.0/0 unless explicitly required)</item>
+        <item>Encryption enabled on storage resources and databases</item>
+        <item>Deletion protection enabled on critical resources (RDS, production buckets)</item>
+        <item>IAM roles use least privilege; cross-account access documented</item>
+        <item>Resources tagged per tagging policy; data residency requirements met</item>
+      </list>
+    </section>
+
+    <section name="troubleshooting">
+      <list>
+        <item>State lock error: check if another process is running; view lock in backend console</item>
+        <item>Provider auth failure: check credential expiry; verify environment variables</item>
+        <item>Resource already exists: import with terraform import or rename resource</item>
+        <item>Dependency cycle: review depends_on usage; refactor resource definitions</item>
+        <item>Version mismatch: check .terraform.lock.hcl; run terraform init -upgrade</item>
+        <item>Debug: TF_LOG=DEBUG terraform plan 2>&amp;1 | tee debug.log</item>
+      </list>
+    </section>
+
+    <reference path="templates/backend-s3.tf">S3 backend config with native locking and provider default_tags</reference>
+    <reference path="templates/variables.tf">Variable definitions with validation blocks</reference>
+    <reference path="templates/modules-vpc.tf">VPC module example</reference>
+    <reference path="templates/github-actions.yml">Full CI/CD pipeline for Terraform</reference>
+
+    <templates>
+      <template path="templates/backend-s3.tf" purpose="S3 backend with native locking (Terraform 1.10+), provider config, default tags"/>
+      <template path="templates/variables.tf" purpose="Variable definitions with validation blocks (environment, region, CIDR, EKS node groups)"/>
+      <template path="templates/modules-vpc.tf" purpose="VPC module: main.tf + variables.tf + outputs.tf"/>
+      <template path="templates/github-actions.yml" purpose="Full Terraform CI/CD pipeline: fmt-check, validate, test, plan-as-PR-comment, apply-on-merge"/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.terraform.io/language"/>
+      <link href="https://www.terraform.io/language/modules"/>
+      <link href="https://www.terraform.io/language/state"/>
+      <link href="https://www.terraform.io/language/testing"/>
+    </see-also>
+  </content>
+</methodology>
