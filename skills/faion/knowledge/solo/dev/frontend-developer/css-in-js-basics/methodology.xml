@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="css-in-js-basics">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>frontend-developer</domain>
+    <summary>CSS-in-JS co-locates styles with components enabling prop-driven theming. Use transient props ($variant) to prevent DOM leakage. Define DefaultTheme for TypeScript safety inside template literals.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>css-in-js</tag>
+      <tag>styled-components</tag>
+      <tag>emotion</tag>
+      <tag>theming</tag>
+      <tag>react</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>typescript</language>
+      <language>javascript</language>
+    </languages>
+    <frameworks>
+      <framework>react</framework>
+      <framework>vue</framework>
+    </frameworks>
+    <related>
+      <ref slug="design-tokens-basics"/>
+      <ref slug="tailwind-css-patterns"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>CSS-in-JS Basics</title>
+
+    <summary>Runtime CSS-in-JS (styled-components, Emotion) co-locates styles with React/Vue components and enables prop-driven dynamic styling via a typed ThemeProvider. Use when a project needs prop-driven dynamic styles that Tailwind cannot express ergonomically (e.g., arbitrary user-chosen colors, complex multi-brand theming). Without the DefaultTheme augmentation, theme is typed any and agents reach for inline hex values, defeating the design token contract. Transient props ($variant, $size) prevent prop leakage to the DOM. Pick one library per app — never mix runtimes.</summary>
+
+    <why>
+      <p>Runtime CSS-in-JS is the right tradeoff when a project needs prop-driven dynamic styles that Tailwind cannot express ergonomically. Examples include a color picker that injects arbitrary user-chosen colors, white-label theming across multiple brands, or component theming that changes at runtime. Without the DefaultTheme augmentation, theme is typed any inside styled-components template literals and agents reach for inline hex values instead of consuming design token variables, defeating the design token contract.</p>
+      <p>The ThemeProvider pattern is cheaper to set up than runtime CSS variable plumbing and provides superior TypeScript support. However, CSS-in-JS trades bundled runtime size (~12 KB gzipped for styled-components) for the flexibility of dynamic theming and co-located styles. This tradeoff is only worth making when the dynamic styling or theming requirement is real and non-negotiable.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Component-driven React/Vue project where styles must travel with the component (open-source library, multi-app monorepo).</item>
+        <item>Prop-driven dynamic styling requirement that Tailwind cannot express ergonomically (e.g., a color picker that injects arbitrary user-chosen colors).</item>
+        <item>Theming requirement: light/dark plus brand white-label themes via ThemeProvider; ThemeProvider is cheaper to set up than runtime CSS variable plumbing.</item>
+        <item>Onboarding a team familiar with styled-components or Emotion that does not yet need zero-runtime gains from zero-runtime CSS-in-JS libraries.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>React Server Components apps (Next.js App Router) where you want to keep most of the tree server-rendered — runtime CSS-in-JS forces 'use client' on every styled component. Use Tailwind, Panda, or vanilla-extract instead.</item>
+        <item>Bundle-size-sensitive sites (landing pages, marketing pages) — styled-components alone adds ~12 KB gzipped runtime.</item>
+        <item>Teams already standardized on Tailwind — mixing both CSS-in-JS and Tailwind creates two parallel design systems.</item>
+        <item>Static sites generated to CDN — runtime CSS-in-JS leaves a small but real layout-shift window during hydration.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="transient-props">
+      <p>Styled-components and Emotion both forward props to the underlying DOM element unless explicitly marked as transient. React passes all non-standard props to the DOM element, and styled-components will attempt to forward them unless prefixed with $, causing console warnings and invalid HTML attributes.</p>
+
+      <rule testable="true">
+        <statement>Always prefix styled-components props with $ (e.g., $variant, $size, $color). Plain prop names leak to the DOM and trigger React unknown-prop warnings like "Received `true` for a non-boolean attribute".</statement>
+        <rationale>React forwards unknown props to the DOM element. Styled-components forwards unknown props unless prefixed with $, producing console warnings and invalid HTML attributes. This requires either the $ prefix or explicit shouldForwardProp filtering.</rationale>
+      </rule>
+
+      <example type="good" title="Transient props with $">
+        <code lang="tsx"><![CDATA[
+interface ButtonProps {
+  $variant?: 'primary' | 'secondary';
+  $size?: 'sm' | 'md' | 'lg';
+}
+
+const Button = styled.button<ButtonProps>`
+  ${({ $size = 'md' }) => sizes[$size]}
+  ${({ $variant = 'primary', theme }) => variants($variant, theme)}
+`;
+
+// Usage — $ props not forwarded to <button>
+<Button $variant="primary" $size="lg">Click</Button>
+        ]]></code>
+        <note>The $ prefix signals to styled-components and Emotion that the prop should not be forwarded to the DOM. The rendered button element will not have variant or size attributes.</note>
+      </example>
+
+      <example type="bad" title="Non-transient props leak to DOM">
+        <code lang="tsx"><![CDATA[
+// Without $: variant="primary" is forwarded to <button variant="primary"> — invalid HTML
+const Button = styled.button<{ variant?: string }>``;
+<Button variant="primary">Click</Button>
+        ]]></code>
+        <note>The rendered HTML will be &lt;button variant="primary"&gt;, which is invalid. React and the browser console will warn about unknown attributes.</note>
+      </example>
+
+      <antipattern>
+        <description>Using non-transient prop names (variant, size, color) in styled-components without the $ prefix.</description>
+        <reason>React forwards unknown props to the DOM, producing "Received `true` for a non-boolean attribute" warnings and invalid HTML. The fix requires either the $ prefix or explicit shouldForwardProp configuration.</reason>
+      </antipattern>
+    </section>
+
+    <section name="default-theme-augmentation">
+      <p>The styled-components DefaultTheme interface is empty by default. Without augmentation, the theme parameter inside template literals is typed any, and agents default to inline color hex values instead of consuming token variables. A DefaultTheme declaration file in types/styled.d.ts augments the interface and provides full TypeScript support inside styled blocks.</p>
+
+      <rule testable="true">
+        <statement>Declare a DefaultTheme augmentation in types/styled.d.ts. Without it, the theme parameter inside template literals is typed any and color values become magic strings instead of design tokens.</statement>
+        <rationale>The styled-components DefaultTheme is empty by default. Augmenting it gives TypeScript the full theme shape, enabling autocomplete and type checking inside styled blocks. This prevents agents from inlining color hex values and breaking the design token contract.</rationale>
+      </rule>
+
+      <example type="good" title="DefaultTheme declaration">
+        <code lang="typescript"><![CDATA[
+// types/styled.d.ts — DefaultTheme augmentation for styled-components
+import 'styled-components';
+
+declare module 'styled-components' {
+  export interface DefaultTheme {
+    colors: {
+      primary: string;
+      primaryHover: string;
+      primaryForeground: string;
+      secondary: string;
+      secondaryForeground: string;
+      background: string;
+      foreground: string;
+      muted: string;
+      border: string;
+      focus: string;
+    };
+    space: {
+      xs: string;
+      sm: string;
+      md: string;
+      lg: string;
+      xl: string;
+    };
+    radii: {
+      sm: string;
+      md: string;
+      lg: string;
+      full: string;
+    };
+  }
+}
+        ]]></code>
+        <note>This file defines the shape of the theme object. Once augmented, typed access to theme.colors.primary, theme.space.md, etc. is available inside styled blocks with full autocomplete.</note>
+      </example>
+
+      <reference path="templates/styled.d.ts">DefaultTheme declaration — the augmentation file agents commonly forget</reference>
+
+      <antipattern>
+        <description>Skipping the DefaultTheme declaration file (types/styled.d.ts).</description>
+        <reason>Without augmentation, theme is typed any inside template literals. Agents inline hex values (#FF0000) instead of consuming token variables (theme.colors.primary), breaking the design token contract and making theming changes difficult.</reason>
+      </antipattern>
+    </section>
+
+    <section name="one-library-rule">
+      <p>Each application must commit to exactly one CSS-in-JS library: either styled-components or Emotion, never both. Both runtimes are included in the bundle even if only one is actively used. Each runtime re-injects its global style sheet, causing unpredictable cascade order and style conflicts.</p>
+
+      <rule testable="true">
+        <statement>Pick exactly one CSS-in-JS library per app. Never mix styled-components and Emotion in the same bundle.</statement>
+        <rationale>Both runtimes are included in the bundle even if only one is actively used in the codebase. Each runtime re-injects its global style sheet, causing unpredictable cascade order and style conflicts. Pick one and stick with it across the entire application.</rationale>
+      </rule>
+
+      <note>For components shipped to npm, prefer zero-runtime approaches: Emotion's css prop with the Babel plugin, vanilla-extract, or plain CSS Modules. Consumers should not be forced to install and bundle a CSS-in-JS runtime.</note>
+    </section>
+
+    <section name="styled-components-specifics">
+      <p>Styled-components is the most common CSS-in-JS library. Core concepts include template literals for style definition, typed props for dynamic styles, the css helper for reusable style fragments, and the ThemeProvider for runtime theming.</p>
+
+      <rule testable="true">
+        <statement>Do not define a styled.X component inside a React function body. Every render creates a new component class with a new generated className, causing re-mounts and style thrashing on every state change.</statement>
+        <rationale>Styled component definitions are effectively class definitions. When defined inside a render function, a new class is created on every render cycle. The component's key changes, triggering unmount/remount of any instances. Move styled definitions to module scope.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For Next.js Pages Router with styled-components, configure the Babel plugin and _document.tsx SSR registry. For App Router, wrap the tree in a 'use client' registry component, not _document.tsx.</statement>
+        <rationale>Pages Router uses _document.tsx; App Router does not. Copying Pages Router SSR setup into App Router breaks styled-components style injection. App Router requires a 'use client' registry component wrapping the entire tree at the layout level.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Add the babel-plugin-styled-components in dev. Display names make DevTools usable; dead-code elimination shrinks production bundle.</statement>
+        <rationale>Without the Babel plugin, styled-components show as "Styled(div)" in DevTools. With the plugin, display names become readable (e.g., "Button"). The plugin also enables dead-code elimination at build time.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Copying Pages Router SSR setup (_document.tsx) into Next.js App Router.</description>
+        <reason>App Router does not use _document.tsx. Styled-components in App Router requires a 'use client' registry component wrapping the tree at the layout level, not a custom Document class.</reason>
+      </antipattern>
+    </section>
+
+    <section name="emotion-specifics">
+      <p>Emotion is a lighter-weight CSS-in-JS alternative. Emotion's css prop requires jsxImportSource pragma or Babel plugin. Style composition via css() objects at module scope is idiomatic Emotion.</p>
+
+      <rule testable="true">
+        <statement>Use the @emotion/babel-plugin for automatic jsxImportSource injection. Without it, add /** @jsxImportSource @emotion/react */ at the top of every file that uses the css prop.</statement>
+        <rationale>Without the pragma or Babel plugin, the css prop is not recognized by the JSX transform and silently falls back to a plain style attribute, producing no error but no Emotion styles either. The Babel plugin is the recommended approach to avoid per-file pragmas.</rationale>
+      </rule>
+
+      <example type="good" title="Emotion css prop with pragma">
+        <code lang="tsx"><![CDATA[
+/** @jsxImportSource @emotion/react */
+import { css, useTheme } from '@emotion/react';
+
+function Card({ elevated = false }) {
+  const theme = useTheme();
+  return (
+    <div css={css`
+      padding: ${theme.spacing.md};
+      border-radius: ${theme.radii.lg};
+      ${elevated && `box-shadow: ${theme.shadows.md};`}
+    `}>
+      content
+    </div>
+  );
+}
+        ]]></code>
+        <note>The pragma tells the JSX transform to inject the css prop. With @emotion/babel-plugin, the pragma can be omitted.</note>
+      </example>
+
+      <rule testable="true">
+        <statement>Define reusable style fragments as css() objects at module scope, then compose them via template literal interpolation.</statement>
+        <rationale>Composing css() objects at module scope avoids re-creating style objects on every render. Composition is idiomatic Emotion and produces stable class names.</rationale>
+      </rule>
+
+      <example type="good" title="Emotion style composition">
+        <code lang="tsx"><![CDATA[
+import { css } from '@emotion/react';
+
+const base = css`display: flex; align-items: center; gap: 0.5rem;`;
+const interactive = css`cursor: pointer; transition: transform 0.2s; &:hover { transform: translateY(-2px); }`;
+
+const InteractiveCard = styled.div`
+  ${base}
+  ${interactive}
+  padding: 1rem;
+`;
+        ]]></code>
+        <note>Define base styles and interactive styles at module scope, then compose in the component definition. Styles are stable across renders.</note>
+      </example>
+
+      <rule testable="true">
+        <statement>For Next.js App Router with Emotion, wrap the tree in a 'use client' CacheProvider component. Emotion runtime is not compatible with React Server Components.</statement>
+        <rationale>Without CacheProvider in App Router, Emotion's runtime cannot inject styles server-side. FOUC occurs on first paint and hydration mismatches appear in the console. CacheProvider must wrap the entire app.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Large language models default to non-transient props and may omit the DefaultTheme augmentation. Common patterns that fail in code review or testing include missing theme augmentation, non-transient props leaking to the DOM, and SSR setup copied from the wrong Next.js pattern.</p>
+
+      <antipattern>
+        <description>LLMs default to non-transient props (variant instead of $variant); requires a lint rule or explicit prompt instruction.</description>
+        <reason>Without a rule enforcing the $ prefix, agents produce code like &lt;Button variant="primary"&gt; which leaks the prop to the DOM. Require explicit prop prefixing in the prompt and add an ESLint rule to catch it in review.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents copy SSR setup from Pages Router examples into App Router and break.</description>
+        <reason>Pages Router uses _document.tsx. App Router needs a 'use client' registry component, not _document.tsx. Explicitly instruct agents which Next.js version is in use.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>The theme parameter inside template literals is typed any without the augmentation file; agents reach for as any to silence errors.</description>
+        <reason>Without DefaultTheme augmentation, TypeScript cannot infer theme shape. Ensure the augmentation file is in place and that agents reference it in prompts.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Generated styled(Component) calls drop refs unless the inner component is forwardRef — agents rarely add the wrapper.</description>
+        <reason>styled-components cannot forward refs through wrapper components unless the inner component is explicitly forwardRef'd. Require agents to add forwardRef when styling custom components.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>As polymorphism: agents type as: 'a' | 'button' but forget that styled-components actually accepts component types too; lose flexibility.</description>
+        <reason>Styled-components as prop accepts not just string tags but component types. Agents miss this flexibility. Document in prompts that as: React.ElementType is the correct type.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Asked to "make this dynamic", LLMs add a styled.div inside the function body — every render creates a new component class.</description>
+        <reason>styled definitions inside render bodies cause re-mounts on every state change. Lint or block in review. Move styled definitions to module scope.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>When using agents to build CSS-in-JS components, drive them with the prop spec + theme contract. Let agents produce a typed styled component, defaultProps, and a Storybook story exercising every variant. For existing codebases, run agents in audit mode to flag non-transient props, runtime styled definitions inside render bodies, and missing SSR setup. Keep humans in the loop for the theme contract — it becomes the project's de facto design API and is hard to refactor.</p>
+
+      <example type="good" title="Agentic workflow for new components">
+        <code lang="markdown"><![CDATA[
+**Prompt pattern for new components:**
+"Write a `<Button>` styled-components implementation matching this Figma spec. Use a typed theme (`DefaultTheme`), transient props (`$variant`, `$size`), and `as` polymorphism. Output `Button.tsx` plus `theme.ts` augmenting `styled-components`."
+        ]]></code>
+        <note>Explicit prop instructions + theme reference + component structure forces agents to produce correct, reviewed code.</note>
+      </example>
+
+      <example type="good" title="Agentic workflow for audit">
+        <code lang="markdown"><![CDATA[
+**Prompt pattern for audits:**
+"Audit `src/components/**/*.tsx` for: (1) styled definitions inside render, (2) non-transient props leaking to DOM, (3) missing `as` typing. Return a refactor list, do not edit yet."
+        ]]></code>
+        <note>Audit mode finds issues without making changes; humans review the refactor list before agents apply fixes.</note>
+      </example>
+    </section>
+
+    <section name="cli-tools">
+      <rule testable="false">
+        <statement>Install the correct CSS-in-JS runtime and its Babel plugin.</statement>
+        <rationale>Babel plugins enable display names and SSR setup. Without them, DevTools are unusable and server-side style injection fails.</rationale>
+      </rule>
+
+      <commands>
+        <command name="styled-components install">pnpm add styled-components</command>
+        <command name="styled-components babel plugin">pnpm add -D babel-plugin-styled-components</command>
+        <command name="emotion runtime">pnpm add @emotion/react @emotion/styled</command>
+        <command name="emotion babel plugin">pnpm add -D @emotion/babel-plugin</command>
+        <command name="catch unknown dom props">npx eslint --rule "react/no-unknown-property: error"</command>
+      </commands>
+    </section>
+
+    <section name="services-and-tools">
+      <p>Several tools complement CSS-in-JS development. Storybook is agent-friendly for authoring component stories; Chromatic catches visual regressions; Bundlephobia compares runtime costs; Figma Tokens plugin enables token export to JSON.</p>
+
+      <rule testable="false">
+        <statement>Use Storybook for component library development. Agent generates stories from the prop type; Chromatic runs visual regression on every story.</statement>
+        <rationale>Storybook is OSS and agent-friendly. Chromatic provides visual regression testing and catches CSS-in-JS regressions early. Figma Tokens plugin exports tokens to JSON for theme mapping.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always use transient props ($variant) in styled-components. Plain prop names leak to the DOM and trigger React warnings.</item>
+        <item>Define one source of truth for the theme: a theme.ts + a DefaultTheme declaration. Never inline color hex inside styled blocks.</item>
+        <item>Pick one library per app. Mixing styled-components and Emotion compiles both runtimes into the bundle.</item>
+        <item>For components shipped to npm, prefer Emotion's css prop or zero-runtime — consumers shouldn't be forced to install styled-components.</item>
+        <item>Add the Babel plugin in dev — display names make DevTools usable; dead-code elimination shrinks production bundle.</item>
+        <item>For SSR: Pages Router uses _document.tsx; App Router uses a 'use client' registry component at the layout level.</item>
+        <item>Do not define styled components inside render functions. Move all styled definitions to module scope.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/styled.d.ts" purpose="DefaultTheme declaration — the augmentation file agents commonly forget. Enables full TypeScript support inside styled blocks."/>
+      <template path="templates/check-transient-props.mjs" purpose="Script to flag styled.X definitions with non-transient props. Useful for auditing existing codebases."/>
+    </templates>
+
+    <see-also>
+      <link href="https://styled-components.com/docs"/>
+      <link href="https://styled-components.com/docs/tooling"/>
+      <link href="https://emotion.sh/docs/introduction"/>
+      <link href="https://emotion.sh/docs/@emotion/babel-plugin"/>
+      <link href="https://styled-components.com/docs/api#typescript"/>
+      <link href="https://dev.to/srmagura/why-were-breaking-up-wiht-css-in-js-4g9b"/>
+      <ref slug="design-tokens-basics"/>
+      <ref slug="design-tokens-implementation"/>
+      <ref slug="tailwind-css-patterns"/>
+    </see-also>
+  </content>
+</methodology>
