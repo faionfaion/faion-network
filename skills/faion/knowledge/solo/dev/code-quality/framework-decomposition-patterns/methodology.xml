@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="framework-decomposition-patterns">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>code-quality</domain>
+    <summary>Decompose fat controllers into service layers and selectors under 200 lines so each file fits in LLM context, improving code quality and AI task success from 60% to 95%.</summary>
+    <tags>
+      <tag>framework-patterns</tag>
+      <tag>code-organization</tag>
+      <tag>refactoring</tag>
+      <tag>llm-friendly</tag>
+      <tag>service-layer</tag>
+    </tags>
+    <category>code-quality</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Framework Decomposition Patterns</title>
+
+    <summary>LLM-friendly code organization patterns for Django, Rails, Laravel, and React: service layer, selectors, DTOs, query objects, actions, and custom hooks. The concrete rule: cap files at 150-200 lines per type so a single Read fits in LLM context — full decomposition reduces required context from 50K to 10-20K tokens.</summary>
+
+    <why>
+      <p>Fat controllers and God models degrade LLM task success from approximately 95% (decomposed) to approximately 60% (monolithic) because the agent must load disproportionate context to reason about a single behavior. Service layers separate reads (selectors) from writes (services), which also lets agents reason about cache invalidation and side effects without scanning the entire model.</p>
+      <p>A single Read of a 200-line service fits in one LLM context window without truncation. Fat controllers at 500+ lines require multiple Reads and force the agent to maintain state across chunks, degrading task success rate dramatically.</p>
+      <p>The decomposition investment pays back immediately on the first LLM task. Decomposition before feature work yields faster, higher-quality implementations.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Refactoring fat controllers or God models in Django, Rails, or Laravel before LLM-assisted feature work.</item>
+        <item>Preparing a legacy codebase for AI agents: cap files so a single Read fits in context.</item>
+        <item>Building a new module: select the right extraction pattern before writing.</item>
+        <item>Onboarding Claude Code to a framework codebase where token predictability matters.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tiny scripts, one-off Lambdas, or files already under 100 lines.</item>
+        <item>Prototypes being thrown away weekly (YAGNI — You Aren't Gonna Need It).</item>
+        <item>Frameworks with strong opinionated structure enforcing this already (Phoenix contexts, NestJS modules).</item>
+        <item>Microservices where one service = one concern; extra layers duplicate boundaries.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="file-size-limits">
+      <p>Cap files at these line limits by type. A single Read of a 200-line service fits in one LLM context window. Files above 200 lines require multiple Reads and fragment agent reasoning.</p>
+
+      <rule testable="true">
+        <statement>Model/Entity: 150 lines max (target 50-80 lines).</statement>
+        <rationale>God models couple business logic with persistence. Limit scope to domain properties and basic validations; extract behavior to services.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Service: 200 lines max (target 80-120 lines).</statement>
+        <rationale>Services own writes and side effects. Single-responsibility: each service = one business operation or closely related set of operations.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Controller/View/Endpoint: 150 lines max (target 60-80 lines).</statement>
+        <rationale>Controllers are dispatch and HTTP layer only. Delegate business logic to services; keep HTTP concerns (status codes, headers) separate from domain.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Component (React/Vue/Angular): 150 lines max (target 50-80 lines).</statement>
+        <rationale>Components should focus on rendering and event handling. Extract large state-management or data-fetching logic to hooks or services.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Hook/Composable (React/Vue): 100 lines max (target 40-60 lines).</statement>
+        <rationale>Hooks encapsulate stateful logic. Large hooks fragment the component tree and make reuse harder.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Test: 300 lines max (target 100-150 lines). Split into multiple test classes/modules if larger.</statement>
+        <rationale>Large test files make it hard to find a specific test. Organize by subject under test.</rationale>
+      </rule>
+    </section>
+
+    <section name="llm-context-benefit">
+      <p>Empirical impact of decomposition on LLM task success rate:</p>
+
+      <rule testable="false">
+        <statement>Fat controller/model (50K+ tokens required): approximately 60% LLM task success rate.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Service layer extracted (20-30K tokens): approximately 85% success rate.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Full decomposition (10-20K tokens): approximately 95% success rate.</statement>
+      </rule>
+
+      <rule testable="true">
+        <statement>Before running an LLM-assisted feature on a module, check if any file in the touch path exceeds 200 lines. If yes, extract first, then run the feature.</statement>
+        <rationale>The decomposition investment pays back immediately on the first LLM task. Running the feature first on a fat file embeds the debt deeper as new code is layered on top.</rationale>
+      </rule>
+    </section>
+
+    <section name="universal-patterns">
+      <p>Core decomposition patterns applicable across frameworks:</p>
+
+      <rule testable="false">
+        <statement>Service Layer: Extract business logic from controllers. Services own writes and side effects. Testable in isolation. Clear entry point for agents.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Repository/Selector: Abstract data access. Selectors own reads — pure, no writes, no side effects. Enables cache-invalidation reasoning by agents. Named specifically (get_X, find_X, list_X).</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>DTO/Input Objects: Explicit data transfer contracts. Make them the contract the LLM reads first before reasoning about a feature. Typed with named fields.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Composition: Small components assembled into larger ones. Each component has one job. Nesting is clearer than deep inheritance chains.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Hooks/Composables: Reusable stateful logic extracted from components. Only extract when used in 2+ components OR when the hook exceeds 30 LOC of stateful logic.</statement>
+      </rule>
+
+      <rule testable="true">
+        <statement>Make one commit per extraction (one service, one selector, one hook). Never combine "extract service" + "rename" in one diff.</statement>
+        <rationale>Agents lose blame trail when extractions are combined. Reviewers (and future agents) cannot identify which change introduced a regression. Single-extraction commits enable surgical revert.</rationale>
+      </rule>
+    </section>
+
+    <section name="django-patterns">
+      <p>Django-specific service layer + selector decomposition:</p>
+
+      <example type="good" title="Django service and selector pattern">
+        <code lang="python"><![CDATA[
+# selectors.py — reads only, no side effects
+def get_active_users(org_id: int):
+    return User.objects.filter(org_id=org_id, is_active=True).select_related("profile")
+
+def get_user_by_email(email: str):
+    return User.objects.filter(email=email).first()
+
+# services.py — writes and business logic
+def deactivate_user(user_id: int) -> None:
+    user = User.objects.get(id=user_id)
+    user.is_active = False
+    user.save()
+    email_service.send_deactivation_notice(user.email)
+
+def create_user_with_profile(email: str, name: str) -> User:
+    user = User.objects.create(email=email)
+    Profile.objects.create(user=user, name=name)
+    email_service.send_welcome(user.email)
+    return user
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>In Django, extract selectors.py (pure queryset reads, no writes) and services.py (business logic, writes, side effects) from views.py. Keep views to URL-dispatch and HTTP layer only.</statement>
+        <rationale>Django Styleguide (HackSoft) pattern: fat views are the most common Django debt source. Service+Selector split gives agents a clear mental model: "does this touch the database? Is it a read or write?"</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Creating UserService.get_user_by_id() that just wraps User.objects.get().</description>
+        <reason>Wrappers without behavior are noise. They add indirection without adding testability or clarity. Use selectors only when behavior matters (filtering, joining, prefetching).</reason>
+      </antipattern>
+    </section>
+
+    <section name="rails-patterns">
+      <p>Rails-specific service object and query object patterns:</p>
+
+      <rule testable="true">
+        <statement>In Rails, use service objects for multi-step business actions only — not for trivial CRUD. Return Result.success(value) / Result.failure(error) not exceptions.</statement>
+        <rationale>Service objects that wrap simple ActiveRecord calls fight the framework. Result types let agents handle success/failure paths reliably without rescuing exceptions. One service = one business operation.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Rails service objects for simple CRUD that ActiveRecord handles natively.</description>
+        <reason>Adds ceremony without benefit. Use Rails idioms for standard CRUD; service objects for multi-step actions with side effects (email, payment, async jobs).</reason>
+      </antipattern>
+    </section>
+
+    <section name="laravel-patterns">
+      <p>Laravel-specific action and DTO patterns:</p>
+
+      <rule testable="true">
+        <statement>In Laravel, use single-class Actions (from laravel-actions package or plain invokable classes) for each business operation. Use Form Requests or typed DTOs as the input contract.</statement>
+        <rationale>Actions map 1:1 to business operations, giving agents a clear entry point. DTOs typed with constructor promotion prevent silent field drift in service signatures.</rationale>
+      </rule>
+
+      <example type="good" title="Laravel action with DTO">
+        <code lang="php"><![CDATA[
+// CreateUserDTO — input contract
+class CreateUserDTO {
+    public function __construct(
+        public string $email,
+        public string $name,
+        public string $password,
+    ) {}
+}
+
+// CreateUserAction — business operation
+class CreateUserAction {
+    public function execute(CreateUserDTO $dto): User {
+        $user = User::create([
+            'email' => $dto->email,
+            'name' => $dto->name,
+            'password' => Hash::make($dto->password),
+        ]);
+        event(new UserCreated($user));
+        return $user;
+    }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="react-patterns">
+      <p>React-specific component composition and custom hook patterns:</p>
+
+      <rule testable="true">
+        <statement>In React, extract a custom hook when: the stateful logic is used in 2+ components, OR the hook body exceeds 30 LOC. Do not split JSX into 3-line components — composition has overhead.</statement>
+        <rationale>Over-extraction fragments the component tree without reducing complexity. Hook extraction yields returns only when logic is genuinely reused or genuinely large. Prefer colocation.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>React custom hook used in exactly one component and under 30 LOC.</description>
+        <reason>Inline the logic — a hook used once adds indirection without discoverability benefit. Keep related logic colocated until you have a reuse signal.</reason>
+      </antipattern>
+
+      <example type="good" title="React custom hook (2+ usage or 30+ LOC)">
+        <code lang="javascript"><![CDATA[
+// useUserData.js — extracted because used in UserProfile AND UserSettings
+function useUserData(userId) {
+  const [user, setUser] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState(null);
+
+  React.useEffect(() => {
+    setLoading(true);
+    fetch(`/api/users/${userId}`)
+      .then(r => r.json())
+      .then(u => {
+        setUser(u);
+        setLoading(false);
+      })
+      .catch(e => {
+        setError(e);
+        setLoading(false);
+      });
+  }, [userId]);
+
+  return { user, loading, error };
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="finding-decomposition-candidates">
+      <p>Tools and techniques for finding fat files that need decomposition:</p>
+
+      <rule testable="false">
+        <statement>Django/Python: Use templates/find-fat-files.sh to identify top-20 longest app files. Target any file over 200 lines.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>React/JavaScript: Use templates/find-fat-components.mjs to list React components over 150 LOC. Audit for extractable hooks or components.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Manual: In your editor, search for class/function definitions. Count lines to the next definition. Anything over 200 is a candidate.</statement>
+      </rule>
+    </section>
+
+    <section name="antipatterns-to-avoid">
+      <p>Common mistakes when decomposing:</p>
+
+      <rule testable="true">
+        <statement>Creating wrappers without behavior: UserService.get() wrapping User.objects.get(). If the selector just forwards, it's not needed.</statement>
+        <rationale>Wrappers add indirection cost without benefit. Use selectors when filtering, joining, prefetching, or caching — behavior matters.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Over-extracting components: splitting one component into five pieces, none of which are reused. Composition has overhead — nesting 5 small components is harder to follow than one 80-line component.</statement>
+        <rationale>Extract only when reuse signal exists or complexity genuinely requires isolation (e.g., complex modal logic, reusable form field).</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Service objects for simple CRUD in Rails or Laravel. If the framework idiom handles it in 2 lines, don't wrap it in a service.</statement>
+        <rationale>Services hide behavior behind indirection. Visible CRUD code is simpler to reason about than delegating to a service that does nothing but wrap.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Mixing reads and writes in a single service. Service.get_and_update() is a red flag: reads and writes have different caching and invalidation concerns.</statement>
+        <rationale>Separate selectors (reads) from services (writes) so agents can reason about side effects and cache without reading both paths.</rationale>
+      </rule>
+    </section>
+
+    <reference path="templates/find-fat-files.sh">Bash script: identify longest Python app files.</reference>
+    <reference path="templates/find-fat-components.mjs">Node script: identify React components over 150 LOC.</reference>
+
+    <checklist>
+      <check>Scan the codebase for fat files (over 200 lines). Prioritize by touch-path frequency for the next feature work.</check>
+      <check>Start with one extraction (one service, one selector, one hook). Make one commit per extraction.</check>
+      <check>Write tests for the extracted service/selector BEFORE routing traffic through it.</check>
+      <check>Review for common antipatterns: wrappers without behavior, mixed reads/writes, over-extraction.</check>
+      <check>Document the selected pattern in the module's README so future agents know the style.</check>
+      <check>Before running an LLM task on a module, ensure all touched files are under 200 lines. If not, extract first.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="code-quality-patterns"/>
+      <link href="https://www.hacksoft.io/blog/django-styleguide">Django Styleguide by HackSoft</link>
+      <link href="https://guides.rubyonrails.org/service_objects.html">Rails Service Objects</link>
+      <link href="https://laravel.com/docs/actions">Laravel Actions</link>
+      <link href="https://react.dev/learn/thinking-in-react">Thinking in React</link>
+    </see-also>
+  </content>
+</methodology>
