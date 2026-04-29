@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tailwind">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>frontend-developer</domain>
+    <summary>Tailwind CSS utility-first framework configured via tailwind.config.ts with explicit content globs, token-driven theme, and canonical class order via prettier-plugin-tailwindcss.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>tailwind</tag>
+      <tag>css</tag>
+      <tag>utility-first</tag>
+      <tag>design-tokens</tag>
+      <tag>styling</tag>
+    </tags>
+    <languages>
+      <language>css</language>
+      <language>typescript</language>
+      <language>javascript</language>
+    </languages>
+    <frameworks>
+      <framework>react</framework>
+      <framework>vue</framework>
+      <framework>svelte</framework>
+      <framework>astro</framework>
+    </frameworks>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Tailwind CSS</title>
+
+    <summary>Tailwind CSS is a utility-first framework configured via tailwind.config.ts (v3) or a CSS-first @theme block (v4). Configure content globs explicitly to include all templates; theme tokens (colors, spacing, radii) live in the config or @theme, never as hardcoded hex in components. Use prettier-plugin-tailwindcss to canonicalize class order. @apply is allowed only in globals.css for thin reset helpers (≤3 utilities) — abstractions belong in components.</summary>
+
+    <why>
+      <p>Utility classes keep styling co-located with markup, eliminate dead CSS, and give agents a stable, greppable styling surface. The JIT compiler ships only used classes. Canonical class order via Prettier makes agent-generated diffs readable and conflict-free. Token-driven config enforces design consistency without a separate CSS variable layer.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield app or rewrite where you control HTML and want utility-first styling.</item>
+        <item>Multi-developer or multi-agent project needing a stable, greppable styling surface.</item>
+        <item>Fast iteration on visual design with token control via config.</item>
+        <item>Pairing with React, Vue, Svelte, or HTMX where templating lives near markup.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Brownfield app with mature CSS-in-JS or BEM conventions — mixing causes specificity wars.</item>
+        <item>Email templates, PDFs, or print-first surfaces (Tailwind's reset and JIT do not target these).</item>
+        <item>Library/SDK shipping CSS — utility classes leak global resets onto consumer apps.</item>
+        <item>Strict design system that bans "magic numbers" — utilities make ad-hoc spacing too easy.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="explicit-content-glob">
+      <rule>
+        <statement>Configure the `content` array explicitly in tailwind.config.ts (v3) or @source directives (v4). Include all template sources: src/, components/, MDX, and server-side templates. Never rely on autodetection.</statement>
+        <rationale>JIT only scans paths inside content globs. Classes outside the glob are purged silently — the component renders without styles and there is no build error.</rationale>
+      </rule>
+    </section>
+
+    <section name="mobile-first-breakpoints">
+      <rule>
+        <statement>Write base styles for mobile with no prefix, then use `sm:`, `md:`, `lg:`, `xl:` to scale up. Never write desktop-only styles and use max-* breakpoints to override down.</statement>
+        <rationale>Mobile-first produces additive, conflict-free breakpoint chains. Overriding down with max-* creates specificity tangles and requires more CSS classes to maintain.</rationale>
+      </rule>
+    </section>
+
+    <section name="no-hardcoded-hex-in-components">
+      <rule>
+        <statement>All color values must come from design tokens defined in tailwind.config.ts `theme.extend.colors` (v3) or `@theme` block (v4). Never write arbitrary hex values like `bg-[#2563eb]` in component files.</statement>
+        <rationale>Hardcoded hex in components defeats centralized token management. When brand colors change, every component file needs a grep-and-replace instead of a single config edit.</rationale>
+      </rule>
+    </section>
+
+    <section name="apply-restriction">
+      <rule>
+        <statement>Limit `@apply` to thin reset helpers in globals.css with at most 3 utilities per rule. Abstractions that need more than 3 utilities belong in React/Vue components, not in CSS.</statement>
+        <rationale>Long @apply chains recreate the maintenance problem that component extraction solves. Agents fed "@apply is fine" produce sprawling stylesheet abstractions instead of composable components.</rationale>
+      </rule>
+    </section>
+
+    <section name="v3-vs-v4-config-format">
+      <rule>
+        <statement>For v3: use tailwind.config.ts with `theme.extend` and `plugins: [require(...)]`. For v4: use a CSS-first `@theme` block in globals.css; do not write a tailwind.config.ts. Never mix APIs.</statement>
+        <rationale>Training data mixes v3 and v4 examples. A v3-style config.ts is silently ignored by v4; a @theme block in CSS is not processed by v3. Specifying the version prevents silent misconfiguration.</rationale>
+      </rule>
+    </section>
+
+    <section name="class-order-canonicalization">
+      <rule>
+        <statement>Install `prettier-plugin-tailwindcss` and configure it in `.prettierrc`. Enforce class order in CI with `prettier --check`. Never commit hand-sorted class strings.</statement>
+        <rationale>Different agents produce different class orders. Canonical order makes diffs readable and prevents spurious merge conflicts in class attribute lines.</rationale>
+      </rule>
+    </section>
+
+    <section name="plugin-registration">
+      <rule>
+        <statement>Add every Tailwind plugin to the `plugins` array in tailwind.config.ts (v3) or import it with `@plugin` (v4) before using its utility classes. Never assume plugins are auto-registered.</statement>
+        <rationale>Plugins like @tailwindcss/forms are not bundled — they must be explicitly registered. Missing registration produces no build error; the classes are silently absent at runtime.</rationale>
+      </rule>
+    </section>
+
+    <section name="v3-config">
+      <example type="good" title="tailwind.config.ts (v3)">
+        <code lang="typescript"><![CDATA[
+// tailwind.config.ts (v3)
+import type { Config } from "tailwindcss"
+import defaultTheme from "tailwindcss/defaultTheme"
+
+export default {
+  content: [
+    "./src/**/*.{ts,tsx,js,jsx,mdx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        brand: {
+          50: "#eff6ff",
+          500: "#3b82f6",
+          900: "#1e3a8a",
+        },
+      },
+      fontFamily: {
+        sans: ["Inter var", ...defaultTheme.fontFamily.sans],
+      },
+    },
+  },
+  plugins: [
+    require("@tailwindcss/forms"),
+    require("@tailwindcss/typography"),
+  ],
+} satisfies Config
+]]></code>
+      </example>
+    </section>
+
+    <section name="v4-css-first-config">
+      <example type="good" title="v4 CSS-First Config">
+        <code lang="css"><![CDATA[
+/* src/styles/globals.css (v4) */
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: hsl(214 100% 97%);
+  --color-brand-500: hsl(217 91% 60%);
+  --color-brand-900: hsl(224 64% 33%);
+  --font-sans: "Inter", system-ui, sans-serif;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+}
+
+/* Dark mode via class strategy */
+@layer base {
+  :root { color-scheme: light; }
+  .dark { color-scheme: dark; }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="layout-patterns">
+      <example type="good" title="Common Layout Patterns">
+        <code lang="typescript"><![CDATA[
+// Container
+<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+
+// Responsive card grid (mobile-first)
+<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+
+// Stack (vertical flex with gap)
+<div className="flex flex-col gap-4">
+
+// Center (absolute centering)
+<div className="flex items-center justify-center min-h-screen">
+
+// Responsive flex → column on mobile, row on desktop
+<div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+
+// Prose (with typography plugin)
+<article className="prose prose-slate max-w-none dark:prose-invert">
+]]></code>
+      </example>
+    </section>
+
+    <section name="dark-mode-strategy">
+      <note>Use `darkMode: 'class'` (v3) or `.dark` selector (v4) for explicit control. Use `media` only when you do not need a manual toggle. Never switch strategies after launch — it changes all component dark: selectors.</note>
+      <example type="good" title="ThemeProvider Implementation">
+        <code lang="typescript"><![CDATA[
+// ThemeProvider wrapping the app
+function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = useState<"light" | "dark">(() =>
+    window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+  )
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark")
+  }, [theme])
+
+  return (
+    <ThemeContext.Provider value={{ theme, setTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  )
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>Agents mix v3 tailwind.config.ts and v4 @theme block in the same project.</description>
+        <reason>v4 ignores tailwind.config.ts; v3 ignores @theme. Specify the major version in every agent prompt. Check tailwindcss package version before generating config.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents install @tailwindcss/forms but forget `strategy: 'class'`, breaking existing inputs.</description>
+        <reason>Without `strategy: 'class'`, the forms plugin applies global input resets that override component styles. The strategy must match the project's existing form styling approach.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents write `@apply` chains with 8–15 utilities in a global stylesheet.</description>
+        <reason>Long @apply chains recreate the BEM stylesheet maintenance problem. Anything needing more than 3 utilities is a component, not a utility alias.</reason>
+      </antipattern>
+      <antipattern>
+        <description>After adding a new template file (Blade, Django, ERB), agents forget to update the content glob.</description>
+        <reason>JIT only scans files matching content glob patterns. New template types silently produce unstyled output until the config is updated.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/tailwind.config.ts" purpose="v3 Tailwind config with extended colors, fontFamily, spacing, and plugins."/>
+      <template path="templates/globals-v4.css" purpose="v4 CSS-first config with @theme block for brand tokens."/>
+      <template path="templates/check-class-order.sh" purpose="CI guard: Prettier + ESLint class-order check."/>
+    </templates>
+
+    <see-also>
+      <link href="https://tailwindcss.com/docs"/>
+      <link href="https://github.com/tailwindlabs/prettier-plugin-tailwindcss"/>
+      <link href="https://tailwindcss.com/docs/installation"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 frontend-developer methodologies → methodology.xml (shadcn-ui, shadcn-ui-architecture, storybook-setup; feature-045 batch DF)
+- migrate: 3/3 batch DA methodologies → methodology.xml (trunk-based-dev-patterns, trunk-based-dev-principles, framework-decomposition-patterns; feature-045 batch DA)
 - migrate: 3/3 automation-tooling methodologies → methodology.xml (cd-basics, cd-pipelines, continuous-delivery; feature-045 batch CW)
 - migrate: 3/3 javascript-developer methodologies → methodology.xml (nodejs-service-layer-implementation, react-component-architecture, decomposition-django; feature-045 batch DK)
 - migrate: 3/3 automation-tooling methodologies → methodology.xml (dev-methodologies-architecture, internationalization, logging-patterns; feature-045 batch CX)
