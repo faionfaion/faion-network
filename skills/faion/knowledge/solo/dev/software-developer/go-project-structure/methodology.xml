@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-project-structure">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Go layout: cmd/ entry points, internal/ private code, pkg/ public API only. Hand-wire dependencies in main.go, use .golangci.yml, Makefile, multi-stage Dockerfile with CGO_ENABLED=0.</summary>
+    <tags>
+      <tag>go</tag>
+      <tag>project-structure</tag>
+      <tag>architecture</tag>
+      <tag>best-practices</tag>
+      <tag>devops</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Go Project Structure</title>
+    <summary>Standard Go project layout following community conventions: cmd/ for entry points, internal/ for private app code, pkg/ only for truly public API. Dependencies wired by hand in cmd/.../main.go; no DI framework until hand-wiring exceeds ~100 lines. Core rules: internal/ default, CGO_ENABLED=0 in containers, one .golangci.yml shared by local dev and CI.</summary>
+    <why>
+      <p>Go's toolchain enforces internal/ boundaries, preventing accidental coupling across packages. Starting flat and promoting to structure only when justified avoids premature abstraction. Cyclic imports — Go's most common agent mistake — are caught at compile time; extracting a shared types package into internal/model resolves them without exposing symbols unnecessarily.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a new Go service, CLI, or library</item>
+        <item>Refactoring a flat single-package program that has crossed ~3 entry points or ~5 domain concepts</item>
+        <item>Standardizing across multiple Go services so agents can navigate predictably</item>
+        <item>Wiring DI manually with constructors in cmd/&lt;bin&gt;/main.go</item>
+        <item>Producing repeatable Docker + Makefile + module hygiene that LLMs can replicate</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>One-file scripts and learning exercises — flat layout beats premature internal/cmd/pkg</item>
+        <item>Pure libraries: don't add internal/ and cmd/ if all you ship is exported packages</item>
+        <item>Code generators that already define their own layout (buf, kubebuilder, cobra-cli)</item>
+        <item>Multi-language monorepos where Go is one of N — use the org-wide layout, not Go-specific defaults</item>
+        <item>When team consensus differs: enforcing golang-standards/project-layout against the team will lose</item>
+      </list>
+    </when-not-to-use>
+    <section name="Directory Layout">
+      <rule>
+        <statement>Use internal/ as the default for all application code; add pkg/ only when an external module explicitly imports it.</statement>
+        <rationale>Go's toolchain enforces internal/ boundaries — external packages cannot import it. pkg/ without a clear "external consumers" rule becomes a dumping ground.</rationale>
+      </rule>
+      <p>Standard tree: cmd/api/main.go + cmd/worker/main.go. internal/config/, internal/database/, internal/handler/, internal/middleware/, internal/model/, internal/repository/, internal/service/. pkg/ (public library only). api/ (OpenAPI spec). scripts/, deployments/ (Dockerfile, k8s). go.mod, go.sum, Makefile.</p>
+    </section>
+    <section name="Where It Fails / Limitations">
+      <p>The popular golang-standards/project-layout is community-curated, not official; agents quote it as canon and overbuild.</p>
+      <p>pkg/ is often misused as a dumping ground; without a clear "this is API for outsiders" rule, it loses meaning.</p>
+      <p>internal/ boundary is enforced by the toolchain but agents still leak through interfaces with public types.</p>
+      <p>Cyclic-import errors hit late and confuse agents — they "fix" by exporting more symbols, worsening coupling.</p>
+      <p>DI by hand-wiring in main.go grows long; agents reach for wire/fx too early.</p>
+      <p>Default cmd/&lt;name&gt;/main.go layout creates ceremony for tiny CLIs that fit in one file.</p>
+    </section>
+    <section name="Entry Point Pattern">
+      <rule>
+        <statement>Keep cmd/&lt;bin&gt;/main.go thin: parse flags, load config, wire deps, call Run(ctx); all logic lives in internal packages.</statement>
+        <rationale>A fat main.go is untestable. Thin main with explicit wiring makes every dependency visible, swap-able in tests, and documented by its constructor call.</rationale>
+      </rule>
+    </section>
+    <section name="Configuration">
+      <rule>
+        <statement>Load all configuration from environment variables in a Config struct at startup; use os.Getenv with explicit defaults, not dotenv in production.</statement>
+        <rationale>dotenv overrides env vars set by the orchestrator. In containerised deployments, env vars come from the platform secrets layer; dotenv belongs in local dev only.</rationale>
+      </rule>
+    </section>
+    <section name="DI Threshold">
+      <rule>
+        <statement>Introduce wire or fx only when hand-wiring in main.go exceeds ~100 lines; resist adding it for small services.</statement>
+        <rationale>DI frameworks add a compile step and learning overhead. For fewer than 10 constructors, explicit wiring in main.go is clearer and easier to trace.</rationale>
+      </rule>
+    </section>
+    <section name="Makefile">
+      <rule>
+        <statement>Commit a Makefile with standard targets: build, run, test, test-coverage, lint, fmt, tidy, clean, docker-build.</statement>
+        <rationale>A consistent Makefile means any developer or agent can get started without reading docs. LLMs can reliably invoke make targets without guessing tool flags.</rationale>
+      </rule>
+    </section>
+    <section name="Multi-Stage Dockerfile">
+      <rule>
+        <statement>Use a multi-stage Dockerfile: Go builder stage with CGO_ENABLED=0, then a minimal alpine runtime. Set USER nobody:nobody in the runtime stage.</statement>
+        <rationale>CGO_ENABLED=0 produces a fully static binary that runs in a scratch or alpine image with no libc dependency. Running as nobody reduces attack surface in container escapes.</rationale>
+      </rule>
+    </section>
+    <section name="golangci-lint">
+      <rule>
+        <statement>Commit a .golangci.yml to the repo and run identical rules locally and in CI; include contextcheck linter to catch missing context.Context plumbing.</statement>
+        <rationale>Without a committed config, local and CI linting diverge. contextcheck catches the common agent mistake of omitting ctx parameters on repository methods.</rationale>
+      </rule>
+      <rule>
+        <statement>Thread context.Context as the first argument through every repository method and service call; never use context.Background() inside a handler.</statement>
+        <rationale>Without ctx plumbing, request cancellation and deadline propagation don't reach the DB layer — a cancelled client request still consumes DB connections.</rationale>
+      </rule>
+    </section>
+    <section name="Antipatterns">
+      <antipattern>
+        <description>Cyclic imports: package A imports B, package B imports A.</description>
+        <reason>Go toolchain rejects cyclic imports at compile time. The fix is to extract shared types into a third package (e.g., internal/model), not to export more symbols upward.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Global state: var DB *sql.DB at package level.</description>
+        <reason>Global DB makes parallel tests interfere, prevents multiple instances, and hides dependencies. Use constructor injection: NewUserRepository(db *sql.DB).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Everything in the main package: type User, type Order, func CreateUser, func HandleRequest all in package main.</description>
+        <reason>Single-package projects become untestable and unmaintainable above ~500 lines. Separate by responsibility into internal/ sub-packages.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Workflow">
+      <p>For a new project, run a scaffolder agent that asks for module path, binary names, and DB driver, then emits the cmd/, internal/, pkg/, Makefile, Dockerfile, and a single test. For an existing project, an auditor agent maps imports, finds cycles and internal/ violations, and proposes a single refactor PR. Treat go vet, staticcheck, and golangci-lint as the quality gate the agent must pass before commit.</p>
+    </section>
+    <section name="Recommended Subagents">
+      <list>
+        <item>faion-sdd-executor-agent — design + scaffold + verify with quality gates</item>
+        <item>A custom go-scaffolder (haiku) — emits the canonical tree from a small JSON spec</item>
+        <item>A custom go-import-auditor (sonnet) — runs go list -deps, detects cycles and internal/ leaks, drafts a refactor plan</item>
+      </list>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Keep cmd/&lt;bin&gt;/main.go thin: parse flags, load config, wire deps, call Run(ctx) from an internal package</item>
+        <item>Put domain types in internal/model; keep them DB-tag-free if you also expose them via JSON — use separate DTOs in internal/handler</item>
+        <item>Use internal/ aggressively; reach for pkg/ only when an external module imports it</item>
+        <item>Define Repository and Service interfaces near consumers, not producers — keeps wiring testable and avoids leaky cross-package types</item>
+        <item>One linter config: commit .golangci.yml and run identical rules locally and in CI</item>
+        <item>Pin Go version in go.mod (go 1.22) and Dockerfile together; CI must match</item>
+        <item>Always set CGO_ENABLED=0 in container builds unless you need cgo; saves base image size and runtime headaches</item>
+      </list>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <p>Agents over-apply the golang-standards/project-layout to tiny projects; require a size threshold before adopting.</p>
+      <p>LLMs put everything in pkg/ because tutorials show it; reviewers must enforce internal/ default.</p>
+      <p>Cyclic imports are a frequent agent mistake — they "fix" by moving symbols up; instead, extract a third package owning the shared types.</p>
+      <p>Agents add wire/fx immediately; require a "manual wire grew past 100 lines" trigger before adding.</p>
+      <p>Agents forget context.Context plumbing through repository methods; lint with contextcheck linter.</p>
+      <p>Agents leave global var DB *sql.DB; require a constructor pattern (NewUserRepository(db)).</p>
+      <p>Human-in-loop checkpoint: any DB schema change colocated under internal/database/migrations/ needs a separate PR and review.</p>
+    </section>
+    <templates>
+      <template path="templates/scaffold-go.sh" purpose="Bash script to materialise standard tree from module path + binary names"/>
+      <template path="templates/Makefile" purpose="Build, test, lint, coverage, Docker targets"/>
+    </templates>
+    <see-also>
+      <link href="https://go.dev/doc/effective_go">Effective Go</link>
+      <link href="https://go.dev/doc/modules/layout">Official layout guidance</link>
+      <link href="https://github.com/golang-standards/project-layout">Community layout</link>
+      <link href="https://github.com/uber-go/guide/blob/master/style.md">Uber Go style guide</link>
+      <link href="https://golangci-lint.run">golangci-lint</link>
+      <link href="https://github.com/google/wire">wire — DI when needed</link>
+    </see-also>
+  </content>
+</methodology>
