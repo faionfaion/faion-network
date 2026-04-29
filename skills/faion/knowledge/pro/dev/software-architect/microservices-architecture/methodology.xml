@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="microservices-architecture">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Decomposing apps into independently deployable services by business capabilities. Decision framework, decomposition strategies, communication patterns, and anti-patterns.</summary>
+    <tags>
+      <tag>microservices</tag>
+      <tag>architecture</tag>
+      <tag>service-decomposition</tag>
+      <tag>distributed-systems</tag>
+      <tag>ddd</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Microservices Architecture</title>
+    <summary>Decomposing applications into independently deployable services around business capabilities. Decision framework, decomposition strategies (DDD subdomains, volatility, Strangler Fig), communication patterns, database-per-service, and anti-patterns.</summary>
+    <why>
+      <p>Microservices enable independent deployment and scaling per service, and team autonomy aligned with Conway's Law — but only when prerequisites are met. Skipping domain analysis leads to a distributed monolith: services that must be deployed together and share databases, combining all the complexity of microservices with none of the benefits. The decision framework prevents premature decomposition.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Team size exceeds 30 developers with clear sub-team ownership per domain</item>
+        <item>Domain boundaries are well-understood via DDD or business capability mapping</item>
+        <item>Mature CI/CD, container orchestration, and observability are already in place</item>
+        <item>Different services have genuinely different scaling profiles (catalogue vs checkout)</item>
+        <item>Strangler Fig migration: extracting bounded contexts from an existing monolith</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Team smaller than 10 developers — operational overhead outweighs autonomy benefits</item>
+        <item>MVP or early-stage product where domain boundaries are not yet understood</item>
+        <item>Limited DevOps maturity — microservices require automation to be operational</item>
+        <item>Simple CRUD application — a monolith or modular monolith is cheaper and faster</item>
+        <item>Tight budget — microservices multiply infrastructure and observability costs</item>
+      </list>
+    </when-not-to-use>
+    <section name="Microservices Decision Framework">
+      <rule>
+        <statement>Do not adopt microservices until domain boundaries are well-understood and DevOps maturity (CI/CD, container orchestration, distributed tracing) is already in place.</statement>
+        <rationale>Premature decomposition without clear boundaries produces a distributed monolith: services that must be deployed together and share databases. This combines all the operational complexity of microservices with none of the autonomy benefits. Domain clarity and DevOps tooling are prerequisites, not afterthoughts.</rationale>
+      </rule>
+      <list>
+        <item>Team &lt; 10 developers: use monolith or modular monolith — operational overhead outweighs team autonomy benefit.</item>
+        <item>MVP / unclear domain: use modular monolith — extract services once boundaries are proven by usage.</item>
+        <item>Team 30+ developers with sub-team ownership, clear DDD boundaries, mature CI/CD, K8s, and observability: microservices justified.</item>
+        <item>Decision tree: domain well-understood? → No: modular monolith. Yes → 30+ developers? → No: modular monolith. Yes → mature DevOps? → No: build DevOps first. Yes → microservices.</item>
+      </list>
+      <p>Prerequisites before adopting microservices: strong DevOps culture, per-service CI/CD pipelines, container orchestration (Kubernetes), distributed tracing, clear DDD or business capability boundaries, team autonomy with Conway's Law alignment.</p>
+    </section>
+    <section name="Service Decomposition Strategies">
+      <rule>
+        <statement>Decompose by business capability first; apply DDD subdomain classification (core / supporting / generic) to decide whether to build, buy, or use commodity services for each capability.</statement>
+        <rationale>Business capability alignment ensures each service maps to what the business does, not to technical layers. DDD classification prevents spending engineering effort on generic capabilities (authentication, payment) that commodity providers handle better.</rationale>
+      </rule>
+      <list>
+        <item>By business capability: align service to a business function (Catalog, Inventory, Order, Payment, Shipping, User, Notification). Each service owns its data and releases independently.</item>
+        <item>By DDD subdomain — Core: build in-house, competitive advantage (e.g., recommendation engine). Supporting: build or buy, necessary but not differentiating (e.g., user auth). Generic: use existing commodity (e.g., payment via Stripe).</item>
+        <item>By volatility: separate stable domains (authentication, user profile) from frequently changing ones (pricing, promotions, search ranking). Stable services can be low-complexity; volatile ones need fast release cycles.</item>
+        <item>Strangler Fig: extract incrementally from monolith. Phase 1: monolith handles all traffic. Phase 2: new service handles a subset, monolith handles the rest. Phase 3: gradually shift traffic. Phase 4: retire monolith components.</item>
+      </list>
+      <rule>
+        <statement>Use the Strangler Fig pattern for migrating an existing monolith; never rewrite the entire monolith to microservices in a single release.</statement>
+        <rationale>Big-bang rewrites fail at a high rate. The Strangler Fig pattern allows incremental extraction, validation in production, and rollback at each phase. Each extracted service can be validated independently before the next extraction begins.</rationale>
+      </rule>
+    </section>
+    <section name="Synchronous Communication">
+      <list>
+        <item>REST (HTTP/JSON): universal, easy to debug, suitable for external APIs and simple CRUD. Cons: tight coupling, cascading failures when downstream is slow.</item>
+        <item>gRPC (HTTP/2 + Protobuf): fast, type-safe, supports streaming, suitable for internal service-to-service high-throughput calls. Cons: more complex tooling, harder to debug without specialised tools.</item>
+        <item>GraphQL: flexible queries, reduces over-fetching, suitable for Backend-for-Frontend (BFF) and aggregation layers. Cons: complex caching, N+1 query risk if not implemented with data loaders.</item>
+      </list>
+      <rule>
+        <statement>Prefer gRPC for internal service-to-service calls with high throughput or strict schema requirements; use REST only for external APIs or when client diversity demands broad compatibility.</statement>
+        <rationale>gRPC's Protobuf encoding is 3-10x smaller than JSON and enforces schema compatibility between client and server. Internal services benefit from this contract. External APIs need REST because clients (browsers, mobile apps, third parties) cannot depend on Protobuf tooling.</rationale>
+      </rule>
+    </section>
+    <section name="Asynchronous Communication">
+      <list>
+        <item>Message queues (RabbitMQ, SQS): task distribution, work queues. Pros: decoupled producer/consumer, reliable delivery, backpressure. Cons: message ordering not guaranteed across queue instances.</item>
+        <item>Event streaming (Kafka, Kinesis): event sourcing, audit logs, analytics. Pros: ordered partitions, replay, high throughput. Cons: operational complexity, consumer offset management.</item>
+        <item>Pub/Sub (SNS, Google Pub/Sub): notifications, fan-out to multiple consumers. Pros: simple, scalable. Cons: no replay, at-most-once delivery without additional durability layer.</item>
+      </list>
+      <rule>
+        <statement>Default to asynchronous communication for cross-service calls that do not require an immediate response; use synchronous only when the caller must act on the response before proceeding.</statement>
+        <rationale>Synchronous calls couple availability: if Service B is slow or down, Service A is degraded. Async decouples availability and provides natural backpressure. Most inter-service operations (create order, send notification, update inventory) do not require a synchronous response.</rationale>
+      </rule>
+      <p>Communication decision tree: need immediate response? → Yes: synchronous (internal high-throughput → gRPC; external API → REST; mobile/web aggregation → GraphQL). → No: asynchronous (need ordering → Kafka; need replay → Kafka; simple task queue → RabbitMQ/SQS).</p>
+    </section>
+    <section name="Database per Service">
+      <rule>
+        <statement>Each service must own its database exclusively; no other service may read from or write to it directly — data sharing goes through APIs or events.</statement>
+        <rationale>A shared database couples services at the schema level: one service's schema change can break another's queries. Database-per-service allows independent schema evolution, technology choice (relational vs document vs time-series), and independent scaling. It forces explicit API contracts for data access.</rationale>
+      </rule>
+      <antipattern>
+        <description>Two services sharing the same database or the same schema tables.</description>
+        <reason>Schema coupling makes independent deployment impossible. A migration in Service A's table breaks Service B's queries. This produces a distributed monolith with all operational costs but no deployment independence.</reason>
+      </antipattern>
+    </section>
+    <section name="Microservices Anti-Patterns">
+      <antipattern>
+        <description>Distributed monolith: services that must be deployed together because they share libraries, schemas, or runtime state.</description>
+        <reason>All the operational complexity of microservices (network calls, distributed tracing, multiple deployments) with none of the benefits (independent release cadence, independent scaling). The root cause is missing domain boundaries at design time.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Shared database: multiple services reading from or writing to the same database tables.</description>
+        <reason>Schema coupling prevents independent migration and deployment. A column rename in one service breaks another's queries silently. Forces coordinated releases, undermining service autonomy.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Too-small services (nanoservices): services so fine-grained that network overhead, deployment complexity, and distributed coordination dominate over business logic.</description>
+        <reason>Each service boundary introduces network latency, serialisation cost, and deployment overhead. Services sized below a bounded context create chatty communication and force distributed transactions for simple operations.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Synchronous communication everywhere: every inter-service call is synchronous HTTP, even for operations that do not require an immediate response.</description>
+        <reason>Cascading failures: if Service C is slow, Service B waits, and Service A waits. Async decoupling isolates availability. Synchronous calls should be the exception, reserved for cases where the caller must act on the response before proceeding.</reason>
+      </antipattern>
+      <antipattern>
+        <description>No API versioning: services expose a single unversioned API endpoint, breaking clients on any schema change.</description>
+        <reason>In microservices, services are deployed independently. Without versioning, a schema change in one service forces coordinated upgrades of all consumers — reintroducing deployment coupling that microservices exist to eliminate.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Chatty communication: service A makes N+1 calls to service B for a list of N items (one call per item).</description>
+        <reason>N+1 calls across a network are orders of magnitude slower than N+1 calls within a process. Aggregation, BFF (Backend for Frontend) pattern, or batch APIs reduce inter-service round trips.</reason>
+      </antipattern>
+    </section>
+    <section name="Resilience Patterns">
+      <rule>
+        <statement>Apply Circuit Breaker + Retry with jitter + Bulkhead + Timeout as a combined stack on every synchronous inter-service call; do not apply them independently.</statement>
+        <rationale>Each pattern addresses a different failure mode. Timeout alone causes thread exhaustion. Retry alone causes thundering herd. Circuit Breaker alone does not prevent thread pool saturation during open state. Bulkhead isolates the failure to one dependency's pool. Together they prevent cascading failure.</rationale>
+      </rule>
+      <list>
+        <item>Circuit Breaker: closed (pass-through) → failures exceed threshold → open (fast fail, no downstream calls) → half-open after timeout (test with one request) → closed on success. Failure threshold: 5-10 failures in a rolling 60s window for low-traffic services (use absolute count, not percentage).</item>
+        <item>Retry with jitter: use decorrelated jitter (next_wait = min(cap, random(base, prev_wait * 3))) to break thundering herd. Never retry non-idempotent writes without an idempotency key.</item>
+        <item>Bulkhead: use thread-pool isolation when timeout control is required; semaphore isolation when calling thread blocking is acceptable and overhead must be minimal.</item>
+        <item>Timeout: always set explicit timeouts on all external calls. Propagate deadline (request deadline - elapsed_time) to downstream calls rather than setting independent per-hop timeouts, to enforce end-to-end budget.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/service-dockerfile" purpose="Minimal multi-stage Dockerfile for a Python/Go microservice with non-root user"/>
+      <template path="templates/k8s-service-deployment.yaml" purpose="Deployment + Service + HPA manifest with health probes and resource limits"/>
+    </templates>
+  </content>
+</methodology>
