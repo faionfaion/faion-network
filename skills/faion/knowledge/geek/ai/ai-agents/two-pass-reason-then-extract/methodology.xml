@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="two-pass-reason-then-extract">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>When reasoning quality matters more than output format, run two passes: strong model reasons in free text, cheap model extracts into strict schema to avoid grammar-mask penalties on hard tasks.</summary>
+    <tags>
+      <tag>reasoning</tag>
+      <tag>structured-output</tag>
+      <tag>cost-optimization</tag>
+      <tag>model-cascade</tag>
+    </tags>
+    <category>reasoning</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Two-Pass: Free-Form Reasoning Then Structured Extraction</title>
+    <summary>When raw reasoning quality matters more than output format (math proofs, deep research synthesis, code with subtle constraints), do not lock the strong model into strict JSON during the reasoning step. Run two passes: (1) the strong model reasons in free text or extended-thinking mode, (2) a cheap small model extracts the answer into the strict schema. The format constraint never interferes with the reasoning trace, and the strict typing still lands on the consumer.</summary>
+    <why>
+      <p>Forcing strict JSON during reasoning measurably hurts accuracy on hard tasks — the SLOT paper (arXiv 2505.04016) and the BuildMVPFast 2026 guide both report 10–15 percent drops on math and complex analysis benchmarks when the same prompt is run with strict structured output versus free text. The grammar mask burns probability on schema-conforming tokens that are not the reasoning the model would otherwise produce. Splitting the work — Opus thinks freely, Haiku extracts — recovers the lost accuracy at near-zero extraction cost (the extraction prompt is short and the schema is small, so caching plus a Haiku-class model is cheap).</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Math word problems, proofs, multi-step calculations.</item>
+        <item>Research synthesis where the answer is a few fields but the analysis is paragraphs.</item>
+        <item>Code generation that needs deep reasoning before a structured diff/patch.</item>
+        <item>Legal or medical analysis where the verdict structure is rigid but the reasoning must be unconstrained.</item>
+        <item>Anything where Opus extended thinking is justified by the task difficulty.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Simple extraction (entities, key/value, sentiment) — single-pass strict SO is faster and cheaper.</item>
+        <item>Latency-critical paths under ~1 second total — two model calls always cost more wall-clock than one.</item>
+        <item>Tasks small enough that Haiku-class extraction quality is the bottleneck — extract directly with the strong model.</item>
+        <item>High call volume where the doubled provider cost exceeds the accuracy gain.</item>
+      </list>
+    </when-not-to-use>
+    <section name="reasoning-pass">
+      <p>For tasks where reasoning quality matters more than output format, never lock the reasoning step into strict structured output. Split the work into two passes: pass 1 produces free-form reasoning on the strong model, pass 2 extracts the structured answer with a cheap model.</p>
+      <rule testable="true">
+        <statement>When a task requires deep reasoning AND a strict schema, run the strong model in free-text or extended-thinking mode for the reasoning step, then run a cheap extractor model with strict structured output to fill the schema from the strong model's transcript.</statement>
+        <rationale>The grammar mask of strict JSON costs probability mass on schema-conforming tokens that are not the optimal reasoning tokens. The SLOT paper and the BuildMVPFast 2026 guide both report 10–15 percent accuracy loss on math and complex analysis when reasoning is forced through strict SO versus free text. Two-pass restores accuracy because the reasoning step has no schema constraint, and the extraction step is easy enough that a small model meets the spec at fraction of the cost.</rationale>
+      </rule>
+      <example type="good" title="Opus thinking then Haiku extraction">
+        <code lang="python"><![CDATA[
+# Pass 1: Opus thinks freely.
+raw = anthropic.messages.create(
+    model="claude-opus-4-7",
+    thinking={"type": "enabled", "budget_tokens": 16000},
+    messages=[{"role": "user", "content": question}],
+).content[-1].text
+
+# Pass 2: Haiku extracts into strict schema.
+verdict = haiku.responses.parse(
+    model="claude-haiku-4-7",
+    input=[{"role": "user", "content": f"Extract verdict from analysis:\n{raw}"}],
+    text_format=Verdict,  # strict Pydantic model
+)
+        ]]></code>
+        <note>Reasoning is unconstrained and benefits from extended thinking. Extraction is mechanical, so a Haiku-class model meets the schema reliably and cheaply.</note>
+      </example>
+      <example type="bad" title="Single pass with strict schema during reasoning">
+        <code lang="python"><![CDATA[
+# Single pass: Opus forced into strict JSON during reasoning.
+verdict = anthropic.messages.create(
+    model="claude-opus-4-7",
+    tools=[{"name": "submit_verdict", "input_schema": Verdict.model_json_schema()}],
+    tool_choice={"type": "tool", "name": "submit_verdict"},
+    messages=[{"role": "user", "content": question}],
+)
+        ]]></code>
+        <note>Strict mode masks tokens during the reasoning trace itself. Accuracy drops 10–15 percent on hard tasks because the model cannot fully reason inside the grammar.</note>
+      </example>
+      <antipattern>
+        <description>Adding a long reasoning field to a strict schema as a substitute for two-pass on math or research tasks.</description>
+        <reason>The embedded scratchpad pattern works for medium-difficulty reasoning, but on truly hard tasks the grammar mask still degrades the reasoning trace. When task difficulty saturates the scratchpad, switch to two-pass.</reason>
+      </antipattern>
+    </section>
+    <section name="cost-model">
+      <p>Two-pass adds a second model call but the extractor is small (Haiku class) and its prompt is short. The strong-model output stays roughly the same length whether wrapped in strict JSON or not, so the marginal cost of pass 2 is the extractor's input/output tokens — a small fraction of the strong-model bill.</p>
+      <rule testable="true">
+        <statement>Use two-pass when (a) the task is reasoning-heavy AND (b) extraction-only accuracy on the cheap model exceeds 95 percent on a held-out sample. If extraction quality is below that threshold, either thicken the schema descriptions or fall back to single-pass on the strong model with an embedded scratchpad.</statement>
+        <rationale>Reasoning improvement on the strong model dominates the bill. The extractor is cheap enough that its only constraint is correctness; if a Haiku-class model meets 95+ percent on extraction-only inputs, the savings from preserving the strong model's accuracy justify the second call.</rationale>
+      </rule>
+      <example type="good" title="Cache-friendly extraction prompt">
+        <code lang="python"><![CDATA[
+# Pass 2 prompt: short, schema-anchored, cache-friendly.
+EXTRACTOR_SYSTEM = (
+    "You extract structured verdicts from analysis text. "
+    "Read only what the analysis explicitly states. "
+    "If a field is not stated, set it to null."
+)
+
+# Pin the system prompt to the cache prefix so repeated extractions hit cache.
+extractor_call(
+    system=EXTRACTOR_SYSTEM,         # cached
+    user=f"Analysis:\n{raw}",        # volatile
+    text_format=Verdict,
+)
+        ]]></code>
+        <note>Stable system prompt, volatile analysis. Cache prefix amortizes across calls; extractor cost stays a small constant.</note>
+      </example>
+      <antipattern>
+        <description>Sending the original question plus the full reasoning trace to the extractor.</description>
+        <reason>Doubles the extractor's input bill without improving extraction quality — the trace already contains everything the extractor needs. Send only the trace (or the trace plus a one-line task hint).</reason>
+      </antipattern>
+      <rule testable="true">
+        <statement>When skip two-pass: latency budget under one second total (two calls cannot fit); schema is simple enough that strict mode accuracy gap is negligible; extractor accuracy on extraction-only is below 95 percent; task volume is so high that the extra call cost dominates.</statement>
+        <rationale>Two-pass trades wall-clock time for accuracy and cost efficiency. Measure end-to-end before optimizing; verify extractor quality on held-out extraction-only samples.</rationale>
+      </rule>
+    </section>
+    <templates>
+      <template path="templates/two_pass.py" purpose="Reusable Opus-think-then-Haiku-extract function with strict Pydantic verdict schema."/>
+    </templates>
+    <see-also>
+      <link href="https://arxiv.org/html/2505.04016v1">SLOT — Structuring the Output of Large Language Models (arXiv 2505.04016).</link>
+      <link href="https://www.buildmvpfast.com/blog/structured-output-llm-json-mode-function-calling-production-guide-2026">BuildMVPFast — Structured output 2026 guide (10–15% accuracy gap).</link>
+      <link href="https://platform.claude.com/docs/en/build-with-claude/extended-thinking">Anthropic — Extended thinking documentation.</link>
+      <link href="https://arxiv.org/abs/2305.05176">FrugalGPT — cascade and confidence routing pattern (related cost-saving technique).</link>
+    </see-also>
+  </content>
+</methodology>
