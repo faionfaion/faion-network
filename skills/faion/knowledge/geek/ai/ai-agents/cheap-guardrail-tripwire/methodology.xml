@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cheap-guardrail-tripwire">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Run a cheap classifier (Haiku, gpt-4o-mini) as input_guardrail BEFORE the main agent to short-circuit filtered traffic at ~1% cost before expensive LLM turns.</summary>
+    <tags>
+      <tag>input-guardrail</tag>
+      <tag>cost-optimization</tag>
+      <tag>agent-safety</tag>
+      <tag>classifier</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Cheap-Guardrail Tripwire Before Expensive Agent</title>
+    <summary>Run an input_guardrail (or equivalent pre-agent classifier) on a small/fast model — gpt-4o-mini, Haiku 4.5, gemini-flash-lite — BEFORE the main agent ever sees the request. The guardrail returns a structured verdict; if it sets tripwire_triggered=True (or its equivalent), the SDK raises an exception and the expensive agent loop is never invoked. Off-topic, jailbreak, abuse, and spam traffic short-circuit at ~1% of the cost of running the strong model. The guardrail itself must be one cheap call returning a typed schema — never a tool-using sub-agent.</summary>
+    <why>
+      <p>Most production agents on Opus/GPT-5/o3 are dominated by adversarial or off-topic traffic — public endpoints commonly see 30-70% of requests that should never reach the strong model (jailbreaks, off-topic chat, repeated abuse, malformed inputs). The OpenAI Agents SDK ships input_guardrails and output_guardrails exactly for this; a tripwire raises InputGuardrailTripwireTriggered synchronously, costing zero tokens on the main model and zero side-effects from tool calls. Effective cost reduction is 10-100× on filtered traffic and the latency added by a Haiku-class call (~200ms) is negligible compared to the multi-second strong-model loop it prevents.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Public-facing endpoints exposed to internet traffic (chatbots, support bots, search assistants).</item>
+        <item>Any agent on a premium model where &gt;10% of inputs are filterable cheaply (PII, off-topic, jailbreak, abuse).</item>
+        <item>Policy enforcement that must run before any tool call has side effects (refund agents, write-capable agents, code-execution agents).</item>
+        <item>High-volume APIs where a 1% cost reduction translates to material savings.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Internal pipelines with trusted callers — guardrail latency and complexity outweigh near-zero filter rate.</item>
+        <item>Per the user's NERO rule: never downgrade the user's own LLM calls inside NERO to save cost — this pattern is for THIRD-PARTY products, not Ruslan's personal agents.</item>
+        <item>Output guardrails on streaming responses — buffering the full response to classify breaks streaming and harms UX (open Agents SDK issue #495).</item>
+        <item>Tasks where the cheap classifier's confidence is poorly calibrated for your domain — it will false-positive and reject legitimate traffic.</item>
+      </list>
+    </when-not-to-use>
+    <section name="The rule and the wire-up">
+      <p>An input guardrail is one constrained-output call to a cheap model that returns a typed verdict. The SDK wraps the call so that tripwire_triggered=True raises InputGuardrailTripwireTriggered and the main agent's expensive loop never starts. This is a control-flow short circuit, not a routing decision — there is no fallback path on tripwire, only a structured rejection.</p>
+      <rule>
+        <statement>For every public-facing agent on a premium model, attach at least one input_guardrail that runs gpt-4o-mini or Haiku-class with text_format set to a Pydantic verdict ({is_offtopic, is_jailbreak, is_abuse, reason}); set tripwire_triggered = is_offtopic or is_jailbreak or is_abuse.</statement>
+        <rationale>OpenAI Agents SDK runs guardrails before the agent loop; a tripwire exception is the only deterministic way to guarantee zero tokens and zero tool side-effects on filtered requests. Without it, prompts like "ignore previous instructions" reach the strong model and at minimum cost an Opus turn.</rationale>
+      </rule>
+      <example type="good" title="OpenAI Agents SDK with Pydantic verdict and Haiku classifier">
+        <code lang="python"><![CDATA[
+from agents import Agent, GuardrailFunctionOutput, Runner, input_guardrail
+from pydantic import BaseModel
+
+class Verdict(BaseModel):
+    is_offtopic: bool
+    is_jailbreak: bool
+    reason: str
+
+screener = Agent(name="screener", model="gpt-4o-mini",
+                 instructions="Classify the user message.",
+                 output_type=Verdict)
+
+@input_guardrail
+async def gate(ctx, agent, msg) -> GuardrailFunctionOutput:
+    res = await Runner.run(screener, msg)
+    v: Verdict = res.final_output
+    return GuardrailFunctionOutput(
+        output_info=v,
+        tripwire_triggered=v.is_offtopic or v.is_jailbreak,
+    )
+
+main = Agent(name="main", model="gpt-5", input_guardrails=[gate], tools=[...])
+        ]]></code>
+        <note>Cheap model returns a typed verdict; tripwire raises before any gpt-5 token is generated; main agent's tool side-effects cannot fire on filtered traffic.</note>
+      </example>
+      <example type="bad" title="Classification inside the main agent's first tool call">
+        <code lang="python"><![CDATA[
+# Anti-pattern: classify INSIDE the main agent's first tool call
+main = Agent(name="main", model="gpt-5", tools=[classify, do_work])
+# Strong model burns at least one turn deciding whether to run classify;
+# even on a "no, this is spam" verdict you have already paid for an
+# Opus/gpt-5 turn and risked the model skipping classify entirely.
+        ]]></code>
+        <note>Classification inside the agent loop costs strong-model tokens on every request and gives the model the option to skip the gate.</note>
+      </example>
+    </section>
+    <section name="Three failure modes: anti-patterns that erase the cost win">
+      <p>The tripwire's value is cheap-model-cost / strong-model-cost ≈ 0.01. Each anti-pattern below either inflates the numerator or destroys the streaming UX, erasing the win.</p>
+      <rule>
+        <statement>Guardrail must be one constrained-output call to a small model — never give it tools, never run it on the same model as the main agent, and never wire output_guardrails on a streaming endpoint without explicit buffering.</statement>
+        <rationale>OpenAI documents that output guardrails see the FULL final output; streaming + output-guardrail forces buffering and breaks token-by-token UX. A tool-using guardrail amortizes nothing — it costs a multi-turn loop on every request including legitimate ones. Same-model guardrails defeat the entire pricing differential.</rationale>
+      </rule>
+      <antipattern>
+        <description>Guardrail agent declared with tools=[search, fetch, lookup_user] so it can "investigate" before deciding tripwire.</description>
+        <reason>Now every legitimate request runs a multi-turn tool loop on the cheap model. Average pre-agent cost rises 5-20x; the only request type that stays cheap is the trivially-rejected one, which was already cheap with a single classification call.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Adding output_guardrails to a chat endpoint that streams tokens to the user without buffering.</description>
+        <reason>Output guardrails see the final output, so the stream must be fully buffered before the guardrail runs and ANY of it can be sent. First-token latency goes from 200ms to multi-second, defeating the streaming UX. Open Agents SDK issue #495 documents this.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using the same model for guardrail and main agent ("just to be safe gpt-5 will catch the jailbreaks too").</description>
+        <reason>The cost ratio collapses to 1.0 — the guardrail no longer saves anything; it doubles the cost of legitimate requests because they pay for both the guardrail call AND the main agent. Use a model at least 5-10x cheaper than the main agent.</reason>
+      </antipattern>
+      <example type="bad" title="Streaming + output_guardrail buffers the entire response">
+        <code lang="python"><![CDATA[
+# Streaming + output_guardrail buffers the entire response
+main = Agent(model="gpt-5", output_guardrails=[refund_check])
+async for chunk in Runner.run_streamed(main, msg):
+    yield chunk  # blocked until output_guardrail finishes on the FULL output
+        ]]></code>
+        <note>The "streaming" loop yields nothing until generation finishes — UX is identical to non-streaming, but with hidden buffering and worse error handling.</note>
+      </example>
+    </section>
+    <templates>
+      <template path="templates/input_guardrail.py" purpose="OpenAI Agents SDK input_guardrail decorator with a Pydantic verdict schema and a Haiku/mini-model classifier."/>
+    </templates>
+    <see-also>
+      <link href="https://openai.github.io/openai-agents-python/guardrails/">OpenAI Agents SDK guardrails reference.</link>
+      <link href="https://github.com/openai/openai-guardrails-python">openai-guardrails-python package.</link>
+      <link href="https://openai.github.io/openai-agents-python/ref/exceptions/">InputGuardrailTripwireTriggered exception.</link>
+      <link href="https://github.com/openai/openai-agents-python/issues/495">Agents SDK output guardrail vs streaming issue.</link>
+    </see-also>
+  </content>
+</methodology>
