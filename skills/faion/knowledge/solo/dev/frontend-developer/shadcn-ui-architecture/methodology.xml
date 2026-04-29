@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="shadcn-ui-architecture">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>frontend-developer</domain>
+    <summary>Three-layer architecture: components/ui/ (vendored), components/&lt;feature&gt;/ (compositions), lib/ (utilities). CI guards prevent primitive mutation and cross-feature imports.</summary>
+    <tags>
+      <tag>shadcn-ui</tag>
+      <tag>architecture</tag>
+      <tag>component-layering</tag>
+      <tag>tailwind</tag>
+      <tag>cva</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>shadcn/ui Architecture</title>
+
+    <summary>shadcn/ui components are vendored (copied, not installed as packages) into components/ui/. The architecture enforces three strict layers: ui/ primitives are mutated only via npx shadcn add; components/&lt;feature&gt;/ composes from ui/; lib/ holds pure utilities. All variants use cva(). Theme via CSS variables only — no hex literals in feature components.</summary>
+
+    <why>
+      <p>Without layer guards, agents edit components/ui/button.tsx directly to "fix one thing", breaking future shadcn diff upgrades. CI import rules (dependency-cruiser or eslint-plugin-boundaries) make the contract enforceable rather than social.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Mid-to-large React + Tailwind app using shadcn/ui that needs directory ownership rules.</item>
+        <item>Multiple agents or teams contributing components — prevents ui/ becoming a junk drawer.</item>
+        <item>Migrating from a closed UI library into a layered primitives → composite → feature structure.</item>
+        <item>Monorepo where shadcn primitives live in a shared packages/ui/.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>App with fewer than 20 components — flat components/ is simpler.</item>
+        <item>Stack is not React + Tailwind; these rules assume both.</item>
+        <item>Project uses MUI/Mantine; different composition patterns apply.</item>
+        <item>Pre-shadcn-init phase; set up shadcn-ui methodology first, then add architecture rules.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="three-layers">
+      <rule>
+        <statement>Enforce exactly three layers: components/ui/ (vendored primitives), components/&lt;feature&gt;/ (compositions), lib/ (pure utilities). Resist adding a fourth.</statement>
+        <rationale>More layers create ambiguous ownership; agents dump files at the wrong level and import rules become unenforceable.</rationale>
+      </rule>
+      <example type="good" title="Three-layer directory structure">
+        <code lang="text"><![CDATA[
+src/
+├── components/
+│   ├── ui/           # shadcn vendored — mutate only via npx shadcn add
+│   ├── billing/      # feature: CompanyBillingCard, etc.
+│   └── layout/       # page chrome: Header, Sidebar
+├── lib/
+│   └── utils.ts      # cn() and pure helpers
+└── styles/
+    └── globals.css   # CSS variables + @tailwind directives
+]]></code>
+      </example>
+    </section>
+
+    <section name="cn-helper">
+      <rule>
+        <statement>Always use cn() for className composition. Ban inline className string concatenation longer than 2 utilities.</statement>
+        <rationale>tailwind-merge deduplicates conflicting classes (e.g., two px- values); without it, order-dependent class conflicts produce invisible bugs.</rationale>
+      </rule>
+      <reference path="templates/cn.ts">Canonical cn() helper using clsx + tailwind-merge</reference>
+    </section>
+
+    <section name="css-variable-theming">
+      <rule>
+        <statement>Theme via CSS variables (--background, --primary, --ring, etc.) in globals.css. Feature components consume bg-background, text-primary, etc. No hex literals in feature components.</statement>
+        <rationale>Hex literals defeat design token contracts; changing the brand color requires a grep rather than a variable update.</rationale>
+      </rule>
+      <example type="good" title="CSS variable theming">
+        <code lang="css"><![CDATA[
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --primary: 222.2 47.4% 11.2%;
+  --primary-foreground: 210 40% 98%;
+}
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="multi-tenant-theming">
+      <rule>
+        <statement>For multi-tenant apps, scope variables under [data-theme="tenant-x"] on the html element. Design this up front — adding scoping after the fact requires touching every component.</statement>
+        <rationale>CSS variable scoping is the only approach that avoids React Context overhead and works across server and client components.</rationale>
+      </rule>
+    </section>
+
+    <section name="variant-management">
+      <rule>
+        <statement>Use cva() for all variants in feature components. Banned: long inline class strings, dynamic class interpolation, ternary className expressions with more than 2 branches.</statement>
+        <rationale>cva produces a typed variant map and integrates with tailwind-merge; inline ternaries grow to 10+ branches within weeks and become unreadable.</rationale>
+      </rule>
+      <example type="good" title="cva() variant management">
+        <code lang="tsx"><![CDATA[
+const buttonVariants = cva(
+  "inline-flex items-center justify-center rounded-md font-medium transition-colors",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive: "bg-destructive text-destructive-foreground",
+        outline: "border border-input bg-background hover:bg-accent",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+      },
+      size: { default: "h-10 px-4 py-2", sm: "h-9 px-3", lg: "h-11 px-8" },
+    },
+    defaultVariants: { variant: "default", size: "default" },
+  }
+);
+]]></code>
+      </example>
+    </section>
+
+    <section name="use-client-placement">
+      <rule>
+        <statement>Add "use client" to every primitive that uses Radix portals, state, or effects. Default to Server Component for compositions unless they import a client primitive.</statement>
+        <rationale>Missing "use client" on Radix portal primitives works in dev (no SSR) and silently fails on production server build.</rationale>
+      </rule>
+    </section>
+
+    <section name="monorepo-cli">
+      <rule>
+        <statement>In monorepos, always pass --cwd to the shadcn CLI to target the correct package. One components.json per app or package.</statement>
+        <rationale>shadcn CLI uses components.json to locate the target directory; without --cwd it writes to the repo root, not the package.</rationale>
+      </rule>
+      <example type="good" title="Monorepo CLI usage">
+        <code lang="bash"><![CDATA[
+npx shadcn@latest add button --cwd packages/ui
+npx shadcn@latest diff --cwd packages/ui   # show upgrade diff before accepting
+]]></code>
+      </example>
+    </section>
+
+    <section name="upgrade-workflow">
+      <rule>
+        <statement>Before upgrading primitives, run npx shadcn diff to review changes. Visual regression (Chromatic) must pass after any primitive update.</statement>
+        <rationale>Shadcn primitives change between releases; accepting updates without review can silently alter component API or accessibility behavior.</rationale>
+      </rule>
+    </section>
+
+    <section name="editing-vendored-primitives-antipattern">
+      <antipattern>
+        <description>Editing components/ui/button.tsx directly to "fix" a behavior instead of composing a feature component on top.</description>
+        <reason>Modifying vendored primitives breaks shadcn diff upgrades and makes the ownership contract meaningless. Install CODEOWNERS or a CI guard to prevent writes to components/ui/.</reason>
+      </antipattern>
+    </section>
+
+    <section name="hardcoded-hex-antipattern">
+      <antipattern>
+        <description>Hardcoding color hex values (e.g., text-[#3b82f6]) in feature components.</description>
+        <reason>Hard-coded colors bypass the CSS variable theme; brand changes require a grep across every feature instead of a single globals.css update.</reason>
+      </antipattern>
+    </section>
+
+    <section name="missing-use-client-antipattern">
+      <antipattern>
+        <description>Omitting "use client" on Radix-based primitives (Dialog, Popover, DropdownMenu) in Next.js App Router.</description>
+        <reason>Works in development (no SSR), fails silently in production server build with a cryptic hydration mismatch or undefined context error.</reason>
+      </antipattern>
+    </section>
+
+    <section name="path-alias-drift-antipattern">
+      <antipattern>
+        <description>Path alias drift: tsconfig paths, vite.config resolve.alias, and components.json pointing to different locations.</description>
+        <reason>Consumers get "cannot find module @/components/ui" in one build tool but not another; the root cause is hidden by different config files not staying in sync.</reason>
+      </antipattern>
+    </section>
+
+    <section name="cross-feature-imports-antipattern">
+      <antipattern>
+        <description>Importing directly across feature boundaries (components/billing/ importing from components/dashboard/).</description>
+        <reason>Cross-feature imports create invisible coupling; a change to one feature silently breaks another. Enforce with dependency-cruiser or eslint-plugin-boundaries.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Treat the architecture as a contract: (1) components/ui/* — vendored, only mutated via shadcn add; (2) components/&lt;feature&gt;/* — agents author here, importing from ui/ and lib/utils; (3) lib/ — pure utilities and tokens. Add CI guards: a "shadcn primitives untouched" check, a "no cross-feature imports" check, and a "no any types" check. For multi-tenant theming, scope variables under [data-theme=tenant-x] selectors and forbid hard-coded colors in features.</p>
+    </section>
+
+    <section name="limitations">
+      <p>The "primitives are vendored" rule is hard to enforce socially; agents will reach into components/ui/ to "just fix one thing". Architecture rules without CI guards rot within weeks. Monorepo + shadcn CLI does not auto-detect package boundaries; agents need explicit --cwd flags. Themes via CSS variables work great until a feature needs a different theme (multi-tenant) — variable scoping has to be designed up front. Server vs client component boundaries leak through composition; lifting state up across the boundary often forces a rewrite.</p>
+    </section>
+
+    <section name="cli-tools">
+      <p>shadcn CLI: Add primitives via add, diff via diff (npx shadcn@latest &lt;cmd&gt;). class-variance-authority: Variants in feature components (npm i class-variance-authority). tailwind-merge: cn() helper foundation (npm i tailwind-merge). madge: Detect cross-layer imports (npm i -D madge). dependency-cruiser: Enforce layering rules (npm i -D dependency-cruiser). eslint-plugin-boundaries: Lint layer imports (npm i -D eslint-plugin-boundaries). size-limit: Per-route bundle budget (npm i -D size-limit).</p>
+    </section>
+
+    <section name="best-practices">
+      <p>Three layers, no more: ui/ (primitives), &lt;feature&gt;/ (compositions), layout/ (page chrome). Resist a fourth. All variants use cva(); banned: long inline class strings, dynamic class interpolation. One components.json per app or package; in monorepos pin per-package --cwd. Theme via CSS variables only — --background, --primary, --ring, etc. Components consume bg-background etc. For multi-tenant: scope variables under [data-theme="tenant-x"] and set on &lt;html&gt;. Server Components by default in Next.js App Router; mark client primitives explicitly with "use client". Treat upgrades as PRs: npx shadcn diff before bumping; visual regression must pass.</p>
+    </section>
+
+    <section name="references">
+      <see-also>
+        <link href="https://ui.shadcn.com/docs"/>
+        <link href="https://github.com/sverweij/dependency-cruiser"/>
+        <link href="https://cva.style/docs"/>
+        <link href="https://tailwindcss.com/docs/dark-mode#with-css-variables"/>
+        <link href="https://nextjs.org/docs/app/building-your-application/rendering/composition-patterns"/>
+      </see-also>
+    </section>
+
+    <templates>
+      <template path="templates/dependency-cruiser.cjs" purpose="Import layer guard: primitives must not import features; no cross-feature imports."/>
+      <template path="templates/cn.ts" purpose="Canonical cn() helper using clsx + tailwind-merge."/>
+    </templates>
+  </content>
+</methodology>

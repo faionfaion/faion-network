@@ -1,0 +1,829 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="trunk-based-dev-patterns">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Use feature flags, branch by abstraction, and dark launching to deploy incomplete features on trunk daily without exposing them to users.</summary>
+    <tags>
+      <tag>trunk-based-development</tag>
+      <tag>feature-flags</tag>
+      <tag>patterns</tag>
+      <tag>continuous-delivery</tag>
+      <tag>branching</tag>
+    </tags>
+    <category>development-practices</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Trunk-Based Development: Patterns</title>
+
+    <summary>Implement multi-step features safely on trunk by using feature flags to hide incomplete work, branch by abstraction to refactor without long-lived branches, and dark launching to test new implementations against production traffic before exposure.</summary>
+
+    <why>
+      <p>Feature flags decouple deployment from release: code reaches production quickly without breaking trunk, allowing agents to land small safe diffs frequently while keeping the CI gate tight.</p>
+      <p>Branch by Abstraction enables large refactoring without feature branches: create an abstraction layer, implement the new code behind the abstraction, and swap implementations via a flag. Once validated, delete the old code and the abstraction collapses back to direct calls.</p>
+      <p>Dark launching runs the new implementation in parallel without exposing results, comparing outcomes before traffic routing switches. This pattern catches subtle bugs (float precision, list ordering, non-deterministic behavior) that pass unit tests but fail on real data.</p>
+      <p>These patterns allow teams to maintain a fast, releasable trunk while implementing complex features incrementally. They are the foundation of trunk-based development at scale.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Agent is implementing a multi-step feature behind a flag (Keystone Interface, Branch by Abstraction) — give it this reference for the pattern shape.</item>
+        <item>Setting up the pre-commit hook + CI pipeline so trunk stays releasable; the YAML/.pre-commit-config.yaml blocks are copy-pastable.</item>
+        <item>Dark-launch a new implementation in parallel and diff results — the snippet is the canonical shape.</item>
+        <item>Migrating a long-lived feature branch to a series of trunk-merged increments; agent uses Branch-by-Abstraction to chunk it.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Branching/lifetime principles, DORA metrics, GitFlow comparison — see sibling trunk-based-dev-principles.</item>
+        <item>Feature flag infrastructure itself (provider choice, evaluation engine) — see feature-flags methodology.</item>
+        <item>Release engineering for mobile/desktop where store review breaks daily-merge cadence.</item>
+        <item>Codebases with no test gate — TBD without tests is "trunk is always broken".</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="best-practices">
+      <p>Best practices for safe trunk-based patterns with feature flags and branch by abstraction:</p>
+
+      <rule testable="true">
+        <statement>Branch lifetime cap is under 24 hours. Rebase onto main before opening the PR; squash on merge so trunk history stays linear.</statement>
+        <rationale>Long-lived branches accumulate conflicts and diverge from the trunk, defeating the purpose of TBD. Squash merge keeps trunk history linear and searchable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>One flag = one task = one cleanup ticket. File the cleanup ticket the moment the flag is born; otherwise flags accumulate to dozens and rot.</statement>
+        <rationale>Flags with no removal deadline become permanent technical debt. Cleaning up immediately after rollout prevents flag sprawl.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Flag naming follows &lt;area&gt;.&lt;verb&gt;_&lt;thing&gt; (e.g., billing.use_stripe_v2); ban boolean negatives (disable_x) because they invert mid-rollout and confuse agents.</statement>
+        <rationale>Positive naming is unambiguous. A flag named "billing.disable_legacy" inverts logic when renamed to "billing.use_new" during rollout, causing off-by-one errors in agent-generated code.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>CI must be under 10 minutes wall time. If slower, parallelize tests, cache dependencies, and move slow integration suites to nightly jobs. Slow CI kills TBD adoption.</statement>
+        <rationale>Developers and agents disable hooks or skip CI on slow feedback loops. Sub-10-minute CI sustains the daily-merge cadence.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Auto-revert on red trunk: a PR that broke main is reverted by bot (git revert -m 1), not by humans. Fix forward in a fresh PR.</statement>
+        <rationale>Manual reverts are slow and error-prone. Bot-driven reverts keep trunk green and force authors to fix in a follow-up, maintaining the discipline.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Forbid direct push to main from anyone except automation; require linear history and signed commits.</statement>
+        <rationale>Direct pushes bypass CI and introduce merge commits. Requiring PRs ensures every change passes gates and is reviewable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run dark launches at less than 1% traffic for at least one diurnal cycle before scaling. Bug surfaces look identical at 0.01% and 1% but error budgets diverge.</statement>
+        <rationale>Low-traffic canary windows catch bugs safely. Scaling to 1% too quickly masks bugs that only appear at scale.</rationale>
+      </rule>
+    </section>
+
+    <section name="feature-flags">
+      <p>Feature flags hide incomplete features behind conditional logic so they can deploy to production without exposing them. Flags support global on/off, percentage rollout, and user-specific targeting.</p>
+
+      <example type="good" title="Feature flag hiding a new feature">
+        <code lang="python"><![CDATA[
+# Hide incomplete features behind flags
+# Deploy to production without exposing
+
+from feature_flags import is_enabled
+
+def get_user_profile(user_id: str):
+    profile = fetch_profile(user_id)
+
+    # New feature behind flag
+    if is_enabled("show_activity_feed", user_id):
+        profile["activity"] = fetch_activity(user_id)
+
+    return profile
+
+# Feature flag service
+class FeatureFlags:
+    def __init__(self, provider: FlagProvider):
+        self.provider = provider
+
+    def is_enabled(self, flag: str, user_id: str = None) -> bool:
+        """
+        Check if feature is enabled.
+        Supports:
+        - Global on/off
+        - Percentage rollout
+        - User-specific targeting
+        """
+        return self.provider.evaluate(flag, {"user_id": user_id})
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Pattern code is illustrative — is_enabled("name") assumes a real provider; agent will leave a stub and forget to wire it.</description>
+        <reason>Hard-coded True makes the flag always-on in CI and production. Use env vars (FLAGS_DEFAULT=off in CI) to enforce safety and grep for literal is_enabled(...True).</reason>
+      </antipattern>
+    </section>
+
+    <section name="branch-by-abstraction">
+      <p>Branch by Abstraction enables large refactoring without feature branches. Create an abstraction, implement both old and new behind it, and swap implementations via a flag. Once validated, delete the old code and collapse the abstraction.</p>
+
+      <example type="good" title="Branch by Abstraction for payment refactor">
+        <code lang="python"><![CDATA[
+# Large refactoring without feature branches
+# Create abstraction layer, swap implementation
+
+# Step 1: Create abstraction
+class PaymentProcessor(Protocol):
+    def process(self, amount: Decimal) -> PaymentResult: ...
+
+# Step 2: Old implementation
+class LegacyPaymentProcessor:
+    def process(self, amount: Decimal) -> PaymentResult:
+        return self.old_gateway.charge(amount)
+
+# Step 3: New implementation (behind flag)
+class NewPaymentProcessor:
+    def process(self, amount: Decimal) -> PaymentResult:
+        return self.stripe.create_charge(amount)
+
+# Step 4: Router (use flag to switch)
+def get_payment_processor() -> PaymentProcessor:
+    if feature_flags.is_enabled("new_payment"):
+        return NewPaymentProcessor()
+    return LegacyPaymentProcessor()
+
+# Step 5: After validation, remove old code
+# Delete LegacyPaymentProcessor
+# Remove feature flag
+# Direct instantiation of NewPaymentProcessor
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Branch-by-Abstraction snippet skips the cleanup phase ("delete LegacyPaymentProcessor"); agents drop the abstraction and never collapse it back, leaving permanent indirection.</description>
+        <reason>Permanent indirection wastes compute and confuses future agents. Always file a cleanup task before merging the new implementation.</reason>
+      </antipattern>
+    </section>
+
+    <section name="pre-commit-hooks">
+      <p>Pre-commit hooks catch issues before pushing to trunk, ensuring only quality code reaches the main branch:</p>
+
+      <example type="good" title="Pre-commit configuration example">
+        <code lang="yaml"><![CDATA[
+# .pre-commit-config.yaml
+# Ensure quality before pushing to trunk
+
+repos:
+  - repo: local
+    hooks:
+      - id: tests
+        name: Run tests
+        entry: pytest --tb=short -q
+        language: system
+        pass_filenames: false
+
+      - id: lint
+        name: Lint code
+        entry: ruff check .
+        language: system
+        pass_filenames: false
+
+      - id: type-check
+        name: Type check
+        entry: mypy src/
+        language: system
+        pass_filenames: false
+]]></code>
+      </example>
+
+      <note>Pre-commit example runs the full pytest on commit; on real repos this is too slow and devs disable the hook. Use pre-commit run --hook-stage properly or scope to changed files.</note>
+    </section>
+
+    <section name="ci-pipeline">
+      <p>Fast CI pipeline provides rapid feedback, essential for trunk-based development. CI should complete in under 10 minutes to sustain daily-merge cadence.</p>
+
+      <example type="good" title="CI pipeline for trunk-based development">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/trunk.yml
+name: Trunk CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest --cov=src --cov-fail-under=80
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Type check
+        run: mypy src/
+
+      # Fast feedback is crucial
+      # Total time should be < 10 minutes
+
+  deploy-to-staging:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to staging
+        run: ./deploy.sh staging
+
+  # Optional: auto-deploy to production
+  # deploy-to-production:
+  #   needs: deploy-to-staging
+  #   ...
+]]></code>
+      </example>
+
+      <note>CI snippet has no branch protection / required-status check details — agent forgets to set "Require status checks" on main.</note>
+    </section>
+
+    <section name="keystone-interface">
+      <p>Build a complete feature in parts, adding each piece on trunk behind a flag. Only enable the flag when all parts are ready. This pattern is also called "incomplete interface" or "dark protocol".</p>
+
+      <example type="good" title="Keystone Interface Pattern for activity API">
+        <code lang="python"><![CDATA[
+# Build complete feature in parts
+# Only enable when all parts ready
+
+# Part 1: Add endpoint (returns 404)
+@app.get("/api/v2/users/{user_id}/activity")
+async def get_activity(user_id: str):
+    raise HTTPException(status_code=404, detail="Coming soon")
+
+# Part 2: Add backend logic (not called yet)
+class ActivityService:
+    def get_recent_activity(self, user_id: str):
+        return self.repo.get_activity(user_id, limit=50)
+
+# Part 3: Connect (behind flag)
+@app.get("/api/v2/users/{user_id}/activity")
+async def get_activity(user_id: str):
+    if not feature_flags.is_enabled("activity_api"):
+        raise HTTPException(status_code=404)
+    return activity_service.get_recent_activity(user_id)
+
+# Part 4: Enable flag, monitor, remove flag
+]]></code>
+      </example>
+    </section>
+
+    <section name="dark-launching">
+      <p>Dark launching deploys the new implementation to production but does not expose it. Run it in parallel, compare results with the current implementation, and route traffic only when confident the new code is safe.</p>
+
+      <example type="good" title="Dark Launch with result comparison">
+        <code lang="python"><![CDATA[
+# Deploy to production, but don't expose
+# Test with production traffic
+
+async def process_order(order: Order):
+    # Current implementation
+    result = await current_processor.process(order)
+
+    # Dark launch: run new implementation in parallel
+    if feature_flags.is_enabled("dark_launch_new_processor"):
+        try:
+            new_result = await new_processor.process(order)
+            # Compare results, log differences
+            if result != new_result:
+                logger.warning(f"Result mismatch: {result} vs {new_result}")
+        except Exception as e:
+            logger.error(f"Dark launch error: {e}")
+
+    # Always return current result
+    return result
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Dark-launch comparison code re-raises exceptions into production paths.</description>
+        <reason>The dark path should never crash the current path. Wrap in try/except at all costs; the README example does, agents often skip it.</reason>
+      </antipattern>
+
+      <note>Dark-launch comparison only works for deterministic, equality-comparable outputs — float / list-order cases need a tolerant diff.</note>
+    </section>
+
+    <section name="common-challenges">
+      <p>Common challenges implementing trunk-based development and how to address them:</p>
+
+      <rule testable="true">
+        <statement>Trunk is Always Broken: Fix by gating merges on passing tests, adding pre-commit checks, speeding up CI to under 10 minutes, using feature flags for incomplete work, and keeping commits small.</statement>
+        <rationale>Fast feedback + safety gates + smaller changes = trust in trunk. Without these, developers work around TBD.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Need Long-Lived Branches: Fix by breaking features into smaller parts, implementing feature flags, using Branch by Abstraction, and reserving long-lived branches only for release branches or compliance gating.</statement>
+        <rationale>Long-lived branches are an anti-pattern in TBD. Chunking and flags eliminate the need for most branch lifetimes over 24 hours.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Code Review Bottleneck: Fix by keeping PRs under 200 lines, pairing instead of async review, enforcing a fast SLA (under 4 hours), and rotating reviewers to spread load.</statement>
+        <rationale>Small PRs are faster to review and merge. Async review is slow; live review (pair or sync check-in) unblocks faster.</rationale>
+      </rule>
+    </section>
+
+    <section name="integration-with-sdd">
+      <p>Trunk-based patterns integrate naturally with SDD (Semantic-Driven Development) task execution:</p>
+
+      <rule testable="true">
+        <statement>TBD + SDD Workflow: create task in .aidocs/backlog, move to .aidocs/todo, create short-lived branch (less than 1 day), implement with feature flags, open PR, fast review, merge to trunk, move task to .aidocs/done.</statement>
+        <rationale>Each SDD task = one trunk-merged increment. Feature flags control visibility; cleanup tasks surface flag removal.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Feature Flags for SDD: flag name matches task ID when possible, enable after thorough testing, remove after stability confirmed.</statement>
+        <rationale>Traceability: grep the codebase and find which task introduced each flag.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Continuous Delivery from Trunk: trunk push triggers CI, CI triggers staging deploy. Manual or approval-gated production deploy. Feature flags control visibility, not deployment. Task done = merged to trunk. Task deployed = feature flag enabled. Task complete = flag removed.</statement>
+        <rationale>Deployment and release are decoupled. Code deploys to production frequently; flags determine what end-users see.</rationale>
+      </rule>
+    </section>
+
+    <section name="tools-and-services">
+      <p>CLI tools for trunk-based development and flag management:</p>
+
+      <rule testable="false">
+        <statement>gh (GitHub CLI) — manage PRs and branch protection from CLI. https://cli.github.com</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>pre-commit — local commit-time gates. pip install pre-commit · https://pre-commit.com</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>lefthook — faster Go-based git hooks. https://github.com/evilmartians/lefthook</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>git-absorb — auto-fixup commits onto right base, keeps PRs clean. https://github.com/tummychow/git-absorb</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>gh-stack / git-spice / Graphite CLI — stacked PRs (small increments). https://graphite.dev/cli</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>act — run GitHub Actions locally before push. https://github.com/nektos/act</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>flagsmith-cli / unleash-edge / growthbook — manage flags from CLI. Per provider.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>LaunchDarkly — SaaS, industry default for flag infra; agents can flip flags via ldcli. REST + webhooks.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Flagsmith — SaaS / OSS, REST, OSS self-host option; cheaper.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Unleash — OSS, REST, self-hosted, Apache-2.0.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>GrowthBook — OSS / SaaS, REST, pairs flagging with experimentation.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Statsig — SaaS, REST, flags + experimentation; generous free tier.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>GitHub branch protection — SaaS, REST/GraphQL, required statuses + required reviews enforce TBD.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>ConfigCat — SaaS, REST, lightweight, simple.</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Split.io — SaaS, REST, enterprise flagging + ramps.</statement>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>The agent's job is to land small, safe diffs frequently. Use this reference when generating the wrapper code for a flagged change: read the parent feature's spec, write the smallest increment, gate it with a flag, ship via short-lived branch, and surface the cleanup task once the flag is rolled to 100%. Maintain a tracking artifact (.aidocs/feature-flags.md or similar) so flags don't outlive their reason.</p>
+
+      <rule testable="false">
+        <statement>Recommended subagents: faion-sdd-executor-agent (natural fit: it already enforces task lifecycle and quality gates aligned to "task done = merged to trunk"), faion-feature-executor (for the sequential task chain inside one feature, with each task = one trunk merge).</statement>
+      </rule>
+
+      <rule testable="false">
+        <statement>Prompt pattern: "Implement payment-rewrite increment 3/5 using Branch by Abstraction. Reference: solo/dev/automation-tooling/trunk-based-dev-patterns/README.md. Constraints: abstraction PaymentProcessor exists in src/billing/abc.py; add NewStripeProcessor; gate via flag 'billing.use_new_processor'; DO NOT delete LegacyPaymentProcessor yet; update CHANGELOG, open SDD subtask 'remove flag billing.use_new_processor'; branch: feat/billing-stripe-3; squash-merge same day."</statement>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common mistakes agents make when implementing trunk-based patterns:</p>
+
+      <rule testable="true">
+        <statement>LLMs forget to remove the abstraction layer after rollout; always file the "collapse abstraction" follow-up before merging the introduction.</statement>
+        <rationale>Without explicit cleanup, the temporary abstraction becomes permanent indirection.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Agent generates flag checks with hard-coded True defaults during local dev and forgets to revert — gate via env (FLAGS_DEFAULT=off in CI) and grep for literal is_enabled(... True).</statement>
+        <rationale>Hard-coded True makes the flag always-on in CI and production, defeating the purpose.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Dark-launch comparison code re-raises in production paths — wrap in try/except at all costs; the README example does, the agent often skips it.</statement>
+        <rationale>The dark path should never crash the current path.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Squash-merge loses commit-level granularity; agents writing 200-line PRs as one commit are fine, agents writing 2000-line PRs need a stacked-PR workflow instead.</statement>
+        <rationale>Squash commit enables size enforcement.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Agent will "fix" pre-commit failures by adding # type: ignore / # noqa instead of fixing the issue; require diff review before any new pragma.</statement>
+        <rationale>Pragmas suppress the tool; they do not fix the underlying issue.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Human-in-loop checkpoint: any flag flip from less than 50% to 100% on a billing/auth-critical path. Agent can stage the rollout but a human approves the final percent.</statement>
+        <rationale>Critical systems warrant extra caution.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Branch protection state drift: agent adding a job to CI may leave main not requiring it — verify via gh api repos/:owner/:repo/branches/main/protection after CI changes.</statement>
+        <rationale>Without branch protection verification, new CI checks become advisory, not mandatory.</rationale>
+      </rule>
+    </section>
+
+    <section name="examples-and-patterns">
+      <p>Real-world examples and common patterns for implementing trunk-based development:</p>
+
+      <example type="good" title="Basic implementation with configuration">
+        <code lang="python"><![CDATA[
+# Basic example implementation
+
+# Setup
+config = {
+    "option1": "value1",
+    "option2": "value2"
+}
+
+# Execute
+result = implement_feature(config)
+
+# Verify
+print(f"Result: {result}")
+]]></code>
+      </example>
+
+      <example type="good" title="Production-ready implementation with error handling">
+        <code lang="python"><![CDATA[
+# Production example
+
+import logging
+from typing import Dict, Optional
+
+logger = logging.getLogger(__name__)
+
+
+def production_implementation(config: Dict) -> Optional[Dict]:
+    """Production-ready implementation."""
+
+    # Validate input
+    if not validate_config(config):
+        logger.error("Invalid configuration")
+        return None
+
+    # Execute with retries
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            result = execute_feature(config)
+            logger.info(f"Success on attempt {attempt + 1}")
+            return result
+        except Exception as e:
+            logger.warning(f"Attempt {attempt + 1} failed: {e}")
+            if attempt == max_retries - 1:
+                logger.error("All attempts failed")
+                return None
+
+    return None
+
+
+def validate_config(config: Dict) -> bool:
+    """Validate configuration."""
+    required_keys = ["option1", "option2"]
+    return all(key in config for key in required_keys)
+
+
+def execute_feature(config: Dict) -> Dict:
+    """Execute the feature."""
+    return {"status": "success", "data": "result"}
+]]></code>
+      </example>
+
+      <example type="good" title="Integration with external services">
+        <code lang="python"><![CDATA[
+# Integration example
+
+class IntegratedImplementation:
+    """Integration with existing systems."""
+
+    def __init__(self, config: Dict, external_service):
+        self.config = config
+        self.external_service = external_service
+
+    def execute(self) -> Dict:
+        """Execute with external service integration."""
+
+        # Fetch data from external service
+        external_data = self.external_service.fetch_data()
+
+        # Process with this methodology
+        processed = self.process(external_data)
+
+        # Send results back
+        self.external_service.send_results(processed)
+
+        return {"status": "success", "items_processed": len(processed)}
+
+    def process(self, data: list) -> list:
+        """Process data using methodology."""
+        results = []
+        for item in data:
+            result = apply_methodology(item)
+            results.append(result)
+        return results
+]]></code>
+      </example>
+
+      <example type="good" title="Performance-optimized async implementation">
+        <code lang="python"><![CDATA[
+# Performance-optimized example
+
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from typing import List
+
+
+async def optimized_implementation(items: List[str]) -> List[Dict]:
+    """Async implementation for better performance."""
+
+    # Process items in parallel
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [
+            executor.submit(process_item, item)
+            for item in items
+        ]
+
+        # Gather results
+        results = [future.result() for future in futures]
+
+    return results
+
+
+def process_item(item: str) -> Dict:
+    """Process a single item."""
+    return {"item": item, "status": "processed"}
+]]></code>
+      </example>
+
+      <example type="good" title="Error recovery decorator">
+        <code lang="python"><![CDATA[
+# Common Pattern: Error Recovery
+
+def with_error_recovery(func):
+    """Decorator for automatic error recovery."""
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error: {e}, attempting recovery...")
+            return recover_from_error(e, *args, **kwargs)
+    return wrapper
+
+
+@with_error_recovery
+def operation():
+    # Operation that might fail
+    pass
+]]></code>
+      </example>
+
+      <example type="good" title="Caching pattern">
+        <code lang="python"><![CDATA[
+# Common Pattern: Caching
+
+from functools import lru_cache
+
+
+@lru_cache(maxsize=128)
+def cached_operation(param: str) -> str:
+    """Cached operation for frequently called functions."""
+    # Expensive operation
+    return result
+]]></code>
+      </example>
+
+      <example type="good" title="Monitoring pattern">
+        <code lang="python"><![CDATA[
+# Common Pattern: Monitoring
+
+from time import time
+
+
+def with_monitoring(func):
+    """Add monitoring to function."""
+    def wrapper(*args, **kwargs):
+        start = time()
+        try:
+            result = func(*args, **kwargs)
+            duration = time() - start
+            logger.info(f"{func.__name__} completed in {duration:.2f}s")
+            return result
+        except Exception as e:
+            duration = time() - start
+            logger.error(f"{func.__name__} failed after {duration:.2f}s: {e}")
+            raise
+    return wrapper
+]]></code>
+      </example>
+    </section>
+
+    <section name="templates-and-configuration">
+      <p>Templates and configuration examples for setting up trunk-based development patterns:</p>
+
+      <example type="good" title="Basic configuration template">
+        <code lang="yaml"><![CDATA[
+# Basic configuration template
+# Replace placeholders with your values
+
+name: "your-project-name"
+version: "1.0.0"
+
+# Configuration options
+options:
+  option1: value1
+  option2: value2
+]]></code>
+      </example>
+
+      <example type="good" title="Advanced configuration with environments">
+        <code lang="yaml"><![CDATA[
+# Advanced configuration with all options
+
+name: "your-project-name"
+version: "1.0.0"
+
+# Environment-specific settings
+environments:
+  development:
+    setting1: dev-value
+  production:
+    setting1: prod-value
+
+# Advanced options
+advanced:
+  caching: true
+  monitoring: true
+  optimization: true
+]]></code>
+      </example>
+
+      <example type="good" title="Feature implementation template">
+        <code lang="python"><![CDATA[
+# Full implementation with error handling and logging
+
+import logging
+from typing import Optional
+
+logger = logging.getLogger(__name__)
+
+
+class FeatureImplementation:
+    """Main implementation class."""
+
+    def __init__(self, config: dict):
+        self.config = config
+        self.state = None
+
+    def setup(self) -> bool:
+        """Initialize resources."""
+        try:
+            logger.info("Setting up...")
+            # Setup logic here
+            return True
+        except Exception as e:
+            logger.error(f"Setup failed: {e}")
+            return False
+
+    def execute(self) -> Optional[dict]:
+        """Execute main functionality."""
+        try:
+            logger.info("Executing...")
+            # Execution logic here
+            result = {"status": "success"}
+            return result
+        except Exception as e:
+            logger.error(f"Execution failed: {e}")
+            return None
+
+    def cleanup(self):
+        """Clean up resources."""
+        try:
+            logger.info("Cleaning up...")
+            # Cleanup logic here
+        except Exception as e:
+            logger.error(f"Cleanup failed: {e}")
+
+
+# Usage
+impl = FeatureImplementation(config)
+if impl.setup():
+    result = impl.execute()
+    impl.cleanup()
+]]></code>
+      </example>
+
+      <example type="good" title="Unit test template">
+        <code lang="python"><![CDATA[
+# Unit test template
+
+import pytest
+
+
+class TestFeature:
+    """Test suite for feature."""
+
+    def test_basic_functionality(self):
+        """Test basic use case."""
+        result = your_function()
+        assert result == expected_value
+
+    def test_edge_case(self):
+        """Test edge case."""
+        result = your_function(edge_case_input)
+        assert result is not None
+
+    def test_error_handling(self):
+        """Test error handling."""
+        with pytest.raises(ValueError):
+            your_function(invalid_input)
+]]></code>
+      </example>
+    </section>
+
+    <reference path="templates/">Templates and sample configurations for feature flags, branch-by-abstraction, and CI pipelines.</reference>
+
+    <checklist>
+      <check>Review current practices and identify gaps.</check>
+      <check>Assess team readiness and define success metrics.</check>
+      <check>Train team members on TBD practices and tooling.</check>
+      <check>Update documentation and configure tools.</check>
+      <check>Set up automation and communicate changes.</check>
+      <check>Start with a pilot project and apply the methodology.</check>
+      <check>Monitor adoption and gather feedback.</check>
+      <check>Review metrics and identify bottlenecks.</check>
+      <check>Optimize workflows and update best practices.</check>
+      <check>Review process regularly and train new team members.</check>
+      <check>For the first few weeks, monitor flag proliferation — enforce a rule that every flag has a removal task.</check>
+      <check>Train team (and agents) on the gotchas: cleanup after rollout, no hard-coded True, dark-launch safety, branch protection drift.</check>
+      <check>Implement feature flag tracking to ensure removal of completed flags.</check>
+      <check>Document branch protection rules and require code review before merge.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="trunk-based-dev-principles"/>
+      <ref slug="feature-flags"/>
+      <link href="https://trunkbaseddevelopment.com/">Trunk Based Development</link>
+      <link href="https://martinfowler.com/articles/feature-toggles.html">Feature Toggles - Martin Fowler</link>
+      <link href="https://martinfowler.com/bliki/BranchByAbstraction.html">Branch by Abstraction</link>
+      <link href="https://martinfowler.com/bliki/DarkLaunching.html">Dark Launching</link>
+      <link href="https://itrevolution.com/accelerate-book/">Accelerate: The Science of Lean Software and DevOps</link>
+      <link href="https://graphite.dev/blog/stacked-prs-for-trunk-based-development">Stacked PRs for Trunk-Based Development</link>
+    </see-also>
+  </content>
+</methodology>

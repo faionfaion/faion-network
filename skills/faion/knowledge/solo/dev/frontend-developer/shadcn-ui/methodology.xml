@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="shadcn-ui">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>frontend-developer</domain>
+    <summary>Copy-in component system: primitives copied to components/ui/ via CLI, built on Radix headless primitives, styled with Tailwind using CSS variable tokens for accessibility and dark mode support.</summary>
+    <tags>
+      <tag>shadcn-ui</tag>
+      <tag>components</tag>
+      <tag>tailwind</tag>
+      <tag>radix</tag>
+      <tag>accessibility</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>shadcn/ui</title>
+
+    <summary>shadcn/ui is a copy-in component system: primitives are copied to components/ui/ via the CLI (npx shadcn@latest add), not installed as an npm dependency. Components are built on Radix headless primitives for accessibility, styled with Tailwind using CSS variable tokens (HSL triplets, not hex) in globals.css, and composed into feature components under components/&lt;feature&gt;/. Never edit components/ui/ after the initial add — treat it as vendored.</summary>
+
+    <why>
+      <p>Copy-in gives full ownership without an npm upgrade path, while Radix wires all ARIA and keyboard behavior automatically. CSS variable theming (--primary: 221 83% 53%) enables dark mode and brand switching in one file. The cva() + cn() pattern provides type-safe variant composition without runtime overhead.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>React app on Tailwind needing a stylable, accessible component baseline you can fork freely.</item>
+        <item>Greenfield SaaS or dashboards where you control design tokens via CSS variables.</item>
+        <item>Design system in flux: copy-in lets each project diverge without npm dep drift.</item>
+        <item>You want Radix primitives' a11y wiring without committing to a closed component library.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Non-React stacks (Vue, Svelte, vanilla) — community ports lack agent-friendly tooling.</item>
+        <item>Need vendor-supported components with SLAs — use MUI, Mantine, or Ant Design.</item>
+        <item>Strict design system with zero tolerance for upstream drift; each copy creates a fork.</item>
+        <item>Extreme bundle-size constraints; CVA + tailwind-merge add measurable overhead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="vendored-ui-directory">
+      <rule>
+        <statement>Treat components/ui/ as vendored. Only add or update files there via npx shadcn@latest add. Never edit ui/ files directly. Wrap, do not fork.</statement>
+        <rationale>The shadcn CLI may overwrite ui/ files on the next add --overwrite. Direct edits are silently lost. Customizations belong in feature components that compose the primitives.</rationale>
+      </rule>
+    </section>
+
+    <section name="css-variable-tokens">
+      <rule>
+        <statement>Use HSL channel triplets for all theme tokens in globals.css (e.g. --primary: 221 83% 53%). Never write hex, rgb(), or hsl() in globals.css token values.</statement>
+        <rationale>shadcn's color system uses bare HSL triplets so Tailwind can apply opacity modifiers (bg-primary/90). Hex or rgb() values break the alpha helper syntax.</rationale>
+      </rule>
+    </section>
+
+    <section name="variants-via-cva">
+      <rule>
+        <statement>All visual variants must be defined with cva() from class-variance-authority. Never pass long Tailwind strings as component props or build them with template literals.</statement>
+        <rationale>cva() produces a type-safe variant API, prevents class conflicts, and integrates with Storybook for automatic variant matrix stories. Template literal class names are purged by JIT.</rationale>
+      </rule>
+    </section>
+
+    <section name="cn-for-class-merging">
+      <rule>
+        <statement>Import cn from lib/utils for all className construction. Never use string concatenation or bare clsx without tailwind-merge.</statement>
+        <rationale>Tailwind class conflicts (e.g. p-2 p-4) silently resolve to whichever declaration wins cascade. tailwind-merge resolves conflicts explicitly; bare concatenation does not.</rationale>
+      </rule>
+    </section>
+
+    <section name="feature-component-prefixing">
+      <rule>
+        <statement>Place feature-specific components under components/[feature]/, never in components/ui/. Name them with the feature prefix: billing/PlanCard.tsx, not ui/PlanCard.tsx.</statement>
+        <rationale>Mixing feature components into ui/ creates merge conflicts on every shadcn add run and blurs the vendored/owned boundary that the CI guard enforces.</rationale>
+      </rule>
+    </section>
+
+    <section name="tsconfig-paths">
+      <rule>
+        <statement>Ensure components.json aliases (@/components, @/lib/utils) match tsconfig.json path mappings. Run this sync check after any shadcn init or CLI upgrade.</statement>
+        <rationale>CLI-generated imports use path aliases. Mismatched tsconfig paths produce silent import failures — TypeScript resolves the type but the bundler cannot find the file.</rationale>
+      </rule>
+    </section>
+
+    <section name="server-component-boundary">
+      <rule>
+        <statement>Check for "use client" at the top of every shadcn component before using it in a Next.js App Router RSC tree. Do not add shadcn components to RSC files without this check.</statement>
+        <rationale>Most shadcn components use React hooks and require the client boundary. Missing "use client" produces cryptic ReactCurrentDispatcher hydration errors in Next.js App Router.</rationale>
+      </rule>
+    </section>
+
+    <section name="button-with-cva">
+      <example type="good" title="Button with cva()">
+        <code lang="typescript"><![CDATA[
+// components/ui/button.tsx
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center rounded-md font-medium transition-colors " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+  "disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3",
+        lg: "h-11 rounded-md px-8",
+        icon: "h-10 w-10",
+      },
+    },
+    defaultVariants: { variant: "default", size: "default" },
+  }
+)
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, ...props }, ref) => (
+    <button
+      className={cn(buttonVariants({ variant, size, className }))}
+      ref={ref}
+      {...props}
+    />
+  )
+)
+Button.displayName = "Button"
+
+export { Button, buttonVariants }
+]]></code>
+      </example>
+    </section>
+
+    <section name="compound-card">
+      <example type="good" title="Compound Card">
+        <code lang="typescript"><![CDATA[
+// Compound usage — feature component composes primitives
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+
+export function PlanCard({ plan }: { plan: Plan }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{plan.name}</CardTitle>
+        <CardDescription>{plan.description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-3xl font-bold">${plan.price}<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
+      </CardContent>
+      <CardFooter>
+        <Button className="w-full">Get started</Button>
+      </CardFooter>
+    </Card>
+  )
+}
+// Note: PlanCard lives in components/billing/, not components/ui/
+]]></code>
+      </example>
+    </section>
+
+    <section name="dark-mode-globals-css">
+      <example type="good" title="Dark Mode globals.css">
+        <code lang="css"><![CDATA[
+/* globals.css — HSL triplets, no hex, no hsl() wrapper */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --destructive: 0 62.8% 30.6%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="cn-helper">
+      <example type="good" title="cn() Helper">
+        <code lang="typescript"><![CDATA[
+// lib/utils.ts
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>Agents rewrite components/ui/button.tsx to "improve" it — adding features, adjusting styles.</description>
+        <reason>ui/ is vendored. Edits are overwritten on the next shadcn add --overwrite. Lock the directory in CODEOWNERS and add a CI guard that rejects unallowlisted edits to ui/.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents write hex values into globals.css (--primary: #2563eb) instead of HSL triplets.</description>
+        <reason>Tailwind's opacity modifier syntax (bg-primary/90) requires bare HSL triplets. Hex values break alpha helpers silently — the color renders but transparency does not work.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents add shadcn components to Next.js RSC files without checking for "use client".</description>
+        <reason>Most shadcn components use React hooks and require a client boundary. Missing "use client" causes a hydration error that reports as an unrelated ReactCurrentDispatcher error.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents use the deprecated shadcn-ui package name (npx shadcn-ui@latest) instead of shadcn.</description>
+        <reason>The CLI was renamed to shadcn. Training data before the rename uses the old name. Pin the current CLI name in any prompt or scaffold script agents read.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/globals.css" purpose="CSS variable theme block for light and dark mode (HSL triplets)."/>
+      <template path="templates/cn.ts" purpose="Canonical cn() helper using clsx + tailwind-merge."/>
+      <template path="templates/check-shadcn-pristine.sh" purpose="CI guard: fail if components/ui/* was hand-edited outside the allowlist."/>
+    </templates>
+  </content>
+</methodology>

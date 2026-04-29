@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="storybook-setup">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>frontend-developer</domain>
+    <summary>Storybook 8 with CSF 3, addon-a11y, addon-interactions, and Chromatic visual regression. Stories co-located with components, test-runner runs headless Playwright in CI.</summary>
+    <tags>
+      <tag>storybook</tag>
+      <tag>csf3</tag>
+      <tag>component-testing</tag>
+      <tag>visual-regression</tag>
+      <tag>accessibility</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Storybook Setup</title>
+
+    <summary>Storybook 8 with CSF 3 (Meta&lt;typeof Component&gt;, StoryObj, tags: ['autodocs']) wired to @storybook/addon-a11y, @storybook/addon-interactions, and Chromatic for visual regression. Stories co-located with components. @storybook/test-runner runs headless Playwright over all stories in CI. Every story must render without console errors before merge.</summary>
+
+    <why>
+      <p>Storybook gives agents and designers a sandboxed component catalog with an args matrix for every variant. Combined with Chromatic visual snapshots and addon-a11y, it catches regressions that unit tests miss. The test-runner oracle makes CI pass/fail deterministic — without it, broken stories only surface during manual review.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Initial Storybook 8.x install on Vite/Webpack/Next.js project.</item>
+        <item>Wiring .storybook/main.ts and .storybook/preview.ts for theming, viewports, backgrounds, a11y addon.</item>
+        <item>Adding visual, a11y, and interaction testing (Chromatic / test-runner / addon-a11y).</item>
+        <item>Setting up CSF 3 stories and tags: ['autodocs'] for a typed component library.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Project ships only one or two pages — Ladle boots faster with less config.</item>
+        <item>No design system or shared component library yet — Storybook's value lives in component reuse.</item>
+        <item>Team uses playground/-style Next.js dev pages and would duplicate that effort.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="main-ts-configuration">
+      <rule>
+        <statement>Use @storybook/react-vite framework adapter for Vite projects. Configure reactDocgen with a propFilter to exclude node_modules props from autodocs.</statement>
+        <rationale>Without propFilter, every inherited HTMLButtonAttributes prop appears in the controls panel, burying the useful component props.</rationale>
+      </rule>
+      <example type="good" title="main.ts with essentials and a11y">
+        <code lang="typescript"><![CDATA[
+// .storybook/main.ts
+import type { StorybookConfig } from '@storybook/react-vite';
+const config: StorybookConfig = {
+  stories: ['../src/**/*.mdx', '../src/**/*.stories.@(ts|tsx)'],
+  addons: [
+    '@storybook/addon-essentials',
+    '@storybook/addon-interactions',
+    '@storybook/addon-a11y',
+    '@chromatic-com/storybook',
+  ],
+  framework: { name: '@storybook/react-vite', options: {} },
+  docs: { autodocs: 'tag' },
+  staticDirs: ['../public'],
+  typescript: {
+    reactDocgen: 'react-docgen-typescript',
+    reactDocgenTypescriptOptions: {
+      shouldExtractLiteralValuesFromEnum: true,
+      propFilter: (prop) =>
+        prop.parent ? !prop.parent.fileName.includes('node_modules') : true,
+    },
+  },
+};
+export default config;
+]]></code>
+      </example>
+      <reference path="templates/main.ts">Full main.ts with all addons</reference>
+    </section>
+
+    <section name="preview-ts-configuration">
+      <rule>
+        <statement>Import globals.css in preview.ts for Tailwind. Define theme globalType with toolbar. Apply padding decorator. Add background and viewport parameters for all stories.</statement>
+        <rationale>Missing globals.css import is the number-one cause of "Tailwind classes don't work in Storybook". The theme globalType without a consuming decorator has no effect.</rationale>
+      </rule>
+      <reference path="templates/preview.ts">Full preview.ts with theme, backgrounds, viewports</reference>
+    </section>
+
+    <section name="csf3-shape">
+      <rule>
+        <statement>Use satisfies Meta&lt;typeof Component&gt; for the meta object and StoryObj&lt;typeof meta&gt; for stories. Always add tags: ['autodocs'] to generate a docs page.</statement>
+        <rationale>satisfies provides stronger type inference than a direct type annotation; without tags: ['autodocs'] no documentation page appears in Storybook 8.</rationale>
+      </rule>
+      <example type="good" title="CSF 3 story with variants">
+        <code lang="tsx"><![CDATA[
+import type { Meta, StoryObj } from '@storybook/react';
+import { fn } from '@storybook/test';
+import { Button } from './Button';
+
+const meta = {
+  title: 'Primitives/Button',
+  component: Button,
+  tags: ['autodocs'],
+  argTypes: {
+    variant: { control: 'select', options: ['primary', 'secondary', 'outline', 'ghost'] },
+    size:    { control: 'radio',  options: ['sm', 'md', 'lg'] },
+    disabled: { control: 'boolean' },
+  },
+  args: { onClick: fn() },
+} satisfies Meta<typeof Button>;
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Primary: Story = { args: { children: 'Primary', variant: 'primary' } };
+]]></code>
+      </example>
+    </section>
+
+    <section name="play-functions">
+      <rule>
+        <statement>Always await every userEvent call inside a play function. Use step() for multi-step interactions to produce readable test reports.</statement>
+        <rationale>userEvent is async; without await the DOM update has not happened when expect() runs, producing flaky assertion failures.</rationale>
+      </rule>
+      <example type="good" title="Play function with userEvent and assertions">
+        <code lang="tsx"><![CDATA[
+export const FormSubmission: Story = {
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement);
+    await step('Fill fields', async () => {
+      await userEvent.type(canvas.getByLabelText(/name/i), 'Alice');
+    });
+    await step('Submit', async () => {
+      await userEvent.click(canvas.getByRole('button', { name: /submit/i }));
+    });
+    await expect(canvas.getByText(/success/i)).toBeInTheDocument();
+  },
+};
+]]></code>
+      </example>
+    </section>
+
+    <section name="test-runner-ci-setup">
+      <rule>
+        <statement>Run @storybook/test-runner after storybook build in CI. Build the static export first; do not run test-runner against the dev server.</statement>
+        <rationale>The dev server is not deterministic (HMR, timing); the static build is reproducible and correctly represents what Chromatic will snapshot.</rationale>
+      </rule>
+      <reference path="templates/storybook-ci.yml">GitHub Actions workflow for build + test-runner</reference>
+    </section>
+
+    <section name="chromatic-visual-regression">
+      <rule>
+        <statement>Run Chromatic on every PR. Treat baseline acceptance as a human step — auto-accept only on the main branch merge.</statement>
+        <rationale>Auto-accepting on PRs defeats the visual review gate; regressions accumulate silently until a release reveals them.</rationale>
+      </rule>
+    </section>
+
+    <section name="storybook-8-gotchas">
+      <rule>
+        <statement>Replace argTypesRegex action pattern with @storybook/addon-actions decorators. Do not copy Storybook 6.x action config.</statement>
+        <rationale>argTypesRegex for auto-actions is deprecated in Storybook 8 and produces console warnings that pollute CI logs.</rationale>
+      </rule>
+      <antipattern>
+        <description>Using @storybook/react framework adapter for Next.js App Router instead of @storybook/nextjs.</description>
+        <reason>Without @storybook/nextjs, useRouter returns null in stories, causing every story that imports a link component to throw.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Adding duplicate addons entries in main.ts from multi-pass agent edits.</description>
+        <reason>Duplicate addon entries cause addon panels to be empty; Storybook starts but the controls/a11y/actions tabs are invisible.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>First action: run npx storybook@latest init in the target repo and let it auto-detect the framework. Then have a subagent fill main.ts, preview.ts, and a starter Button.stories.tsx from the README skeleton. Add @storybook/addon-a11y and Chromatic in a second pass — small commits avoid blowing up the initial setup. Use a Playwright + @storybook/test-runner smoke test as the oracle ("storybook builds and every story renders without console errors").</p>
+    </section>
+
+    <section name="limitations">
+      <p>Storybook 8 dropped Webpack 4 and Babel-only setups; legacy Create React App projects need a Vite migration first. react-docgen-typescript chokes on generic components (&lt;T&gt;) and emits empty prop tables in autodocs — needs propFilter + sometimes a manual argTypes block. Tailwind v4 + Storybook 8 needs the @tailwindcss/postcss plugin loaded via viteFinal / webpackFinal; the init command does not configure it. Theme switching via globalTypes.toolbar only flips a CSS class — agents often forget to actually consume it in decorators and the toggle does nothing. Storybook 8 changed the argTypesRegex action behavior; agents copying older snippets get console warnings on startup.</p>
+    </section>
+
+    <section name="best-practices">
+      <p>Pick CSF 3 (Meta&lt;typeof Component&gt;, StoryObj) for new stories; CSF 2 still works but autodocs and controls are weaker. Co-locate stories with components (Button.tsx + Button.stories.tsx) — ergonomics over global stories/ folder. Keep preview.ts small: globals (theme, locale), decorators, parameters. Avoid app-wide providers unless strictly needed. Use argTypes + parameters: { controls: { exclude: [...] } } to hide noise from autodocs; default tables are full of HTML attribute leaks. Run @storybook/test-runner in CI on every PR — catches "story renders but throws" regressions cheaply. Treat the deployed Storybook URL as a design-review artifact for non-engineers; commit messages should reference story IDs.</p>
+    </section>
+
+    <section name="cli-tools-and-services">
+      <p>npx storybook@latest init: Bootstrap with framework auto-detect. npx storybook@latest upgrade: Major-version upgrade with codemods. npx storybook@latest doctor: Diagnose plugin/version mismatches. pnpm dlx @storybook/test-runner: Headless Playwright runner over all stories. npx chromatic --project-token=$T: Visual review + Storybook hosting. pnpm dlx storybook build: Static export for hosting (storybook-static/). Chromatic (SaaS): Default for visual testing; agents read PR-status checks and capture baselines. Storybook hosting on faion-net: storybook-static/ rsynced to storybook.faion.net. Vercel/Netlify: Drop storybook-static for previews. Percy: Alternative to Chromatic; same agent flow. Lost Pixel: Self-hosted visual regression; agents can drive via CLI.</p>
+    </section>
+
+    <section name="references">
+      <see-also>
+        <link href="https://storybook.js.org/docs"/>
+        <link href="https://storybook.js.org/docs/api/csf"/>
+        <link href="https://storybook.js.org/addons/@storybook/addon-a11y"/>
+        <link href="https://storybook.js.org/docs/writing-tests/test-runner"/>
+        <link href="https://www.chromatic.com/docs/"/>
+      </see-also>
+    </section>
+
+    <templates>
+      <template path="templates/main.ts" purpose="Storybook main.ts with react-vite, essentials, interactions, a11y, Chromatic addon wired."/>
+      <template path="templates/preview.ts" purpose="preview.ts with theme globalType, background/viewport parameters, padding decorator."/>
+      <template path="templates/storybook-ci.yml" purpose="GitHub Actions workflow: build Storybook + run test-runner headless."/>
+    </templates>
+  </content>
+</methodology>
