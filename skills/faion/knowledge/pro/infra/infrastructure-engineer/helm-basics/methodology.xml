@@ -1,0 +1,747 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="helm-basics">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Kubernetes package manager with templating, versioning, and dependency management for consistent multi-environment deployments.</summary>
+    <tags>
+      <tag>helm</tag>
+      <tag>kubernetes</tag>
+      <tag>package-manager</tag>
+      <tag>templating</tag>
+      <tag>gitops</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Helm Basics</title>
+    <summary>Helm is the package manager for Kubernetes, enabling templating, versioning, and sharing of Kubernetes manifests. Charts bundle related resources into reusable, configurable packages with dependency management and release lifecycle control. Master chart structure (Chart.yaml, values.yaml, templates/), template syntax, and release management commands (install, upgrade, rollback) to deploy applications consistently across environments.</summary>
+    <why>
+      <p>Kubernetes manifests are verbose and repetitive across environments. Copying YAML files and manually editing values for dev/staging/prod creates inconsistencies and error-prone processes. Helm templating generates manifests from a single chart using environment-specific values files, eliminating duplication. Dependency management allows composing complex applications (e.g., app + PostgreSQL + Redis) into a single logical deployment unit with version-pinned dependencies.</p>
+      <p>Release lifecycle management (install, upgrade, rollback, uninstall) provides atomic operations with automatic rollback on failure (--atomic), enabling safe deployments. Release history tracks every version deployed, allowing quick rollback if an upgrade introduces a bug. Public chart repositories (Bitnami, Jetstack, etc.) provide pre-built charts for common services, reducing time-to-deploy from weeks (manual YAML) to minutes (helm install).</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Deploying complex applications with many Kubernetes resources (Deployment, Service, Ingress, ConfigMap, Secret, HPA, PDB).</item>
+        <item>Managing multiple environments (dev, staging, prod) with different configurations without duplicating manifests.</item>
+        <item>Creating reusable deployment packages for internal team use or public distribution.</item>
+        <item>Implementing GitOps workflows where Helm releases are defined in Git and synced by controllers (ArgoCD, Flux).</item>
+        <item>Standardizing Kubernetes deployments across organization to enforce naming conventions, labels, and security policies.</item>
+        <item>Sharing applications across teams or organizations (e.g., publishing to Artifact Hub or private registries).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-manifest deployments (one Deployment, one Service) — raw kubectl apply is simpler and adds no overhead.</item>
+        <item>Highly dynamic manifests requiring logic beyond simple templating — use Kustomize or custom controllers for complex transformations.</item>
+        <item>Secrets management — Helm templates should not store encrypted secrets; use external secret managers (Sealed Secrets, Vault, AWS Secrets Manager) with templated references.</item>
+        <item>Cluster provisioning (cluster creation, node pools, RBAC setup) — use Terraform or cloud-specific tools; Helm manages applications post-provisioning.</item>
+      </list>
+    </when-not-to-use>
+    <section name="chart-structure">
+      <p>A Helm chart is a directory containing Chart.yaml (metadata), values.yaml (default configuration), and templates/ (manifest templates). Understanding folder structure and file purposes is foundational to creating and modifying charts.</p>
+      <rule testable="true">
+        <statement>Every Helm chart MUST contain Chart.yaml (name, version, apiVersion), values.yaml (default configuration), and templates/ directory with at least one manifest. Chart.yaml MUST specify semantic version (MAJOR.MINOR.PATCH). Templates MUST follow naming conventions: resource.yaml (e.g., deployment.yaml, service.yaml), _helpers.tpl (template functions), NOTES.txt (post-install instructions). Resource metadata MUST use .Release.Name and .Chart.Name in object names to avoid conflicts when multiple releases coexist. Charts SHOULD NOT include values.lock files in Git (auto-generated per environment).</statement>
+        <rationale>Chart.yaml specifies how Helm manages the chart: apiVersion: v2 (required for Helm 3), name and version for unique identification and dependency resolution. values.yaml provides sensible defaults so users can helm install without complex value overrides. Consistent naming (resource.yaml, not resources.yaml or app-deployment.yaml) enables other developers to locate resources quickly. Using .Release.Name and .Chart.Name ensures the same chart deployed twice with different names creates distinct, non-conflicting resources. values.lock tracks exact dependency versions across runs; ignore in Git to avoid merge conflicts.</rationale>
+      </rule>
+      <example type="good" title="Minimal chart structure">
+        <code lang="text"><![CDATA[
+mychart/
+├── Chart.yaml          # metadata: name, version, apiVersion: v2
+├── values.yaml         # default config: image, replicas, port
+├── templates/          # manifest templates
+│   ├── NOTES.txt       # post-install instructions
+│   ├── _helpers.tpl    # template functions
+│   ├── deployment.yaml # app deployment
+│   └── service.yaml    # service exposure
+]]></code>
+        <note>helm create mychart generates this structure automatically.</note>
+      </example>
+      <example type="bad" title="Disorganized chart">
+        <code lang="text"><![CDATA[
+messy-chart/
+├── config.yaml              # wrong name; should be values.yaml
+├── templates/
+│   ├── app.yaml             # ambiguous; use deployment.yaml
+│   ├── net.yaml             # ambiguous; use service.yaml
+│   └── helpers.yaml         # wrong extension; use _helpers.tpl
+├── README.md                # belongs in root, not Chart.yaml field
+]]></code>
+        <note>Follow Helm conventions: values.yaml, resource-type.yaml, _helpers.tpl.</note>
+      </example>
+      <antipattern>
+        <description>Storing environment-specific values (prod image tags, prod secrets) in values.yaml instead of separate values files.</description>
+        <reason>values.yaml should contain defaults suitable for development. Environment-specific overrides belong in separate files (values-prod.yaml, values-staging.yaml) passed at install time (helm install -f values-prod.yaml). This keeps the chart reusable and prevents accidental prod secrets in Git.</reason>
+      </antipattern>
+    </section>
+    <section name="templating-syntax">
+      <p>Helm templates use Go templating syntax with custom functions to generate Kubernetes manifests. Key constructs: variables ({{ .Values.replicas }}), conditionals ({{ if .Values.enabled }}), loops ({{ range }}, {{ .Items }}), and built-in functions (include, default, required, quote).</p>
+      <rule testable="true">
+        <statement>Templates MUST use .Values namespace to reference values.yaml (e.g., {{ .Values.image.repository }}). Conditionals MUST check if values exist and are non-empty before using them ({{ if .Values.ingress.enabled }}). Template functions MUST be prefixed with underscore if helper-only (_helpers.tpl defines named templates; non-output). Required values MUST be validated with {{ required "message" .Values.required_field }} to provide clear error messages when values are missing. Loops MUST use range with proper indentation control ({{ range .Values.labels | indent 2 }}) to maintain YAML structure.</statement>
+        <rationale>.Values namespace isolates user-provided configuration from Helm built-ins ({{ .Release.Name }}, {{ .Chart.Name }}, {{ .Namespace }}), preventing accidental variable shadowing. Conditionals without existence checks fail if user omits optional values (e.g., ingress might be disabled in dev). require() gives explicit error "database.host is required" vs vague parse error. Indentation (| indent N) preserves YAML structure; incorrect indentation breaks manifests silently.</rationale>
+      </rule>
+      <example type="good" title="Safe template with existence checks">
+        <code lang="yaml"><![CDATA[
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "myapp.fullname" . }}
+spec:
+  replicas: {{ .Values.replicaCount | default 1 }}
+  template:
+    spec:
+      containers:
+        - name: app
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+          {{- if .Values.resources }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- end }}
+          {{- if .Values.env }}
+          env:
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
+]]></code>
+        <note>{{ toYaml | nindent N }} preserves YAML structure when outputting objects. {{ $key, $value := .Values.env }} iterates key-value pairs. | default value provides fallback if key is missing.</note>
+      </example>
+      <example type="bad" title="Unsafe template without checks">
+        <code lang="yaml"><![CDATA[
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}  # fails if .Values.name is missing
+spec:
+  replicas: {{ .Values.replicaCount }}  # fails if replicaCount not in values
+  template:
+    spec:
+      containers:
+        - image: {{ .Values.image }}:{{ .Values.tag }}  # crashes on missing tag
+          resources: {{ .Values.resources }}  # outputs object directly; breaks YAML
+]]></code>
+        <note>Add | default fallback and proper YAML escaping (toYaml, nindent).</note>
+      </example>
+      <antipattern>
+        <description>Over-templatizing values with deep conditional nesting to support "every possible configuration".</description>
+        <reason>Too many conditionals (if ingress enabled, if tls enabled, if cert-manager enabled, if monitoring enabled) create exponential complexity. Helm philosophy: "One chart per application." If your chart supports two completely different architectures (monolith vs microservices), split into separate charts or use library charts. Templatize real current problems, not hypothetical future scenarios (YAGNI principle).</reason>
+      </antipattern>
+    </section>
+    <section name="values-management">
+      <p>Values files (YAML) provide configuration to charts. values.yaml defines defaults; environment-specific files override them at deployment time. Values can be simple (strings, numbers), complex (objects, arrays), or referenced from external sources (--set, Secrets, ConfigMaps).</p>
+      <rule testable="true">
+        <statement>values.yaml MUST group related configuration hierarchically (image.repository, image.tag, not imageRepository, imageTag). Values MUST be documented with comments explaining purpose and valid range. Environment-specific values MUST be in separate files (values-prod.yaml, values-staging.yaml) and NOT stored in version control if they contain secrets. The values.schema.json file (optional but recommended) MUST define structure, types, and required fields for IDE validation and error messages. Sensitive data (database passwords, API keys) MUST NOT appear in values files; use external secret managers with templated references instead (e.g., externalSecrets.enabled: true).</statement>
+        <rationale>Hierarchical values (image.repository vs imageRepository) prevent naming collisions and group related config logically. Comments document intent ("enable autoscaling based on CPU"; not just "autoscaling"). Separate values files per environment prevent prod secrets from leaking into Git. values.schema.json enables VS Code validation and prevents typos (e.g., replciCount instead of replicaCount). Secrets in version control are a security liability; external managers (Sealed Secrets, Vault, AWS Secrets Manager) rotate keys independently of Helm releases.</rationale>
+      </rule>
+      <example type="good" title="Well-structured values.yaml">
+        <code lang="yaml"><![CDATA[
+# Default values for myapp
+# This is a YAML-formatted file declaring variables to be passed into templates
+
+replicaCount: 1
+
+image:
+  # Docker image repository (e.g., myregistry.io/myapp)
+  repository: myapp
+  # Tag defaults to Chart.AppVersion if not specified
+  tag: "1.0.0"
+  # Image pull policy: IfNotPresent, Always
+  pullPolicy: IfNotPresent
+
+service:
+  # Service type: ClusterIP, LoadBalancer, NodePort
+  type: ClusterIP
+  # Port exposed by service
+  port: 8080
+  # Container port
+  containerPort: 8080
+
+# Environment-specific overrides in values-prod.yaml:
+# replicaCount: 3
+# image.tag: "1.0.0-prod"
+]]></code>
+        <note>Defaults should be suitable for dev/test. Use -f values-prod.yaml to override at install.</note>
+      </example>
+      <example type="bad" title="Flat, undocumented values">
+        <code lang="yaml"><![CDATA[
+# No hierarchical organization
+rep: 1
+img: myapp
+tag: "1.0.0"
+svc_type: ClusterIP
+svc_port: 8080
+container_port: 8080
+prod_db_pass: "secretpassword"  # NEVER store secrets in values!
+]]></code>
+        <note>Organize hierarchically (image.repository, image.tag, not img/tag). Use external secret managers.</note>
+      </example>
+      <antipattern>
+        <description>Creating overly-parameterized values.yaml to support multiple completely different applications or topologies.</description>
+        <reason>If you have a single values.yaml that deploys either monolith or microservices (deeply nested conditionals), the chart is too broad in scope. Create separate charts (myapp-monolith, myapp-microservices) or use library charts to share common patterns. Helm principle: one chart per logical application.</reason>
+      </antipattern>
+    </section>
+    <section name="release-management">
+      <p>Release management commands (install, upgrade, rollback, uninstall) control the lifecycle of deployed charts. Atomic upgrades automatically rollback on failure. Release history tracks all versions, enabling instant rollback to previous state.</p>
+      <rule testable="true">
+        <statement>Release installation MUST use helm install (initial deploy) or helm upgrade --install (idempotent). All production upgrades MUST use --atomic flag to enable automatic rollback on failure (failure defined as one or more pods not reaching ready state within --timeout). Rollbacks MUST be tested in staging before production to ensure previous version is compatible with current data state. Release names MUST follow DNS naming (alphanumeric + dash, no underscore, &lt;253 chars). Uninstalls MUST use helm uninstall unless release protection is needed (helm.sh/resource-policy: keep annotation); uninstall does NOT delete kept resources.</statement>
+        <rationale>helm install fails if release exists (idempotent: use upgrade --install). --atomic ensures failed deployments don't leave the cluster in a half-upgraded state; if new version crashes, Helm automatically rolls back to previous working version within timeout. Rollbacks are instant (restore previous replica count, image, config) but only safe if the rolled-back version is compatible with current data (e.g., old schema doesn't understand new database columns). Release names in DNS format ensure they work across cloud providers and monitoring systems. --resource-policy: keep prevents Helm from deleting resources on uninstall (e.g., PersistentVolumeClaim should survive release deletion).</rationale>
+      </rule>
+      <example type="good" title="Safe production upgrade">
+        <code lang="bash"><![CDATA[
+# Initial install
+helm install myapp ./mychart \
+  --namespace myapp \
+  --create-namespace \
+  -f values-prod.yaml
+
+# Upgrade with automatic rollback
+helm upgrade myapp ./mychart \
+  --namespace myapp \
+  -f values-prod.yaml \
+  --atomic \
+  --timeout 5m
+
+# If upgrade fails: Helm automatically rolls back to previous version
+# View release history
+helm history myapp --namespace myapp
+
+# Manual rollback (if needed)
+helm rollback myapp 1 --namespace myapp
+
+# Uninstall
+helm uninstall myapp --namespace myapp
+]]></code>
+        <note>--atomic prevents broken state. --timeout 5m rolls back if pods not ready after 5 minutes.</note>
+      </example>
+      <example type="bad" title="Risky upgrade without atomic">
+        <code lang="bash"><![CDATA[
+# Upgrade without --atomic
+helm upgrade myapp ./mychart -f values-prod.yaml
+# New version starts crashing; 2 pods in CrashLoop, 1 pod old version
+# Cluster is now in broken state; manual debugging required to rollback
+]]></code>
+        <note>Always use --atomic on production.</note>
+      </example>
+      <antipattern>
+        <description>Rolling back because upgrade introduced a bug without understanding the rollback compatibility.</description>
+        <reason>Rollbacks work only if the old version is compatible with current data. If the upgrade added a new required database column, rolling back will crash because the old version doesn't know how to handle the column. Always test upgrades in staging first, and have a compatibility check before deploying to prod (e.g., migration that adds column with default value, then upgrade app).</reason>
+      </antipattern>
+    </section>
+    <section name="dependency-management">
+      <p>Helm dependencies allow charts to depend on other charts (e.g., myapp chart depends on PostgreSQL). Chart.yaml specifies dependencies; helm dependency update fetches them into charts/ folder. Dependencies can be remote (public repos like Bitnami) or local (charts in the same repo).</p>
+      <rule testable="true">
+        <statement>Dependencies MUST be specified in Chart.yaml under the dependencies section with name, version, and repository. Versions MUST be semantic (X.Y.Z) and MUST NOT be flexible ranges (avoid ~, >) unless testing; pin exact versions for reproducibility. Chart.lock file MUST be committed to Git for reproducible dependency resolution (prevents "it works on my machine" issues). Dependency updates (helm dependency update) MUST be done consciously before deployments, not as part of every build. Optional dependencies MUST be gated by a condition (condition: postgresql.enabled) to support environments without the dependency.</statement>
+        <rationale>Chart.yaml + Chart.lock ensures all developers and CI/CD get the exact same dependency versions. Flexible version ranges (~1.2.x, &gt;1.0.0) can introduce breaking changes unexpectedly. Conditions allow a single chart to optionally deploy PostgreSQL in dev (enabled: true) but use managed Cloud SQL in prod (enabled: false). Explicit helm dependency update (vs auto-fetch) prevents surprise version upgrades mid-deployment.</rationale>
+      </rule>
+      <example type="good" title="Pinned dependencies with lock">
+        <code lang="yaml"><![CDATA[
+# Chart.yaml
+apiVersion: v2
+name: myapp
+version: 1.0.0
+dependencies:
+  - name: postgresql
+    version: "12.1.2"  # pinned exact version
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
+
+# values.yaml
+postgresql:
+  enabled: true  # deploy PostgreSQL in dev
+  auth:
+    postgresPassword: dev-password
+
+# For production, override:
+# helm install -f values-prod.yaml
+# values-prod.yaml:
+# postgresql:
+#   enabled: false  # use managed Cloud SQL instead
+]]></code>
+        <note>helm dependency update creates Chart.lock with exact versions fetched. Commit lock to Git.</note>
+      </example>
+      <example type="bad" title="Flexible version ranges">
+        <code lang="yaml"><![CDATA[
+# Chart.yaml
+dependencies:
+  - name: postgresql
+    version: "12.x"  # could be 12.0, 12.5, 12.99 (breaking changes)
+    repository: "https://charts.bitnami.com/bitnami"
+
+# Result: developer A runs helm dependency update, gets 12.5.0
+# developer B runs same command 2 weeks later, gets 12.8.0 (breaking change)
+# Deployments behave differently locally vs in CI
+]]></code>
+        <note>Pin exact versions: "12.1.2" not "12.x".</note>
+      </example>
+      <antipattern>
+        <description>Using chart dependencies for unrelated resources or services that should be managed separately.</description>
+        <reason>If your chart depends on Redis, Kafka, and PostgreSQL (three independent services), that's acceptable for dev/demo. But if those services are managed by ops team and deployed independently, avoid bundling them in the app chart. Use separate charts per service and manage dependencies at the GitOps level (ArgoCD can orchestrate multiple releases).</reason>
+      </antipattern>
+    </section>
+    <section name="repository-management">
+      <p>Helm repositories are collections of packaged charts published to HTTP endpoints or OCI registries. Adding repositories enables discovering and installing pre-built charts (e.g., Bitnami PostgreSQL, Jetstack cert-manager). Repository URLs are versioned; update regularly to get latest patch releases and bug fixes.</p>
+      <rule testable="true">
+        <statement>All public dependencies MUST be sourced from Artifact Hub or official vendor repositories (Bitnami, Jetstack, etc.) with version pinning in Chart.yaml. Internal charts MUST be published to a private OCI registry or Helm chart repository with RBAC restricting access. helm repo update MUST be run before helm install in CI/CD to fetch latest patch versions. Chart versions MUST use semantic versioning (MAJOR.MINOR.PATCH) and MUST be immutable once published (do not overwrite v1.0.0 with a bug fix; release v1.0.1). Repositories SHOULD be documented in CLAUDE.md or README.md with URLs, authentication, and versioning strategy.</statement>
+        <rationale>Artifact Hub (artifacthub.io) centralizes chart discovery; official repos (Bitnami, Jetstack) are maintained by vendors. Pinning versions in Chart.yaml ensures reproducible installs; flexible ranges (~1.0.x) introduce breaking changes without notice. helm repo update fetches the latest chart list and patch releases (bug fixes). Semantic versioning signals compatibility: patch (1.0.1) = bug fix, safe to upgrade; minor (1.1.0) = new features, backwards-compatible; major (2.0.0) = breaking change, requires testing. Immutable versions prevent hidden updates: once v1.0.0 is published and consumed, do not change it.</rationale>
+      </rule>
+      <example type="good" title="Repository setup in CI/CD">
+        <code lang="bash"><![CDATA[
+# Add public repositories
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+
+# Pin exact dependency versions in Chart.yaml
+dependencies:
+  - name: postgresql
+    version: "12.1.2"  # exact version, not 12.x or ~12.1
+    repository: "https://charts.bitnami.com/bitnami"
+  - name: cert-manager
+    version: "v1.13.0"
+    repository: "https://charts.jetstack.io"
+
+# Update local dependencies
+helm dependency update ./mychart
+
+# Install from pinned versions
+helm install myapp ./mychart
+]]></code>
+        <note>Chart.lock file locks exact transitive dependencies. Commit to Git for reproducibility.</note>
+      </example>
+      <antipattern>
+        <description>Using flexible version ranges (^1.0.0, ~1.2.x, &gt;1.0.0) to automatically pick up latest chart versions in production.</description>
+        <reason>Flexible ranges can introduce breaking changes without notice. Upstream PostgreSQL chart v13.0.0 might require new configuration; your charts that depend on ^12.0.0 will silently upgrade and fail. Pin exact versions, test upgrades consciously, then bump version after validation in staging.</reason>
+      </antipattern>
+    </section>
+    <section name="debugging-troubleshooting">
+      <p>Common Helm troubleshooting: syntax errors in templates, missing values, failed hook execution, rollback issues. Tools: helm lint (syntax checking), helm template (dry-run), helm status (release status), helm history (version tracking).</p>
+      <rule testable="true">
+        <statement>All charts MUST pass helm lint before committing (pre-commit hook recommended). Failed installs MUST be debugged with helm status and kubectl describe to identify pod failures. Helm templates MUST be dry-run tested (helm template --debug) before install to catch YAML errors early. Hook failures MUST be inspected via kubectl logs on hook pods to diagnose root cause. Release history MUST be preserved (do not delete releases) for audit trails and quick rollbacks. Rollback MUST be tested in staging before applying to production to ensure backwards compatibility.</statement>
+        <rationale>helm lint catches YAML syntax errors, missing required fields, deprecated API versions. helm template outputs rendered manifests without contacting cluster; useful for validation. helm status shows current release state; kubectl describe on failed pods reveals startup errors. Hook logs expose migration failures, permission issues, etc. Release history enables instant rollback (helm rollback myrelease 1) if upgrade goes wrong. Rollback testing ensures old version works with current data state.</rationale>
+      </rule>
+      <example type="good" title="Debugging a failed deployment">
+        <code lang="bash"><![CDATA[
+# 1. Lint chart before install
+helm lint ./mychart
+
+# 2. Dry-run to check manifests
+helm template myrelease ./mychart --debug
+
+# 3. Install
+helm install myrelease ./mychart
+
+# 4. Check release status
+helm status myrelease
+
+# 5. If pods not ready, describe them
+kubectl describe pod -l app=myapp
+
+# 6. Check logs
+kubectl logs deployment/myapp --tail=100
+
+# 7. Check release history
+helm history myrelease
+
+# 8. If broken, rollback immediately
+helm rollback myrelease 1
+]]></code>
+        <note>Quick diagnosis flow: lint → template → install → status → logs → rollback if needed.</note>
+      </example>
+      <example type="bad" title="Undebuggable installation">
+        <code lang="bash"><![CDATA[
+# Skip lint, dry-run; install directly
+helm install myrelease ./mychart
+
+# Pods crash; unsure why
+kubectl get pods  # shows CrashLoopBackOff
+
+# No history; can't rollback
+helm history myrelease  # empty
+
+# Chart was deleted after "install" failed
+]]></code>
+        <note>Always lint, dry-run, and keep release history.</note>
+      </example>
+      <antipattern>
+        <description>Pinning exact chart versions and never updating, accumulating security patches and bug fixes.</description>
+        <reason>Pin versions for reproducibility, but update regularly (quarterly) to pick up patch releases (1.0.0 → 1.0.1 → 1.0.5). Security patches are in patch versions. If you pin v1.0.0 forever, you miss critical security updates. Strategy: pin version, update quarterly in staging, test, bump version after validation.</reason>
+      </antipattern>
+    </section>
+    <section name="gitops-integration">
+      <p>GitOps controllers (ArgoCD, Flux) sync Helm releases from Git. Git becomes source of truth; changes to values.yaml auto-deploy to cluster. Requires chart repository (Helm registry or Git) and controller watching Git.</p>
+      <rule testable="true">
+        <statement>Helm charts deployed via GitOps MUST have values.yaml in Git alongside Chart.yaml. Values MUST NOT contain secrets; use external secret manager (Sealed Secrets, Vault, ExternalSecrets operator) with templated references. GitOps controllers MUST be configured with helm.upgrade --install to ensure idempotency. Release names MUST match Git folder names (apps/myapp/ → release name "myapp") for clarity. Chart repositories MUST be declared in controller config (ArgoCD/Flux helmChart source) with stable, version-pinned URLs. Secrets MUST be encrypted in Git (sealed-secrets) if stored alongside configs; plaintext secrets in Git are security vulnerabilities.</statement>
+        <rationale>Git-driven deployments enable change review (pull request approval before deploy), audit trails (Git commit history), and disaster recovery (replay Git history to recover cluster state). idempotent upgrade (install if not present, upgrade if exists) handles both initial deploy and subsequent updates. External secret managers separate secret management from Helm; secrets are injected at deploy time via controller. Encrypted secrets in Git (sealed-secrets) are safer than plaintext but external managers (Vault) are more secure.</rationale>
+      </rule>
+      <example type="good" title="ArgoCD with Helm">
+        <code lang="yaml"><![CDATA[
+# Git repo structure
+apps/
+├── myapp/
+│   ├── Chart.yaml
+│   ├── values.yaml
+│   ├── values-prod.yaml
+│   └── templates/
+└── other-app/
+
+# ArgoCD Application
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: myapp
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/org/apps
+    targetRevision: main
+    path: apps/myapp
+    helm:
+      values: |
+        # Override values here or reference values-prod.yaml
+        replicaCount: 3
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: myapp
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+# Deploy: git commit → push → ArgoCD syncs (helm upgrade --install)
+]]></code>
+        <note>ArgoCD watches Git repo, syncs Helm releases. Changes to values.yaml auto-deploy after Git push.</note>
+      </example>
+      <antipattern>
+        <description>Storing plaintext secrets (API keys, passwords) in values.yaml in Git.</description>
+        <reason>Anyone with Git access can read secrets. Use sealed-secrets (encrypt with cluster key, decrypt on deploy) or external managers (Vault, AWS Secrets Manager). GitOps controllers integrate with external managers to inject secrets at deploy time, keeping Git clean of credentials.</reason>
+      </antipattern>
+    </section>
+    <section name="multi-environment-strategy">
+      <p>Deploying the same chart to dev, staging, prod requires different configurations without duplicating chart code. Strategy: single values.yaml (defaults), environment-specific overrides (values-prod.yaml), and Kustomize or Helm layers for complex scenarios.</p>
+      <rule testable="true">
+        <statement>Each environment MUST have dedicated values file (values-dev.yaml, values-staging.yaml, values-prod.yaml) containing only overrides. Secrets MUST NOT appear in values files; use external secret managers. Base values.yaml MUST define sensible defaults suitable for development. Environment files MUST be structured hierarchically: if values.yaml has image.repository, values-prod.yaml should override at same path (not create new variables). Namespace isolation MUST separate environments (dev/myapp, staging/myapp, prod/myapp) to prevent accidental cross-environment access. Helm release names SHOULD include environment (myapp-dev, myapp-staging, myapp-prod) for clarity in deployment history.</statement>
+        <rationale>Single chart + multiple values files = DRY principle. No duplication: if chart changes, all environments get fix automatically. values-prod.yaml overrides: replicas (1 dev → 3 prod), resource limits, image tags, storage size, logging verbosity, etc. External secrets keep Git clean. Namespace isolation (RBAC, network policies) prevents dev pod from accessing prod database accidentally. Release names encode environment, enabling quick identification in helm history.</rationale>
+      </rule>
+      <example type="good" title="Multi-environment values structure">
+        <code lang="yaml"><![CDATA[
+# values.yaml (development defaults)
+replicaCount: 1
+image:
+  repository: myapp
+  tag: "latest"
+resources:
+  requests:
+    memory: "64Mi"
+    cpu: "50m"
+service:
+  type: ClusterIP
+  port: 8080
+logging:
+  level: debug
+
+# values-staging.yaml (staging overrides)
+replicaCount: 2
+image:
+  tag: "v1.5.2"  # specific version, not latest
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "200m"
+logging:
+  level: info
+
+# values-prod.yaml (production overrides)
+replicaCount: 5
+image:
+  repository: prod-registry.io/myapp
+  tag: "v1.5.2"
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "500m"
+  limits:
+    memory: "1Gi"
+    cpu: "1000m"
+autoscaling:
+  enabled: true
+  minReplicas: 5
+  maxReplicas: 20
+monitoring:
+  enabled: true
+
+# Deploy:
+helm install myapp-dev ./mychart -f values-dev.yaml --namespace dev
+helm install myapp-staging ./mychart -f values-staging.yaml --namespace staging
+helm install myapp-prod ./mychart -f values-prod.yaml --namespace prod
+]]></code>
+        <note>Hierarchy: base defaults + environment overrides. Only override what differs.</note>
+      </example>
+      <example type="bad" title="Environment duplication">
+        <code lang="bash"><![CDATA[
+# Separate directories per environment (duplication)
+charts/
+├── myapp-dev/          # Copy of myapp with dev values
+├── myapp-staging/      # Copy of myapp with staging values
+├── myapp-prod/         # Copy of myapp with prod values
+
+# Problem: bug fix in myapp-dev must be applied to myapp-staging and myapp-prod
+# Manual sync error-prone; diff-based update missed
+]]></code>
+        <note>Use single chart + multiple values files, not separate chart copies.</note>
+      </example>
+      <antipattern>
+        <description>Creating values files with conditional logic ("if dev use X else use Y") instead of simple overrides.</description>
+        <reason>Conditionals in values complicate debugging (is variable used?). Helm doesn't support conditional values directly. Use separate values files with simple overrides: values-dev.yaml specifies dev value, values-prod.yaml specifies prod value. Logic stays in templates ({{ if .Values.autoscaling.enabled }}) not values.</reason>
+      </antipattern>
+    </section>
+    <section name="naming-conventions">
+      <p>Consistent naming patterns in Helm charts improve readability and follow Kubernetes conventions. Object names include release name, chart name, resource type, and suffix. Labels and annotations help operators identify resource ownership and relationships.</p>
+      <rule testable="true">
+        <statement>All Kubernetes objects MUST include labels: app.kubernetes.io/name (chart name), app.kubernetes.io/instance (release name), app.kubernetes.io/version (chart version), app.kubernetes.io/managed-by (Helm). Resource names MUST follow pattern {{ include "name.fullname" . }}-{{ resource_type }} (e.g., myapp-deployment, myapp-service, myapp-config). Resource names MUST be truncated to 63 chars (Kubernetes limit) with trimSuffix("-") to avoid trailing hyphens. Annotations SHOULD document ownership: helm.sh/chart, meta.helm.sh/release-name, meta.helm.sh/release-namespace. Namespace names SHOULD use lowercase with hyphens, not underscores or camelCase.</statement>
+        <rationale>Standard labels enable cluster-wide resource discovery (kubectl get pods -l app.kubernetes.io/name=myapp) and metrics aggregation. Resource naming pattern makes ownership clear: {{ include "name.fullname" . }} inherits release and chart name automatically. Name truncation to 63 chars (Kubernetes object name limit) prevents silent truncation errors. Annotations preserve release metadata for operators and GitOps controllers. Lowercase namespaces follow Kubernetes conventions and DNS naming.</rationale>
+      </rule>
+      <example type="good" title="Naming and labels">
+        <code lang="yaml"><![CDATA[
+# _helpers.tpl
+{{- define "myapp.name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{- define "myapp.fullname" -}}
+{{- if .Values.fullnameOverride }}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- if contains $name .Release.Name }}
+{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- define "myapp.labels" -}}
+helm.sh/chart: {{ include "myapp.chart" . }}
+{{ include "myapp.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+# deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "myapp.fullname" . }}-deployment
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "myapp.selectorLabels" . | nindent 6 }}
+]]></code>
+        <note>Helper functions generate consistent labels and names. Truncation prevents silent overflow.</note>
+      </example>
+      <antipattern>
+        <description>Using hardcoded object names instead of templated names based on release and chart.</description>
+        <reason>Hardcoded names prevent deploying the same chart twice (second install fails with "resource already exists"). Templated names ensure uniqueness: helm install myapp1 chart → myapp1-deployment, helm install myapp2 chart → myapp2-deployment.</reason>
+      </antipattern>
+    </section>
+    <section name="rbac-and-permissions">
+      <p>Helm templates often create ServiceAccounts, Roles, and RoleBindings enabling pods to access Kubernetes APIs. Least-privilege RBAC ensures pods have only necessary permissions, preventing lateral movement if pod is compromised.</p>
+      <rule testable="true">
+        <statement>Pods requiring Kubernetes API access MUST use dedicated ServiceAccount (not default). ServiceAccount MUST be created by chart (not pre-existing). Roles MUST grant only necessary API verbs (get, list, watch for reads; patch, update for writes; avoid wildcard permissions). RoleBindings MUST bind ServiceAccount to Role in same namespace. RBAC MUST be enabled in cluster (RBAC: true in chart values) to prevent permission escalation. Pod spec MUST reference serviceAccountName for explicit service account assignment. Automounting service account tokens MUST be disabled if not needed (automountServiceAccountToken: false).</statement>
+        <rationale>Dedicated ServiceAccount prevents pods from inheriting default cluster-admin roles. Minimal permissions prevent compromised pod from accessing other namespaces or creating admin accounts. RoleBinding in same namespace isolates blast radius. RBAC (Kubernetes default since 1.20) rejects unauthenticated API access. Explicit serviceAccountName prevents default account use. Disabling automounting tokens (if pod doesn't need Kubernetes API) reduces token exposure surface.</rationale>
+      </rule>
+      <example type="good" title="Least-privilege RBAC">
+        <code lang="yaml"><![CDATA[
+# templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "myapp.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+
+# templates/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "myapp.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]  # read-only
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]  # get specific secret, not list all
+
+# templates/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "myapp.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "myapp.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "myapp.fullname" . }}
+    namespace: {{ .Release.Namespace }}
+
+# templates/deployment.yaml
+spec:
+  template:
+    spec:
+      serviceAccountName: {{ include "myapp.fullname" . }}
+      automountServiceAccountToken: true
+]]></code>
+        <note>Role grants only "get, list, watch" (reads), not write permissions. ServiceAccount explicitly referenced.</note>
+      </example>
+      <antipattern>
+        <description>Creating Role with wildcard permissions (verbs: ["*"], apiGroups: ["*"]).</description>
+        <reason>Wildcard permissions grant cluster-admin privileges to pod. If pod is compromised, attacker has full cluster access. Always specify exact API groups and verbs needed (get, list, watch for reads).</reason>
+      </antipattern>
+    </section>
+    <section name="resource-limits-requests">
+      <p>Kubernetes resource requests (minimum guaranteed) and limits (maximum allowed) ensure pods get required CPU/memory and prevent resource starvation. Requests drive scheduling decisions; limits enforce hard boundaries. Proper sizing prevents OOMKilled pods and noisy neighbor problems.</p>
+      <rule testable="true">
+        <statement>All containers MUST specify resource requests for CPU and memory to enable Kubernetes scheduler to place pods on nodes with available capacity. Requests SHOULD be based on actual application needs (measure via metrics); defaults MUST NOT be used. Limits SHOULD be set slightly above requests (10-20%) to allow minor spikes. Memory limits MUST be set to prevent OOMKilled pods; CPU limits can be omitted if fine with throttling. Requests and limits MUST scale with replicas and environment (prod > staging > dev). Horizontal Pod Autoscaler (HPA) MUST reference resource requests for scaling decisions (scale when CPU > 80% of request). Documentation MUST explain how to tune requests based on load testing results.</statement>
+        <rationale>Requests guarantee minimum resources; without them, pod may be starved if node fills up. Scheduler uses requests to pack pods efficiently. Limits prevent one pod from consuming all node resources (noisy neighbor). Memory limits are hard (OOMKilled if exceeded); CPU limits are soft (throttled, not killed). HPA scales based on request percentage; without requests, HPA cannot make scaling decisions. Environment-specific tuning (dev: 64Mi, prod: 512Mi) reflects production load.</rationale>
+      </rule>
+      <example type="good" title="Appropriately sized requests and limits">
+        <code lang="yaml"><![CDATA[
+# values-dev.yaml (development: minimal resources)
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+# values-staging.yaml (staging: moderate)
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 300m
+    memory: 512Mi
+
+# values-prod.yaml (production: production load)
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  targetCPUUtilizationPercentage: 80  # scale when CPU > 80% of request
+
+# templates/deployment.yaml
+spec:
+  containers:
+    - name: app
+      resources:
+        requests:
+          cpu: {{ .Values.resources.requests.cpu }}
+          memory: {{ .Values.resources.requests.memory }}
+        limits:
+          cpu: {{ .Values.resources.limits.cpu }}
+          memory: {{ .Values.resources.limits.memory }}
+]]></code>
+        <note>Requests allow scheduling; limits prevent resource abuse. HPA scales based on request percentage.</note>
+      </example>
+      <example type="bad" title="Missing or excessive resource limits">
+        <code lang="yaml"><![CDATA[
+# No requests/limits specified
+spec:
+  containers:
+    - name: app
+      # Scheduler doesn't know how much resource this pod needs
+      # Pod may be scheduled on full node; will crash with OOMKilled
+
+# Or excessive limits
+resources:
+  requests:
+    memory: 64Mi
+  limits:
+    memory: 8Gi  # 128x requests? Why not use requested 64Mi?
+]]></code>
+        <note>Set requests = expected usage, limits = max safe usage. Requests &lt; Limits, not huge gap. Measure actual resource consumption under load in staging to determine appropriate values; defaults often too high or too low. Use kubectl top pod to monitor actual vs requested resources and tune iteratively.</note>
+      </example>
+      <antipattern>
+        <description>Setting resource limits equal to cluster node capacity (32Gi memory per node → limit 32Gi per pod).</description>
+        <reason>Pod's limit should be application max, not cluster max. If limit = node capacity, only one pod fits per node, defeating cluster multiplexing. Limit should be 2-10x request, not 100x.</reason>
+      </antipattern>
+    </section>
+    <section name="testing-validation">
+      <p>Validate Helm charts before deployment: syntax (helm lint), manifest output (helm template), Kubernetes validation (helm install --dry-run), and functional tests (helm test).</p>
+      <rule testable="true">
+        <statement>All charts MUST pass helm lint in CI/CD pre-commit. Charts MUST be tested with helm template to verify manifest output. Deployment templates MUST be validated with kubectl apply --dry-run=server (server-side validation) to catch API errors. Helm tests MUST confirm deployed release works (connectivity, health, basic operations). Test suites MUST include: connectivity test (curl service), schema validation (check ConfigMap structure), and integration test (verify feature works end-to-end). Testing MUST occur in CI/CD after every PR; only tested charts merge to main.</statement>
+        <rationale>helm lint catches YAML errors, missing fields, deprecated APIs early. helm template outputs manifests without contacting cluster (fast, safe). --dry-run=server validates against actual cluster API, catching version incompatibilities (e.g., policy/v1 vs policy/v1beta1). Helm tests confirm app is healthy post-deploy (pod may start but service unresponsive). Testing in CI prevents broken charts reaching production.</rationale>
+      </rule>
+      <example type="good" title="CI/CD testing pipeline">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# CI pipeline for Helm charts
+set -e
+
+# 1. Lint
+helm lint ./mychart
+
+# 2. Template validation
+helm template myrelease ./mychart --values values-dev.yaml > /tmp/manifests.yaml
+kubectl apply --dry-run=server -f /tmp/manifests.yaml
+
+# 3. Install in test cluster
+helm install myapp-test ./mychart \
+  --namespace test \
+  --create-namespace \
+  --values values-dev.yaml
+
+# 4. Wait for pods
+kubectl rollout status deployment/myapp -n test
+
+# 5. Run tests
+helm test myapp-test --namespace test
+
+# 6. Cleanup
+helm uninstall myapp-test --namespace test
+kubectl delete namespace test
+]]></code>
+        <note>All steps must pass before merge approval. Failure blocks the PR. Helm test validates the deployed release works correctly after install. Pre-commit hooks can automate linting to catch errors before git push. In CI, both client-side (helm template) and server-side (kubectl apply --dry-run=server) validation catch different categories of errors. Automated testing reduces manual testing overhead and catches regressions early.</note>
+      </example>
+      <antipattern>
+        <description>Testing only with --dry-run (client-side) without server-side validation.</description>
+        <reason>--dry-run=client validates syntax only, not against API server. API server might reject manifests (e.g., invalid fields, quota exceeded). Always use --dry-run=server or install in test cluster to catch real issues. Testing in actual Kubernetes environment (not just syntax validation) is critical to ensure charts work correctly with the target cluster version and configuration.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates.md" purpose="Starter templates for new charts, including common patterns for Deployment, Service, Ingress, ConfigMap, Secret, and HPA"/>
+    </templates>
+    <see-also>
+      <link href="https://helm.sh/docs/"/>
+      <link href="https://helm.sh/docs/chart_best_practices/"/>
+      <link href="https://helm.sh/docs/chart_template_guide/"/>
+      <link href="https://helm.sh/docs/howto/charts_tips_and_tricks/"/>
+      <link href="https://artifacthub.io/"/>
+      <ref slug="helm-advanced"/>
+      <ref slug="kubernetes-deployment"/>
+    </see-also>
+  </content>
+</methodology>

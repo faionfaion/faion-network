@@ -1,0 +1,852 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="helm-advanced">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Advanced Helm templating techniques including library charts, hooks, tests, umbrella charts, and production-ready patterns.</summary>
+    <tags>
+      <tag>helm</tag>
+      <tag>kubernetes</tag>
+      <tag>library-charts</tag>
+      <tag>hooks</tag>
+      <tag>testing</tag>
+      <tag>umbrella-charts</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Helm Advanced Patterns</title>
+    <summary>Advanced Helm techniques for production-grade chart development: library charts for reusable templates, hooks for lifecycle intervention (pre-install, post-upgrade, test), Helm test framework for deployment validation, umbrella charts for multi-service composition, and production patterns (checksum annotations, required values, resource protection). Master these patterns to build maintainable, testable charts at enterprise scale.</summary>
+    <why>
+      <p>Basic Helm covers single-chart deployments. Production systems require advanced patterns: library charts eliminate duplication when multiple application charts share template helpers (e.g., all apps use the same labeling convention); hooks automate pre/post deployment tasks (database migrations, smoke tests, cleanup); tests validate that deployed releases actually work (not just that manifests render). Umbrella charts compose related services (app + database + cache) into a single logical release, enabling coordinated rollouts and version pinning across tiers.</p>
+      <p>Checksum annotations force pod restarts when ConfigMap or Secret content changes (without manual delete pod). Required values with clear error messages prevent silent failures. Resource protection policies (helm.sh/resource-policy: keep) prevent accidental data loss when uninstalling releases (e.g., PersistentVolumeClaim should survive chart deletion). These patterns scale Helm from simple deploys to enterprise-grade deployments supporting thousands of microservices.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Creating library charts to share template logic (naming, labels, common patterns) across 5+ application charts to reduce duplication.</item>
+        <item>Implementing lifecycle hooks for database migrations (pre-upgrade), smoke tests (post-install), or cleanup (pre-delete).</item>
+        <item>Validating deployed releases with Helm tests that confirm connectivity, health checks, and basic functionality.</item>
+        <item>Composing multi-service applications (app + PostgreSQL + Redis) with coordinated deployments using umbrella charts.</item>
+        <item>Enforcing production practices: config checksums, required values validation, resource protection, Helm linting in CI/CD.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Simple single-service deployments — basic Helm covers this; library charts add overhead without benefit.</item>
+        <item>Lifecycle operations requiring external systems (Kubernetes operators, custom controllers) — hooks are limited to Kubernetes Jobs/Pods.</item>
+        <item>Complex multi-service orchestration with inter-service coordination — use Kubernetes operators or GitOps controllers (ArgoCD, Flux) for advanced scenarios.</item>
+        <item>Services with independent release cycles that need to be deployed separately — avoid umbrella charts; manage at GitOps level instead.</item>
+      </list>
+    </when-not-to-use>
+    <section name="library-charts">
+      <p>Library charts are reusable templates not deployed directly but included by other charts. Set type: library in Chart.yaml. Dependent charts access parent context and library templates. Eliminates duplication of naming conventions, labels, and helper functions across application charts.</p>
+      <rule testable="true">
+        <statement>Library charts MUST have type: library in Chart.yaml and MUST NOT contain values.yaml or templates/*.yaml resources (no deployments, services, etc.; only _helpers.tpl). Library chart names MUST use common- or lib- prefix to signal non-deployable status. Dependent charts MUST declare the library in Chart.yaml dependencies section. Library templates MUST use named templates ({{ define "libname.helper" }}) to avoid accidental output. Library charts MUST NOT be installed directly (helm install will fail if type: library is set). Documentation MUST clearly explain which templates are exported and how to use them in dependent charts.</statement>
+        <rationale>type: library prevents accidental direct installation (Helm rejects it) and signals to other developers that this chart is a dependency. Named templates prevent output; only explicit {{ include }} calls render content. Prefix (common-, lib-) signals intent in dependency lists. Library charts reduce duplication: 10 app charts each with identical naming/labeling logic = 1 library + 10 apps using it. Maintenance: one place to fix naming bugs or add new labels.</rationale>
+      </rule>
+      <example type="good" title="Library chart with shared helpers">
+        <code lang="yaml"><![CDATA[
+# library-chart/Chart.yaml
+apiVersion: v2
+name: common-helpers
+version: 0.1.0
+type: library
+description: Shared templates and functions for microservices
+
+# library-chart/templates/_helpers.tpl
+{{- define "common.name" -}}
+{{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{- define "common.fullname" -}}
+{{ if .Values.fullnameOverride }}{{ .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}{{- else }}{{ .Release.Name }}-{{ include "common.name" . }}{{- end }}
+{{- end }}
+
+{{- define "common.labels" -}}
+app.kubernetes.io/name: {{ include "common.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+# app-chart/Chart.yaml (dependent)
+dependencies:
+  - name: common-helpers
+    version: 0.1.0
+    repository: file://../library-chart
+
+# app-chart/templates/deployment.yaml (uses library)
+metadata:
+  name: {{ include "common.fullname" . }}
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+]]></code>
+        <note>Library is listed in dependencies. Include is used in app chart templates. Library has zero deployable resources.</note>
+      </example>
+      <example type="bad" title="Broken library with deployable resources">
+        <code lang="yaml"><![CDATA[
+# library-chart/Chart.yaml
+type: library  # but contains templates/deployment.yaml!
+
+# library-chart/templates/deployment.yaml (wrong)
+kind: Deployment
+metadata:
+  name: shared-app  # library should not deploy anything
+
+# Result: helm install library-chart fails because type: library
+]]></code>
+        <note>Library charts must NOT contain deployable resources. Use only named templates in _helpers.tpl.</note>
+      </example>
+      <antipattern>
+        <description>Creating a library chart so generic it tries to support all possible Kubernetes manifests (Deployment, StatefulSet, Job, CronJob, etc.) with deeply nested conditionals.</description>
+        <reason>A library that generates any resource type with any configuration is no longer a library; it's a meta-templating engine. Keep libraries focused: "shared naming conventions" or "pod security policies" or "common labels". If you find yourself writing 100+ lines of conditionals in _helpers.tpl, split into focused libraries or question whether Helm is the right tool.</reason>
+      </antipattern>
+    </section>
+    <section name="lifecycle-hooks">
+      <p>Hooks execute Kubernetes resources at specific release lifecycle points: pre-install, post-install, pre-upgrade, post-upgrade, pre-delete, post-delete, pre-rollback, post-rollback, test. Annotate resources with helm.sh/hook to assign them to lifecycle stages. Hook resources (usually Jobs, Pods) are cleaned up according to deletion policies.</p>
+      <rule testable="true">
+        <statement>Hook resources MUST be annotated with helm.sh/hook, helm.sh/hook-weight (integer for execution order), and helm.sh/hook-delete-policy (before-hook-creation or hook-succeeded). Database migration hooks MUST run pre-upgrade to ensure schema changes are applied before app restart (prevents 5xx errors from mismatched schema). Hooks MUST be idempotent: running the same hook twice must produce the same result (use init containers to check if migration already applied, rather than failing on duplicate). Test hooks (helm.sh/hook: test) MUST validate deployed release (connectivity, health, basic functionality) with exit code 0 = success, non-zero = failure. Hooks MUST inherit Release.Name and Release.Namespace from parent chart to avoid naming conflicts.</statement>
+        <rationale>Hooks are useful for automation: migrations pre-upgrade, health checks post-install, cleanup pre-delete. Hook weight (negative to positive) orders execution: weight -5 before weight 0. Idempotency prevents failures on re-runs (Helm retries if hook fails). Test hooks provide continuous validation: after helm install, helm test validates the deployment works. Naming with Release.Name ensures hooks don't conflict when multiple releases coexist.</rationale>
+      </rule>
+      <example type="good" title="Pre-upgrade migration hook">
+        <code lang="yaml"><![CDATA[
+# templates/migrate.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "myapp.fullname" . }}-migrate-{{ .Release.Revision }}
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    spec:
+      containers:
+        - name: migrate
+          image: myapp:{{ .Values.image.tag }}
+          command: ["python", "manage.py", "migrate"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: database-url
+      restartPolicy: Never
+  backoffLimit: 1
+]]></code>
+        <note>Runs pre-upgrade, deleted after success. Release.Revision ensures unique Job names on retries.</note>
+      </example>
+      <example type="good" title="Post-install smoke test hook">
+        <code lang="yaml"><![CDATA[
+# templates/tests/test-smoke.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "myapp.fullname" . }}-test-smoke
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  containers:
+    - name: test
+      image: curlimages/curl:latest
+      command:
+        - /bin/sh
+        - -c
+        - |
+          curl -f http://{{ include "myapp.fullname" . }}:{{ .Values.service.port }}/health
+          echo "Health check passed"
+  restartPolicy: Never
+]]></code>
+        <note>Runs helm test. Curl health endpoint; exit 0 = test passes, exit non-0 = test fails.</note>
+      </example>
+      <example type="bad" title="Non-idempotent migration">
+        <code lang="bash"><![CDATA[
+# hook command in migration job
+command: ["python", "manage.py", "migrate"]
+# If called twice, fails: "column already exists"
+# Correct: use framework migration tools that check if migration already applied
+]]></code>
+        <note>Migrations must be idempotent. Use Django/Rails/Alembic which track applied migrations.</note>
+      </example>
+      <antipattern>
+        <description>Using hooks for operations that should be handled by Kubernetes controllers or sidecar patterns.</description>
+        <reason>Hooks are good for one-time setup (migrations, smoke tests). For ongoing operations (metrics collection, log shipping, secret rotation), use init containers, sidecar containers, or Kubernetes operators. Hooks run at specific lifecycle points; controllers run continuously.</reason>
+      </antipattern>
+    </section>
+    <section name="helm-tests">
+      <p>Helm tests validate deployed releases by running test pods. helm test executes pods annotated with helm.sh/hook: test. Test passes if pod exits with code 0. Tests confirm deployed resources are healthy and functional, not just that manifests render.</p>
+      <rule testable="true">
+        <statement>Test pods MUST be stored in templates/tests/ directory with descriptive names (test-connection.yaml, test-smoke.yaml). Each test pod MUST have restartPolicy: Never and exit code 0 on success. Tests MUST validate core functionality (connectivity, health checks, basic operations) not implementation details. Test pod names MUST include {{ include "myapp.fullname" . }} to avoid conflicts. Tests MUST be run in CI/CD pipeline after every deployment (helm install → helm test → if fails, rollback). Documentation MUST list test coverage and what each test validates.</statement>
+        <rationale>Tests run after install/upgrade, confirming the deployment is healthy before marking it complete. Exit code 0 = test passes; non-zero = test fails. Test pods are temporary (helm.sh/hook-delete-policy: hook-succeeded cleans them up after completion). Tests in CI prevent broken deployments from reaching production. Core functionality tests are more valuable than implementation details (test "GET /health returns 200" not "ConfigMap mounted at /etc/config").</rationale>
+      </rule>
+      <example type="good" title="Comprehensive test suite">
+        <code lang="yaml"><![CDATA[
+# templates/tests/test-connection.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "myapp.fullname" . }}-test-connection
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['{{ include "myapp.fullname" . }}:{{ .Values.service.port }}']
+  restartPolicy: Never
+
+# templates/tests/test-database.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "myapp.fullname" . }}-test-db
+  annotations:
+    "helm.sh/hook": test
+spec:
+  template:
+    spec:
+      containers:
+        - name: test
+          image: myapp:{{ .Values.image.tag }}
+          command: ["python", "-c"]
+          args:
+            - |
+              import psycopg2
+              conn = psycopg2.connect(os.environ['DATABASE_URL'])
+              cur = conn.cursor()
+              cur.execute('SELECT 1')
+              assert cur.fetchone()[0] == 1
+              print('Database connectivity OK')
+      restartPolicy: Never
+]]></code>
+        <note>Run: helm install myapp . &amp;&amp; helm test myapp. Both tests must exit 0.</note>
+      </example>
+      <example type="bad" title="Fragile tests">
+        <code lang="yaml"><![CDATA[
+# Test checks implementation, not functionality
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-config
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: test
+      command: ["grep", "CONFIG_VALUE=production", "/etc/config/app.conf"]
+  # Fails if ConfigMap format changes, even if app still works
+
+# Test has no timeout; hangs forever if service unreachable
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-hang
+spec:
+  containers:
+    - name: test
+      command: ["curl", "http://unreachable-service"]
+      # curl waits forever; test never completes
+]]></code>
+        <note>Test functionality (service responds), not configuration. Add timeout: 30 to prevent hangs.</note>
+      </example>
+      <antipattern>
+        <description>Tests that succeed without actually validating anything (e.g., echo "OK" as test command).</description>
+        <reason>Tests should validate actual deployment health. A test that always passes is worse than no test; it gives false confidence. Test at least: connectivity (service is reachable), health checks (app reports healthy), or basic functionality (GET /api/health, database query, etc.).</reason>
+      </antipattern>
+    </section>
+    <section name="umbrella-charts">
+      <p>Umbrella charts compose multiple application charts into a single deployment unit. Useful for coordinating related services (app + PostgreSQL + Redis) with version pinning and shared configuration. Declare dependencies in Chart.yaml; configure with values.yaml. Each dependency can be independently enabled/disabled.</p>
+      <rule testable="true">
+        <statement>Umbrella charts MUST declare all dependencies in Chart.yaml with exact versions and repositories. Each dependency MUST be gated by a condition (condition: postgresql.enabled) to support optional components. Values MUST be scoped by dependency name (postgresql.*, backend.*, frontend.*) to avoid collisions. Global values (imageRegistry, imagePullSecrets) MUST be defined in .global namespace and referenced by dependent charts. Umbrella charts MUST be used only for related components with shared deployment lifecycle; independent services MUST NOT be bundled. Documentation MUST list all dependencies, their versions, and configuration options.</statement>
+        <rationale>Umbrella charts simplify deployments: helm install myapp umbrella-chart deploys app + database + cache in one shot. Conditions enable staging (PostgreSQL disabled; use managed Cloud SQL) vs development (PostgreSQL included). Global values prevent duplication: registry defined once, inherited by all subcharts. However, umbrella charts create tight coupling; don't use if services need independent release cycles or are managed by different teams.</rationale>
+      </rule>
+      <example type="good" title="Umbrella chart structure">
+        <code lang="yaml"><![CDATA[
+# Chart.yaml
+apiVersion: v2
+name: myapp-umbrella
+version: 1.0.0
+dependencies:
+  - name: myapp
+    version: "1.0.0"
+    repository: "file://charts/myapp"
+  - name: postgresql
+    version: "12.1.2"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
+  - name: redis
+    version: "17.0.0"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+
+# values.yaml
+global:
+  imageRegistry: myregistry.io
+  imagePullSecrets:
+    - name: regcred
+
+myapp:
+  replicaCount: 3
+  image:
+    repository: myapp
+
+postgresql:
+  enabled: true  # dev: enabled; prod: disabled
+  auth:
+    postgresPassword: dev-password
+
+redis:
+  enabled: true
+  auth:
+    enabled: false
+]]></code>
+        <note>Global values inherited by subcharts. Each dependency can be toggled.</note>
+      </example>
+      <example type="bad" title="Umbrella bundling unrelated services">
+        <code lang="yaml"><![CDATA[
+# Umbrella mixing app, payments platform, and third-party metrics
+dependencies:
+  - name: myapp
+  - name: stripe-connector
+  - name: datadog-agent
+# If Stripe API breaks, myapp umbrella becomes undeployable
+# If metrics team updates Datadog, myapp versions are tied to it
+# Use separate releases for independent services
+]]></code>
+        <note>Umbrella = related components. Independent services = separate releases.</note>
+      </example>
+      <antipattern>
+        <description>Creating an umbrella chart that requires complex inter-chart communication or ordering (e.g., backend must wait for database to initialize).</description>
+        <reason>Helm is not an orchestrator. It deploys all charts in parallel. If ordering is required (app waits for database), use init containers (initContainer that waits for database to be ready) or readiness probes (app reports not ready if database unavailable), not Helm hooks. For truly complex orchestration, use Kubernetes operators.</reason>
+      </antipattern>
+    </section>
+    <section name="production-patterns">
+      <p>Production patterns ensure reliability and prevent common issues: checksum annotations force pod restarts on config changes, required values catch missing configuration early, resource protection prevents data loss on uninstall, and linting in CI catches syntax errors before deployment.</p>
+      <rule testable="true">
+        <statement>Templates MUST include checksum/config annotations on Deployment/StatefulSet pod templates to force restarts when ConfigMap or Secret changes (prevents stale config). Required values MUST use {{ required "message" .Values.critical_value }} to provide clear error on missing configuration. Resources (PVC, databases, persistent data) MUST be annotated with helm.sh/resource-policy: keep to prevent deletion on release uninstall. All templates MUST pass helm lint in CI/CD before merge; linting MUST enforce naming conventions, required fields, and no deprecated APIs. Charts MUST use values.schema.json to define configuration structure, types, and validation rules for IDE support and early error detection.</statement>
+        <rationale>Checksum annotations (sha256sum of ConfigMap/Secret) trigger pod recreation when config changes; without them, pods continue using old mounted config until manually restarted. Required values catch typos early ("mistmatch" in -f values.yaml file name = clear error, not silent no-op). Resource protection prevents accidental data loss: uninstalling app chart should NOT delete its database. Helm lint in CI prevents merging broken charts. values.schema.json enables VS Code/IDE validation before deployment.</rationale>
+      </rule>
+      <example type="good" title="Checksum and resource protection">
+        <code lang="yaml"><![CDATA[
+# templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "myapp.fullname" . }}-config
+data:
+  app.conf: |
+    {{ .Values.appConfig | nindent 4 }}
+
+# templates/deployment.yaml
+spec:
+  template:
+    metadata:
+      annotations:
+        # Force restart when ConfigMap changes
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: app
+          volumeMounts:
+            - name: config
+              mountPath: /etc/config
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "myapp.fullname" . }}-config
+
+# templates/pvc.yaml (resource protection)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "myapp.fullname" . }}-data
+  annotations:
+    "helm.sh/resource-policy": keep  # survives helm uninstall
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+]]></code>
+        <note>Checksum annotation triggers pod restart on ConfigMap change. Helm.sh/resource-policy: keep prevents PVC deletion on uninstall.</note>
+      </example>
+      <example type="good" title="Required values and schema">
+        <code lang="yaml"><![CDATA[
+# templates/deployment.yaml
+env:
+  - name: DATABASE_HOST
+    value: {{ required "database.host is required" .Values.database.host }}
+
+# values.schema.json (IDE validation)
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["image", "database"],
+  "properties": {
+    "image": {
+      "type": "object",
+      "required": ["repository", "tag"],
+      "properties": {
+        "repository": { "type": "string" },
+        "tag": { "type": "string" }
+      }
+    },
+    "database": {
+      "type": "object",
+      "required": ["host"],
+      "properties": {
+        "host": { "type": "string" }
+      }
+    }
+  }
+}
+]]></code>
+        <note>Required values fail with clear error. values.schema.json enables VS Code validation.</note>
+      </example>
+      <example type="bad" title="Missing checksums and protection">
+        <code lang="yaml"><![CDATA[
+# No checksum annotation
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          # Config changes don't trigger restart; pods use stale config
+
+# No resource protection
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-data
+# helm uninstall deletes PVC and all data inside
+]]></code>
+        <note>Add checksum/config annotations. Add helm.sh/resource-policy: keep for persistent resources.</note>
+      </example>
+      <antipattern>
+        <description>Skipping helm lint in CI or linting with --strict disabled because some warnings fail the build.</description>
+        <reason>Helm lint catches real issues: deprecated API versions, missing required fields, misnamed resources. Warnings should be addressed (e.g., missing NOTES.txt, no app version in labels). Disabling --strict is a code smell; fix the warnings instead. Lint should be a required CI gate.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates.md" purpose="Production-ready template snippets for library charts, hooks, tests, umbrella composition, and advanced patterns"/>
+    </templates>
+    <section name="advanced-templating-techniques">
+      <p>Go templating in Helm supports functions, conditionals, loops, and pipelines. Mastering templating enables building flexible, maintainable charts. Common patterns: checksum annotations (force pod restart on config change), required values (validation), template evaluation (dynamic templates), resource protection.</p>
+      <rule testable="true">
+        <statement>Templates MUST use named helpers ({{ include "..." }}) for DRY compliance; avoid repeating YAML snippets. Complex conditionals (3+ levels) MUST be refactored into separate partials or require clear documentation. Template functions (default, required, toYaml, nindent) MUST escape YAML correctly (toYaml | nindent for nested objects). Checksum annotations MUST be included on Deployment/StatefulSet pod templates to force restarts when ConfigMap/Secret changes (without manual pod deletion). Required values MUST be validated with {{ required "message" .Values.field }} for clear error messages. Comments in templates MUST explain non-obvious logic to aid future maintainers.</statement>
+        <rationale>Named helpers reduce duplication and enable reusability. Complex conditionals reduce readability; split into smaller partials. YAML escaping (toYaml | nindent) prevents malformed manifests. Checksums on pod templates force restarts automatically when config changes (without checksum, pods use cached mounted ConfigMap). required() fails fast with clear error, not silent failures. Comments document intent: why this conditional exists, what values it expects.</rationale>
+      </rule>
+      <example type="good" title="Checksum annotation for config changes">
+        <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "myapp.fullname" . }}-config
+data:
+  app.conf: |
+    {{ .Values.appConfig | nindent 4 }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "myapp.fullname" . }}
+spec:
+  template:
+    metadata:
+      annotations:
+        # Force pod restart when ConfigMap changes
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        # Or check multiple config files
+        checksum/all: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}{{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: app
+          volumeMounts:
+            - name: config
+              mountPath: /etc/config
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "myapp.fullname" . }}-config
+]]></code>
+        <note>Checksum triggers pod restart when ConfigMap content changes. Without it, pods use cached mounted config until manually deleted.</note>
+      </example>
+      <example type="bad" title="No checksum; stale config">
+        <code lang="yaml"><![CDATA[
+# No checksum annotation
+spec:
+  template:
+    metadata:
+      # No annotations with checksum
+    spec:
+      containers:
+        - name: app
+          volumeMounts:
+            - name: config
+              mountPath: /etc/config
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "myapp.fullname" . }}-config
+
+# Update ConfigMap value:
+# kubectl apply -f configmap.yaml  # updates ConfigMap
+# helm upgrade myapp .             # updates ConfigMap but NOT pod mounting it
+# Result: pod continues using old config value until manually deleted
+]]></code>
+        <note>Always add checksum/config annotation to force pod restart on config change.</note>
+      </example>
+      <antipattern>
+        <description>Using template evaluation ({{ tpl .Values.template . }}) to dynamically load template strings from values.</description>
+        <reason>Templating values makes debugging difficult: errors occur at runtime, not at chart development time. Values become code, breaking separation of data and logic. Avoid {{ tpl }};  keep values simple (strings, numbers, objects), not templates. If you need dynamic logic, implement it in Kubernetes controllers or use Kustomize for post-Helm transformation.</reason>
+      </antipattern>
+    </section>
+    <section name="hook-best-practices">
+      <p>Hooks automate lifecycle operations but are limited to Kubernetes Jobs and Pods. Best practices: idempotent operations, proper cleanup policies, hook weight ordering, and comprehensive error handling for visibility.</p>
+      <rule testable="true">
+        <statement>Hooks MUST be idempotent: running the same hook twice produces same result (migrations check if already applied, cleanup removes stale resources). Hook jobs MUST have backoffLimit: 0 or 1 to fail fast on error (no retries). Hook deletion policy MUST be specified: hook-succeeded (cleanup after success), before-hook-creation (delete old hook before creating new one). Hooks MUST log output for debugging; use kubectl logs on hook pod to diagnose failures. Pre-upgrade hooks MUST run before pod restart (weight: -5) to apply schema migrations before app start. Post-install/test hooks MUST validate deployed release works (connectivity, health checks). Hooks MUST NOT rely on external systems (APIs, databases) being fully ready; add retry logic in hook script (not Helm retry).</statement>
+        <rationale>Idempotency prevents cascade failures on retries: if migration hook runs twice, second run detects "already applied" and succeeds. backoffLimit: 0 prevents Kubernetes from retrying failed hooks automatically (retry once = two failures, confusing operator). Hook deletion policy prevents accumulating stale hook pods. Logging enables debugging. Pre-upgrade hooks run before app deployment, preventing 5xx errors from schema mismatch. Post-install tests confirm deployment succeeded. External dependency handling in script (poll loop with timeout) is safer than relying on Kubernetes readiness probes being ready before hook runs.</rationale>
+      </rule>
+      <example type="good" title="Idempotent pre-upgrade migration">
+        <code lang="yaml"><![CDATA[
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "myapp.fullname" . }}-migrate-{{ .Release.Revision }}
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    spec:
+      containers:
+        - name: migrate
+          image: myapp:{{ .Values.image.tag }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              # Idempotent migration: check if already applied
+              python manage.py showmigrations | grep -q "0001_initial \[X\]"
+              if [ $? -eq 0 ]; then
+                echo "Migration already applied"
+                exit 0
+              fi
+              # Apply migration
+              python manage.py migrate
+              if [ $? -ne 0 ]; then
+                echo "Migration failed"
+                exit 1
+              fi
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: database-url
+      restartPolicy: Never
+  backoffLimit: 0  # Fail fast on error
+]]></code>
+        <note>Idempotent: check if migration already applied before running. Fail fast with backoffLimit: 0.</note>
+      </example>
+    </section>
+    <section name="library-chart-patterns">
+      <p>Library charts are non-deployable template repositories shared across application charts. Eliminates duplication of naming conventions, labels, and common patterns. Library charts are dependencies, not directly installed.</p>
+      <rule testable="true">
+        <statement>Library charts MUST have type: library in Chart.yaml to prevent direct installation. Library charts MUST NOT contain values.yaml or deployable templates (no deployment.yaml, service.yaml). Library charts MUST contain only _helpers.tpl with named templates ({{ define "libname.something" }}). Dependent charts MUST declare library in dependencies section with file://../library-chart path (for co-located development) or HTTP repository URL (for published libraries). Library templates MUST use clear naming: libname.fullname, libname.labels, libname.selectorLabels to signal intent. Documentation MUST explain which templates are exported and how dependent charts use them via {{ include }}.</statement>
+        <rationale>type: library prevents accidental installation (Helm rejects it). Named templates-only prevents output; library doesn't deploy anything, just provides reusable template functions. Co-location (file://) enables rapid development; HTTP repo enables external teams to depend on published library. Clear naming signals library intent: libname.* is from library, not local templates. Documentation enables dependent charts to discover and use exported functions.</rationale>
+      </rule>
+      <example type="good" title="Library chart structure">
+        <code lang="text"><![CDATA[
+library-common/
+├── Chart.yaml          # type: library
+├── templates/
+│   ├── _helpers.tpl    # Named templates only
+│   └── _defaults.tpl   # Additional helpers
+└── README.md
+
+# Chart.yaml
+apiVersion: v2
+name: library-common
+version: 0.1.0
+type: library
+description: Shared templates for microservices
+
+# templates/_helpers.tpl
+{{- define "common.fullname" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{- define "common.labels" -}}
+app: {{ include "common.fullname" . }}
+version: {{ .Chart.AppVersion }}
+{{- end }}
+
+# Dependent chart uses library:
+# Chart.yaml
+dependencies:
+  - name: library-common
+    version: 0.1.0
+    repository: "file://../library-common"
+
+# templates/deployment.yaml (uses library)
+metadata:
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+]]></code>
+        <note>Library has zero deployable resources. Dependent imports and uses via {{ include }}.</note>
+      </example>
+      <antipattern>
+        <description>Creating a single library chart so generic it supports all Kubernetes resources with deep conditional logic.</description>
+        <reason>A library serving all use cases becomes unmaintainable. Keep libraries focused: "naming conventions", "common labels", "pod security policies". If you find yourself writing 100+ lines of conditionals, split into focused libraries or question if Helm templating is the right tool for such complexity. Kustomize or Kubernetes controllers may be better for advanced composition.</reason>
+      </antipattern>
+    </section>
+    <section name="security-patterns-in-charts">
+      <p>Security in Helm charts: Pod Security Policies/Standards, Network Policies, RBAC, secret management, container security (read-only filesystem, drop capabilities, non-root user).</p>
+      <rule testable="true">
+        <statement>Pod specs MUST run as non-root user (securityContext.runAsNonRoot: true, runAsUser: 1000). Containers MUST have read-only root filesystem (readOnlyRootFilesystem: true) with writable tmpfs for temp files. Capabilities MUST be dropped except those explicitly needed (securityContext.capabilities.drop: ALL, add: [NET_BIND_SERVICE]). Secrets MUST NOT be stored in values.yaml; use external secret manager (Vault, Sealed Secrets, AWS Secrets Manager) with operator injecting secrets at deploy time. Network Policies MUST restrict pod-to-pod communication (allow only necessary ingress/egress). RBAC MUST grant minimum necessary permissions (avoid wildcard *). Pod Security Standards (PSS) SHOULD be enforced at namespace level (baseline, restricted). Documentation MUST explain security posture and compliance (PCI-DSS, HIPAA, SOC2) supported by chart.</statement>
+        <rationale>Non-root user prevents container escape escalating to host root. Read-only filesystem prevents malware persistence. Dropped capabilities reduce attack surface. External secret managers prevent secrets in Git. Network Policies segment traffic. RBAC prevents lateral movement. PSS labels (restricted = stricter, baseline = permissive) enforce pod security org-wide. Documentation enables operators to assess compliance.</rationale>
+      </rule>
+      <example type="good" title="Secure pod specification">
+        <code lang="yaml"><![CDATA[
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "myapp.fullname" . }}
+spec:
+  template:
+    spec:
+      serviceAccountName: {{ include "myapp.fullname" . }}
+      containers:
+        - name: app
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 3000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: config
+              mountPath: /etc/config
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: config
+          configMap:
+            name: {{ include "myapp.fullname" . }}-config
+      # Pod Security Standards label
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+]]></code>
+        <note>Non-root user, read-only filesystem, dropped capabilities, no privilege escalation. seccompProfile enables seccomp profile (restrict syscalls).</note>
+      </example>
+      <antipattern>
+        <description>Running container as root (UID 0) to simplify permission issues.</description>
+        <reason>Root container = container escape = host root access. Fix permission issues by running as dedicated user, not root. Use initContainer (runs as root once) to change file ownership, then run main app as non-root.</reason>
+      </antipattern>
+    </section>
+    <section name="chart-validation-ci-cd">
+      <p>Charts must pass validation in CI/CD before merge. Validation includes syntax (helm lint), manifest output (helm template), API validation (helm install --dry-run=server), and functional tests (helm test). Automated checks catch errors early, preventing broken deployments.</p>
+      <rule testable="true">
+        <statement>All charts MUST pass helm lint with no warnings (strict mode). Chart templates MUST be validated with helm template to verify manifest output. Deployed manifests MUST be validated server-side (helm install --dry-run=server) against actual cluster API version. Helm tests MUST confirm deployed release is functional (connectivity, health, basic operations). Test results MUST be captured in CI logs for debugging. Integration tests SHOULD verify inter-chart communication in umbrella deployments (app can reach database, cache). All validation MUST run in CI/CD; only passing charts are mergeable. Documentation MUST list validation steps and failure troubleshooting.</statement>
+        <rationale>helm lint catches YAML errors, deprecated APIs, missing fields early. helm template verifies templating without contacting cluster (safe, fast). --dry-run=server validates against actual API version (catches API compatibility issues). Helm tests confirm app health post-deploy (pod may start but service unreachable). Integration tests in umbrella charts verify subcharts communicate correctly. CI gates prevent broken charts reaching production. Documentation enables operators to understand and reproduce validation locally.</rationale>
+      </rule>
+      <example type="good" title="Comprehensive CI/CD validation">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# .github/workflows/helm-validate.yml or CI script
+set -e
+
+echo "=== 1. Lint ==="
+helm lint ./mychart --strict
+
+echo "=== 2. Template Output ==="
+helm template myrelease ./mychart --values values-dev.yaml > /tmp/manifests.yaml
+echo "Generated $(cat /tmp/manifests.yaml | grep -c ^apiVersion:) manifests"
+
+echo "=== 3. Kubernetes API Validation ==="
+kubectl apply --dry-run=server -f /tmp/manifests.yaml
+
+echo "=== 4. Install in Test Cluster ==="
+helm install myapp-ci ./mychart \
+  --namespace test-${GITHUB_RUN_ID} \
+  --create-namespace \
+  --values values-dev.yaml
+
+echo "=== 5. Wait for Readiness ==="
+kubectl rollout status deployment/myapp -n test-${GITHUB_RUN_ID} --timeout=2m
+
+echo "=== 6. Run Helm Tests ==="
+helm test myapp-ci --namespace test-${GITHUB_RUN_ID}
+
+echo "=== 7. Integration Tests ==="
+POD=$(kubectl get pods -n test-${GITHUB_RUN_ID} -l app=myapp -o jsonpath='{.items[0].metadata.name}')
+kubectl exec -it $POD -n test-${GITHUB_RUN_ID} -- curl http://localhost:8080/health
+
+echo "=== 8. Cleanup ==="
+helm uninstall myapp-ci --namespace test-${GITHUB_RUN_ID}
+kubectl delete namespace test-${GITHUB_RUN_ID}
+
+echo "=== All Validation Passed ==="
+]]></code>
+        <note>Sequential validation: lint → template → API → deploy → test → cleanup. Failure at any stage blocks merge.</note>
+      </example>
+      <example type="bad" title="Insufficient CI validation">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# Minimal (inadequate) validation
+helm lint ./mychart  # Only syntax; no API or functional validation
+
+# Chart passes "validation" but fails in production:
+# - API compatibility issue (helm lint doesn't catch)
+# - Pod crashes on startup (no functional test)
+# - Database unreachable (no integration test)
+]]></code>
+        <note>Comprehensive validation catches real issues. Lint-only misses API, deployment, and functional problems.</note>
+      </example>
+      <antipattern>
+        <description>Skipping --dry-run=server validation because "lint should catch everything".</description>
+        <reason>helm lint catches syntax and structure errors. It does NOT validate against actual Kubernetes API version or custom resources (CRDs). A chart valid in 1.20 may fail in 1.28 if API changed. Always run --dry-run=server against target cluster version.</reason>
+      </antipattern>
+    </section>
+    <section name="troubleshooting-advanced-scenarios">
+      <p>Debugging complex Helm scenarios: dependency conflicts, hook failures, resource orphaning, rollback incompatibility, and performance issues. Tools: helm history, helm get values, kubectl describe, logs, events.</p>
+      <rule testable="true">
+        <statement>Release history MUST be preserved (do not delete releases) for audit and rollback capability. Release status MUST be checked with helm status and kubectl describe pod before diagnosing failures. Hook failures MUST be inspected via kubectl logs on hook pod. Failed pods MUST be described to identify missing resources, permission errors, or image issues. Cluster events (kubectl get events -n NAMESPACE) provide often-missed context: ImagePullBackOff, InsufficientMemory, etc. Rollback MUST be tested in staging before applying to production. Performance issues MUST be measured (kubectl top pod, Prometheus metrics) not assumed.</statement>
+        <rationale>Release history enables instant rollback to known good state. helm status shows current release state and recent changes. kubectl describe reveals resource issues (missing ConfigMap, RBAC error, image not found). Logs show application errors. Cluster events capture system-level issues (memory pressure, storage errors) that pod logs don't show. Performance debugging without measurement is guesswork; measure, hypothesize, fix, measure again.</rationale>
+      </rule>
+      <example type="good" title="Debugging failed Helm deployment">
+        <code lang="bash"><![CDATA[
+# 1. Check release history
+helm history myapp --max=10
+
+# 2. Check current release state
+helm status myapp
+
+# 3. Check pods
+kubectl get pods -n myapp
+kubectl describe pod myapp-xyz -n myapp
+
+# 4. Check events (system-level errors)
+kubectl get events -n myapp --sort-by='.lastTimestamp'
+
+# 5. Check logs
+kubectl logs deployment/myapp -n myapp --tail=100
+kubectl logs deployment/myapp -n myapp --previous  # crashed pod logs
+
+# 6. Check resource availability
+kubectl top nodes
+kubectl top pods -n myapp
+
+# 7. If hook failed, check hook pod logs
+kubectl logs job/myapp-migrate -n myapp
+
+# 8. Rollback if needed
+helm rollback myapp 1 -n myapp
+
+# 9. Verify rollback worked
+helm status myapp
+kubectl get pods -n myapp
+]]></code>
+        <note>Systematic debugging: history → status → describe → events → logs → metrics → action. Don't guess; measure.</note>
+      </example>
+      <antipattern>
+        <description>Rollback without understanding why the upgrade failed, then rolling back again immediately.</description>
+        <reason>Rollback is emergency recovery, not diagnosis. Always understand root cause before rolling back. If you roll back without fixing root cause, the same failure will occur on next upgrade. Diagnose (why did it fail?), fix root cause, then upgrade again.</reason>
+      </antipattern>
+    </section>
+    <section name="umbrella-chart-composition">
+      <p>Umbrella charts coordinate deployment of related services (app + database + cache) with version pinning and shared configuration. Value scoping prevents naming collisions between subcharts.</p>
+      <rule testable="true">
+        <statement>Umbrella charts MUST declare all dependencies in Chart.yaml with exact versions. Global values MUST be defined for shared config (imageRegistry, imagePullSecrets) accessible by subcharts via .global namespace. Subchart values MUST be scoped by dependency name (postgresql.*, redis.*) to prevent collisions. Each dependency MUST be optional via condition (condition: postgresql.enabled) to support different deployment topologies (dev: embedded PostgreSQL, prod: managed Cloud SQL). Umbrella chart MUST NOT contain templates/ directly (no deployments, services); dependencies provide all deployable resources. Documentation MUST list all dependencies, their versions, and configuration options with examples.</statement>
+        <rationale>Exact versions ensure reproducible installs; flexible ranges introduce hidden breaking changes. Global values prevent duplication: registry defined once, inherited by all subcharts via .global. Scoped values prevent naming collisions: postgresql.replicas and redis.replicas coexist without conflict. Conditions enable topology flexibility: same chart works in dev (embedded DB) and prod (managed DB). Subcharts providing all templates prevents umbrella from managing both infrastructure and subcharts (separation of concerns). Documentation enables operators to understand and customize multi-service deployments.</rationale>
+      </rule>
+      <example type="good" title="Umbrella chart with optional components">
+        <code lang="yaml"><![CDATA[
+# Chart.yaml
+apiVersion: v2
+name: myapp-umbrella
+version: 1.0.0
+dependencies:
+  - name: myapp
+    version: "1.0.0"
+    repository: "file://charts/myapp"
+  - name: postgresql
+    version: "12.1.2"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
+  - name: redis
+    version: "17.0.0"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+
+# values.yaml
+global:
+  imageRegistry: myregistry.io
+  imagePullSecrets:
+    - name: regcred
+
+myapp:
+  replicaCount: 1
+  image:
+    repository: myapp
+
+postgresql:
+  enabled: true  # dev: true; prod: false (use managed)
+  auth:
+    postgresPassword: dev-password
+  primary:
+    resources:
+      requests:
+        memory: 256Mi
+
+redis:
+  enabled: true
+  replica:
+    replicaCount: 1
+
+# values-prod.yaml (override for production)
+myapp:
+  replicaCount: 5
+  resources:
+    requests:
+      memory: 512Mi
+
+postgresql:
+  enabled: false  # Use managed Cloud SQL instead
+
+redis:
+  enabled: false  # Use managed Memorystore instead
+]]></code>
+        <note>Same chart works for dev (embedded services) and prod (managed services) via conditions.</note>
+      </example>
+    </section>
+    <see-also>
+      <link href="https://helm.sh/docs/topics/library_charts/"/>
+      <link href="https://helm.sh/docs/topics/charts_hooks/"/>
+      <link href="https://helm.sh/docs/topics/chart_tests/"/>
+      <link href="https://helm.sh/docs/howto/charts_tips_and_tricks/"/>
+      <link href="https://helm.sh/docs/chart_best_practices/"/>
+      <ref slug="helm-basics"/>
+      <ref slug="kubernetes-deployment"/>
+    </see-also>
+  </content>
+</methodology>
