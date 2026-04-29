@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="nextjs-app-router">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Modern Next.js (13+) routing using React Server Components as the default, with client components only at the leaves.</summary>
+    <tags>
+      <tag>nextjs</tag>
+      <tag>react</tag>
+      <tag>server-components</tag>
+      <tag>routing</tag>
+      <tag>app-router</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Next.js App Router</title>
+    <summary>Modern Next.js (13+) routing using React Server Components as the default, with client components only at the leaves. Covers segment structure (page.tsx, loading.tsx, error.tsx), Server Actions for mutations, Route Handlers for API endpoints, and middleware for auth.</summary>
+    <why>
+      <p>Server Components render on the server and ship zero client JS by default, improving FCP and SEO. Keeping 'use client' at the leaves rather than layout-level minimizes hydration cost. Server Actions with Zod validation remove the need for an internal API tier for mutations. Streaming via Suspense lets slow data fetches unblock fast ones.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>New Next.js 13+ projects (App Router is the default; Pages Router is legacy).</item>
+        <item>SSR/SSG/ISR products where SEO and first-paint matter.</item>
+        <item>Apps with deep nested layouts and per-segment loading/error UI.</item>
+        <item>Server-first stacks calling the DB directly from RSCs without an internal API.</item>
+        <item>Form-heavy products using Server Actions with progressive enhancement.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Migrating a working Pages Router app with no concrete pain — rewrite cost rarely pays off.</item>
+        <item>Static portfolio/brochure sites — Astro/Gatsby/11ty are simpler and cheaper.</item>
+        <item>Heavy realtime/dashboard SPAs — Vite + React Router is lighter; RSC adds little.</item>
+        <item>Apps that must run on serverless without a Node-compatible runtime (some Workers, Lambda@Edge) — Server Components are a tight fit only on Vercel and Node-compatible hosts.</item>
+        <item>Teams with no Server Components experience and no time to learn — bugs in client/server boundary are subtle and frequent.</item>
+      </list>
+    </when-not-to-use>
+    <section name="server-vs-client-components">
+      <rule testable="true">
+        <statement>Default every component to a Server Component. Add 'use client' only when the component needs state, effects, browser APIs, or event handlers.</statement>
+        <rationale>Server Components ship zero client JS by default; premature 'use client' inflates the bundle and disables server-side data access.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Keep 'use client' at the leaves of the component tree — never at layout level unless strictly necessary.</statement>
+        <rationale>A 'use client' directive is viral: it converts the entire subtree to client code, negating RSC benefits for unrelated children.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Pass only serializable props across the server/client boundary: primitives, plain objects, arrays. Never pass functions, Date objects, class instances, or Map/Set.</statement>
+        <rationale>Non-serializable props cause silent runtime errors when Next.js tries to serialize the server-rendered component tree.</rationale>
+      </rule>
+    </section>
+    <section name="data-fetching">
+      <rule testable="true">
+        <statement>Co-locate data fetching with the component that consumes it (async Server Component + await), not in a parent layout that passes data down.</statement>
+        <rationale>Prop-drilling through layouts couples layout structure to data shape; each component fetching its own data removes the coupling and enables parallel requests.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Wrap each slow data fetch in a Suspense boundary with a meaningful skeleton, not a generic spinner.</statement>
+        <rationale>Streaming allows fast sections to render while slow ones load; a global spinner blocks everything and wastes RSC's streaming capability.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use Server Actions for mutations; validate inputs with Zod before any DB call; call revalidatePath/revalidateTag to refresh exactly the affected data.</statement>
+        <rationale>Server Actions remove the need for a separate API route for mutations and integrate with progressive enhancement. Zod validation prevents trusting raw formData.</rationale>
+      </rule>
+    </section>
+    <section name="caching-and-rendering">
+      <rule testable="true">
+        <statement>Choose a rendering strategy per route and document it: full SSG (generateStaticParams), ISR (revalidate: N), or dynamic (force-dynamic). Default is static; dynamic rendering opts in by touching cookies()/headers()/searchParams.</statement>
+        <rationale>Accidental dynamic rendering is a silent performance regression; auditing next build output for unexpected λ dynamic routes surfaces it.</rationale>
+      </rule>
+      <antipattern>
+        <description>useEffect(() => fetch('/api/x')) inside a client component when data could be fetched in the server component parent.</description>
+        <reason>Adds a network round-trip, slows first paint, and bypasses RSC's direct DB access capability.</reason>
+      </antipattern>
+      <antipattern>
+        <description>'use client' at the top of every component file.</description>
+        <reason>Pre-RSC habit that converts all components to client-side JS; eliminates server rendering benefits entirely.</reason>
+      </antipattern>
+    </section>
+    <section name="segment-structure">
+      <rule testable="true">
+        <statement>Every route segment should include loading.tsx (Suspense fallback) and error.tsx (error boundary). Do not delete them — they are required for graceful UX.</statement>
+        <rationale>Missing loading.tsx causes the entire segment to block until all data is resolved; missing error.tsx surfaces unhandled errors to users.</rationale>
+      </rule>
+      <example type="good" title="Server Component with Suspense and loading state">
+        <code lang="tsx"><![CDATA[
+// app/dashboard/page.tsx — Server Component (no 'use client')
+import { Suspense } from 'react';
+import { getServerSession } from 'next-auth';
+import { redirect } from 'next/navigation';
+import { DashboardStats } from '@/components/dashboard/stats';
+import { StatsLoading } from '@/components/dashboard/loading';
+
+export const metadata = { title: 'Dashboard' };
+
+export default async function DashboardPage() {
+  const session = await getServerSession();
+  if (!session) redirect('/login');
+
+  return (
+    <div className="container py-8">
+      <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+      <Suspense fallback={<StatsLoading />}>
+        <DashboardStats userId={session.user.id} />
+      </Suspense>
+    </div>
+  );
+}
+        ]]></code>
+        <note>Server Component fetches session server-side. Each data section is independently wrapped in Suspense.</note>
+      </example>
+    </section>
+    <section name="server-actions">
+      <example type="good" title="Server Action with Zod validation and revalidation">
+        <code lang="ts"><![CDATA[
+// app/actions.ts
+'use server';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { z } from 'zod';
+import { db } from '@/lib/db';
+
+const CreatePostSchema = z.object({
+  title: z.string().min(1).max(100),
+  content: z.string().min(1),
+});
+
+export async function createPost(formData: FormData) {
+  const parsed = CreatePostSchema.safeParse({
+    title: formData.get('title'),
+    content: formData.get('content'),
+  });
+  if (!parsed.success) return { error: parsed.error.flatten() };
+
+  const post = await db.post.create({ data: parsed.data });
+  revalidatePath('/posts');
+  redirect(`/posts/${post.id}`);
+}
+        ]]></code>
+        <note>'use server' at the top of the file. Validate with Zod before any DB call. revalidatePath only for the affected route, not '/'.</note>
+      </example>
+    </section>
+    <section name="route-handlers">
+      <example type="good" title="Route Handler with auth and error handling">
+        <code lang="ts"><![CDATA[
+// app/api/users/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { getServerSession } from 'next-auth';
+import { db } from '@/lib/db';
+
+const CreateUserSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+});
+
+export async function POST(request: NextRequest) {
+  const session = await getServerSession();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  try {
+    const parsed = CreateUserSchema.parse(await request.json());
+    const user = await db.user.create({ data: parsed });
+    return NextResponse.json(user, { status: 201 });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.flatten() }, { status: 400 });
+    }
+    throw error;
+  }
+}
+        ]]></code>
+        <note>Auth check before body parsing. Zod validation returns 400, not 500. Re-throws unknown errors for the error boundary.</note>
+      </example>
+    </section>
+    <section name="middleware">
+      <example type="good" title="Middleware with auth and redirect">
+        <code lang="ts"><![CDATA[
+// middleware.ts — runs on Edge runtime; no Node-only imports
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
+
+export async function middleware(request: NextRequest) {
+  const token = await getToken({ req: request });
+  const isAuthPage = request.nextUrl.pathname.startsWith('/login');
+
+  if (isAuthPage) {
+    if (token) return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.next();
+  }
+  if (!token) {
+    const callbackUrl = encodeURIComponent(
+      request.nextUrl.pathname + request.nextUrl.search
+    );
+    return NextResponse.redirect(new URL(`/login?callbackUrl=${callbackUrl}`, request.url));
+  }
+  return NextResponse.next();
+}
+
+export const config = { matcher: ['/dashboard/:path*', '/login'] };
+        ]]></code>
+        <note>Middleware runs on Edge runtime — never import crypto, fs, or other Node-only modules here.</note>
+      </example>
+      <antipattern>
+        <description>Importing Node-only modules (crypto, fs, path) in middleware.ts.</description>
+        <reason>Middleware runs on the Edge runtime which does not support Node built-ins; the build fails silently or at runtime.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Calling revalidatePath('/') after every mutation.</description>
+        <reason>Over-invalidation purges the entire cache; performance collapses on high-traffic sites. Invalidate only the affected path or tag.</reason>
+      </antipattern>
+      <reference path="templates/next.config.ts">Production next.config.ts with bundle analyzer, typed routes, security headers</reference>
+    </section>
+    <section name="limitations-and-gotchas">
+      <p>Caching model is opaque; fetch cache, unstable_cache, route segment config, and Route Handler caching interact in non-obvious ways.</p>
+      <p>'use client' is viral: importing a client component into a server component is fine, but the inverse is not — and one stray useState poisons the whole tree above.</p>
+      <p>Server Actions require careful CSRF + size limits; the default 1 MB body limit catches teams off guard.</p>
+      <p>Streaming with Suspense + loading.tsx interacts oddly with &lt;head&gt; metadata in some browsers (FOUC, late-arriving title).</p>
+      <p>ISR + on-demand revalidation works on Vercel; self-hosting it (Node, Docker) needs manual cache adapter setup.</p>
+      <p>cookies() / headers() / searchParams are dynamic APIs — touching them in a layout opts the whole route into dynamic rendering.</p>
+      <p>Middleware runs on the Edge runtime by default — node: imports break silently.</p>
+      <p>Parallel routes (@modal) and intercepting routes ((.photo)) are powerful but rarely understood; LLMs misuse them.</p>
+      <p>Build-time generateStaticParams calls real APIs; without rate-limit awareness, builds can DoS your own backend.</p>
+    </section>
+    <section name="agentic-workflow">
+      <p>A planner subagent decides per route: server vs client, static vs dynamic, ISR window, where to put Suspense. An implementer subagent scaffolds the segment (page.tsx, loading.tsx, error.tsx, layout.tsx if needed) and emits Server Actions or Route Handlers as appropriate. A boundary-auditor subagent walks the import graph and flags accidental client-component leaks (useState reaching into a server component). A perf subagent runs Lighthouse CI on key routes and inspects next build output for unexpected dynamic rendering.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-sdd-executor-agent — drives spec → segment → tests → review.</item>
+        <item>A user-defined rsc-boundary-auditor (model: sonnet) — checks every 'use client' placement; flags client-only hooks reaching into server tree.</item>
+        <item>A user-defined nextbuild-analyzer (model: haiku) — parses next build output, surfaces unexpected λ dynamic routes that should be ○ static or ƒ ISR.</item>
+        <item>password-scrubber-agent — sweep server actions and route handlers before commit.</item>
+      </list>
+    </section>
+    <section name="cli-tools">
+      <p>Command-line tools and integrations for development and deployment:</p>
+      <list>
+        <item>next CLI — dev / build / start / lint (bundled)</item>
+        <item>next-bundle-analyzer — Inspect server/client bundle splits (npm i -D @next/bundle-analyzer)</item>
+        <item>next-on-pages / next-on-cf — Deploy to Cloudflare Workers (https://github.com/cloudflare/next-on-pages)</item>
+        <item>vercel CLI — Deploy + env mgmt (npm i -g vercel)</item>
+        <item>eslint-config-next — Built-in lint rules incl. react-server-components checks (included)</item>
+        <item>lighthouse-ci — Perf / SEO budgets in CI (npm i -D @lhci/cli)</item>
+        <item>playwright — E2E + a11y on real Next builds (npm init playwright@latest)</item>
+        <item>next-test-api-route-handler — Unit-test Route Handlers (npm i -D next-test-api-route-handler)</item>
+        <item>taintObjectReference (React 19) — Server-only data tainting (built-in)</item>
+        <item>serverpod/drizzle-kit/prisma — DB schema management used inside RSCs (per ORM)</item>
+      </list>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Default every component to Server Component; promote to Client only when you need state, effects, browser APIs, or event handlers.</item>
+        <item>Keep 'use client' at the leaves; never put it at a layout level if you can avoid it.</item>
+        <item>Pass only serializable props across the boundary (no functions, Dates, Maps); use a server-side &lt;form action&gt; instead of click handlers when possible.</item>
+        <item>Co-locate data fetching with the component that uses it (RSC + await), not in a parent layout.</item>
+        <item>Wrap slow data fetches in &lt;Suspense&gt; with a meaningful skeleton, not generic spinners.</item>
+        <item>For dynamic routes, choose: full SSG (generateStaticParams returns full set), partial PPR (Next 14+), or pure ISR (revalidate: 60). Document the choice per route.</item>
+        <item>Use Server Actions for mutations + revalidatePath / revalidateTag to refresh exactly what changed.</item>
+        <item>Cache Route Handlers explicitly with export const dynamic = 'force-static' | 'auto' | 'force-dynamic'.</item>
+        <item>Always set Cache-Control headers on Route Handlers serving public data; default is no-store in dev.</item>
+        <item>Validate Server Action inputs with zod; never trust formData directly.</item>
+        <item>Use next/image for every image with explicit width/height; configure remotePatterns for external CDNs.</item>
+        <item>Add metadataBase, default title template, and per-page generateMetadata for proper SEO.</item>
+        <item>Set experimental.typedRoutes: true so &lt;Link href&gt; is type-checked.</item>
+        <item>Audit next build output for unexpected dynamic routes (λ); each is a missed cache opportunity.</item>
+        <item>For self-hosting, configure a cacheHandler (Redis-backed) in next.config.ts.</item>
+      </list>
+    </section>
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>LLMs default to 'use client' at the top of every component because the training data is full of pre-RSC code. Strip it whenever it's not needed.</item>
+        <item>Agents pass non-serializable props (functions, Dates, class instances) from server to client — silent runtime errors. The boundary auditor catches these.</item>
+        <item>cookies() / headers() is async in the new Next; LLMs forget to await and pass a Promise around.</item>
+        <item>Agents write useEffect(() => fetch('/api/x')) inside a client component when they should fetch in the parent server component and pass data down.</item>
+        <item>LLMs misuse parallel/intercepting routes; if not specifically asked, avoid them — they almost always over-engineer the route tree.</item>
+        <item>Server Actions: agents forget 'use server' directive (top of file or function), and the action silently becomes a client function.</item>
+        <item>revalidatePath and revalidateTag are easy to mix up; agents over-invalidate ('/') and tank the cache hit rate.</item>
+        <item>Middleware: agents add Node-only imports (crypto, fs) to middleware.ts — Edge runtime breaks.</item>
+        <item>generateStaticParams returning thousands of slugs without batching = build OOM or backend DoS. Force pagination + warmup logic.</item>
+        <item>Hydration mismatches: agents emit Date.now() / Math.random() in server components and trip "text content did not match" errors. Pin or move to client.</item>
+        <item>Human-in-loop checkpoint: cache-related changes (revalidate, dynamic, cacheHandler, ISR) must be reviewed; subtle config drift can serve stale data for hours.</item>
+        <item>Don't let an agent silently delete loading.tsx / error.tsx — those are required for graceful UX and SEO.</item>
+      </list>
+    </section>
+    <section name="references">
+      <see-also>
+        <link href="https://nextjs.org/docs/app">App Router docs</link>
+        <link href="https://nextjs.org/docs/app/building-your-application/rendering/server-components">Server Components</link>
+        <link href="https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations">Server Actions</link>
+        <link href="https://nextjs.org/docs/app/building-your-application/caching">Caching reference</link>
+        <link href="https://nextjs.org/docs/app/building-your-application/routing/middleware">Middleware</link>
+        <link href="https://github.com/reactjs/rfcs/pull/188">React server components RFC</link>
+        <link href="https://github.com/cloudflare/next-on-pages">next-on-pages</link>
+        <link href="https://vercel.com/docs/frameworks/nextjs">Vercel docs</link>
+      </see-also>
+    </section>
+    <templates>
+      <template path="templates/next.config.ts" purpose="Production-ready next.config.ts with bundle analyzer, typed routes, security headers"/>
+    </templates>
+  </content>
+</methodology>
