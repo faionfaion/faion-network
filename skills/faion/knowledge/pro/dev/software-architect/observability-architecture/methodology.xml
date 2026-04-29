@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="observability-architecture">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Designing three-pillar observability (metrics, logs, traces) so engineers can answer why systems fail. SLI/SLO/error-budget, OpenTelemetry, sampling, alerting, and cost optimization.</summary>
+    <tags>
+      <tag>observability</tag>
+      <tag>monitoring</tag>
+      <tag>tracing</tag>
+      <tag>logging</tag>
+      <tag>slo</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Observability Architecture</title>
+    <summary>Designing the three-pillar observability stack (metrics, logs, traces) so engineers can answer "why is this broken?" not just "is it broken?". Covers SLI/SLO/error-budget instrumentation, OpenTelemetry collector pipelines, sampling strategies, alerting on burn rate, and cost-optimisation through tiered retention and tail sampling.</summary>
+    <why>
+      <p>Monitoring tells you when something fails; observability tells you why. Without correlated metrics + logs + traces you cannot answer "why does p99 latency spike for users in EU on Friday afternoons?" Semantic tagging (trace_id on every log line) enables root-cause analysis without pre-configuring every dashboard upfront — critical for unknown failure modes.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Instrumenting a new service before production launch</item>
+        <item>Migrating from ad-hoc logging to structured, correlated telemetry</item>
+        <item>Implementing SLO-based alerting (multi-burn-rate alerts)</item>
+        <item>Reducing observability costs by replacing head sampling with tail sampling</item>
+        <item>Designing OpenTelemetry Collector pipelines for Kubernetes workloads</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>A single-process script or cron job — stdout logging is sufficient</item>
+        <item>When the existing stack already covers the failure surface and cost is a constraint</item>
+        <item>Before SLOs are defined — observability investment without SLOs produces dashboards nobody acts on</item>
+      </list>
+    </when-not-to-use>
+    <section name="Three Pillars">
+      <rule>
+        <statement>Instrument all three pillars (metrics, logs, traces) and correlate them with shared identifiers (trace_id, span_id) to enable root-cause analysis of unknown failure modes.</statement>
+        <rationale>Metrics reveal that p99 latency spiked; logs show the error message; traces pinpoint which downstream service introduced the latency. Without all three correlated, root cause requires guesswork.</rationale>
+      </rule>
+      <list>
+        <item>Metrics: aggregate numerical data over time (counter, gauge, histogram, summary). Answers "what happened and how often?"</item>
+        <item>Logs: discrete events with timestamp and context. Answers "why did it happen?"</item>
+        <item>Traces: end-to-end request paths across services. Answers "where in the call chain did it happen?"</item>
+      </list>
+    </section>
+    <section name="Instrumentation Frameworks">
+      <p>RED Method (for request-handling services): Rate (req/s), Errors (failed req/s), Duration (latency distribution). Apply to every service endpoint.</p>
+      <p>USE Method (for resources): Utilisation (% busy), Saturation (queue depth), Errors (error count). Apply to CPU, memory, disk, network, connection pools.</p>
+      <p>Golden Signals (Google SRE): Latency, Traffic, Errors, Saturation. Superset of RED; use at service dashboard level.</p>
+      <rule>
+        <statement>Base alerts on SLO burn rate, not raw metric thresholds.</statement>
+        <rationale>A 5% error rate at 1 req/min consumes trivial error budget; a 0.5% error rate at 100k req/min exhausts the monthly budget in hours. Burn rate alerts catch both scenarios with a single rule.</rationale>
+      </rule>
+    </section>
+    <section name="SLI and Error Budget">
+      <rule>
+        <statement>Define 2-3 SLIs per critical service; reject SLIs that cannot be measured from the user's perspective.</statement>
+        <rationale>More than 3 SLIs per service creates alert fatigue and makes error budget policy ambiguous. Internal queue depth is not an SLI unless users directly observe it.</rationale>
+      </rule>
+      <p>Error budget table: 99% SLO = 7.3 h/month; 99.9% = 43 min/month; 99.95% = 21.6 min/month; 99.99% = 4.3 min/month.</p>
+      <list>
+        <item>Budget consumed 0-50%: normal development velocity</item>
+        <item>Budget consumed 50-75%: prioritise reliability tickets this sprint</item>
+        <item>Budget consumed 75-100%: reliability-focused sprint only</item>
+        <item>Budget consumed 100%+: feature freeze until budget recovers</item>
+      </list>
+    </section>
+    <section name="OpenTelemetry Standard">
+      <rule>
+        <statement>Use OpenTelemetry SDK as the single instrumentation layer for metrics, logs, and traces; avoid vendor-specific SDKs in application code.</statement>
+        <rationale>Vendor-specific instrumentation creates lock-in: switching backends requires rewriting all instrumentation. OTel is CNCF standard with 76% adoption (2025); backends can be swapped by changing Collector exporters only.</rationale>
+      </rule>
+      <p>Architecture: Application + OTel SDK → OTel Collector (gateway) → Mimir (metrics) + Loki (logs) + Tempo (traces) → Grafana (visualisation).</p>
+    </section>
+    <section name="Structured Logging">
+      <rule>
+        <statement>Emit JSON-structured logs with trace_id and span_id on every log line to enable log-to-trace correlation.</statement>
+        <rationale>Without trace_id on logs, correlating a log error to a specific trace requires timestamp matching — unreliable at high throughput. Shared trace_id enables one-click pivot from log to trace in Grafana.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="json"><![CDATA[{
+  "timestamp": "2025-01-15T10:30:00.000Z",
+  "level": "ERROR",
+  "service": "order-service",
+  "trace_id": "abc123def456",
+  "span_id": "span-001",
+  "user_id": "user-789",
+  "action": "order_create",
+  "message": "Payment service timeout after 5s"
+}]]></code>
+      </example>
+      <rule>
+        <statement>Use ERROR level only for failures requiring human action; use WARN for handled degradation; use INFO for normal business events.</statement>
+        <rationale>Alert rules fire on ERROR log rate. If ERROR is used loosely (e.g., 404 responses), alert thresholds must be raised, masking real errors.</rationale>
+      </rule>
+    </section>
+    <section name="Trace Context Propagation">
+      <rule>
+        <statement>Use W3C Trace Context (traceparent header) as the propagation format for HTTP and message queue boundaries.</statement>
+        <rationale>W3C Trace Context is the IETF standard; mixing formats (B3, Jaeger) across services breaks trace stitching at service boundaries.</rationale>
+      </rule>
+      <p>Propagate through: HTTP headers (traceparent), Kafka message headers, async task metadata. Verify propagation in integration tests — missing propagation silently breaks distributed traces.</p>
+    </section>
+    <section name="Sampling Strategy">
+      <rule>
+        <statement>Apply tail-based sampling: always sample 100% of error traces and traces exceeding the p99 latency threshold; apply 1-5% probabilistic sampling for the remainder.</statement>
+        <rationale>Head sampling (random % at trace start) discards error traces at the same rate as successful ones — the opposite of what debugging needs. Tail sampling waits for the full trace before deciding.</rationale>
+      </rule>
+      <list>
+        <item>Always sample: status=ERROR, latency above p99 threshold, critical user paths</item>
+        <item>Never sample: health check endpoints (/health/live, /health/ready)</item>
+        <item>Probabilistic: 1-5% of all other traces</item>
+      </list>
+    </section>
+    <section name="Multi-Burn-Rate Alerts">
+      <rule>
+        <statement>Alert on burn rate at two windows (short 5m/1h for fast burn; long 30m/6h for slow burn) rather than on raw error rate thresholds.</statement>
+        <rationale>A raw 1% error rate alert fires regardless of budget impact. A 14.4x burn rate alert (consuming 1 month of budget in 2 hours) fires only when the situation is urgent. Two-window approach reduces false positives from transient spikes.</rationale>
+      </rule>
+      <example type="good">
+        <note>Critical: 14.4x burn rate sustained over 5m AND 1h (page immediately). Warning: 6x burn rate sustained over 30m AND 6h (review within hours). Both windows must fire to avoid false positives.</note>
+      </example>
+      <rule>
+        <statement>Every alert must have a runbook URL in its annotation and a unique, human-readable summary.</statement>
+        <rationale>Alerts without runbooks require on-call engineers to diagnose from scratch under pressure. Runbook link reduces MTTR by providing diagnosis and mitigation steps immediately.</rationale>
+      </rule>
+    </section>
+    <section name="Alert Severity and Routing">
+      <list>
+        <item>Critical: page immediately (any time) → PagerDuty. Example: service down, SLO breached.</item>
+        <item>Warning: review within hours → Slack. Example: elevated error rate, disk filling.</item>
+        <item>Info: check during business hours → email/ticket. Example: unusual pattern, approaching limit.</item>
+      </list>
+      <rule>
+        <statement>Configure alert inhibition so that a critical alert suppresses related warning alerts on the same service.</statement>
+        <rationale>When a service is down (critical), related warning alerts for the same service create noise that distracts the responder from the root issue.</rationale>
+      </rule>
+    </section>
+    <section name="Cost Optimisation">
+      <rule>
+        <statement>Limit metric label cardinality to fewer than 10 unique values per label to prevent series explosion.</statement>
+        <rationale>A label with user_id as value on a high-traffic service creates millions of unique time series, causing storage and query performance to collapse. Use bucketed or categorical labels only.</rationale>
+      </rule>
+      <p>Cost reduction strategies: tail sampling (70-90% trace volume reduction), log aggregation at collector (30-50% storage), cardinality limits on high-volume metrics (40-60% series reduction), tiered retention (50-70% storage reduction).</p>
+      <list>
+        <item>Hot tier (7-14 days): active debugging, fast queries</item>
+        <item>Warm tier (30-90 days): recent incident analysis</item>
+        <item>Cold tier (1-2 years): compliance, audits, object storage</item>
+        <item>Archive (3+ years): legal requirements, cheapest storage class</item>
+      </list>
+      <antipattern>
+        <description>Storing all traces at 100% sample rate without tail sampling or retention tiers.</description>
+        <reason>At 10k req/s, 100% trace storage can cost 10-50x more than a 5% probabilistic + error-always strategy, with no diagnostic benefit for the 95% of successful traces.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/otel-collector.yaml" purpose="Production OTel Collector config with tail sampling, batch, memory limiter, and LGTM exporters"/>
+      <template path="templates/prometheus-rules.yaml" purpose="Multi-burn-rate SLO alerting rules + infrastructure/K8s recording rules"/>
+      <template path="templates/instrumentation.py" purpose="FastAPI + OpenTelemetry SDK setup with trace context injection into structured logs"/>
+    </templates>
+  </content>
+</methodology>
