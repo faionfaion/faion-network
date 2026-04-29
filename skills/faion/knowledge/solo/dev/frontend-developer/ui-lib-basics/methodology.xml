@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ui-lib-basics">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>frontend-developer</domain>
+    <summary>Build a shared UI component library with three-layer hierarchy (primitives/composite/patterns), forwardRef, named exports, Storybook stories, and bundle-size budgets enforced in CI.</summary>
+    <tags>
+      <tag>ui-library</tag>
+      <tag>component-library</tag>
+      <tag>storybook</tag>
+      <tag>accessibility</tag>
+      <tag>design-system</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>UI Component Library Basics</title>
+    <summary>A UI component library provides reusable, accessible interface primitives (buttons, inputs, modals) built once and shared across features. The library enforces a three-layer hierarchy: primitives/ (single responsibility), composite/ (composed from primitives), and patterns/ (complex UI patterns). Components must use forwardRef, named exports only, and ship with Storybook stories and tests.</summary>
+    <why>
+      <p>Rebuilding the same Button or Input per feature accumulates inconsistency, accessibility gaps, and bundle duplication. A shared library forces decisions once, gates regressions with visual + a11y CI, and lets agents focus on feature logic rather than styling primitives from scratch.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Multiple features or apps share UI primitives and you keep re-implementing buttons, modals, inputs.</item>
+        <item>Team or agent fleet is producing inconsistent patterns; a centralized library enforces a standard.</item>
+        <item>You need accessibility built in once (focus rings, ARIA wiring) instead of audited per PR.</item>
+        <item>Setting up a monorepo where primitives live in a shared packages/ui/.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single small app where YAGNI applies; a flat components/ folder is enough.</item>
+        <item>Fast-evolving product still finding its visual language; premature abstraction freezes decisions.</item>
+        <item>You can adopt shadcn/ui or an existing library — building from scratch rarely pays off solo.</item>
+        <item>Marketing site with brochure pages; library overhead exceeds reuse.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="directory-layout">
+      <rule>
+        <statement>Organize into three layers: primitives/ (single responsibility), composite/ (composed from primitives), patterns/ (complex reusable UI patterns), and layout/ (page chrome).</statement>
+        <rationale>Clear layer separation prevents primitives from importing composites and keeps bundle tree-shaking effective.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[
+src/
+├── components/
+│   ├── primitives/   # Button, Input, Text, Box
+│   ├── composite/    # Card, Modal, Dropdown, Form
+│   ├── patterns/     # DataTable, Pagination, SearchInput
+│   └── layout/       # Container, Stack, Grid, Flex
+├── hooks/
+├── utils/
+├── tokens/
+└── index.ts          # public barrel with sideEffects: false
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="export-rules">
+      <rule>
+        <statement>Use named exports only. Set sideEffects: false in package.json. Never use default exports in library code.</statement>
+        <rationale>Default exports break refactoring tools and prevent tree-shaking; bundlers cannot drop unused named exports when sideEffects is missing.</rationale>
+      </rule>
+      <rule>
+        <statement>Each component folder contains: ComponentName.tsx, ComponentName.test.tsx, ComponentName.stories.tsx, index.ts (re-export).</statement>
+        <rationale>Co-located test and story files ensure coverage and documentation stay in sync with the component.</rationale>
+      </rule>
+    </section>
+
+    <section name="bundle-size-budget">
+      <rule>
+        <statement>Enforce per-export bundle size limits in CI using size-limit. Set limits before the first publish and tighten after each release.</statement>
+        <rationale>Bundle regressions from transitive deps (lodash, date-fns) are invisible without automated budgets.</rationale>
+      </rule>
+    </section>
+
+    <section name="story-first-development">
+      <rule>
+        <statement>Write the Storybook story before the component implementation. The story is the agent's understanding check and the designer's acceptance criterion.</statement>
+        <rationale>Story-first forces the API to be decided before implementation and prevents "no story" shortcuts under deadline.</rationale>
+      </rule>
+    </section>
+
+    <section name="forwardref-and-displayname">
+      <rule>
+        <statement>Wrap every DOM-emitting component in forwardRef. Set displayName explicitly.</statement>
+        <rationale>Without forwardRef, consumers cannot attach refs for focus management. Missing displayName produces "ForwardRef" in DevTools and stack traces.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="tsx"><![CDATA[
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ variant = 'primary', size = 'md', ...props }, ref) => (
+    <button ref={ref} className={clsx(styles.button, styles[variant], styles[size])} {...props} />
+  )
+);
+Button.displayName = 'Button';
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="aria-wiring">
+      <rule>
+        <statement>Input components must generate a unique id via useId(), link label via htmlFor, and wire aria-invalid + aria-describedby for error and helper text.</statement>
+        <rationale>Screen readers cannot associate labels and error messages without explicit id linkage; useId() prevents SSR hydration mismatches.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="tsx"><![CDATA[
+const id = useId();
+const errorId = `${id}-error`;
+return (
+  <div>
+    <label htmlFor={id}>{label}</label>
+    <input
+      id={id}
+      aria-invalid={!!error}
+      aria-describedby={error ? errorId : undefined}
+    />
+    {error && <span id={errorId} role="alert">{error}</span>}
+  </div>
+);
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="theming-css-variables">
+      <rule>
+        <statement>Use CSS custom properties for all theme values (colors, radii, spacing). Never use ThemeContext or React-based theming inside the library.</statement>
+        <rationale>CSS variable theming is stack-agnostic; React Context theming locks consumers into the library's React version and context tree.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="css"><![CDATA[
+.button { background: var(--color-primary); color: var(--color-primary-foreground); }
+.button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.button:disabled { opacity: 0.5; cursor: not-allowed; }
+        ]]></code>
+      </example>
+      <example type="bad">
+        <note>Importing a ThemeContext from the library into a styled.button — consumers must then wrap their entire app in the library's ThemeProvider.</note>
+      </example>
+    </section>
+
+    <section name="variant-api-with-cva">
+      <rule>
+        <statement>Use class-variance-authority (cva) for variant props. Forbid long inline class strings and dynamic class interpolation.</statement>
+        <rationale>cva produces a typed, exhaustive variant map; inline conditional class strings grow uncontrollably and lose type safety.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Prop explosion: adding leftIcon, rightIcon, loading, block, round, fullWidth, etc. as separate boolean/node props.</description>
+        <reason>Proliferating props create a combinatorial surface that is impossible to test and confusing to use. Use cva() variants and slots (asChild / Slot) instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Storybook drift: shipping components without a *.stories.tsx file, relying on manual inspection.</description>
+        <reason>Components without stories cannot be visually tested in CI or reviewed by designers. Agents mark "done" after the component file but skip stories under deadline pressure.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Barrel file without sideEffects: false in package.json.</description>
+        <reason>Bundlers cannot tree-shake named exports from a barrel when sideEffects is missing or true, causing consumers to import the full library even when using one component.</reason>
+      </antipattern>
+      <antipattern>
+        <description>CSS leakage: styles that affect elements outside the component via unscoped selectors (e.g., button { ... } in a module that uses :global).</description>
+        <reason>Leaking styles create invisible coupling between components; adding one component breaks layout in unrelated parts of the consuming app.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Polymorphic as prop typed as a generic without a pinned PolymorphicProps helper.</description>
+        <reason>Generic polymorphic typing breaks on LLM edits; the helper regresses to any, losing ref type safety. Pin a working PolymorphicProps and forbid rewrites.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Rule of one: extracting a component after the first usage rather than the third.</description>
+        <reason>Premature abstraction freezes the API before patterns are understood. Apply the rule of three: extract only after three duplicates exist.</reason>
+      </antipattern>
+    </section>
+
+    <section name="limitations">
+      <list>
+        <item>Premature abstraction kills velocity; over-genericized props become a worse API than copy-paste.</item>
+        <item>Versioning across consumer apps is hard without monorepo + workspace tooling.</item>
+        <item>Theming via CSS variables is portable; theming via JS context locks consumers into a stack.</item>
+        <item>Bundle size grows when consumers import the whole library; barrel files defeat tree-shaking unless sideEffects: false is set and imports are deep.</item>
+        <item>Storybook drift: components ship without stories, agents cannot inspect, library decays.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Three roles: (1) architect decides structure (primitives/, composite/, patterns/), (2) author implements components paired with stories + tests, (3) integrator lifts useful patterns from product code into the library. Force agents to write the story before the component (story-first development); the story doubles as the agent's understanding check. Gate releases on Storybook visual regression + axe scan + bundle-size budget.</p>
+      <prompt purpose="component-authoring">
+        <![CDATA[
+Add a <Tooltip> to packages/ui/primitives/Tooltip/.
+Deliver: Tooltip.tsx, Tooltip.stories.tsx (args matrix: side, align, delay), Tooltip.test.tsx,
+index.ts (named export only). API: ({content, side, align, children}). Use Radix Popper or Floating UI.
+Forbid: default exports, side-effecting imports, inline styles. Story before component.
+        ]]>
+      </prompt>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>One named export per file; barrel files only at package root with sideEffects: false.</item>
+        <item>Polymorphic as prop kept simple; complex generics confuse both humans and agents — prefer composition.</item>
+        <item>Ship dist/ with ESM + CJS + .d.ts; consumers should not transpile your sources.</item>
+        <item>Use CSS variables for theme, never theme via React Context inside the library — locks consumers.</item>
+        <item>Keep primitives behavior-only when possible (Radix/Headless UI under the hood) and apply visual styles in a higher layer.</item>
+        <item>Document accessibility per component (keyboard map, ARIA roles, focus trap behavior). Stories show, MDX explains.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Agents over-abstract; force a "rule of three" — extract only after three duplicates exist.</description>
+        <reason>Premature extraction locks the API before patterns are understood.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LLMs love prop explosion (Button leftIcon, rightIcon, loading, block, round); mandate cva() variants instead.</description>
+        <reason>Combinatorial props are impossible to test and confusing to consume.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Default exports break refactoring; lint rule import/no-default-export saves hours.</description>
+        <reason>Default exports cannot be safely renamed by refactoring tools.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents skip stories and tests under deadline; CI must reject components without *.stories.tsx + *.test.tsx.</description>
+        <reason>Components without stories cannot be reviewed by designers or visually tested in CI.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Bundle size regressions sneak in via lodash and date libs; size-limit budget per primitive prevents drift.</description>
+        <reason>Transitive dep additions are invisible without automated budgets enforced per export.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Polymorphic as typed in TS often regresses on agent edits — pin a working PolymorphicProps helper and forbid agents from rewriting it.</description>
+        <reason>Generic polymorphic typing breaks silently and loses ref type safety when rewritten.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/new-component.sh" purpose="Scaffold script: creates story-first component skeleton (stories → impl → index)"/>
+      <template path="templates/size-limit.json" purpose="Bundle-size budget per export for CI enforcement"/>
+    </templates>
+
+    <see-also>
+      <link href="https://storybook.js.org/docs">Storybook docs</link>
+      <link href="https://www.radix-ui.com/primitives">Radix UI Primitives</link>
+      <link href="https://floating-ui.com/">Floating UI</link>
+      <link href="https://github.com/changesets/changesets">Changesets — versioning and changelogs</link>
+      <link href="https://github.com/ai/size-limit">size-limit</link>
+    </see-also>
+  </content>
+</methodology>
