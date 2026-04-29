@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="writing-design-documents">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd</domain>
+    <summary>Design documents answer HOW to build a feature by recording architectural decisions with alternatives, file structure, data models, and API contracts.</summary>
+    <tags>
+      <tag>design</tag>
+      <tag>architecture</tag>
+      <tag>sdd</tag>
+      <tag>decisions</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Writing Design Documents</title>
+    <summary>A design document answers HOW to build a feature by recording architectural decisions (AD-X), file structure, data models, and API contracts before implementation begins. Required when a feature touches 5+ files, changes a DB schema, modifies an API contract, or introduces cross-service dependencies. Every FR-X must trace to at least one AD-X, and every AD-X must list alternatives considered.</summary>
+    <why>
+      <p>Writing forces clarity that diagrams and code cannot. Unstructured text is the better tool for solving problems early — changes are cheap on paper, expensive in code (Google Engineering). Design docs give LLM execution agents explicit file structure, type definitions, and API contracts; without these, parallel agents produce incompatible implementations.</p>
+      <p>AD-X decisions marked Proposed must not be implemented — the agent must wait for human approval before executing. The discipline of documenting alternatives considered prevents the common failure mode of pseudo-decisions — conclusions without reasoning.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>After spec.md is approved and before writing implementation-plan.md.</item>
+        <item>Feature touches 5+ files, changes a DB schema, modifies an API contract, or has cross-service dependencies.</item>
+        <item>When the team needs an explicit record of alternatives considered to prevent re-litigating decisions.</item>
+        <item>When onboarding a new agent into an existing codebase — design.md gives full architectural context.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Bug fixes touching 1-2 files with no architectural impact.</item>
+        <item>Small refactors with no interface changes.</item>
+        <item>Features whose entire scope fits in a single task under ~5k tokens.</item>
+        <item>Greenfield experiments or spikes where the design is deliberately exploratory.</item>
+      </list>
+    </when-not-to-use>
+    <section name="document-hierarchy">
+      <p>Design documents follow this hierarchy in the SDD lifecycle:</p>
+      <list>
+        <item>constitution.md: project-wide tech decisions and standards (written once, referenced always).</item>
+        <item>spec.md: FR-X requirements and AC-X acceptance criteria (WHAT/WHY) — written first.</item>
+        <item>design.md: AD-X architectural decisions, file structure, data models, API contracts (HOW) — written after spec approved.</item>
+        <item>implementation-plan.md: waves, task breakdown, token estimates (ORDER) — written after design approved.</item>
+        <item>TASK-XXX-*.md: executable tasks (EXECUTE) — written after plan approved.</item>
+      </list>
+      <rule>
+        <statement>Write design.md after spec.md is approved and before writing implementation-plan.md; never skip this order.</statement>
+        <rationale>The spec defines intent; the design defines mechanism; the implementation plan defines sequence. Reversing the order produces implementations without explicit decision records and specs without feasibility validation.</rationale>
+      </rule>
+    </section>
+    <section name="when-to-write-a-design-doc">
+      <rule>
+        <statement>Write a design doc when a feature touches 5+ files, changes a DB schema, modifies an API contract, introduces cross-service dependencies, or has security implications.</statement>
+        <rationale>Design docs prevent the most expensive failure modes: incompatible implementations from parallel agents, undocumented architectural decisions re-litigated later, and security issues discovered post-implementation.</rationale>
+      </rule>
+      <list>
+        <item>Required: 5+ files touched, DB schema change, API contract modification, cross-service dependency, security-sensitive change.</item>
+        <item>Optional: refactoring with no interface changes (maybe if architecture changes significantly).</item>
+        <item>Skip: bug fix 1-2 files, small feature 1-2 files no arch impact, single task under ~5k tokens, greenfield spike.</item>
+      </list>
+    </section>
+    <section name="sdd-optimized-design-structure">
+      <p>A design document in SDD format includes these sections:</p>
+      <list>
+        <item>Reference Documents: links to spec, constitution, related designs.</item>
+        <item>Spec Coverage: FR-X to AD-X traceability matrix.</item>
+        <item>Architectural Decisions: AD-X blocks with rationale and alternatives.</item>
+        <item>File Structure: exact files to create/modify with patterns.</item>
+        <item>Data Models: database schemas, TypeScript types, Pydantic models.</item>
+        <item>API Contracts: endpoints with request/response/error examples.</item>
+        <item>Dependencies: packages and external services.</item>
+        <item>Security Considerations: auth, validation, encryption.</item>
+        <item>Performance Considerations: caching, optimization, scaling.</item>
+        <item>Testing Strategy: unit, integration, E2E approach.</item>
+      </list>
+    </section>
+    <section name="ad-x-decision-format">
+      <rule>
+        <statement>Every AD-X must have: Status, Context, Decision, Rationale, Alternatives Considered table, and Consequences; mark Status as Proposed until human-approved.</statement>
+        <rationale>Agents must not implement Proposed decisions. The Alternatives Considered table prevents the decision from becoming pseudo-documentation — without it, the document records a conclusion without reasoning.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="markdown"><![CDATA[### AD-001: Use Pydantic for Validation
+
+**Status:** Accepted
+**Context:** Need request/response validation with automatic error messages.
+**Decision:** Use Pydantic v2 models for all request/response validation.
+**Rationale:**
+- Native FastAPI integration
+- Automatic error message generation with field-level detail
+**Alternatives Considered:**
+| Alternative | Pros | Cons | Why Rejected |
+|-------------|------|------|--------------|
+| marshmallow | Mature, flexible | Manual integration | More boilerplate |
+| Do nothing | No new dep | No validation | Blocks FR-001 |
+**Consequences:**
+- Positive: type safety, automatic docs generation
+- Negative: Pydantic v2 migration required for existing models
+**Traces to:** FR-001, FR-002]]></code>
+      </example>
+      <p>Y-statement concise form: "In the context of [use case], facing [concern], we decided for [option] to achieve [quality], accepting [downside]."</p>
+    </section>
+    <section name="four-llm-code-generation-patterns">
+      <rule>
+        <statement>Include explicit type definitions, concrete API contracts with error codes, and reference tables pointing to existing code patterns — do not rely on prose descriptions alone.</statement>
+        <rationale>LLMs generate more accurate code from explicit types than from prose. API contracts without concrete error examples lead to incompatible implementations. File references allow agents to read existing patterns instead of inventing new ones.</rationale>
+      </rule>
+      <section name="pattern-1-explicit-file-patterns">
+        <p>Reference actual existing files. Provide the file path and list the patterns to follow.</p>
+        <example type="good">
+          <code lang="markdown"><![CDATA[## File Patterns
+
+Follow existing pattern from `src/auth/handlers/login.ts`:
+- Export single async handler function
+- Use Zod for validation
+- Return standardized response envelope
+- Log with context object (not console.log)]]></code>
+          <note>References the actual file. Agent reads it, then applies the same pattern. No prose ambiguity.</note>
+        </example>
+      </section>
+      <section name="pattern-2-type-definitions">
+        <p>Include complete type definitions directly in the design document. Every field needs a comment with constraints.</p>
+        <example type="good">
+          <code lang="typescript"><![CDATA[// Include directly in design.md
+interface CreateUserRequest {
+  email: string;      // RFC 5322 format
+  password: string;   // Min 8 chars, 1 uppercase, 1 number
+}
+
+interface CreateUserResponse {
+  user: {
+    id: string;       // UUID v4
+    email: string;
+    createdAt: Date;
+  };
+}]]></code>
+          <note>Explicit types eliminate the ambiguity that produces incorrect field types and missing fields in generated code.</note>
+        </example>
+      </section>
+      <section name="pattern-3-api-contracts">
+        <p>Specify all endpoints with concrete examples. Include success status codes, error status codes, and error response bodies.</p>
+        <example type="good">
+          <code lang="markdown"><![CDATA[### POST /api/users
+
+**Request:**
+{"email": "user@example.com", "password": "SecurePass1"}
+
+**Response (201):**
+{"user": {"id": "uuid-v4", "email": "user@example.com", "createdAt": "ISO8601"}}
+
+**Errors:**
+- 400: validation failure {"error": {"code": "VALIDATION_ERROR", "details": [...]}}
+- 409: email exists {"error": {"code": "DUPLICATE_EMAIL"}}
+- 500: server error {"error": {"code": "INTERNAL_ERROR", "request_id": "..."}}]]></code>
+          <note>All error codes explicit. Parallel agents implementing frontend and backend from the same contract produce compatible code without coordination.</note>
+        </example>
+      </section>
+      <section name="pattern-4-implementation-reference-table">
+        <p>Create a table pointing agents to existing code they should read and follow.</p>
+        <example type="good">
+          <code lang="markdown"><![CDATA[| Component | Pattern Source | What to Copy |
+|-----------|----------------|--------------|
+| Handler | `src/auth/handlers/login.ts` | Error handling, response format |
+| Service | `src/auth/services/user.ts` | Dependency injection pattern |
+| Tests | `tests/auth/login.test.ts` | Setup, mocking strategy |]]></code>
+        </example>
+      </section>
+    </section>
+    <section name="document-types-comparison">
+      <p>Different design doc formats exist; SDD uses its own optimized format but related formats exist for other contexts:</p>
+      <list>
+        <item>RFC (Request for Comments): proposing changes needing team consensus; sections: summary, motivation, proposal, drawbacks, alternatives, implementation; used by Stripe, HashiCorp, Uber.</item>
+        <item>TDD (Technical Design Document): detailed technical specification for complex systems; 10+ sections including architecture, data model, API, security, reliability, monitoring.</item>
+        <item>ADR (Architecture Decision Record): recording a single architectural decision; sections: context, decision, consequences; lightweight, append-only.</item>
+        <item>SDD Design Doc: LLM-optimized full feature design with AD-X traceability matrix; the primary format for SDD workflow.</item>
+        <item>Lightweight/Mini: 1-2 page doc for small changes; overview, decision, files changed.</item>
+      </list>
+    </section>
+    <section name="llm-authoring-gotchas">
+      <antipattern>
+        <description>LLM generates balanced alternatives tables that favor the first option introduced.</description>
+        <reason>Human validation required to confirm the winning option is genuinely better, not just listed first. Write the alternatives table before writing the decision to avoid anchoring bias.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Design doc authored entirely by LLM without human review of trade-off tables.</description>
+        <reason>LLMs produce biased decisions when generating both the options and the conclusion. The alternatives table must be validated by a human or a second-pass review agent.</reason>
+      </antipattern>
+      <antipattern>
+        <description>File structure section listing non-existent files.</description>
+        <reason>Executor agents create orphaned files or skip critical ones when the file list is aspirational rather than validated. Verify every listed file against the actual codebase.</reason>
+      </antipattern>
+    </section>
+    <section name="traceability-and-approval">
+      <rule>
+        <statement>Every FR-X from the spec must have at least one corresponding AD-X. Every AD-X must trace back to FR-X. Zero orphan decisions permitted.</statement>
+        <rationale>Traceability ensures the design actually addresses the spec and implements no extra work.</rationale>
+      </rule>
+      <rule>
+        <statement>Verify traceability by counting: grep -c "FR-" spec.md | compare with count of FR-X references in design.md. Do the same for AD-X. Gaps must be resolved.</statement>
+        <rationale>Automated counting catches oversights. Manual counting is error-prone.</rationale>
+      </rule>
+      <rule>
+        <statement>Mark every AD-X as either Accepted (approved, safe to implement) or Proposed (awaiting approval, do not implement).</statement>
+        <rationale>Proposed status blocks premature implementation of uncertain decisions. Status clarity gives execution agents a go/no-go signal.</rationale>
+      </rule>
+    </section>
+    <see-also>
+      <link href="https://github.com/google/styleguide/blob/gh-pages/docguide/best_practices.md"/>
+      <link href="https://www.hashicorp.com/blog/rfc-process-for-infrastructure-code"/>
+      <link href="https://adr.github.io/"/>
+    </see-also>
+  </content>
+</methodology>
