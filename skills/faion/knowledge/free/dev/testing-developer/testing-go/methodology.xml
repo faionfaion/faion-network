@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="testing-go">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>testing-developer</domain>
+    <summary>Go testing idioms: table-driven tests, subtests, interface mocking, httptest, benchmarks, fuzzing, and parallel execution.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>go</tag>
+      <tag>testing</tag>
+      <tag>table-driven</tag>
+      <tag>benchmarks</tag>
+      <tag>fuzzing</tag>
+    </tags>
+    <applies-to>agents</applies-to>
+    <languages>
+      <language>go</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Testing in Go</title>
+
+    <summary>Covers Go's standard `testing` package patterns: table-driven tests with `t.Run`, interface-based mocking (manual + mockery), `httptest.Server` / `httptest.Recorder`, benchmarks with `b.N` and Go 1.24 `b.Loop()`, fuzzing with `f.Fuzz`, build tags for integration tests, and toolchain helpers (gotestsum, benchstat).</summary>
+
+    <why>
+      <p>Go's test idioms differ from other languages: no test classes, subtests via closures, mocking by interface substitution (not monkey-patching), and benchmarks as first-class citizens. Misapplying patterns from other ecosystems (e.g., asserting inside goroutines, using `assert` instead of `require` for fatal checks) causes subtle failures. This methodology enforces idiomatic Go test style.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Writing any Go unit or integration test</item>
+        <item>Setting up table-driven tests with subtests for a new function</item>
+        <item>Choosing between manual interface mocks and mockery-generated ones</item>
+        <item>Writing HTTP handler tests with `httptest`</item>
+        <item>Adding benchmarks or fuzz targets</item>
+        <item>Debugging loop-variable capture bugs (pre-Go-1.22 patterns)</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Python tests — use testing-pytest</item>
+        <item>JavaScript tests — use testing-javascript</item>
+        <item>E2E browser tests — use e2e-testing</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="table-driven-tests-and-subtests">
+      <p>Table-driven test pattern, t.Run subtests, t.Parallel(), loop-variable capture fix, t.Helper(), and test naming.</p>
+
+      <section name="table-driven-pattern">
+        <rule>Use table-driven tests for any function with multiple input/output pairs — avoids copy-paste and makes cases explicit.</rule>
+        <rule>Define test cases as a slice of structs with named fields — never positional anonymous structs.</rule>
+        <example type="good">
+          <code lang="go"><![CDATA[
+func TestCalculateDiscount(t *testing.T) {
+    tests := []struct {
+        name     string
+        price    float64
+        role     string
+        wantDisc float64
+    }{
+        {name: "premium_20pct", price: 100, role: "premium", wantDisc: 20},
+        {name: "standard_no_disc", price: 100, role: "user", wantDisc: 0},
+        {name: "zero_price", price: 0, role: "premium", wantDisc: 0},
+    }
+
+    for _, tc := range tests {
+        t.Run(tc.name, func(t *testing.T) {
+            got := CalculateDiscount(tc.price, tc.role)
+            if got != tc.wantDisc {
+                t.Errorf("CalculateDiscount(%v, %q) = %v, want %v",
+                    tc.price, tc.role, got, tc.wantDisc)
+            }
+        })
+    }
+}
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="t-parallel">
+        <rule>Call t.Parallel() at the start of each subtest to run them concurrently.</rule>
+        <rule>When using t.Parallel() inside a range loop (Go &lt; 1.22), capture the loop variable explicitly to avoid data races.</rule>
+        <example type="good">
+          <code lang="go"><![CDATA[
+for _, tc := range tests {
+    tc := tc // capture loop variable — required in Go < 1.22
+    t.Run(tc.name, func(t *testing.T) {
+        t.Parallel()
+        // ... test body using tc
+    })
+}
+          ]]></code>
+        </example>
+        <note>Go 1.22+ fixes loop variable semantics — the tc := tc capture is no longer needed but harmless.</note>
+      </section>
+
+      <section name="assert-vs-require">
+        <rule>Use require (testify) when a failure should stop the test immediately — nil pointer dereferences, must-have preconditions.</rule>
+        <rule>Use assert (testify) for non-fatal checks where you want to see all failures.</rule>
+        <example type="good">
+          <code lang="go"><![CDATA[
+import (
+    "github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/require"
+)
+
+func TestGetUser(t *testing.T) {
+    user, err := GetUser(ctx, 1)
+    require.NoError(t, err)          // stop if error
+    require.NotNil(t, user)          // stop if nil (prevents nil deref below)
+    assert.Equal(t, "alice", user.Name)
+    assert.Equal(t, "admin", user.Role)
+}
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="t-helper">
+        <rule>Call t.Helper() in test helper functions so failure lines point to the caller, not the helper.</rule>
+        <example type="good">
+          <code lang="go"><![CDATA[
+func assertUserEqual(t *testing.T, want, got *User) {
+    t.Helper()
+    if want.ID != got.ID || want.Name != got.Name {
+        t.Errorf("user mismatch: want %+v, got %+v", want, got)
+    }
+}
+          ]]></code>
+        </example>
+      </section>
+    </section>
+
+    <section name="interface-mocking-and-http-testing">
+      <p>Interface-based mocking in Go, manual mocks vs mockery, httptest.Server and httptest.Recorder for HTTP handler tests.</p>
+
+      <section name="interface-based-mocking">
+        <rule>Define minimal interfaces in production code; test code implements them.</rule>
+        <rule>Keep interfaces small — one or two methods. Large interfaces are hard to mock and suggest a design problem.</rule>
+        <rule>Define the interface in the package that uses it, not the package that implements it.</rule>
+        <example type="good">
+          <code lang="go"><![CDATA[
+// In the service package (consumer side)
+type UserStore interface {
+    FindByID(ctx context.Context, id int) (*User, error)
+    Save(ctx context.Context, user *User) error
+}
+
+// Manual mock for tests
+type stubUserStore struct {
+    user *User
+    err  error
+}
+
+func (s *stubUserStore) FindByID(_ context.Context, _ int) (*User, error) {
+    return s.user, s.err
+}
+
+func (s *stubUserStore) Save(_ context.Context, _ *User) error {
+    return s.err
+}
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="mockery-decision-rubric">
+        <rule>Use manual mocks when: the interface has 1-3 methods, the test file is simple, or no codegen tooling is set up.</rule>
+        <rule>Use mockery when: the interface has 4+ methods, you need call recording, or the interface changes frequently.</rule>
+        <example type="good">
+          <description>mockery generated mock (installed: go install github.com/vektra/mockery/v2)</description>
+          <code lang="bash"><![CDATA[
+# Generate mock for an interface
+mockery --name=UserStore --dir=./internal/service --output=./internal/mocks
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="httptest-recorder-handler-tests">
+        <rule>Use httptest.NewRecorder() to test HTTP handlers without starting a real server.</rule>
+        <example type="good">
+          <code lang="go"><![CDATA[
+func TestGetUserHandler(t *testing.T) {
+    store := &stubUserStore{user: &User{ID: 1, Name: "Alice"}}
+    handler := NewUserHandler(store)
+
+    req := httptest.NewRequest(http.MethodGet, "/users/1", nil)
+    rec := httptest.NewRecorder()
+
+    handler.ServeHTTP(rec, req)
+
+    require.Equal(t, http.StatusOK, rec.Code)
+    var got User
+    require.NoError(t, json.NewDecoder(rec.Body).Decode(&got))
+    assert.Equal(t, "Alice", got.Name)
+}
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="httptest-server-client-tests">
+        <rule>Use httptest.NewServer() to test HTTP clients against a real local server.</rule>
+        <example type="good">
+          <code lang="go"><![CDATA[
+func TestAPIClient_GetUser(t *testing.T) {
+    srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(User{ID: 1, Name: "Alice"})
+    }))
+    defer srv.Close()
+
+    client := NewAPIClient(srv.URL)
+    user, err := client.GetUser(context.Background(), 1)
+
+    require.NoError(t, err)
+    assert.Equal(t, "Alice", user.Name)
+}
+          ]]></code>
+        </example>
+      </section>
+    </section>
+
+    <section name="benchmarks-fuzzing-and-build-tags">
+      <p>Benchmark structure, b.N vs b.Loop() (Go 1.24), benchstat comparison workflow, fuzzing with f.Fuzz, and build tags for integration tests.</p>
+
+      <section name="benchmark-structure">
+        <rule>Benchmark functions start with Benchmark, not Test. Run with go test -bench=.</rule>
+        <rule>Loop over b.N iterations — the testing framework adjusts N until stable timing is achieved.</rule>
+        <example type="good">
+          <code lang="go"><![CDATA[
+func BenchmarkParseJSON(b *testing.B) {
+    data := []byte(`{"id":1,"name":"Alice","role":"admin"}`)
+    b.ResetTimer()
+
+    for i := 0; i < b.N; i++ {
+        var u User
+        _ = json.Unmarshal(data, &u)
+    }
+}
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="go-1-24-b-loop">
+        <rule>Go 1.24 introduces b.Loop() as an alternative to for i := 0; i &lt; b.N; i++. Prefer it in new code.</rule>
+        <example type="good">
+          <code lang="go"><![CDATA[
+// Go 1.24+
+func BenchmarkParseJSON(b *testing.B) {
+    data := []byte(`{"id":1,"name":"Alice"}`)
+    var u User
+    for b.Loop() {
+        _ = json.Unmarshal(data, &u)
+    }
+}
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="benchstat-workflow">
+        <rule>Use benchstat to compare benchmarks before/after a change — do not eyeball ns/op numbers.</rule>
+        <example type="good">
+          <code lang="bash"><![CDATA[
+# Before change
+go test -bench=BenchmarkParseJSON -count=10 > old.txt
+
+# After change
+go test -bench=BenchmarkParseJSON -count=10 > new.txt
+
+# Compare
+benchstat old.txt new.txt
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="fuzzing">
+        <rule>Fuzz functions start with Fuzz and call f.Add() with seed corpus values.</rule>
+        <rule>Run fuzz tests with go test -fuzz=FuzzFunctionName to discover unexpected panics and crashes.</rule>
+        <example type="good">
+          <code lang="go"><![CDATA[
+func FuzzParseUserID(f *testing.F) {
+    f.Add("42")
+    f.Add("")
+    f.Add("abc")
+    f.Fuzz(func(t *testing.T, input string) {
+        // Must not panic — even on adversarial input
+        _, _ = ParseUserID(input)
+    })
+}
+          ]]></code>
+        </example>
+        <rule>Fuzz-generated failing inputs are saved to testdata/fuzz/ and replayed on subsequent go test runs as regression tests.</rule>
+      </section>
+
+      <section name="build-tags-for-integration-tests">
+        <rule>Use build tags to separate integration tests from unit tests — prevents slow tests from running in the fast feedback loop.</rule>
+        <example type="good">
+          <code lang="go"><![CDATA[
+//go:build integration
+
+package db_test
+
+// Run with: go test -tags=integration ./...
+// Skip in fast loop: go test ./...  (no -tags flag)
+          ]]></code>
+        </example>
+      </section>
+    </section>
+
+    <see-also>
+      <link href="https://pkg.go.dev/testing"/>
+      <link href="https://golang.org/doc/effective_go#testing"/>
+      <link href="https://github.com/vektra/mockery"/>
+      <link href="https://golang.org/doc/fuzz/"/>
+    </see-also>
+  </content>
+</methodology>
