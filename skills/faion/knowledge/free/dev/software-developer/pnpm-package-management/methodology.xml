@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="pnpm-package-management">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Pin pnpm via packageManager + corepack, commit pnpm-lock.yaml, avoid shamefully-hoist=true. Fix phantom deps via .pnpmfile.cjs, use workspace:* protocol, and enforce --frozen-lockfile in CI.</summary>
+    <tags>
+      <tag>pnpm</tag>
+      <tag>package-management</tag>
+      <tag>monorepo</tag>
+      <tag>nodejs</tag>
+      <tag>javascript</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>pnpm Package Management</title>
+    <summary>Covers pnpm configuration, workspace management, CI/CD integration, and security practices for JavaScript/TypeScript projects. Key rule: pin the pnpm version via `packageManager` field + `corepack`, always commit `pnpm-lock.yaml`, and never use `shamefully-hoist=true` — fix phantom deps via `.pnpmfile.cjs` instead.</summary>
+    <why>
+      <p>pnpm's content-addressable store and strict non-hoisted layout prevent phantom dependency bugs and supply-chain confusion attacks that npm/yarn permit. Without pinned toolchain (`corepack`), version drift causes lockfile churn and "works on my machine" failures in CI. `--frozen-lockfile` in CI catches accidental dependency mutations.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>All new JavaScript/TypeScript projects (single-package or monorepo).</item>
+        <item>Repos whose `packageManager` field specifies `pnpm`.</item>
+        <item>CI/CD pipeline setup needing fast, reproducible installs.</item>
+        <item>Migrating an npm/yarn repo to pnpm.</item>
+        <item>Monorepo work requiring `pnpm --filter` + workspace protocol.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Repos that mandate npm or yarn (legacy CI, customer constraint, polyrepo with hoisting deps).</item>
+        <item>Single-file scripts using `npx` with no `package.json`.</item>
+        <item>Electron or legacy native modules that assume hoisted layout.</item>
+        <item>Projects using Bun or Deno as primary runtime where pnpm adds debug surface.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Toolchain Pinning">
+      <rule>
+        <statement>Pin the pnpm version in the root package.json `packageManager` field and activate via `corepack enable`.</statement>
+        <rationale>Without pinning, each developer and CI runner uses a different pnpm version, producing lockfile churn and "works on my machine" failures.</rationale>
+      </rule>
+      <example type="good" title="Pinned pnpm via packageManager">
+        <code lang="json"><![CDATA[{
+  "name": "my-project",
+  "packageManager": "pnpm@9.12.0",
+  "engines": { "node": ">=20.0.0", "pnpm": ">=9.0.0" },
+  "scripts": {
+    "preinstall": "npx only-allow pnpm"
+  }
+}]]></code>
+        <note>`preinstall` script blocks npm/yarn from being used accidentally.</note>
+      </example>
+    </section>
+    <section name=".npmrc Settings">
+      <rule>
+        <statement>Keep `shamefully-hoist=false` (the default). Fix phantom dep issues via `.pnpmfile.cjs` `readPackage` hook, never by hoisting.</statement>
+        <rationale>`shamefully-hoist=true` defeats pnpm's core benefit of preventing phantom dependencies and makes the project behave like npm.</rationale>
+      </rule>
+      <reference path="templates/npmrc">Strict .npmrc with all recommended settings</reference>
+    </section>
+    <section name="Dependency Commands">
+      <example type="good" title="Core pnpm dependency commands">
+        <code lang="bash"><![CDATA[pnpm add express zod          # Production dep
+pnpm add -D typescript vitest  # Dev dep
+pnpm add --save-peer react     # Peer dep
+pnpm remove express            # Remove
+pnpm update --latest           # Update to latest (ignore semver)
+pnpm outdated                  # Show outdated
+pnpm audit --prod              # Audit production deps only
+pnpm why lodash                # Trace why transitive dep is installed]]></code>
+      </example>
+    </section>
+    <section name="Workspace Setup">
+      <example type="good" title="pnpm-workspace.yaml configuration">
+        <code lang="yaml"><![CDATA[# pnpm-workspace.yaml
+packages:
+  - 'apps/*'
+  - 'packages/*'
+  - 'tools/*']]></code>
+      </example>
+      <rule>
+        <statement>Reference internal packages with the `workspace:*` protocol; use Changesets to rewrite to real versions at publish time.</statement>
+        <rationale>`workspace:*` is resolved by pnpm locally but rewritten by Changesets on publish. Bypassing Changesets can leak unresolved `workspace:*` references to npm.</rationale>
+      </rule>
+    </section>
+    <section name="Filter Commands">
+      <example type="good" title="pnpm --filter for monorepos">
+        <code lang="bash"><![CDATA[pnpm --filter web build             # Run in specific package
+pnpm --filter @scope/ui build       # Run in scoped package
+pnpm --filter "./packages/*" build  # Run in all packages under packages/
+pnpm --filter web... build          # Run in package and its deps
+pnpm -r build                       # Run in all packages (topological order)
+pnpm -r --parallel build            # Run in all packages in parallel
+pnpm --filter web add react         # Add dep to specific workspace
+pnpm --filter web add @scope/ui --workspace  # Add internal workspace dep]]></code>
+        <note>Always use `--filter` for monorepo operations; bare `pnpm add` at a sub-package root without --filter installs to the wrong place.</note>
+      </example>
+    </section>
+    <section name="Internal Package References">
+      <example type="good" title="workspace protocol in dependencies">
+        <code lang="json"><![CDATA[{
+  "name": "@mycompany/web",
+  "dependencies": {
+    "@mycompany/ui": "workspace:*",
+    "@mycompany/types": "workspace:^1.0.0",
+    "react": "^18.0.0"
+  }
+}]]></code>
+      </example>
+    </section>
+    <section name="GitHub Actions">
+      <rule>
+        <statement>Use `pnpm install --frozen-lockfile` in CI. Cache the pnpm store keyed by `pnpm-lock.yaml` hash.</statement>
+        <rationale>`--frozen-lockfile` fails if the lockfile is out of sync, catching accidental dependency mutations. Caching the store drastically reduces install time.</rationale>
+      </rule>
+      <reference path="templates/gh-actions-ci.yml">GitHub Actions workflow with pnpm cache</reference>
+    </section>
+    <section name="Dockerfile">
+      <example type="good" title="Multi-stage Dockerfile with pnpm cache">
+        <code lang="dockerfile"><![CDATA[FROM node:20-slim AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+
+FROM base AS deps
+WORKDIR /app
+COPY pnpm-lock.yaml ./
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch
+
+FROM deps AS build
+COPY . .
+RUN pnpm install --frozen-lockfile --offline
+RUN pnpm build
+
+FROM base AS runtime
+WORKDIR /app
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/node_modules ./node_modules
+CMD ["node", "dist/index.js"]]]></code>
+        <note>`pnpm fetch` pre-populates the store; `--offline` install uses it without network. Mount-cache persists across builds.</note>
+      </example>
+    </section>
+    <section name="Antipatterns">
+      <antipattern>
+        <description>Running `npm install` or `yarn add` in a pnpm repo, creating a `package-lock.json` or `yarn.lock` alongside pnpm-lock.yaml.</description>
+        <reason>Mixed lockfiles cause non-deterministic installs and CI failures. Enforce with `preinstall: "npx only-allow pnpm"` and add `package-lock.json` / `yarn.lock` to `.gitignore`.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Adding `pnpm-lock.yaml` to `.gitignore`.</description>
+        <reason>Without a committed lockfile, CI installs different versions from development, causing "works on my machine" bugs. Always commit the lockfile.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Setting `shamefully-hoist=true` to fix a "module not found" error.</description>
+        <reason>Hoisting hides phantom dependency bugs and makes the project behave like npm. Fix phantom deps by adding the missing dep explicitly with `pnpm add`.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Editing package.json dependencies by hand instead of using `pnpm add` / `pnpm remove`.</description>
+        <reason>Manual edits bypass peer-dependency resolution, producing an inconsistent lockfile. Always use pnpm CLI commands.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using `pnpm audit` in a retry loop when no fix exists for a transitive CVE.</description>
+        <reason>`pnpm audit` exits non-zero even for CVEs with no fix. Use `pnpm audit --prod` to skip dev deps; check reachability with `pnpm why`; pin via `.pnpmfile.cjs` if truly reachable and unfixed.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using `pnpm add x` at workspace root without `--filter` intending to add to a sub-package.</description>
+        <reason>Without --filter, the dep installs at the root, not the intended package. Always scope with `--filter &lt;pkg-name&gt;`.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Pin the toolchain first: agent reads/writes `packageManager` in root `package.json` and `engines`. Use `corepack` so the version is determined from the file, not globally installed. For installs, prefer `pnpm install --frozen-lockfile` in CI and `pnpm install` only in dev. For dependency changes the agent runs `pnpm add`/`remove` (never edits `package.json` by hand — easy to break peer-dep resolution). For monorepos, `pnpm --filter &lt;pkg&gt;` scopes the change. Always commit `pnpm-lock.yaml`. After updates, run `pnpm audit --prod` and `pnpm outdated` and surface results to a human reviewer.</p>
+    </section>
+    <section name="Recommended Tools and Services">
+      <p>Tools: `pnpm` (the package manager itself), `corepack` (pin pnpm version per repo), `npx only-allow pnpm` (block non-pnpm installs in preinstall), `pnpm dlx` (like npx but uses pnpm store), `pnpm why` (trace why a transitive dep is installed), `pnpm licenses list` (inventory licences for compliance), `pnpm patch` (patch a dep), `pnpm dedupe` (reduce duplicates after upgrades), Changesets (versioning + publishing in workspaces), Renovate / Dependabot (automated dep upgrade PRs), npm-check-updates / ncu (bulk semver-major upgrades on demand), syncpack (enforce consistent versions across workspaces), nx / turbo (task graph aware of pnpm workspaces), verdaccio (local registry for testing publishes).</p>
+      <p>Services: GitHub Actions `pnpm/action-setup` (standard CI install, supports caching), Renovate (SaaS + OSS, best-in-class for pnpm monorepo upgrades), Dependabot (native to GitHub, solid pnpm support in 2026), Snyk (CVE scanning with reachability analysis), Socket.dev (supply-chain risk score on every PR), npm registry / GitHub Packages / Verdaccio (pin via `.npmrc`), Turborepo Remote Cache (speeds CI dramatically), Nx Cloud (distributed task execution), Changesets bot (enforces changeset on each PR).</p>
+    </section>
+    <section name="Best Practices">
+      <p>Pin pnpm via `packageManager` field + `corepack` — prevents "works on my machine" version drift. Always commit `pnpm-lock.yaml`. CI uses `--frozen-lockfile`. PRs that change deps must include the lockfile diff. Keep `shamefully-hoist=false`. If a package is broken, fix it via `.pnpmfile.cjs` `readPackage` hook, not by hoisting the whole tree. In monorepos, prefer `workspace:*` over fixed versions for internal packages; Changesets handles the rewrite at publish. Use `pnpm dedupe` after major upgrades — pnpm doesn't auto-dedupe like npm. Cache the pnpm store in CI keyed by `pnpm-lock.yaml` hash. Run `pnpm audit --prod` (skip dev) — most CVEs in dev deps don't ship. Group dep updates: Renovate `groupName: 'eslint'` to land them in fewer PRs the agent can review at once.</p>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <p>Mixing managers: Agent runs `npm install` in a pnpm repo "to be safe", creates `package-lock.json`, breaks workflow. Add `preinstall: "npx only-allow pnpm"` and a `.gitignore` entry for `package-lock.json`/`yarn.lock`. Hand-editing package.json: Agent edits `dependencies` directly; peer-dep resolution lies. Force `pnpm add`/`remove` only. Phantom deps: Code uses a transitive dep that pnpm hides. Agent "fixes" by hoisting; correct fix is `pnpm add` the dep explicitly. Lockfile thrash: `corepack` version drift causes a re-keyed lockfile every PR. Pin pnpm exactly in `packageManager`. Workspace mis-targeting: `pnpm add x` at root vs in a sub-package installs in the wrong place. Always pass `--filter`. Workspace leaking: Manually publishing without Changesets can publish unresolved `workspace:*` to npm. Enforce Changesets-driven release. pnpm audit loop: No-fix CVE → agent retries forever. Cap retries; escalate to human. Permissions / symlinks: Agent sandbox without symlink perms (some Docker setups) silently degrades. Pre-flight with `pnpm doctor`. Human-in-loop checkpoint: Lockfile-changing PRs (especially major bumps) get a human review; agents have a poor track record on breaking-change reading.</p>
+    </section>
+    <templates>
+      <template path="templates/npmrc" purpose="Strict .npmrc with all recommended settings"/>
+      <template path="templates/pnpm-bootstrap.sh" purpose="Init script that pins toolchain and creates workspace scaffold"/>
+      <template path="templates/gh-actions-ci.yml" purpose="GitHub Actions workflow with pnpm cache"/>
+    </templates>
+    <see-also>
+      <link href="https://pnpm.io/"/>
+      <link href="https://pnpm.io/cli/audit"/>
+      <link href="https://nodejs.org/api/corepack.html"/>
+      <link href="https://github.com/pnpm/only-allow"/>
+      <link href="https://github.com/changesets/changesets"/>
+      <link href="https://docs.renovatebot.com/"/>
+      <link href="https://socket.dev/"/>
+      <link href="https://snyk.io/"/>
+    </see-also>
+  </content>
+</methodology>
