@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="jenkins-pipelines">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Declarative Jenkins pipelines for production CI/CD: parallel stages, Kubernetes pod agents, shared libraries, and multi-environment deployment with manual approval gates.</summary>
+    <tags>
+      <tag>jenkins</tag>
+      <tag>pipelines</tag>
+      <tag>ci-cd</tag>
+      <tag>declarative</tag>
+      <tag>kubernetes</tag>
+    </tags>
+    <category>ci-cd</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Jenkins Pipelines</title>
+    <summary>Declarative Jenkins pipelines for production CI/CD: parallel stages, Kubernetes pod agents, shared libraries, and multi-environment deployment with manual approval gates. Default to declarative syntax; use scripted only for dynamic logic (e.g., detecting changed services in a monorepo).</summary>
+    <why>
+      <p>Declarative pipelines are readable, maintainable, and support all built-in features (parallel, matrix, input) without Groovy complexity. Shared libraries in vars/ centralize build/deploy/notify logic, eliminating copy-paste across Jenkinsfiles. Parallel test stages and Kubernetes agents dramatically reduce build times.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>CI/CD pipelines on an existing Jenkins installation</item>
+        <item>Multi-environment deployments requiring human approval gates before production</item>
+        <item>Monorepo builds that need to detect changed services and build only those</item>
+        <item>Containerized builds requiring isolated, disposable Kubernetes pod agents</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>New projects without existing Jenkins investment — prefer GitHub Actions or GitLab CI</item>
+        <item>Simple single-step builds — overhead of Jenkins setup is not justified</item>
+        <item>When you need native OIDC cloud auth without plugins — Jenkins requires plugins for this</item>
+        <item>GitOps-first workflows — ArgoCD/Flux are better fits than Jenkins for K8s GitOps</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="Declarative vs Scripted">
+      <rule>
+        <statement>Default to declarative syntax. Use scripted (node block) only when you need dynamic logic such as detecting changed services at runtime.</statement>
+        <rationale>Declarative is readable, maintainable, and supports all built-in features. Scripted requires Groovy expertise and is harder to review.</rationale>
+      </rule>
+    </section>
+
+    <section name="Essential Options">
+      <rule>
+        <statement>Every pipeline must include: timeout, timestamps, buildDiscarder, and disableConcurrentBuilds in the options block.</statement>
+        <rationale>timeout prevents hung builds consuming agents; buildDiscarder prevents disk exhaustion; disableConcurrentBuilds prevents race conditions on shared environments.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="groovy"><![CDATA[options {
+    timeout(time: 30, unit: 'MINUTES')
+    timestamps()
+    buildDiscarder(logRotator(numToKeepStr: '10'))
+    disableConcurrentBuilds()
+    ansiColor('xterm')
+}]]></code>
+      </example>
+    </section>
+
+    <section name="Parallel Stages">
+      <rule>
+        <statement>Use parallel blocks for independent tasks (unit tests, integration tests, security scans) to reduce total build time.</statement>
+        <rationale>Sequential execution of independent tasks wastes time. Parallel execution of three 5-minute stages takes 5 minutes, not 15.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="groovy"><![CDATA[stage('Test') {
+    parallel {
+        stage('Unit Tests') {
+            steps { container('node') { sh 'npm run test:unit -- --coverage' } }
+            post { always { junit 'junit.xml' } }
+        }
+        stage('Integration Tests') {
+            steps { container('node') { sh 'npm run test:integration' } }
+        }
+        stage('Security Scan') {
+            steps { container('node') { sh 'npm audit --audit-level=high' } }
+        }
+    }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="When Conditions and Approval Gates">
+      <rule>
+        <statement>Gate production deployments with an input block requiring named approvers. Use when { branch 'main' } to prevent feature branches from deploying.</statement>
+        <rationale>Unnamed approvals allow anyone to click through. Named submitter restriction enforces change control without external tooling.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="groovy"><![CDATA[stage('Deploy to Production') {
+    when { branch 'main' }
+    input {
+        message "Deploy to production?"
+        ok "Deploy"
+        submitter "admin,deployers"
+    }
+    steps { /* kubectl apply */ }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="Post Actions">
+      <rule>
+        <statement>Always clean the workspace in post { always { cleanWs() } }. Send failure notifications in post { failure { ... } }.</statement>
+        <rationale>Stale workspace files cause intermittent failures in subsequent builds. Post-failure notifications alert the team without requiring manual monitoring.</rationale>
+      </rule>
+      <antipattern>
+        <description>Hardcoding secrets directly in the pipeline environment block.</description>
+        <reason>Secrets in Jenkinsfiles are committed to version control and visible in build logs. Use withCredentials() or the credentials() binding instead.</reason>
+      </antipattern>
+    </section>
+
+    <section name="Library Structure">
+      <rule>
+        <statement>Define reusable functions in vars/ (global variables) for use in declarative pipelines. Use src/ classes only for complex stateful logic.</statement>
+        <rationale>vars/ functions are callable directly from declarative pipeline steps. src/ classes require script block and import statements, adding friction.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[jenkins-shared-library/
+├── vars/
+│   ├── buildApp.groovy       # Docker build + push
+│   ├── deployToK8s.groovy    # kubectl set image + rollout status
+│   └── notifySlack.groovy    # Slack notification
+├── src/com/example/
+│   ├── Docker.groovy         # Complex Docker operations class
+│   └── Kubernetes.groovy     # Complex K8s operations class
+└── resources/
+    └── templates/
+        └── deployment.yaml]]></code>
+      </example>
+    </section>
+
+    <section name="Function Patterns">
+      <rule>
+        <statement>Shared library functions must accept a Map config parameter with named keys. Fail fast on missing required keys with error().</statement>
+        <rationale>Named map parameters are self-documenting and extensible without breaking existing callers. Explicit error() on missing required keys gives clear messages.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="groovy"><![CDATA[// vars/deployToK8s.groovy
+def call(Map config = [:]) {
+    def namespace  = config.namespace  ?: error('namespace is required')
+    def deployment = config.deployment ?: error('deployment is required')
+    def image      = config.image      ?: error('image is required')
+    def timeout    = config.timeout    ?: '5m'
+
+    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+        sh """
+            kubectl set image deployment/${deployment} ${deployment}=${image} -n ${namespace}
+            kubectl rollout status deployment/${deployment} -n ${namespace} --timeout=${timeout}
+        """
+    }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="Versioning and Usage">
+      <rule>
+        <statement>Pin shared library version in Jenkinsfile with @Library('my-library@v1.2.3'). Never use @main or @HEAD in production.</statement>
+        <rationale>Unpinned library versions mean a library update breaks all consuming pipelines simultaneously without a planned upgrade.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="groovy"><![CDATA[@Library('my-shared-library@v1.2.3') _
+
+pipeline {
+    agent any
+    stages {
+        stage('Build and Deploy') {
+            steps {
+                buildApp(appName: 'myapp', registry: 'registry.example.com')
+                deployToK8s(namespace: 'staging', deployment: 'myapp', image: 'registry.example.com/myapp:latest')
+                notifySlack(channel: '#builds')
+            }
+        }
+    }
+}]]></code>
+      </example>
+      <antipattern>
+        <description>Writing the same Docker build/push logic in every Jenkinsfile.</description>
+        <reason>Copy-paste logic diverges over time. When the registry URL or build flags change, each Jenkinsfile must be updated individually.</reason>
+      </antipattern>
+    </section>
+
+    <section name="Production Pipeline with Kubernetes Agent">
+      <example type="good">
+        <code lang="groovy"><![CDATA[// Key structure: K8s agent, parallel tests, security scan, staged deploy
+pipeline {
+    agent {
+        kubernetes {
+            yaml '''
+                spec:
+                  containers:
+                  - name: node
+                    image: node:20-alpine
+                    command: [cat]
+                    tty: true
+                  - name: docker
+                    image: docker:24-dind
+                    securityContext:
+                      privileged: true
+            '''
+        }
+    }
+    environment {
+        VERSION = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.take(7)}"
+    }
+    stages {
+        stage('Test') {
+            parallel {
+                stage('Unit') { steps { container('node') { sh 'npm run test:unit' } } }
+                stage('Security') { steps { container('node') { sh 'npm audit --audit-level=high' } } }
+            }
+        }
+        stage('Build') {
+            steps { container('docker') { sh 'docker build -t ${DOCKER_REGISTRY}/${APP_NAME}:${VERSION} .' } }
+        }
+        stage('Deploy Staging') {
+            when { branch 'main' }
+            steps { /* kubectl set image + rollout status */ }
+        }
+        stage('Deploy Production') {
+            when { branch 'main' }
+            input { message "Deploy to production?"; submitter "admin,deployers" }
+            steps { /* kubectl production deploy */ }
+        }
+    }
+    post {
+        always { cleanWs() }
+        failure { slackSend(color: 'danger', message: "FAILED: ${env.JOB_NAME}") }
+    }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="Scripted Pipeline for Monorepo">
+      <example type="good">
+        <code lang="groovy"><![CDATA[// Detect changed services and build only those
+node('docker') {
+    stage('Detect Changes') {
+        checkout scm
+        def changedFiles = sh(script: "git diff --name-only HEAD~1", returnStdout: true).trim().split('\n')
+        services = ['api', 'web', 'worker'].findAll { service ->
+            changedFiles.any { it.startsWith("services/${service}/") }
+        }
+        if (services.isEmpty()) { currentBuild.result = 'SUCCESS'; return }
+    }
+    stage('Build Changed Services') {
+        def parallelStages = [:]
+        services.each { service ->
+            parallelStages["Build ${service}"] = {
+                node('docker') {
+                    checkout scm
+                    dir("services/${service}") { sh "docker build -t ${service}:${BUILD_NUMBER} ." }
+                }
+            }
+        }
+        parallel parallelStages
+    }
+}]]></code>
+        <note>Use scripted pipeline for monorepo dynamic service detection; use declarative for standard single-repo pipelines.</note>
+      </example>
+    </section>
+
+    <section name="Matrix Build">
+      <example type="good">
+        <code lang="groovy"><![CDATA[stage('Build Matrix') {
+    matrix {
+        axes {
+            axis { name 'NODE_VERSION'; values '18', '20', '22' }
+            axis { name 'OS'; values 'linux', 'macos' }
+        }
+        stages {
+            stage('Build') {
+                agent { label "${OS}" }
+                steps { sh "nvm use ${NODE_VERSION} && npm ci && npm test" }
+            }
+        }
+    }
+}]]></code>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/Jenkinsfile.groovy" purpose="Basic declarative Jenkinsfile template with all recommended options"/>
+      <template path="templates/Jenkinsfile-k8s.groovy" purpose="Kubernetes pod agent template with node/docker/kubectl containers"/>
+      <template path="templates/buildApp.groovy" purpose="Shared library: build and push Docker image"/>
+      <template path="templates/deployToK8s.groovy" purpose="Shared library: kubectl set image + rollout status"/>
+      <template path="templates/notifySlack.groovy" purpose="Shared library: Slack notification with color by status"/>
+      <template path="templates/prompt-generate-pipeline.txt" purpose="LLM prompt for generating a declarative pipeline"/>
+    </templates>
+  </content>
+</methodology>

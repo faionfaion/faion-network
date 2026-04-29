@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="helm-charts">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Helm charts package Kubernetes resources for production deployment. Every chart must include HPA, PodDisruptionBudget, pod anti-affinity, health probes, resource limits, and non-root security context.</summary>
+    <tags>
+      <tag>helm</tag>
+      <tag>kubernetes</tag>
+      <tag>charts</tag>
+      <tag>package-management</tag>
+      <tag>production-reliability</tag>
+    </tags>
+    <category>infrastructure</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Helm Charts</title>
+    <summary>Helm is the package manager for Kubernetes (v4+ as of 2026). Charts bundle related K8s resources into configurable, versioned packages. Every production chart must include: resource requests/limits, HPA, PodDisruptionBudget, pod anti-affinity, all three health probes, and a non-root security context.</summary>
+    <why>
+      <p>A 2025 analysis of 100+ open-source Helm charts found only 17% met production-reliability criteria (PDB, anti-affinity, HPA). Authoring charts with these elements from the start avoids emergency retrofits under load. values.schema.json validation catches misconfiguration before apply.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Complex applications with many K8s resources across multiple environments</item>
+        <item>Reusable deployment packages shared across teams or clusters</item>
+        <item>GitOps workflows (ArgoCD, Flux) where charts are the unit of change</item>
+        <item>Multi-environment deploys with per-environment values-{env}.yaml files</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Quick experiments or learning — plain YAML is simpler</item>
+        <item>Small, static setups with no variation across environments — use Kustomize</item>
+        <item>Single-resource deployments — overhead not justified</item>
+        <item>When you want Helm to manage secrets — use External Secrets Operator instead</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="Chart.yaml">
+      <rule>
+        <statement>Set apiVersion: v2, include kubeVersion constraint, list all maintainers, and use SemVer 2 for version.</statement>
+        <rationale>apiVersion v2 is required for Helm 3 features (dependencies, library charts). kubeVersion prevents deployment to incompatible clusters.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[apiVersion: v2
+name: myapp
+description: A Helm chart for MyApp
+type: application
+version: 1.0.0
+appVersion: "2.0.0"
+kubeVersion: ">=1.25.0"
+maintainers:
+  - name: Platform Team
+    email: platform@example.com
+dependencies:
+  - name: postgresql
+    version: "12.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled]]></code>
+      </example>
+    </section>
+
+    <section name="Directory Layout">
+      <rule>
+        <statement>Include templates/NOTES.txt, templates/_helpers.tpl, and templates/tests/test-connection.yaml in every chart.</statement>
+        <rationale>NOTES.txt shows access instructions post-install. _helpers.tpl centralizes naming logic. Test pod verifies the release works end-to-end.</rationale>
+      </rule>
+      <rule>
+        <statement>Add values.schema.json to validate user inputs at helm install/upgrade time.</statement>
+        <rationale>Schema validation catches type errors and missing required values before Kubernetes rejects manifests, surfacing errors with clear messages.</rationale>
+      </rule>
+    </section>
+
+    <section name="Naming Conventions">
+      <rule>
+        <statement>Chart name: lowercase letters, numbers, hyphens only; starts with a letter; no dots or underscores. Template files: {chart}-{resource}.yaml.</statement>
+        <rationale>Kubernetes name constraints propagate from chart names. Consistent template naming makes navigation predictable.</rationale>
+      </rule>
+    </section>
+
+    <section name="Dependency Management">
+      <rule>
+        <statement>Pin dependency versions (never use wildcard *). Add condition: dep.enabled flag. Commit Chart.lock. Run helm dependency update before packaging.</statement>
+        <rationale>Wildcards silently pull breaking changes. Condition flags allow disabling subcharts for minimal installs. Lock file ensures reproducible builds.</rationale>
+      </rule>
+      <example type="bad">
+        <code lang="yaml"><![CDATA[# Bad: wildcard version, no condition flag
+dependencies:
+  - name: redis
+    version: "*"
+    repository: https://charts.bitnami.com/bitnami]]></code>
+        <note>Use "17.x.x" and add condition: redis.enabled</note>
+      </example>
+    </section>
+
+    <section name="Values Design">
+      <rule>
+        <statement>All configurable values must be in values.yaml. No hardcoded values in templates. Document every value with a comment.</statement>
+        <rationale>Hardcoded values prevent per-environment customization and make charts unusable by others.</rationale>
+      </rule>
+      <rule>
+        <statement>Never put secrets in values.yaml. Use External Secrets Operator or reference existing Kubernetes secrets.</statement>
+        <rationale>values.yaml is committed to version control and passed in plain text to helm upgrade; secrets must not be stored there.</rationale>
+      </rule>
+    </section>
+
+    <section name="Reliability Requirements">
+      <rule>
+        <statement>Set HPA minReplicas &gt;= 2. Never set minReplicas to 1 for production services.</statement>
+        <rationale>minReplicas=1 defeats high availability: when the single pod is evicted or the node is drained, the service has zero replicas until HPA reacts.</rationale>
+      </rule>
+      <rule>
+        <statement>Define PodDisruptionBudget with minAvailable=2 (or maxUnavailable=1) for all stateless services.</statement>
+        <rationale>Without PDB, node drain during upgrades can evict all replicas simultaneously causing outage. PDB prevents the cluster from removing too many pods at once.</rationale>
+      </rule>
+      <rule>
+        <statement>Configure pod anti-affinity (soft by default, hard for critical services) to spread pods across nodes and zones.</statement>
+        <rationale>Without anti-affinity, the scheduler may place all replicas on one node; a node failure takes the entire service down.</rationale>
+      </rule>
+      <rule>
+        <statement>Define all three probes: livenessProbe, readinessProbe, and startupProbe for slow-starting applications.</statement>
+        <rationale>livenessProbe restarts deadlocked containers. readinessProbe prevents traffic to pods not yet ready. startupProbe prevents liveness from killing slow-start containers.</rationale>
+      </rule>
+      <rule>
+        <statement>Always define resource requests and limits. Use configChecksum annotations to trigger pod restart when ConfigMap or Secret changes.</statement>
+        <rationale>Missing requests break scheduling decisions. Without checksum annotations, config changes require manual rollout.</rationale>
+      </rule>
+    </section>
+
+    <section name="Security Requirements">
+      <rule>
+        <statement>Set runAsNonRoot: true, readOnlyRootFilesystem: true, allowPrivilegeEscalation: false, and drop ALL capabilities in securityContext.</statement>
+        <rationale>Root containers can escape to the host. Read-only filesystem prevents runtime modification. Capability drop minimizes attack surface.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop:
+      - ALL]]></code>
+      </example>
+      <rule>
+        <statement>Enable NetworkPolicy to restrict ingress to only ingress-controller and same-namespace pods. Allow egress for DNS (UDP 53) and same-namespace pods.</statement>
+        <rationale>Without NetworkPolicy, any compromised pod in the cluster can reach your service directly, bypassing ingress rules.</rationale>
+      </rule>
+      <rule>
+        <statement>Create a dedicated ServiceAccount with automountServiceAccountToken: false unless the application needs the K8s API.</statement>
+        <rationale>Default service account token is mounted automatically and can be used for cluster API access if the container is compromised.</rationale>
+      </rule>
+    </section>
+
+    <section name="Upgrade Safety">
+      <rule>
+        <statement>Always use --atomic flag for helm upgrade in CI/CD. Set --timeout appropriately. Configure rolling update strategy.</statement>
+        <rationale>--atomic rolls back automatically on failure, preventing partial upgrades. Without it, a failed upgrade leaves the release in a broken state.</rationale>
+      </rule>
+      <antipattern>
+        <description>Using helm upgrade without --atomic in CI/CD.</description>
+        <reason>A failed upgrade without --atomic leaves the release in a degraded state requiring manual intervention. --atomic ensures clean rollback.</reason>
+      </antipattern>
+    </section>
+
+    <section name="Production values.yaml">
+      <p>Key sections of a production-ready values.yaml. All values must be commented. Security context and HPA are required.</p>
+      <example type="good">
+        <code lang="yaml"><![CDATA[# -- Replicas (ignored if autoscaling.enabled=true)
+replicaCount: 3
+
+image:
+  repository: myapp
+  tag: ""          # defaults to Chart.appVersion
+  pullPolicy: IfNotPresent
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop: [ALL]
+
+autoscaling:
+  enabled: true
+  minReplicas: 3       # never 1 in production
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+podAntiAffinity:
+  enabled: true
+  type: soft           # hard for critical services
+
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits:   { cpu: 500m, memory: 512Mi }]]></code>
+      </example>
+    </section>
+
+    <section name="Environment Overrides">
+      <example type="good">
+        <code lang="yaml"><![CDATA[# values-dev.yaml — minimal, no HA
+replicaCount: 1
+autoscaling:
+  enabled: false
+podDisruptionBudget:
+  enabled: false
+resources:
+  requests: { cpu: 50m, memory: 128Mi }
+  limits:   { cpu: 200m, memory: 256Mi }]]></code>
+      </example>
+      <example type="good">
+        <code lang="yaml"><![CDATA[# values-prod.yaml — full HA
+replicaCount: 3
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+podAntiAffinity:
+  enabled: true
+  type: hard
+resources:
+  requests: { cpu: 500m, memory: 512Mi }
+  limits:   { cpu: 2000m, memory: 2Gi }]]></code>
+      </example>
+    </section>
+
+    <section name="Schema Validation">
+      <rule>
+        <statement>Define values.schema.json with types, descriptions, and minimum/maximum constraints for numeric fields. Mark image.repository as required.</statement>
+        <rationale>Schema validation catches wrong types (string instead of integer) and missing required values at helm install time rather than at runtime.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/_helpers.tpl" purpose="Standard Go template helpers: name, fullname, labels, selectorLabels, image, configChecksum"/>
+      <template path="templates/deployment.yaml" purpose="Production deployment template with all reliability and security fields"/>
+      <template path="templates/hpa.yaml" purpose="HorizontalPodAutoscaler template"/>
+      <template path="templates/pdb.yaml" purpose="PodDisruptionBudget template"/>
+      <template path="templates/values.schema.json" purpose="JSON Schema for values validation"/>
+      <template path="templates/prompt-create-chart.txt" purpose="LLM prompt to create a production-ready Helm chart"/>
+    </templates>
+  </content>
+</methodology>
