@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="verb-object-tool-naming">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Name every agent tool as verb_object and prefix with service namespace to improve tool selection accuracy through lexical clarity and collision avoidance in multi-service catalogs.</summary>
+    <tags>
+      <tag>tool-design</tag>
+      <tag>naming</tag>
+      <tag>tool-selection</tag>
+      <tag>mcp-gateways</tag>
+    </tags>
+    <category>tool</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Verb-Object Tool Naming with Namespace Prefix</title>
+    <summary>Name every agent tool as verb_object (create_issue, search_files) and prefix with a service namespace (github_create_issue, asana_search_tasks) when the catalog spans multiple servers or MCP gateways. Tool names matter MORE than descriptions for selection accuracy — the model parses the name first and uses the description only to disambiguate close matches. Single-token, opaque names (search, manage, do_thing) are the most common reason an agent picks the wrong tool.</summary>
+    <why>
+      <p>Anthropic's tool-writing guidance reports that prefix and naming schemes meaningfully change selection accuracy on internal evals, and that small renames produce outsized swings. The mechanism: the model treats the tool list as part of the prompt, and selection is biased by lexical similarity between the user's request and the tool name. A name like search collides with every other server's search in an aggregator; a name like manage_files forces the model to read the full description on every turn just to figure out what verbs the tool actually supports. verb_object mirrors how engineers name CRUD endpoints, which Claude has seen millions of times in pre-training.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any tool catalog with five or more tools.</item>
+        <item>Anytime tools come from multiple MCP servers or pass through an MCP gateway/aggregator.</item>
+        <item>When wrapping third-party SDKs that already use verb_object (GitHub, Stripe, Asana, Jira) — keep the verb, add the namespace.</item>
+        <item>During tool-eval iteration: rename, re-run eval, keep the better name.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-tool hobby scripts where there is only ever one search and no aggregator — naming is not the bottleneck.</item>
+        <item>Inside an SDK that already enforces a non-snake_case convention (e.g., GraphQL camelCase) — match the host convention instead of fighting it.</item>
+        <item>Do not pad with marketing nouns (acme_corp_internal_v2_search_documents_advanced) — long names hurt context budget and selection alike.</item>
+      </list>
+    </when-not-to-use>
+    <section name="naming-rule">
+      <p>Tool names are part of the prompt. The model selects by name first, description second. A vague or ambiguous name forces the model to read every description on every turn, which collapses selection accuracy as the catalog grows.</p>
+      <rule testable="true">
+        <statement>Every tool name MUST be lowercase snake_case in the form verb_object (e.g., create_issue, search_files). When the agent sees tools from more than one service or MCP server, prepend a service namespace (github_create_issue, stripe_refund_charge).</statement>
+        <rationale>Anthropic's internal evals show prefix and naming schemes meaningfully change selection accuracy; verb_object mirrors CRUD endpoint conventions Claude saw millions of times in pre-training, while namespaces eliminate name collisions inside MCP aggregators.</rationale>
+      </rule>
+      <example type="good" title="GitHub and Asana tools with namespaces">
+        <code lang="json"><![CDATA[
+{ "name": "github_search_issues",  "description": "Search issues in a GitHub repository by query." }
+{ "name": "github_create_issue",   "description": "Open a new issue with title and body." }
+{ "name": "github_close_issue",    "description": "Close an existing issue by number." }
+{ "name": "asana_search_tasks",    "description": "Search Asana tasks by project and assignee." }
+        ]]></code>
+        <note>Verb is unambiguous, object is explicit, namespace eliminates collision with asana_* and any future gitlab_*.</note>
+      </example>
+      <example type="bad" title="Vague names without namespace">
+        <code lang="json"><![CDATA[
+{ "name": "search",  "description": "Searches things." }
+{ "name": "manage",  "description": "Manages files. Pass action=copy|move|delete." }
+{ "name": "do_thing","description": "Generic helper." }
+        ]]></code>
+        <note>search collides with every other server's search in a gateway. manage hides three verbs behind one name — the model must guess. do_thing carries zero signal.</note>
+      </example>
+      <antipattern>
+        <description>Polymorphic verb tools that take an action enum (manage_files(action="copy"|"move"|"delete", ...)).</description>
+        <reason>The model has to read the description and remember which kwargs are valid per action. Atomic verbs (copy_file, move_file, delete_file) are self-describing and have typed schemas the runtime can validate.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Marketing-padded names (acme_corp_internal_v2_search_documents_advanced).</description>
+        <reason>Long names burn context budget, dilute the verb, and hurt lexical match with the user's request.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/tool-naming-checklist.txt" purpose="One-line checks before shipping a tool name."/>
+    </templates>
+    <see-also>
+      <link href="https://www.anthropic.com/engineering/writing-tools-for-agents">Anthropic — Writing tools for agents.</link>
+      <link href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools">Claude API — Define tools.</link>
+    </see-also>
+  </content>
+</methodology>
