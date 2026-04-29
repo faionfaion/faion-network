@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vui-privacy-security">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>Privacy-by-design voice interfaces: consent disclosure, trust indicators, step-up auth, and PII redaction. Voice data is persistent; privacy must be designed from the first dialog.</summary>
+    <tags>
+      <tag>voice-ui</tag>
+      <tag>privacy</tag>
+      <tag>security</tag>
+      <tag>gdpr</tag>
+      <tag>compliance</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>VUI Privacy and Security</title>
+    <summary>Voice interfaces handling personal data require privacy-by-design: transparency before capture, visual plus audio trust indicators, step-up authentication for sensitive actions, and PII redaction at transcript boundaries. Voice data is legally regulated (GDPR, HIPAA, CCPA, BIPA) and technically leaky; cloud transcripts persist on third-party infrastructure.</summary>
+    <why>
+      <p>Voice capture is legally regulated (GDPR, HIPAA, CCPA, BIPA) and technically leaky: cloud transcripts persist on third-party infrastructure, LLM context crosses turns, and "private mode" UI cannot prevent model-level logging. Privacy-by-design prevents post-launch regulatory exposure and user trust failures that are expensive to remediate.</p>
+      <p>Visual indicators alone exclude blind users; audio-only excludes deaf users. Both channels together cover the full user range and build consistent trust. Hardware kill switches (mute buttons) are essential fallbacks when software stop commands fail.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing a voice agent that handles personal data (banking, health, identity, child profiles).</item>
+        <item>Submitting an Alexa/Google Action for certification — privacy disclosures are mandatory and reviewed.</item>
+        <item>Operating in regulated jurisdictions: GDPR, HIPAA, CCPA/CPRA, Illinois BIPA, EU AI Act (voice biometrics).</item>
+        <item>Building voice flows in customer support that may capture card numbers, OTPs, or account secrets.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Internal-only voice prototypes with synthetic data — full disclosure flows can be deferred until external pilot.</item>
+        <item>Non-voice UI forms — apply standard data-minimisation principles instead; voice-specific patterns do not apply.</item>
+      </list>
+    </when-not-to-use>
+    <section name="privacy-principles">
+      <title>Privacy Principles</title>
+      <rule>
+        <statement>Disclose data collection at the start of any session that captures voice data.</statement>
+        <rationale>GDPR, HIPAA, CCPA, and BIPA require informed consent before biometric or health-related voice capture. Disclosure at session start prevents retroactive consent failures.</rationale>
+      </rule>
+      <rule>
+        <statement>Collect only the voice data strictly required for the current task; do not retain beyond the session unless the user explicitly consents.</statement>
+        <rationale>Data minimization limits regulatory exposure and reduces the blast radius of a transcript breach.</rationale>
+      </rule>
+      <rule>
+        <statement>Provide a "stop listening" command that is always available and honored within one utterance, backed by a hardware mute when possible.</statement>
+        <rationale>Software-only stop commands fail when ASR is degraded. A hardware kill switch guarantees the user can always revoke capture regardless of model state.</rationale>
+      </rule>
+      <rule>
+        <statement>Allow users to access and delete their voice history at any time through a discoverable interface.</statement>
+        <rationale>GDPR Article 17 (right to erasure) and CCPA deletion rights are non-negotiable in production deployments.</rationale>
+      </rule>
+    </section>
+    <section name="trust-indicators">
+      <title>Trust Indicators</title>
+      <rule>
+        <statement>Show a visual indicator (light, icon) AND play an audio confirmation whenever the microphone is active.</statement>
+        <rationale>Visual-only indicators exclude blind users; audio-only excludes deaf users. Both channels together cover the full user range and build consistent trust.</rationale>
+      </rule>
+      <example type="good">
+        <note>LED ring glows amber during listening plus chime plays on activation. "Stop listening" command tested and confirmed to silence both within 500ms.</note>
+      </example>
+      <example type="bad">
+        <note>Visual waveform animation only while listening. Blind users have no way to know capture is active; no hardware mute fallback.</note>
+      </example>
+    </section>
+    <section name="sensitive-operations">
+      <title>Sensitive Operations</title>
+      <rule>
+        <statement>Require step-up authentication (OTP, TOTP, biometric factor) before executing any destructive, financial, or identity-changing action via voice.</statement>
+        <rationale>Voice authentication alone is too weak for high-value actions: voice cloning is accessible and speaker ID fails under noise. Step-up authentication adds a knowledge or possession factor.</rationale>
+      </rule>
+      <rule>
+        <statement>Never repeat back full sensitive values the user provided; mask to last 4 digits or equivalent when confirming.</statement>
+        <rationale>Repeating "your card number 4111 1111 1111 1111" in a shared space leaks the full number. Masking "the card ending 1111" preserves confirmation without exposure.</rationale>
+      </rule>
+      <rule>
+        <statement>Redact PII at the tool-call boundary, before any logging or persistence layer receives the data.</statement>
+        <rationale>Tool-call payloads are often logged with full fidelity. Redacting at the boundary — not after persistence — is the only reliable prevention.</rationale>
+      </rule>
+      <reference path="templates/vui_privacy.py">Disclosure emitter and regex PII redactor for GDPR/HIPAA jurisdictions</reference>
+    </section>
+    <section name="agentic-workflow">
+      <title>Agentic Workflow</title>
+      <p>Build a three-subagent privacy pipeline: the first reviews dialog flows for PII capture and missing consent; the second drafts jurisdiction-compliant disclosure scripts; the third runs adversarial replay (jailbreaks, social engineering) against the deployed agent. All three outputs require human-in-the-loop: legal review of disclosure copy and DPIA sign-off before launch.</p>
+      <rule>
+        <statement>Require legal review for all disclosure scripts and security review for all transcript-handling pipelines before production deployment.</statement>
+        <rationale>Automated agents cannot assess legal sufficiency of consent language. Disclosure that fails GDPR Article 13 or HIPAA Notice of Privacy Practices requirements creates direct regulatory liability.</rationale>
+      </rule>
+    </section>
+    <section name="subagent-prompt-pattern">
+      <title>Subagent Prompt Pattern</title>
+      <example type="good">
+        <note>Privacy audit prompt: "You are a VUI privacy auditor. For each dialog turn, output JSON: { turn, captures_pii: bool, pii_types[], consent_present: bool, sensitive_action: bool, recommendation }. PII types: name, email, phone, address, dob, ssn, card, health, biometric, location, child. If sensitive_action true (transfer, delete, change-password), require step-up auth in recommendation."</note>
+      </example>
+    </section>
+    <section name="ai-agent-gotchas">
+      <title>AI-Agent Gotchas</title>
+      <antipattern>
+        <description>Embedding real user PII or API secrets in the system prompt, treating it as private.</description>
+        <reason>The system prompt is semi-public — adversaries extract it via creative jailbreaks. Any secrets or PII embedded in prompts will be leaked eventually.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Assuming "delete from our database" removes voice data from all persistence layers.</description>
+        <reason>Cloud transcripts persist on third-party infrastructure (OpenAI, Google, AWS). Local deletion does not guarantee removal from provider storage unless Zero Data Retention is explicitly negotiated and documented in the DPIA.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Trusting voice speaker ID as sufficient authentication for high-value actions.</description>
+        <reason>Voice cloning is accessible and speaker ID fails under noise. Adversaries can bypass voice biometrics with clones; step-up with a knowledge or possession factor is mandatory for high-risk actions.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Logging tool-call payloads without redacting PII at the boundary.</description>
+        <reason>Tool calls typically log request and response payloads in full. PII redaction must happen at the tool boundary before any persistence layer receives the data — not as a post-processing step.</reason>
+      </antipattern>
+    </section>
+    <section name="regulatory-references">
+      <title>Regulatory References</title>
+      <list>
+        <item>GDPR: ICO guidance on voice-data and consent — https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/</item>
+        <item>HIPAA Security Rule — https://www.hhs.gov/hipaa/for-professionals/security/index.html</item>
+        <item>Illinois BIPA (biometric voice prints): 740 ILCS 14</item>
+        <item>EU AI Act voice biometrics provisions — https://eur-lex.europa.eu/eli/reg/2024/1689</item>
+        <item>OWASP LLM Top 10 — https://owasp.org/www-project-top-10-for-large-language-model-applications/</item>
+      </list>
+    </section>
+    <section name="tools-and-services">
+      <title>Tools and Services</title>
+      <p>PII detection and redaction tools:</p>
+      <commands>
+        <command name="presidio-analyzer / presidio-anonymizer">PII detection/redaction in transcripts. `pip install presidio-analyzer presidio-anonymizer`</command>
+        <command name="scrubadub">Lightweight PII redaction. `pip install scrubadub`</command>
+        <command name="cryptography (Fernet)">Encrypt voice transcripts at rest. `pip install cryptography`</command>
+        <command name="aws kms / gcloud kms">Manage keys for encrypted voice payloads. cloud SDKs</command>
+        <command name="garak">LLM red-team scanner — works on voice transcripts. `pip install garak`</command>
+        <command name="trufflehog">Detect secrets in committed prompts/configs. `pip install trufflehog`</command>
+      </commands>
+      <p>Services and platforms:</p>
+      <list>
+        <item><term name="OpenAI Realtime + Zero Data Retention">SaaS, required for HIPAA/GDPR-sensitive prompts; opt-in via API.</term></item>
+        <item><term name="AWS HealthLake + Lex">SaaS, HIPAA-eligible voice paths.</term></item>
+        <item><term name="Twilio Voice + Verify">SaaS, step-up auth (TOTP, push) for sensitive operations.</term></item>
+        <item><term name="Vonage Verify">SaaS, voice biometrics with explicit consent flows.</term></item>
+        <item><term name="Mozilla Common Voice">OSS dataset, diverse training data, transparent licensing.</term></item>
+        <item><term name="Whisper.cpp self-host">OSS, keep transcripts on-prem; no third-party dependency.</term></item>
+      </list>
+    </section>
+    <section name="pii-redaction-template">
+      <title>PII Redaction Template (Python)</title>
+      <code lang="python"><![CDATA[# vui_privacy.py
+import re
+DISCLOSURES = {
+    "gdpr": "I'll record this conversation to help you. You can say 'stop recording' anytime, "
+            "or ask 'what data do you keep?' I won't use this for ads.",
+    "hipaa": "This call may discuss health information. I'll keep it confidential and you can "
+             "request deletion at any time.",
+}
+PII_PATTERNS = {
+    "card": re.compile(r"\b(?:\d[ -]?){13,19}\b"),
+    "email": re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+"),
+    "phone": re.compile(r"\b(?:\+?\d[\d -]{7,}\d)\b"),
+    "ssn": re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
+}
+def disclose(jurisdiction: str) -> str:
+    return DISCLOSURES.get(jurisdiction, DISCLOSURES["gdpr"])
+def redact(text: str) -> str:
+    for label, pat in PII_PATTERNS.items():
+        text = pat.sub(f"[{label}]", text)
+    return text]]></code>
+    </section>
+    <section name="best-practices">
+      <title>Best Practices</title>
+      <list>
+        <item>Treat the system prompt as semi-public — adversaries will extract it. Never embed real user PII or API secrets in it.</item>
+        <item>Use ephemeral session IDs and rotate; never tie voice IDs to permanent user IDs without separate consent.</item>
+        <item>Mask spoken back any data the user provided ("...the card ending 4321") — never re-read full numbers.</item>
+        <item>Default to opt-out for voice-print biometrics; require explicit verbal plus written consent under BIPA-equivalent laws.</item>
+        <item>Implement step-up auth (OTP, TOTP, biometric) before any destructive or financial action — voice alone is too weak.</item>
+      </list>
+    </section>
+    <section name="deployment-checklist">
+      <title>Deployment Checklist</title>
+      <list>
+        <item>LLMs leak prior conversation context across turns; isolate user sessions explicitly and drop history at session end.</item>
+        <item>Realtime API stores audio for abuse monitoring by default; enable Zero Data Retention for sensitive deployments and document it in the DPIA.</item>
+        <item>Tool-call payloads often include unredacted PII in logs; redact at the tool boundary, not after persistence.</item>
+        <item>"Private mode" prompts ("don't log this") cannot be enforced — always assume model and provider see everything.</item>
+        <item>Adversaries use voice cloning to bypass speaker ID; require liveness or knowledge-factor for high-value actions.</item>
+        <item>Human checkpoint: legal review for disclosure scripts; security review for transcript-handling pipeline; periodic red-team replay.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/vui_privacy.py" purpose="Disclosure emitter and regex PII redactor for GDPR/HIPAA jurisdictions"/>
+    </templates>
+    <see-also>
+      <link href="https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/">ICO guidance on voice-data and consent</link>
+      <link href="https://www.hhs.gov/hipaa/for-professionals/security/index.html">HIPAA Security Rule overview</link>
+      <link href="https://eur-lex.europa.eu/eli/reg/2024/1689">EU AI Act voice biometrics provisions</link>
+      <link href="https://owasp.org/www-project-top-10-for-large-language-model-applications/">OWASP LLM Top 10</link>
+      <link href="https://microsoft.github.io/presidio/">Microsoft Presidio documentation</link>
+    </see-also>
+  </content>
+</methodology>
