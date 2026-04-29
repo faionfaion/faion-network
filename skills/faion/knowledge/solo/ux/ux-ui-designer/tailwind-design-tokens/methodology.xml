@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tailwind-design-tokens">
+  <metadata>
+    <tier>solo</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>Map design tokens (colors, spacing, typography) to Tailwind's theme config via CSS custom properties so the design system and component library share a single source of truth.</summary>
+    <tags>
+      <tag>tailwind</tag>
+      <tag>design-tokens</tag>
+      <tag>css-variables</tag>
+      <tag>theming</tag>
+      <tag>style-dictionary</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+
+  <content>
+    <title>Tailwind + Design Tokens</title>
+
+    <summary>Map design tokens (colors, spacing, typography) to Tailwind's theme config via CSS custom properties, so the design system and component library share a single source of truth. All tailwind.config.js values must reference var(--token-name) — no hardcoded hex or pixel values. Semantic tokens (color.action.primary) are exposed in Tailwind; primitive tokens (raw hex) stay in CSS variables only.</summary>
+
+    <why>
+      <p>Hardcoded values in Tailwind classes create drift between Figma design tokens and code, break multi-brand/white-label theming, and require global find-replace for any visual update. CSS custom properties as the bridge enable runtime theming without rebuilding Tailwind. The token-first approach also unlocks Figma Variables → code pipelines via Style Dictionary.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up a new project's design system foundation (define tokens once, use everywhere)</item>
+        <item>Migrating hardcoded hex values and magic numbers to semantic token classes</item>
+        <item>Bridging a Figma design system (with Variables/Tokens) to a Tailwind CSS implementation</item>
+        <item>Multi-brand or white-label products where the same component library needs per-tenant theming</item>
+        <item>When Tailwind utilities and custom components must share the same spacing/color values</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Projects with no design system requirements — raw Tailwind utilities are sufficient</item>
+        <item>Teams not using Tailwind — use CSS custom properties directly or Style Dictionary alone</item>
+        <item>Projects where design tokens are owned by a design-ops team and locked from code edits</item>
+        <item>Prototype/throwaway work where systematic tokens add overhead with no payoff</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="token-layer-architecture">
+      <rule>
+        <statement>Separate primitive tokens (raw values: #1A73E8, 16px) from semantic tokens (color.action.primary, spacing.md). Tailwind config exposes only semantic tokens.</statement>
+        <rationale>Semantic tokens carry intent — changing "action.primary" updates all primary actions at once. Exposing primitives in Tailwind creates direct hex dependencies that break theming and require global find-replace for any color change.</rationale>
+      </rule>
+      <rule>
+        <statement>Use CSS custom properties as the bridge: Tailwind theme references var(--token-name); the CSS file defines the actual value. Never hardcode hex or pixel values in tailwind.config.js.</statement>
+        <rationale>CSS variables as the bridge enables runtime theming (dark mode, multi-brand) without rebuilding Tailwind. The config stays static; only the CSS variable values change per context.</rationale>
+      </rule>
+      <rule>
+        <statement>Map colors to var(--color-token-name), spacing to var(--spacing-token-name), and typography to separate sub-objects (fontFamily, fontSize, lineHeight) in tailwind.config.js theme block.</statement>
+        <rationale>Consistent naming across Figma Variables, CSS custom properties, and Tailwind config eliminates translation errors. One-to-one mapping makes the token → utility class relationship transparent.</rationale>
+      </rule>
+      <example type="good">
+        <note>Tailwind config referencing CSS variables — no hardcoded values</note>
+        <code lang="javascript"><![CDATA[
+module.exports = {
+  theme: {
+    colors: {
+      primary: {
+        default: 'var(--color-primary)',
+        hover: 'var(--color-primary-hover)',
+      },
+      surface: 'var(--color-surface)',
+      error: 'var(--color-error)',
+    },
+    spacing: {
+      xs: 'var(--spacing-xs)',
+      sm: 'var(--spacing-sm)',
+      md: 'var(--spacing-md)',
+      lg: 'var(--spacing-lg)',
+    },
+    fontFamily: {
+      sans: 'var(--font-family-sans)',
+    },
+  },
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="dark-mode-and-theming">
+      <rule>
+        <statement>Declare light-mode tokens at :root and dark-mode tokens under [data-theme="dark"] or prefers-color-scheme: dark. Do not mix Tailwind's dark: variant with CSS variable tokens without explicit alpha-channel setup.</statement>
+        <rationale>Tailwind's built-in dark: variant applies class-based toggling that may conflict with CSS variable scope. CSS variable overrides per theme selector are simpler and support more than two themes.</rationale>
+      </rule>
+    </section>
+
+    <section name="jit-purge-and-dynamic-classes">
+      <rule>
+        <statement>Add token-mapped classes assembled dynamically (string concatenation) to Tailwind's safelist to prevent JIT purge from removing them.</statement>
+        <rationale>JIT only keeps classes found as complete strings in source files. Dynamic assembly like `bg-${color}-500` produces no matched class in source, so JIT purges the utility. Safelist is the only fix.</rationale>
+      </rule>
+    </section>
+
+    <section name="style-dictionary-pipeline">
+      <p>For projects with Figma Variables or W3C DTCG token files, use Style Dictionary to transform token JSON to both the CSS custom property file and the Tailwind config token block automatically.</p>
+      <example type="good">
+        <note>Style Dictionary build script for Tailwind + CSS variables</note>
+        <code lang="javascript"><![CDATA[
+// sd.config.js — run with: node sd.config.js
+const StyleDictionary = require('style-dictionary');
+
+StyleDictionary.registerTransform({
+  name: 'css/var-name',
+  type: 'name',
+  transformer: (token) =>
+    `--${token.path.join('-').toLowerCase().replace(/\s+/g, '-')}`
+});
+
+StyleDictionary.registerFormat({
+  name: 'tailwind/tokens',
+  formatter: ({ dictionary }) => {
+    const colors = {};
+    const spacing = {};
+    dictionary.allTokens.forEach(token => {
+      const varName = `var(--${token.name})`;
+      if (token.path[0] === 'color') {
+        colors[token.path.slice(1).join('-')] = varName;
+      } else if (token.path[0] === 'spacing') {
+        spacing[token.path.slice(1).join('-')] = varName;
+      }
+    });
+    return `module.exports = ${JSON.stringify({ colors, spacing }, null, 2)}`;
+  }
+});
+
+module.exports = {
+  source: ['tokens/**/*.json'],
+  platforms: {
+    css: {
+      transforms: ['attribute/cti', 'css/var-name', 'color/hsl'],
+      buildPath: 'src/styles/',
+      files: [{ destination: 'tokens.css', format: 'css/variables' }]
+    },
+    tailwind: {
+      transforms: ['attribute/cti', 'css/var-name'],
+      buildPath: 'src/',
+      files: [{ destination: 'tw-tokens.js', format: 'tailwind/tokens' }]
+    }
+  }
+};
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Hardcoded hex values in tailwind.config.js: colors: { primary: '#1A73E8' }</description>
+        <reason>Hardcoded values require a code rebuild for any color change, cannot be overridden at runtime for theming, and are invisible to CSS variable consumers like Storybook or server-side rendering.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using opacity modifier syntax (bg-primary/50) with CSS variable token values</description>
+        <reason>Tailwind's opacity modifiers require the color value to be in RGB channels format, not a hex string or CSS variable reference. bg-primary/50 silently fails or produces incorrect output when --color-primary is a hex value.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Token naming mismatch between Figma Variables, Style Dictionary output, and Tailwind config</description>
+        <reason>Three different naming conventions (Figma uses /, Style Dictionary uses -, Tailwind uses .) cause drift that makes automated token pipelines fail and requires manual reconciliation on every design update.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Overwriting the full tailwind.config.js when regenerating tokens from a pipeline</description>
+        <reason>Full overwrites destroy manual customizations (custom screens, plugins, content paths). Always merge the generated token block into the existing config using Object.assign or spread, never replace.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Dynamic class assembly without safelist: `className={\`bg-\${colorToken}\`}`</description>
+        <reason>JIT cannot statically analyze string templates. The class bg-primary assembled at runtime will not exist in the generated CSS because JIT never saw the complete string bg-primary in a source file.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Generating a Tailwind v3 config for a Tailwind v4 project (or vice versa)</description>
+        <reason>Tailwind v4 uses a CSS-first configuration approach with @theme directive; there is no tailwind.config.js. Generating v3 config for a v4 project produces a file the framework ignores entirely.</reason>
+      </antipattern>
+      <rule>
+        <statement>To use opacity modifiers with token colors, declare CSS variables in RGB channel format (not hex) and configure Tailwind colors with the RGB variable and opacity fallback.</statement>
+        <rationale>Tailwind's opacity modifier injects its own opacity value at the color level. This requires the color to be decomposable into RGB components, which hex values are not at CSS variable evaluation time.</rationale>
+      </rule>
+      <example type="good">
+        <note>RGB channels format enabling opacity modifiers</note>
+        <code lang="css"><![CDATA[
+:root {
+  /* Declare as R G B channels (no rgb() wrapper) */
+  --color-primary-rgb: 26 115 232;
+}
+        ]]></code>
+      </example>
+      <example type="good">
+        <note>Tailwind config using RGB channels for opacity modifier support</note>
+        <code lang="javascript"><![CDATA[
+colors: {
+  primary: 'rgb(var(--color-primary-rgb) / <alpha-value>)',
+}
+// Now bg-primary/50 works correctly
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>An agent can generate a complete tailwind.config.js token layer from a token JSON file (W3C DTCG format or Style Dictionary output), enforce naming conventions across the codebase by scanning for hardcoded values, and scaffold per-theme CSS variable files. The primary human checkpoint is the token taxonomy decision (which token names are semantic vs. primitive) — this is a design decision agents should not make without design system specs. Agents should also not auto-merge generated configs without a design review of the visual output.</p>
+      <prompt purpose="token-config-generation"><![CDATA[Given this token JSON (W3C DTCG format), generate a tailwind.config.js `theme.extend` block.
+Rules:
+- Colors: map each token to `var(--color-<token-name>)`
+- Spacing: map each token to `var(--spacing-<token-name>)`
+- Typography: fontFamily, fontSize, lineHeight as separate sub-objects
+- Do not hardcode any hex values in the config — all values must reference CSS variables
+Output the config block and a companion globals.css with all CSS custom property declarations.]]></prompt>
+      <prompt purpose="hardcoded-value-scan"><![CDATA[Search the following codebase files for hardcoded hex colors and pixel spacing values
+that are NOT using Tailwind token-mapped classes. List each occurrence with file:line
+and the equivalent token class it should use.]]></prompt>
+      <p>Agent gotchas: Agents regenerating tailwind.config.js from tokens may overwrite manual theme customizations (e.g., custom screens breakpoints) — always merge, never replace the full config. Tailwind v3 vs. v4 config format differs significantly; confirm version before generating (v4 uses CSS-first config, not tailwind.config.js). Agents do not know which token changes are breaking vs. additive — a color token rename is a breaking change if hardcoded class names exist in templates. CSS variable opacity modifiers (text-primary/50) require the token value to be in RGB channels format, not hex — agents often miss this constraint. Generated token files need human visual review — agents cannot verify that --color-primary actually looks correct on screen.</p>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Separate primitive tokens (raw values: #1A73E8) from semantic tokens (color.action.primary) — Tailwind config should only expose semantic tokens</item>
+        <item>Use CSS custom properties as the bridge: Tailwind theme references var(--token), CSS defines the actual value — enables runtime theming without rebuilding</item>
+        <item>Add Tailwind's safelist for any token-based classes assembled dynamically to prevent JIT purge</item>
+        <item>Run visual regression tests (Chromatic or Percy) after every token update — a single spacing token change can affect hundreds of components</item>
+        <item>Document token usage in Storybook with a dedicated "Design Tokens" page showing swatches and spacing scale</item>
+        <item>Keep token names consistent with Figma Variables names — one-to-one mapping reduces translation errors</item>
+        <item>Version tokens independently from component code when supporting multiple design system versions</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/tailwind.config.js" purpose="Example Tailwind config mapping semantic tokens to CSS variables for colors, spacing, and typography"/>
+      <template path="templates/tokens.css" purpose="Companion CSS file declaring all custom properties at :root"/>
+      <template path="templates/sd.config.js" purpose="Style Dictionary build script: transforms W3C DTCG token JSON to Tailwind config + CSS variables"/>
+    </templates>
+
+    <see-also>
+      <link href="https://tailwindcss.com/docs/theme"/>
+      <link href="https://styledictionary.com/"/>
+      <link href="https://www.smashingmagazine.com/2022/05/you-dont-need-ui-framework/"/>
+      <link href="https://tokens.studio/"/>
+      <link href="https://www.w3.org/community/design-tokens/"/>
+      <link href="https://tailwindcss.com/docs/customizing-colors#using-css-variables"/>
+    </see-also>
+  </content>
+</methodology>
