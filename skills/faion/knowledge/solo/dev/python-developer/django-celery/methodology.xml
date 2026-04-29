@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-celery">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Celery 5.4+ with Django 5.x for async task execution: pass IDs not instances, idempotent tasks, delay_on_commit inside transactions, explicit retry policies and time limits.</summary>
+    <tags>
+      <tag>celery</tag>
+      <tag>django</tag>
+      <tag>async</tag>
+      <tag>background-tasks</tag>
+      <tag>python</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <frameworks>
+      <framework>django</framework>
+      <framework>celery</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+  <content>
+    <title>Django Celery Tasks</title>
+    <summary>Celery 5.4+ with Django 5.x enables asynchronous task execution outside the HTTP request/response cycle. Tasks accept primitive arguments (IDs, not model instances), are idempotent by design, declare explicit retry policies (autoretry_for, retry_backoff), and set both soft_time_limit and time_limit. Inside @transaction.atomic blocks, always call task.delay_on_commit() — never task.delay() — to prevent the task from running before the DB commit completes.</summary>
+    <why>
+      <p>Blocking operations (email, PDF, image processing, external API calls) inside a request degrade response latency, cannot be retried on failure, and exhaust WSGI workers. Celery decouples task execution from the request cycle, provides durable retry with backoff, and supports chain/group/chord primitives for multi-step workflows. The delay_on_commit fix alone eliminates an entire class of race conditions common in transactional views.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any Django operation taking &gt;100ms that is not critical to the HTTP response.</item>
+        <item>Scheduled batch work (nightly aggregations, reminder emails) via Celery Beat.</item>
+        <item>Retry-with-backoff for flaky third-party APIs (Stripe, Twilio, SendGrid).</item>
+        <item>Long-running background flows orchestrated as chain/chord/group.</item>
+        <item>CPU-intensive work (image processing, ML inference) that needs dedicated worker resources.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Sub-100/day jobs — python manage.py + system cron is simpler.</item>
+        <item>Hard real-time (&lt;100ms) — use ASGI + WebSocket.</item>
+        <item>Simple async I/O inside a request — Django 4.1+ async views work.</item>
+        <item>Tasks that must succeed inline with the user response (payment authorization).</item>
+        <item>Tiny apps where running Redis + worker + beat is pure operational overhead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="argument-types">
+      <rule>
+        <statement>Pass only JSON-serialisable primitives (IDs, strings, ints, dicts) as task arguments. Never pass ORM model instances.</statement>
+        <rationale>Model instances pickle, but on retry the instance may be stale or deleted. Fetch inside the task using the ID.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+send_order_confirmation.delay(order_id=order.id)
+]]></code>
+      </example>
+      <example type="bad">
+        <code lang="python"><![CDATA[
+send_order_confirmation.delay(order=order)  # stale on retry
+]]></code>
+        <note>Pickle succeeds but retry fetches a potentially different state.</note>
+      </example>
+    </section>
+
+    <section name="idempotency">
+      <rule>
+        <statement>Every task must be idempotent. Use a DB timestamp flag (sent_at, processed_at) or a UUID idempotency key. Check the flag at task entry and return early if already done.</statement>
+        <rationale>acks_late=True + worker crash causes re-delivery. Without idempotency, the task runs twice.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+@shared_task(bind=True, acks_late=True)
+def send_order_confirmation(self, order_id: int) -> None:
+    order = Order.objects.filter(pk=order_id).first()
+    if order is None:
+        log.warning("order %s missing; skipping", order_id)
+        return
+    if order.confirmation_sent_at is not None:
+        return  # already sent
+    send_email(to=order.email, template="order_confirmation")
+    with transaction.atomic():
+        Order.objects.filter(pk=order.pk, confirmation_sent_at__isnull=True).update(
+            confirmation_sent_at=timezone.now()
+        )
+]]></code>
+      </example>
+    </section>
+
+    <section name="transaction-safety">
+      <rule>
+        <statement>Inside any @transaction.atomic block, call task.delay_on_commit() instead of task.delay(). Never call delay() directly inside an atomic block.</statement>
+        <rationale>delay() inside atomic can dispatch the task before the DB commit completes; the task then queries a row that does not yet exist.</rationale>
+      </rule>
+    </section>
+
+    <section name="time-limits">
+      <rule>
+        <statement>Every task must declare both soft_time_limit (catchable SoftTimeLimitExceeded) and time_limit (hard kill). Catch SoftTimeLimitExceeded for graceful cleanup.</statement>
+        <rationale>Without limits, a stuck task holds a worker indefinitely. Soft gives cleanup time; hard ensures the worker is freed.</rationale>
+      </rule>
+    </section>
+
+    <section name="retry-policy">
+      <rule>
+        <statement>Declare retry exceptions explicitly via autoretry_for. Always use retry_backoff=True and retry_jitter=True. Set max_retries. Never use a bare except to swallow and not raise.</statement>
+        <rationale>Explicit retry exceptions prevent accidentally retrying unrecoverable errors (404, validation failure). Backoff + jitter prevents thundering-herd on broker recovery.</rationale>
+      </rule>
+    </section>
+
+    <section name="queue-separation">
+      <rule>
+        <statement>Define at least two queues: one for fast/critical tasks (orders, payments) and one for slow/background tasks (reports, emails). Pin worker concurrency per queue.</statement>
+        <rationale>A slow report task should not block payment processing sharing the same worker pool.</rationale>
+      </rule>
+    </section>
+
+    <section name="basic-retry-task">
+      <rule>
+        <statement>For long-running tasks, call self.update_state(state="PROGRESS", meta={current, total, percent}) every N items so Flower and polling clients can track progress.</statement>
+        <rationale>Without updates, Celery reports STARTED until completion; operators cannot tell if a task is running or stuck.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+from celery import shared_task
+from celery.utils.log import get_task_logger
+
+log = get_task_logger(__name__)
+
+
+@shared_task(
+    name="orders.process_order",
+    bind=True,
+    max_retries=3,
+    autoretry_for=(ConnectionError, TimeoutError),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    retry_jitter=True,
+    soft_time_limit=300,
+    time_limit=360,
+    acks_late=True,
+)
+def process_order(self, order_id: int) -> dict:
+    from apps.orders.models import Order
+
+    order = Order.objects.filter(pk=order_id).first()
+    if order is None:
+        log.warning("order %s not found; skipping", order_id)
+        return {"status": "skipped", "reason": "not_found"}
+
+    # business logic
+    log.info("processed order %s", order_id)
+    return {"status": "success", "order_id": order_id}
+]]></code>
+      </example>
+    </section>
+
+    <section name="progress-tracking">
+      <example type="good">
+        <code lang="python"><![CDATA[
+@shared_task(bind=True, soft_time_limit=1800)
+def sync_customers(self, full_sync: bool = False) -> dict:
+    customers = get_all_customers() if full_sync else get_recent_customers()
+    total = len(customers)
+    for idx, c in enumerate(customers):
+        process_customer(c)
+        if idx % 100 == 0:
+            self.update_state(
+                state="PROGRESS",
+                meta={"current": idx, "total": total,
+                      "percent": int(idx / total * 100)},
+            )
+    return {"status": "completed", "total": total}
+]]></code>
+      </example>
+    </section>
+
+    <section name="chain-chord-workflows">
+      <rule>
+        <statement>Use chain() for sequential steps where each step receives the previous result. Use chord(group, callback) when parallel tasks must aggregate into one result. Do not call .get() on a chord header inside a worker — it deadlocks prefork pools.</statement>
+        <rationale>chain and chord are serialisable workflow descriptions; .get() blocks the worker thread.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+from celery import chain, chord, group
+
+# Sequential workflow
+workflow = chain(
+    validate_order.s(order_id),
+    reserve_inventory.s(),
+    charge_payment.s(),
+    send_confirmation.s(),
+)
+result = workflow.apply_async()
+
+# Parallel + aggregation
+report_workflow = chord(
+    (calculate_user_metrics.s(uid) for uid in user_ids),
+    aggregate_metrics.s()
+)
+report_workflow.apply_async()
+]]></code>
+      </example>
+    </section>
+
+    <section name="email-with-idempotency">
+      <example type="good">
+        <code lang="python"><![CDATA[
+@shared_task(
+    name="notifications.send_welcome_email",
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=5,
+    acks_late=True,
+)
+def send_welcome_email(self, user_id: int) -> dict:
+    from apps.users.models import User
+
+    user = User.objects.filter(pk=user_id).first()
+    if user is None:
+        return {"status": "skipped", "reason": "user_not_found"}
+    if user.welcome_email_sent:
+        return {"status": "skipped", "reason": "already_sent"}
+
+    send_mail(
+        subject="Welcome!",
+        message="...",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+    )
+    User.objects.filter(pk=user_id, welcome_email_sent=False).update(
+        welcome_email_sent=True
+    )
+    return {"status": "sent"}
+]]></code>
+      </example>
+    </section>
+
+    <section name="external-api-rate-limit">
+      <example type="good">
+        <code lang="python"><![CDATA[
+@shared_task(
+    name="integrations.call_payment_gateway",
+    bind=True,
+    max_retries=3,
+    autoretry_for=(requests.exceptions.Timeout, requests.exceptions.ConnectionError),
+    retry_backoff=True,
+    rate_limit="10/m",
+    soft_time_limit=30,
+    time_limit=45,
+)
+def call_payment_gateway(self, payment_id: int, action: str) -> dict:
+    response = requests.post(
+        f"{settings.PAYMENT_GATEWAY_URL}/{action}",
+        json={"payment_id": payment_id},
+        headers={"Authorization": f"Bearer {settings.PAYMENT_API_KEY}"},
+        timeout=25,
+    )
+    if response.status_code == 429:
+        raise self.retry(countdown=int(response.headers.get("Retry-After", 60)))
+    response.raise_for_status()
+    return {"status": "success", "data": response.json()}
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>LLMs trained on pre-5.4 docs emit transaction.on_commit(lambda: task.delay(...)) boilerplate instead of task.delay_on_commit(...).</description>
+        <reason>Both work, but delay_on_commit is cleaner. Standardise on the modern form. Document which version to use in the project AGENTS.md.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents add bind=True to a task but never call self.retry, silently losing retry capability.</description>
+        <reason>bind=True is required for self.retry calls and self.request introspection. If neither is needed, omit bind=True.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Celery Beat in file-based scheduler mode resets schedule on every container redeploy; some periodic tasks miss their slot.</description>
+        <reason>Use django-celery-beat (DatabaseScheduler) or celery-redbeat so schedules survive deploys.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents use CELERY_TASK_ALWAYS_EAGER=True in tests and ship code that only works in eager mode.</description>
+        <reason>Eager mode hides broker bugs (visibility timeout, serialiser mismatch). Add at least one integration test against a real Redis worker.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Flower is wired behind a public ingress without authentication, exposing task payloads.</description>
+        <reason>Always require basic-auth or VPN-only access for Flower. Task payloads may contain PII or credentials.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/celery-app.py" purpose="Celery app bootstrap (config/celery.py + __init__.py)."/>
+      <template path="templates/task.py" purpose="Canonical task skeleton: bind=True, autoretry, backoff, soft_time_limit, idempotency guard."/>
+      <template path="templates/settings.py" purpose="Full Django CELERY_* settings block for reliability in production."/>
+      <template path="templates/docker-compose.yml" purpose="Worker + beat + flower + Redis services for local/prod."/>
+      <template path="templates/conftest.py" purpose="pytest fixtures: celery_config, celery_eager, celery_worker_parameters."/>
+      <template path="templates/prompt-task.txt" purpose="LLM prompt template for generating a complete idempotent task with tests."/>
+    </templates>
+  </content>
+</methodology>
