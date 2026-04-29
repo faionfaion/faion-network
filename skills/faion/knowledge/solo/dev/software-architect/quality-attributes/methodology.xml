@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="quality-attributes">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Framework for identifying, prioritizing, and documenting non-functional requirements using ISO 25010, quality attribute scenarios, SLI/SLO definitions, and ATAM-style trade-off analysis.</summary>
+    <tags>
+      <tag>quality-attributes</tag>
+      <tag>non-functional-requirements</tag>
+      <tag>slo</tag>
+      <tag>atam</tag>
+      <tag>iso-25010</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Quality Attributes Framework</title>
+    <summary>Identify, prioritize, and document non-functional requirements (NFRs) using ISO 25010 quality characteristics, scenario-driven specification, SLI/SLO definitions, and ATAM-style trade-off analysis. Quality attributes must be testable: every attribute has a scenario with a measurable response measure before design decisions are made.</summary>
+    <why>
+      <p>Quality attributes (performance, availability, security, maintainability, scalability, testability) are the primary drivers of architectural decisions. Systems that fail to meet quality requirements fail in production — not at launch, but under real load, adversarial conditions, or operational change. Without explicit, measurable quality attribute scenarios, architects make implicit trade-offs they cannot later justify, and teams optimize for the wrong targets.</p>
+      <p>ISO 25010 provides the taxonomy; quality attribute scenarios provide the mechanism to turn vague goals ("the system should be fast") into falsifiable acceptance criteria ("p99 &lt; 300ms at 10k RPS under normal load conditions"). SLIs and SLOs tie scenarios to operational monitoring so production behavior can be continuously verified against design intent.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Architecture design phase: before selecting architecture style, database, or communication pattern.</item>
+        <item>During ATAM (Architecture Tradeoff Analysis Method) workshops to elicit and prioritize quality requirements from stakeholders.</item>
+        <item>When writing NFR specifications for a new service, product, or major feature increment.</item>
+        <item>Pre-launch: defining SLOs and alerting thresholds grounded in user-journey impact analysis.</item>
+        <item>Technical debt triage: deciding which quality deficits to address first based on user and business impact.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Throwaway prototypes where shipping speed is the only constraint.</item>
+        <item>Single-user internal tools where availability, scalability, and security requirements are trivially low.</item>
+        <item>As a substitute for actual measurement — quality attribute scenarios define what to measure, not the measurement itself.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="iso-25010-taxonomy">
+      <p>ISO 25010 defines eight top-level quality characteristics, each with sub-characteristics. The most architecturally significant are:</p>
+      <list>
+        <item>Performance Efficiency — time behavior (latency), resource utilization (CPU/memory/storage), capacity (throughput). SLIs: p50/p95/p99 latency, RPS, error rate.</item>
+        <item>Reliability — maturity (defect rate), availability (uptime), fault tolerance (graceful degradation), recoverability (RTO/RPO). SLI: availability %, MTTR.</item>
+        <item>Security — confidentiality, integrity, non-repudiation, authenticity, accountability. Verified via threat modeling and penetration testing.</item>
+        <item>Maintainability — modularity, reusability, analysability (DORA metrics), modifiability, testability. SLI: deploy frequency, change failure rate, lead time.</item>
+        <item>Scalability (under Flexibility) — ability to scale up/out to handle increased load without architectural change. Measured via load tests at 5x and 10x baseline.</item>
+        <item>Usability — learnability, operability, accessibility (WCAG), user error protection. SLI: task success rate, time-on-task.</item>
+        <item>Compatibility — co-existence, interoperability (API contracts, protocol support). Verified via integration tests.</item>
+        <item>Portability — adaptability (deploy to new environments), installability (infrastructure-as-code), replaceability.</item>
+      </list>
+    </section>
+
+    <section name="quality-attribute-scenarios">
+      <p>A quality attribute scenario has six elements (Bass, Clements, Kazman): Source, Stimulus, Environment, Artifact, Response, Response Measure. Every quality requirement MUST have a Response Measure that is numerically testable.</p>
+      <list>
+        <item>Source — who or what initiates: end user, external service, attacker, cron job, traffic spike.</item>
+        <item>Stimulus — the event: HTTP request, component failure, traffic spike, security probe, deploy event.</item>
+        <item>Environment — system state: normal load, overloaded, degraded, maintenance window, post-deploy.</item>
+        <item>Artifact — affected part: entire system, API service, database, message broker, CI pipeline.</item>
+        <item>Response — what the system does: processes request, queues work, degrades gracefully, rejects with 429, emits alert.</item>
+        <item>Response Measure — testable threshold: p99 &lt; 300ms / availability &gt; 99.9% / recovery &lt; 15 min / deploy in &lt; 10 min with zero downtime.</item>
+      </list>
+      <example type="good" title="Performance scenario">
+        <code lang="text"><![CDATA[
+Source:           End user
+Stimulus:         Submits a product search query
+Environment:      Normal operation, 500 concurrent users
+Artifact:         Product search API endpoint
+Response:         Returns ranked search results
+Response Measure: p95 latency < 200ms; p99 < 500ms; 0% HTTP 5xx error rate
+        ]]></code>
+      </example>
+      <example type="good" title="Availability scenario">
+        <code lang="text"><![CDATA[
+Source:           Monitoring system
+Stimulus:         Single availability-zone failure
+Environment:      Peak traffic (10k RPS)
+Artifact:         Order processing service
+Response:         Traffic fails over to remaining AZs
+Response Measure: Recovery < 30 seconds; no orders lost; availability maintained >= 99.9%
+        ]]></code>
+      </example>
+      <example type="bad" title="Untestable requirement">
+        <code lang="text"><![CDATA[
+"The system should be fast and available."
+        ]]></code>
+        <note>No response measure. Cannot be tested, cannot drive design, cannot detect regression.</note>
+      </example>
+    </section>
+
+    <section name="sli-slo-framework">
+      <p>Service Level Indicators (SLIs) are the metrics. Service Level Objectives (SLOs) are the targets. Service Level Agreements (SLAs) are the contractual commitments (more conservative than SLOs).</p>
+      <list>
+        <item>SLI: Availability = good_requests / total_requests. Target: &gt;= 99.9% (30-day rolling window).</item>
+        <item>SLI: Latency = fraction of requests completing within threshold. Target: p99 &lt;= 500ms.</item>
+        <item>SLI: Error rate = HTTP 5xx / total requests. Target: &lt;= 0.1%.</item>
+        <item>Error budget = (1 - SLO) × window. 99.9% availability = 43.8 min/month. Exhausted budget → feature freeze.</item>
+        <item>Alert on burn rate, not raw SLO. 6x burn rate = budget exhausted in &lt;5 days → page on-call. 1x burn rate = within budget → no alert.</item>
+      </list>
+      <rule>
+        <statement>Define SLOs from user-journey analysis, not industry tables. "p95 &lt; 200ms" is a textbook default — derive the actual target from the latency at which users abandon or churn, measured from real telemetry.</statement>
+        <rationale>Teams optimizing to the wrong SLO invest engineering effort where it has no user impact. SLOs grounded in user behavior produce measurable retention improvements; SLOs copied from blog posts do not.</rationale>
+      </rule>
+    </section>
+
+    <section name="priority-and-trade-offs">
+      <p>Quality attributes trade off against each other. Common trade-offs that must be made explicit at design time:</p>
+      <list>
+        <item>Performance vs Security — adding encryption and auth checks adds latency. Quantify the overhead; design for it in the latency budget.</item>
+        <item>Availability vs Consistency (CAP theorem) — distributed systems cannot guarantee both during partition. Choose: AP (availability + partition tolerance, eventual consistency) or CP (consistency + partition tolerance, reduced availability). Document the choice in an ADR.</item>
+        <item>Scalability vs Cost — auto-scaling to handle 10x peak costs 10x. Define the scale threshold where cost justification breaks down.</item>
+        <item>Maintainability vs Performance — microservices improve deployability but add network latency; a monolith is faster but harder to scale independently. Make the trade-off explicit, not implicit.</item>
+        <item>Security vs Usability — friction (MFA, re-auth) reduces attack surface but increases user abandonment. Use risk-adaptive auth: step-up only for high-risk operations.</item>
+      </list>
+      <rule>
+        <statement>Every architectural decision that affects a quality attribute MUST reference at least one quality attribute scenario in its ADR. Decisions without scenario anchors cannot be verified or reversed.</statement>
+        <rationale>ADRs without quality scenario anchors become stale and unjustifiable. Scenario references create a verifiable link from architecture to operational acceptance criteria.</rationale>
+      </rule>
+    </section>
+
+    <section name="elicitation-checklist">
+      <checklist>
+        <check>Identify stakeholders and their quality priorities (ops: availability; product: performance; security: confidentiality; dev: maintainability).</check>
+        <check>Map each stakeholder priority to one or more ISO 25010 quality characteristics.</check>
+        <check>Write at least one scenario per high-priority quality characteristic with a measurable response measure.</check>
+        <check>Define SLIs and SLOs for all performance and availability scenarios.</check>
+        <check>Identify the top three quality attribute trade-offs and document each in an ADR.</check>
+        <check>Assign verification method to each scenario: load test, chaos experiment, security scan, code metric, or manual review.</check>
+        <check>Review scenarios with operations team for monitorability — every response measure must map to a metric that can be collected in production.</check>
+      </checklist>
+    </section>
+
+    <templates>
+      <template path="templates/qa-scenario.md" purpose="Quality attribute scenario template with all six elements (Source, Stimulus, Environment, Artifact, Response, Response Measure) plus architectural tactics and validation method."/>
+      <template path="templates/slo-doc.md" purpose="SLO definition document template: SLIs, targets, error budget calculation, alerting thresholds, and SLA commitments."/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.iso.org/standard/35733.html"/>
+      <link href="https://resources.sei.cmu.edu/asset_files/TechnicalReport/2000_005_001_13706.pdf"/>
+      <link href="https://sre.google/workbook/implementing-slos/"/>
+      <link href="https://docs.microsoft.com/en-us/azure/architecture/framework/"/>
+    </see-also>
+  </content>
+</methodology>
