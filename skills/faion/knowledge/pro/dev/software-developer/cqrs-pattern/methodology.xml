@@ -1,0 +1,637 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cqrs-pattern">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Separates read and write operations into different models, enabling independent optimization. Works well with event sourcing for complex domains.</summary>
+    <tags>
+      <tag>cqrs</tag>
+      <tag>event-sourcing</tag>
+      <tag>architecture-pattern</tag>
+      <tag>read-model</tag>
+      <tag>event-driven</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>CQRS Pattern</title>
+    <summary>Command Query Responsibility Segregation (CQRS) separates read and write operations into different models. Commands change state and return void or an ID. Queries return data but never modify state. This pattern enables optimization of each side independently and integrates naturally with event sourcing.</summary>
+    <why>
+      <p>Most applications have asymmetric read/write patterns. Reads may outnumber writes 10:1 or more. The data shapes that optimize writes (normalized form for consistency) often don't optimize reads (denormalized form for query speed). CQRS allows the write model to prioritize consistency and correctness while the read model prioritizes query performance and user experience. This is particularly powerful in event-driven systems where events flowing from writes can be projected into multiple optimized read models.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>High read/write ratio with different optimization needs (e.g., 100 reads per write).</item>
+        <item>Complex domain logic with simple queries (separation of concerns).</item>
+        <item>Systems requiring audit trails or full history (event sourcing natural fit).</item>
+        <item>Applications with eventual consistency requirements where lag is acceptable.</item>
+        <item>Microservices with event-driven architecture and multiple subscribers.</item>
+        <item>Real-time analytics where read models are constantly updated from domain events.</item>
+        <item>Read-heavy domains where the read query shape diverges from the aggregate (dashboards, search, analytics) and JOINs in the write model are out of control.</item>
+        <item>Front-end of an event-sourced system: queries hit projections, commands append events. CQRS plus ES is the canonical pairing.</item>
+        <item>Hard audit and regulatory domains (finance, healthcare, supply chain) where every state transition must be a named, immutable command.</item>
+        <item>Multi-tenant SaaS where read replicas and per-tenant denormalized caches must scale independently of the write path.</item>
+        <item>Business behaviors (`PlaceOrder`, `ApproveLoan`, `CancelSubscription`) getting buried in REST handlers. Step up from CRUD as the domain matures.</item>
+        <item>Microservices publishing domain events with polyglot read stores (Postgres write, Elasticsearch/Redis/OpenSearch read).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Simple CRUD applications with uniform read/write patterns and no complex logic.</item>
+        <item>Systems requiring strong immediate consistency where read-after-write must be consistent.</item>
+        <item>Teams unfamiliar with eventual consistency or event-driven architecture (adds complexity).</item>
+        <item>Applications where the cost of maintaining multiple models exceeds the performance benefit.</item>
+        <item>Real-time systems where the lag between write and read model update is unacceptable.</item>
+        <item>Simple CRUD apps with less than 10 entities and roughly symmetric read/write loads. CQRS doubles surface area for zero benefit.</item>
+        <item>Strong-consistency UX where the user must see their own write immediately and projections can't be synchronous (most line-of-business forms with redirect-to-detail).</item>
+        <item>Early-stage MVP or pre-product-market-fit. The cost of write and read schemas, projections, and a bus is paid up-front but the domain isn't stable enough to justify it.</item>
+        <item>Teams without DDD or event-driven experience. CQRS without aggregate boundaries degrades into "two layers of DTOs" with no payoff.</item>
+        <item>Real-time collaborative editing where last-writer-wins on a single mutable document is the right model (CRDT, OT—not CQRS).</item>
+        <item>Tiny solo projects. The mediator/bus/projection plumbing is more code than the feature.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Core Principles">
+      <rule>
+        <statement>Commands and Queries use different models</statement>
+        <rationale>The write model optimizes for correctness, consistency, and enforcing business rules. The read model optimizes for query speed. They don't need the same schema.</rationale>
+      </rule>
+      <rule>
+        <statement>Commands return void or ID, never data</statement>
+        <rationale>If a command returned the written data, the client would be tempted to update its UI immediately. This couples the response to the write model and breaks eventual consistency. The client should query separately to see the result.</rationale>
+      </rule>
+      <rule>
+        <statement>Queries never modify state</statement>
+        <rationale>Queries are side-effect-free. This makes them safe to retry, cache, and parallelize. If a query had side effects (e.g., incrementing a view counter), it would be unpredictable and hard to debug.</rationale>
+      </rule>
+      <rule>
+        <statement>Read models lag behind writes (eventual consistency)</statement>
+        <rationale>When a write happens, the event is published. The read model subscriber processes it asynchronously. There is a window where queries see stale data. This is acceptable in most systems and enables horizontal scaling.</rationale>
+      </rule>
+      <rule>
+        <statement>Projections build read models from events</statement>
+        <rationale>Instead of having a single schema that tries to serve both writes and reads, each event is projected into a read-optimized form. Multiple projections can exist simultaneously.</rationale>
+      </rule>
+    </section>
+    <section name="CQRS Architecture">
+      <p>CQRS separates a system into two sides. The command side handles writes, enforces business logic, and publishes events. The query side consumes events and maintains optimized read models. An event bus decouples the two.</p>
+      <example type="good" title="CQRS Architecture Diagram">
+        <code lang="text"><![CDATA[┌─────────────────────────────────────────────────────────────┐
+│                        API Layer                             │
+└───────────────┬─────────────────────────┬───────────────────┘
+                │                         │
+       ┌────────▼────────┐       ┌────────▼────────┐
+       │   Command Side   │       │   Query Side    │
+       │                  │       │                 │
+       │  ┌────────────┐  │       │  ┌───────────┐  │
+       │  │  Commands  │  │       │  │  Queries  │  │
+       │  └─────┬──────┘  │       │  └─────┬─────┘  │
+       │        │         │       │        │        │
+       │  ┌─────▼──────┐  │       │  ┌─────▼─────┐  │
+       │  │  Handlers  │  │       │  │  Handlers │  │
+       │  └─────┬──────┘  │       │  └─────┬─────┘  │
+       │        │         │       │        │        │
+       │  ┌─────▼──────┐  │       │  ┌─────▼─────┐  │
+       │  │  Domain    │  │       │  │Read Model │  │
+       │  │  Model     │  │       │  │           │  │
+       │  └─────┬──────┘  │       │  └─────┬─────┘  │
+       │        │         │       │        │        │
+       │  ┌─────▼──────┐  │       │  ┌─────▼─────┐  │
+       │  │Write Store │  │       │  │Read Store │  │
+       │  │(PostgreSQL)│  │       │  │  (Redis)  │  │
+       │  └────────────┘  │       │  └───────────┘  │
+       └──────────────────┘       └─────────────────┘
+                │                         ▲
+                │       Events            │
+                └─────────────────────────┘]]></code>
+      </example>
+    </section>
+    <section name="Command Implementation">
+      <p>Commands are simple data transfer objects representing an intent to change state. Each command has a handler that executes the domain logic, modifies the write model, and publishes events. Commands return void or an ID.</p>
+      <example type="good" title="Base Command and Handler Classes">
+        <code lang="python"><![CDATA[# application/commands/base.py
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+
+@dataclass
+class Command(ABC):
+    """Base class for all commands."""
+    pass
+
+
+class CommandHandler(ABC, Generic[T]):
+    """Base class for command handlers."""
+
+    @abstractmethod
+    async def handle(self, command: T) -> None:
+        pass]]></code>
+      </example>
+      <example type="good" title="Concrete Commands and Handlers">
+        <code lang="python"><![CDATA[# application/commands/orders/place_order.py
+from dataclasses import dataclass
+from typing import List
+from uuid import UUID
+
+from domain.orders.order import Order
+from domain.orders.repository import OrderRepository
+from domain.orders.events import OrderPlaced
+from infrastructure.event_bus import EventBus
+
+
+@dataclass
+class PlaceOrderCommand(Command):
+    """Command to place an order."""
+    order_id: UUID
+    customer_id: UUID
+    items: List[dict]
+    shipping_address: dict
+
+
+class PlaceOrderHandler(CommandHandler[PlaceOrderCommand]):
+    """Handler for PlaceOrderCommand."""
+
+    def __init__(
+        self,
+        order_repository: OrderRepository,
+        event_bus: EventBus,
+    ):
+        self._order_repository = order_repository
+        self._event_bus = event_bus
+
+    async def handle(self, command: PlaceOrderCommand) -> None:
+        # Create order aggregate
+        order = Order.create(
+            id=command.order_id,
+            customer_id=command.customer_id,
+        )
+
+        # Add items
+        for item in command.items:
+            order.add_item(
+                product_id=item["product_id"],
+                quantity=item["quantity"],
+                price=item["price"],
+            )
+
+        # Place order (domain logic)
+        order.place(
+            shipping_address=Address(**command.shipping_address)
+        )
+
+        # Persist
+        await self._order_repository.save(order)
+
+        # Publish events
+        for event in order.collect_events():
+            await self._event_bus.publish(event)
+
+
+@dataclass
+class CancelOrderCommand(Command):
+    """Command to cancel an order."""
+    order_id: UUID
+    reason: str
+
+
+class CancelOrderHandler(CommandHandler[CancelOrderCommand]):
+    """Handler for CancelOrderCommand."""
+
+    def __init__(
+        self,
+        order_repository: OrderRepository,
+        event_bus: EventBus,
+    ):
+        self._order_repository = order_repository
+        self._event_bus = event_bus
+
+    async def handle(self, command: CancelOrderCommand) -> None:
+        order = await self._order_repository.find_by_id(command.order_id)
+
+        if not order:
+            raise OrderNotFoundError(command.order_id)
+
+        order.cancel(command.reason)
+
+        await self._order_repository.save(order)
+
+        for event in order.collect_events():
+            await self._event_bus.publish(event)]]></code>
+      </example>
+    </section>
+    <section name="Query Implementation">
+      <p>Queries are simple data transfer objects requesting information. Each query has a handler that reads from the read model and returns a DTO. Queries never modify state and are side-effect-free.</p>
+      <example type="good" title="Base Query and Handler Classes">
+        <code lang="python"><![CDATA[# application/queries/base.py
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+R = TypeVar('R')
+
+
+@dataclass
+class Query(ABC):
+    """Base class for all queries."""
+    pass
+
+
+class QueryHandler(ABC, Generic[T, R]):
+    """Base class for query handlers."""
+
+    @abstractmethod
+    async def handle(self, query: T) -> R:
+        pass]]></code>
+      </example>
+      <example type="good" title="Concrete Queries and Handlers">
+        <code lang="python"><![CDATA[# application/queries/orders/get_order.py
+from dataclasses import dataclass
+from typing import Optional
+from uuid import UUID
+
+
+@dataclass
+class GetOrderQuery(Query):
+    """Query to get order details."""
+    order_id: UUID
+
+
+@dataclass
+class OrderDto:
+    """Read model for order details."""
+    id: UUID
+    customer_id: UUID
+    status: str
+    items: list
+    total: float
+    shipping_address: dict
+    placed_at: Optional[str]
+    created_at: str
+
+
+class GetOrderHandler(QueryHandler[GetOrderQuery, OrderDto]):
+    """Handler for GetOrderQuery."""
+
+    def __init__(self, read_store: ReadStore):
+        self._read_store = read_store
+
+    async def handle(self, query: GetOrderQuery) -> OrderDto:
+        # Read from optimized read store
+        data = await self._read_store.get(f"order:{query.order_id}")
+
+        if not data:
+            raise OrderNotFoundError(query.order_id)
+
+        return OrderDto(**data)
+
+
+@dataclass
+class ListOrdersQuery(Query):
+    """Query to list orders for a customer."""
+    customer_id: UUID
+    status: Optional[str] = None
+    page: int = 1
+    page_size: int = 20
+
+
+@dataclass
+class OrderListDto:
+    """Paginated list of orders."""
+    items: list[OrderSummaryDto]
+    total: int
+    page: int
+    page_size: int
+
+
+class ListOrdersHandler(QueryHandler[ListOrdersQuery, OrderListDto]):
+    """Handler for ListOrdersQuery."""
+
+    def __init__(self, read_store: ReadStore):
+        self._read_store = read_store
+
+    async def handle(self, query: ListOrdersQuery) -> OrderListDto:
+        # Query optimized read model
+        orders = await self._read_store.query(
+            index="orders_by_customer",
+            customer_id=str(query.customer_id),
+            status=query.status,
+            offset=(query.page - 1) * query.page_size,
+            limit=query.page_size,
+        )
+
+        total = await self._read_store.count(
+            index="orders_by_customer",
+            customer_id=str(query.customer_id),
+            status=query.status,
+        )
+
+        return OrderListDto(
+            items=[OrderSummaryDto(**o) for o in orders],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )]]></code>
+      </example>
+    </section>
+    <section name="Read Model Projections">
+      <p>Projections are event handlers that listen to domain events and update the read models. Each projection can build a different denormalized view of the data optimized for specific queries.</p>
+      <example type="good" title="Event Projection Example">
+        <code lang="python"><![CDATA[# infrastructure/projections/order_projection.py
+from domain.orders.events import OrderPlaced, OrderShipped, OrderCancelled
+
+
+class OrderProjection:
+    """Projects order events to read model."""
+
+    def __init__(self, read_store: ReadStore):
+        self._read_store = read_store
+
+    async def handle(self, event) -> None:
+        """Route event to appropriate handler."""
+        handlers = {
+            OrderPlaced: self._on_order_placed,
+            OrderShipped: self._on_order_shipped,
+            OrderCancelled: self._on_order_cancelled,
+        }
+
+        handler = handlers.get(type(event))
+        if handler:
+            await handler(event)
+
+    async def _on_order_placed(self, event: OrderPlaced) -> None:
+        """Project OrderPlaced event."""
+        order_data = {
+            "id": str(event.order_id),
+            "customer_id": str(event.customer_id),
+            "status": "placed",
+            "items": event.items,
+            "total": float(event.total),
+            "shipping_address": event.shipping_address,
+            "placed_at": event.occurred_at.isoformat(),
+            "created_at": event.occurred_at.isoformat(),
+        }
+
+        # Store in read model
+        await self._read_store.set(
+            key=f"order:{event.order_id}",
+            value=order_data,
+        )
+
+        # Update customer's order index
+        await self._read_store.add_to_index(
+            index="orders_by_customer",
+            key=str(event.customer_id),
+            value=str(event.order_id),
+            score=event.occurred_at.timestamp(),
+        )
+
+    async def _on_order_shipped(self, event: OrderShipped) -> None:
+        """Update order status when shipped."""
+        await self._read_store.update(
+            key=f"order:{event.order_id}",
+            updates={
+                "status": "shipped",
+                "tracking_number": event.tracking_number,
+                "shipped_at": event.occurred_at.isoformat(),
+            },
+        )
+
+    async def _on_order_cancelled(self, event: OrderCancelled) -> None:
+        """Update order status when cancelled."""
+        await self._read_store.update(
+            key=f"order:{event.order_id}",
+            updates={
+                "status": "cancelled",
+                "cancellation_reason": event.reason,
+                "cancelled_at": event.occurred_at.isoformat(),
+            },
+        )]]></code>
+      </example>
+      <example type="good" title="Redis Read Store Implementation">
+        <code lang="python"><![CDATA[# infrastructure/read_store/redis_read_store.py
+import json
+from typing import Optional, List
+import redis.asyncio as redis
+
+
+class RedisReadStore:
+    """Redis implementation of read store."""
+
+    def __init__(self, redis_client: redis.Redis):
+        self._redis = redis_client
+
+    async def get(self, key: str) -> Optional[dict]:
+        data = await self._redis.get(key)
+        return json.loads(data) if data else None
+
+    async def set(self, key: str, value: dict, ttl: int = None) -> None:
+        data = json.dumps(value)
+        if ttl:
+            await self._redis.setex(key, ttl, data)
+        else:
+            await self._redis.set(key, data)
+
+    async def update(self, key: str, updates: dict) -> None:
+        data = await self.get(key)
+        if data:
+            data.update(updates)
+            await self.set(key, data)
+
+    async def add_to_index(
+        self,
+        index: str,
+        key: str,
+        value: str,
+        score: float,
+    ) -> None:
+        await self._redis.zadd(f"{index}:{key}", {value: score})
+
+    async def query(
+        self,
+        index: str,
+        key: str = None,
+        offset: int = 0,
+        limit: int = 20,
+        **filters,
+    ) -> List[dict]:
+        # Get IDs from sorted set
+        ids = await self._redis.zrevrange(
+            f"{index}:{key}",
+            offset,
+            offset + limit - 1,
+        )
+
+        # Fetch full objects
+        results = []
+        for id_ in ids:
+            data = await self.get(f"order:{id_}")
+            if data:
+                # Apply filters
+                if all(data.get(k) == v for k, v in filters.items() if v):
+                    results.append(data)
+
+        return results]]></code>
+      </example>
+    </section>
+    <section name="Command and Query Mediator">
+      <p>A mediator or command bus acts as the central dispatcher. It routes commands to handlers and queries to their handlers, decoupling the API from the implementations.</p>
+      <example type="good" title="Mediator Pattern Implementation">
+        <code lang="python"><![CDATA[# infrastructure/bus/mediator.py
+from typing import Dict, Type, TypeVar, Generic
+from dataclasses import dataclass
+
+T = TypeVar('T')
+
+
+class Mediator:
+    """Mediator for dispatching commands and queries."""
+
+    def __init__(self):
+        self._command_handlers: Dict[Type, CommandHandler] = {}
+        self._query_handlers: Dict[Type, QueryHandler] = {}
+
+    def register_command_handler(
+        self,
+        command_type: Type[Command],
+        handler: CommandHandler,
+    ) -> None:
+        self._command_handlers[command_type] = handler
+
+    def register_query_handler(
+        self,
+        query_type: Type[Query],
+        handler: QueryHandler,
+    ) -> None:
+        self._query_handlers[query_type] = handler
+
+    async def send(self, command: Command) -> None:
+        """Dispatch command to handler."""
+        handler = self._command_handlers.get(type(command))
+        if not handler:
+            raise HandlerNotFoundError(f"No handler for {type(command)}")
+        await handler.handle(command)
+
+    async def query(self, query: Query) -> T:
+        """Dispatch query to handler."""
+        handler = self._query_handlers.get(type(query))
+        if not handler:
+            raise HandlerNotFoundError(f"No handler for {type(query)}")
+        return await handler.handle(query)]]></code>
+      </example>
+      <example type="good" title="API Usage with Mediator">
+        <code lang="python"><![CDATA[# API usage
+@router.post("/orders")
+async def place_order(
+    request: PlaceOrderRequest,
+    mediator: Mediator = Depends(get_mediator),
+):
+    command = PlaceOrderCommand(
+        order_id=uuid4(),
+        customer_id=request.customer_id,
+        items=request.items,
+        shipping_address=request.shipping_address,
+    )
+
+    await mediator.send(command)
+
+    return {"order_id": str(command.order_id)}
+
+
+@router.get("/orders/{order_id}")
+async def get_order(
+    order_id: UUID,
+    mediator: Mediator = Depends(get_mediator),
+):
+    query = GetOrderQuery(order_id=order_id)
+    order = await mediator.query(query)
+    return order]]></code>
+      </example>
+    </section>
+    <section name="Failure Modes and Limitations">
+      <p>Eventual-consistency UX leaks when the user places an order, navigates to "My Orders," and doesn't see it. Without a read-your-writes strategy—sticky session on write store, optimistic UI, or command-side return of projected DTO—you ship bug reports indistinguishable from data loss.</p>
+      <p>Projection drift occurs when the read store gets out of sync with events due to deploy-without-rebuild, swallowed exceptions in the projector, or schema changes. There must be a deterministic "rebuild from event log" command; otherwise corrupt reads ship to production.</p>
+      <p>Cross-aggregate queries fail when a query needs data from multiple aggregates with no read model for that combination. Teams either build more projections (data duplication), JOIN in the API layer (slow), or call multiple services (chatty). All are visible regressions versus a single SQL query in CRUD.</p>
+      <p>Command idempotency is not in most README samples. Replays, retries, and at-least-once buses cause double-charges without an `idempotency_key` table or saga state to deduplicate. Real implementations need explicit idempotency handling.</p>
+      <p>Bus-as-magic hides handler resolution. "No handler found" errors are painful to debug across DI containers. Static handler registries beat runtime discovery for readability and debuggability.</p>
+      <p>Versioned events: once projections exist, event payloads can't change freely. Event versioning and upcasting become mandatory. Most teams discover this when adding a field to an event.</p>
+      <p>Saga creep: multi-aggregate workflows (Place Order → Charge → Reserve → Ship) are NOT CQRS—they are sagas or process managers. Teams shoehorn sagas into command handlers, and the model collapses under complexity.</p>
+    </section>
+    <section name="Agentic Workflow for CQRS Adoption">
+      <p>Drive CQRS scaffolding as a four-stage pipeline. (1) A design agent extracts the aggregate, command, and query inventory from the specification. (2) A code-gen agent emits Command, CommandHandler, Query, QueryHandler, and Projection skeletons aligned to the repository's existing module structure (Python cosmos-style or .NET MediatR). (3) A test agent generates property-based tests for command idempotency and projection eventual consistency. (4) A review agent runs the anti-pattern checklist: commands returning data, queries with side effects, projections importing domain services. Persist the inventory in a living document (cqrs-inventory.md) so subsequent features append rather than fork. Use SDD executor to drive each command/query as one task with handler, test, and projection update together.</p>
+      <p>Recommended subagents: SDD executor with Opus model (handler/projection trade-offs are non-trivial). Password-scrubber before committing events; commands often carry PII that must not leak into snapshots. A purpose-built cqrs-review-agent linter that greps for canonical anti-patterns: command return type ≠ None/UUID, query with save/update/publish, projection importing domain services, event without occurred_at. Feature-executor skill in sequential mode (command before query before projection before integration test; out-of-order corrupts read models). For event-sourced variants, pair with sibling event-sourcing methodology.</p>
+    </section>
+    <section name="Anti-Patterns">
+      <antipattern>
+        <description>Commands return data to the client</description>
+        <reason>This couples the response to the write model and breaks eventual consistency. The client expects to see the written data immediately, which is only true if consistency is strong. This makes the system behave unpredictably under load or network lag.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Queries modify state (side effects)</description>
+        <reason>Queries become unpredictable, unsafe to retry, and hard to cache. If a query increments a counter, retrying it produces wrong results. Queries should be pure functions.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Single read model serving all queries</description>
+        <reason>The read model becomes a kitchen sink, storing every field anyone might need. Queries become slow because they scan unnecessary data. CQRS's power is multiple optimized read models.</reason>
+      </antipattern>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Keep commands and queries simple data objects. Don't put business logic in the command class itself.</item>
+        <item>Each projection should be independently reconstructible from the event stream. No shared mutable state between projections.</item>
+        <item>Use event sourcing (store events, derive state) rather than snapshots alone. Full history enables debugging and rebuilding.</item>
+        <item>Publish domain events from the write model, not infrastructure events. Events represent business facts, not technical changes.</item>
+        <item>Cache read models aggressively. Since they are eventually consistent, stale data is expected and caches can be long-lived.</item>
+        <item>Monitor lag between writes and read model updates. Set alarms if lag exceeds acceptable thresholds.</item>
+        <item>Make projections idempotent. If an event is processed twice, the read model should remain consistent (event replay safety).</item>
+        <item>Separate concerns: command handlers contain domain logic; projections are just event-to-read-model transformations.</item>
+        <item>Implement read-your-writes for strong consistency in the UX. Use sticky sessions to the write store, optimistic UI updates, or return projected DTO from command handler.</item>
+        <item>Include deterministic rebuild from event log. Without it, corrupt reads ship when projections drift.</item>
+        <item>Make command handlers idempotent with `idempotency_key`. Replays and at-least-once buses cause double-charges without deduplication.</item>
+        <item>Use static handler registries over runtime discovery. Explicit wiring beats magic for debugging and readability.</item>
+        <item>Version events proactively. Once projections exist, event schema can't change freely; add versioning and upcasting infrastructure.</item>
+        <item>Keep multi-aggregate workflows out of command handlers. Use sagas or process managers; CQRS commands should not orchestrate workflows.</item>
+      </list>
+    </section>
+    <section name="Key Takeaways">
+      <p>CQRS is not a default pattern; it solves the problem of asymmetric read/write optimization. Use it when reads and writes have fundamentally different query shapes, scale requirements, or consistency needs. Without event sourcing, CQRS is just "two data models"; with ES, it becomes a powerful audit and debugging tool. The cost is eventual consistency, projection maintenance, and increased system complexity. Pay that cost consciously, not by accident.</p>
+    </section>
+    <checklist>
+      <check>Commands return void or ID only, never data.</check>
+      <check>Query handlers never modify state.</check>
+      <check>Each command has exactly one handler.</check>
+      <check>Each query has exactly one handler.</check>
+      <check>Commands and queries are simple data classes (DTOs).</check>
+      <check>Read models are built from events, not direct database queries.</check>
+      <check>Projections are idempotent (replaying events produces the same result).</check>
+      <check>At least two separate data stores (write and read).</check>
+      <check>Event bus or mediator decouples command from query side.</check>
+      <check>Tests cover command handlers with domain logic.</check>
+      <check>Tests cover projections with various event sequences.</check>
+      <check>Monitoring tracks lag between write and read models.</check>
+    </checklist>
+    <section name="Tools and Frameworks for CQRS">
+      <p>cosmos (Python) is a CQRS+ES reference framework from "Architecture Patterns with Python." eventsourcing is a Python library with aggregate, repository, event store, and projection tooling. MediatR and Mediator are command/query mediators for .NET (MediatR is commercial; Mediator is free source-gen). axon-cli inspects Axon Framework setups for JVM CQRS+ES. eventstoredb CLI appends/reads events, manages projections, and replays. NATS CLI plus JetStream provide a lightweight command/event bus. dbt builds read-side projections as SQL models from append-only event tables or CDC. kafka-console-consumer and kcat inspect events and replay from offsets. Debezium and pgsync enable CDC from write store to read store when the projector can't be embedded in legacy code.</p>
+    </section>
+    <section name="Services for CQRS+Event Sourcing">
+      <p>EventStoreDB is a purpose-built event store with HTTP and gRPC APIs, best fit for CQRS+ES. Axon Server (commercial with free dev tier) is a command/event/query bus and event store for JVM. Marten enables CQRS+ES on Postgres—single-database simplicity for solo teams. Apache Kafka plus ksqlDB provide event log and streaming projections but are overkill for under 1k events/second. NATS JetStream uses subjects as command/event topics. Redis Streams is the cheapest projection trigger. AWS EventBridge plus DynamoDB Streams integrate commands, Lambdas, and projector Lambdas. Temporal owns the saga and process-manager layer; CQRS handlers should not. Apicurio and Confluent Schema Registry manage event schema versioning (non-optional once you have multiple projectors). Hasura and PostgREST auto-generate a query-side API over the read-model schema.</p>
+    </section>
+    <section name="Prompt Patterns for CQRS Review">
+      <p>Inventory pass: You are a CQRS architect. Given the feature spec, produce a table of Commands and Queries. Columns: name, intent, returns (None/UUID for commands; DTO shape for queries), aggregate touched, events emitted (commands only), read store index used (queries only). Reject any command that returns a DTO. Reject any query that emits events.</p>
+      <p>Anti-pattern review: You are reviewing a PR adding CQRS handlers. Flag: (1) command handler with return type other than None or UUID, (2) query handler that calls *.save / *.update / publish_event, (3) projection that imports from domain services, (4) event class without occurred_at and aggregate_id, (5) handler registered both as command AND query handler. Cite file:line. Do not propose fixes.</p>
+    </section>
+    <see-also>
+      <ref slug="continuous-delivery"/>
+      <ref slug="csharp-dotnet-patterns"/>
+      <link href="https://martinfowler.com/bliki/CQRS.html"/>
+      <link href="https://docs.microsoft.com/en-us/azure/architecture/patterns/cqrs"/>
+      <link href="https://github.com/cosmicpython/code"/>
+      <link href="https://eventsourcing.readthedocs.io"/>
+      <link href="https://github.com/jbogard/MediatR"/>
+    </see-also>
+  </content>
+</methodology>
