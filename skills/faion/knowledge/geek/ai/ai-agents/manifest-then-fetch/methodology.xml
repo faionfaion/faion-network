@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="manifest-then-fetch">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Every tool returns a small manifest first; full payload stored externally. Default is preview-only — large payloads never enter context unless explicitly fetched.</summary>
+    <tags>
+      <tag>tool-calling</tag>
+      <tag>context-management</tag>
+      <tag>agent-protocol</tag>
+      <tag>lazy-loading</tag>
+      <tag>manifest</tag>
+    </tags>
+    <category>protocol</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Manifest-Then-Fetch — Two-Phase Tool Result</title>
+    <summary>A tool-result protocol where every tool returns a small manifest first (execution_id, preview, size_tokens) and the full payload is stored externally. The agent inspects only the preview; it must explicitly call get_full_result(execution_id) to load the body. Default behaviour is preview-only — large payloads never enter the LLM context unless the agent decides they are needed.</summary>
+    <why>
+      <p>Tool calls have heavy-tailed payload sizes: a sql_query or web_fetch is small most of the time but occasionally returns hundreds of kilobytes. Stuffing every full result into the conversation triggers "lost in the middle" degradation and burns prompt-cache prefixes. The Maximum Effective Context Window paper (arXiv 2509.21361) shows accuracy collapses far below the advertised window, so the cheapest way to keep accuracy high is to keep tool bodies out of context by default. Manifest-then-fetch makes that the protocol, not a habit the LLM has to remember.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Tools with high payload variance — web_fetch, sql_query, log_search, read_file on unknown sizes.</item>
+        <item>Agents that loop ≥30 turns and accumulate tool history.</item>
+        <item>Pipelines where most calls only need a count, header, or first match.</item>
+        <item>Multi-tenant agent platforms where some tools occasionally return megabyte responses.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Tools where every result is small (&lt;1k tokens) — the manifest dance is pure overhead.</item>
+        <item>Single-shot stateless tool calls in a one-turn agent — no later step exists to fetch the body.</item>
+        <item>Streaming tools where the agent must act on each chunk live — manifests delay action.</item>
+      </list>
+    </when-not-to-use>
+    <section name="two-phase-contract">
+      <p>Wrap each native tool so the LLM-visible result is always a small JSON envelope, never the raw body. A companion fetch tool resolves the envelope to the full payload only when the agent decides it is needed.</p>
+      <rule testable="true">
+        <statement>Every tool result returned to the model MUST be a JSON object with keys execution_id, preview, size_tokens, and storage_uri. The full body MUST be stored externally and referenced by execution_id.</statement>
+        <rationale>Decouples decision-making (small envelope, always in context) from data loading (large body, on-demand). Holds effective context flat across loops, regardless of tool throughput.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>The agent MUST call a separate get_full_result(execution_id) tool to load the body. Never inline the body into the manifest.</statement>
+        <rationale>Forces an explicit decision before paying the context cost. The model's autonomy stays — it can fetch — but the default is cheap.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="json"><![CDATA[{
+  "execution_id": "tr_a3f9",
+  "preview": "12,847 rows; cols=[id, ts, user_id, payload]",
+  "size_tokens": 184320,
+  "storage_uri": "s3://agent-results/tr_a3f9.jsonl"
+}]]></code>
+        <note>184k token body never reached the model; the agent decided "row count is enough" and never fetched.</note>
+      </example>
+      <example type="bad">
+        <code lang="json"><![CDATA[{"rows": [/* 12,847 full rows inlined here */]}]]></code>
+        <note>Body sits in the message history forever, eats cache prefixes, degrades subsequent reasoning.</note>
+      </example>
+      <antipattern>
+        <description>Returning the manifest AND the full body "in case the agent needs it".</description>
+        <reason>Defeats the whole protocol — the body is in context the moment it returns, regardless of what the agent does next.</reason>
+      </antipattern>
+    </section>
+    <section name="preview-field-design">
+      <p>The preview is the only signal the agent has. It must answer one question: "do I need the body?" Anything more is waste.</p>
+      <rule testable="true">
+        <statement>Preview MUST be ≤200 tokens AND MUST be structured per tool type: row count + columns for SQL, status + content-type + first 200 chars for HTTP, line count + first/last 5 lines for logs.</statement>
+        <rationale>Fixed schema lets the agent parse the preview reliably; a free-text "summary" tempts the model to hallucinate that the body says something it doesn't.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Preview MUST NOT contain the answer the user asked for, even if it fits. If the answer is in the preview, the contract is broken — the tool should have returned a structured answer directly.</statement>
+        <rationale>Mixing the answer into the preview short-circuits the protocol: the agent stops fetching but also never learns whether its answer is grounded in the body.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="json"><![CDATA[{
+  "execution_id": "tr_77",
+  "preview": {
+    "kind": "http_response",
+    "status": 200,
+    "content_type": "text/html",
+    "size_tokens": 18400,
+    "first_chars": "<!doctype html><html lang=\"en\"><head><title>...</title>"
+  }
+}]]></code>
+        <note>Structured. The agent can see "HTML page, 18k tokens, English" and decide whether to extract or just keep the URL.</note>
+      </example>
+      <example type="bad">
+        <code lang="json"><![CDATA[{
+  "execution_id": "tr_77",
+  "preview": "The page talks about Q1 earnings and mentions revenue is up 12%."
+}]]></code>
+        <note>Free-text "smart" preview — the model now believes the claim without reading the body.</note>
+      </example>
+      <antipattern>
+        <description>Letting the preview grow to several KB "to be safe".</description>
+        <reason>Equivalent to inlining the body: the protocol's whole point is keeping the LLM-facing payload tiny.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/manifest.json" purpose="Reference shape of the manifest envelope returned by every wrapped tool."/>
+      <template path="templates/fetch-tool.json" purpose="JSON tool definition for get_full_result(execution_id) companion tool."/>
+    </templates>
+    <see-also>
+      <link href="https://github.com/agno-agi/agno/issues/5534">Agno feature request describing the lazy tool-result pattern.</link>
+      <link href="https://docs.databricks.com/aws/en/generative-ai/guide/agent-system-design-patterns">Databricks agent system design patterns — lazy result loading.</link>
+      <link href="https://arxiv.org/abs/2509.21361">Maximum Effective Context Window paper — why default-fetch wastes accuracy.</link>
+    </see-also>
+  </content>
+</methodology>
