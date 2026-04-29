@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="monolith-architecture">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Single deployable unit for teams &lt;10 and unvalidated domains. Monolith First principle: start simple, add complexity only when scaling data proves you need it.</summary>
+    <tags>
+      <tag>monolith</tag>
+      <tag>architecture</tag>
+      <tag>vertical-slice</tag>
+      <tag>strangler-fig</tag>
+      <tag>scaling</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Monolith Architecture</title>
+    <summary>A monolith is a single deployable unit containing all application functionality. It is the correct starting architecture for teams of fewer than 10, unvalidated business models, and domains whose boundaries are not yet understood. The "Monolith First" principle (Fowler) holds: start simple, add complexity only when scaling data proves you need it. Modern monoliths use vertical slice organization or modular structure — not the traditional layered anti-pattern that causes anemic domain models.</summary>
+    <why>
+      <p>Almost every successful microservices migration started from a well-structured monolith. Systems decomposed into microservices prematurely (before domain boundaries are understood) become distributed monoliths — the worst of both worlds. A monolith provides ACID transactions, in-process communication with zero network latency, a single deployment pipeline, and simpler debugging. Shopify, GitHub, Basecamp, and Stack Overflow run monoliths at massive scale with the right internal organization.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Team size is fewer than 10 developers</item>
+        <item>MVP or startup: speed to market matters more than scalability</item>
+        <item>Domain boundaries are unclear or evolving</item>
+        <item>Limited DevOps maturity: no Kubernetes/distributed systems expertise</item>
+        <item>Budget constraints: single server, simpler infrastructure</item>
+        <item>Rapid iteration phase where all code in one place accelerates changes</item>
+        <item>Building the foundation for a future modular monolith or selective microservices extraction</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Independent per-feature scaling is already needed (measurably different traffic profiles)</item>
+        <item>10+ developers with independent release cadences causing merge conflicts and deploy bottlenecks</item>
+        <item>Different modules have fundamentally different tech stack requirements</item>
+        <item>Deployment frequency is already high and feature teams are blocking each other — switch to modular-monolith first</item>
+        <item>Module build and test time exceeds 30 minutes — a sign the monolith has grown past the modular-monolith extraction threshold</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="internal-organization">
+      <rule>
+        <statement>Use Layered Architecture only when the domain is thin, CRUD-heavy, and the team is small and familiar with the pattern. Enforce the dependency rule strictly: each layer imports only the layer below it, never upward.</statement>
+        <rationale>Layered architecture is the most understood pattern, which reduces onboarding friction. However, without strict enforcement, it degrades into spaghetti: business logic leaks into controllers, data logic leaks into services.</rationale>
+      </rule>
+      <list>
+        <item>Presentation: HTTP controllers, request/response DTOs, API serialization</item>
+        <item>Application/Service: use cases, orchestration, transaction management</item>
+        <item>Domain: entities, business rules, domain services (most stable layer)</item>
+        <item>Infrastructure: ORM repositories, external API clients, message producers</item>
+      </list>
+      <antipattern>
+        <description>Business logic in the persistence layer (fat repositories or stored procedures)</description>
+        <reason>Makes business rules untestable without a running database and couples domain changes to schema changes</reason>
+      </antipattern>
+      <rule>
+        <statement>Use Vertical Slice Architecture when features are developed by different developers and merge conflicts on shared service/repository layers are frequent. Each slice owns all layers for one feature — changes are contained to the slice.</statement>
+        <rationale>Horizontal layers create high coupling across features. Every new feature touches the same UserService, OrderRepository, and BaseController classes. Vertical slices contain change: adding a feature means adding a new directory, not touching shared code.</rationale>
+      </rule>
+      <example type="good">
+        <note>Django vertical slice layout — each feature is self-contained</note>
+        <code lang="text"><![CDATA[
+app/
+├── orders/
+│   ├── create_order/
+│   │   ├── handler.py      # HTTP view / API controller
+│   │   ├── command.py      # Use case / application service
+│   │   ├── repository.py   # Data access for this feature
+│   │   └── dto.py          # Request/response DTOs
+│   └── cancel_order/
+│       ├── handler.py
+│       └── command.py
+├── inventory/
+│   └── reserve_stock/
+│       └── handler.py
+└── shared/                 # Cross-cutting only: auth, logging, base models
+]]></code>
+      </example>
+      <rule>
+        <statement>When vertical slices share bounded context logic across multiple features, graduate to Modular Monolith: modules map to bounded contexts, each module has a public API, all inter-module calls go through the public API, and no module accesses another module's database schema.</statement>
+        <rationale>Vertical slices work well when features are independent. Once shared domain logic is needed (an order slice and a fulfillment slice both need OrderStatus semantics), modules with explicit boundaries prevent duplication and coupling.</rationale>
+      </rule>
+      <list>
+        <item>Each module = one bounded context: orders, inventory, payments, notifications</item>
+        <item>Public API: module exposes only DTOs and service interfaces, never internal models</item>
+        <item>Data isolation: each module owns its database schema (separate PostgreSQL schemas or separate tables with no cross-schema joins)</item>
+        <item>This is the required intermediate step before extracting microservices</item>
+      </list>
+    </section>
+
+    <section name="scaling-and-deployment">
+      <rule>
+        <statement>A monolith can be scaled horizontally behind a load balancer only if it is stateless: no in-memory sessions, no local file system writes for shared data, no sticky connections for business logic. Externalize all shared state before adding instances.</statement>
+        <rationale>Sticky sessions appear to solve stateful monolith scaling, but they create uneven load distribution and become a single-point failure per user session. Stateless architecture distributes requests freely and handles instance loss without session loss.</rationale>
+      </rule>
+      <list>
+        <item>Sessions: store in Redis or database, not in-process memory</item>
+        <item>Uploaded files: store in S3/GCS/object storage, not local filesystem</item>
+        <item>Background job queues: use external broker (Celery+Redis, Sidekiq+Redis), not in-process threads that die with the instance</item>
+        <item>WebSocket connections: use sticky sessions only for the socket layer; business logic remains stateless</item>
+        <item>Database connections: use a connection pool (PgBouncer) to prevent connection count scaling with instance count</item>
+      </list>
+      <rule>
+        <statement>Use blue-green deployments for the monolith to achieve zero-downtime deploys. Use feature flags for high-risk functionality changes so the code ships without activating the behavior. Use canary deployments to validate new versions on a percentage of traffic before full rollout.</statement>
+        <rationale>Monolithic deployments replace the entire application; a bug in any part affects all users. Deployment strategies decouple "code in production" from "feature active in production", enabling risk-staged rollouts and instant rollback without redeployment.</rationale>
+      </rule>
+      <list>
+        <item>Blue-green: two identical environments; traffic shifts instantly; rollback = shift traffic back — requires 2x infrastructure during transition</item>
+        <item>Canary: new version receives 5%→25%→100% of traffic; monitor error rate at each step; automated rollback on threshold breach</item>
+        <item>Feature flags: code ships dark; flag enables feature for a user segment; rollback = disable flag — no redeployment needed</item>
+        <item>Rolling update: replace instances one at a time; requires backward-compatible database migrations (never break old code with a new migration)</item>
+      </list>
+      <antipattern>
+        <description>Deploying database migrations and application code in a single step</description>
+        <reason>If the migration fails mid-deploy, the application is in an inconsistent state. Always deploy migrate-then-upgrade: migration first (backward-compatible), then new application version.</reason>
+      </antipattern>
+    </section>
+
+    <section name="migration-signals">
+      <rule>
+        <statement>Do not migrate from monolith until at least two of the following signals are sustained for 60+ days: consistently blocked deployments, measurably different scaling profiles per module, independent team release cadences blocked by shared codebase, or build+test time exceeding 30 minutes.</statement>
+        <rationale>Premature decomposition is the most common distributed systems mistake. Teams extract services before understanding domain boundaries, creating distributed monoliths — all the complexity of microservices with none of the independence. Wait for real signals, not hypothetical future need.</rationale>
+      </rule>
+      <list>
+        <item>Deployment bottleneck: multiple teams block each other's releases because all code ships together</item>
+        <item>Scaling mismatch: the order-processing module needs 10x the capacity of the user-profile module, but they scale as one unit</item>
+        <item>Build time &gt;30 min: a full build+test cycle blocks fast iteration</item>
+        <item>Module boundaries violated: circular dependencies in the static analysis report that cannot be resolved</item>
+        <item>Independent team ownership: two teams own different domains but share the same deployment pipeline and are constantly in each other's code</item>
+        <item>Technology mismatch: one domain genuinely requires a different runtime (Python ML module in a Go monolith)</item>
+      </list>
+      <rule>
+        <statement>The correct migration path is Monolith → Modular Monolith → extract one service at a time. Never skip the modular monolith step — it proves the module boundaries and data isolation before adding network hops.</statement>
+        <rationale>Extracting a module to a service that is not already isolated in a modular monolith requires solving data isolation, API design, and distributed transactions simultaneously. Modular monolith first solves these one at a time in a much lower-risk context.</rationale>
+      </rule>
+      <list>
+        <item>Step 1: Apply Modular Monolith boundaries — enforce via import-linter or ArchUnit in CI</item>
+        <item>Step 2: Isolate data — each module uses its own schema; no direct cross-module table reads</item>
+        <item>Step 3: Replace cross-module direct calls with explicit events or service interfaces (prepare for async)</item>
+        <item>Step 4: Extract the highest-signal module first (highest traffic or fastest-changing team)</item>
+        <item>Step 5: Use Strangler Fig — the new service handles new requests; the monolith handles existing ones; gradually migrate</item>
+      </list>
+      <rule>
+        <statement>Extract functionality incrementally using the Strangler Fig pattern: place a routing facade in front of the monolith, route specific requests to the new service, and shrink the monolith progressively. Never rewrite the entire monolith at once.</statement>
+        <rationale>Big-bang rewrites fail at a high rate because the new system must replicate all behavior of the old system while the old system continues to evolve. Strangler Fig keeps the old system running and moves risk to the routing layer, which can be tested independently.</rationale>
+      </rule>
+      <list>
+        <item>Phase 1: Introduce routing facade (nginx, API gateway, or feature flag) in front of monolith</item>
+        <item>Phase 2: Build new service for one bounded context; deploy behind the facade</item>
+        <item>Phase 3: Route traffic for that context to the new service (canary first)</item>
+        <item>Phase 4: Remove the corresponding code from the monolith once the new service is stable</item>
+        <item>Phase 5: Repeat for next bounded context</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/vertical-slice-layout.txt" purpose="Directory layout for vertical slice architecture in Python/Django"/>
+      <template path="templates/structured-logging.py" purpose="structlog structured logging example with JSON output"/>
+    </templates>
+  </content>
+</methodology>
