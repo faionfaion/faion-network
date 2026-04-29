@@ -1,7 +1,7 @@
 # Changelog
 
 ## [Unreleased]
-<<<<<<< HEAD
+- migrate: 3/3 pro methodologies → methodology.xml (product-lifecycle, business-model-planning, business-model-research; feature-045 batch CE)
 - migrate: 3/3 solo/comms/communicator methodologies → methodology.xml (business-storytelling, conflict-resolution, difficult-conversations; feature-045 batch CO)
 - migrate: 3/3 pro pm/product methodologies → methodology.xml (resource-management, mlp-planning, portfolio-strategy; feature-045 batch CC)
 - migrate: 3/3 solo/comms/communicator methodologies → methodology.xml (active-listening, brainstorming-ideation, brainstorming-techniques; feature-045 batch CN)
@@ -12,9 +12,6 @@
 - migrate: 3/3 paths to methodology.xml (storytelling, api-authentication, api-contract-first; feature-045 batch 3-final)
 - migrate: 3/3 pro/research/researcher methodologies → methodology.xml (methodologies-index, opportunity-solution-trees, risk-assessment; feature-045 batch CJ)
 - migrate: 3/3 pro/research methodologies → methodology.xml (risk-assessment, trend-analysis, methodologies-detail; feature-045 batch A)
-=======
-- migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (vui-iot-integration, vui-market-context, vui-privacy-security; feature-045 batch CM)
->>>>>>> e7ebb5e8 (chore: update CHANGELOG for feature-045 batch CM)
 - migrate: 3/3 pro/pm/pm-traditional methodologies → methodology.xml (schedule-development, scope-management, stakeholder-engagement; feature-045 batch 1)
 - migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (ads-meta-reporting, ads-meta-targeting, ads-retargeting; feature-045 batch BO)
 - migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (ads-linkedin-ads, ads-meta-campaign-setup, ads-meta-creative; feature-045 batch BN)
