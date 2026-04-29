@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rerank-before-reasoning">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Insert a cross-encoder reranker between embedding retrieval and LLM reasoning to lift RAG precision by 10-20pp with minimal latency cost.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>rag</tag>
+      <tag>retrieval</tag>
+      <tag>reranker</tag>
+      <tag>cross-encoder</tag>
+      <tag>embedding</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Rerank Before Reasoning (Two-Stage Retrieval)</title>
+
+    <summary>When an agent retrieves context for a strong-model reasoning step, never feed the raw vector-search top-K straight into the LLM. Insert a small cross-encoder reranker between the embedding model and the reasoner: retrieve 50-200 candidates with cheap embeddings, rerank with a small cross-encoder (Cohere Rerank, BGE-reranker, Voyage rerank-2), keep top 5-10, then call the expensive model. The two-stage pattern preserves recall from a wide first pass while delivering the precision the reasoner depends on.</summary>
+
+    <why>
+      <p>Embedding-only retrieval ranks chunks by surface similarity — which is too coarse for hard queries with negation, multi-hop intent, or domain jargon. A cross-encoder takes the (query, chunk) pair as joint input and produces a calibrated relevance score, lifting retrieval precision @10 by 10-20 percentage points on enterprise benchmarks (Pinecone, ZeroEntropy, Cohere). The economics are favourable: rerankers cost a fraction of a cent per 100 candidates and add 50-150 ms of latency, while a single Opus call on bad context can cost orders of magnitude more and still return wrong. The bottleneck of an Agentic RAG pipeline is almost always retrieval precision, not reasoning.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any RAG agent or knowledge-base lookup where retrieval feeds a strong reasoner.</item>
+        <item>Corpora with at least 1k chunks where ANN top-K returns plausible-but-wrong neighbours.</item>
+        <item>Tool-use agents that look up documentation, code, or policy and then act on it.</item>
+        <item>Domains with negation, abbreviations, or domain-specific jargon (medical, legal, finance) where embedding-only similarity misranks.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tiny corpora (under ~100 documents) — retrieve everything, skip reranking.</item>
+        <item>Latency budgets under 200 ms where the rerank round-trip dominates.</item>
+        <item>Pipelines that already pin the reasoner to a small model — reranker latency costs more than the precision is worth.</item>
+        <item>High-cardinality structured lookups (SQL-style) where deterministic filters do the work better and cheaper.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="two-stage-pipeline">
+      <p>Embedding similarity is fast (one vector dot-product) but coarse — it cannot model query-chunk interaction. A cross-encoder is slow (one Transformer pass per pair) but precise — it sees the (query, chunk) jointly. The two-stage pipeline uses each model where it is strongest: embeddings for recall over the corpus, cross-encoder for precision over the candidate list.</p>
+
+      <rule testable="true">
+        <statement>Retrieve 50-200 candidates with embeddings (recall pass) and rerank with a cross-encoder before passing top 5-10 to the reasoner; never feed raw embedding top-K directly to a strong-model reasoner.</statement>
+        <rationale>Pinecone and ZeroEntropy 2025 benchmarks report 10-20 pp precision@10 gains on enterprise retrieval suites; the same studies show that windows below 50 leave recall on the table while windows above 200 add latency without quality.</rationale>
+      </rule>
+
+      <example type="good" title="Two-stage retrieve-then-rerank">
+        <code lang="python"><![CDATA[
+candidates = vector_store.search(query, top_k=75)            # recall pass
+scored = reranker.rank(query, [c.text for c in candidates])  # precision pass
+top = [c for c, s in zip(candidates, scored) if s > 0.3][:8]
+answer = strong_model.respond(query, context=top)
+        ]]></code>
+        <note>Wide first pass, narrow second pass; reasoner sees only the top 8 high-precision chunks.</note>
+      </example>
+
+      <example type="bad" title="Raw embedding top-K fed to reasoner">
+        <code lang="python"><![CDATA[
+top = vector_store.search(query, top_k=8)
+answer = strong_model.respond(query, context=top)
+        ]]></code>
+        <note>Reasoner gets 8 surface-similar chunks that may miss the actually relevant ones; precision@8 is ~10-20 pp below the two-stage pipeline.</note>
+      </example>
+
+      <see-also>
+        <link href="https://www.pinecone.io/learn/series/rag/rerankers/">Pinecone — Two-stage retrieval and rerankers in RAG.</link>
+        <link href="https://zeroentropy.dev/articles/ultimate-guide-to-choosing-the-best-reranking-model-in-2025/">ZeroEntropy — Reranker benchmark suite 2025.</link>
+      </see-also>
+    </section>
+
+    <section name="sizing-candidate-window">
+      <p>Candidate window K is a knob with measurable cost and quality. Too small and recall is lost; too large and the reranker pays cost on noise.</p>
+
+      <rule testable="true">
+        <statement>Sweep K ∈ {25, 50, 75, 100, 150} on a labelled eval set; pick the smallest K where precision@10 plateaus.</statement>
+        <rationale>Most production corpora plateau between K=50 and K=100. Going past the plateau spends reranker latency without recall gain; staying below it under-retrieves rare-but-relevant chunks.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Fixed K=10 inherited from a single-stage RAG quickstart.</description>
+        <reason>K=10 collapses the two-stage pattern back to a single stage; the reranker has nothing to rerank.</reason>
+      </antipattern>
+
+      <reference path="templates/rerank_pipeline.py">Reference pipeline with configurable candidate window and threshold.</reference>
+    </section>
+
+    <section name="reranker-families">
+      <list>
+        <item>Hosted API (Cohere Rerank 3, Voyage rerank-2.5) — strongest out of the box, opaque pricing, vendor lock-in. ~50-150 ms per 100 candidates.</item>
+        <item>Open weights, small (BGE-reranker-base, jina-reranker-v2-base) — self-hostable on CPU; ~5-15 pp behind hosted on hard suites; cheapest at scale.</item>
+        <item>Open weights, large (BGE-reranker-large, e5-mistral-instruct) — closes the gap to hosted on most suites; needs a GPU or strong CPU.</item>
+        <item>LLM-as-reranker (Haiku scoring relevance) — flexible, no infra; expensive at high throughput; useful as a baseline to evaluate cheaper rerankers.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Pick a reranker by running an eval suite drawn from your real traffic, not by reading a public leaderboard alone; public benchmarks systematically over-rank hosted rerankers on academic corpora that do not match enterprise traffic.</statement>
+        <rationale>ZeroEntropy 2025 reports rank flips between BGE-large and Cohere Rerank 3 across domains; per-domain eval is the only reliable signal.</rationale>
+      </rule>
+
+      <example type="good" title="Eval harness for reranker selection">
+        <code lang="python"><![CDATA[
+# Eval harness — run all four candidate rerankers on the same labelled set
+for r in [cohere_v3, bge_large, voyage_2_5, jina_v2]:
+    score = ndcg_at_10(r.rank(queries, candidates), labels)
+    cost  = r.price_per_call * len(queries)
+    log({"reranker": r.name, "ndcg@10": score, "cost_usd": cost})
+        ]]></code>
+        <note>Plot quality vs cost; pick the Pareto-front reranker for your latency budget.</note>
+      </example>
+
+      <see-also>
+        <link href="https://docs.cohere.com/docs/rerank-overview">Cohere Rerank 3 documentation.</link>
+        <link href="https://huggingface.co/BAAI/bge-reranker-large">BGE reranker model card.</link>
+        <link href="https://docs.voyageai.com/docs/reranker">Voyage rerank-2.5 documentation.</link>
+        <link href="https://www.anthropic.com/news/contextual-retrieval">Anthropic Contextual Retrieval — reranker as the precision layer.</link>
+      </see-also>
+    </section>
+
+    <section name="refresh-cadence">
+      <p>Reranker quality drifts with corpus drift, not with model age. Re-evaluate on a freshly labelled suite when the corpus has shifted significantly or when a new reranker version ships.</p>
+
+      <rule testable="true">
+        <statement>Re-run the reranker eval whenever (a) the corpus has rotated more than 20% of chunks, (b) the embedding model is retrained, or (c) the reranker vendor ships a new version; do not re-evaluate on a fixed cadence.</statement>
+        <rationale>Calendar-based evals waste effort during stable periods and miss real shifts; corpus-rotation triggers track the actual signal.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Bolting a hosted reranker onto a single-stage pipeline without an eval harness.</description>
+        <reason>Without measurement, the reranker may be making things worse on your data — public-benchmark leaders sometimes lose on niche corpora.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/rerank_pipeline.py" purpose="End-to-end retrieve+rerank wrapper around an embedding store and a cross-encoder."/>
+    </templates>
+  </content>
+</methodology>
