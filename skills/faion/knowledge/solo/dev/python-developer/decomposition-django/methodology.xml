@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="decomposition-django">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>HackSoft services+selectors decomposition pattern for Django: business logic in services/ (write ops with @transaction.atomic), read queries in selectors/, models thin, views thin.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>python</tag>
+      <tag>architecture</tag>
+      <tag>refactoring</tag>
+      <tag>services-pattern</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Decomposition (Django)</title>
+    <summary>The HackSoft services+selectors decomposition pattern for Django: business logic lives in `services/` (write operations, `@transaction.atomic`, keyword-only args), read queries in `selectors/` (return QuerySets, no mutations), models stay thin (ORM fields + validators, no business logic), views stay thin (parse → call service → serialize). Trigger decomposition when `models.py` exceeds 300 lines or `views.py` exceeds 200 lines. Execute one bounded context at a time with `pytest` green at every step.</summary>
+    <why>
+      <p>Fat views and fat models mix HTTP concerns, business logic, and ORM queries, making each layer untestable in isolation and incomprehensible to LLM agents. The services+selectors split creates predictable, single-purpose files that agents can read and modify without loading the entire app. Keyword-only service args (`def user_create(*, email, password)`) prevent positional-argument drift as signatures evolve. `import-linter` enforces the layer boundary so agents cannot accidentally call views from services.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Django app where `models.py` exceeds ~300 lines or `views.py` exceeds ~200 lines</item>
+        <item>Migrating a fat-model codebase to services + selectors layout</item>
+        <item>Splitting a monolithic Django project by bounded context (DDD per-domain apps)</item>
+        <item>Preparing a codebase for AI-assisted refactoring — small focused files improve reliability</item>
+        <item>Onboarding a new team where views mix auth, queries, business logic, and serialization</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>One-shot scripts, admin command tools, or proof-of-concept apps</item>
+        <item>Apps with a single model and 5 or fewer endpoints — premature decomposition adds friction</item>
+        <item>Codebases in maintenance-only mode where churn risk outweighs clarity gain</item>
+        <item>Teams without test coverage to validate the refactor — break-and-freeze is the result</item>
+      </list>
+    </when-not-to-use>
+    <section name="Django Decomposition Layer Rules">
+      <rule>
+        <statement>Organize Django apps into four layers: models/ (ORM fields + simple validators + custom managers, no business logic), selectors/ (read-only QuerySet functions, no mutations), services/ (write operations with @transaction.atomic, keyword-only args), views/ (parse request, call service/selector, serialize response — 10-20 lines per method). Never mix layers in one file.</statement>
+        <rationale>Fat views mix HTTP, business logic, and DB queries, making each layer untestable in isolation. Fat models create hidden coupling between data and behavior. The four-layer split produces single-purpose, independently testable units.</rationale>
+      </rule>
+      <rule>
+        <statement>Service functions use keyword-only arguments: def user_create(*, email: str, password: str) -> User. Decorate with @transaction.atomic only when composing multiple writes. Never accept HTTP request objects or return HTTP responses.</statement>
+        <rationale>Positional args drift silently as signatures evolve — a reorder breaks callers without a type error. Keyword-only args make the interface explicit. @transaction.atomic on every service is wasteful and wraps single-write ops in a no-op that misleads readers.</rationale>
+      </rule>
+      <example type="good" title="Service Function with Keyword-Only Args and Dataclass Input">
+        <code lang="python"><![CDATA[# users/services/user_service.py
+from django.db import transaction
+from dataclasses import dataclass
+from users.models import User
+
+
+@dataclass
+class UserCreateInput:
+    email: str
+    password: str
+    first_name: str = ""
+    last_name: str = ""
+
+
+@transaction.atomic
+def user_create(*, data: UserCreateInput) -> User:
+    """Create user. Raises ValueError if email taken."""
+    if User.objects.filter(email__iexact=data.email).exists():
+        raise ValueError("Email already registered")
+    return User.objects.create_user(
+        email=data.email,
+        password=data.password,
+        first_name=data.first_name,
+        last_name=data.last_name,
+    )]]></code>
+      </example>
+      <rule>
+        <statement>Selectors are pure functions returning QuerySet or typed iterables. They must not call save(), update(), delete(), or any service. They must include select_related/prefetch_related for all accessed related objects. Return type must be annotated.</statement>
+        <rationale>Untypeable selectors that sometimes return QuerySets and sometimes evaluated lists make N+1 detection impossible. A caller that evaluates a queryset inside a loop needs to know it is a queryset.</rationale>
+      </rule>
+      <rule>
+        <statement>Trigger decomposition when: models.py exceeds 300 lines → split to models/ package; services/ file exceeds 200 lines → split by subdomain; views.py exceeds 200 lines → split to views/ package. Add db_table = 'original_name' to model Meta when splitting models.py to avoid migration.</statement>
+        <rationale>File-size thresholds are objective triggers that prevent "I'll refactor later" drift. The db_table Meta attribute makes Django treat the split-package models as the same DB table, avoiding a zero-downtime migration.</rationale>
+      </rule>
+      <rule>
+        <statement>Use import-linter to enforce that services cannot import views or serializers, and that models cannot import services. Add the .importlinter config to the repo root and run it in CI on every PR.</statement>
+        <rationale>Without enforcement, layers re-couple within weeks. An agent that adds a service.call_view() import destroys the boundary silently. import-linter makes violations a CI failure.</rationale>
+      </rule>
+    </section>
+    <section name="Django Decomposition Migration Procedure">
+      <rule>
+        <statement>Execute decomposition in this order: (1) extract shared utilities to core/, (2) split models before services (services depend on models), (3) extract services before views (views depend on services), (4) split views last. Never mix model split and service extraction in the same commit.</statement>
+        <rationale>Mixed commits create a partially broken state where imports reference files that don't exist yet. Phased commits allow pytest to stay green after each step, confirming the refactor is safe.</rationale>
+      </rule>
+      <rule>
+        <statement>__init__.py re-exports must be explicit: from .user_service import user_create. Never use wildcard re-exports (from .user_service import *). Run pylint --disable=all --enable=cyclic-import after every batch of file moves.</statement>
+        <rationale>Wildcard re-exports hide what is available in a package and make circular import tracing impossible. Explicit re-exports make dependencies scannable by both humans and agents.</rationale>
+      </rule>
+      <antipattern>
+        <description>services/ imports views/ or serializers/ for any reason.</description>
+        <reason>Services are domain logic. Importing HTTP or serialization concerns couples the domain to delivery mechanism, making services impossible to test without an HTTP server.</reason>
+      </antipattern>
+      <rule>
+        <statement>When splitting models.py into a models/ package, add Meta.db_table = 'original_tablename' to each model class. Run python manage.py makemigrations --check to verify no migration is generated. If a migration is generated, add db_table before re-running.</statement>
+        <rationale>Without db_table, Django generates a migration that renames the table. On a live database this causes downtime or requires a multi-step migration. db_table is a zero-migration path.</rationale>
+      </rule>
+      <antipattern>
+        <description>Agent copies a function from views.py into services/ and leaves the original in views.py.</description>
+        <reason>Both copies compile. The view calls the old location; the new service is never actually used. Run grep for the old function name after the move and delete the source.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent proposes a utils.py or helpers.py per app as a first refactor step.</description>
+        <reason>utils.py is the next thing to decompose — it becomes a dumping ground for everything that doesn't fit the pattern. Ban it early in CLAUDE.md and redirect to services/ or selectors/.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent applies @transaction.atomic to every service function as a default.</description>
+        <reason>Wrapping a single-write operation in a transaction is a no-op that wastes a DB connection slot and misleads readers into thinking the function coordinates multiple writes.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Serializer create() or update() methods calling services directly.</description>
+        <reason>This couples serializers to business logic, bypassing the view layer entirely. The view is responsible for calling the service with validated data; serializers only validate and transform.</reason>
+      </antipattern>
+      <rule>
+        <statement>After decomposition: services and selectors must have &gt;90% line coverage; views may be lower because they delegate. Run pytest --cov after each phase and fail if coverage drops below the baseline established before the refactor.</statement>
+        <rationale>Decomposition without test coverage produces code that looks organized but may have introduced subtle behavioral changes. Green tests at each commit are the only reliable check.</rationale>
+      </rule>
+    </section>
+    <section name="Limitations and Failure Modes">
+      <p>Circular imports explode when `services/` imports models that import signals that import services. Agents miss this until runtime.</p>
+      <p>`__init__.py` re-exports get stale silently when adding new service modules; `services/foo.py` exists but is unreachable from `services` package.</p>
+      <p>Selector functions returning querysets vs lists vs evaluated data — inconsistency leaks `LIMIT 1` calls into N+1 territory.</p>
+      <p>Migrations: splitting `models.py` into `models/` package requires zero-op migration (rename via `db_table` Meta) — easy to corrupt schema state.</p>
+      <p>Domain-driven decomposition fights Django's `app_label` constraints; cross-app FKs require explicit `related_name` policy.</p>
+      <p>Agents propose `core/` apps that grow into a god-app — same problem, different filename.</p>
+      <p>HackSoft + DRF: serializer.create()/update() temptation to call services from serializers couples the two — skipping the view layer.</p>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Run decomposition in tracked phases: agent first emits a refactor plan (file map: old to new) and a migration test asserting `python manage.py check` stays green. Only after sign-off does the agent execute moves, one model/service at a time, committing per logical unit. A code-review subagent enforces ruff `I` (isort) and import-order rules, and runs `django-test-migrations` to verify migrations are reversible.</p>
+      <p>Recommended subagents: general-purpose subagent for file moves, import rewrites, package `__init__.py` updates; faion-feature-executor for phased plan execution with per-step pytest gate; faion-sdd-execution for quality gates: ruff DJ rules, no circular imports, test coverage delta; code-review subagent to read each PR diff, verify single-purpose-file rule and that no business logic landed back in views.</p>
+      <p>Prompt pattern:</p>
+      <code lang="text"><![CDATA[Decomposition plan for apps/orders:
+1. Inventory: list (file, line range, responsibility) for models.py, views.py.
+2. Output proposed layout: models/, services/, selectors/, views/.
+3. Map every existing function/class → new location.
+4. List all import sites that need rewriting (grep across repo).
+5. Output reversible migration commands + a 1-paragraph rollback plan.
+STOP. Do not execute until I approve the plan.]]></code>
+    </section>
+    <templates>
+      <template path="templates/user_service.py" purpose="Full UserService with dataclass inputs, @transaction.atomic, keyword-only args"/>
+      <template path="templates/user_selectors.py" purpose="User selector functions with QuerySet returns and eager loading"/>
+      <template path="templates/importlinter.ini" purpose="import-linter config enforcing services-cannot-import-views boundary"/>
+    </templates>
+    <see-also>
+      <link href="https://github.com/HackSoftware/Django-Styleguide"/>
+      <link href="https://import-linter.readthedocs.io/"/>
+      <link href="https://cookiecutter-django.readthedocs.io/"/>
+      <link href="https://docs.djangoproject.com/en/5.0/topics/apps/"/>
+      <link href="https://github.com/wemake-services/django-test-migrations"/>
+      <link href="https://www.cosmicpython.com/"/>
+    </see-also>
+  </content>
+</methodology>
