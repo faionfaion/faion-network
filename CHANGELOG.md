@@ -3,6 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+- chore: migrate product-launch, roadmap-design, feature-prioritization-rice to methodology.xml (feature-045 batch FD 3/3)
 - chore: migrate 3/3 solo/product/product-manager methodologies → methodology.xml (mvp-scoping, outcome-based-roadmaps-advanced, product-discovery; feature-045 batch FC)
 - chore: migrate seo-techniques, topical-authority, clickup-setup to methodology.xml (feature-045 batch FA 3/3)
 - chore: migrate growth-seo-link-building, seo, seo-basics to methodology.xml (feature-045 batch EZ)
