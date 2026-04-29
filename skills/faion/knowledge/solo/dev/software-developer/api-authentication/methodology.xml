@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-authentication">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>API authentication covering API Keys, JWT, OAuth 2.0, and mTLS — each suited to distinct traffic shapes with comprehensive implementation patterns.</summary>
+    <tags>
+      <tag>api-authentication</tag>
+      <tag>security</tag>
+      <tag>jwt</tag>
+      <tag>oauth</tag>
+      <tag>api-keys</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>API Authentication</title>
+
+    <summary>Authentication methodology covering API Keys, JWT, OAuth 2.0, and mTLS — each suited to a distinct traffic shape. Choose the method per use-case: API keys for server-to-server, JWTs for user sessions (RS256/EdDSA, ≤15 min TTL), OAuth 2.0 + PKCE for third-party delegation, mTLS for high-trust B2B. Never hand-roll OAuth flows; always use a library or IdP.</summary>
+
+    <why>
+      <p>Authentication is the #1 source of CVEs when implemented from scratch. Using the right method per traffic shape eliminates whole attack classes: asymmetric JWTs prevent token-forgery by any service holding a shared secret; short TTL + refresh rotation makes stolen tokens short-lived; PKCE removes code-interception from public OAuth clients.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Adding auth to a new service: S2S → API key, user sessions → JWT, third-party → OAuth 2.0.</item>
+        <item>Migrating from session cookies to JWT/OIDC for multi-client (mobile + SPA + partner).</item>
+        <item>Implementing key rotation, scope tightening, or per-tenant key model.</item>
+        <item>Hardening: short access TTL + refresh token rotation + revocation list.</item>
+        <item>Federating identity through an IdP (Auth0, Keycloak, Cognito, Clerk, WorkOS).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Hand-rolling OAuth/OIDC — use a library (`authlib`, `oauthlib`, `node-openid-client`).</item>
+        <item>Long-lived JWTs (&gt;1 h) to avoid refresh complexity — revocation becomes impossible.</item>
+        <item>API keys for end-user auth — they end up in the browser (a public secret).</item>
+        <item>mTLS for public consumer apps — cert distribution kills UX; reserve for B2B / agent-to-agent.</item>
+        <item>Implicit flow or password grant — both are deprecated in OAuth 2.1.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="method-selection-and-api-key-patterns">
+      <p>Choose the auth method based on traffic shape: API keys for server-to-server, JWT for user sessions, OAuth 2.0 for third-party delegation, mTLS for high-trust B2B. Each method closes a different threat: API keys are simple but hard to revoke; JWTs are stateless but require short TTL; OAuth delegates without sharing credentials; mTLS requires cert management but is the strongest mutual auth.</p>
+
+      <rule testable="true">
+        <statement>Choose the auth method based on traffic shape: API keys for server-to-server, JWT for user sessions, OAuth 2.0 for third-party delegation, mTLS for high-trust B2B.</statement>
+        <rationale>Each method closes a different threat: API keys are simple but hard to revoke; JWTs are stateless but require short TTL; OAuth delegates without sharing credentials; mTLS requires cert management but is the strongest mutual auth.</rationale>
+      </rule>
+
+      <section name="api-key-rules">
+        <p>API Key Rules: Hash API keys before storage (SHA-256), use a recognisable prefix (sk_live_, sk_test_), and compare with hmac.compare_digest — never ==. Plain-text storage leaks all keys in a DB breach. == comparison is vulnerable to timing attacks. A prefix allows UI display of the last 4 chars without revealing the secret.</p>
+
+        <rule testable="true">
+          <statement>Hash API keys before storage (SHA-256), use a recognisable prefix (sk_live_, sk_test_), and compare with hmac.compare_digest — never ==.</statement>
+          <rationale>Plain-text storage leaks all keys in a DB breach. == comparison is vulnerable to timing attacks. A prefix allows UI display of the last 4 chars without revealing the secret.</rationale>
+        </rule>
+
+        <rule testable="true">
+          <statement>Send API keys in the Authorization header (Authorization: Api-Key &lt;key&gt;), not in query params.</statement>
+          <rationale>Query params end up in server logs, proxy access logs, browser history, and Referer headers — all of which leak secrets.</rationale>
+        </rule>
+
+        <example type="good" title="Constant-time API key verification">
+          <code lang="python"><![CDATA[
+import hmac
+import hashlib
+from fastapi import Header, HTTPException
+
+def hash_key(plaintext: str) -> str:
+    return hashlib.sha256(plaintext.encode()).hexdigest()
+
+def verify_api_key(presented: str, stored_hash: str) -> bool:
+    return hmac.compare_digest(hash_key(presented), stored_hash)
+
+async def api_key_dep(x_api_key: str = Header(...)):
+    key = await db.api_keys.find_by_prefix(x_api_key[:8])
+    if not key or not verify_api_key(x_api_key, key.hash):
+        raise HTTPException(401, "Invalid API key")
+    if key.revoked:
+        raise HTTPException(401, "Key revoked")
+    return key
+]]></code>
+          <note>Constant-time comparison prevents timing oracle. find_by_prefix narrows the DB lookup without storing the full key.</note>
+        </example>
+
+        <antipattern>
+          <description>Storing API keys in plaintext or comparing with ==.</description>
+          <reason>Timing attack on == leaks the key character by character under sufficient requests. Plaintext storage means a DB dump exposes all keys.</reason>
+        </antipattern>
+      </section>
+
+      <section name="rate-limiting-and-logging">
+        <p>Rate-limit auth endpoints aggressively to prevent brute-force attacks. Log every auth decision with decision, reason, user_id, ip, user_agent; fail closed on logging failure for high-risk endpoints.</p>
+
+        <rule testable="true">
+          <statement>Rate-limit auth endpoints aggressively: 5 req/min/IP on login, 20 req/min/user on refresh.</statement>
+          <rationale>Without rate limiting, brute-force attacks against API keys and refresh tokens are trivially fast.</rationale>
+        </rule>
+
+        <rule testable="true">
+          <statement>Log every auth decision with decision, reason, user_id, ip, user_agent; fail closed on logging failure for high-risk endpoints.</statement>
+          <rationale>Auth logs are the primary forensic artifact for incident response. Silent failures hide intrusions.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="jwt-patterns-claims-signing-ttl-refresh">
+      <p>JWT payload requirements, RS256/EdDSA signing, access token TTL limits, refresh token rotation, and denylist approach. Always verify iss, aud, exp, nbf with clock-skew tolerance of at most 60 s; reject tokens missing any of these. Missing audience check lets a token issued for service A be replayed at service B. Missing issuer check lets any party in the trust boundary mint tokens for your service.</p>
+
+      <rule testable="true">
+        <statement>Always verify iss, aud, exp, nbf with clock-skew tolerance of at most 60 s; reject tokens missing any of these.</statement>
+        <rationale>Missing audience check lets a token issued for service A be replayed at service B. Missing issuer check lets any party in the trust boundary mint tokens for your service.</rationale>
+      </rule>
+
+      <example type="good" title="Required JWT claims with verification">
+        <code lang="json"><![CDATA[
+{
+  "sub": "user-123",
+  "iss": "https://api.example.com",
+  "aud": "https://api.example.com",
+  "exp": 1735689600,
+  "iat": 1735603200,
+  "jti": "unique-token-id",
+  "scope": "read:users write:users"
+}
+]]></code>
+        <note>jti enables denylist revocation. scope allows fine-grained permission checks.</note>
+      </example>
+
+      <section name="signing-algorithm">
+        <p>Use RS256 or EdDSA for multi-service architectures; never HS256 with a shared secret across services. A shared HS256 secret means any service that holds it can mint admin-level tokens. RS256 lets services verify with the public key; only the auth service can sign.</p>
+
+        <rule testable="true">
+          <statement>Use RS256 or EdDSA for multi-service architectures; never HS256 with a shared secret across services.</statement>
+          <rationale>A shared HS256 secret means any service that holds it can mint admin-level tokens. RS256 lets services verify with the public key; only the auth service can sign.</rationale>
+        </rule>
+
+        <rule testable="true">
+          <statement>Never pass algorithm=none or accept tokens without an explicit algorithms=[...] list in the decoder.</statement>
+          <rationale>alg:none is a historical CVE class; jwt.decode without explicit algorithms accepts it on some libraries.</rationale>
+        </rule>
+
+        <note>Agents reach for algorithm: HS256 with a hardcoded SECRET_KEY from the README. Force the prompt to require RS256 + key from env/Vault.</note>
+
+        <note>jwt.decode(token) without algorithms=[...] accepts alg: none — historical CVE class. Force explicit algorithms list.</note>
+      </section>
+
+      <section name="token-lifetime-and-refresh">
+        <p>Token Lifetime and Refresh: Access token TTL must be at most 15 minutes; refresh tokens rotate on every use and must detect reuse. Short access TTL limits the blast radius of a stolen token. Refresh token rotation with reuse detection invalidates the entire refresh family on replay, catching stolen tokens.</p>
+
+        <rule testable="true">
+          <statement>Access token TTL must be at most 15 minutes; refresh tokens rotate on every use and must detect reuse.</statement>
+          <rationale>Short access TTL limits the blast radius of a stolen token. Refresh token rotation with reuse detection invalidates the entire refresh family on replay, catching stolen tokens.</rationale>
+        </rule>
+
+        <rule testable="true">
+          <statement>For revocation: keep a Redis denylist keyed by jti with TTL equal to the remaining token lifetime.</statement>
+          <rationale>Stateless JWTs cannot be invalidated mid-life without a server-side record. A denylist with matching TTL avoids indefinite storage growth.</rationale>
+        </rule>
+
+        <example type="good" title="JWT creation with RS256 and explicit algorithms">
+          <code lang="python"><![CDATA[
+from jose import jwt, JWTError
+from datetime import datetime, timedelta, timezone
+
+ALGORITHM = "RS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 15
+
+def create_access_token(data: dict, private_key: str) -> str:
+    payload = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    payload.update({"exp": expire, "iat": datetime.now(timezone.utc)})
+    return jwt.encode(payload, private_key, algorithm=ALGORITHM)
+
+def verify_token(token: str, public_key: str, audience: str) -> dict:
+    try:
+        return jwt.decode(
+            token, public_key,
+            algorithms=[ALGORITHM],
+            audience=audience,
+        )
+    except JWTError:
+        raise HTTPException(401, "Invalid token")
+]]></code>
+          <note>Explicit algorithms list, audience verification, and UTC-aware timestamps.</note>
+        </example>
+
+        <note>Refresh-token implementations frequently lack rotation + reuse detection; an attacker who steals one refresh token gets indefinite access.</note>
+      </section>
+
+      <section name="storage-and-transport">
+        <p>Store JWTs in HTTP-only SameSite=Lax cookies for SPAs; never in localStorage. localStorage is readable by any JavaScript on the page — XSS immediately steals all tokens. HTTP-only cookies are invisible to JS; SameSite=Lax blocks most CSRF.</p>
+
+        <rule testable="true">
+          <statement>Store JWTs in HTTP-only SameSite=Lax cookies for SPAs; never in localStorage.</statement>
+          <rationale>localStorage is readable by any JavaScript on the page — XSS immediately steals all tokens. HTTP-only cookies are invisible to JS; SameSite=Lax blocks most CSRF.</rationale>
+        </rule>
+
+        <note>Storing JWTs in localStorage exposes them to XSS; in cookies, exposes to CSRF unless SameSite=Strict|Lax + double-submit token.</note>
+
+        <note>Bearer tokens replayed from logs/proxies are accepted blindly; lacking audience/issuer/binding, anyone with the token is the user.</note>
+      </section>
+    </section>
+
+    <section name="oauth-2-0-flows-and-scope-management">
+      <p>Authorization Code + PKCE flow for web/mobile apps, Client Credentials for S2S, and scope-based permission enforcement. Use Authorization Code + PKCE for all public clients (SPAs, mobile); never Implicit flow or Password grant — both are deprecated in OAuth 2.1. Implicit flow exposes tokens in the URL fragment (logged by proxies). Password grant defeats the purpose of OAuth (the app never sees the password is a false claim when it collects it directly).</p>
+
+      <rule testable="true">
+        <statement>Use Authorization Code + PKCE for all public clients (SPAs, mobile); never Implicit flow or Password grant — both are deprecated in OAuth 2.1.</statement>
+        <rationale>Implicit flow exposes tokens in the URL fragment (logged by proxies). Password grant defeats the purpose of OAuth.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always verify the state parameter on the callback to prevent CSRF; verify the PKCE code_verifier to prevent code interception.</statement>
+        <rationale>LLM-generated OAuth callbacks routinely omit state and PKCE verification, making them vulnerable to CSRF and authorization code interception attacks.</rationale>
+      </rule>
+
+      <example type="good" title="Authorization Code with PKCE flow">
+        <code lang="text"><![CDATA[
+1. User clicks "Login with Provider"
+2. Redirect to:
+   https://auth.example.com/authorize?
+     client_id=abc&
+     redirect_uri=https://app.com/callback&
+     response_type=code&
+     scope=read:profile&
+     state=RANDOM_CSRF_TOKEN&
+     code_challenge=BASE64URL(SHA256(code_verifier))&
+     code_challenge_method=S256
+
+3. User authenticates and grants permission
+4. Redirect to: https://app.com/callback?code=AUTH_CODE&state=RANDOM_CSRF_TOKEN
+   (verify state matches stored value)
+
+5. Exchange code for tokens:
+   POST https://auth.example.com/token
+   grant_type=authorization_code&
+   code=AUTH_CODE&
+   code_verifier=ORIGINAL_RANDOM_STRING&
+   client_id=abc&
+   redirect_uri=https://app.com/callback
+]]></code>
+        <note>Use authlib or oauthlib — never hand-roll the redirect dance.</note>
+      </example>
+
+      <section name="client-credentials-flow">
+        <p>Use Client Credentials grant for machine-to-machine; store client_secret in env or a secrets manager, never in source code. S2S tokens don't involve user context; a simple POST to the token endpoint with client credentials gives a short-lived access token scoped to the requested permissions.</p>
+
+        <rule testable="true">
+          <statement>Use Client Credentials grant for machine-to-machine; store client_secret in env or a secrets manager, never in source code.</statement>
+          <rationale>S2S tokens don't involve user context; a simple POST to the token endpoint with client credentials gives a short-lived access token scoped to the requested permissions.</rationale>
+        </rule>
+
+        <example type="good" title="Client Credentials request">
+          <code lang="bash"><![CDATA[
+curl -X POST https://auth.example.com/token \
+  -d "grant_type=client_credentials" \
+  -d "client_id=${CLIENT_ID}" \
+  -d "client_secret=${CLIENT_SECRET}" \
+  -d "scope=read:users"
+]]></code>
+        </example>
+      </section>
+
+      <section name="scope-enforcement">
+        <p>Define scopes as a registry and enforce per-route via a policy layer; never scatter if user.role checks across handler code. Scattered role checks are easy to forget and hard to audit. A centralised scope checker raises 403 consistently and can be tested independently of business logic.</p>
+
+        <rule testable="true">
+          <statement>Define scopes as a registry and enforce per-route via a policy layer; never scatter if user.role checks across handler code.</statement>
+          <rationale>Scattered role checks are easy to forget and hard to audit. A centralised scope checker raises 403 consistently and can be tested independently of business logic.</rationale>
+        </rule>
+
+        <example type="good" title="Scope-based permission enforcement">
+          <code lang="python"><![CDATA[
+SCOPES = {
+    "read:users":   "Read user profiles",
+    "write:users":  "Create and update users",
+    "delete:users": "Delete users",
+    "admin":        "Full administrative access",
+}
+
+def require_scope(required: str):
+    def checker(token: dict = Depends(verify_token)):
+        scopes = token.get("scope", "").split()
+        if required not in scopes and "admin" not in scopes:
+            raise HTTPException(403, f"Scope '{required}' required")
+        return token
+    return checker
+
+@app.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    _: dict = Depends(require_scope("delete:users")),
+):
+    ...
+]]></code>
+        </example>
+
+        <note>OAuth callbacks generated by LLMs often skip state / PKCE verification — vulnerable to CSRF and code-interception.</note>
+      </section>
+    </section>
+
+    <section name="agentic-workflow-and-gotchas">
+      <p>Decision tree first: agent reads the use-case (S2S, user, 3rd-party, IoT) and picks the method per the table. Schema-first JWT: claims defined in a typed dataclass / pydantic model with iss/aud/exp/iat/jti/sub mandatory. Reviewer agent runs bandit, checks for algorithm: HS256 shared secrets, hardcoded keys, missing verify=True, missing audience parameter.</p>
+
+      <p>Agents reach for algorithm: HS256 with a hardcoded SECRET_KEY from the README. Force the prompt to require RS256 + key from env/Vault.</p>
+
+      <p>Agents forget audience= argument; tokens issued by another service in the same trust boundary become valid here.</p>
+
+      <p>Agents store API keys in plaintext "for now"; "for now" ships to prod. Force hashing on insert with a DB-level BEFORE INSERT trigger or app-level wrapper.</p>
+
+      <p>LLMs == compare keys/tokens (timing attack). Replace with hmac.compare_digest and lint for == on auth values.</p>
+
+      <p>Human-in-loop checkpoint: any change to issuer, audience, signing key, or token TTL must require human approval. Tokens already in flight at the time of change must be considered.</p>
+    </section>
+
+    <templates>
+      <template path="templates/fastapi-jwt-verifier.py" purpose="FastAPI dependency for RS256 JWT verification with audience and issuer checks."/>
+      <template path="templates/api-key-check.py" purpose="Constant-time SHA-256 API key verification with hmac.compare_digest."/>
+    </templates>
+
+    <see-also>
+      <link href="https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html"/>
+      <link href="https://datatracker.ietf.org/doc/html/rfc9700"/>
+      <link href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1"/>
+      <link href="https://openid.net/specs/openid-connect-core-1_0.html"/>
+      <link href="https://datatracker.ietf.org/doc/html/rfc7636"/>
+      <link href="https://developer.hashicorp.com/vault/docs/secrets/pki"/>
+    </see-also>
+  </content>
+</methodology>
