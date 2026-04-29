@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="claude-code-headless-default">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Default to Claude Code CLI for autonomous agent tasks; only switch to Agent SDK when concrete triggers (non-coding domain, non-MCP tools, custom inner-loop control, SaaS embedding) fire.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>claude-code</tag>
+      <tag>agents</tag>
+      <tag>headless</tag>
+      <tag>orchestration</tag>
+      <tag>sdk</tag>
+    </tags>
+  </metadata>
+  <content>
+    <title>Claude Code Headless As Default Agent Runtime</title>
+    <summary>When you need an autonomous agent for a coding, devops, or research task, invoke `claude -p` with a prompt string as a subprocess instead of writing a custom Agent SDK loop. The Claude Code CLI ships with a battle-tested harness — filesystem, bash, git, MCP, plan mode, sub-agents, hooks, skills, automatic compaction — already wired together. Drop down to the Claude Agent SDK only when you have a concrete reason the CLI cannot satisfy: a non-coding domain, custom tools beyond MCP, programmatic control of the inner loop, or embedding inside a SaaS product that cannot shell out.</summary>
+    <why>
+      <p>The Claude Code harness encodes hundreds of engineering decisions (tool gating, retry policy, context compaction, sub-agent spawning, plan mode, hook execution order) that you would otherwise re-implement and re-debug in your own SDK loop. Anthropic ships and updates that harness; you inherit fixes for free. The CLI exposes the same agent through `-p` headless mode with `--output-format stream-json` for orchestration. Reaching for the SDK first is the default-overengineering trap — measure CLI before building.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Coding, devops, refactoring, or research tasks runnable from a shell.</item>
+        <item>Cron jobs, GitHub Actions, queue workers, internal automation.</item>
+        <item>Any task that benefits from filesystem + git + bash context out of the box.</item>
+        <item>Multi-agent pipelines where the orchestrator can shell out to subprocesses.</item>
+        <item>Prototyping an agent before deciding whether a custom SDK loop is justified.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Non-coding business workflows (sales triage, claims, invoice routing) — Agent SDK + custom tools is leaner.</item>
+        <item>SaaS product embedding where the host process cannot fork subprocesses.</item>
+        <item>Custom inner-loop control (intercept every tool call, branch the conversation tree) — needs SDK.</item>
+        <item>Domains needing non-MCP tools that cannot be expressed as MCP servers.</item>
+      </list>
+    </when-not-to-use>
+    <section name="cli-vs-sdk-decision">
+      <p>The Claude Code CLI bundles the full agent harness (filesystem, bash, git, MCP, plan mode, sub-agents, hooks, skills, compaction). Re-implementing this in a custom SDK loop is almost always overkill for coding/devops/research work.</p>
+      <rule testable="true">
+        <statement>For any new agent that runs a coding, devops, or research task on a machine with a shell, the first implementation MUST be a `claude -p` subprocess invocation. A custom Agent SDK loop is allowed only after the CLI has been demonstrated to fail one of the four switch-triggers below.</statement>
+        <rationale>The CLI harness encodes battle-tested decisions (retry, compaction, tool gating) maintained by Anthropic. Building a custom SDK loop first re-pays that cost without measurable benefit.</rationale>
+      </rule>
+      <section name="the-four-switch-triggers">
+        <p>Drop to the Agent SDK only when ONE of these is true. Document which trigger fired in the agent's design doc.</p>
+        <list>
+          <item>Non-coding domain that does not benefit from filesystem + git + bash (e.g. claims processing, sales triage).</item>
+          <item>Custom tools that cannot be expressed as an MCP server.</item>
+          <item>Programmatic control of the inner loop (branch conversation tree, intercept every tool call, custom replay).</item>
+          <item>Embedding inside a SaaS product whose host process cannot fork subprocesses.</item>
+        </list>
+        <antipattern>
+          <description>Picking the Agent SDK first because "it's the API" or "the CLI looks like a CLI tool, not a runtime."</description>
+          <reason>Re-implements months of harness work; loses MCP/plan-mode/hooks/compaction; adds maintenance burden every time Anthropic ships a CLI improvement.</reason>
+        </antipattern>
+      </section>
+      <section name="decision-quickcheck">
+        <example type="good">
+          <code lang="text"><![CDATA[
+Task: "fix flaky test in tests/test_auth.py"
+Domain? coding ✓
+Triggers? none ✓
+→ use `claude -p` (CLI default)
+          ]]></code>
+          <note>Coding task, no SDK trigger fired — CLI is correct.</note>
+        </example>
+        <example type="bad">
+          <code lang="text"><![CDATA[
+Task: "fix flaky test in tests/test_auth.py"
+Decision: write a 400-line Python loop using anthropic.Anthropic()
+calling tools manually.
+          ]]></code>
+          <note>Re-implements file/edit/bash/git tools that the CLI already ships. No SDK trigger justifies this.</note>
+        </example>
+      </section>
+    </section>
+    <section name="invocation-shape">
+      <p>A subprocess that disables the TUI, allowlists tools, caps turns, and emits structured events is the only safe shape for production.</p>
+      <rule testable="true">
+        <statement>Headless invocations MUST set `-p`/`--print`, an explicit `--allowedTools` list, `--max-turns`, and `--output-format stream-json --verbose` so the orchestrator can parse events line-by-line.</statement>
+        <rationale>Without `-p` the binary opens a TUI; without `--allowedTools` the agent stalls on permission prompts; without `--max-turns` a runaway loop can drain budget; without stream-json the orchestrator only sees the final blob.</rationale>
+      </rule>
+      <section name="good-vs-bad-invocation">
+        <example type="good" title="Good headless invocation">
+          <code lang="bash"><![CDATA[
+claude -p "Fix failing test in tests/test_auth.py" \
+  --output-format stream-json --verbose \
+  --allowedTools "Read,Edit,Bash(pytest:*)" \
+  --max-turns 20 \
+  < /dev/null
+          ]]></code>
+          <note>Explicit allowlist, capped turns, closed stdin, stream-json output for orchestrator events.</note>
+        </example>
+        <example type="bad" title="Bad headless invocation">
+          <code lang="bash"><![CDATA[
+claude --dangerously-skip-permissions "$TASK"
+          ]]></code>
+          <note>No allowlist, no turn cap, no stream-json — the orchestrator cannot react to mid-run events and tool access is unbounded.</note>
+        </example>
+        <antipattern>
+          <description>Treating `claude -p` like a one-shot text generator and parsing only the final stdout blob.</description>
+          <reason>Loses the cost/tool/event stream needed for budget enforcement, mid-run hand-off, and safety vetoes.</reason>
+        </antipattern>
+      </section>
+    </section>
+    <templates>
+      <template path="templates/run-headless.sh" purpose="Reference shell wrapper for headless `claude -p` with allowlisted tools and budget cap."/>
+    </templates>
+    <see-also>
+      <link href="https://code.claude.com/docs/en/headless">Anthropic — Claude Code headless mode docs.</link>
+      <link href="https://platform.claude.com/docs/en/agent-sdk/overview">Anthropic — Agent SDK overview (the alternative).</link>
+    </see-also>
+  </content>
+</methodology>
