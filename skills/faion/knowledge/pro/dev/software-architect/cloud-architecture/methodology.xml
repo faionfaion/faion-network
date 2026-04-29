@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cloud-architecture">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Best practices for cloud-native apps using Well-Architected Framework (six pillars), AWS/Azure/GCP selection, landing zones, VPC design, zero-trust security, FinOps, and DR strategies.</summary>
+    <tags>
+      <tag>cloud</tag>
+      <tag>well-architected</tag>
+      <tag>finops</tag>
+      <tag>disaster-recovery</tag>
+      <tag>vpc</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Cloud Architecture</title>
+    <summary>Best practices for designing cloud-native applications using the Well-Architected Framework (six pillars: operational excellence, security, reliability, performance efficiency, cost optimisation, sustainability). Covers AWS/Azure/GCP selection, multi-cloud patterns, landing zone components, VPC network design, zero-trust security layers, FinOps cost strategies, and DR strategies (Backup/Restore → Pilot Light → Warm Standby → Active-Active).</summary>
+    <why>
+      <p>Cloud architecture decisions made at design time are expensive to reverse: VPC CIDR ranges cannot be resized, IAM designs propagate across all services, and storage choices (object vs block vs file) affect performance and egress costs for years. The Well-Architected Framework provides a structured lens to surface trade-offs before implementation rather than after an incident.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing a new cloud-native application or migrating workloads to cloud</item>
+        <item>Choosing between AWS, Azure, and GCP based on technical and organisational constraints</item>
+        <item>Setting up a landing zone for a new cloud environment (accounts, VPC, IAM, logging)</item>
+        <item>Optimising cloud costs using FinOps (right-sizing, reserved instances, spot)</item>
+        <item>Designing a DR strategy with explicit RTO/RPO targets</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>On-premise-only environments where cloud primitives do not apply</item>
+        <item>Single-function serverless refactoring — use serverless-architecture methodology instead</item>
+        <item>Application-level performance tuning — this covers infrastructure/architecture, not code</item>
+        <item>When the team has no cloud budget or access — design without deployment context is premature</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="well-architected-framework">
+      <p>The Well-Architected Framework provides a consistent approach for evaluating architectures across six pillars:</p>
+      <list>
+        <item>Operational Excellence: run and monitor systems, continuously improve. Key: automate changes, define runbooks, event-driven remediation, post-incident review culture.</item>
+        <item>Security: protect data, systems, and assets. Key: identity management with MFA + SSO, detective controls, infrastructure protection, data encryption at rest and in transit, incident response.</item>
+        <item>Reliability: recover from failures, meet demand. Key: fault tolerance, change management (rolling deploys, canary), DR strategy with explicit RTO/RPO targets.</item>
+        <item>Performance Efficiency: use resources efficiently. Key: appropriate instance/service selection, serverless where cold start is acceptable, performance monitoring and continuous right-sizing.</item>
+        <item>Cost Optimisation: avoid unnecessary costs. Key: resource governance, right-sizing, committed use (reserved instances, savings plans), spot for fault-tolerant workloads, storage tiering.</item>
+        <item>Sustainability: minimise environmental impact. Key: maximise utilisation, select regions with higher renewable energy percentage, prefer managed services (higher utilisation density than self-managed).</item>
+      </list>
+      <rule>
+        <statement>Stop guessing capacity at design time; use cloud elasticity with auto-scaling and right-sizing to provision the exact resources needed, verified by production metrics.</statement>
+        <rationale>Capacity over-provisioning in the cloud is cash waste, not safety — unlike on-premise where hardware must be purchased ahead of need. Cloud elasticity makes over-provisioning unnecessary; basing capacity on guesses rather than measured p95 load leads to 30-50% infrastructure waste.</rationale>
+      </rule>
+    </section>
+
+    <section name="provider-selection">
+      <list>
+        <item>AWS: broadest service catalog (~300+ services), most global regions, mature ecosystem, GovCloud for regulated workloads. Choose when: broadest service selection needed, multi-region global applications, government or regulated workloads.</item>
+        <item>Azure: strongest Microsoft ecosystem integration (Active Directory, Office 365, Windows), enterprise hybrid cloud via Azure Arc, European data sovereignty. Choose when: heavy Microsoft stack, hybrid cloud requirements, strong .NET team, EU data residency.</item>
+        <item>GCP: leading Kubernetes expertise (GKE is most mature managed K8s), Vertex AI + TPUs for ML, BigQuery for analytics, sustained-use discounts automatic. Choose when: AI/ML is core to product, big data/analytics focus, Kubernetes-first strategy, cost-effective data egress needed.</item>
+      </list>
+      <rule>
+        <statement>Select a primary cloud provider based on the dominant workload type and team expertise; use multi-cloud only when data sovereignty, vendor risk, or specific service requirements genuinely justify the operational overhead.</statement>
+        <rationale>Multi-cloud doubles operational complexity: separate IAM, networking, monitoring, and tooling per provider. The break-even point for multi-cloud is high. Most organisations are better served by maximising one provider's services than managing two partial implementations.</rationale>
+      </rule>
+      <p>Multi-cloud patterns and their challenges: workload distribution (complexity: abstraction layers needed, Terraform/Kubernetes), disaster recovery (async replication setup, RTO varies by provider), data residency (EU on Azure, US on AWS — regional routing required), cost arbitrage (spot instances across providers — workload orchestration complexity), feature leverage (GCP for ML, AWS for compute — service mesh integration needed to bridge them).</p>
+    </section>
+
+    <section name="vpc-design">
+      <rule>
+        <statement>Use custom VPC mode with pre-planned IP address ranges; separate distinct VPCs for dev, staging, and production environments — never share a VPC across environments.</statement>
+        <rationale>Auto-mode VPCs use overlapping CIDR ranges that prevent VPC peering and VPN connections to on-premise networks with conflicting ranges. Separate VPCs per environment enforce security boundaries: a misconfiguration in staging cannot reach production databases, and IAM policies cannot accidentally grant cross-environment access.</rationale>
+      </rule>
+      <list>
+        <item>Hub-and-spoke topology: central hub VPC (Transit Gateway on AWS, VPC peering hub) connects spoke VPCs (prod, staging, dev). All inter-spoke traffic routes through hub where inspection firewalls and shared services (DNS, NAT, monitoring) reside. Best for organisations with centralised network operations.</item>
+        <item>Shared VPC (GCP) / VPC sharing (AWS RAM): single host VPC shared across multiple projects/accounts. Simpler to manage than hub-and-spoke for teams with unified networking ownership. Reduces peering complexity but increases blast radius of network misconfiguration.</item>
+        <item>Subnet tiers: Public (load balancers, NAT gateways, bastion hosts — 10.0.1.0/24); Private App (application servers, containers — 10.0.2.0/24); Private Data (databases, caches — 10.0.3.0/24); Private Internal (internal services — 10.0.4.0/24). Never route database subnets to internet gateway.</item>
+        <item>Multi-region: Active-Passive (one primary region handles all traffic, secondary is warm standby — lower cost, higher RTO); Active-Active (all regions serve traffic, data synchronised — highest availability, zero RTO, requires global load balancer and multi-region database).</item>
+      </list>
+      <p>Enable VPC flow logs on all production VPCs for security incident investigation and anomaly detection. Flow logs are the primary source for detecting lateral movement and unusual egress patterns.</p>
+    </section>
+
+    <section name="zero-trust-security">
+      <rule>
+        <statement>Design security in layers (defence in depth): never rely on a single perimeter control; implement identity, network, data, application, and monitoring controls independently so that bypass of one layer does not grant access.</statement>
+        <rationale>Traditional perimeter security assumes internal network traffic is trusted. Cloud environments have no clear perimeter (SaaS, remote workers, APIs). Zero trust verifies every request regardless of network origin. Defence in depth ensures that a compromised instance, stolen credential, or misconfigured security group does not directly expose sensitive data.</rationale>
+      </rule>
+      <list>
+        <item>Identity layer: MFA for all humans, SSO federation, PAM (privileged access management) with JIT (just-in-time) access, RBAC with least privilege, service accounts with workload identity rather than static keys.</item>
+        <item>Network layer: VPC with security groups (stateful, per-service), WAF for HTTP ingress, DDoS protection (AWS Shield, Cloud Armor), private endpoints for PaaS services (no public internet traversal for S3, RDS, etc.).</item>
+        <item>Data layer: encryption at rest (AES-256, customer-managed keys), encryption in transit (TLS 1.2+), key management (AWS KMS, GCP KMS, Azure Key Vault), data classification and access logging.</item>
+        <item>Application layer: SAST/DAST in CI/CD pipeline, dependency scanning (Snyk, Dependabot), secrets management (no secrets in code or environment variables — use secrets manager), container image scanning.</item>
+        <item>Monitoring layer: SIEM integration, cloud-native threat detection (AWS GuardDuty, GCP Security Command Center, Azure Sentinel), audit logs for all API calls, anomaly detection on IAM activity.</item>
+      </list>
+      <p>Security group tiered design: Internet → ALB security group (443 inbound from 0.0.0.0/0) → App security group (8080 inbound from ALB security group only) → DB security group (5432 inbound from App security group only). No direct internet access to app or DB tiers.</p>
+    </section>
+
+    <section name="finops">
+      <rule>
+        <statement>Implement a mandatory tagging policy enforced at the account/project level before deploying any resources; untagged resources cannot be cost-allocated and create FinOps blind spots.</statement>
+        <rationale>Cloud bills aggregate by service, not by business unit, team, or project. Without tags, it is impossible to know which product or team is responsible for a cost anomaly. Enforcing tags at creation time (via AWS Tag Policy, GCP Organisation Policy, Azure Policy) prevents the accumulation of unattributed spend that becomes impossible to retroactively clean up.</rationale>
+      </rule>
+      <p>FinOps operates through three phases: Inform (cost visibility, allocation, tagging, showback/chargeback to teams); Optimize (right-sizing, reserved instances, spot/preemptible, waste elimination, scheduling non-prod environments); Operate (governance, automation, continuous improvement, anomaly detection).</p>
+      <list>
+        <item>Right-sizing: 20-40% savings. Identify over-provisioned instances (CPU/memory &lt;20% utilisation). Use VPA recommendations for K8s workloads. Apply to all stateless compute first.</item>
+        <item>Reserved Instances / Committed Use: 30-70% savings. Use for steady, predictable workloads (databases, always-on services). 1-year term is the best balance of savings vs commitment flexibility.</item>
+        <item>Spot / Preemptible instances: 60-90% savings. Use for fault-tolerant batch jobs, CI/CD workers, ML training. Requires application to handle interruption gracefully (checkpoint, retry).</item>
+        <item>Savings Plans (AWS): 20-40% savings. Flexible commitment by compute spend rather than specific instance type. Covers EC2, Fargate, Lambda.</item>
+        <item>Auto-scaling: variable savings. Ensure scale-down aggressiveness is tuned; many teams configure scale-up well but under-configure scale-down, leaving excess capacity running overnight.</item>
+        <item>Scheduling: up to 75% savings for non-production environments. Automatically stop dev/staging at end of business day and on weekends.</item>
+        <item>Storage tiering: 50-80% savings. Move objects not accessed in 30d to infrequent access tier; move objects not accessed in 90d to archive (Glacier, Nearline, Cool).</item>
+      </list>
+      <p>Mandatory tagging taxonomy: Environment (prod/staging/dev), Team (cost allocation unit), Project (feature or product), CostCenter (finance tracking code), Owner (team email), Lifecycle (temporary/permanent). Enforce via policy — reject resource creation without mandatory tags.</p>
+    </section>
+
+    <section name="disaster-recovery">
+      <rule>
+        <statement>Define explicit RTO and RPO targets before selecting a DR strategy; never choose a DR tier based on architecture preference alone.</statement>
+        <rationale>DR strategies have a direct cost/availability trade-off. Active-Active costs 2x infrastructure for zero RPO/RTO. Backup and Restore costs near-zero but accepts hours of downtime. The correct choice is determined by the business's acceptable downtime and data loss, not by engineering preference. Over-provisioning DR wastes significant budget; under-provisioning causes unacceptable business impact.</rationale>
+      </rule>
+      <list>
+        <item>Backup and Restore: RTO hours, RPO hours, lowest cost. Restore from snapshots/backups when disaster occurs. Use for non-critical workloads (internal tools, dev environments).</item>
+        <item>Pilot Light: RTO minutes, RPO minutes, medium cost. Core data replicated, minimal services running (databases warm, compute off). Start compute on failover. Use for core systems that need fast recovery but not instant.</item>
+        <item>Warm Standby: RTO seconds, RPO seconds, high cost. Scaled-down version of production running in standby region. Scale up on failover. Use for critical applications where minutes of downtime is unacceptable.</item>
+        <item>Active-Active (Multi-site): RTO zero, RPO zero, highest cost. All regions serve traffic, data synchronised. No failover needed — traffic automatically routes around failure. Use for mission-critical systems (payments, core APIs).</item>
+      </list>
+    </section>
+
+    <section name="landing-zone">
+      <p>A landing zone is a well-architected, secure cloud foundation that provides the baseline for all workload deployments. Required components: Identity and Access (centralised IAM, federation, MFA, SSO, SCIM provisioning); Network topology (hub-and-spoke or shared VPC, Transit Gateway, firewall); Security controls (guardrails via AWS Control Tower/Azure Policy/GCP OrgPolicy, compliance automation); Logging and monitoring (centralised CloudTrail/Cloud Audit Logs, SIEM integration, anomaly detection); Cost management (budgets with alerts, tagging policy, showback dashboards); Resource organisation (account/subscription/project structure per environment and team); Automation (IaC templates for account vending, CI/CD pipelines); Governance (policies, standards, approval workflows for new services).</p>
+      <note>Provider landing zone solutions: AWS Control Tower (multi-account, guardrails, Account Factory Terraform), Azure Cloud Adoption Framework (enterprise-scale landing zones, blueprints), GCP Cloud Foundation Toolkit (organisation, folder structure, security blueprint). Use provider-native solutions as a starting point rather than building from scratch.</note>
+    </section>
+
+    <templates>
+      <template path="templates/landing-zone-vpc.tf" purpose="Terraform module for three-tier VPC with public/app/data subnets across AZs"/>
+      <template path="templates/cost-tagging-policy.json" purpose="AWS Tag Policy enforcing mandatory cost allocation tags"/>
+    </templates>
+  </content>
+</methodology>
