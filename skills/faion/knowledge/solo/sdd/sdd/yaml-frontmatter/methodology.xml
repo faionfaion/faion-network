@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="yaml-frontmatter">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd</domain>
+    <summary>YAML frontmatter is a metadata block at the top of Markdown files providing machine-readable structured data about SDD documents with typed fields following a canonical schema.</summary>
+    <tags>
+      <tag>metadata</tag>
+      <tag>yaml</tag>
+      <tag>frontmatter</tag>
+      <tag>schema</tag>
+    </tags>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>YAML Frontmatter Standards</title>
+    <summary>YAML frontmatter is a metadata block (`---` delimited) at the top of Markdown/MDX files that provides structured, machine-readable data about the document. Every SDD document must include frontmatter with typed fields (type, version, status, created) following the project's canonical schema defined in constitution.md.</summary>
+    <why>
+      <p>Frontmatter enables programmatic filtering, routing, and validation of SDD documents — agents can query status, find blocked features, and sort by recency without reading document bodies. Without a schema, field names drift (`created_at` vs `created`, `WIP` vs `draft`) and validation breaks. Version numbers unquoted as YAML scalars silently parse as floats, corrupting `1.0.0` to `1.0`.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Generating any new SDD document (spec, design, task, roadmap, constitution)</item>
+        <item>Integrating docs with a static site generator (Astro, Hugo, MkDocs) that reads frontmatter</item>
+        <item>Setting up CI validation to enforce consistent metadata across `.aidocs/`</item>
+        <item>Writing a script or agent tool that filters or routes documents by status or priority</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>`AGENTS.md`, `CLAUDE.md`, `README.md` files — these have no lifecycle metadata by convention</item>
+        <item>Configuration files using YAML as their primary format (use `.env` or proper config files)</item>
+        <item>Deeply nested hierarchical data — frontmatter handles flat/shallow metadata; complex relations belong in the document body</item>
+      </list>
+    </when-not-to-use>
+    <section name="required-fields-by-document-type">
+      <rule>
+        <statement>Every SDD document must open with a YAML frontmatter block bounded by triple-dash delimiters on their own lines, with no content before the opening delimiter.</statement>
+        <rationale>SSGs and parsers treat anything before the first `---` as body text. A missing or offset delimiter silently discards all metadata.</rationale>
+      </rule>
+      <rule>
+        <statement>Always quote version numbers and IDs with special characters: `version: "1.0.0"`, `feature_id: "042-auth-refactor"`.</statement>
+        <rationale>Bare `1.0.0` parses as a float in YAML, producing `1.0`. Bare IDs with leading zeros or dashes may trigger unexpected coercions.</rationale>
+      </rule>
+      <rule>
+        <statement>Use ISO 8601 date format (YYYY-MM-DD) for all date fields. Do not quote dates.</statement>
+        <rationale>LLMs default to locale-specific formats without explicit instruction. ISO dates sort lexicographically and parse unambiguously across all YAML parsers.</rationale>
+      </rule>
+      <section name="fields-per-type">
+        <list>
+          <item>constitution: type, version, status, created, updated, author</item>
+          <item>roadmap: type, version, status, created, updated</item>
+          <item>spec: type, feature_id, version, status, priority, created, updated</item>
+          <item>design: type, feature_id, version, status, created, updated, spec_version</item>
+          <item>implementation-plan: type, feature_id, version, status, created, updated, design_version, total_tasks</item>
+          <item>task: type, task_id, feature_id, status, priority, created, complexity, estimated_tokens</item>
+        </list>
+      </section>
+      <section name="valid-enum-values">
+        <rule>
+          <statement>status must be one of: draft, review, approved, active, superseded, archived.</statement>
+          <rationale>Consistent status values enable agent routing; `WIP`, `wip`, `in-review` observed in the wild all break enum checks.</rationale>
+        </rule>
+        <rule>
+          <statement>priority must be one of: P0, P1, P2.</statement>
+          <rationale>P0 = blocker, P1 = critical, P2 = nice-to-have. More granular schemes are rarely honored in practice.</rationale>
+        </rule>
+        <rule>
+          <statement>complexity must be one of: low, medium, high. Never use time estimates.</statement>
+          <rationale>Token and complexity estimates are reliable; time estimates are not. See project constitution.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="schema-examples">
+      <example type="good">
+        <code lang="yaml"><![CDATA[---
+type: spec
+feature_id: "026-knowledge-infrastructure"
+version: "1.0.0"
+status: draft
+priority: P1
+created: 2026-01-20
+updated: 2026-01-25
+depends_on: []
+---]]></code>
+        <note>All required fields present; version quoted; dates unquoted ISO format.</note>
+      </example>
+      <example type="bad">
+        <code lang="yaml"><![CDATA[---
+type: spec
+feature_id: 026-knowledge-infrastructure
+version: 1.0.0
+status: WIP
+created: 01-20-2026
+---]]></code>
+        <note>feature_id unquoted (leading digit), version parses as float, status not in enum, date not ISO.</note>
+      </example>
+    </section>
+    <section name="common-pitfalls">
+      <antipattern>
+        <description>Tab characters used for indentation inside frontmatter.</description>
+        <reason>YAML strictly requires spaces. A tab character causes a parse error or silently corrupts the block in lenient parsers.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Comma-separated string used where an array is required: `tags: a, b, c`.</description>
+        <reason>This parses as a scalar string, not an array. Use `tags: [a, b, c]` or multiline YAML array syntax.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Patching only one field with an agent regenerates the entire frontmatter block, erasing `created` and other agent-set fields.</description>
+        <reason>Agents asked to "update the status field" often rewrite the full block. Use `yq` for single-field patches to preserve all other fields.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Nesting frontmatter more than 2 levels deep.</description>
+        <reason>Deeply nested frontmatter is difficult to query with standard tools and breaks most SSG schema validators. Move complex data to the document body.</reason>
+      </antipattern>
+    </section>
+    <section name="validation-commands">
+      <rule>
+        <statement>Run frontmatter validation as a pre-commit hook so invalid documents are caught before they enter the repository.</statement>
+        <rationale>CI validation costs round-trips; local validation is immediate. Agents committing invalid frontmatter must get blocked pre-commit, not post-push.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="bash"><![CDATA[# Validate a single file with yq
+yq eval '.' doc.md > /dev/null && echo "OK" || echo "INVALID YAML"
+
+# Check required fields with Python validator
+python validate-frontmatter.py .aidocs/todo/**/*.md
+
+# Quick syntax-only check
+python -c "import frontmatter; frontmatter.load('doc.md')" && echo "OK"]]></code>
+        <note>yq is the most reliable single-field patching and validation tool for YAML frontmatter.</note>
+      </example>
+    </section>
+    <section name="ci-integration">
+      <rule>
+        <statement>Add frontmatter validation to the CI pipeline using `front-matter-schema` GitHub Action or an equivalent validator.</statement>
+        <rationale>Zod validation errors in Astro content collections produce build failures, not runtime errors. Agent-generated content must be validated before the build runs.</rationale>
+      </rule>
+      <rule>
+        <statement>Add `updated: YYYY-MM-DD` to every document an agent modifies — do not rely on file mtime.</statement>
+        <rationale>File modification times are unreliable across git checkouts and CI environments. The `updated` field enables recency sorting by any tool.</rationale>
+      </rule>
+    </section>
+    <templates>
+      <template path="templates/sdd-frontmatter.yaml" purpose="Copy-paste blocks for all SDD document types"/>
+      <template path="templates/validate-frontmatter.py" purpose="Python script to validate required fields and enum values"/>
+    </templates>
+    <see-also>
+      <ref slug="sdd-workflow-overview"/>
+      <ref slug="quality-gates-confidence"/>
+    </see-also>
+  </content>
+</methodology>
