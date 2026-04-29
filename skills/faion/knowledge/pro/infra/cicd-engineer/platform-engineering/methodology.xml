@@ -1,0 +1,760 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="platform-engineering">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>IDPs reduce cognitive load through golden paths, self-service provisioning, and unified catalogs for 50+ engineer orgs with high infrastructure friction.</summary>
+    <tags>
+      <tag>platform-engineering</tag>
+      <tag>idp</tag>
+      <tag>backstage</tag>
+      <tag>developer-experience</tag>
+      <tag>devops</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+  <content>
+    <title>Platform Engineering</title>
+    <summary>Internal Developer Platforms (IDP) reduce cognitive load and accelerate delivery. Developers spend 40%+ time on infrastructure instead of features. Tool fragmentation causes 75% of developers to lose 6+ hours weekly. Solution: make the right way the easy way by creating well-lit paths that guide developers toward good practices while allowing flexibility when needed.</summary>
+    <why>
+      <p>Developers spend 40%+ time on infrastructure instead of features. Tool fragmentation causes 75% of developers to lose 6+ hours weekly.</p>
+      <p>Core principle: Make the right way the easy way. Create well-lit paths that guide developers toward good practices while allowing flexibility when needed.</p>
+      <p>Key components of an IDP include self-service provisioning, golden paths (opinionated templates for common patterns), service catalogs (discoverable templates and documentation), automated environments (minutes instead of days for setup), AI agent integration (RBAC-enabled AI agents as platform citizens in 2026), and FinOps gates (pre-deployment cost controls).</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>50+ engineer org where DevOps tickets become a queue and onboarding takes weeks.</item>
+        <item>Multi-tenant infrastructure with shared Kubernetes / cloud accounts and inconsistent provisioning.</item>
+        <item>When standardizing "golden paths" — opinionated app templates, CI workflows, observability defaults.</item>
+        <item>Compliance environments (SOC2, HIPAA) where guardrails must be enforced, not documented.</item>
+        <item>Migrating from Heroku/render-style PaaS to in-house cloud, while keeping developer ergonomics.</item>
+        <item>AI-agent fleets that need RBAC, quota, and scope just like humans (2026 pattern).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Solo or &lt;10-person teams. Building an IDP for 5 devs is over-engineering; pick a managed PaaS.</item>
+        <item>When the actual bottleneck is product/discovery, not infra friction. Platform won't fix unclear roadmaps.</item>
+        <item>Greenfield with no production workloads — wait until you have ≥3 services and ≥10 deploys/week to learn what to abstract.</item>
+        <item>Strict regulatory environments where central infra team must own every change (platform abstraction can hide compliance-relevant detail).</item>
+      </list>
+    </when-not-to-use>
+    <section name="architecture-layers">
+      <p>The architecture follows a layered approach: Developer Portal (UI) at the top, API Layer in the middle, Platform Orchestrator below that, and Infrastructure (K8s, Cloud, DBs) at the bottom. Build order: Backend logic first, then portal interfaces, then security/observability.</p>
+      <rule testable="true">
+        <statement>Platform engineering must start with backend orchestration logic before building user-facing portal interfaces. Security and observability are added after core functionality is proven.</statement>
+        <rationale>Building the UI first creates the illusion of progress while the hard problem — resource orchestration, quota enforcement, RBAC modeling — remains unsolved. Backend-first ensures decisions about service composition, golden-path abstractions, and multi-environment mapping are made before you commit to a portal design.</rationale>
+      </rule>
+    </section>
+    <section name="benefits-and-metrics">
+      <p>IDP implementations deliver measurable improvements across multiple dimensions. Environment setup improves from days to minutes. DevOps ticket volume decreases by 40%. Cognitive load on developers decreases 40-50%. Onboarding time improves 60%+. Developer activity increases 2.3x (Spotify case study). Deployment frequency doubles (Spotify case study).</p>
+      <rule testable="true">
+        <statement>Every platform team MUST track DORA metrics (Deployment Frequency, Lead Time for Changes, Mean Time to Recovery, Change Failure Rate) and platform-specific metrics (self-service adoption rate, time-to-first-deployment for new devs, developer satisfaction surveys, ticket volume trends, platform ROI) on the same dashboard.</statement>
+        <rationale>Without metrics, the platform becomes invisible. The moment lead time degrades the platform team is accountable. Combining business metrics (developer activity, deployment frequency) with operational metrics (ticket volume, adoption rate) forces the platform team to optimize for outcome, not activity.</rationale>
+      </rule>
+    </section>
+    <section name="tools-landscape">
+      <p>The platform engineering toolspace divides into service catalogs &amp; portals, platform orchestration, and infrastructure automation.</p>
+      <p>Service Catalogs &amp; Portals: Backstage (CNCF, Spotify origin, service catalog + developer portal), Port (IDP with scorecards for self-service actions), Cortex (service catalog + scorecards + engineering intelligence).</p>
+      <p>Platform Orchestration: Humanitec (platform orchestrator with Score specification), Crossplane (Kubernetes-native IaC, CNCF control plane), Kratix (Platform-as-a-Product framework, GitOps-native).</p>
+      <p>Infrastructure Automation: Pulumi (IaC with real languages: TypeScript, Python, Go), Terraform (IaC standard with HCL), ArgoCD (GitOps deployments, Kubernetes-native).</p>
+      <example type="good" title="Three-tool stack: Backstage + Crossplane + Terraform">
+        <p>Backstage runs the service catalog and scaffolder. Developers use self-service actions to trigger GitHub Actions workflows. Workflows call Crossplane to provision infrastructure (XRDs, Compositions). Crossplane orchestrates Terraform for cloud resources. This stack gives you a unified developer experience (Backstage) backed by production-grade infrastructure-as-code (Terraform) with Kubernetes-native composition (Crossplane).</p>
+      </example>
+      <antipattern>
+        <description>Using all three portals (Backstage, Port, Cortex) simultaneously "to compare them."</description>
+        <reason>Portal choice is foundational. Each has a different API, plugin model, and operational surface. Running all three means three separate product teams, three separate security audits, three separate source-of-truth catalogs. Pick one, master it, then evolve.</reason>
+      </antipattern>
+    </section>
+    <section name="golden-paths">
+      <p>Golden paths are opinionated templates for common development patterns. They encode decisions (language choice, CI tool, observability stack, database type) and reduce cognitive load by eliminating decision paralysis.</p>
+      <rule testable="true">
+        <statement>Start with one golden path (the most-used stack in your organization) before generalizing. Three opinionated paths beat one universal abstraction every time.</statement>
+        <rationale>One path gets deep investment: documentation, tutorials, feedback loops. Five paths spread the platform team too thin and every team diverges anyway. The rule of three is empirical: canonical Go microservice + Node.js + Python data pipeline covers ~80% of real-world requests. Generalize only after you've proven the model works.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Golden paths MUST version themselves and let teams subscribe to updates. Never silently mutate downstream repos.</statement>
+        <rationale>If your path template changes, teams using the old version break silently. Use semantic versioning (path-v1.2.3) and require teams to upgrade deliberately via PR.</rationale>
+      </rule>
+      <example type="good" title="Structured golden path definition">
+        <code lang="yaml"><![CDATA[# backend/golden-path-go-microservice/template.yaml
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: go-microservice
+  title: Go Microservice Golden Path
+  description: Production-ready Go service with CI/CD, observability, RBAC
+spec:
+  owner: platform-team
+  type: service
+  lifecycle: production
+
+  parameters:
+    - title: Service Details
+      properties:
+        serviceName:
+          title: Service Name (kebab-case)
+          type: string
+          pattern: '^[a-z][a-z0-9-]*$'
+        team:
+          title: Owning Team
+          type: string
+        tier:
+          title: Criticality Tier
+          type: string
+          enum: [critical, standard, experimental]
+
+  steps:
+    - id: scaffold
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.serviceName }}
+          team: ${{ parameters.team }}
+          tier: ${{ parameters.tier }}
+
+    - id: createRepo
+      action: github:repo:create
+      input:
+        repoUrl: github.com?owner=myorg&repo=${{ parameters.serviceName }}
+        defaultBranch: main
+
+    - id: registerCatalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.createRepo.output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+]]></code>
+        <note>Captures language choice, team ownership, and criticality in one interaction. Output includes Git repo + Backstage catalog entry.</note>
+      </example>
+      <antipattern>
+        <description>Creating one generic golden path that handles "all possible microservices" by exposing all parameters (database, cache, messaging, payment processor, email service, etc.).</description>
+        <reason>Too many parameters confuse developers and the template becomes unmaintainable. Instead, start with "critical features only" (database, one cache option, one queue) and layer advanced customizations as separate golden paths or post-scaffold guidance.</reason>
+      </antipattern>
+    </section>
+    <section name="self-service-actions">
+      <p>Self-service actions are the operational heartbeat of an IDP. They transform tickets ("create a new environment") into one-click operations. Best practice: identify the top 10 developer requests, automate each one, implement approval workflows where necessary, add cost estimation to provisioning, and set up audit logging.</p>
+      <rule testable="true">
+        <statement>Every self-service action MUST emit an event that FinOps and audit dashboards consume. Without telemetry the platform is invisible.</statement>
+        <rationale>If you can't measure adoption or cost, the platform team can't justify budget. Event-driven logging (Webhook, EventBridge, Kafka) creates the data trail for observability.</rationale>
+      </rule>
+      <example type="good" title="Self-service database provisioning (Port + Crossplane)">
+        <code lang="yaml"><![CDATA[# port/database-provision-action.yaml
+identifier: provision-database
+title: Provision Database
+description: Self-service database provisioning
+trigger:
+  type: self-service
+  userInputs:
+    properties:
+      name:
+        type: string
+        title: Database Name
+      engine:
+        type: string
+        title: Engine
+        enum: [postgres-15, mysql-8, mongodb-7]
+      size:
+        type: string
+        title: Size (affects cost and performance)
+        enum: [small, medium, large]
+      environment:
+        type: string
+        title: Environment
+        enum: [dev, staging, prod]
+      retentionDays:
+        type: number
+        title: Backup Retention (days)
+        default: 7
+
+invocationMethod:
+  type: GITHUB
+  org: myorg
+  repo: infrastructure
+  workflow: provision-db.yaml
+
+backend:
+  type: CROSSPLANE
+]]></code>
+      </example>
+      <example type="bad" title="Unmonitored self-service action">
+        <code lang="text"><![CDATA[Developer clicks "Provision Database"
+→ GitHub Action runs
+→ Crossplane XR created
+→ RDS instance provisioned
+→ Nobody knows the action ran
+→ Nobody tracks who did it
+→ Nobody measures cost impact
+→ FinOps team gets surprised at month-end
+]]></code>
+        <note>Lack of event logging makes platform adoption invisible and cost attribution impossible.</note>
+      </example>
+    </section>
+    <section name="cost-controls-finops">
+      <p>AI agents and humans can both blow cloud budgets. Pre-deployment cost gates, per-actor budget caps, and chargeback models are essential safeguards.</p>
+      <rule testable="true">
+        <statement>Every infrastructure provisioning request MUST show a cost estimate before approval. For production changes, cost must be reviewed by someone with budget authority.</statement>
+        <rationale>Without pre-flight estimates, developers and agents don't see the financial impact of "create another staging environment." Estimates force trade-off decisions ("do we really need medium or does small suffice?"). Tools: infracost, Humanitec cost models, Pulumi AI.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>AI agents provisioning infrastructure MUST have per-agent budget caps, per-day spending limits, and automatic shutdown on quota breach. Audit logs MUST show every provisioning action by agent.</statement>
+        <rationale>Without quotas, a retry loop in an agent's deployment logic can spin up 50 load balancers and cost $40k before anyone notices. Per-agent quotas require agents to think about cost, just like humans do.</rationale>
+      </rule>
+      <example type="good" title="Pre-deployment cost check in CI">
+        <code lang="bash"><![CDATA[# .github/workflows/deploy.yaml (using infracost)
+jobs:
+  cost-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: infracost/actions/setup@v2
+
+      - name: Generate Cost Diff
+        run: |
+          infracost diff \
+            --path=terraform/ \
+            --format=json \
+            --out-file=/tmp/cost.json
+
+      - name: Check Threshold
+        run: |
+          MONTHLY_DIFF=$(jq '.totalMonthlyCost' /tmp/cost.json)
+          if (( $(echo "$MONTHLY_DIFF > 500" | bc -l) )); then
+            echo "Cost increase exceeds threshold"
+            exit 1
+          fi
+
+      - name: Comment on PR
+        uses: infracost/actions/comment@v1
+        with:
+          path: /tmp/cost.json
+]]></code>
+        <note>Blocks PRs that exceed the $500/month threshold; cost is transparent in PR comments.</note>
+      </example>
+    </section>
+    <section name="ai-agent-integration-2026">
+      <p>Agents as platform citizens is the 2026 frontier. Agents need the same guardrails as humans: RBAC permissions, resource quotas, governance policies, and natural language provisioning.</p>
+      <p>Agent-driven platform engineering has two layers: agents that build the platform (IDP itself, Backstage scaffolds, golden-path templates) and agents that consume the platform (provisioning, deploys, drift checks via Score/Backstage actions). Have a planning agent decompose the IDP roadmap into "thinnest viable platform" increments — one self-service action per sprint. An implementation agent generates Backstage software-templates + Crossplane compositions; a reviewer agent (Opus) validates the composition matches the team's existing IaC conventions and that RBAC is least-privilege.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent (drives self-service-action specs through quality gates). A custom idp-rbac-auditor (Opus, read-only) — given Backstage role bindings + Crossplane compositions, lists every permission an actor (human or agent) gains and flags excess scope. A password-scrubber-agent — Backstage app-config.yaml and Humanitec env files inline tokens.</p>
+      <rule testable="true">
+        <statement>Define distinct AI agent personas with distinct permission scopes. An "infra-assistant" agent needs resource creation verbs. A "compliance-auditor" agent needs read-only access plus reporting scope. Never grant "system:admin" to an agent even for testing.</statement>
+        <rationale>Agents with broad RBAC scopes can silently delete production workloads or provision assets the human team doesn't know about. Least-privilege from the first commit.</rationale>
+      </rule>
+      <example type="good" title="AI agent RBAC definition">
+        <code lang="yaml"><![CDATA[# platform/agents/infra-assistant.yaml
+apiVersion: platform.io/v1
+kind: AIAgent
+metadata:
+  name: infra-assistant
+  namespace: platform
+spec:
+  model: claude-3-opus
+  permissions:
+    - resource: namespace
+      verbs: [create, list, get]
+      scope: non-production
+    - resource: deployment
+      verbs: [create, update, list, get]
+      scope: non-production
+    - resource: service
+      verbs: [create, list, get]
+      scope: non-production
+  quotas:
+    maxRequestsPerHour: 100
+    maxCostPerDay: $50
+    maxResourcesPerRequest: 5
+  governance:
+    requireApproval:
+      - production deployments
+      - resources > $100/month
+      - security policy violations
+  auditLog:
+    destination: s3://audit-logs/agents/
+    retention: 90
+]]></code>
+      </example>
+      <example type="good" title="Natural language provisioning workflow">
+        <code lang="text"><![CDATA[Developer: "Create a new staging environment for the checkout service
+           with a small postgres database and redis cache"
+
+AI Agent:
+1. Validates permissions
+2. Checks cost estimate ($45/month)
+3. Creates namespace: checkout-staging
+4. Provisions PostgreSQL (small)
+5. Provisions Redis (small)
+6. Deploys checkout service
+7. Returns access credentials and URLs
+]]></code>
+      </example>
+      <antipattern>
+        <description>Agents generate Backstage templates with broken wiring between parameters and steps (variables undefined at template-render time).</description>
+        <reason>Template rendering happens at scaffold time. If the LLM references a parameter that doesn't exist or misspells a step ID, the scaffold fails silently. Always render the template locally before merging.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents reach for "create one Crossplane Composition that handles all environments" — produces unmaintainable monster specs.</description>
+        <reason>Force one Composition per concern (db, dns, queue) and compose at the XR level. Composability beats monoliths.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Score's resources block is provider-agnostic on paper; in practice the runtime mapping (postgres → RDS vs CloudSQL vs in-cluster) leaks. Agents must declare the target runtime, not assume.</description>
+        <reason>A generic "postgres" resource in Score needs Humanitec or custom composition logic to map to the right provider. Agents can't guess.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents drop RBAC scope wide (system:admin) "to make it work" during scaffold tests; no one tightens it later.</description>
+        <reason>Force least-privilege from the first commit and have a reviewer agent enforce.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents call "provision new environment" in retry loops on transient errors.</description>
+        <reason>Cloud bill explodes. Wrap every IaC apply with rate limit + idempotency token.</reason>
+      </antipattern>
+    </section>
+    <section name="platform-metrics-dora">
+      <p>DORA metrics are the language of high-performing organizations. Deployment Frequency measures how often you deploy to production. Lead Time for Changes measures commit-to-production time. Mean Time to Recovery measures recovery from incidents. Change Failure Rate measures the percentage of failed deployments.</p>
+      <p>Platform-specific metrics (2026) add developer experience dimensions: Flow time (sustained focus periods), Friction points (cognitive/systemic blockers), Throughput patterns (commit to deployment efficiency), Capacity allocation (feature work vs maintenance ratio).</p>
+      <rule testable="true">
+        <statement>DORA metrics and platform-friction metrics MUST be on the same dashboard. The moment lead time degrades the platform team is on the hook.</statement>
+        <rationale>Separating operational metrics from business outcomes hides the platform team's impact. Unified dashboards hold the platform team accountable and give executives visibility into the value of platform investment.</rationale>
+      </rule>
+    </section>
+    <section name="tools-and-reference-implementations">
+      <p>Service Catalogs &amp; Portals: Backstage (CNCF origin from Spotify; 2,000+ backend services, 300 websites, 4,000 data pipelines managed. Backstage users are 2.3x more active in GitHub; 2x code changes in 17% less cycle time; 2x deployment frequency; 3x longer deployment uptime). Port (SaaS IDP with scorecards + self-service actions; agents via Port API tokens). Cortex (SaaS engineering intelligence; pulls from Git/CI/Pager).</p>
+      <p>Platform Orchestration: Humanitec (platform orchestrator with Score specification; API + CLI for agents). Crossplane (Kubernetes-native composition model; agents apply XRs as YAML). Kratix (Promises model; agent must understand Promise/Workshop schemas).</p>
+      <p>Infrastructure Automation: Pulumi (IaC with real languages: TypeScript, Python, Go). Terraform (IaC standard with HCL). ArgoCD (GitOps deployments, Kubernetes-native). Score (workload specification language abstracted from the runtime).</p>
+      <p>Additional tools: backstage-cli for scaffold + run Backstage app + plugins. crossplane CLI for apply XRDs/Compositions + render. humctl for Humanitec orchestrator CLI. score-compose / score-humanitec / score-k8s for runtime manifests. kratix for Promise-based platform building. argocd CLI for GitOps deploy of platform components. pulumi / terraform for IaC for platform substrate. bk (Backstage CLI from community) for bulk catalog operations.</p>
+    </section>
+    <section name="case-study-spotify-backstage">
+      <p>Before: 60+ days onboarding time for new developers. Fragmented tooling across 280 engineering teams. Tribal knowledge for infrastructure provisioning.</p>
+      <p>After (with Backstage): 20 days onboarding time (-67%). 2,000+ backend services managed centrally. 300 websites, 4,000 data pipelines, 200 mobile features. Frequent Backstage users: 2.3x more active in GitHub. 2x code changes in 17% less cycle time. 2x deployment frequency. 3x longer deployment uptime.</p>
+      <p>The key success factors: One golden path (backend microservice in Go/Node). Centralized service catalog with API discovery. Software-template scaffolder with zero-setup dev environments. TechDocs for every service. A product mindset treating platform as internal SaaS.</p>
+    </section>
+    <section name="operational-excellence">
+      <p>Best practices for platform sustainability: Run the platform as a product with a PM, a roadmap, named users (other devs), NPS surveys, and SLOs. Start with one golden path (most-used stack) before generalizing. Three opinionated paths beat one universal abstraction. Every self-service action emits an event the FinOps + audit dashboards consume. Version golden paths and let teams subscribe to updates; never silently mutate downstream repos. Use Score (or similar workload spec) as the developer interface; keep Crossplane / Terraform invisible to product devs. For AI-agent citizens: dedicated service accounts per agent, per-agent budget cap, per-agent action audit log, automatic shutdown on quota breach. Put DORA + platform-friction metrics on the same dashboard.</p>
+      <p>Deprecation and lifecycle: Establish deprecation policies. Create runbooks for platform incidents. Set up on-call rotation. Schedule regular platform reviews. Plan capacity for growth. When developers see "adoption up 20% this quarter, lead time down 2 days" they believe in the platform.</p>
+    </section>
+    <section name="platform-as-product">
+      <p>The biggest failure mode: treat platform as infrastructure plumbing, not as a product. Backstage catalogs become graveyards of dead links. Golden paths diverge because nobody owns the golden version. Platform teams have no roadmap, no SLAs, no NPS surveys.</p>
+      <rule testable="true">
+        <statement>Platform engineering MUST be run like an external SaaS product: have a PM, a public roadmap, named users (developer teams), NPS surveys, and SLOs (e.g., "self-service action P95 &lt; 5 min"). Publish metrics monthly to the engineering org.</statement>
+        <rationale>Products with owners survive. Infrastructure without owners dies. When developers see "adoption up 20% this quarter, lead time down 2 days" they believe in the platform. When they see a stale Backstage catalog they stop using it.</rationale>
+      </rule>
+      <example type="good" title="Platform team charter (example)">
+        <p>Platform team charter: "Reduce cognitive load and accelerate deployment velocity for 120+ developers. Mission: every developer provisions a new environment in &lt;5 minutes. SLO: 99.9% uptime on Backstage. SLO: new golden path adopted by 50% of teams within 6 months. Measure: monthly DORA metrics, quarterly NPS, monthly adoption dashboards."</p>
+      </example>
+      <antipattern>
+        <description>No platform PM; the platform team reports to infrastructure and takes tickets from the backlog. No roadmap, no SLAs, no autonomy.</description>
+        <reason>Infrastructure is cost center. Products are value centers. Platform teams need autonomy to say "no, that feature doesn't align with golden-path strategy." When platform reports to infra it becomes a support queue.</reason>
+      </antipattern>
+    </section>
+    <section name="common-failure-modes">
+      <p>From agent-integration.md, the patterns that cause IDP projects to fail:</p>
+      <p>Backstage adoption fails when it's installed but not curated: empty catalog, dead links, no owner. Becomes a ghost portal in 6 months. Golden paths are too rigid: every team forks the template, abandons updates, and the platform team supports five forks instead of one. Internal "platform" without product mindset — no roadmap, no SLAs, no user research. Score / Humanitec abstractions are leaky: the moment a team needs a feature the spec doesn't cover, they bypass the orchestrator. Crossplane + Kubernetes-as-control-plane sounds elegant but complicates failure modes — when the K8s control plane is down, you can't provision K8s. AI agents with broad RBAC scopes silently consume cloud budget; without per-agent quotas the FinOps team gets a $40k surprise.</p>
+    </section>
+    <section name="human-in-loop-validation">
+      <p>Before every IDP component ships to production, it needs validation by someone outside the platform team.</p>
+      <rule testable="true">
+        <statement>Every new golden path and every new self-service action gets a manual run-through by a non-platform engineer ("can a junior do this without Slack?"). If they need help or ask questions → not yet ready for golden status.</statement>
+        <rationale>LLMs (and platform engineers) can't predict usability friction. A junior developer hitting the template is the ultimate test.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Backstage catalog updates from agents MUST go through Pull Request (catalog-info.yaml changes). Never use the catalog API for mutations. API edits don't survive sync and produce silent drift.</statement>
+        <rationale>The catalog is your source of truth. If agents edit via API and then sync runs, the changes disappear. Pull requests create an audit trail.</rationale>
+      </rule>
+    </section>
+    <section name="implementation-checklist-setup">
+      <p>Pre-implementation assessment: Identify developer pain points (surveys, interviews). Map current tooling landscape. Measure baseline metrics (deployment frequency, lead time). Document existing golden paths (formal or informal). Assess cognitive load on developers. Calculate DevOps ticket volume.</p>
+      <p>Executive buy-in: Prepare ROI case with industry benchmarks. Document inefficiencies from siloed teams. Present DORA metrics correlation to business outcomes. Define success criteria and timeline. Secure budget and headcount.</p>
+      <p>Platform team setup: Define team structure (product owner, engineers, SRE). Establish platform-as-product mindset. Create feedback loops with developer customers. Set up internal communication channels. Define SLAs for platform services.</p>
+    </section>
+    <section name="idp-architecture-backend-layer">
+      <p>Backend layer setup: Choose platform orchestrator (Humanitec, Crossplane, custom). Define resource abstractions. Implement GitOps workflow. Set up secrets management. Configure RBAC model.</p>
+      <p>Service catalog setup: Select portal tool (Backstage, Port, Cortex). Define service metadata schema. Create initial service entries. Set up documentation standards. Configure search and discovery.</p>
+      <p>Self-service actions: Identify top 10 developer requests. Create automation for each. Implement approval workflows where needed. Add cost estimation to provisioning. Set up audit logging.</p>
+    </section>
+    <section name="golden-paths-lifecycle">
+      <p>Golden path design: Identify common development patterns. Document opinionated decisions. Create scaffolding templates. Add compliance/security by default. Include observability setup.</p>
+      <p>Golden path implementation: Build path for new service creation. Build path for database provisioning. Build path for CI/CD pipeline setup. Build path for environment creation. Build path for secret management.</p>
+      <p>Golden path adoption: Make paths discoverable (no tickets). Create documentation and tutorials. Run onboarding sessions. Collect feedback iteratively. Measure adoption rates.</p>
+    </section>
+    <section name="security-compliance-operations">
+      <p>Security &amp; Compliance: Implement policy-as-code (OPA, Kyverno). Set up automated security scanning. Configure least-privilege access. Implement audit trails. Create compliance dashboards.</p>
+      <p>FinOps Integration: Add cost visibility to developer portal. Implement budget alerts. Create cost allocation tags. Set up pre-deployment cost gates. Build showback/chargeback reports.</p>
+      <p>Measurement and improvement: Set up deployment frequency tracking. Measure lead time for changes. Track mean time to recovery. Monitor change failure rate. Track self-service adoption rate. Measure time-to-first-deployment (new devs). Survey developer satisfaction quarterly. Monitor ticket volume trends. Calculate platform ROI.</p>
+      <p>Ongoing operations: Establish deprecation policies. Create runbooks for platform incidents. Set up on-call rotation. Schedule regular platform reviews. Plan capacity for growth.</p>
+    </section>
+    <section name="score-workload-specification">
+      <p>Score is a platform-agnostic workload specification language. A minimal Score spec (~25 lines) captures the developer's intent without exposing Kubernetes, Terraform, or other infrastructure details. The platform (Humanitec, custom controller, or agent) then maps the Score spec to environment-specific implementations.</p>
+      <p>Example: apiVersion: score.dev/v1b1, metadata name, containers with image and variables, resources section with database/DNS/cache types, service definition with ports. The developer writes one Score file; Humanitec resolves db type to RDS in production, PostgreSQL in dev, or CloudSQL in GCP.</p>
+      <rule testable="true">
+        <statement>Score (or equivalent workload spec) is the developer-facing abstraction. Infrastructure tools (Terraform, Crossplane, Pulumi) are hidden behind the Score resolution layer.</statement>
+        <rationale>Developers don't care about cloud provider specifics. They care about "I need a Postgres database with 15 days backup retention." Score captures the intent; the platform handles the mapping. This separation of concerns keeps platforms maintainable as requirements change.</rationale>
+      </rule>
+      <example type="good" title="Minimal Score specification for a service">
+        <code lang="yaml"><![CDATA[apiVersion: score.dev/v1b1
+metadata:
+  name: orders-api
+containers:
+  app:
+    image: ghcr.io/example/orders-api:${TAG}
+    variables:
+      DATABASE_URL: ${resources.db.uri}
+      LOG_LEVEL: info
+    resources:
+      limits:
+        memory: 512Mi
+        cpu: "0.5"
+service:
+  ports:
+    http:
+      port: 80
+      targetPort: 8080
+resources:
+  db:
+    type: postgres
+    params:
+      version: "16"
+      size: small
+  dns:
+    type: dns
+    params:
+      hostname: orders-api.example.com
+]]></code>
+      </example>
+    </section>
+    <section name="prompts-for-llm-agents">
+      <p>For assessing current state: Analyze current developer experience and identify platform engineering opportunities. Provide gap analysis comparing current state to IDP best practices. List top 5 quick wins for immediate improvement. Draft long-term platform roadmap (3 phases). Estimate ROI based on industry benchmarks. Recommend tooling stack with justification.</p>
+      <p>For designing golden paths: Design a golden path. Provide user journey map (before and after). List required components and their interactions. Detail automation workflow. Design self-service interface. Document guardrails and defaults. Outline documentation. Provide adoption strategy.</p>
+      <p>For designing self-service actions: Document current manual process (steps, time, teams, frequency). Design user input form with validation. Define approval workflow. Detail backend automation steps. Plan error handling and rollback. Plan notification and audit logging. Add cost estimation (if applicable).</p>
+      <p>For architecture &amp; integration: Design IDP architecture covering component diagram with integrations, data flow, authentication/authorization model, API contracts, high availability, migration path, build vs buy recommendations.</p>
+      <p>For metrics: Design platform metrics dashboard for audience (leadership/platform team/developers). Include DORA metrics with benchmarks, self-service adoption metrics, platform health indicators, cost allocation by team/service, developer satisfaction trends, recommended queries, alert thresholds.</p>
+      <p>For security: Design security and governance model covering RBAC, policy-as-code, secrets management, audit logging, compliance automation, security scanning, incident response.</p>
+      <p>For FinOps: Design FinOps integration covering cost visibility, pre-deployment estimation, budget alerts, team-level showback, optimization recommendations, data pipeline architecture, dashboard design, alert configuration, automation for cost gates.</p>
+      <p>For AI agents: Design AI platform agent covering persona and capabilities, permission model, resource quotas, governance policies, interaction patterns, feedback mechanisms, monitoring, safety guardrails.</p>
+    </section>
+    <section name="backstage-catalog-info-template">
+      <p>Backstage catalog-info.yaml captures service metadata. Essential fields: component name, description, annotations (GitHub project slug, TechDocs reference, Prometheus scrape target, Grafana dashboard selector), tags (language, tier), links (production URL), spec (type=service, lifecycle=production, owner team, system, provided APIs, dependencies).</p>
+      <p>The catalog becomes the single source of truth for service topology, ownership, and observability configuration. API definitions live as separate catalog entries. Each service registers its API: type=api, lifecycle, owner, definition (OpenAPI spec path).</p>
+      <example type="good" title="Complete Backstage catalog entry pair">
+        <code lang="yaml"><![CDATA[# catalog-info.yaml
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: payment-service
+  description: Handles payment processing and reconciliation
+  annotations:
+    github.com/project-slug: myorg/payment-service
+    backstage.io/techdocs-ref: dir:.
+    prometheus.io/scrape: "true"
+    grafana/dashboard-selector: "service=payment-service"
+  tags:
+    - typescript
+    - tier-1-critical
+  links:
+    - url: https://payment-api.example.com
+      title: Production
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: payments-team
+  system: payment-platform
+  providesApis:
+    - payment-service-api
+  dependsOn:
+    - resource:payment-db
+    - component:stripe-webhook-handler
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: payment-service-api
+  description: Payment service REST API
+spec:
+  type: openapi
+  lifecycle: production
+  owner: payments-team
+  definition:
+    $text: ./openapi.yaml
+]]></code>
+      </example>
+    </section>
+    <section name="backstage-template-skeleton">
+      <p>Backstage software-templates scaffold new services using parameters → steps → output. Parameters section defines user inputs: service information (name with kebab-case validation, description, owner picker), technical options (service tier, database choice, cache type, framework).</p>
+      <p>Steps section orchestrates the scaffold: fetch base skeleton (populates variables), publish to GitHub (creates repo with default branch protection), register in catalog (discovers catalog-info.yaml). Output links section points developer to repository and catalog entry.</p>
+      <example type="good" title="Backstage template skeleton for microservice">
+        <code lang="yaml"><![CDATA[apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: microservice-template
+  title: Backend Microservice
+  description: Creates a production-ready service
+  tags:
+    - recommended
+    - backend
+spec:
+  owner: platform-team
+  type: service
+
+  parameters:
+    - title: Service Information
+      required:
+        - name
+        - owner
+        - description
+      properties:
+        name:
+          title: Name
+          type: string
+          description: Unique service name (lowercase, hyphens allowed)
+          pattern: '^[a-z][a-z0-9-]{2,30}$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+          description: Brief service description
+        owner:
+          title: Owner
+          type: string
+          description: Team that owns this service
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+
+    - title: Technical Options
+      properties:
+        tier:
+          title: Service Tier
+          type: string
+          enum: [tier-1-critical, tier-2-standard, tier-3-experimental]
+          default: tier-2-standard
+        database:
+          title: Database
+          type: string
+          enum: [none, postgres, mysql, mongodb]
+          default: none
+        cache:
+          title: Cache
+          type: string
+          enum: [none, redis, memcached]
+          default: none
+
+  steps:
+    - id: fetch-base
+      name: Fetch Base
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          owner: ${{ parameters.owner }}
+          description: ${{ parameters.description }}
+          tier: ${{ parameters.tier }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        allowedHosts: ['github.com']
+        description: ${{ parameters.description }}
+        repoUrl: github.com?owner=myorg&repo=${{ parameters.name }}
+        defaultBranch: main
+        protectDefaultBranch: true
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}
+]]></code>
+      </example>
+    </section>
+    <section name="port-blueprint-definition">
+      <p>Port blueprints define service entities in the Port catalog. Schema properties capture service metadata: name, description, owner, tier (critical/standard/experimental), language (go/python/typescript/java/rust), repository URL, deployment frequency, incident count, on-call rotation, DORA metrics (lead time, deployment frequency, MTTR, change failure rate).</p>
+      <example type="good" title="Port blueprint for service entity">
+        <code lang="json"><![CDATA[{
+  "identifier": "service",
+  "title": "Service",
+  "icon": "Microservice",
+  "schema": {
+    "properties": {
+      "name": {
+        "type": "string",
+        "title": "Service Name"
+      },
+      "description": {
+        "type": "string",
+        "title": "Description"
+      },
+      "owner": {
+        "type": "string",
+        "title": "Owner Team"
+      },
+      "tier": {
+        "type": "string",
+        "title": "Service Tier",
+        "enum": ["critical", "standard", "experimental"]
+      },
+      "language": {
+        "type": "string",
+        "title": "Language",
+        "enum": ["go", "python", "typescript", "java", "rust"]
+      },
+      "repository": {
+        "type": "string",
+        "format": "url",
+        "title": "Repository URL"
+      },
+      "deploymentFrequency": {
+        "type": "number",
+        "title": "Deployments per Week"
+      }
+    }
+  }
+}
+]]></code>
+      </example>
+    </section>
+    <section name="monitoring-dashboard-as-code">
+      <p>Platform monitoring focuses on adoption metrics, developer experience, and operational health. A unified dashboard covers self-service adoption (percentage of requests via self-service vs tickets), deployment frequency (sum of deployments per team per day), lead time for changes (histogram percentiles of commit-to-production time), platform cost by team (pie chart of daily cloud cost by team), and DORA metrics (stacked over time).</p>
+      <example type="good" title="Grafana dashboard for platform health">
+        <code lang="json"><![CDATA[{
+  "dashboard": {
+    "title": "Platform Health",
+    "panels": [
+      {
+        "title": "Self-Service Adoption",
+        "type": "stat",
+        "targets": [{
+          "expr": "sum(platform_self_service_requests_total) / sum(platform_ticket_requests_total) * 100"
+        }]
+      },
+      {
+        "title": "Deployment Frequency",
+        "type": "timeseries",
+        "targets": [{
+          "expr": "sum(rate(deployments_total[1d])) by (team)"
+        }]
+      },
+      {
+        "title": "Lead Time for Changes",
+        "type": "gauge",
+        "targets": [{
+          "expr": "histogram_quantile(0.50, sum(rate(lead_time_seconds_bucket[7d])) by (le))"
+        }]
+      },
+      {
+        "title": "Platform Cost by Team",
+        "type": "piechart",
+        "targets": [{
+          "expr": "sum(cloud_cost_daily) by (team)"
+        }]
+      },
+      {
+        "title": "Change Failure Rate",
+        "type": "timeseries",
+        "targets": [{
+          "expr": "sum(rate(failed_deployments_total[1d])) / sum(rate(deployments_total[1d]))"
+        }]
+      }
+    ]
+  }
+}
+]]></code>
+      </example>
+    </section>
+    <section name="finops-cost-gates">
+      <p>Pre-deployment cost checking prevents billing surprises. The workflow: estimate infrastructure cost (infracost diff on Terraform), check against threshold (fail if &gt;$500/month), comment cost diff on pull request (transparent feedback), require human approval for high-cost changes.</p>
+      <p>Infracost integrates with Terraform, Terragrunt, CloudFormation. For Crossplane or Pulumi, use native cost estimation APIs. The goal: no infrastructure change merges without visibility into the cost impact.</p>
+      <example type="good" title="CI workflow for pre-deployment cost check">
+        <code lang="bash"><![CDATA[# .github/workflows/deploy.yaml
+jobs:
+  cost-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: infracost/actions/setup@v2
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Generate Cost Diff
+        run: |
+          infracost diff \
+            --path=terraform/ \
+            --format=json \
+            --out-file=/tmp/infracost.json
+
+      - name: Check Cost Threshold
+        run: |
+          MONTHLY_DIFF=$(jq '.totalMonthlyCost' /tmp/infracost.json)
+          if (( $(echo "$MONTHLY_DIFF > 500" | bc -l) )); then
+            echo "Cost increase exceeds $500/month threshold"
+            exit 1
+          fi
+
+      - name: Comment on PR
+        uses: infracost/actions/comment@v1
+        with:
+          path: /tmp/infracost.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+]]></code>
+        <note>Blocks merges if monthly cost impact exceeds threshold; developers see cost breakdown in PR comments.</note>
+      </example>
+      <antipattern>
+        <description>No cost gates; agents or humans provision infrastructure without seeing the financial impact.</description>
+        <reason>Cloud bill surprises follow. A forgotten load balancer running in production costs $500/month. Without visibility, FinOps teams become expensive data-entry clerks instead of strategic partners.</reason>
+      </antipattern>
+    </section>
+    <section name="crossplane-resource-example">
+      <p>Crossplane Resource Claims (XRCs) let developers request infrastructure declaratively. A PostgreSQL instance claim specifies version, size, and backup policy. The platform's Crossplane Composition maps the claim to cloud provider implementation (AWS RDS, CloudSQL, or in-cluster postgres). The developer sees only the claim; the composition handles provider-specific details.</p>
+      <example type="good" title="Crossplane database claim">
+        <code lang="yaml"><![CDATA[# crossplane/database-claim.yaml
+apiVersion: database.example.org/v1alpha1
+kind: PostgreSQLInstance
+metadata:
+  name: payment-db
+  namespace: payment-service
+spec:
+  parameters:
+    version: "15"
+    size: medium
+    backup:
+      enabled: true
+      retentionDays: 30
+  compositionRef:
+    name: aws-rds-postgres
+  writeConnectionSecretToRef:
+    name: payment-db-credentials
+]]></code>
+        <note>Composition aws-rds-postgres handles provisioning on AWS; cluster admins can swap the composition to use CloudSQL or in-cluster postgres without changing the claim.</note>
+      </example>
+    </section>
+    <see-also>
+      <link href="https://teamtopologies.com/book"/>
+      <link href="https://github.com/cncf/tag-app-delivery/tree/main/platforms-maturity-model"/>
+      <link href="https://backstage.io/docs"/>
+      <link href="https://docs.score.dev/"/>
+      <link href="https://docs.crossplane.io/"/>
+      <link href="https://developer.humanitec.com/"/>
+      <link href="https://internaldeveloperplatform.org/"/>
+      <link href="https://teamtopologies.com/key-concepts-content/what-is-a-thinnest-viable-platform-tvp"/>
+      <link href="https://cloud.google.com/blog/products/application-modernization/a-guide-to-platform-engineering"/>
+      <link href="https://www.pulumi.com/blog/the-guide-platform-engineering-idp-steps-best-practices/"/>
+      <link href="https://platformengineering.org/blog/top-10-platform-engineering-tools-to-use-in-2025"/>
+    </see-also>
+  </content>
+</methodology>
