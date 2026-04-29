@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-graphql">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>GraphQL API patterns: schema-first design, Relay cursor pagination, DataLoader per-request for N+1 prevention, field-level auth, depth/cost limits, and persisted queries.</summary>
+    <tags>
+      <tag>graphql</tag>
+      <tag>dataloader</tag>
+      <tag>api</tag>
+      <tag>n-plus-one</tag>
+      <tag>schema-design</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>GraphQL API Patterns</title>
+    <summary>GraphQL allows clients to specify exactly what data they need, reducing over-fetching and under-fetching versus REST. Core rule: every resolver returning a list of related entities must use a DataLoader instantiated per-request — without it, a list of 100 parents generates 101 database queries (N+1).</summary>
+    <why>
+      <p>Multiple consumer types (web, mobile, partner) have divergent field needs from the same domain. REST forces either over-fetching (large responses) or API proliferation (one endpoint per client type). GraphQL solves this with a single typed schema where clients compose their own queries. DataLoader solves the resulting N+1 problem by batching and deduplicating DB calls within a request.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Frontends composing data from many backend resources per screen (one round-trip)</item>
+        <item>Multiple consumer types (web, iOS, Android, partner API) with different field requirements</item>
+        <item>Federated services where independent teams own subgraphs stitched at a gateway</item>
+        <item>Real-time features (subscriptions over WebSocket/SSE) for live dashboards, chat, presence</item>
+        <item>BFF layer composing REST microservices into one typed graph</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>File uploads or streaming binary — multipart REST or signed URLs are simpler</item>
+        <item>Public cache-heavy read APIs — REST + HTTP cache headers + CDN is faster and simpler</item>
+        <item>Single-app, single-consumer CRUD — schema overhead and N+1 traps are not worth it</item>
+        <item>Hard real-time latency budgets — every query parses and plans, adding overhead vs REST</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="schema-core-type-patterns">
+      <rule>
+        <statement>Use input types for all mutations. Never use positional scalar arguments for mutation inputs with more than one field.</statement>
+        <rationale>Input types are extensible without breaking clients and make tooling (IDE autocomplete, codegen) work correctly. Positional args become unmanageable with more than 2 fields.</rationale>
+      </rule>
+      <rule>
+        <statement>Use Relay-style cursor connections for any list field that could grow. Never use offset+limit in public schema.</statement>
+        <rationale>Offset pagination is inconsistent when items are inserted/deleted mid-page. Cursor pagination is stable and composable with hasNextPage/hasPreviousPage.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="graphql"><![CDATA[
+type User {
+  id: ID!
+  name: String!
+  email: String!
+  orders(first: Int, after: String): OrderConnection!
+  createdAt: DateTime!
+}
+
+type OrderConnection {
+  edges: [OrderEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type OrderEdge {
+  cursor: String!
+  node: Order!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type Mutation {
+  createUser(input: CreateUserInput!): User!
+}
+
+input CreateUserInput {
+  name: String!
+  email: String!
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="schema-error-handling">
+      <rule>
+        <statement>Return structured error objects in error responses with path, extensions.code, and message. Never rely on HTTP status codes alone.</statement>
+        <rationale>GraphQL always returns HTTP 200. Clients parse errors[] in the response body. Without structured codes, error handling degenerates to string matching on messages.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="json"><![CDATA[
+{
+  "data": null,
+  "errors": [
+    {
+      "message": "User not found",
+      "path": ["user"],
+      "extensions": {
+        "code": "NOT_FOUND",
+        "id": "123"
+      }
+    }
+  ]
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="dataloader-rules">
+      <rule>
+        <statement>Instantiate DataLoaders per-request in the context object. Never create a global DataLoader shared across requests.</statement>
+        <rationale>A global DataLoader accumulates keys from all concurrent requests, producing incorrect results by mixing data across users. Per-request loaders are isolated and garbage-collected after the response.</rationale>
+      </rule>
+      <rule>
+        <statement>Pair every resolver that loads a related entity by parent ID with a DataLoader. The batch function must return results in the same order as the input keys.</statement>
+        <rationale>If the batch function returns results in DB order rather than input-key order, DataLoader maps results to wrong parents, producing silently incorrect data.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[
+import DataLoader from 'dataloader';
+
+// Per-request factory — call in context setup, not at module level
+export const createLoaders = () => ({
+  userById: new DataLoader<string, User | null>(async (ids) => {
+    const users = await db.users.findMany({ where: { id: { in: [...ids] } } });
+    const map = new Map(users.map(u => [u.id, u]));
+    // CRITICAL: return in same order as input ids
+    return ids.map(id => map.get(id) ?? null);
+  }),
+
+  // 1:N grouping pattern
+  ordersByUserId: new DataLoader<string, Order[]>(async (userIds) => {
+    const orders = await db.orders.findMany({
+      where: { userId: { in: [...userIds] } }
+    });
+    const grouped = new Map<string, Order[]>();
+    for (const order of orders) {
+      const arr = grouped.get(order.userId) ?? [];
+      arr.push(order);
+      grouped.set(order.userId, arr);
+    }
+    return userIds.map(id => grouped.get(id) ?? []);
+  }),
+});
+
+// In resolver
+resolve: (order) => ctx.loaders.userById.load(order.userId)
+]]></code>
+      </example>
+      <reference path="templates/dataloader-factory.ts">TypeScript DataLoader factory with grouping pattern</reference>
+    </section>
+
+    <section name="graphql-federation">
+      <p>For federated microservices, use Apollo Federation's @key directive. Each service resolves its own entities; the gateway stitches them without N+1.</p>
+      <example type="good">
+        <code lang="graphql"><![CDATA[
+# Users service
+type User @key(fields: "id") {
+  id: ID!
+  name: String!
+  email: String!
+}
+
+# Orders service — extends User without importing it
+extend type User @key(fields: "id") {
+  id: ID! @external
+  orders: [Order!]!
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="security-depth-complexity">
+      <rule>
+        <statement>Add query depth limiting (max 10) and query complexity analysis (max 1000 points) before going to production.</statement>
+        <rationale>A malicious query like user { friends { friends { friends { ... } } } } can trigger exponential DB queries. Without limits, a single request can DoS the server.</rationale>
+      </rule>
+      <rule>
+        <statement>Enforce pagination limits server-side: if a client requests more than the maximum page size, raise a validation error.</statement>
+        <rationale>Without server-side enforcement, a client requesting first: 1000000 bypasses the pagination design and runs a full table scan.</rationale>
+      </rule>
+    </section>
+
+    <section name="security-field-auth">
+      <rule>
+        <statement>Apply authorization at the field resolver level, not only at the gateway. Every resolver returning sensitive data must check the caller's identity.</statement>
+        <rationale>GraphQL composition allows arbitrary client queries. A gateway-level auth check on the query root does not protect individual fields returned as part of a larger query.</rationale>
+      </rule>
+    </section>
+
+    <section name="security-persisted-queries">
+      <rule>
+        <statement>Use persisted queries (allowlist) for production clients. Reject unknown query documents by hash.</statement>
+        <rationale>Persisted queries eliminate injection risk (no dynamic query construction), enable CDN caching, and prevent introspection-based DoS from attackers enumerating the schema.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Resolver that eagerly loads all relationships on the parent type, regardless of whether the client requested them.</description>
+        <reason>Always-loaded relations execute queries even when the field is not selected, wasting DB resources on every request.</reason>
+      </antipattern>
+      <example type="bad">
+        <code lang="python"><![CDATA[
+# BAD — loads orders for every user even when not requested
+@strawberry.type
+class User:
+    @strawberry.field
+    def orders(self) -> List[Order]:
+        return self._orders  # pre-loaded in parent query
+]]></code>
+      </example>
+      <example type="good">
+        <code lang="python"><![CDATA[
+# GOOD — lazy load only when requested, batched via DataLoader
+@strawberry.type
+class User:
+    @strawberry.field
+    async def orders(self, info: Info, first: int = 10) -> List[Order]:
+        loader = info.context.loaders.orders_by_user
+        return await loader.load((self.id, first))
+]]></code>
+      </example>
+      <antipattern>
+        <description>List field that returns all items without pagination: async def users(self) -&gt; List[User].</description>
+        <reason>Could return millions of rows in a single request, causing full table scans and OOM errors. All list fields that could grow must use cursor-based pagination.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Adding a new sensitive field (email, apiKey, passwordHash) to a type without field-level authorization checks.</description>
+        <reason>Any client that can query the parent type can retrieve the sensitive field. Auth audits should be automated via a schema lint rule.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Leaving GraphQL introspection enabled in production without authentication.</description>
+        <reason>Introspection exposes the full schema to attackers, enabling targeted injection and DoS attacks. Gate it behind admin auth or disable it entirely.</reason>
+      </antipattern>
+    </section>
+
+    <section name="limitations">
+      <p>N+1 query explosion — the canonical pitfall; without DataLoader, a list of 100 users x orders resolver = 101 DB calls. Complexity / depth attacks — a malicious nested query crashes the server; needs depth + cost limits. Caching is hard — no built-in HTTP cache semantics; clients (Apollo, Relay, urql) implement their own normalized caches. Authorization is granular and easy to mess up — agents add new fields without auth checks at the field-resolver level. Schema evolution: removing a field breaks unknown clients; needs @deprecated workflow + usage analytics. Federation footguns: two subgraphs claiming the same @key field, or entity resolution loops. Subscription scaling: stateful WebSocket connections need sticky sessions or Redis pub/sub fan-out. Error model confusion: partial-success responses (data + errors) trip up clients expecting REST-style status codes.</p>
+    </section>
+
+    <section name="agent-integration">
+      <p>Drive GraphQL work in a schema-first loop: (1) author the SDL (.graphql files) as the source of truth, (2) generate types/clients with codegen (graphql-codegen, gqlgen, async-graphql derive macros), (3) implement resolvers wrapping DataLoader for any 1:N relationship, (4) verify with the introspection schema diff against last published version, (5) run query-cost + depth tests. Never let an agent write resolvers before SDL is reviewed — the schema is the API contract.</p>
+      <prompt purpose="add-schema-field"><![CDATA[
+Schema task: add a `posts(first: Int, after: String, filter: PostFilter)` field on User.
+Constraints:
+- Relay-style cursor pagination (UserPostsConnection, UserPostsEdge, PageInfo).
+- Filter input: status (PostStatus enum), tag (String).
+- Implement with DataLoader keyed by (userId, filterHash).
+- Add field-level @auth(requires: USER) directive.
+- Update graphql-codegen typescript-resolvers config.
+Done = schema validates, codegen runs, no field added without resolver, query cost <= 100 for default page size.
+]]></prompt>
+      <prompt purpose="audit-n1-risk"><![CDATA[
+Audit: scan resolvers/ for N+1 risk.
+For each resolver returning [Type] or Type within a list parent:
+- Confirm a DataLoader (or batched repository) is used.
+- If not, propose patch wiring the loader.
+Output: list of risk sites + diff per fix.
+]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <p>graphql-codegen — TS types + clients from schema (npm i -D @graphql-codegen/cli). graphql-inspector — Schema diff + linting (npm i -D @graphql-inspector/cli). gqlgen (Go) — Schema-first Go server codegen (https://gqlgen.com). async-graphql (Rust) — Code-first Rust server lib. strawberry / ariadne (Python) — Python GraphQL servers. graphql-armor — Cost/depth/intro guards (npm i @escape.tech/graphql-armor). relay-compiler — Required for Relay clients. apollo CLI / rover — Schema publish/check, federation. mercurius (Fastify) — High-perf JS server. pothos — Code-first TS schema builder.</p>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Treat the SDL as the source of truth; commit schema.graphql and run codegen in CI.</item>
+        <item>Pair every resolver returning a list of related entities with a DataLoader instantiated per-request (never global).</item>
+        <item>Use Relay cursor connections for any list field that could grow; never offset+limit on the public API.</item>
+        <item>Use input types for all mutations (CreateUserInput) — never positional args.</item>
+        <item>Field-level authorization at the resolver, not the gateway. Composition allows arbitrary client shapes; auth must be per-field.</item>
+        <item>Add depth (&lt;= 10), cost (e.g., 1000 points), and rate limits in production. Use graphql-armor or equivalent.</item>
+        <item>Use persisted queries (allowlist) for production clients — eliminates injection risk and enables CDN caching.</item>
+        <item>Mark deprecated fields with @deprecated(reason: "..."); remove only after usage drops to 0 in analytics.</item>
+        <item>Prefer error union types (type CreateUserResult = User | UserAlreadyExists | ValidationError) over errors[] for expected business errors.</item>
+        <item>Use a context-per-request pattern; never share resolver state.</item>
+      </list>
+    </section>
+
+    <section name="agent-gotchas">
+      <list>
+        <item>Agents introduce N+1 by adding a relation field with a naive resolver that calls the DB per parent — require DataLoader or column-aware batched repos.</item>
+        <item>Forgotten field-level auth: agents add User.email without @auth directive or check; auth audits should be automated.</item>
+        <item>Agents propose breaking schema changes (rename, remove field, change non-null to nullable) without a deprecation cycle. Run graphql-inspector diff in CI.</item>
+        <item>Mixing code-first and schema-first patterns in one repo confuses tooling — pick one per service.</item>
+        <item>Subscription leaks: agents wire pubsub listeners without cleanup on disconnect; review every subscription resolver for teardown.</item>
+        <item>Resolver-level transactions: agents wrap a single resolver in a DB tx that doesn't include sibling resolver calls running in parallel. Use UoW pattern at request level if you need atomic groups.</item>
+        <item>Generated types committed by hand: agents edit codegen output; require it to be .gitignored or regenerated in CI to detect drift.</item>
+        <item>Human-in-loop checkpoint: any schema change touching public types or removing a field needs human review + Apollo Studio (or Hive) check passing.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/dataloader-factory.ts" purpose="TypeScript DataLoader factory with grouping pattern for 1:N relationships"/>
+      <template path="templates/schema.graphql" purpose="Reference schema with Node interface, Connection types, input types, mutation payloads"/>
+    </templates>
+
+    <see-also>
+      <link href="https://spec.graphql.org"/>
+      <link href="https://graphql.org/learn/best-practices/"/>
+      <link href="https://relay.dev/graphql/connections.htm"/>
+      <link href="https://github.com/graphql/dataloader"/>
+      <link href="https://www.apollographql.com/docs/federation/"/>
+      <link href="https://escape.tech/graphql-armor/"/>
+      <link href="https://principledgraphql.com"/>
+      <link href="https://graphql-rules.com"/>
+      <link href="https://www.apollographql.com/docs/technotes/TN0021-graph-versioning/"/>
+    </see-also>
+  </content>
+</methodology>
