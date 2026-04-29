@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/pm/pm-traditional methodologies → methodology.xml (schedule-development, scope-management, stakeholder-engagement; feature-045 batch 1)
 - migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (ads-meta-reporting, ads-meta-targeting, ads-retargeting; feature-045 batch BO)
 - migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (ads-linkedin-ads, ads-meta-campaign-setup, ads-meta-creative; feature-045 batch BN)
 - migrate: 3/3 pro/marketing/gtm-strategist methodologies → methodology.xml (ops-contractor-basics, ops-contractor-management, ops-customer-success-basics; feature-045 batch BK)
