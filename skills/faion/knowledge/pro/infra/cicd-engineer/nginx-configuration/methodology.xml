@@ -1,0 +1,1402 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="nginx-configuration">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Nginx configuration patterns for reverse proxy, SSL/TLS termination, caching, load balancing, and security hardening based on 2025-2026 best practices.</summary>
+    <tags>
+      <tag>nginx</tag>
+      <tag>reverse-proxy</tag>
+      <tag>ssl-tls</tag>
+      <tag>web-server</tag>
+      <tag>security</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Nginx Configuration</title>
+    <summary>Nginx is a high-performance HTTP server, reverse proxy, and load balancer. This methodology covers configuration patterns for reverse proxy setups, SSL/TLS termination, caching, and security hardening based on 2025-2026 best practices.</summary>
+    <why>
+      <p>Nginx sits at the edge of every web stack: it terminates SSL, balances load, serves static assets, and proxies dynamic requests. Misconfiguration is the root cause of most performance and security issues in web deployments — missing HSTS lets attackers downgrade connections, absent gzip wastes bandwidth, default worker counts underutilize CPUs. A well-configured Nginx instance can handle 400K-500K requests/sec clustered (50K-80K single instance at ~30% CPU load).</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Setting up web servers for static or dynamic content</item>
+        <item>Configuring reverse proxy for backend services</item>
+        <item>Implementing SSL/TLS termination with TLS 1.2/1.3</item>
+        <item>Setting up load balancing</item>
+        <item>Optimizing web application performance with caching</item>
+        <item>Implementing security headers (HSTS, CSP, X-Frame-Options)</item>
+        <item>WebSocket proxy configuration</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Service-mesh internal traffic (mTLS, sidecar routing) — use Envoy or Istio instead</item>
+        <item>Dynamic routing with frequent topology changes — Traefik or Caddy handle this more cleanly with auto-discovery</item>
+        <item>Pure API gateway with auth, quotas, and transformations — Kong or AWS API Gateway provide purpose-built features</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="directory-structure">
+      <p>Standard Nginx directory structure:</p>
+      <list>
+        <item>/etc/nginx/nginx.conf — Main configuration</item>
+        <item>/etc/nginx/mime.types — MIME type definitions</item>
+        <item>/etc/nginx/conf.d/ — Additional configurations (upstreams/, default.conf)</item>
+        <item>/etc/nginx/sites-available/ — Available site configs (example.com, api.example.com)</item>
+        <item>/etc/nginx/sites-enabled/ — Enabled sites (symlinks to sites-available)</item>
+        <item>/etc/nginx/snippets/ — Reusable config snippets (ssl-params.conf, security-headers.conf, proxy-params.conf)</item>
+        <item>/etc/nginx/ssl/ — SSL certificates (dhparam.pem 4096-bit, certificates/)</item>
+      </list>
+    </section>
+
+    <section name="key-concepts">
+      <section name="reverse-proxy">
+        <p>Nginx acts as intermediary between clients and backend servers: hides backend infrastructure, provides load balancing, handles SSL/TLS termination, enables caching and compression.</p>
+      </section>
+      <section name="ssl-tls-2025-standards">
+        <list>
+          <item>Protocols — TLSv1.2, TLSv1.3 only</item>
+          <item>Ciphers — ECDHE with AES-GCM</item>
+          <item>DH Parameters — 4096-bit</item>
+          <item>OCSP Stapling — Enabled</item>
+          <item>Session Cache — Shared, 10MB</item>
+        </list>
+      </section>
+      <section name="security-headers">
+        <list>
+          <item>Strict-Transport-Security — Force HTTPS (HSTS)</item>
+          <item>Content-Security-Policy — Prevent XSS/injection</item>
+          <item>X-Frame-Options — Prevent clickjacking</item>
+          <item>X-Content-Type-Options — Prevent MIME sniffing</item>
+          <item>Referrer-Policy — Control referrer info</item>
+          <item>Permissions-Policy — Control browser features</item>
+        </list>
+      </section>
+      <section name="caching-strategy">
+        <list>
+          <item>Static assets — Long TTL (1 year), immutable</item>
+          <item>API responses — Short TTL (1-10 min), stale-while-revalidate</item>
+          <item>Dynamic content — No cache or conditional</item>
+        </list>
+      </section>
+    </section>
+
+    <how-to>
+      <step>Install nginx: sudo apt update &amp;&amp; sudo apt install nginx</step>
+      <step>Generate DH parameters (4096-bit for production): sudo openssl dhparam -out /etc/nginx/ssl/dhparam.pem 4096</step>
+      <step>Configure main nginx.conf with worker processes, connections, gzip, SSL globals, rate limiting zones, and upstream definitions</step>
+      <step>Create reusable snippets for SSL/TLS parameters (ssl-params.conf), security headers (security-headers.conf), and proxy parameters (proxy-params.conf)</step>
+      <step>Create site configurations in sites-available/ and symlink to sites-enabled/</step>
+      <step>Obtain SSL certificates: sudo certbot --nginx -d example.com -d www.example.com</step>
+      <step>Test configuration: sudo nginx -t</step>
+      <step>Reload: sudo nginx -s reload</step>
+    </how-to>
+
+    <section name="best-practices">
+      <section name="performance">
+        <list>
+          <item>Worker processes — Set to auto to match CPU cores</item>
+          <item>Worker connections — 4096+ for high traffic</item>
+          <item>File descriptors — Set worker_rlimit_nofile to 2x worker_connections</item>
+          <item>Keepalive — Enable for connection reuse</item>
+          <item>Gzip compression — Enable for text-based content</item>
+          <item>Sendfile — Enable for static file serving</item>
+        </list>
+      </section>
+      <section name="security">
+        <list>
+          <item>Hide version — server_tokens off;</item>
+          <item>TLS 1.2+ only — Remove TLS 1.0/1.1</item>
+          <item>Security headers — HSTS, CSP, X-Frame-Options</item>
+          <item>Rate limiting — Prevent abuse</item>
+          <item>Access control — Restrict sensitive endpoints</item>
+          <item>Deny hidden files — Block .git, .env, etc.</item>
+        </list>
+      </section>
+      <section name="configuration">
+        <list>
+          <item>Modular structure — Use includes and snippets</item>
+          <item>Test before reload — Always run nginx -t</item>
+          <item>Version control — Track all config changes</item>
+          <item>Comments — Document non-obvious settings</item>
+        </list>
+      </section>
+      <section name="monitoring">
+        <list>
+          <item>Access logs — JSON format for parsing</item>
+          <item>Error logs — Set appropriate level</item>
+          <item>Stub status — Enable for basic metrics</item>
+          <item>Prometheus exporter — For advanced monitoring</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="performance-benchmarks">
+      <p>Properly configured Nginx can handle:</p>
+      <list>
+        <item>400K-500K requests/sec (clustered)</item>
+        <item>50K-80K requests/sec (single instance)</item>
+        <item>With ~30% CPU load</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>user directive set to non-privileged user (www-data)</check>
+      <check>worker_processes auto; for CPU-based scaling</check>
+      <check>worker_connections set appropriately (4096+)</check>
+      <check>worker_rlimit_nofile set to 2x worker_connections</check>
+      <check>server_tokens off; to hide version</check>
+      <check>sendfile on; enabled</check>
+      <check>tcp_nopush on; enabled</check>
+      <check>tcp_nodelay on; enabled</check>
+      <check>Error log level appropriate (warn or error)</check>
+      <check>TLS 1.0 and 1.1 disabled</check>
+      <check>Only TLSv1.2 and TLSv1.3 enabled</check>
+      <check>Strong cipher suites configured</check>
+      <check>DH parameters generated (4096-bit)</check>
+      <check>OCSP stapling enabled</check>
+      <check>SSL session cache configured</check>
+      <check>SSL session tickets disabled (for PFS)</check>
+      <check>HSTS header with includeSubDomains</check>
+      <check>Content-Security-Policy defined</check>
+      <check>X-Frame-Options set (DENY or SAMEORIGIN)</check>
+      <check>X-Content-Type-Options: nosniff</check>
+      <check>Referrer-Policy configured</check>
+      <check>Permissions-Policy defined</check>
+      <check>proxy_http_version 1.1; set</check>
+      <check>X-Real-IP header forwarded</check>
+      <check>X-Forwarded-For header forwarded</check>
+      <check>X-Forwarded-Proto header forwarded</check>
+      <check>Host header set correctly</check>
+      <check>Timeouts configured (connect, send, read)</check>
+      <check>Upstream keepalive connections enabled</check>
+      <check>Gzip enabled with gzip_vary on; and gzip_proxied any;</check>
+      <check>Rate limit zones defined with appropriate limits</check>
+      <check>Hidden files denied (location ~ /\.)</check>
+      <check>nginx -t passes without errors</check>
+      <check>SSL Labs score A+ (or A minimum)</check>
+      <check>HTTPS redirect works</check>
+      <check>Security headers present (check with securityheaders.com)</check>
+      <check>Version info hidden</check>
+      <check>Response times acceptable, compression working</check>
+    </checklist>
+
+    <section name="quick-commands">
+      <commands>
+        <command name="test">sudo nginx -t</command>
+        <command name="reload">sudo nginx -s reload</command>
+        <command name="show-config">sudo nginx -T</command>
+        <command name="check-connections">ss -s | grep tcp</command>
+        <command name="access-log">tail -f /var/log/nginx/access.log</command>
+        <command name="error-log">tail -100 /var/log/nginx/error.log</command>
+        <command name="check-ssl">curl -I https://example.com</command>
+        <command name="check-security-headers">curl -I -s https://example.com | grep -i "strict\|content-security\|x-frame\|x-content"</command>
+        <command name="check-cache">curl -I https://example.com/api/endpoint | grep X-Cache</command>
+        <command name="check-compression">curl -I -H "Accept-Encoding: gzip" https://example.com | grep Content-Encoding</command>
+      </commands>
+    </section>
+
+    <section name="examples">
+      <example type="good" title="Static site with HTTPS and security headers">
+        <code lang="nginx"><![CDATA[# /etc/nginx/sites-available/example.com
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name example.com www.example.com;
+
+    # Redirect HTTP to HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name example.com www.example.com;
+
+    # SSL Configuration
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    include /etc/nginx/snippets/ssl-params.conf;
+
+    # Security Headers
+    include /etc/nginx/snippets/security-headers.conf;
+
+    # Root Directory
+    root /var/www/example.com/public;
+    index index.html;
+
+    # Logging
+    access_log /var/log/nginx/example.com.access.log main;
+    error_log /var/log/nginx/example.com.error.log warn;
+
+    # Main location
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Static assets with long cache
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # Deny hidden files
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+}]]></code>
+      </example>
+      <example type="good" title="API reverse proxy with load balancing, rate limiting, and caching">
+        <code lang="nginx"><![CDATA[# /etc/nginx/sites-available/api.example.com
+
+# Upstream definition with health checks
+upstream api_backend {
+    least_conn;
+
+    server 127.0.0.1:8000 weight=5 max_fails=3 fail_timeout=30s;
+    server 127.0.0.1:8001 weight=5 max_fails=3 fail_timeout=30s;
+    server 127.0.0.1:8002 backup;
+
+    keepalive 32;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name api.example.com;
+
+    # SSL
+    ssl_certificate /etc/letsencrypt/live/api.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
+    include /etc/nginx/snippets/ssl-params.conf;
+
+    # Security Headers (relaxed CSP for API)
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+
+    # Logging (JSON format)
+    access_log /var/log/nginx/api.example.com.access.log json;
+    error_log /var/log/nginx/api.example.com.error.log warn;
+
+    # Rate Limiting
+    limit_req zone=api burst=50 nodelay;
+    limit_conn addr 100;
+
+    # API endpoints
+    location / {
+        proxy_pass http://api_backend;
+        include /etc/nginx/snippets/proxy-params.conf;
+
+        # Caching for GET requests
+        proxy_cache api_cache;
+        proxy_cache_key "$scheme$request_method$host$request_uri";
+        proxy_cache_valid 200 5m;
+        proxy_cache_valid 404 1m;
+        proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+        proxy_cache_background_update on;
+        proxy_cache_lock on;
+
+        # Cache status header
+        add_header X-Cache-Status $upstream_cache_status;
+
+        # Bypass cache for authenticated requests
+        proxy_cache_bypass $http_authorization;
+        proxy_no_cache $http_authorization;
+    }
+
+    # Health check (no caching, no logging)
+    location /health {
+        proxy_pass http://api_backend/health;
+        access_log off;
+        proxy_cache off;
+    }
+
+    # Metrics endpoint (restricted)
+    location /metrics {
+        allow 10.0.0.0/8;
+        allow 127.0.0.1;
+        deny all;
+        proxy_pass http://api_backend/metrics;
+        access_log off;
+    }
+}]]></code>
+      </example>
+      <example type="good" title="WebSocket proxy with extended timeouts">
+        <code lang="nginx"><![CDATA[# /etc/nginx/sites-available/realtime.example.com
+
+upstream ws_backend {
+    server 127.0.0.1:3000;
+    keepalive 32;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name realtime.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/realtime.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/realtime.example.com/privkey.pem;
+    include /etc/nginx/snippets/ssl-params.conf;
+    include /etc/nginx/snippets/security-headers.conf;
+
+    # Regular HTTP endpoints
+    location / {
+        proxy_pass http://ws_backend;
+        include /etc/nginx/snippets/proxy-params.conf;
+    }
+
+    # WebSocket endpoint
+    location /ws {
+        proxy_pass http://ws_backend;
+        proxy_http_version 1.1;
+
+        # WebSocket headers
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
+        # Standard headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Extended timeouts for long-running connections
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+
+        # Disable buffering for real-time
+        proxy_buffering off;
+    }
+
+    # Socket.IO specific (if using)
+    location /socket.io/ {
+        proxy_pass http://ws_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 86400s;
+        proxy_buffering off;
+    }
+}]]></code>
+      </example>
+      <example type="good" title="Next.js application with SSR, static assets, and API routes">
+        <code lang="nginx"><![CDATA[# /etc/nginx/sites-available/app.example.com
+
+upstream nextjs_backend {
+    server 127.0.0.1:3000;
+    keepalive 32;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name app.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/app.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/app.example.com/privkey.pem;
+    include /etc/nginx/snippets/ssl-params.conf;
+    include /etc/nginx/snippets/security-headers.conf;
+
+    access_log /var/log/nginx/app.example.com.access.log main;
+    error_log /var/log/nginx/app.example.com.error.log warn;
+
+    # Next.js static files (immutable)
+    location /_next/static/ {
+        proxy_pass http://nextjs_backend;
+        proxy_cache_valid 200 365d;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    # Next.js image optimization
+    location /_next/image {
+        proxy_pass http://nextjs_backend;
+        proxy_cache_valid 200 60m;
+    }
+
+    # Public static assets
+    location /static/ {
+        alias /var/www/app.example.com/public/static/;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # API routes (no caching)
+    location /api/ {
+        proxy_pass http://nextjs_backend;
+        include /etc/nginx/snippets/proxy-params.conf;
+        proxy_cache off;
+    }
+
+    # All other routes (SSR)
+    location / {
+        proxy_pass http://nextjs_backend;
+        include /etc/nginx/snippets/proxy-params.conf;
+
+        # Short cache for SSR pages
+        proxy_cache_valid 200 1m;
+        add_header X-Cache-Status $upstream_cache_status;
+    }
+}]]></code>
+      </example>
+      <example type="good" title="Multi-domain with shared config">
+        <code lang="nginx"><![CDATA[# /etc/nginx/sites-available/multi-site
+
+# Site 1: Main website
+server {
+    listen 443 ssl http2;
+    server_name example.com www.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    include /etc/nginx/snippets/ssl-params.conf;
+    include /etc/nginx/snippets/security-headers.conf;
+
+    root /var/www/example.com/public;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# Site 2: Blog subdomain
+server {
+    listen 443 ssl http2;
+    server_name blog.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    include /etc/nginx/snippets/ssl-params.conf;
+    include /etc/nginx/snippets/security-headers.conf;
+
+    root /var/www/blog.example.com/public;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+
+# Site 3: API subdomain
+server {
+    listen 443 ssl http2;
+    server_name api.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    include /etc/nginx/snippets/ssl-params.conf;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        include /etc/nginx/snippets/proxy-params.conf;
+    }
+}
+
+# Catch-all redirect to main site
+server {
+    listen 443 ssl http2 default_server;
+    server_name _;
+
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+
+    return 301 https://example.com$request_uri;
+}]]></code>
+      </example>
+      <example type="good" title="Monitoring endpoint with Prometheus stub_status">
+        <code lang="nginx"><![CDATA[# Add to any server block
+
+# Nginx stub status (for nginx-prometheus-exporter)
+location /nginx_status {
+    stub_status on;
+    allow 127.0.0.1;
+    allow 10.0.0.0/8;
+    deny all;
+    access_log off;
+}
+
+# Custom metrics location
+location /metrics {
+    allow 127.0.0.1;
+    allow 10.0.0.0/8;
+    deny all;
+    access_log off;
+}
+
+# Health check for load balancers
+location /health {
+    access_log off;
+    return 200 "healthy\n";
+    add_header Content-Type text/plain;
+}
+
+# Ready check (for Kubernetes)
+location /ready {
+    access_log off;
+    return 200 "ready\n";
+    add_header Content-Type text/plain;
+}]]></code>
+      </example>
+      <example type="good" title="Docker container environment with JSON logging and envsubst">
+        <code lang="nginx"><![CDATA[# /etc/nginx/nginx.conf (container version)
+
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections 4096;
+    use epoll;
+    multi_accept on;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # JSON logging for container environments
+    log_format json escape=json '{'
+        '"time":"$time_iso8601",'
+        '"remote_addr":"$remote_addr",'
+        '"request_method":"$request_method",'
+        '"request_uri":"$request_uri",'
+        '"status":$status,'
+        '"body_bytes_sent":$body_bytes_sent,'
+        '"request_time":$request_time,'
+        '"upstream_response_time":"$upstream_response_time",'
+        '"http_user_agent":"$http_user_agent"'
+    '}';
+
+    access_log /var/log/nginx/access.log json;
+
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    server_tokens off;
+
+    # Use environment variables (via envsubst)
+    upstream backend {
+        server ${BACKEND_HOST}:${BACKEND_PORT};
+        keepalive 32;
+    }
+
+    server {
+        listen 80;
+        server_name _;
+
+        location /health {
+            access_log off;
+            return 200 "OK";
+        }
+
+        location / {
+            proxy_pass http://backend;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header Connection "";
+        }
+    }
+}]]></code>
+        <note>Docker entrypoint: envsubst '${BACKEND_HOST} ${BACKEND_PORT}' &lt; /etc/nginx/nginx.conf.template &gt; /etc/nginx/nginx.conf &amp;&amp; nginx -g 'daemon off;'</note>
+      </example>
+    </section>
+
+    <section name="templates">
+      <section name="main-nginx-conf">
+        <p>Complete main nginx.conf template with all recommended settings:</p>
+        <code lang="nginx"><![CDATA[# /etc/nginx/nginx.conf
+
+user www-data;
+worker_processes auto;
+worker_rlimit_nofile 65535;
+pid /run/nginx.pid;
+error_log /var/log/nginx/error.log warn;
+
+include /etc/nginx/modules-enabled/*.conf;
+
+events {
+    worker_connections 4096;
+    use epoll;
+    multi_accept on;
+}
+
+http {
+    # Basic Settings
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+    server_tokens off;
+
+    # MIME Types
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # Logging Format - Standard
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for" '
+                    'rt=$request_time uct="$upstream_connect_time" '
+                    'uht="$upstream_header_time" urt="$upstream_response_time"';
+
+    # Logging Format - JSON
+    log_format json escape=json '{'
+        '"time":"$time_iso8601",'
+        '"remote_addr":"$remote_addr",'
+        '"request_method":"$request_method",'
+        '"request_uri":"$request_uri",'
+        '"status":$status,'
+        '"body_bytes_sent":$body_bytes_sent,'
+        '"request_time":$request_time,'
+        '"upstream_response_time":"$upstream_response_time",'
+        '"http_referrer":"$http_referer",'
+        '"http_user_agent":"$http_user_agent"'
+    '}';
+
+    access_log /var/log/nginx/access.log main;
+
+    # Gzip Compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_min_length 256;
+    gzip_types
+        application/atom+xml
+        application/javascript
+        application/json
+        application/rss+xml
+        application/vnd.ms-fontobject
+        application/x-font-ttf
+        application/x-web-app-manifest+json
+        application/xhtml+xml
+        application/xml
+        font/opentype
+        image/svg+xml
+        image/x-icon
+        text/css
+        text/plain
+        text/x-component;
+
+    # SSL Settings (Global)
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # Rate Limiting Zones
+    limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
+    limit_req_zone $binary_remote_addr zone=api:10m rate=30r/s;
+    limit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;
+    limit_conn_zone $binary_remote_addr zone=addr:10m;
+
+    # WebSocket Upgrade Map
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        '' close;
+    }
+
+    # Cache Paths
+    proxy_cache_path /var/cache/nginx/api
+        levels=1:2
+        keys_zone=api_cache:10m
+        max_size=1g
+        inactive=60m
+        use_temp_path=off;
+
+    proxy_cache_path /var/cache/nginx/static
+        levels=1:2
+        keys_zone=static_cache:10m
+        max_size=5g
+        inactive=7d
+        use_temp_path=off;
+
+    # Upstreams
+    include /etc/nginx/conf.d/upstreams/*.conf;
+
+    # Virtual Hosts
+    include /etc/nginx/conf.d/*.conf;
+    include /etc/nginx/sites-enabled/*;
+}]]></code>
+      </section>
+      <section name="ssl-params-snippet">
+        <code lang="nginx"><![CDATA[# /etc/nginx/snippets/ssl-params.conf
+
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_prefer_server_ciphers on;
+ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+
+ssl_session_cache shared:SSL:10m;
+ssl_session_timeout 1d;
+ssl_session_tickets off;
+
+# OCSP Stapling
+ssl_stapling on;
+ssl_stapling_verify on;
+resolver 8.8.8.8 8.8.4.4 1.1.1.1 valid=300s;
+resolver_timeout 5s;
+
+# DH Parameters (generate with: openssl dhparam -out /etc/nginx/ssl/dhparam.pem 4096)
+ssl_dhparam /etc/nginx/ssl/dhparam.pem;]]></code>
+      </section>
+      <section name="security-headers-snippet">
+        <code lang="nginx"><![CDATA[# /etc/nginx/snippets/security-headers.conf
+
+# HSTS (1 year, include subdomains, preload)
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+
+# Content Security Policy (adjust based on your needs)
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';" always;
+
+# XSS Protection
+add_header X-XSS-Protection "1; mode=block" always;
+
+# Content Type Options
+add_header X-Content-Type-Options "nosniff" always;
+
+# Frame Options
+add_header X-Frame-Options "DENY" always;
+
+# Referrer Policy
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+# Permissions Policy
+add_header Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=()" always;]]></code>
+      </section>
+      <section name="security-headers-api-snippet">
+        <code lang="nginx"><![CDATA[# /etc/nginx/snippets/security-headers-api.conf
+
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "DENY" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;]]></code>
+      </section>
+      <section name="proxy-params-snippet">
+        <code lang="nginx"><![CDATA[# /etc/nginx/snippets/proxy-params.conf
+
+proxy_http_version 1.1;
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Forwarded-Host $host;
+proxy_set_header X-Forwarded-Port $server_port;
+proxy_set_header Connection "";
+
+# Timeouts
+proxy_connect_timeout 60s;
+proxy_send_timeout 60s;
+proxy_read_timeout 60s;
+
+# Buffering
+proxy_buffering on;
+proxy_buffer_size 4k;
+proxy_buffers 8 16k;
+proxy_busy_buffers_size 24k;
+
+# Error handling
+proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;
+proxy_next_upstream_tries 3;]]></code>
+      </section>
+      <section name="websocket-params-snippet">
+        <code lang="nginx"><![CDATA[# /etc/nginx/snippets/websocket-params.conf
+
+proxy_http_version 1.1;
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection $connection_upgrade;
+
+# Extended timeouts for long-running connections
+proxy_read_timeout 86400s;
+proxy_send_timeout 86400s;
+
+# Disable buffering for real-time
+proxy_buffering off;]]></code>
+      </section>
+      <section name="static-site-template">
+        <code lang="nginx"><![CDATA[# /etc/nginx/sites-available/DOMAIN.conf
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name DOMAIN www.DOMAIN;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name DOMAIN www.DOMAIN;
+
+    ssl_certificate /etc/letsencrypt/live/DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/DOMAIN/privkey.pem;
+    include /etc/nginx/snippets/ssl-params.conf;
+    include /etc/nginx/snippets/security-headers.conf;
+
+    root /var/www/DOMAIN/public;
+    index index.html;
+
+    access_log /var/log/nginx/DOMAIN.access.log main;
+    error_log /var/log/nginx/DOMAIN.error.log warn;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+}]]></code>
+      </section>
+      <section name="reverse-proxy-template">
+        <code lang="nginx"><![CDATA[# /etc/nginx/sites-available/api.DOMAIN.conf
+
+upstream UPSTREAM_NAME {
+    least_conn;
+    server 127.0.0.1:PORT weight=5 max_fails=3 fail_timeout=30s;
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.DOMAIN;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name api.DOMAIN;
+
+    ssl_certificate /etc/letsencrypt/live/DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/DOMAIN/privkey.pem;
+    include /etc/nginx/snippets/ssl-params.conf;
+    include /etc/nginx/snippets/security-headers-api.conf;
+
+    access_log /var/log/nginx/api.DOMAIN.access.log json;
+    error_log /var/log/nginx/api.DOMAIN.error.log warn;
+
+    limit_req zone=api burst=50 nodelay;
+
+    location / {
+        proxy_pass http://UPSTREAM_NAME;
+        include /etc/nginx/snippets/proxy-params.conf;
+    }
+
+    location /health {
+        proxy_pass http://UPSTREAM_NAME/health;
+        access_log off;
+    }
+}]]></code>
+      </section>
+      <section name="upstream-definition-template">
+        <code lang="nginx"><![CDATA[# /etc/nginx/conf.d/upstreams/backend.conf
+
+upstream backend_app {
+    # Load balancing method (choose one)
+    # least_conn;    # Least connections
+    # ip_hash;       # Sticky sessions
+    # random;        # Random selection
+
+    # Servers
+    server 127.0.0.1:8000 weight=5 max_fails=3 fail_timeout=30s;
+    server 127.0.0.1:8001 weight=5 max_fails=3 fail_timeout=30s;
+    server 127.0.0.1:8002 backup;
+
+    # Keepalive connections
+    keepalive 32;
+}]]></code>
+      </section>
+      <section name="cache-configuration-template">
+        <code lang="nginx"><![CDATA[# Add to location block
+
+# Enable caching
+proxy_cache CACHE_ZONE_NAME;
+proxy_cache_key "$scheme$request_method$host$request_uri";
+proxy_cache_valid 200 10m;
+proxy_cache_valid 301 302 1m;
+proxy_cache_valid 404 1m;
+
+# Serve stale on errors
+proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+proxy_cache_background_update on;
+proxy_cache_lock on;
+proxy_cache_revalidate on;
+
+# Cache status header
+add_header X-Cache-Status $upstream_cache_status;
+
+# Bypass cache
+proxy_cache_bypass $http_cache_control $http_authorization;
+proxy_no_cache $http_pragma $http_authorization;]]></code>
+      </section>
+      <section name="rate-limiting-template">
+        <code lang="nginx"><![CDATA[# Define in http block
+limit_req_zone $binary_remote_addr zone=ZONE_NAME:10m rate=RATE;
+limit_conn_zone $binary_remote_addr zone=CONN_ZONE:10m;
+
+# Use in server/location block
+limit_req zone=ZONE_NAME burst=BURST nodelay;
+limit_conn CONN_ZONE MAX_CONN;
+
+# Custom error pages
+limit_req_status 429;
+limit_conn_status 429;]]></code>
+      </section>
+      <section name="lets-encrypt-renewal-hook">
+        <code lang="bash"><![CDATA[#!/bin/bash
+# /etc/letsencrypt/renewal-hooks/deploy/nginx-reload.sh
+
+nginx -t && systemctl reload nginx]]></code>
+      </section>
+      <section name="logrotate-config">
+        <code lang="text"><![CDATA[# /etc/logrotate.d/nginx
+
+/var/log/nginx/*.log {
+    daily
+    missingok
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create 0640 www-data adm
+    sharedscripts
+    postrotate
+        [ -f /var/run/nginx.pid ] && kill -USR1 `cat /var/run/nginx.pid`
+    endscript
+}]]></code>
+      </section>
+    </section>
+
+    <section name="prompts">
+      <prompt purpose="generate-static-site-config"><![CDATA[Generate an Nginx configuration for a static website with these requirements:
+
+Domain: {DOMAIN}
+Root path: {ROOT_PATH}
+Framework: {React/Vue/Next.js/Static HTML}
+
+Requirements:
+- HTTPS with Let's Encrypt certificates
+- HTTP to HTTPS redirect
+- Security headers (HSTS, CSP, X-Frame-Options, X-Content-Type-Options)
+- Gzip compression
+- Static asset caching (1 year for immutable assets)
+- SPA routing (try_files with fallback to index.html)
+- Block access to hidden files (.git, .env)
+- JSON access log format
+
+Follow 2025 best practices:
+- TLS 1.2/1.3 only
+- Modern cipher suites
+- OCSP stapling
+- DH parameters
+
+Output the complete configuration file and any required snippets.]]></prompt>
+      <prompt purpose="generate-reverse-proxy-config"><![CDATA[Generate an Nginx reverse proxy configuration with these requirements:
+
+Domain: {DOMAIN}
+Backend: {BACKEND_URL} (e.g., http://127.0.0.1:8000)
+Backend type: {Node.js/Python/Go/Java}
+
+Requirements:
+- HTTPS with Let's Encrypt
+- Load balancing: {yes/no, if yes: number of backends}
+- Health check endpoint: {/health}
+- WebSocket support: {yes/no}
+- Caching: {yes/no, if yes: cache duration}
+- Rate limiting: {requests per second}
+
+Include:
+- Proper proxy headers (X-Real-IP, X-Forwarded-For, X-Forwarded-Proto)
+- Connection keepalive
+- Appropriate timeouts
+- Error handling with proxy_next_upstream
+- Security headers
+
+Output:
+1. Main site configuration
+2. Upstream definition
+3. Required snippets
+4. Recommended nginx.conf settings]]></prompt>
+      <prompt purpose="generate-websocket-config"><![CDATA[Generate an Nginx configuration for WebSocket proxying:
+
+Domain: {DOMAIN}
+WebSocket path: {/ws or /socket.io/}
+Backend: {BACKEND_URL}
+Protocol: {WebSocket/Socket.IO}
+
+Requirements:
+- HTTPS with WSS support
+- HTTP upgrade headers
+- Extended timeouts for long-running connections
+- Fallback for non-WebSocket requests
+- Connection status logging
+
+Include the map directive for Connection header handling.]]></prompt>
+      <prompt purpose="generate-api-gateway-config"><![CDATA[Generate an Nginx API gateway configuration:
+
+API Domain: {api.example.com}
+Services:
+- {/users -> http://users-service:8001}
+- {/products -> http://products-service:8002}
+- {/orders -> http://orders-service:8003}
+
+Requirements:
+- Path-based routing to different backends
+- Rate limiting per endpoint:
+  - General: {10 req/s}
+  - Write operations: {5 req/s}
+  - Login: {5 req/min}
+- Response caching for GET requests
+- CORS headers
+- JWT validation location (for auth proxy)
+- Health check aggregation
+- Request/response logging (JSON)
+- Circuit breaker (proxy_next_upstream)
+
+Include upstream definitions and cache configuration.]]></prompt>
+      <prompt purpose="generate-load-balancer-config"><![CDATA[Generate an Nginx load balancer configuration:
+
+Domain: {DOMAIN}
+Backend servers:
+- {IP1:PORT} (weight: {5})
+- {IP2:PORT} (weight: {5})
+- {IP3:PORT} (weight: {3}, backup: {yes/no})
+
+Requirements:
+- Load balancing algorithm: {round-robin/least_conn/ip_hash}
+- Health checks: {passive/active}
+- Session persistence: {yes/no, method: ip_hash/cookie}
+- Connection draining
+- Failover configuration
+- Keepalive connections to backends
+- Monitoring endpoint (/nginx_status)
+
+Include health check configuration and failover handling.]]></prompt>
+      <prompt purpose="security-hardening"><![CDATA[Review and harden this Nginx configuration for security:
+
+{PASTE CONFIGURATION}
+
+Check for:
+1. SSL/TLS configuration (TLS 1.2+ only, strong ciphers)
+2. Security headers (HSTS, CSP, X-Frame-Options, etc.)
+3. Information disclosure (server_tokens, error pages)
+4. Access controls (sensitive paths, hidden files)
+5. Rate limiting
+6. Request size limits
+7. Timeout configurations
+8. Buffer size limits
+
+Provide:
+1. List of security issues found
+2. Severity rating for each issue
+3. Corrected configuration
+4. Additional recommendations]]></prompt>
+      <prompt purpose="performance-optimization"><![CDATA[Optimize this Nginx configuration for performance:
+
+{PASTE CONFIGURATION}
+
+Current setup:
+- Expected traffic: {requests/second}
+- Server specs: {CPU cores, RAM}
+- Content type: {static/dynamic/mixed}
+- CDN: {yes/no}
+
+Optimize for:
+1. Worker processes and connections
+2. File descriptor limits
+3. Keepalive settings
+4. Gzip compression
+5. Caching configuration
+6. Buffer sizes
+7. Sendfile and TCP settings
+8. Connection pooling to upstreams
+
+Provide optimized configuration with explanations for each change.]]></prompt>
+      <prompt purpose="troubleshooting"><![CDATA[Troubleshoot this Nginx issue:
+
+Problem: {DESCRIBE THE ISSUE}
+
+Symptoms:
+- {Error message or behavior}
+- {Status codes returned}
+- {Logs excerpts}
+
+Current configuration:
+{PASTE RELEVANT CONFIG}
+
+Environment:
+- Nginx version: {version}
+- OS: {Ubuntu/Debian/CentOS}
+- Backend: {type and version}
+
+Provide:
+1. Root cause analysis
+2. Step-by-step debugging commands
+3. Configuration fixes
+4. Prevention recommendations]]></prompt>
+      <prompt purpose="migration-from-apache"><![CDATA[Migrate this Apache/HAProxy configuration to Nginx:
+
+Source configuration:
+{PASTE APACHE/HAPROXY CONFIG}
+
+Requirements:
+- Preserve all functionality
+- Improve security with 2025 best practices
+- Add missing features:
+  - {Rate limiting}
+  - {Caching}
+  - {Security headers}
+
+Output:
+1. Equivalent Nginx configuration
+2. Key differences to note
+3. Additional recommendations]]></prompt>
+      <prompt purpose="docker-kubernetes-config"><![CDATA[Generate Nginx configuration for containerized deployment:
+
+Environment: {Docker/Kubernetes}
+Architecture:
+- Frontend: {service name}
+- Backend API: {service name}
+- Other services: {list}
+
+Requirements:
+- Environment variable substitution
+- Health/readiness probes
+- Graceful shutdown
+- Horizontal scaling support
+- Service discovery: {DNS/environment variables}
+- ConfigMap/Secret integration (for K8s)
+
+Output:
+1. nginx.conf template
+2. Dockerfile or ConfigMap
+3. Entrypoint script (if needed)
+4. Kubernetes manifests (if applicable)]]></prompt>
+      <prompt purpose="ssl-certificate-setup"><![CDATA[Set up SSL/TLS for Nginx with Let's Encrypt:
+
+Domains:
+- {example.com}
+- {www.example.com}
+- {api.example.com}
+
+Requirements:
+- Wildcard certificate: {yes/no}
+- DNS provider: {Cloudflare/Route53/manual}
+- Auto-renewal
+- OCSP stapling
+- HSTS preload ready
+
+Provide:
+1. Certbot installation commands
+2. Certificate generation commands
+3. Nginx SSL configuration
+4. Renewal hook script
+5. Cron job for renewal
+6. Verification steps]]></prompt>
+      <prompt purpose="cache-strategy"><![CDATA[Design a caching strategy for this application:
+
+Application type: {E-commerce/Blog/API/SPA}
+Content types:
+- Static assets: {JS, CSS, images}
+- API responses: {list endpoints}
+- Dynamic pages: {list}
+
+Traffic patterns:
+- Peak traffic: {requests/second}
+- Cache hit target: {percentage}
+
+Requirements:
+- Browser caching headers
+- Proxy cache for API responses
+- Cache invalidation strategy
+- Stale-while-revalidate
+- Cache bypass for authenticated users
+
+Provide:
+1. proxy_cache_path configuration
+2. Per-location cache settings
+3. Cache key design
+4. Headers configuration
+5. Purge/invalidation approach]]></prompt>
+    </section>
+
+    <section name="agent-integration">
+      <section name="agentic-workflow">
+        <p>Treat nginx config as code with strict CI gates: nginx -t inside a container with the same nginx version as prod; if it passes, render diffs against the live nginx -T output; require human review for any change to TLS, security headers, or rate limits; auto-merge for routine vhost adds. One agent generates config from a template (variables: domain, upstream, port, TLS cert path, headers); a reviewer agent (Opus) checks for the failure modes below. Deploy via SCP + systemctl reload nginx with a rollback symlink.</p>
+        <p>Recommended subagents: faion-sdd-executor-agent — drives spec → config → review → deploy → verify. A custom nginx-config-auditor (Opus, read-only) — given the diff + nginx -T output, checks: trailing-slash mismatch, missing Host header, missing WebSocket headers, weak TLS, header-inheritance loss, rate-limit keying. password-scrubber-agent — auth_basic_user_file paths, GitHub deploy keys.</p>
+      </section>
+      <section name="prompt-patterns">
+        <prompt purpose="generate-nginx-vhost"><![CDATA[Generate nginx vhost for <domain>.
+Inputs: upstream (host:port), TLS provider (certbot/cloudflare-origin), HTTP/2 + HTTP/3?, websocket?, max upload size, security headers preset (strict|moderate|legacy), rate limit (rps|off).
+Output: (1) /etc/nginx/sites-available/<domain> file, (2) snippet usage list, (3) certbot/acme commands, (4) reload + verify steps (curl -I, openssl s_client, qualys link), (5) rollback steps.
+Forbid: TLSv1.0/1.1, server_tokens on, missing security headers, missing proxy_set_header Host, missing client_max_body_size, gzip+CDN double compression.]]></prompt>
+        <prompt purpose="audit-nginx-diff"><![CDATA[Audit diff. Produce JSON: {trailing_slash_changes:[], host_header_changes:[], tls_changes:[], header_inheritance_breaks:[], rate_limit_changes:[], approve:bool}.]]></prompt>
+      </section>
+      <section name="limitations">
+        <list>
+          <item>proxy_pass http://upstream; with trailing slash vs without changes path semantics — agents flip a slash and break routing silently.</item>
+          <item>proxy_set_header Host $host; is required for vhost routing on the upstream; default proxy_set_header Host $proxy_host; sends the upstream's IP — agents miss it and the upstream returns 404.</item>
+          <item>client_max_body_size defaults to 1MB; file upload endpoints break with 413; needs to be set at server or location level, not just http.</item>
+          <item>WebSockets need Upgrade + Connection headers; HTTP/1.1 forced; without proxy_http_version 1.1; the connection downgrades and breaks.</item>
+          <item>TLSv1.0/1.1 still appear in ssl-config.mozilla.org legacy presets — agents copy the legacy preset and Qualys grade drops to B.</item>
+          <item>gzip on; plus a CDN that compresses again can corrupt response bodies; force one layer.</item>
+          <item>Rate limiting (limit_req_zone) keyed on $binary_remote_addr behind a CDN/LB rate-limits the LB IP, not the user. Use $http_x_forwarded_for after set_real_ip_from is configured.</item>
+          <item>location / order pitfalls: prefix vs regex matching — agents reorder and inadvertently shadow auth gates.</item>
+          <item>add_header does NOT inherit if a child location declares any add_header; security headers vanish in subroutes. Use more_set_headers (headers-more module) or repeat per location.</item>
+          <item>Reload (nginx -s reload) preserves SSL cert pinning state; if certs rotated but workers didn't, browsers see stale certs. Always nginx -t &amp;&amp; systemctl reload nginx and verify with openssl s_client.</item>
+        </list>
+      </section>
+      <section name="ai-agent-gotchas">
+        <list>
+          <item>LLMs hallucinate proxy_pass semantics: proxy_pass http://up/; strips matched prefix, proxy_pass http://up; doesn't. Always show both forms in tests before merging.</item>
+          <item>Agents copy "Modern" Mozilla TLS preset onto a B2C site with old Android clients; users get handshake failures. Always check client compat.</item>
+          <item>add_header overshadowing: agent adds a single new header in a location block, suddenly the global HSTS header disappears for that route. Use headers-more or repeat add_header always.</item>
+          <item>Rate-limit zones are per-worker by default; aggregate is rps x workers. Agents calculate as if zones are global.</item>
+          <item>Agents enable proxy_buffering off; to "fix" SSE/streaming and inadvertently expose memory pressure on the upstream. Scope it to the streaming endpoint only.</item>
+          <item>WebSocket fix involves both Upgrade and Connection headers AND proxy_http_version 1.1;. Agents ship two of three and chase ghosts.</item>
+          <item>ACME renewal failure mode: certbot writes to /etc/letsencrypt/live/... but nginx caches old fd; without systemctl reload nginx post-renew, certs go stale. Add a --deploy-hook to certbot.</item>
+          <item>Human-in-loop checkpoint: any change to TLS suite, HSTS, CSP, or auth-gating routes must be human-approved with a staging-domain test plan.</item>
+          <item>Reload vs restart: reload preserves connections; restart drops them. Agents restart when reload would do, causing user-visible blips.</item>
+          <item>When proxying to localhost, always use 127.0.0.1:PORT, not localhost:PORT — localhost resolves to IPv6 first on dual-stack and the upstream may not listen on [::1].</item>
+        </list>
+      </section>
+      <section name="cli-tools">
+        <list>
+          <item>nginx -t / nginx -T — Test + dump effective config — builtin</item>
+          <item>nginx -s reload / systemctl reload nginx — Hot reload — builtin</item>
+          <item>certbot / acme.sh / lego — ACME issuance + renewal — https://eff-certbot.readthedocs.io / https://acme.sh / https://go-acme.github.io/lego/</item>
+          <item>openssl s_client -connect host:443 -servername host — TLS handshake debug — builtin</item>
+          <item>curl -I / curl -v --resolve — Header + cache + cert checks — builtin</item>
+          <item>ngxtop — Live access-log analysis — https://github.com/lebinh/ngxtop</item>
+          <item>goaccess — Real-time log analyzer dashboard — https://goaccess.io/</item>
+          <item>nginx-prometheus-exporter — Stub-status to Prometheus — https://github.com/nginxinc/nginx-prometheus-exporter</item>
+          <item>gixy — nginx config security linter — https://github.com/yandex/gixy</item>
+          <item>nginxconfig.io — Mozilla-aligned config generator — https://www.digitalocean.com/community/tools/nginx</item>
+        </list>
+      </section>
+      <section name="services-and-tools">
+        <list>
+          <item>nginx OSS — OSS, Agent-friendly: Yes — Default; bundled in Debian/Ubuntu/RHEL.</item>
+          <item>nginx Plus (F5) — Commercial, Agent-friendly: Yes — API-driven dynamic upstreams, JWT auth, OIDC.</item>
+          <item>OpenResty — OSS, Agent-friendly: Yes — nginx + Lua; powerful but agents must understand *_by_lua_block semantics.</item>
+          <item>Caddy — OSS, Agent-friendly: Yes — Automatic HTTPS; simpler than nginx — consider for greenfield.</item>
+          <item>Traefik — OSS, Agent-friendly: Yes — Better with K8s/Docker labels; if you're on a VM, nginx is simpler.</item>
+          <item>Cloudflare Origin Cert + nginx — SaaS + OSS, Agent-friendly: Yes — 15-year origin cert; pair with authenticated origin pulls.</item>
+          <item>Let's Encrypt — SaaS (free), Agent-friendly: Yes — ACME via certbot/acme.sh; rate limits real.</item>
+          <item>ZeroSSL — SaaS, Agent-friendly: Yes — Alternative ACME CA; useful when LE rate-limits.</item>
+          <item>nginx-prometheus-exporter — OSS, Agent-friendly: Yes — /stub_status to Prometheus.</item>
+          <item>Mozilla SSL Configuration Generator — tool, Agent-friendly: Yes — Authoritative for cipher suite presets.</item>
+        </list>
+      </section>
+      <section name="secure-vhost-skeleton">
+        <p>Inline secure-vhost skeleton (proxy + WebSocket + security headers + hidden file deny):</p>
+        <code lang="nginx"><![CDATA[# /etc/nginx/sites-available/example.com
+server {
+    listen 80;
+    listen [::]:80;
+    server_name example.com www.example.com;
+    return 301 https://example.com$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    include /etc/nginx/snippets/ssl-params.conf;       # TLS1.2/1.3, OCSP, modern ciphers
+    include /etc/nginx/snippets/security-headers.conf; # HSTS, CSP, X-Frame-Options, ...
+
+    client_max_body_size 25m;
+    server_tokens off;
+
+    # Rate limit at server scope; key by real client IP.
+    limit_req zone=api_burst burst=20 nodelay;
+
+    location / {
+        proxy_pass         http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_set_header   Upgrade           $http_upgrade;
+        proxy_set_header   Connection        $connection_upgrade;  # via map
+        proxy_read_timeout 60s;
+    }
+
+    location ~ /\.(git|env|hg|svn) { deny all; access_log off; log_not_found off; }
+}]]></code>
+      </section>
+      <section name="decision-best-practices">
+        <list>
+          <item>One snippet per concern (ssl-params.conf, security-headers.conf, proxy-params.conf); include into vhosts. Keeps drift centralized.</item>
+          <item>Pin nginx version (apt pin or container digest) — major versions change defaults (e.g. http2 + http3 syntax).</item>
+          <item>TLS via Mozilla "Intermediate" preset by default; "Modern" only when you control all clients.</item>
+          <item>HSTS: start with max-age=300 for one week, validate, then max-age=63072000; includeSubDomains; preload and submit to hstspreload.org.</item>
+          <item>CSP: deploy in Content-Security-Policy-Report-Only mode for a week, collect violations via report-uri, then enforce.</item>
+          <item>error_log at warn in prod; info/debug only when debugging — debug at scale fills disk.</item>
+          <item>Access logs in JSON (log_format json escape=json) → ship to Loki/ELK.</item>
+          <item>Run gixy in CI; treat findings as blockers.</item>
+          <item>Keep /etc/nginx in Git; deploy via rsync + nginx -t precheck.</item>
+          <item>For HTTP/3: needs nginx 1.25+ with QUIC build, UDP/443 open, separate listen 443 quic;.</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="agent-selection">
+      <list>
+        <item>Set up GitHub Actions workflow from template — Model: haiku — Rationale: Pattern application, simple configuration</item>
+        <item>Design CI/CD pipeline architecture — Model: opus — Rationale: Complex system design with many variables</item>
+        <item>Write terraform code for infrastructure — Model: sonnet — Rationale: Implementation with moderate complexity</item>
+        <item>Debug failing pipeline step — Model: sonnet — Rationale: Debugging and problem-solving</item>
+        <item>Implement AIOps anomaly detection — Model: opus — Rationale: Novel ML approach, complex decision</item>
+        <item>Configure webhook and secret management — Model: haiku — Rationale: Mechanical setup using checklists</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://nginx.org/en/docs/">Nginx Documentation</link>
+      <link href="https://docs.nginx.com/nginx/admin-guide/">Nginx Admin Guide</link>
+      <link href="https://ssl-config.mozilla.org/">Mozilla SSL Configuration Generator</link>
+      <link href="https://www.f5.com/company/blog/nginx/avoiding-top-10-nginx-configuration-mistakes">F5 NGINX Best Practices</link>
+      <link href="https://github.com/trimstray/nginx-admins-handbook">nginx-admins-handbook</link>
+      <link href="https://beguier.eu/nicolas/articles/nginx-tls-security-configuration.html">Qualys SSL Labs A+ Guide</link>
+    </see-also>
+  </content>
+</methodology>
