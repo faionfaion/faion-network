@@ -1,0 +1,388 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="testing-patterns">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>testing-developer</domain>
+    <summary>Structural patterns (AAA/GWT), test data (Builder/Object Mother), test doubles, pyramid architecture, Page Object Model, and property-based testing.</summary>
+    <tags>
+      <tag>testing</tag>
+      <tag>test-patterns</tag>
+      <tag>aaa</tag>
+      <tag>page-object-model</tag>
+      <tag>test-doubles</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Testing Patterns</title>
+
+    <summary>Proven structural and data patterns for writing maintainable, reliable tests — applicable across Python, TypeScript, and Go. Covers test structure (AAA/GWT), data creation (Builder/Object Mother), test doubles, architecture strategy (pyramid), UI patterns (POM), isolation, and property-based testing.</summary>
+
+    <why>
+      <p>Tests without a consistent structure are hard to debug, slow down CI when the wrong layer is over-tested, and drift toward false positives. These patterns solve the recurring problems: unclear failure points, tightly-coupled test data, shared mutable state, and brittle selectors.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Establishing or reviewing a test strategy for a new project</item>
+        <item>Refactoring tangled tests that are hard to maintain</item>
+        <item>Adding test coverage to a module with complex data setup</item>
+        <item>Building E2E test suites that need to survive UI churn</item>
+        <item>Choosing between test double types (mock vs stub vs fake)</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Trivial one-off scripts with no business logic</item>
+        <item>Pure data-transformation functions with no branches — just use direct assertions</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="test-structure">
+      <title>Test Structure: AAA and Given-When-Then</title>
+
+      <p>Arrange-Act-Assert (AAA) and Given-When-Then (BDD) are the two primary structural patterns for tests. AAA separates setup, execution, and verification; GWT aligns tests with business language.</p>
+
+      <section name="arrange-act-assert">
+        <rule>
+          <statement>Structure every test into exactly three sections separated by blank lines: Arrange (setup), Act (single call), Assert (verify). The Act section must be a single statement.</statement>
+          <rationale>A multi-statement Act means you are testing multiple behaviors; split into separate tests. The blank-line separation makes it immediately clear which part of a failing test is at fault.</rationale>
+        </rule>
+        <example type="good" title="Python AAA">
+          <code lang="python"><![CDATA[
+def test_calculate_order_total_applies_discount():
+    # Arrange
+    order = OrderBuilder().with_item("Widget", 100.00).with_discount(0.10).build()
+
+    # Act
+    total = calculate_order_total(order)
+
+    # Assert
+    assert total == 90.00
+          ]]></code>
+        </example>
+        <example type="good" title="TypeScript AAA">
+          <code lang="typescript"><![CDATA[
+it('should return null for empty input', () => {
+  // Arrange
+  const sut = new UserService(mockRepo);
+
+  // Act
+  const result = sut.findByEmail('');
+
+  // Assert
+  expect(result).toBeNull();
+});
+          ]]></code>
+        </example>
+        <example type="good" title="Go AAA">
+          <code lang="go"><![CDATA[
+func TestCalculateTotal_WithDiscount(t *testing.T) {
+    // Arrange
+    order := Order{Items: []Item{{Price: 100.00}}, DiscountRate: 0.10}
+
+    // Act
+    total, err := CalculateTotal(order)
+
+    // Assert
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+    if total != 90.00 {
+        t.Errorf("expected 90.00, got %.2f", total)
+    }
+}
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="given-when-then">
+        <rule>
+          <statement>Use Given-When-Then naming and comments for tests that map directly to business requirements or acceptance criteria; it is the same structure as AAA with business-readable labels.</statement>
+          <rationale>GWT makes tests readable to non-engineers and serves as executable documentation. The mapping is direct: Given=Arrange, When=Act, Then=Assert.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+def test_premium_user_gets_free_shipping():
+    # Given
+    user = UserMother.premium().build()
+    order = OrderMother.high_value().build()
+
+    # When
+    shipping_cost = calculate_shipping(user, order)
+
+    # Then
+    assert shipping_cost == 0.00
+          ]]></code>
+        </example>
+        <note>GWT and AAA are equivalent in structure. Use GWT when the test name and comments will be read by product owners or QA; use AAA for pure unit tests with no business language requirement.</note>
+      </section>
+    </section>
+
+    <section name="test-data-patterns">
+      <title>Test Data Patterns: Builder and Object Mother</title>
+
+      <p>Test Data Builder provides a fluent API for constructing objects with sensible defaults; Object Mother provides pre-named scenarios. Combine them: Object Mother returns a Builder for flexible customization.</p>
+
+      <section name="test-data-builder">
+        <rule>
+          <statement>Create a Builder class per domain entity that initializes all fields with valid defaults; each with-* method returns `this` for chaining; build() returns a deep copy of the accumulated state.</statement>
+          <rationale>Tests should specify only the properties relevant to the scenario under test. Builder defaults prevent test code from depending on irrelevant fields, making tests resilient to schema changes.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+// See templates/entity-builder.ts for full implementation
+const activeAdmin = new UserBuilder()
+  .withEmail('admin@example.com')
+  .withRole('admin')
+  .asActive()
+  .build();
+
+// Test only specifies what matters
+const inactiveUser = new UserBuilder().asInactive().build();
+          ]]></code>
+        </example>
+        <reference path="templates/entity-builder.ts">Full TypeScript EntityBuilder implementation</reference>
+      </section>
+
+      <section name="object-mother">
+        <rule>
+          <statement>Create an Object Mother with static factory methods for common test scenarios; each method returns a configured Builder so callers can further customize before calling build().</statement>
+          <rationale>Object Mother eliminates copy-paste of common setup across test files. Returning a Builder (not a built object) gives callers the flexibility to override specific fields without duplicating the whole preset.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+// Object Mother returns Builder — caller can override
+const admin = UserMother.admin().withEmail('custom@example.com').build();
+
+// Or use the preset as-is
+const guest = UserMother.guest().build();
+
+// Compose scenarios
+const shippedOrder = OrderMother.paid().asShipped().build();
+          ]]></code>
+        </example>
+        <reference path="templates/object-mother.ts">Full TypeScript Object Mother implementation</reference>
+      </section>
+
+      <section name="fresh-fixture-rule">
+        <rule>
+          <statement>Each test must create its own test data from scratch; never share mutable fixture objects across tests via module-level variables.</statement>
+          <rationale>Shared mutable fixtures create test-order dependencies. When one test mutates a shared object, subsequent tests may pass or fail depending on execution order — a flaky test root cause.</rationale>
+        </rule>
+        <antipattern>
+          <description>Module-level mutable fixture objects shared across tests.</description>
+          <reason>Any mutation by one test leaves the fixture in unexpected state for the next test, causing intermittent failures.</reason>
+        </antipattern>
+      </section>
+    </section>
+
+    <section name="test-doubles">
+      <title>Test Doubles: Mock, Stub, Spy, Fake, Dummy</title>
+
+      <p>Five test double types (Meszaros vocabulary): Dummy fills a parameter, Stub returns canned values, Spy records calls, Fake is a working simplified implementation, Mock verifies expected interactions. Stubs test state; Mocks test behavior.</p>
+
+      <section name="decision-table">
+        <rule>
+          <statement>Select the simplest double that satisfies the test: Dummy if the parameter is never used, Stub if you need a controlled return value, Mock if you need to assert the dependency was called correctly, Fake if a real but simplified implementation is acceptable, Spy when you need post-hoc verification without strict pre-specification.</statement>
+          <rationale>Over-mocking creates brittle tests that break on implementation change, not behavior change. A Fake (e.g., in-memory repository) is more robust than a Mock with many pre-specified expectations.</rationale>
+        </rule>
+        <list>
+          <item>Dummy — fills unused parameters; no behavior needed</item>
+          <item>Stub — returns predefined value; test checks returned state</item>
+          <item>Spy — records calls for after-the-fact assertion; flexible</item>
+          <item>Fake — working implementation (e.g., in-memory DB); realistic behavior</item>
+          <item>Mock — pre-specified expectations; fails if call sequence or args don't match</item>
+        </list>
+      </section>
+
+      <section name="stub-vs-mock">
+        <rule>
+          <statement>Use a Stub when the test assertion is on the return value of the code under test; use a Mock when the test assertion is that a specific method was called on the dependency.</statement>
+          <rationale>Mixing the two purposes makes tests test implementation details when they should test behavior, leading to high maintenance cost.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+# STUB — test cares about return value, not whether repo was called
+def test_user_service_returns_none_for_unknown_email(user_service, repo_stub):
+    repo_stub.find_by_email.return_value = None
+
+    result = user_service.find_by_email("unknown@example.com")
+
+    assert result is None  # asserting state
+
+# MOCK — test cares that email was sent
+def test_user_service_sends_welcome_email_on_registration(user_service, email_mock):
+    user_service.register(email="new@example.com", name="New")
+
+    email_mock.send_welcome.assert_called_once_with("new@example.com")  # asserting behavior
+          ]]></code>
+        </example>
+        <antipattern>
+          <description>Asserting on mock call counts for behavior that is an implementation detail, not a business requirement.</description>
+          <reason>The test becomes coupled to the exact implementation, breaking on refactoring even when behavior is preserved.</reason>
+        </antipattern>
+      </section>
+
+      <section name="fake-objects">
+        <rule>
+          <statement>Prefer a Fake (in-memory repository, in-process message bus) over a Mock for integration boundaries that are called many times or in complex sequences.</statement>
+          <rationale>A Fake with correct semantics is more faithful than a Mock with many pre-programmed return values. It tests the same logic without requiring a real external service.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+class InMemoryUserRepository:
+    """Fake — implements the real interface with in-memory storage."""
+
+    def __init__(self):
+        self._store: dict[str, User] = {}
+
+    def save(self, user: User) -> None:
+        self._store[user.id] = user
+
+    def find_by_id(self, user_id: str) -> User | None:
+        return self._store.get(user_id)
+
+    def find_by_email(self, email: str) -> User | None:
+        return next((u for u in self._store.values() if u.email == email), None)
+          ]]></code>
+        </example>
+      </section>
+    </section>
+
+    <section name="test-architecture">
+      <title>Test Architecture: Pyramid, Trophy, and Flaky Tests</title>
+
+      <p>Test Pyramid (70% unit / 20% integration / 10% E2E) is the default strategy. Testing Trophy shifts weight to integration tests for UI-heavy products. Ice Cream Cone is the antipattern. Flaky tests must be quarantined, not tolerated.</p>
+
+      <section name="test-pyramid">
+        <rule>
+          <statement>Default to the 70/20/10 ratio: 70% unit tests, 20% integration tests, 10% E2E tests. Adjust the ratio based on architecture but never invert it.</statement>
+          <rationale>Unit tests at 50ms each vs E2E tests at 5 minutes each — 1,000 of each represents 50 seconds vs 83 hours of CI time. The pyramid keeps the test suite fast enough to run on every commit.</rationale>
+        </rule>
+        <note>Testing Trophy (Kent C. Dodds) shifts the balance toward integration tests for React applications, where component integration errors dominate. Testing Honeycomb (Spotify) emphasizes contract tests for microservices. Choose based on where bugs actually originate.</note>
+      </section>
+
+      <section name="ice-cream-cone-antipattern">
+        <antipattern>
+          <description>Inverted pyramid: many E2E tests, few unit tests, no integration tests.</description>
+          <reason>E2E tests at 5 minutes each make CI prohibitively slow and provide poor diagnostic signal — a failure tells you something broke, not what or why. Unit tests at 50ms each provide fast, precise feedback and run before every commit.</reason>
+        </antipattern>
+      </section>
+
+      <section name="flaky-test-prevention">
+        <rule>
+          <statement>Quarantine flaky tests immediately into a separate CI job; track failure rate and owner; set a re-integration SLA. Never let a flaky test block the main CI pipeline.</statement>
+          <rationale>A single flaky test in the main pipeline consumes ~40% of QA team attention (State of QA 2025) via reruns and false blame. Quarantine limits blast radius while root-cause investigation proceeds.</rationale>
+        </rule>
+        <list>
+          <item>Use explicit waits (wait_for_selector, waitForResponse) — never sleep()</item>
+          <item>Use stable selectors (data-testid) — never XPath or text content</item>
+          <item>Mock all external services (HTTP, email, queue) — never call real endpoints in unit tests</item>
+          <item>Isolate test data — each test creates its own data, never reads shared mutable state</item>
+          <item>Run tests in parallel with process isolation — never share in-process state across workers</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="page-object-model">
+      <title>Page Object Model and Property-Based Testing</title>
+
+      <p>POM encapsulates page structure and interactions in classes so tests read as user actions and UI changes need updating in one place. Property-based testing generates hundreds of cases automatically and finds edge cases that example-based tests miss.</p>
+
+      <section name="pom">
+        <rule>
+          <statement>Every page or major UI section gets a class with: locators defined in the constructor using data-testid, action methods that return the next page object, and no assertions inside the page class.</statement>
+          <rationale>Locators defined in one class mean a UI restructuring requires one change, not changes in every test. Returning the next page object from action methods gives tests a chainable, type-safe navigation API. Assertions belong in tests, not page objects, to keep the class reusable.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+// Page object — no assertions, actions return next page
+class LoginPage {
+  readonly emailInput = this.page.locator('[data-testid="email-input"]');
+  readonly passwordInput = this.page.locator('[data-testid="password-input"]');
+  readonly loginButton = this.page.locator('[data-testid="login-button"]');
+  readonly errorMessage = this.page.locator('[data-testid="error-message"]');
+
+  constructor(private page: Page) {}
+
+  async goto() { await this.page.goto('/login'); }
+
+  async login(email: string, password: string): Promise<DashboardPage> {
+    await this.emailInput.fill(email);
+    await this.passwordInput.fill(password);
+    await this.loginButton.click();
+    return new DashboardPage(this.page);
+  }
+}
+
+// Test — assertion lives here
+test('valid credentials redirect to dashboard', async ({ page }) => {
+  const login = new LoginPage(page);
+  await login.goto();
+  const dashboard = await login.login('user@example.com', 'secret');
+  await expect(dashboard.welcomeMessage).toBeVisible();
+});
+          ]]></code>
+        </example>
+        <reference path="templates/login-page.ts">Full Playwright POM with BasePage, LoginPage, DashboardPage</reference>
+        <reference path="templates/playwright-fixtures.ts">Playwright fixtures with pre-authenticated page</reference>
+        <antipattern>
+          <description>Using text content or DOM structure as locators (e.g., `text=Login`, `div.form > button:first-child`).</description>
+          <reason>These locators break on copy change or UI refactoring. data-testid attributes are stable by contract and immune to visual redesign.</reason>
+        </antipattern>
+      </section>
+
+      <section name="property-based-testing">
+        <rule>
+          <statement>Write property tests for functions with large input spaces: round-trip properties (encode → decode → original), invariants (balance never negative), and idempotence (f(f(x)) == f(x)). Use Hypothesis (Python) or fast-check (JS).</statement>
+          <rationale>Example-based tests cover a handful of cases; property tests generate hundreds and automatically shrink failing inputs to their minimal reproducible form. This uncovers off-by-one errors and edge cases that no engineer would think to write.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+from hypothesis import given, strategies as st
+
+@given(st.binary())
+def test_encode_decode_roundtrip(data: bytes):
+    """Property: decoding encoded data returns original."""
+    assert decode(encode(data)) == data
+
+@given(st.lists(st.integers()))
+def test_sort_preserves_length(items: list[int]):
+    """Property: sorting does not add or remove elements."""
+    assert len(sorted(items)) == len(items)
+
+@given(st.integers(min_value=1, max_value=1000))
+def test_deposit_increases_balance(amount: int):
+    """Property: depositing always increases balance."""
+    account = Account(balance=100)
+    account.deposit(amount)
+    assert account.balance == 100 + amount
+          ]]></code>
+        </example>
+        <note>Hypothesis shrinks failing cases automatically: if a test fails for a list of 47 integers, it will report the minimal failing list (often 1 or 2 elements). This is the property-based testing killer feature.</note>
+      </section>
+    </section>
+
+    <templates>
+      <template path="templates/entity-builder.ts" purpose="TypeScript fluent builder for domain entities"/>
+      <template path="templates/object-mother.ts" purpose="TypeScript Object Mother returning builders"/>
+      <template path="templates/login-page.ts" purpose="Playwright Page Object Model (BasePage + LoginPage + DashboardPage)"/>
+      <template path="templates/playwright-fixtures.ts" purpose="Playwright custom fixture extension with pre-authenticated page"/>
+    </templates>
+
+    <see-also>
+      <ref slug="test-fixtures"/>
+      <ref slug="mocking-strategies"/>
+      <ref slug="unit-testing"/>
+      <ref slug="integration-testing"/>
+      <ref slug="e2e-testing"/>
+      <link href="https://martinfowler.com/bliki/TestPyramid.html"/>
+      <link href="https://testingjavascript.com/"/>
+    </see-also>
+  </content>
+</methodology>
