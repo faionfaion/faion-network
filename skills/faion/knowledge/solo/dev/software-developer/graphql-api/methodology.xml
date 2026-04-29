@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="graphql-api">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Build GraphQL APIs with schema-first SDL, per-request DataLoader for N+1 prevention, depth/complexity limits, cursor pagination, and graphql-inspector CI diffs.</summary>
+    <tags>
+      <tag>graphql</tag>
+      <tag>api</tag>
+      <tag>dataloader</tag>
+      <tag>pagination</tag>
+      <tag>security</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>GraphQL API</title>
+    <summary>A methodology for building GraphQL APIs: schema-first SDL development with codegen, per-request DataLoader for every 1:N relation, depth limit (5-8) and query complexity cap before resolvers run, cursor-based (Relay) pagination for any list, and graphql-inspector diff in CI to block breaking schema changes. Mutations return the modified entity, never Boolean. Authorization checks live per-resolver, not just at the gateway.</summary>
+    <why>
+      <p>Without DataLoader, nested resolvers fire one DB query per parent object (N+1). Without depth and complexity limits, a single deeply nested query can DoS the server. Schema-first codegen ensures resolvers and clients share a single type definition. graphql-inspector catches breaking changes before they reach external consumers who cannot roll back. Returning entities from mutations enables optimistic UI updates; returning Boolean makes rollback impossible.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Mobile + web clients with divergent data shapes against the same backend</item>
+        <item>Aggregating 3+ microservices into one client-facing API (federation/stitching)</item>
+        <item>Internal tooling where consumers need fast schema iteration without REST versioning</item>
+        <item>Real-time UIs needing subscriptions over WebSocket / SSE</item>
+        <item>Backend-for-frontend (BFF) layers where type-safe client codegen is needed</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>File-upload-heavy APIs — use multipart REST or presigned URLs instead</item>
+        <item>Public APIs where CDN URL-level caching is critical — REST wins</item>
+        <item>Simple CRUD with one consumer — REST ships faster</item>
+        <item>Teams without query-cost / depth limiting infrastructure — DoS risk is real</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="schema-and-resolvers">
+      <rule>
+        <statement>Author the SDL schema first, run codegen to produce typed resolvers and clients, then implement resolvers. Never implement resolvers before the schema is committed — codegen output becomes the contract between frontend and backend.</statement>
+        <rationale>Schema-first ensures the client contract is explicit before any code is written. Resolver-first development produces schemas that are shaped by implementation accidents rather than domain requirements.</rationale>
+      </rule>
+      <rule>
+        <statement>Instantiate DataLoaders inside the request context, never at module scope. One DataLoader instance per request per entity type. Module-level DataLoaders cache results across users and requests, leaking data between tenants.</statement>
+        <rationale>A module-level DataLoader for User records caches user A's data and may serve it to user B's request. Per-request scoping isolates caches to a single authenticated session.</rationale>
+      </rule>
+      <example type="bad" title="module-level DataLoader">
+        <code lang="typescript"><![CDATA[
+// WRONG: module-level — shared across all requests
+const userLoader = new DataLoader(batchUsers);
+
+export const resolvers = {
+  Order: {
+    user: (order) => userLoader.load(order.userId), // leaks across users!
+  },
+};
+]]></code>
+      </example>
+      <example type="good" title="per-request DataLoader">
+        <code lang="typescript"><![CDATA[
+// CORRECT: per-request context
+function createContext(req) {
+  return {
+    loaders: {
+      user: new DataLoader(batchUsers),
+      product: new DataLoader(batchProducts),
+    },
+    userId: req.user?.id,
+  };
+}
+
+export const resolvers = {
+  Order: {
+    user: (order, _, ctx) => ctx.loaders.user.load(order.userId),
+  },
+};
+]]></code>
+      </example>
+      <reference path="templates/dataloader-pattern.ts">Per-request DataLoader context factory with batch functions</reference>
+      <rule>
+        <statement>Use cursor-based (Relay) pagination for any list field that may return more than 20 items. Never return raw arrays for paginated resources — raw arrays block incremental loading and make infinite scroll impossible.</statement>
+        <rationale>Offset pagination is O(n) at the DB level and produces gaps/duplicates when items are inserted mid-page. Cursor pagination is stable and efficient at any depth.</rationale>
+      </rule>
+      <example type="good" title="Relay cursor pagination schema">
+        <code lang="graphql"><![CDATA[
+type Query {
+  orders(first: Int, after: String, status: OrderStatus): OrderConnection!
+}
+
+type OrderConnection {
+  edges: [OrderEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type OrderEdge {
+  cursor: String!
+  node: Order!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+]]></code>
+      </example>
+      <rule>
+        <statement>Mutations must return the modified entity, not Boolean. Boolean returns make client-side cache invalidation impossible and force an additional refetch round-trip.</statement>
+        <rationale>Apollo Client and Relay rely on the returned entity to update their caches optimistically. A Boolean return provides no information for cache update; the client must re-query the entire resource.</rationale>
+      </rule>
+      <example type="bad" title="mutation returning Boolean">
+        <code lang="graphql"><![CDATA[
+type Mutation {
+  deleteUser(id: ID!): Boolean!  # client cannot update cache
+}
+]]></code>
+      </example>
+      <example type="good" title="mutation returning payload">
+        <code lang="graphql"><![CDATA[
+type Mutation {
+  deleteUser(id: ID!): DeleteUserPayload!
+}
+
+type DeleteUserPayload {
+  deletedId: ID!
+  success: Boolean!
+}
+]]></code>
+      </example>
+      <reference path="templates/codegen.yml">graphql-codegen config for TypeScript types and typed document nodes</reference>
+    </section>
+
+    <section name="security-and-antipatterns">
+      <rule>
+        <statement>Enforce a query depth limit (5-8 levels) and complexity cap (e.g., 1000 units) before any resolver runs. Both limits must be middleware, not per-resolver checks. An absence of either allows a single malicious query to DoS the server.</statement>
+        <rationale>Without depth limits, a query can request arbitrarily deep nested relationships, causing N^depth DB queries. Complexity caps prevent unbounded list traversals like querying all users' all orders' all items.</rationale>
+      </rule>
+      <rule>
+        <statement>Implement authorization per-resolver or via a @auth directive on schema fields. Never rely solely on gateway-level auth — a resolver reachable from an unguarded query path leaks data even when the gateway blocks direct access.</statement>
+        <rationale>GraphQL queries can reach any field from multiple paths. A field accessible via an unrelated query traversal bypasses per-route gateway auth entirely.</rationale>
+      </rule>
+      <rule>
+        <statement>Run graphql-inspector diff against the production schema on every PR. Fail the build on any breaking change that lacks an explicit migration note. Use @deprecated(reason: "use X instead") for field removal, removing only after analytics confirm zero usage.</statement>
+        <rationale>GraphQL has no built-in versioning. A field removal or type change silently breaks all clients using that field. graphql-inspector makes breaking changes an explicit, reviewable decision.</rationale>
+      </rule>
+      <rule>
+        <statement>Enable persisted queries in production: clients send a hash, the server resolves the SDL. This eliminates arbitrary query injection DoS and slashes payload bandwidth by 60-90%.</statement>
+        <rationale>Ad-hoc query execution allows any authenticated user to submit maximally expensive queries. Persisted queries lock the server to known, pre-analyzed query shapes.</rationale>
+      </rule>
+      <antipattern>
+        <description>Module-level DataLoader shared across requests.</description>
+        <reason>Caches results from one request and serves them to subsequent requests, leaking data between users. Per-request instantiation is mandatory.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Subscriptions using subscriptions-transport-ws (deprecated protocol).</description>
+        <reason>subscriptions-transport-ws is unmaintained and has known issues. The current standard is graphql-ws. Many server libraries still default to the old protocol — opt in explicitly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Input types with nested optional objects creating impossible validation shapes.</description>
+        <reason>Deeply nested optional inputs produce 2^n possible shapes that are impossible to validate exhaustively. Use flat, single-purpose input types: CreateOrderInput, UpdateOrderStatusInput.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Adding a new resolver field without an accompanying DataLoader for 1:N traversal.</description>
+        <reason>Every parent object triggers a separate DB query. 100 user nodes in a list query = 100 separate order queries. Always require an XByYLoader for any 1:N field.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Mixing schema-first and code-first approaches in the same service without documentation.</description>
+        <reason>Codegen output drift between the two approaches causes type mismatches that surface only at runtime. Pick one approach and document it in CLAUDE.md.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Adopt schema-first development: agent edits *.graphql SDL, runs codegen (graphql-codegen or server-language equivalent), implements resolvers, then a review subagent runs graphql-inspector diff against the production schema and fails on breaking changes without an explicit migration note. Pair with persisted-query enforcement and a query-cost analyzer; the agent must include cost annotations on new fields and the gate rejects unbounded list returns.</p>
+      <p>Recommended subagents: general-purpose subagent for schema authoring and resolver implementation; faion-feature-executor for pipeline: edit SDL → codegen → impl resolvers → write integration tests → run schema diff; faion-sdd-execution gate that enforces DataLoader presence, depth limit, and cost limit middleware on every server boot; code-review subagent for diff-based check for new resolvers without auth and DataLoader.</p>
+      <prompt purpose="extend-schema"><![CDATA[
+Add a `userOrders(first: Int, status: OrderStatus): OrderConnection!` field on User.
+1. Edit schema/user.graphql with the connection type + edges.
+2. Generate types: `pnpm graphql-codegen`.
+3. Implement resolver in src/resolvers/user.ts using a per-request orderByUserLoader.
+4. Wire authorization: only owner or admin can list orders.
+5. Add Vitest test that asserts N=1 db query for 100 users.
+6. Run `graphql-inspector diff origin/main schema.graphql`; output the report.
+]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <p>graphql-codegen: Generate TS/Go/Python types from SDL — npm i -D @graphql-codegen/cli</p>
+      <p>graphql-inspector: Schema diff, breaking change detection — npm i -g @graphql-inspector/cli</p>
+      <p>rover (Apollo): Schema registry + federation composition — https://www.apollographql.com/docs/rover</p>
+      <p>graphqurl (gq): Curl-equivalent for GraphQL — npm i -g graphqurl</p>
+      <p>Altair / Insomnia: GraphQL client for manual queries — desktop apps</p>
+      <p>graphql-eslint: Lint queries + SDL — npm i -D @graphql-eslint/eslint-plugin</p>
+      <p>apollo-cost-analysis / graphql-query-complexity: Query-cost guards — server middleware</p>
+      <p>genql: Type-safe TS client from SDL — npm i genql</p>
+    </section>
+
+    <section name="best-practices">
+      <p>Per-request DataLoader scoping: instantiate inside the request context, never module-level — module-level caches leak across users</p>
+      <p>Depth limit (5–8) + complexity limit (e.g., 1000 cost units) on the server, before resolvers run</p>
+      <p>Persisted queries in production: clients send a hash, server resolves SDL — kills query-injection DoS and slashes bandwidth</p>
+      <p>Connection-style pagination (Relay cursor) for any list >20 items; do not return raw arrays for tables</p>
+      <p>Authorization in a directive (@auth(requires: ROLE)) or per-resolver guard, never in the gateway alone</p>
+      <p>Versioning: never bump v1→v2; deprecate fields with @deprecated(reason: "...") and remove after analytics show 0 use</p>
+      <p>Subscriptions over graphql-ws (modern) not subscriptions-transport-ws (deprecated) — server libs default to old; agents must opt in</p>
+      <p>Mutations return the modified entity + clientMutationId; never return Boolean — clients can't refetch optimistically</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Agents emit field resolvers without DataLoader because tutorials skip it — always require an XByYLoader for any 1:N traversal</p>
+      <p>LLMs over-nest input types creating impossible-to-validate shapes; flatten to single-purpose CreateEntityActionInput!</p>
+      <p>Schema-first vs code-first: codegen output drift between the two confuses agents reading half the codebase. Pick one; document the choice in CLAUDE.md</p>
+      <p>Agents copy the original subscriptions-transport-ws from old docs; current standard is graphql-ws — pin the protocol explicitly</p>
+      <p>N+1 detection is not free — wire apollo-tracing or OpenTelemetry GraphQL instrumentation and assert tracing is on in tests</p>
+      <p>Human-in-loop checkpoint required when: making any breaking schema change, adding a federation @key, raising depth/cost limits in production</p>
+      <p>Token waste: do not paste the entire schema into context; rely on graphql-inspector summary + the touched type only</p>
+      <p>Agents forget that Boolean! non-null returns from mutations make rollback impossible; insist on entity returns</p>
+    </section>
+
+    <section name="services">
+      <p>Apollo Studio / GraphOS (SaaS, Rover CLI): Schema registry, persisted queries, perf tracing</p>
+      <p>Hasura (OSS + SaaS, CLI + REST admin API): Auto-generates GraphQL from Postgres; agents drive via hasura migrate</p>
+      <p>WunderGraph / Cosmo (OSS): Federation router, agent-driven config</p>
+      <p>The Guild / GraphQL Mesh (OSS): Stitches REST/gRPC into GraphQL</p>
+      <p>AWS AppSync (SaaS, CDK): Managed GraphQL with VTL/JS resolvers</p>
+      <p>pothos / nexus (OSS libs): Code-first schema for TS — friendlier to LLM codegen than SDL-first</p>
+      <p>gqlgen (Go, OSS): SDL-first Go server with codegen</p>
+    </section>
+
+    <section name="codegen-config-example">
+      <example type="good" title="Minimal codegen.yml">
+        <code lang="yaml"><![CDATA[
+# codegen.yml
+schema: 'src/schema/**/*.graphql'
+documents: 'src/**/*.{ts,tsx,graphql}'
+generates:
+  src/__generated__/types.ts:
+    plugins: [typescript, typescript-resolvers]
+    config:
+      contextType: '../context#GraphQLContext'
+      mappers:
+        User: '../db/user#UserRecord'
+        Order: '../db/order#OrderRecord'
+  src/__generated__/operations.ts:
+    plugins: [typescript-operations, typed-document-node]
+hooks:
+  afterAllFileWrite: [prettier --write]
+]]></code>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/codegen.yml" purpose="graphql-codegen config generating TS types + typed document nodes"/>
+      <template path="templates/dataloader-pattern.ts" purpose="Per-request DataLoader instantiation inside GraphQL context"/>
+    </templates>
+
+    <see-also>
+      <link href="https://spec.graphql.org/">GraphQL Specification</link>
+      <link href="https://www.apollographql.com/docs/technotes/">Apollo best practices</link>
+      <link href="https://github.com/graphql/dataloader">DataLoader</link>
+      <link href="https://relay.dev/graphql/connections.htm">Relay cursor connections spec</link>
+      <link href="https://the-guild.dev/graphql/inspector">graphql-inspector docs</link>
+      <link href="https://pothos-graphql.dev/">Pothos (code-first TS)</link>
+      <link href="https://www.apollographql.com/docs/federation/">Apollo Federation v2</link>
+      <link href="https://github.com/slicknode/graphql-query-complexity">Query cost analysis</link>
+    </see-also>
+  </content>
+</methodology>
