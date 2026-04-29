@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (azure-devops-boards, benefits-realization, change-control; feature-045 batch CA)
 - migrate: solo/comms/communicator/negotiation → methodology.xml (feature-045 batch CQ)
 - migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (pm-certification-changes-2026, raci-matrix, ref-pmbok; feature-045 batch CB)
 - migrate: 3/3 API developer methodologies → methodology.xml (api-rate-limiting, api-rest-design, api-testing; feature-045 batch CT)
