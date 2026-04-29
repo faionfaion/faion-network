@@ -1,0 +1,433 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="structural-patterns">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Seven GoF structural patterns for composing classes and objects: Adapter, Bridge, Composite, Decorator, Facade, Proxy, Flyweight. Select by problem, not name recognition.</summary>
+    <tags>
+      <tag>design-patterns</tag>
+      <tag>structural-patterns</tag>
+      <tag>adapter</tag>
+      <tag>decorator</tag>
+      <tag>facade</tag>
+      <tag>proxy</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Structural Design Patterns</title>
+
+    <summary>Structural patterns define how classes and objects are composed into larger structures using inheritance and object composition. The seven GoF structural patterns are Adapter, Bridge, Composite, Decorator, Facade, Proxy, and Flyweight. All four "wrapping" patterns (Adapter, Proxy, Decorator, Bridge) involve surrounding an object but serve distinct purposes: Adapter converts an interface, Proxy controls access, Decorator adds behavior, Bridge separates abstraction from implementation. Select by problem, not by name recognition.</summary>
+
+    <why>
+      <p>Without structural patterns, adding features through inheritance creates class explosions; adding them through ad-hoc composition creates tangled, untestable code. Structural patterns provide tested compositions: Decorator for stacking middleware, Facade for hiding subsystem complexity, Adapter for integrating legacy/third-party APIs, Proxy for lazy loading and access control. Each pattern applies a specific SOLID principle (OCP for Decorator/Composite/Proxy, DIP for all, Composition over Inheritance for Decorator/Bridge/Composite).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Adapter: integrating third-party library, legacy API, or protocol with an incompatible interface</item>
+        <item>Bridge: needing independent variation in both abstraction and implementation dimensions (designed up-front)</item>
+        <item>Composite: representing hierarchical/tree structures (file systems, UI component trees, org charts)</item>
+        <item>Decorator: adding cross-cutting behavior (logging, caching, auth) without subclassing; building middleware chains</item>
+        <item>Facade: simplifying a complex subsystem for callers; library entry points; API gateway behavior in-process</item>
+        <item>Proxy: lazy loading expensive objects; access control; caching; remote object representation; audit logging</item>
+        <item>Flyweight: very large numbers of similar objects where most state is shared (text rendering, game particles)</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Adapter: when the interface mismatch is small enough to handle with a single conversion function</item>
+        <item>Bridge: when there is only one implementation dimension — adds unnecessary indirection</item>
+        <item>Composite: when the tree structure is trivial (depth 1) or never traversed uniformly</item>
+        <item>Decorator: when the number of combinations is small and fixed — direct subclassing is clearer</item>
+        <item>Facade: when the subsystem is already simple or when the facade would hide information callers need</item>
+        <item>Proxy: when simple delegation or a plain function call suffices — proxy adds a maintenance surface</item>
+        <item>Flyweight: when object count is small or when extrinsic state computation offsets the memory savings</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="adapter-pattern">
+      <p>The Adapter pattern makes an incompatible existing interface work with a new interface, without modifying the existing code. Adapter is a retrofit pattern — it is applied after the incompatibility is discovered, not during initial design.</p>
+
+      <rule testable="true">
+        <statement>Use the Adapter pattern to make an incompatible existing interface work with a new interface, without modifying the existing code. Adapter is a retrofit pattern — it is applied after the incompatibility is discovered, not during initial design.</statement>
+        <rationale>Third-party libraries and legacy systems have fixed interfaces. Modifying them is impossible or risky. The Adapter wraps them and translates the interface, preserving the existing code's behavior while enabling it to participate in new code contracts.</rationale>
+      </rule>
+
+      <list>
+        <item>Target: the interface the client expects</item>
+        <item>Adaptee: the existing class with an incompatible interface</item>
+        <item>Adapter: wraps the Adaptee and implements the Target interface</item>
+        <item>Object Adapter: wraps the Adaptee instance (composition) — prefer this; more flexible</item>
+        <item>Class Adapter: inherits from both Target and Adaptee — only in languages with multiple inheritance</item>
+      </list>
+
+      <example type="good" title="Payment gateway adapter">
+        <note>Wraps StripeClient to implement the PaymentProvider target interface</note>
+        <code lang="python"><![CDATA[
+class PaymentProvider(Protocol):
+    def charge(self, amount_cents: int, token: str) -> str: ...
+
+class StripeAdapter(PaymentProvider):
+    def __init__(self, stripe_client: StripeClient) -> None:
+        self._client = stripe_client
+
+    def charge(self, amount_cents: int, token: str) -> str:
+        response = self._client.create_payment_intent(
+            amount=amount_cents, currency="usd", payment_method=token
+        )
+        return response.id
+]]></code>
+      </example>
+    </section>
+
+    <section name="bridge-pattern">
+      <p>Bridge separates abstraction from implementation into independent hierarchies. Bridge is a design-time pattern — define it before building the class hierarchy, not as a retrofit to an existing hierarchy.</p>
+
+      <rule testable="true">
+        <statement>Use Bridge when two independent dimensions of variation exist and both must be extensible independently. Bridge is a design-time pattern — define it before building the class hierarchy, not as a retrofit to an existing hierarchy.</statement>
+        <rationale>Without Bridge, adding a new dimension multiplies the class count: N notification types × M urgency levels = N×M classes. Bridge splits the abstraction (notification type) from the implementation (urgency rendering) into independent hierarchies that can grow independently.</rationale>
+      </rule>
+
+      <list>
+        <item>Abstraction: the high-level control class that delegates to Implementor</item>
+        <item>Implementor: the interface for implementation classes</item>
+        <item>Concrete Implementors: the actual implementations (EmailSender, SMSSender)</item>
+        <item>Refined Abstractions: extended control classes (UrgentNotification, BatchNotification)</item>
+        <item>Key distinction from Adapter: Bridge is designed up-front; Adapter fixes an existing mismatch</item>
+      </list>
+    </section>
+
+    <section name="composite-pattern">
+      <p>Composite represents tree structures with uniform leaf/branch treatment. Clients must treat individual objects (leaves) and compositions (branches) uniformly.</p>
+
+      <rule testable="true">
+        <statement>Use Composite when clients must treat individual objects (leaves) and compositions (branches) uniformly. The key constraint: both leaf and branch must implement the same interface so client code needs no type-checking.</statement>
+        <rationale>Without Composite, client code must distinguish leaves from branches via isinstance checks, violating OCP. The Composite interface lets clients call the same method on a single file or an entire directory tree — the traversal logic is encapsulated in the composite node.</rationale>
+      </rule>
+
+      <list>
+        <item>Component: the common interface — both Leaf and Composite implement it</item>
+        <item>Leaf: individual object with no children — implements Component directly</item>
+        <item>Composite: a node that contains children (Leaf or Composite) — implements Component by delegating to children</item>
+        <item>Use cases: file systems, UI component trees, organizational hierarchies, expression trees</item>
+      </list>
+    </section>
+
+    <section name="decorator-pattern">
+      <p>Decorator adds behavior dynamically by wrapping an object that implements the same interface. Decorators can be stacked: each wraps the previous and adds one responsibility. All decorators must implement the same interface as the wrapped object.</p>
+
+      <rule testable="true">
+        <statement>Use Decorator to add cross-cutting behavior (logging, caching, auth, retry) without subclassing. Decorators can be stacked: each wraps the previous and adds one responsibility. All decorators must implement the same interface as the wrapped object.</statement>
+        <rationale>Subclassing to add behavior produces a class explosion: LoggedService, CachedService, AuthedService, LoggedCachedService, etc. Decorators compose at runtime: stack LoggingDecorator(CachingDecorator(RealService())) and any combination is possible without additional classes.</rationale>
+      </rule>
+
+      <list>
+        <item>Component: the interface both the real object and all decorators implement</item>
+        <item>ConcreteComponent: the real object being decorated</item>
+        <item>Decorator: wraps a Component, implements the same interface, delegates + adds behavior</item>
+        <item>Stacking: decorators are applied in a chain — outermost executes first, innermost last</item>
+        <item>Use cases: middleware chains (WSGI/ASGI), logging decorators, retry wrappers, caching layers</item>
+      </list>
+
+      <example type="good" title="Class-based GoF Decorator with stacking">
+        <note>LoggingDecorator wraps CachingDecorator wraps InMemoryStore; decorators are composable at runtime</note>
+        <code lang="python"><![CDATA[
+class DataStore(Protocol):
+    def get(self, key: str) -> Any: ...
+    def set(self, key: str, value: Any) -> None: ...
+
+class LoggingDecorator:
+    def __init__(self, store: DataStore) -> None:
+        self._store = store
+
+    def get(self, key: str) -> Any:
+        value = self._store.get(key)
+        logger.info("GET key=%s hit=%s", key, value is not None)
+        return value
+
+    def set(self, key: str, value: Any) -> None:
+        logger.info("SET key=%s", key)
+        self._store.set(key, value)
+
+class CachingDecorator:
+    def __init__(self, store: DataStore) -> None:
+        self._store = store
+        self._cache: dict[str, Any] = {}
+
+    def get(self, key: str) -> Any:
+        if key not in self._cache:
+            self._cache[key] = self._store.get(key)
+        return self._cache[key]
+
+    def set(self, key: str, value: Any) -> None:
+        self._cache.pop(key, None)
+        self._store.set(key, value)
+
+# Stacking: LoggingDecorator wraps CachingDecorator wraps InMemoryStore
+store: DataStore = LoggingDecorator(CachingDecorator(InMemoryStore()))
+]]></code>
+      </example>
+    </section>
+
+    <section name="facade-pattern">
+      <p>Facade provides a single, simplified entry point to a complex subsystem. The Facade does not prevent direct access to subsystem classes — it provides a convenience layer for the common use cases. Never let a Facade become a God Object.</p>
+
+      <rule testable="true">
+        <statement>Use Facade to provide a single, simplified entry point to a complex subsystem. The Facade does not prevent direct access to subsystem classes — it provides a convenience layer for the common use cases. Never let a Facade become a God Object.</statement>
+        <rationale>Subsystems with many interacting classes create high coupling in client code: clients must know the correct order of operations, error states, and side effects. A Facade encapsulates the most common workflows, reducing client coupling without hiding the subsystem from clients who need more control.</rationale>
+      </rule>
+
+      <list>
+        <item>Facade: provides simple methods for common operations on the subsystem</item>
+        <item>Subsystem classes: remain accessible for direct use when Facade is insufficient</item>
+        <item>Do not add business logic to the Facade — it should only orchestrate subsystem calls</item>
+        <item>One Facade per subsystem — multiple facades for different client types is acceptable</item>
+      </list>
+
+      <antipattern>
+        <description>Facade that grows into a God Object (50+ methods, 1000+ lines)</description>
+        <reason>A large Facade is just a different form of coupling — all clients depend on one giant class. Split into multiple focused facades or redesign the subsystem.</reason>
+      </antipattern>
+
+      <example type="good" title="Payment Facade hiding complex subsystem">
+        <note>Simplifies the most common payment workflow: validate → fraud check → charge → ledger → notify</note>
+        <code lang="python"><![CDATA[
+class PaymentFacade:
+    def __init__(
+        self,
+        validator: PaymentValidator | None = None,
+        fraud_detector: FraudDetector | None = None,
+        gateway: PaymentGatewayClient | None = None,
+        ledger: Ledger | None = None,
+        notifier: EmailNotifier | None = None,
+    ) -> None:
+        self._validator = validator or PaymentValidator()
+        self._fraud = fraud_detector or FraudDetector()
+        self._gateway = gateway or PaymentGatewayClient()
+        self._ledger = ledger or Ledger()
+        self._notifier = notifier or EmailNotifier()
+
+    def charge(
+        self,
+        user_id: str,
+        card_token: str,
+        amount_cents: int,
+        idempotency_key: str,
+        ip: str = "0.0.0.0",
+    ) -> ChargeResult:
+        """Complete payment: validate → fraud check → charge → ledger → notify."""
+        if not self._validator.validate_card(card_token):
+            self._ledger.record_failure(user_id, amount_cents, "invalid_card")
+            return ChargeResult(success=False, error="invalid_card")
+
+        if not self._validator.validate_amount(amount_cents):
+            return ChargeResult(success=False, error="invalid_amount")
+
+        if not self._fraud.check(user_id, amount_cents, ip):
+            self._ledger.record_failure(user_id, amount_cents, "fraud_detected")
+            return ChargeResult(success=False, error="fraud_detected")
+
+        tx_id = self._gateway.charge(card_token, amount_cents, idempotency_key)
+        self._ledger.record_charge(user_id, amount_cents, tx_id)
+        self._notifier.send_receipt(user_id, amount_cents, tx_id)
+
+        return ChargeResult(success=True, transaction_id=tx_id)
+]]></code>
+      </example>
+    </section>
+
+    <section name="proxy-pattern">
+      <p>Proxy controls access to an object. Four proxy types exist: Virtual (lazy initialization), Protection (access control), Cache (memoization), Remote (transparent local interface to a remote object), and Logging (audit trail). All types implement the same interface as the real object.</p>
+
+      <rule testable="true">
+        <statement>Select the proxy type by the problem: Virtual (lazy initialization), Protection (access control), Cache (memoization), Remote (transparent local interface to a remote object), Logging (audit trail). All types implement the same interface as the real object.</statement>
+        <rationale>All proxy types share the same structural pattern but solve different problems. Choosing the wrong proxy type results in unnecessary complexity: a Logging Proxy should not make access control decisions.</rationale>
+      </rule>
+
+      <list>
+        <item>Virtual Proxy: delays expensive object creation until first use — image loading, large document parsing</item>
+        <item>Protection Proxy: checks permissions before delegating — RBAC enforcement, API key validation</item>
+        <item>Cache Proxy: memoizes results to avoid repeated expensive computation — database query caching</item>
+        <item>Remote Proxy: represents a remote object locally — gRPC stubs, service proxies, HTTP client wrappers</item>
+        <item>Logging Proxy: records all calls to the real object for audit or debugging</item>
+      </list>
+
+      <example type="good" title="Virtual Proxy for lazy image loading">
+        <note>HighResImage is not loaded until render() is first called</note>
+        <code lang="python"><![CDATA[
+class LazyImageProxy:
+    def __init__(self, file_path: str) -> None:
+        self._file_path = file_path
+        self._real_image: HighResImage | None = None
+
+    def _load(self) -> HighResImage:
+        if self._real_image is None:
+            self._real_image = HighResImage(self._file_path)
+        return self._real_image
+
+    def render(self) -> str:
+        return self._load().render()
+
+    def dimensions(self) -> tuple[int, int]:
+        return self._load().dimensions()
+]]></code>
+      </example>
+
+      <example type="good" title="Cache Proxy for database queries">
+        <note>Returns cached result on repeated calls with the same key</note>
+        <code lang="python"><![CDATA[
+class DatabaseQueryProxy:
+    def __init__(self, db_executor) -> None:
+        self._executor = db_executor
+        self._cache: dict[str, object] = {}
+
+    def execute(self, query: str, params: tuple = ()) -> object:
+        cache_key = f"{query}:{params}"
+        if cache_key not in self._cache:
+            self._cache[cache_key] = self._executor.execute(query, params)
+        else:
+            print(f"[CacheProxy] Cache hit")
+        return self._cache[cache_key]
+
+    def invalidate(self, pattern: str) -> None:
+        """Invalidate cache entries matching a pattern prefix."""
+        keys_to_remove = [k for k in self._cache if k.startswith(pattern)]
+        for k in keys_to_remove:
+            del self._cache[k]
+]]></code>
+      </example>
+    </section>
+
+    <section name="flyweight-pattern">
+      <p>Flyweight shares intrinsic state across a large number of similar objects. Use Flyweight only when the application creates thousands (or millions) of similar objects and memory profiling shows that object count is a measurable bottleneck.</p>
+
+      <rule testable="true">
+        <statement>Use Flyweight only when the application creates thousands (or millions) of similar objects and memory profiling shows that object count is a measurable bottleneck. Flyweight adds extrinsic state management complexity — only justified by demonstrated memory savings.</statement>
+        <rationale>Flyweight trades memory for complexity: the caller must now provide extrinsic state on every operation instead of storing it on the object. Without measured memory pressure, this complexity has no benefit.</rationale>
+      </rule>
+
+      <list>
+        <item>Intrinsic state: shared, immutable state stored in the flyweight (character glyph, particle texture)</item>
+        <item>Extrinsic state: unique per instance, provided by the caller on each use (position, color, size)</item>
+        <item>FlyweightFactory: returns shared flyweight instances; uses a cache keyed by intrinsic state</item>
+        <item>Use cases: text rendering (thousands of character glyphs), game particle systems, geographic tile rendering</item>
+        <item>Modern alternative: numpy/pandas vectorized arrays or GPU buffers often solve the same problem without the pattern overhead</item>
+      </list>
+    </section>
+
+    <section name="pattern-selection-matrix">
+      <p>Use this matrix to select the correct structural pattern by problem statement.</p>
+
+      <list>
+        <item>"Integrate legacy/third-party with incompatible interface" → Adapter (retrofit, post-design)</item>
+        <item>"Add cross-cutting behavior without subclassing: logging, caching, retry" → Decorator (stacks at runtime)</item>
+        <item>"Simplify complex subsystem for callers" → Facade (one entry point per common workflow)</item>
+        <item>"Control access: lazy loading, auth, caching, audit" → Proxy (select by type)</item>
+        <item>"Tree/hierarchy, treat leaf and branch uniformly" → Composite (same interface for all nodes)</item>
+        <item>"Two independent dimensions of variation, both must grow" → Bridge (design-time, prevents class explosion)</item>
+        <item>"Thousands of similar objects, memory profiling shows pressure" → Flyweight (intrinsic/extrinsic split)</item>
+      </list>
+
+      <antipattern>
+        <description>Applying Adapter when Facade is needed (or vice versa)</description>
+        <reason>Adapter converts a single incompatible interface; Facade simplifies a multi-class subsystem. Using Adapter for a complex subsystem creates a thin wrapper that still exposes subsystem complexity. Using Facade for an interface mismatch obscures the actual conversion logic.</reason>
+      </antipattern>
+    </section>
+
+    <section name="solid-mapping">
+      <p>Each structural pattern enforces one or more SOLID principles.</p>
+
+      <list>
+        <item>Open/Closed Principle (OCP): Decorator, Composite, Proxy — add behavior without modifying existing classes</item>
+        <item>Single Responsibility Principle (SRP): Facade — moves subsystem orchestration out of client code into one place</item>
+        <item>Dependency Inversion Principle (DIP): all seven — client code depends on abstractions (interfaces), not concrete classes</item>
+        <item>Liskov Substitution Principle (LSP): Adapter, Decorator, Proxy — substitutable for the wrapped object's interface</item>
+        <item>Composition over Inheritance: Decorator, Bridge, Composite — avoid subclassing hierarchies in favor of object composition</item>
+      </list>
+    </section>
+
+    <section name="wrapping-patterns-comparison">
+      <p>All four "wrapping" patterns (Adapter, Proxy, Decorator, Bridge) involve surrounding an object but serve distinct purposes.</p>
+
+      <list>
+        <item>Adapter: converts an interface (retrofit, post-design, one-direction: incompatible → target)</item>
+        <item>Proxy: controls access to an object (same interface, solves a specific problem: lazy load / auth / cache)</item>
+        <item>Decorator: adds behavior dynamically (same interface, chains at runtime, orthogonal responsibilities)</item>
+        <item>Bridge: separates abstraction from implementation (design-time, two independent dimensions, prevents class explosion)</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive structural patterns as a four-pass code-review loop: (1) smell detector agent scans diffs for "import incompatibility" / "growing wrapper class" / "long subclass chain" and proposes which structural pattern (if any) fits; (2) pattern picker uses the methodology decision tree to pick exactly one pattern, with a 1-line justification (timing/purpose); (3) implementer agent generates the refactor as a separate PR using templates; (4) reviewer agent checks pitfalls (mutable Flyweight intrinsic, Decorator ordering, Composite over-uniformity). Human approves. Patterns rarely need a green-field application — they earn their keep at refactor time.</p>
+
+      <p>When to use:</p>
+      <list>
+        <item>Wrapping a third-party / legacy API to fit the codebase's interface (Adapter) — the most common applied case.</item>
+        <item>Building HTTP/gRPC middleware chains, log/cache/auth wrappers (Decorator) — when subclassing would explode.</item>
+        <item>Hiding a complex subsystem (multi-step workflow, multi-call SDK, multi-service orchestration) behind one entry point (Facade).</item>
+        <item>Lazy initialization, access control, smart references (Proxy) — DB connections, image loaders, remote object stubs.</item>
+        <item>Tree-shaped domains: file system, UI components, org chart, document AST (Composite).</item>
+        <item>Up-front design with multiple variation axes (rendering backend × OS, storage backend × format) (Bridge).</item>
+        <item>Memory-bound systems with millions of similar objects (Flyweight) — game entities, terminal grids, map tiles.</item>
+      </list>
+
+      <p>When NOT to use:</p>
+      <list>
+        <item>One-off adapter for a single call site — write a 5-line function, not a class hierarchy.</item>
+        <item>New code where you can change the underlying interface — fix the source instead of layering Adapters.</item>
+        <item>Performance-critical hot paths — Decorator/Proxy chains add allocations and indirection (especially in interpreted languages).</item>
+        <item>Trivial systems — Facade on top of two functions is over-engineering.</item>
+        <item>Domains without recursive structure — Composite is the wrong tool.</item>
+        <item>Languages with native decorator/aspect support (Python `@`, TypeScript decorators) — most teams confuse the language feature with the GoF pattern; usually you want the language feature, not the pattern.</item>
+        <item>When DI / functional composition solves the problem — first reach for higher-order functions, not class-based wrappers.</item>
+      </list>
+    </section>
+
+    <section name="where-patterns-fail">
+      <p>Common failure modes and limitations:</p>
+
+      <list>
+        <item>Wrapping pattern collisions: Adapter / Proxy / Decorator / Bridge all "wrap" — agents (and humans) pick the wrong one and create misnamed code that misleads reviewers.</item>
+        <item>Decorator chains hide ordering bugs: `auth(cache(log(handler)))` vs `cache(auth(log(handler)))` produce different security postures; pattern names rarely surface this.</item>
+        <item>Composite ⇒ over-uniformity: treating leaves and composites uniformly often violates Liskov when an operation only makes sense for one kind.</item>
+        <item>Flyweight + mutable state = race conditions: shared intrinsic state must truly be immutable; concurrency bugs are easy.</item>
+        <item>Bridge requires foresight: retrofitting Bridge into a tightly coupled abstraction usually means a rewrite.</item>
+        <item>Facade as Garbage Bin: "FacadeService" that grew into 4k lines of unrelated methods is a top code-smell.</item>
+        <item>Pattern theater: naming files `*Adapter.py`, `*Decorator.py`, `*Facade.py` doesn't mean the pattern was needed.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Apply structural patterns at refactor time, not greenfield. The strongest signal is "I keep writing the same wrapper class for the third time."</item>
+        <item>Adapter: keep one Adapter per external boundary; never adapt your own internal types — fix them instead.</item>
+        <item>Decorator: enforce idempotency-friendly ordering (auth → idempotency → rate-limit → tracing → log → handler) and document it in code, not in slack threads.</item>
+        <item>Facade: cap method count (~10) and keep it stateless. Beyond that you have a god service.</item>
+        <item>Proxy: use it for cross-cutting concerns (caching, auth, lazy load) where adding it does not change call signatures.</item>
+        <item>Composite: explicitly write down which operations are leaf-only and which are composite-only — Liskov violations at runtime are nasty.</item>
+        <item>Flyweight: enforce immutability of intrinsic state (frozen dataclasses, `Object.freeze`, `Arc&lt;T&gt;`).</item>
+        <item>Bridge: only when both axes have ≥3 known variants — otherwise YAGNI.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/adapter.py" purpose="Python class Adapter wrapping a legacy Adaptee to a Target interface"/>
+      <template path="templates/decorator.py" purpose="Python function-decorator and class-decorator examples with stacking"/>
+      <template path="templates/proxy.py" purpose="Python virtual proxy with lazy initialization and cache proxy"/>
+      <template path="templates/facade.py" purpose="Python Facade hiding a multi-class subsystem behind a single interface"/>
+    </templates>
+
+    <see-also>
+      <ref slug="behavioral-patterns"/>
+      <ref slug="creational-patterns"/>
+      <ref slug="patterns-overview"/>
+      <link href="https://refactoring.guru/design-patterns/structural-patterns"/>
+      <link href="https://www.youtube.com/@ChristopherOkhravi"/>
+    </see-also>
+  </content>
+</methodology>
