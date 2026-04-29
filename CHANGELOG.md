@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 paths to methodology.xml (ui-lib-patterns, nextjs-app-router, nodejs-service-layer-architecture; feature-045 batch DJ)
 - migrate: 3/3 frontend-developer methodologies → methodology.xml (shadcn-ui, shadcn-ui-architecture, storybook-setup; feature-045 batch DF)
 - migrate: 3/3 batch DA methodologies → methodology.xml (trunk-based-dev-patterns, trunk-based-dev-principles, framework-decomposition-patterns; feature-045 batch DA)
 - migrate: 3/3 automation-tooling methodologies → methodology.xml (cd-basics, cd-pipelines, continuous-delivery; feature-045 batch CW)
