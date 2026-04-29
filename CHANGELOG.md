@@ -11,6 +11,7 @@
 - migrate: 3/3 automation-tooling methodologies → methodology.xml (dev-methodologies-architecture, internationalization, logging-patterns; feature-045 batch CX)
 - migrate: 3/3 frontend-developer methodologies → methodology.xml (frontend-design, mobile-responsive, pwa-core; feature-045 batch DE)
 - migrate: 3/3 pro/research/market-researcher methodologies → methodology.xml (market-research-tam-sam-som, product-development-trends, product-development-trends-2026; feature-045 batch CH)
+- update: CHANGELOG.md with feature-045 batch DM entry
 - migrate: 3/3 frontend-developer methodologies → methodology.xml (css-in-js-basics, design-tokens-basics, design-tokens-implementation; feature-045 batch DD)
 - migrate: 3/3 automation-tooling methodologies → methodology.xml (cd-basics, cd-pipelines, continuous-delivery; feature-045 batch CW)
 - migrate: 3/3 solo/dev/automation-tooling methodologies → methodology.xml (ab-testing-basics, ab-testing-implementation, best-practices-2026; feature-045 batch CV)
