@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="terraform-state">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Remote state, locking, encryption, import, and migration patterns for Terraform. Always use remote backend with locking; prefer import blocks (TF 1.5+) and moved blocks over CLI state commands.</summary>
+    <tags>
+      <tag>terraform</tag>
+      <tag>state-management</tag>
+      <tag>remote-backend</tag>
+      <tag>iac</tag>
+      <tag>import</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Terraform State</title>
+    <summary>Remote state configuration, locking, encryption, import, and migration patterns for Terraform. The concrete rule is: always use a remote backend with locking enabled (S3+DynamoDB for AWS, GCS for GCP); separate state files per environment and per component to minimize blast radius; prefer import blocks (Terraform 1.5+) and moved blocks over CLI state commands for declarative refactoring.</summary>
+    <why>
+      <p>Local state blocks team collaboration and has no locking — concurrent apply runs corrupt state. State contains sensitive data (passwords, keys) so encryption at rest is mandatory. Import blocks introduced in TF 1.5 replace fragile CLI import commands with reviewable, version-controlled declarations.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Setting up a remote backend for a new project or migrating from local state.</item>
+        <item>Importing existing cloud resources into Terraform management.</item>
+        <item>Refactoring resource names or moving resources between modules.</item>
+        <item>Recovering from state corruption or lock issues.</item>
+        <item>Designing multi-environment state isolation strategy.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Basic HCL syntax or provider configuration — use terraform-basics instead.</item>
+        <item>CI/CD pipeline design — use terraform (advanced methodology) instead.</item>
+        <item>Module structure design — use terraform-modules instead.</item>
+        <item>Emergency force-unlock without understanding lock cause — diagnose first, unlock last resort.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="backends">
+      <rule>
+        <statement>Always use a remote backend for any team or CI environment; never use local state in production; choose S3+DynamoDB for AWS-centric teams, GCS for GCP-centric teams.</statement>
+        <rationale>Local state blocks collaboration — two engineers running apply concurrently corrupt state. Remote backends with locking serialize operations safely.</rationale>
+      </rule>
+      <note>Backend comparison: S3+DynamoDB (AWS, native locking, SSE-KMS), GCS (GCP, native locking, default encryption), Azure Blob (Azure, AAD auth), Terraform Cloud (multi-cloud, policy enforcement, free tier ended March 2026).</note>
+      <rule>
+        <statement>Configure S3 backend with encrypt = true, KMS key for compliance workloads, and DynamoDB table for locking; use key path pattern {env}/{component}/terraform.tfstate.</statement>
+        <rationale>KMS encryption satisfies SOC2/PCI compliance requirements. The env/component key path enables state isolation per environment and blast-radius separation per component.</rationale>
+      </rule>
+      <example type="good" title="S3 backend configuration">
+        <code lang="hcl"><![CDATA[
+terraform {
+  backend "s3" {
+    bucket         = "company-terraform-state"
+    key            = "prod/networking/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "terraform-locks"
+    kms_key_id     = "alias/terraform-state"
+  }
+}
+]]></code>
+      </example>
+      <rule>
+        <statement>Provision state infrastructure (S3 bucket, DynamoDB table, KMS key, IAM policy) as a separate one-time bootstrapped Terraform configuration, not in the main project.</statement>
+        <rationale>State infrastructure must exist before any other Terraform configuration can initialize. Bootstrapping it separately avoids a chicken-and-egg dependency.</rationale>
+      </rule>
+      <rule>
+        <statement>Enable versioning on the S3 state bucket; set a lifecycle rule to expire non-current versions after 90 days; set prevent_destroy on the bucket and DynamoDB table.</statement>
+        <rationale>Versioning enables rollback after state corruption. 90-day retention balances recovery capability with storage cost. prevent_destroy prevents accidental bootstrap teardown.</rationale>
+      </rule>
+      <rule>
+        <statement>Restrict state bucket access to Terraform CI/CD roles only via IAM; enable access logging on the state bucket; use OIDC authentication in CI rather than static access keys.</statement>
+        <rationale>State files contain passwords, connection strings, and private keys. Broad read access to state is equivalent to broad access to all managed infrastructure.</rationale>
+      </rule>
+      <rule>
+        <statement>Mark sensitive outputs with sensitive = true; use external secret managers (Secrets Manager, HashiCorp Vault) rather than storing secrets in Terraform variables that land in state.</statement>
+        <rationale>Even with KMS encryption, minimizing secrets in state reduces blast radius if the state bucket is compromised.</rationale>
+      </rule>
+      <antipattern>
+        <description>Local tfstate files in git repositories.</description>
+        <reason>State contains plaintext credentials and resource IDs. Once committed, secrets cannot be fully purged from git history.</reason>
+      </antipattern>
+    </section>
+
+    <section name="import-blocks">
+      <rule>
+        <statement>Use import blocks in .tf files instead of terraform import CLI commands for all new import work; import blocks are reviewable, version-controlled, and run as part of terraform plan.</statement>
+        <rationale>CLI import runs immediately with no plan preview. Import blocks show the planned import in terraform plan output, allowing review before apply. They are also idempotent — already-imported resources are ignored.</rationale>
+      </rule>
+      <example type="good" title="Import blocks (Terraform 1.5+)">
+        <code lang="hcl"><![CDATA[
+import {
+  to = aws_vpc.main
+  id = "vpc-12345678"
+}
+
+import {
+  to = aws_subnet.public[0]
+  id = "subnet-11111111"
+}
+]]></code>
+      </example>
+      <note>After writing import blocks, run: terraform plan -generate-config-out=generated.tf to auto-generate the resource configuration for imported resources.</note>
+    </section>
+
+    <section name="moved-blocks">
+      <rule>
+        <statement>Use moved blocks (Terraform 1.1+) to rename resources or move them to modules without touching the state directly; keep moved blocks in the configuration until all users have applied.</statement>
+        <rationale>moved blocks express refactoring declaratively in code. They are visible in plan output, can be reviewed, and avoid the error-prone manual state mv commands.</rationale>
+      </rule>
+      <example type="good" title="Moved blocks for resource refactoring">
+        <code lang="hcl"><![CDATA[
+moved {
+  from = aws_instance.web
+  to   = aws_instance.app_server
+}
+
+moved {
+  from = aws_instance.web
+  to   = module.compute.aws_instance.main
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="state-commands">
+      <rule>
+        <statement>Before any manual state operation, backup state with terraform state pull > backup.tfstate; verify the backup; communicate with the team to prevent concurrent modifications.</statement>
+        <rationale>Manual state operations are irreversible without a backup. Remote backends have locking but do not protect against logical errors in state commands.</rationale>
+      </rule>
+      <note>Key state commands: terraform state list (view all resources), terraform state show addr (inspect), terraform state mv src dst (rename), terraform state rm addr (unmanage), terraform state pull/push (download/upload).</note>
+      <rule>
+        <statement>After any state operation, run terraform plan to verify the state reflects reality with no unexpected changes or diffs.</statement>
+        <rationale>State commands can leave gaps between state and actual infrastructure. A clean plan (exit code 0) confirms consistency.</rationale>
+      </rule>
+      <rule>
+        <statement>Use terraform apply -replace=resource.name to force replacement of a specific resource; never use terraform taint (deprecated since 0.15.2).</statement>
+        <rationale>-replace is explicit, requires an apply confirmation, and shows the replacement in plan output. taint modifies state without a plan preview.</rationale>
+      </rule>
+      <rule>
+        <statement>Use terraform force-unlock LOCK_ID only after confirming no other apply is running; diagnose the lock cause before unlocking — a crash leaves a stale lock, not an active process.</statement>
+        <rationale>Unlocking while an apply is running allows two concurrent applies, which corrupts state. force-unlock is a recovery tool, not a workaround for slow pipelines.</rationale>
+      </rule>
+      <antipattern>
+        <description>Using terraform state push to overwrite remote state without a backup or plan verification.</description>
+        <reason>Push overwrites the remote state immediately. If the pushed state is incorrect, there is no automatic rollback — you must recover from versioning.</reason>
+      </antipattern>
+    </section>
+
+    <section name="checklists">
+      <rule>
+        <statement>Create state infrastructure first (S3 bucket with versioning + KMS, DynamoDB table with prevent_destroy, IAM policy); then configure backend block; then run terraform init -migrate-state if migrating from local.</statement>
+        <rationale>Infrastructure must exist before backend initialization. Migration prompt during init copies local state to the remote backend atomically.</rationale>
+      </rule>
+      <rule>
+        <statement>Separate state files by environment (dev/staging/prod) AND by component (networking/compute/database); use the key pattern {env}/{component}/terraform.tfstate.</statement>
+        <rationale>Single-state monorepo configurations have large blast radius — one mistake can destroy all production infrastructure. Component separation limits each apply's scope.</rationale>
+      </rule>
+      <rule>
+        <statement>Enable encryption at rest (SSE-KMS), block all public access, enable access logging, and restrict bucket policy to Terraform CI/CD roles only.</statement>
+        <rationale>State files contain passwords and private keys. Encryption protects data at rest; access restrictions limit who can read those secrets.</rationale>
+      </rule>
+      <rule>
+        <statement>Mark all sensitive outputs (passwords, connection strings, private keys) with sensitive = true; audit state for accidentally committed plaintext secrets quarterly.</statement>
+        <rationale>sensitive = true suppresses output in plan/apply logs. Regular audits catch cases where sensitive data was inadvertently written to state.</rationale>
+      </rule>
+      <rule>
+        <statement>Write import blocks and matching resource configuration first; run terraform plan to preview the import; run terraform apply; then run terraform plan again to verify no drift.</statement>
+        <rationale>A clean second plan (no changes) confirms the imported resource configuration exactly matches actual cloud state. Any diff indicates missing arguments.</rationale>
+      </rule>
+      <rule>
+        <statement>Enable versioning on state buckets; set lifecycle policy to expire non-current versions after 90 days; document state file locations for all environments; test recovery quarterly.</statement>
+        <rationale>Versioning is the only rollback mechanism for corrupted state. Untested recovery procedures fail under incident pressure.</rationale>
+      </rule>
+      <rule>
+        <statement>Use OIDC authentication for CI/CD cloud provider access instead of static IAM access keys; set TF_IN_AUTOMATION=true in pipeline environments; implement plan/apply separation with human review.</statement>
+        <rationale>OIDC eliminates long-lived static credentials that can be leaked. TF_IN_AUTOMATION suppresses interactive prompts. Plan/apply separation requires human approval before production changes.</rationale>
+      </rule>
+      <antipattern>
+        <description>Storing backend credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) as static CI secrets.</description>
+        <reason>Static keys never expire and are frequently leaked in CI logs. OIDC short-lived tokens are scoped to the specific workflow run and expire immediately after.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/backend-aws.tf" purpose="S3 + DynamoDB backend with KMS and cross-account role"/>
+      <template path="templates/backend-gcs.tf" purpose="GCS backend with service account impersonation"/>
+      <template path="templates/backend-azure.tf" purpose="Azure Blob backend with AAD auth"/>
+      <template path="templates/backend-tfc.tf" purpose="Terraform Cloud backend"/>
+      <template path="templates/state-infra-aws.tf" purpose="Full AWS state infrastructure (S3 + DynamoDB + KMS + IAM policy)"/>
+      <template path="templates/state-infra-gcs.tf" purpose="GCS state bucket + Terraform service account"/>
+      <template path="templates/import-blocks.tf" purpose="Import block templates (single and multi-resource)"/>
+      <template path="templates/moved-blocks.tf" purpose="Moved block templates (rename, move to module, rename module)"/>
+      <template path="templates/remote-state-datasource.tf" purpose="terraform_remote_state data source with usage example"/>
+    </templates>
+
+    <see-also>
+      <ref slug="terraform-basics"/>
+      <ref slug="terraform-modules"/>
+      <ref slug="terraform"/>
+      <ref slug="iac-basics"/>
+    </see-also>
+  </content>
+</methodology>
