@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="schema-version-pinning">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Pin a `schema_version` literal field in every Pydantic SO model to prevent silent schema drift across multi-stage agent pipelines.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>pydantic</tag>
+      <tag>structured-output</tag>
+      <tag>schema</tag>
+      <tag>versioning</tag>
+      <tag>multi-stage</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Versioned SO Contracts — schema_version Pin in Every Payload</title>
+
+    <summary>Every Pydantic model used as an SO `text_format` or tool `input_schema` carries a `schema_version: Literal["vN"] = "vN"` discriminator field, and each pipeline event/log persists it. When a schema changes you bump the version and keep the previous parser registered for at least one rollback window. Strict mode forces the model to emit the declared literal, so events are guaranteed-tagged at the source. Silent schema drift — the dominant failure mode in multi-stage agent pipelines — becomes a typed branch dispatcher: "v3" events route to the v3 parser, "v4" to v4, unknown versions raise loudly instead of corrupting downstream state.</summary>
+
+    <why>
+      <p>Multi-step agent pipelines (extract → enrich → score → publish) span days of replay, weeks of backfill, and months of stored events. Without an in-payload version, a producer change ripples silently — old consumers parse new events, fail in unexpected fields, or produce wrong derived data. Versioned contracts replace this with three guarantees: (1) every event self-identifies its schema, (2) consumers route by version explicitly, (3) backfill jobs can run old and new schemas in parallel for a defined rollback window. This is the same versioning pattern Kafka schema registries enforce — adapted to Pydantic + LLM SO.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Multi-stage pipelines where output of stage N is input to stage N+1</item>
+        <item>Event-sourced agent systems with replay or backfill</item>
+        <item>Cross-team contracts where producer and consumer ship independently</item>
+        <item>Long-running batch jobs that span schema-change releases</item>
+        <item>Stored conversation logs you plan to re-process months later</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-shot scripts and exploratory notebooks — overhead not justified</item>
+        <item>Single-process pipelines where producer and consumer always deploy together</item>
+        <item>Schemas with no breaking changes expected ever (rare; usually wrong)</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="version-literal-rule">
+      <p>A Pydantic model used as a shared contract between pipeline stages MUST declare a `schema_version: Literal["vN"] = "vN"` field. Strict mode forces the model to emit exactly that literal, so the version is part of the typed payload — not a sidecar header that can drift.</p>
+
+      <rule testable="true">
+        <statement>For every Pydantic model used as a cross-stage contract, declare `schema_version: Literal["vN"] = "vN"` as the first field, persist it on every emitted event, and route consumers via a `dict[str, type[BaseModel]]` parser registry keyed by version.</statement>
+        <rationale>Without an in-payload version, schema drift is silent: old consumers parse new payloads and crash on unrelated fields, masking the actual breaking change; with a typed registry, unknown versions raise at the boundary and old data still parses with old code.</rationale>
+      </rule>
+
+      <example type="good" title="Versioned schema with typed dispatcher">
+        <code lang="python"><![CDATA[
+class ArticleDraft(BaseModel):
+    schema_version: Literal["v3"] = "v3"
+    body: str
+    title: str
+    tags: list[str]
+
+PARSERS: dict[str, type[BaseModel]] = {
+    "v2": ArticleDraftV2,
+    "v3": ArticleDraft,
+}
+
+def parse_event(payload: dict) -> BaseModel:
+    cls = PARSERS.get(payload["schema_version"])
+    if cls is None:
+        raise UnknownSchemaVersion(payload["schema_version"])
+    return cls.model_validate(payload)
+        ]]></code>
+        <note>Backfill jobs run old and new schemas side-by-side; unknown versions fail loud at the parse boundary.</note>
+      </example>
+
+      <example type="bad" title="Unversioned schema with silent drift">
+        <code lang="python"><![CDATA[
+class ArticleDraft(BaseModel):
+    body: str
+    title: str
+    tags: list[str]
+
+# stage_2_enrich.py — parses untagged dicts; new producer renames `tags`
+# to `topics` and old consumer crashes deep inside model_validate.
+draft = ArticleDraft.model_validate(payload)
+        ]]></code>
+        <note>Schema change is invisible until production parse fails; root cause hides under a Pydantic ValidationError on an unrelated field.</note>
+      </example>
+
+      <antipattern>
+        <description>Tracking schema version in a sidecar header (HTTP header, Kafka header, file metadata) outside the payload.</description>
+        <reason>Sidecars are stripped by the first naive `payload = response.json()` consumer; in-payload version travels with the data and survives every serialization round-trip.</reason>
+      </antipattern>
+
+      <reference path="templates/versioned_schema.py">v3 and v4 schemas with typed dispatcher.</reference>
+      <see-also>
+        <link href="https://collinwilkins.com/articles/structured-output">Wilkins — SO pipelines 2026, schema versioning section.</link>
+        <link href="https://dev.to/kuldeep_paul/continuous-integration-for-llm-prompts-a-step-by-step-guide-to-automated-prompt-deployment-359k">CI for LLM prompts — versioned contracts.</link>
+      </see-also>
+    </section>
+
+    <templates>
+      <template path="templates/versioned_schema.py" purpose="Pydantic models v3 and v4 of the same shape with a typed dispatcher."/>
+    </templates>
+  </content>
+</methodology>
