@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="php-laravel-queues">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Laravel queue system for offloading background work: ShouldQueue, named queues, WithoutOverlapping middleware, retry/backoff/timeout, Bus::batch for parallel processing.</summary>
+    <tags>
+      <tag>laravel</tag>
+      <tag>queues</tag>
+      <tag>jobs</tag>
+      <tag>background-processing</tag>
+      <tag>async</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Laravel Queues</title>
+    <summary>Laravel's queue system for offloading background work: job classes implementing ShouldQueue, named queues for priority, WithoutOverlapping middleware for deduplication, retry/backoff/timeout configuration, and Bus::batch for parallel dataset processing. Jobs must be idempotent (check isProcessed() early), pass primitive IDs only (not Eloquent models), and implement failed() to surface failures to operators.</summary>
+    <why>
+      <p>Work exceeding 200ms in HTTP handlers blocks the FPM worker thread and degrades all concurrent requests. Queues decouple the ack from the work: the controller dispatches and returns immediately; the worker processes asynchronously. Named queues (high, default, notifications) let high-priority work skip ahead. Retry + backoff handles unreliable downstream APIs without manual intervention.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any work taking >200ms from HTTP: email, PDF/CSV generation, third-party API calls, image processing.</item>
+        <item>Fan-out: one user action triggers many side-effects (notify N subscribers).</item>
+        <item>Batch jobs (Bus::batch) with then/catch/finally callbacks for large dataset processing.</item>
+        <item>Webhook processing where you must ack the sender quickly and process asynchronously.</item>
+        <item>Scheduled retries with exponential backoff for unreliable downstream services.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Hard real-time requirements (&lt;1s end-to-end) — queue overhead and worker polling add latency.</item>
+        <item>When the DB write IS the result the user is waiting for.</item>
+        <item>Single-host deployments without a daemonized worker (queue:work must run continuously).</item>
+        <item>Jobs that depend on request-scoped state (auth user, session) — pass primitive IDs only.</item>
+        <item>When there is no Horizon/supervisor plan and no failed_jobs monitoring.</item>
+      </list>
+    </when-not-to-use>
+    <section name="required-job-structure">
+      <rule>
+        <statement>Every job class must implement ShouldQueue. Without this interface, dispatch() runs the job synchronously on the current thread regardless of the queue driver.</statement>
+        <rationale>The missing ShouldQueue interface is the #1 silent queue failure: tests pass (synchronous execution), production blocks the HTTP thread.</rationale>
+      </rule>
+      <rule>
+        <statement>Pass only primitive IDs (int, string, UUID) into job constructors. Reload Eloquent models inside handle() using findOrFail() or find() with an early-return guard.</statement>
+        <rationale>SerializesModels re-fetches models at run time. If the model was deleted between enqueue and execution, the job throws a ModelNotFoundException on deserialization — before handle() is called, bypassing the early-return guard.</rationale>
+      </rule>
+      <rule>
+        <statement>Add an idempotency check as the first line of handle(): if ($this->order->isProcessed()) { return; }. Every job must survive re-execution without duplicating side effects.</statement>
+        <rationale>Queue drivers deliver at-least-once. Network blips during acknowledgment cause re-delivery. Idempotent jobs tolerate this without double-charging, double-emailing, or corrupting state.</rationale>
+      </rule>
+      <rule>
+        <statement>Set $tries, $backoff, and $timeout on every job class. Provide retryUntil() for jobs with a hard deadline. Implement failed(Throwable $exception) to update model state and log the error.</statement>
+        <rationale>Without failed(), the job silently enters the failed_jobs table with no application-level record. Operators and users have no visibility that processing failed.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="php"><![CDATA[
+class ProcessOrderJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $tries = 3;
+    public int $backoff = 60;
+    public int $timeout = 120;
+
+    public function __construct(public readonly Order $order) {}
+
+    public function middleware(): array
+    {
+        return [new WithoutOverlapping($this->order->id)];
+    }
+
+    public function handle(OrderProcessor $processor): void
+    {
+        if ($this->order->isProcessed()) {
+            return;
+        }
+        $processor->process($this->order);
+        NotifyCustomerJob::dispatch($this->order)->onQueue('notifications');
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        $this->order->update(['status' => 'failed']);
+        Log::error('Order processing failed', [
+            'order_id' => $this->order->id,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
+    public function retryUntil(): \DateTime
+    {
+        return now()->addHours(24);
+    }
+}
+        ]]></code>
+        <note>WithoutOverlapping requires a Redis or database cache backend — file/array cache silently breaks it.</note>
+      </example>
+    </section>
+    <section name="dispatch-rules">
+      <rule>
+        <statement>Never dispatch a job inside a DB::transaction. The worker picks it up before the transaction commits and finds no row. Use dispatch()->afterCommit() or set after_commit => true in config/queue.php.</statement>
+        <rationale>The job is placed in the queue before the wrapping transaction is committed. The worker executes and calls Order::find($id) — the row does not exist yet — and the job fails.</rationale>
+      </rule>
+      <rule>
+        <statement>Run php artisan queue:failed-table &amp;&amp; php artisan migrate when adding queue support to a project. The failed_jobs migration is not scaffolded by make:job.</statement>
+        <rationale>Without the failed_jobs table, Laravel throws a DB error when a job exceeds its retry limit and cannot be stored. The job is silently discarded.</rationale>
+      </rule>
+    </section>
+    <section name="batch-job-rules">
+      <rule>
+        <statement>Add the Batchable trait to any job that participates in a Bus::batch. The first line of handle() must check $this->batch()->cancelled() and return early if true.</statement>
+        <rationale>A failed sibling job may cancel the batch. Without the cancellation check, jobs that already started will complete needlessly, wasting resources and potentially producing inconsistent partial state.</rationale>
+      </rule>
+      <rule>
+        <statement>For datasets exceeding 10,000 items, dispatch a meta-job that paginates and dispatches sub-jobs — never load all IDs into a single batch payload.</statement>
+        <rationale>Queue payloads are limited by the queue driver (Redis: string size limits; SQS: 256KB). Loading all IDs into one Bus::batch creates a payload that may exceed limits or consume excessive Redis memory.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="php"><![CDATA[
+class ExportUsersJob implements ShouldQueue
+{
+    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public function __construct(
+        public readonly array $userIds,
+        public readonly string $filePath
+    ) {}
+
+    public function handle(): void
+    {
+        if ($this->batch()->cancelled()) {
+            return;
+        }
+        $users = User::whereIn('id', $this->userIds)->get();
+        // Process chunk and write to $this->filePath...
+    }
+}
+
+// Dispatch as a batch
+$batch = Bus::batch([
+    new ExportUsersJob($chunk1, $path),
+    new ExportUsersJob($chunk2, $path),
+    new ExportUsersJob($chunk3, $path),
+])
+->then(fn($batch) => ExportMailer::send($batch->id))
+->catch(fn($batch, $e) => Log::error('Batch failed', ['id' => $batch->id]))
+->finally(fn($batch) => Export::find($batch->id)?->markComplete())
+->name('Export Users')
+->dispatch();
+        ]]></code>
+        <note>then() fires only if all jobs succeed. catch() fires on the first failure. finally() always fires. Use finally() for cleanup that must happen regardless of outcome.</note>
+      </example>
+    </section>
+    <section name="antipatterns">
+      <antipattern>
+        <description>Missing ShouldQueue interface on a job class: class ProcessOrderJob { use Dispatchable, Queueable... } with no implements ShouldQueue.</description>
+        <reason>dispatch() runs the job synchronously on the current thread. HTTP tests pass because execution is identical. In production, the queue never receives the work, and the HTTP thread blocks for the job's duration.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Passing Eloquent model instances or DTOs containing closures into job constructors.</description>
+        <reason>SerializesModels serializes via GlobalID and re-fetches on the worker. If the row was deleted between enqueue and run, findOrFail throws before handle() is called. Closures are never serializable — PHP throws immediately on dispatch().</reason>
+      </antipattern>
+      <antipattern>
+        <description>Dispatching a job inside a DB::transaction without afterCommit().</description>
+        <reason>The job is pushed to the queue before the transaction commits. The worker picks it up and calls findOrFail($id) — the row does not exist yet — and the job fails with a ModelNotFoundException.</reason>
+      </antipattern>
+      <antipattern>
+        <description>No failed() implementation on a job that mutates external state (payment, webhook, inventory).</description>
+        <reason>When the job exceeds $tries, it enters the dead queue with no application-level record. The user sees no error, the operator sees only a queue depth spike, and the failed state is never surfaced in the UI.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using Queue::fake() for the only test of a job, never testing failed() behavior.</description>
+        <reason>Queue::fake() asserts that dispatch was called but never runs handle() or failed(). A job whose failed() silently does nothing passes all tests but leaves inconsistent state in production after a queue failure.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Missing failed_jobs migration on a project using queues.</description>
+        <reason>Without the failed_jobs table, when a job exceeds its retry limit Laravel throws a DB error on the storage attempt and the job is silently discarded — no record, no alert, no retry possible.</reason>
+      </antipattern>
+    </section>
+    <section name="where-it-fails-limitations">
+      <p>SerializesModels re-fetches Eloquent models at run time — if the model was deleted, the job fails on findOrFail. Pass IDs + reload defensively.</p>
+      <p>WithoutOverlapping requires a cache lock backend (Redis/database). File/array cache silently breaks it.</p>
+      <p>database queue driver is fine for low volume but locks rows under load — use Redis/SQS/Beanstalkd for >100 jobs/sec.</p>
+      <p>Long-running jobs hit PHP max_execution_time and worker --timeout; Laravel kills the worker and the job retries from scratch (not idempotent by default).</p>
+      <p>After deploys, queue:restart must be called or workers run stale code (cached opcodes + container).</p>
+    </section>
+    <section name="agentic-workflow">
+      <p>Use a subagent to scaffold a job class, register middleware, write a feature test that asserts dispatch with Queue::fake(), and add a failed_jobs migration if missing. The agent must check config/queue.php for the configured connection and confirm a worker/Horizon is supervised before declaring done. Always end with php artisan queue:work --once to smoke-test the job locally.</p>
+    </section>
+    <section name="cli-tools">
+      <list>
+        <item>php artisan queue:work — Daemon worker (production: under supervisord/systemd) (Built-in)</item>
+        <item>php artisan queue:listen — Dev-only worker (reloads code per job) (Built-in)</item>
+        <item>php artisan queue:failed / queue:retry / queue:flush — Manage failed jobs (Built-in)</item>
+        <item>php artisan horizon — Redis-backed dashboard + auto-balancing (composer require laravel/horizon)</item>
+        <item>php artisan queue:restart — Graceful worker reload after deploy (Built-in)</item>
+        <item>php artisan queue:monitor — Alert on queue depth (Built-in, Laravel 9+)</item>
+        <item>php artisan tinker — REPL for ad-hoc dispatch + state inspection (Built-in)</item>
+      </list>
+    </section>
+    <section name="services-and-apps">
+      <list>
+        <item>Laravel Horizon (OSS) — Redis only; rich dashboard, supervisor config, metrics. Standard for prod.</item>
+        <item>Redis/Valkey (OSS) — Default queue backend. Already on faion-net server (port 6379).</item>
+        <item>AWS SQS (SaaS) — First-class driver. 256KB message limit, no FIFO unless explicitly enabled.</item>
+        <item>Beanstalkd (OSS) — Lightweight alternative to Redis.</item>
+        <item>Laravel Forge / Vapor (SaaS) — Provisions Horizon + Redis automatically.</item>
+        <item>Sentry / Bugsnag (SaaS) — Auto-captures failed() exceptions via Laravel integration.</item>
+        <item>Telescope (OSS) — Dev-only deep-inspection; logs every job + payload.</item>
+      </list>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Pass primitives (IDs, scalars) into job constructors; reload Eloquent models inside handle(). Smaller payloads, less stale-data risk.</item>
+        <item>Make every job idempotent — check isProcessed() early; the same message can be delivered twice (especially on SQS at-least-once).</item>
+        <item>Set --max-time and --max-jobs on workers so memory leaks recycle naturally; pair with supervisor autorestart.</item>
+        <item>Use named queues per priority (high, default, low, notifications) and order them on the worker command line.</item>
+        <item>For batches >10k items, dispatch a meta-job that paginates and dispatches sub-jobs — never load all IDs into one batch payload.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/job.php" purpose="ProcessOrderJob with ShouldQueue, WithoutOverlapping, tries/backoff/timeout, idempotency check, failed()"/>
+      <template path="templates/batch-job.php" purpose="ExportUsersJob with Batchable, cancellation check, Bus::batch dispatch"/>
+      <template path="templates/supervisor.ini" purpose="Supervisor config for queue:work daemon with priority queues and autorestart"/>
+    </templates>
+  </content>
+</methodology>
