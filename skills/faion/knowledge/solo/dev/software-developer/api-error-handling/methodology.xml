@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-error-handling">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Standardize REST API error responses using RFC 7807 Problem Details: JSON with type, title, status, detail, trace ID, and optional field-level errors.</summary>
+    <tags>
+      <tag>api-errors</tag>
+      <tag>problem-details</tag>
+      <tag>rfc-7807</tag>
+      <tag>error-handling</tag>
+      <tag>rest-api</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>API Error Handling</title>
+    <summary>Standardize REST API error responses using RFC 7807 Problem Details: a JSON object with `type` (URI), `title`, `status`, `detail`, `instance`, `traceId`, and optional `errors` array for field-level validation failures. Every error response must include a trace ID.</summary>
+    <why>
+      <p>RFC 7807 gives API consumers a machine-readable error type URI, a human-readable title, and a correlation handle (traceId) — all in one predictable envelope. Consistent structure means clients need one error-handling code path instead of one per endpoint. Never exposing internal errors prevents information leakage that aids attackers.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing any new REST API endpoint that can fail.</item>
+        <item>Unifying error responses across an existing API with inconsistent shapes.</item>
+        <item>Implementing global exception handlers in FastAPI, Django, or Express.</item>
+        <item>Adding field-level validation error details.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Internal RPC calls where structured JSON adds overhead with no consumer benefit.</item>
+        <item>Streaming endpoints where a full JSON error body disrupts the stream protocol.</item>
+        <item>Simple CLI tools — plain stderr messages are sufficient.</item>
+      </list>
+    </when-not-to-use>
+    <section name="use-cases-for-agentic-workflow">
+      <p>Any new public or partner-facing HTTP API should standardize errors before the first endpoint ships. Existing APIs with inconsistent error shapes benefit from an agent audit and one-shot migration to RFC 7807 Problem Details. Multi-service architectures should enforce a single error envelope across services so clients (and agents) don't have to special-case each. Generating client SDKs improves significantly with a uniform error schema making generated clients predictable and idempotency-safe. Designing retry / circuit-breaker behavior is enabled when clients can rely on status + type for deterministic decisions. Compliance/audit (PCI, GDPR, SOC2) benefits from structured errors with trace IDs that are auditor-friendly.</p>
+    </section>
+    <section name="required-fields">
+      <rule testable="true">
+        <statement>Every error response must include type (URI), title (short string), and status (HTTP code).</statement>
+        <rationale>These three fields are the RFC 7807 minimum. Clients that parse errors programmatically rely on type as the stable identifier.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>The type field must be a URI that identifies the error class, not a generic string.</statement>
+        <rationale>URI type enables clients to look up documentation and allows error taxonomies to be machine-navigable.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Always include traceId in every error response.</statement>
+        <rationale>Without a trace ID, correlating a client-reported error to a server log entry requires time-based guessing, which fails under concurrent load.</rationale>
+      </rule>
+    </section>
+    <section name="optional-extensions">
+      <rule testable="true">
+        <statement>Include detail with a human-readable explanation of this specific occurrence.</statement>
+        <rationale>title is generic (e.g. "Validation Error"); detail explains what was wrong in this request.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Include instance as the request path URI where the error occurred.</statement>
+        <rationale>Allows log systems to group errors by endpoint without parsing log lines.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>For 400/422 validation errors, include an errors array with field, code, and message per violation.</statement>
+        <rationale>Field-level errors let clients highlight specific form inputs rather than showing a generic top-level message.</rationale>
+      </rule>
+    </section>
+    <section name="security-rules">
+      <rule testable="true">
+        <statement>Never include stack traces, internal exception messages, or database error details in responses.</statement>
+        <rationale>Internal details reveal implementation, schema, and potential attack vectors to adversaries.</rationale>
+      </rule>
+    </section>
+    <section name="error-code-constants">
+      <rule testable="true">
+        <statement>Define error codes as string constants grouped by 4xx vs 5xx; never use raw strings inline.</statement>
+        <rationale>Centralized constants prevent typos and make all error codes searchable in one place.</rationale>
+      </rule>
+      <example type="good" title="ErrorCode constants in Python">
+        <code lang="python"><![CDATA[class ErrorCode:
+    # Client Errors (4xx)
+    VALIDATION_ERROR = "validation_error"
+    INVALID_FORMAT = "invalid_format"
+    MISSING_FIELD = "missing_field"
+    UNAUTHORIZED = "unauthorized"
+    FORBIDDEN = "forbidden"
+    NOT_FOUND = "not_found"
+    CONFLICT = "conflict"
+    RATE_LIMITED = "rate_limited"
+
+    # Server Errors (5xx)
+    INTERNAL_ERROR = "internal_error"
+    SERVICE_UNAVAILABLE = "service_unavailable"
+    TIMEOUT = "timeout"]]></code>
+      </example>
+    </section>
+    <section name="fastapi-global-handlers">
+      <rule testable="true">
+        <statement>Register a global exception handler for ValidationError and a catch-all handler for Exception; log the catch-all server-side before responding.</statement>
+        <rationale>Without a catch-all, unhandled exceptions return raw 500 HTML from the framework, not a structured error body.</rationale>
+      </rule>
+    </section>
+    <section name="error-message-quality">
+      <rule testable="true">
+        <statement>Error messages must be actionable: name the field, state the constraint, and describe the fix.</statement>
+        <rationale>"Invalid input" tells the client nothing; "Email must be in format user@domain.com" tells them exactly what to change.</rationale>
+      </rule>
+      <example type="bad" title="Vague error">
+        <code lang="json"><![CDATA[{"detail": "Error occurred"}]]></code>
+        <note>No field name, no constraint, no action.</note>
+      </example>
+      <example type="good" title="Actionable field-level errors">
+        <code lang="json"><![CDATA[{
+  "errors": [
+    {"field": "email", "code": "invalid_format", "message": "Must be a valid email address"},
+    {"field": "age", "code": "out_of_range", "message": "Must be between 18 and 120"}
+  ]
+}]]></code>
+      </example>
+    </section>
+    <section name="failures-and-limitations">
+      <p>type URI fiction: the spec wants a stable URI documenting the problem; teams put https://example.com/errors/foo that 404s forever. Agents replicate the placeholder. detail leaks PII / internals: "User 12345 not found" exposes IDs, "SQL syntax error near 'OR 1=1'" exposes schema. Agents helpfully include too much context. Inconsistent error codes: README has good ErrorCode enum, but services drift; one service uses validation_error, another validation-error, another VALIDATION_ERROR. Field error format not in spec: the example's errors[] array is a vendor extension. Clients must know to look for it. HTTP status mismatch: teams return 200 OK with an error body. Breaks routers, retries, monitoring, agents. i18n absent: title/detail are English; spec leaves localization to extensions, methodology doesn't address it. Trace ID distribution: traceId field is suggested but not standard — different services pick trace_id, traceId, request_id, breaking correlation. Idempotency / retry hints absent: clients must guess from status code; methodology doesn't recommend Retry-After or an extensions.retryable flag.</p>
+    </section>
+    <section name="agentic-workflow">
+      <p>Drive API error handling as a four-pass agent flow: (1) catalog agent scans handlers across the repo, builds an inventory of every error shape currently returned, and clusters them by intent; (2) schema agent generates a canonical ProblemDetail Pydantic/Zod/Go struct + a versioned errors.yaml registry of code → http_status, type_uri, title, retryable rows; (3) handler refactor agent inserts a global exception/error middleware (FastAPI exception_handler, Express error middleware, Gin recovery, Spring @ControllerAdvice) that maps domain errors → ProblemDetail; (4) redactor agent runs in CI on responses captured from contract tests, flagging PII / stack-trace leaks in detail. Persist the registry as docs/api/errors.yaml and treat changes to it as breaking changes (require ADR).</p>
+    </section>
+    <section name="recommended-subagents">
+      <p>faion-sdd-executor-agent converts the migration to Problem Details into SDD todo/ tasks (one task per service / endpoint group). A schema generator agent (purpose-built, worth creating): given the codebase, emits ProblemDetail types for each language plus an OpenAPI fragment ready to import. A redactor agent (purpose-built): runs against captured responses, flags PII (emails, phones, IDs), and recommends safe rewordings. A client-mapper agent: generates client-side if e.status == 429 &amp;&amp; e.extensions.retryable: backoff() logic from the registry. password-scrubber-agent sanitizes logged ProblemDetail bodies before they hit a long-term log store.</p>
+    </section>
+    <section name="prompt-pattern-catalog">
+      <p>Catalog prompt template:</p>
+      <code lang="text"><![CDATA[Scan <paths>. For every handler that returns an error response, extract: file, status code, JSON body shape, exception class. Group by error intent (validation, auth, rate-limit, conflict, not-found, internal). Output a markdown table; do not modify code.]]></code>
+    </section>
+    <section name="prompt-pattern-schema-generation">
+      <p>Schema generation prompt template:</p>
+      <code lang="text"><![CDATA[Using RFC 7807 + the methodology in solo/dev/software-developer/api-error-handling/README.md, generate a canonical ProblemDetail type for <language>. Include a separate ErrorCode enum aligned with the codes in the README. Add an `extensions` field for `retryable: bool`, `trace_id: str`, and field-level errors. Output: type definitions + one `to_response()` helper. Match existing project style (snake_case in Python, camelCase in TS).]]></code>
+    </section>
+    <section name="prompt-pattern-redaction">
+      <p>Redaction prompt template:</p>
+      <code lang="text"><![CDATA[Given this captured error response <json>, identify any field that might contain PII (email, phone, full name, numeric ID > 6 digits), secrets, internal hostnames, or stack traces. For each, propose a safe replacement (e.g., "user u_*** not found"). Output as table.]]></code>
+    </section>
+    <section name="cli-tools-ecosystem">
+      <p>schemathesis — property-based testing of OpenAPI errors against running server. dredd — validate API responses match the documented error schemas. spectral (Stoplight) — lint OpenAPI for missing/inconsistent error responses. redocly lint — same niche, opinionated about Problem Details. ajv-cli — JSON Schema validate ProblemDetail samples in CI. httpie / curl — manual round-trip checks of error shapes. mitmproxy / httpyac — capture real responses to feed redactor agent. protoc-gen-openapiv2 — gRPC services exposing HTTP errors via gateway. gosec / bandit / semgrep — detect leakage of stack traces / SQL fragments in errors. claude (Anthropic CLI) — run catalog + schema + redactor passes headless.</p>
+    </section>
+    <section name="saas-platforms-for-error-management">
+      <p>Sentry (SaaS errors) is best ROI for capturing 5xx + stitching trace IDs into ProblemDetail. Datadog APM / New Relic / Honeycomb (SaaS observability) enable deep-linking using the traceId from ProblemDetail. Bugsnag (SaaS errors) operates in the same niche as Sentry. Stoplight Studio / Redocly (SaaS docs) render RFC 7807 error tables in API docs. Postman / Bruno (SaaS / OSS API client) run test collections that assert ProblemDetail shape. Kong / Apigee / Tyk / AWS API Gateway (SaaS API gateways) can rewrite gateway-level errors into ProblemDetail. Spring Boot ProblemDetail (since 6) is a built-in framework type — agents should adopt it instead of rolling their own. FastAPI / Hapi / NestJS Problem JSON plugins (OSS) are drop-in middleware. GitHub Octokit and Stripe are public API references for error models done well; agents can mimic their approaches.</p>
+    </section>
+    <section name="best-practices">
+      <p>Pin one canonical ProblemDetail type per language and import it everywhere; ban ad-hoc {"error": "..."} JSON. Maintain a versioned errors.yaml registry (code, http_status, type_uri, title, retryable). Code reviews check the registry, not the response strings. type URI must resolve. Host the docs page in the same repo (/docs/errors/&lt;slug&gt;) so the URL is part of the deploy. Always include trace_id and propagate it to your tracer/logger; clients copy it into bug reports. Strip stack traces and SQL fragments from detail in production builds (env-gated). Use Retry-After HTTP header for 429 / 503; mirror it in extensions.retry_after for non-HTTP transports. Localize via Accept-Language in the request and Content-Language in the response; cache localized titles. Include the registry in your OpenAPI / AsyncAPI spec so generated clients render typed error responses.</p>
+    </section>
+    <section name="ai-agent-gotchas">
+      <p>LLMs invent endpoint paths in instance and made-up type URIs that 404 — both are user-visible. Verify against the registry. Agents over-share detail (stack traces, SQL, internal IDs). Always run a redactor pass. Generated OpenAPI fragments often forget to set application/problem+json content-type — clients then mis-parse. Default LLM error code style is INVALID_INPUT / invalid-input / invalidInput mixed within one PR. Pin a casing rule in the prompt. Long handler files cause agents to skip outer error mappers; feed only the handler + the central error middleware. Agents conflate domain errors with HTTP 4xx (returning 500 for "user not allowed"). Force a mapping table in errors.yaml. Human-in-loop checkpoints: (1) any registry change (breaking for clients), (2) any detail field rewording in a public error, (3) status-code remapping (4xx ↔ 5xx) — these silently break consumers.</p>
+    </section>
+    <templates>
+      <template path="templates/problem-detail.json" purpose="RFC 7807 response envelope with all fields annotated"/>
+      <template path="templates/error-handler.py" purpose="FastAPI global exception handler wiring ProblemDetail model"/>
+    </templates>
+    <see-also>
+      <link href="https://datatracker.ietf.org/doc/html/rfc7807">RFC 7807 — Problem Details for HTTP APIs</link>
+      <link href="https://datatracker.ietf.org/doc/html/rfc9457">RFC 9457 — Problem Details (updated)</link>
+      <link href="https://github.com/microsoft/api-guidelines/blob/vNext/Guidelines.md#7102-error-condition-responses">Microsoft REST API Guidelines — Errors</link>
+      <link href="https://cloud.google.com/apis/design/errors">Google API Design Guide — Errors</link>
+      <link href="https://stripe.com/docs/api/errors">Stripe Error Object</link>
+      <link href="https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-ann-rest-exceptions.html">Spring `ProblemDetail` (Spring 6)</link>
+      <link href="https://fastapi.tiangolo.com/tutorial/handling-errors/">FastAPI Exception Handling</link>
+      <link href="https://schemathesis.readthedocs.io">Schemathesis</link>
+    </see-also>
+  </content>
+</methodology>
