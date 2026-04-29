@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="dotfiles-management">
+  <metadata>
+    <tier>solo</tier>
+    <group>infra</group>
+    <domain>server-craft</domain>
+    <summary>Git-based dotfiles with GNU stow for symlinks. Per-category packages, machine-specific overrides, bootstrap script. Strict rules on what must never be committed.</summary>
+    <tags>
+      <tag>dotfiles</tag>
+      <tag>stow</tag>
+      <tag>git</tag>
+      <tag>shell</tag>
+      <tag>developer-environment</tag>
+    </tags>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Dotfiles Management</title>
+    <summary>Git-based dotfiles management using GNU stow for symlink creation. Covers repository structure with per-category packages (bash, git, tmux, vim, ssh, scripts), machine-specific overrides (machine-server/machine-workstation), bootstrap scripts for new machines, and strict privacy rules about what must never be committed.</summary>
+    <why>
+      <p>A reproducible developer environment means a fresh server is productive in minutes, not hours. Stow creates $HOME symlinks from the repo so configs are version-controlled yet live at their expected paths. Machine-specific overrides via separate stow packages keep server and workstation configs cleanly separated without branching.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Setting up a new server and need to deploy the developer's standard config.</item>
+        <item>Rebuilding a server after data loss — dotfiles bootstrap restores the dev environment.</item>
+        <item>Standardizing configuration across multiple machines (workstation + VPS).</item>
+        <item>Version-controlling shell/editor configs for reproducibility and change tracking.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Configs containing secrets (SSH private keys, .env files, .bash_history) — never in dotfiles.</item>
+        <item>Environments managed by Ansible/Puppet where dotfiles deployment conflicts with CM.</item>
+        <item>Shared servers where one developer's dotfiles pollute others' environments.</item>
+        <item>Disposable containers where the filesystem is ephemeral.</item>
+      </list>
+    </when-not-to-use>
+    <section name="dotfiles-structure">
+      <rule>
+        <statement>Organize dotfiles as per-category stow packages (bash/, git/, tmux/, vim/, ssh/) so individual packages can be installed on any machine independently.</statement>
+        <rationale>A VPS needs bash, git, tmux, and ssh config but not vim GUI plugins or workstation browser bookmarks. Package isolation lets bootstrap pick only what is relevant to the machine type.</rationale>
+      </rule>
+      <rule>
+        <statement>Mirror the $HOME directory structure inside each stow package; stow creates symlinks at $HOME that point into the package directory.</statement>
+        <rationale>stow uses the directory tree under each package as a template for $HOME. A file at dotfiles/bash/.bash_aliases creates ~/.bash_aliases as a symlink. This is stow's core design — match the target directory tree.</rationale>
+      </rule>
+      <section name="directory-layout">
+        <list>
+          <item>bash/ — .bashrc, .bash_profile, .bash_aliases, .bashrc.d/*.sh</item>
+          <item>git/ — .gitconfig, .gitignore_global</item>
+          <item>tmux/ — .tmux.conf</item>
+          <item>vim/ — .vimrc</item>
+          <item>ssh/ — .ssh/config (never keys)</item>
+          <item>scripts/ — .local/bin/* (personal scripts in PATH)</item>
+          <item>machine-server/ — server-specific .bashrc.d/server.sh</item>
+          <item>machine-workstation/ — workstation-specific .bashrc.d/workstation.sh</item>
+        </list>
+      </section>
+      <section name="stow-commands">
+        <example type="good">
+          <code lang="bash"><![CDATA[
+# Install stow
+sudo apt install -y stow
+
+# From the dotfiles root, stow individual packages
+cd ~/dotfiles
+stow bash          # Creates ~/.bashrc, ~/.bash_aliases, etc.
+stow git tmux vim  # Multiple packages at once
+
+# Dry run before stowing (see what will happen)
+stow -n -v bash
+
+# Restow after editing a config (remove + recreate symlinks)
+stow -R tmux
+
+# Unstow (remove symlinks for a package)
+stow -D vim
+
+# Handle an existing file: backup first, then stow
+mv ~/.bashrc ~/.bashrc.backup
+stow bash
+          ]]></code>
+        </example>
+        <antipattern>
+          <description>Using stow --adopt to absorb existing files into the package without reviewing the result.</description>
+          <reason>--adopt moves the existing file into the stow package, potentially overwriting your dotfiles repo version. Always review git diff after --adopt to confirm the absorbed content is what you want to keep.</reason>
+        </antipattern>
+      </section>
+      <section name="machine-specific-pattern">
+        <rule>
+          <statement>Keep machine-specific config in separate stow packages (machine-server/, machine-workstation/) rather than branching the git repo per machine.</statement>
+          <rationale>Branches require merging and diverge over time. Separate stow packages on the same branch can coexist on any machine; only the relevant one is stowed at bootstrap time. The repo stays in sync across all machines.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="bash"><![CDATA[
+# machine-server/.bashrc.d/server.sh — loaded only on servers
+export EDITOR=vim
+alias services='systemctl --user list-units --type=service'
+alias health='bash /srv/nero/health-check.sh'
+
+# machine-workstation/.bashrc.d/workstation.sh — loaded only on workstations
+export EDITOR=code
+alias open='xdg-open'
+
+# bootstrap.sh: detect machine type and stow the right package
+MACHINE_TYPE="server"  # or detect from hostname, GUI presence, etc.
+stow "machine-$MACHINE_TYPE"
+          ]]></code>
+        </example>
+      </section>
+      <section name="modular-bashrc">
+        <rule>
+          <statement>Use a .bashrc.d/ directory pattern sourced by .bashrc so machine-specific files, tool integrations, and aliases can be added/removed without editing the main .bashrc.</statement>
+          <rationale>A monolithic .bashrc becomes hard to maintain across machines. .bashrc.d/ enables modular addition: each stow package can add its own .bashrc.d/*.sh file without conflicting with others.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="bash"><![CDATA[
+# ~/.bashrc — sources all .bashrc.d/ files
+if [ -d "$HOME/.bashrc.d" ]; then
+    for f in "$HOME/.bashrc.d"/*.sh; do
+        [ -r "$f" ] && source "$f"
+    done
+    unset f
+fi
+          ]]></code>
+        </example>
+        <reference path="templates/bootstrap.sh">Full bootstrap script: clone dotfiles, install stow, backup conflicts, stow packages, detect machine type</reference>
+      </section>
+    </section>
+    <section name="dotfiles-privacy">
+      <rule>
+        <statement>Never commit SSH private keys (id_rsa, id_ed25519, id_ecdsa) even if they have a passphrase; commit only .ssh/config.</statement>
+        <rationale>A passphrase-protected private key can be brute-forced offline once exfiltrated from a public or semi-public git repository. The SSH config file (host aliases, identity file paths) contains no secrets.</rationale>
+      </rule>
+      <rule>
+        <statement>Never commit .bash_history or .zsh_history; they may contain passwords typed directly on the command line, API tokens from curl commands, or secret paths.</statement>
+        <rationale>Shell history is a rich source of inadvertent secret leakage: API keys passed as -H flags, passwords typed instead of using a variable, SSH commands with usernames. History files belong in .gitignore.</rationale>
+      </rule>
+      <rule>
+        <statement>Never commit Claude Code project configs (.claude/projects/); they may contain project-specific instructions referencing internal paths, API endpoints, or credential patterns.</statement>
+        <rationale>Claude project configs are machine- and project-specific. They accumulate references to local file paths, internal service URLs, and sometimes credentials captured during setup. They should live locally, not in a shared repo.</rationale>
+      </rule>
+      <section name="safe-vs-unsafe">
+        <list>
+          <item>SAFE: .ssh/config (host aliases, identity file paths, ServerAlive settings)</item>
+          <item>SAFE: .gitconfig (user name, email, aliases, editor preference)</item>
+          <item>SAFE: .bashrc, .bash_aliases, .bash_profile (shell config, no secrets)</item>
+          <item>SAFE: .tmux.conf, .vimrc (tool config, no secrets)</item>
+          <item>SAFE: .claude/settings.json (tool configuration, no project secrets)</item>
+          <item>NEVER: .ssh/id_*, .ssh/known_hosts, .ssh/authorized_keys</item>
+          <item>NEVER: .bash_history, .zsh_history</item>
+          <item>NEVER: .env, .env.local, *.pem, *.key</item>
+          <item>NEVER: .gnupg/ (GPG private keys)</item>
+          <item>NEVER: .claude/projects/ (project-specific Claude configs)</item>
+          <item>NEVER: .op/ (1Password CLI session data)</item>
+        </list>
+      </section>
+      <reference path="templates/gitignore-dotfiles">.gitignore for the dotfiles repo covering all sensitive paths</reference>
+      <antipattern>
+        <description>Using a public GitHub repository for dotfiles without a comprehensive .gitignore.</description>
+        <reason>Public dotfiles repos are indexed by search engines and scraped by secret-scanning tools. A single committed private key or API token is a permanent breach even if deleted later (git history).</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/bootstrap.sh" purpose="Clone repo, install stow, backup conflicts, stow all packages, detect machine type"/>
+      <template path="templates/gitignore-dotfiles" purpose=".gitignore for the dotfiles repo: SSH keys, history, secrets, editor state"/>
+    </templates>
+  </content>
+</methodology>
