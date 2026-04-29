@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="test-fixtures">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>testing-developer</domain>
+    <summary>Fixture design patterns for maintainable test data: Factory, Builder, Object Mother, pytest fixtures, and database isolation.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>fixtures</tag>
+      <tag>testing</tag>
+      <tag>factory-boy</tag>
+      <tag>pytest</tag>
+      <tag>database-testing</tag>
+    </tags>
+    <applies-to>both</applies-to>
+  </metadata>
+
+  <content>
+    <title>Test Fixtures</title>
+
+    <summary>Covers fixture creation patterns (Factory Boy, Builder, Object Mother), pytest fixture scopes and composition, database isolation strategies (transactional rollback, Django test DB, SQLAlchemy), cleanup with yield, and conftest organization. Applies to Python-centric projects but principles transfer to other languages.</summary>
+
+    <why>
+      <p>Poor fixture design causes the most persistent test suite problems: Mystery Guest (unclear data origins), God Fixture (too much shared state), scope mismatches (session fixture with function-scoped side effects), and sequence collisions in parallel runs. Structured factory patterns eliminate these.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Designing pytest fixtures for a new project or refactoring existing ones</item>
+        <item>Setting up Factory Boy for Django/SQLAlchemy model factories</item>
+        <item>Implementing transactional rollback isolation for database tests</item>
+        <item>Debugging scope mismatch or fixture teardown ordering issues</item>
+        <item>Identifying Mystery Guest / God Fixture anti-patterns in a test suite</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>pytest-specific test patterns (parametrize, markers) — use testing-pytest</item>
+        <item>E2E test data setup — use e2e-testing</item>
+        <item>JavaScript test fixtures — use testing-javascript</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="fixture-design-patterns">
+      <p>Factory, Builder, and Object Mother patterns for test data creation. When to use each and their anti-patterns.</p>
+
+      <section name="pattern-comparison">
+        <list>
+          <item>Factory — creates objects with sensible defaults, overridable per call. Best for: most cases.</item>
+          <item>Builder — fluent API for complex objects with many optional fields. Best for: orders, requests with many options.</item>
+          <item>Object Mother — named factory methods for semantically meaningful objects. Best for: domain-specific test scenarios.</item>
+        </list>
+      </section>
+
+      <section name="factory-pattern">
+        <rule>Factories set all required fields to valid defaults so tests only specify what matters.</rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+import factory
+from myapp.models import User, Product
+
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+
+    email = factory.Sequence(lambda n: f"user{n}@example.com")
+    name = factory.Faker("name")
+    role = "user"
+
+class ProductFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Product
+
+    name = factory.Faker("catch_phrase")
+    price = factory.Faker("pydecimal", left_digits=3, right_digits=2, positive=True)
+    owner = factory.SubFactory(UserFactory)
+
+# Usage:
+user = UserFactory(role="admin")         # override single field
+product = ProductFactory.create_batch(5) # create 5 products
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="builder-pattern">
+        <rule>Use the Builder when an object has many optional fields and multiple valid configurations.</rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+class OrderBuilder:
+    def __init__(self):
+        self._data = {"status": "pending", "items": [], "discount": 0}
+
+    def with_item(self, product_id: int, qty: int = 1) -> "OrderBuilder":
+        self._data["items"].append({"product_id": product_id, "qty": qty})
+        return self
+
+    def with_discount(self, percent: int) -> "OrderBuilder":
+        self._data["discount"] = percent
+        return self
+
+    def build(self) -> dict:
+        return {**self._data}
+
+# Usage:
+order = OrderBuilder().with_item(1).with_item(2, qty=3).with_discount(10).build()
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="object-mother">
+        <rule>Object Mother provides semantically named factory methods that express domain intent.</rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+class UserMother:
+    @staticmethod
+    def premium_user() -> User:
+        return UserFactory(role="premium", subscription_active=True)
+
+    @staticmethod
+    def banned_user() -> User:
+        return UserFactory(is_banned=True, ban_reason="policy violation")
+
+    @staticmethod
+    def new_user_without_profile() -> User:
+        return UserFactory(profile=None)
+
+# Usage makes test intent clear:
+def test_premium_features_accessible():
+    user = UserMother.premium_user()
+    assert user.can_access_premium_features()
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="anti-patterns">
+        <antipattern>
+          <description>Mystery Guest: test data created invisibly in conftest or setUp, not visible in the test</description>
+          <reason>Use factory fixtures with explicit parameters in each test instead.</reason>
+        </antipattern>
+        <antipattern>
+          <description>God Fixture: one fixture creates everything the test suite needs</description>
+          <reason>Split into composable factory fixtures; tests request only what they need.</reason>
+        </antipattern>
+      </section>
+    </section>
+
+    <section name="pytest-fixture-design">
+      <p>Fixture scopes and when to use each, yield cleanup, vertical and horizontal composition, conftest layering, and autouse.</p>
+
+      <section name="scope-selection">
+        <rule>function scope (default): isolated per test. Use for stateful fixtures (DB records, file handles).</rule>
+        <rule>class scope: shared across methods in a test class. Use for read-only class-level setup.</rule>
+        <rule>module scope: shared across all tests in a file. Use for expensive read-only setup (parsed config, loaded schema).</rule>
+        <rule>session scope: shared for entire test run. Use ONLY for truly immutable resources (opened TCP connections, loaded models).</rule>
+        <rule>A wide-scope fixture cannot depend on a narrower-scope fixture — pytest raises an error.</rule>
+      </section>
+
+      <section name="yield-fixtures">
+        <rule>Use yield instead of request.addfinalizer — cleanup is co-located and runs even if setup fails after yield.</rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+@pytest.fixture(scope="module")
+def smtp_connection():
+    import smtplib
+    conn = smtplib.SMTP("smtp.example.com", 587)
+    conn.starttls()
+    yield conn
+    conn.quit()  # guaranteed cleanup
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="vertical-composition-fixture-chains">
+        <rule>Build higher-level fixtures from lower-level ones by declaring them as parameters.</rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+@pytest.fixture
+def db_user(db):
+    return UserFactory()
+
+@pytest.fixture
+def authenticated_client(client, db_user):
+    client.force_login(db_user)
+    return client
+
+def test_profile_page(authenticated_client):
+    response = authenticated_client.get("/profile/")
+    assert response.status_code == 200
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="horizontal-composition-multiple-fixtures">
+        <rule>Request multiple independent fixtures in a test when they provide different concerns.</rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+def test_checkout(authenticated_client, make_product, mailoutbox):
+    product = make_product(price=50.0)
+    authenticated_client.post("/checkout/", {"product_id": product.id})
+    assert len(mailoutbox) == 1
+    assert "Order confirmed" in mailoutbox[0].subject
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="autouse-fixtures">
+        <rule>Use autouse=True only for cross-cutting side effects: clearing caches, resetting singletons, patching env vars.</rule>
+        <rule>Always document autouse fixtures so developers know they run implicitly.</rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+@pytest.fixture(autouse=True)
+def isolate_from_external_services(mocker):
+    """Prevent any real HTTP calls during tests."""
+    mocker.patch("requests.get", side_effect=RuntimeError("Real HTTP blocked in tests"))
+    mocker.patch("requests.post", side_effect=RuntimeError("Real HTTP blocked in tests"))
+          ]]></code>
+        </example>
+      </section>
+    </section>
+
+    <section name="database-fixtures">
+      <p>Django TestCase vs pytest-django, transactional rollback, SQLAlchemy session fixtures, and xdist sequence collision prevention.</p>
+
+      <section name="django-pytest-django-vs-testcase">
+        <rule>Prefer pytest-django with @pytest.mark.django_db over unittest.TestCase for new tests.</rule>
+        <rule>Use transaction=True only when the test needs to see committed data (e.g., Celery tasks, multi-thread scenarios).</rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+# Fast: wraps test in a transaction, rolls back after
+@pytest.mark.django_db
+def test_user_creation(make_user):
+    user = make_user()
+    assert User.objects.count() == 1  # visible within transaction
+
+# Slower: commits, then truncates — needed for signal/Celery tests
+@pytest.mark.django_db(transaction=True)
+def test_post_save_signal(make_user):
+    user = make_user()
+    assert EmailLog.objects.filter(user=user).exists()
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="sqlalchemy-transactional-fixture">
+        <rule>Use a nested transaction with SAVEPOINT to roll back after each test without recreating the DB.</rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+@pytest.fixture(scope="session")
+def engine():
+    from sqlalchemy import create_engine
+    return create_engine(TEST_DATABASE_URL)
+
+@pytest.fixture(scope="session")
+def tables(engine):
+    Base.metadata.create_all(engine)
+    yield
+    Base.metadata.drop_all(engine)
+
+@pytest.fixture
+def db_session(engine, tables):
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    yield session
+    session.close()
+    transaction.rollback()
+    connection.close()
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="xdist-parallel-db-isolation">
+        <rule>When using pytest-xdist, each worker needs its own database to avoid constraint collisions.</rule>
+        <rule>Use the worker_id fixture from pytest-xdist to generate per-worker DB names.</rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+# conftest.py
+@pytest.fixture(scope="session")
+def django_db_setup(worker_id, django_test_environment, django_db_blocker):
+    """Create separate DB per xdist worker."""
+    from django.conf import settings
+    if worker_id == "master":
+        db_name = "test_mydb"
+    else:
+        db_name = f"test_mydb_{worker_id}"
+    settings.DATABASES["default"]["NAME"] = db_name
+    with django_db_blocker.unblock():
+        from django.test.utils import setup_databases
+        setup_databases(verbosity=0, interactive=False)
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="sequence-collision-prevention">
+        <antipattern>
+          <description>Using factory_boy Sequence without xdist-aware reset causes duplicate key errors</description>
+          <reason>Each worker starts its counter at 0. Use factory.Sequence(lambda n: f"{worker_id}_{n}") or UUIDs as primary keys.</reason>
+        </antipattern>
+        <rule>Prefer UUIDs over sequential integers for test object IDs to avoid collision in parallel runs.</rule>
+      </section>
+    </section>
+
+    <templates>
+      <template path="templates/factory-boy-factory.py" purpose="Factory Boy base factory with traits and sub-factories"/>
+      <template path="templates/conftest-transactional.py" purpose="Transactional rollback fixture for pytest-django"/>
+    </templates>
+
+    <see-also>
+      <link href="https://factoryboy.readthedocs.io/"/>
+      <link href="https://pytest-django.readthedocs.io/"/>
+      <link href="https://docs.pytest.org/en/stable/fixture.html"/>
+    </see-also>
+  </content>
+</methodology>
