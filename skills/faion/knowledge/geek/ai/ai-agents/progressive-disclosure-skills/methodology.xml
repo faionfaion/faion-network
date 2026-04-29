@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="progressive-disclosure-skills">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Author Claude Skills as a three-level pyramid to defer context loading: frontmatter always loaded, body only on activation, references only on explicit Read.</summary>
+    <tags>
+      <tag>skills</tag>
+      <tag>context-management</tag>
+      <tag>progressive-disclosure</tag>
+      <tag>prompt-engineering</tag>
+      <tag>anthropic</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Progressive Disclosure Skills — 3-Level Pyramid</title>
+    <summary>Author Claude Skills as a strict three-level pyramid: (1) YAML frontmatter — name + description + triggers, always loaded into the system prompt; (2) SKILL.md body — loaded only when the skill is activated by trigger match; (3) scripts/, references/, assets/ — loaded only when the activated SKILL.md explicitly tells Claude to read them. Each level pays a context cost only at activation, not by default.</summary>
+    <why>
+      <p>Anthropic's Skills system was built specifically to solve "the import everything anti-pattern" — agents that pre-load all instructions into the system prompt blow context budgets and degrade reasoning quality. Progressive disclosure mirrors how a senior engineer reads a codebase: scan the index, open the chapter that matches the task, follow only the references that are actually relevant. Empirically, Claude's tool-selection accuracy holds well past 25 skills when each one obeys this rule, and collapses past ~10 when bodies are inlined into the system prompt.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Authoring any reusable capability whose instructions exceed ~100 lines.</item>
+        <item>Domain-specific workflows reused across multiple projects (deploy procedures, commit conventions, design-review rules).</item>
+        <item>Building a Claude Code agent that ships with several skills and must keep base context under ~5k tokens.</item>
+        <item>Migrating a long CLAUDE.md into modular skills as project complexity grows.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>One-off instructions that apply to a single session — inline into CLAUDE.md instead.</item>
+        <item>Logic that should run as code, not text — package as an MCP tool.</item>
+        <item>Tiny rules under ~20 lines — skill machinery overhead exceeds the win.</item>
+        <item>Workflows where the "skill" would actually be a prompt template — use prompts/ in MCP, not Skills.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Three loading levels of a Claude Skill">
+      <p>A Skill is a pyramid: frontmatter is always loaded, SKILL.md loads on activation, bundled files load only on explicit Read.</p>
+      <section name="Level 1 — frontmatter (always loaded)">
+        <p>YAML frontmatter is the only part of a skill that always lives in the system prompt. Keep it tiny — Claude scans every skill's frontmatter on every request to decide what to activate.</p>
+        <rule>
+          <statement>Frontmatter must contain at minimum name, description, and trigger keywords; the description must be under 30 lines and front-load specific verbs and nouns the user would say.</statement>
+          <rationale>Anthropic's skill-router matches the user message against the description text; vague descriptions ("helps with stuff") trigger nothing and inflate base context for zero value.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="yaml"><![CDATA[---
+name: faion-deploy
+description: Use when user asks to deploy a faion-net project (faion.net, dev.faion.net, api.faion.net, neromedia, pashtelka, longlife, ender). Handles op_unlock, deploy-gh.sh selection, post-deploy verification, telegram notification.
+---]]></code>
+          <note>Description names every domain a user might mention, plus the steps it covers.</note>
+        </example>
+        <example type="bad">
+          <code lang="yaml"><![CDATA[---
+name: deployer
+description: A skill that helps with deployment.
+---]]></code>
+          <note>No domain triggers, no steps, no project hints — router has nothing to match.</note>
+        </example>
+      </section>
+      <section name="Level 2 — SKILL.md body (loaded on activation)">
+        <p>SKILL.md is loaded into the conversation only when Claude decides the skill applies. Keep it focused on procedure and decisions, defer everything else.</p>
+        <rule>
+          <statement>SKILL.md body must stay under 500 lines and must reference scripts, examples, and long reference docs by relative path rather than inlining their content.</statement>
+          <rationale>Activated body sits in context for the rest of the turn; inlining 2000-line reference docs costs that token tax even when the agent only needed 50 lines of it.</rationale>
+        </rule>
+      </section>
+      <section name="Level 3 — bundled files (loaded only on Read)">
+        <p>Anything in scripts/, references/, or assets/ loads only when SKILL.md tells Claude to Read it.</p>
+        <rule>
+          <statement>Place every artifact larger than ~80 lines (long runbooks, schemas, code samples) in a sibling folder and reference it from SKILL.md by relative path.</statement>
+          <rationale>Files are loaded lazily on Read — a 5000-line runbook in references/ costs zero context until the procedure actually needs it.</rationale>
+        </rule>
+        <antipattern>
+          <description>Pasting an entire reference document inline as a fenced code block in SKILL.md.</description>
+          <reason>Defeats progressive disclosure — the reference now loads on every activation, even for sub-tasks that never touch it.</reason>
+        </antipattern>
+      </section>
+    </section>
+    <section name="Frontmatter authoring rules">
+      <p>Frontmatter must be short, trigger-rich, and concrete — the description IS the routing prompt.</p>
+      <section name="Required fields">
+        <rule>
+          <statement>Every SKILL.md frontmatter must declare name, description, and (when relevant) tier and user-invocable; missing description means the skill is invisible to the router.</statement>
+          <rationale>Claude's skill router only sees what the frontmatter exposes — fields it doesn't list cannot influence activation.</rationale>
+        </rule>
+        <list>
+          <item>name — short, hyphenated, unique within the surface (e.g. faion-deploy).</item>
+          <item>description — first sentence "Use when ...", remaining sentences enumerate triggers and steps.</item>
+          <item>tier — free | solo | pro | geek (faion-network internal partition).</item>
+          <item>user-invocable — true if the user can call it directly via /name; false for auto-discovered skills.</item>
+        </list>
+      </section>
+      <section name="Trigger-rich descriptions">
+        <p>The description is matched against the user's message; load it with verbs and nouns the user actually says.</p>
+        <rule>
+          <statement>Description must front-load action verbs (deploy, lint, generate, post, schedule) and concrete nouns (faion.net, neromedia, telegram, gatsby) instead of abstract category terms.</statement>
+          <rationale>Routers do soft string matching — "publish a new article to neromedia" reliably activates a description containing "neromedia" and "publish article", but not one that says "content workflows".</rationale>
+        </rule>
+        <example type="good">
+          <code lang="yaml"><![CDATA[description: Use when user asks to publish, schedule, or queue a post to a NERO TG channel (neromedia, pashtelka, longlife, ender) or to inspect a posting pipeline. Wraps tg-send, post queue, classification.]]></code>
+          <note>Lists every channel name, every operation verb — wide surface for the router.</note>
+        </example>
+      </section>
+      <section name="Length cap">
+        <rule>
+          <statement>Frontmatter must stay under 30 non-blank lines; if the description exceeds this, split into multiple skills with narrower triggers.</statement>
+          <rationale>Frontmatter is in the system prompt for every request — every line costs across the entire session.</rationale>
+        </rule>
+        <antipattern>
+          <description>Documenting the procedure in the description field instead of in SKILL.md body.</description>
+          <reason>The procedure now loads on every request — defeats the entire point of leveling.</reason>
+        </antipattern>
+      </section>
+    </section>
+    <section name="Progressive-disclosure anti-patterns">
+      <p>Three failure modes that collapse the pyramid into a flat blob: oversized body, missing triggers, and inlined references.</p>
+      <section name="Oversized SKILL.md body">
+        <antipattern>
+          <description>SKILL.md grows past ~500 lines because the author keeps adding examples, edge cases, and runbooks inline.</description>
+          <reason>Activated body sits in context for the rest of the turn; bloated bodies bust prompt cache, raise per-call cost, and crowd out tool results.</reason>
+        </antipattern>
+        <rule>
+          <statement>If SKILL.md exceeds 500 lines, split it: move detailed examples into references/&lt;topic&gt;.md and link them from the body with a one-line "Read references/X.md when ..." pointer.</statement>
+          <rationale>References load lazily — the agent reads them only when the linked condition triggers, keeping average context flat as the skill grows.</rationale>
+        </rule>
+      </section>
+      <section name="Trigger-poor description">
+        <antipattern>
+          <description>Description is one sentence of marketing copy ("comprehensive deployment automation skill").</description>
+          <reason>Router cannot match — the user says "deploy faion.net", description has neither word, skill never activates.</reason>
+        </antipattern>
+        <rule>
+          <statement>Every domain term, command name, or verb the user might say MUST appear in the description; aim for 3-6 concrete trigger phrases minimum.</statement>
+          <rationale>Skill activation is essentially semantic search over descriptions — coverage of trigger surface determines hit rate.</rationale>
+        </rule>
+      </section>
+      <section name="Inlined references">
+        <antipattern>
+          <description>Pasting a 1500-line runbook, schema, or sample dataset directly into a fenced code block in SKILL.md.</description>
+          <reason>Inlined files load on every activation, including sub-tasks that never use them — kills the second level's whole purpose.</reason>
+        </antipattern>
+        <example type="good">
+          <code lang="markdown"><![CDATA[## Deploying to faion-net
+
+For the full deploy procedure, Read `references/deploy-runbook.md`.
+For the rollback procedure, Read `references/rollback.md`.]]></code>
+          <note>Body stays small; only the relevant runbook loads on demand.</note>
+        </example>
+        <example type="bad">
+          <code lang="markdown"><![CDATA[## Deploying to faion-net
+
+```bash
+# 850 lines of deploy steps inlined here ...
+```]]></code>
+          <note>Every activation pays the 850-line tax even when the user just asked for status.</note>
+        </example>
+      </section>
+    </section>
+    <templates>
+      <template path="templates/skill-frontmatter.yaml" purpose="Working frontmatter with all required fields and a trigger-rich description."/>
+      <template path="templates/skill-body.md" purpose="Minimal SKILL.md skeleton showing how to defer to references/ and scripts/."/>
+    </templates>
+    <see-also>
+      <link href="https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview">Anthropic Agent Skills overview.</link>
+      <link href="https://docs.claude.com/en/docs/agents-and-tools/agent-skills/best-practices">Skills best practices — progressive disclosure.</link>
+      <link href="https://resources.anthropic.com/hubfs/The-Complete-Guide-to-Building-Skill-for-Claude.pdf">Complete Guide to Building Skills for Claude (PDF).</link>
+      <link href="https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills">Equipping agents for the real world with Agent Skills (Anthropic engineering blog).</link>
+    </see-also>
+  </content>
+</methodology>
