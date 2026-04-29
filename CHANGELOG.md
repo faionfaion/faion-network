@@ -1,20 +1,8 @@
 # Changelog
 
 ## [Unreleased]
-<<<<<<< HEAD
-- migrate: 3/3 solo/comms/communicator methodologies → methodology.xml (business-storytelling, conflict-resolution, difficult-conversations; feature-045 batch CO)
-- migrate: 3/3 pro pm/product methodologies → methodology.xml (resource-management, mlp-planning, portfolio-strategy; feature-045 batch CC)
-- migrate: 3/3 solo/comms/communicator methodologies → methodology.xml (active-listening, brainstorming-ideation, brainstorming-techniques; feature-045 batch CN)
-- migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (azure-devops-boards, benefits-realization, change-control; feature-045 batch CA)
-- migrate: solo/comms/communicator/negotiation → methodology.xml (feature-045 batch CQ)
-- migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (pm-certification-changes-2026, raci-matrix, ref-pmbok; feature-045 batch CB)
-- migrate: 3/3 API developer methodologies → methodology.xml (api-rate-limiting, api-rest-design, api-testing; feature-045 batch CT)
-- migrate: 3/3 paths to methodology.xml (storytelling, api-authentication, api-contract-first; feature-045 batch 3-final)
-- migrate: 3/3 pro/research/researcher methodologies → methodology.xml (methodologies-index, opportunity-solution-trees, risk-assessment; feature-045 batch CJ)
-- migrate: 3/3 pro/research methodologies → methodology.xml (risk-assessment, trend-analysis, methodologies-detail; feature-045 batch A)
-=======
+- migrate: 3/3 pro methodologies → methodology.xml (product-lifecycle, business-model-planning, business-model-research; feature-045 batch CE)
 - migrate: 3/3 pro/ux/ux-ui-designer methodologies → methodology.xml (vui-iot-integration, vui-market-context, vui-privacy-security; feature-045 batch CM)
->>>>>>> e7ebb5e8 (chore: update CHANGELOG for feature-045 batch CM)
 - migrate: 3/3 pro/pm/pm-traditional methodologies → methodology.xml (schedule-development, scope-management, stakeholder-engagement; feature-045 batch 1)
 - migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (ads-meta-reporting, ads-meta-targeting, ads-retargeting; feature-045 batch BO)
 - migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (ads-linkedin-ads, ads-meta-campaign-setup, ads-meta-creative; feature-045 batch BN)
@@ -205,8 +193,6 @@
 - migrate: 3/3 pro/pm/pm-traditional methodologies → methodology.xml (cost-estimation, earned-value-management, lessons-learned; feature-045 batch 171)
 - migrate: 3/3 pro/pm/pm-agile methodologies → methodology.xml (tool-migration-basics, tool-migration-process, value-stream-management; feature-045 batch 169)
 - migrate: 3/3 pro/dev/software-developer methodologies → methodology.xml (php-phpunit-testing, ruby-activerecord, ruby-rails; feature-045 batch 166)
-
-### Changed
 - migrate: 3/3 pro/pm/pm-agile methodologies → methodology.xml (predictive-analytics-pm, raci-matrix, reporting-basics; feature-045 batch 164)
 - migrate: 3/3 pro/pm/pm-agile methodologies → methodology.xml (pm-framework-focus-areas, pm-tools-comparison, pm-tools-overview; feature-045 batch)
 - migrate: 3/3 pro/infra/cicd-engineer methodologies → methodology.xml (gitlab-cicd, grafana-setup, jenkins-basics; feature-045 batch 167)
@@ -397,16 +383,12 @@
 - refactor: 3/3 code-quality methodologies migrated to new shape (batch: code-coverage, code-decomposition-patterns, code-decomposition-principles)
 - refactor: 3/3 javascript-developer methodologies migrated to new shape (batch: decomposition-react, javascript-testing, nodejs-express)
 - refactor: 3/3 code-quality methodologies migrated to new shape (batch: code-review-process, documentation, mob-programming)
-
-### Added
 - feat: feature-046 decomposition pool config (BRIEF, TICK, queue of 114 oversized methodologies)
 - docs: router XML body spec for skill-level AGENTS.md (no metadata, slug+title+summary+when-to-use+when-not-to-use+reference)
 - docs: methodology XML schema spec, closed tag glossary (~60 tags), reference example
 - feat: validate-methodology-xml.py (closed-vocab + length-parity + path-consistency checks)
 - feat: feature-045 migration pool config (BRIEF + TICK) targeting single-file methodology.xml shape
 - feat: /faion skill renders methodology.xml as `<faion-methodology slug="...">` with `<metadata>` stripped
-
-### Changed
 - refactor: 8/8 methodologies migrated to new shape (batch: ai-interview-analysis, ai-assisted-persona-building, ai-persona-building, ai-assisted-accessibility, ai-accessibility-automation-2026, ai-spatial-computing, multimodal-vui-design, ai-enhanced-design-systems)
 - refactor: 7/7 ui-designer methodologies migrated to new shape (batch: llm-powered-conversational-ai, adobe-firefly-integration, ai-plugin-ecosystem, generative-ui-design, ai-design-assistant-patterns, figma-vs-adobe-strategy-2026, figma-ai-ecosystem)
 - refactor: 8/8 methodologies migrated to new shape (batch: ai-accessibility-automation-2026, ai-spatial-computing, ai-plugin-ecosystem, generative-ui-design, ai-design-assistant-patterns, figma-vs-adobe-strategy-2026, figma-ai-ecosystem, synthetic-users)
@@ -462,11 +444,8 @@
 - refactor: 8/8 methodologies migrated to new shape (batch: funnel-basics-framework, funnel-tactics-advanced, funnel-basics-examples, google-ads-basics, facebook-ads, growth-paid-acquisition, google-display-ads, google-search-ads)
 - refactor: 8/8 conversion-optimizer methodologies migrated to new shape (batch: growth-conversion-optimization, onboarding-flows, growth-free-trial-optimization, plg-optimization-tactics, community-led-growth, plg-basics, funnel-tactics-basics, plg-implementation-guide)
 - refactor: 8/8 growth-marketer methodologies migrated to new shape (batch: statistics-basics, activation-tactics, viral-metrics, growth-referral-programs, viral-loops, statistics-application, activation-framework, google-analytics)
-- refactor: 8/8 methodologies migrated to new shape (batch: agentic-ai-product-development, agents, ai-native-product-development, ba/business-analyst/ai-enabled-business-analysis, ba/ba-core/ai-enabled-business-analysis, threads-basics, instagram-basics, plg-metrics)
 - refactor: 8/8 methodologies migrated to new shape (batch: ops-legal-basics, growth-brand-positioning, ops-contractor-management, growth-influencer-marketing, ops-partnership-strategy, ops-tax-compliance, ops-customer-success-metrics, ops-upselling-cross-selling)
-- refactor: 8/8 testing-developer methodologies migrated to new shape (batch: e2e-testing, testing-pytest, test-fixtures, mocking-strategies, unit-testing, testing-go, tdd-workflow, testing-javascript)
 - refactor: 8/8 gtm-strategist ops methodologies migrated to new shape (batch: ops-legal-compliance, ops-tax-basics, ops-annual-planning-process, ops-contractor-basics, ops-legal-compliance-checklist, ops-financial-basics, ops-customer-success-basics, ops-annual-planning-templates)
-- refactor: 8/8 methodologies migrated to new shape (batch: funnel-basics-framework, funnel-tactics-advanced, funnel-basics-examples, google-ads-basics, facebook-ads, growth-paid-acquisition, google-display-ads, google-search-ads)
 - refactor: 8/8 ppc-manager methodologies migrated to new shape (batch: ads-attribution-models, google-ads-reporting, ads-google-campaign-setup, ads-linkedin-ads, google-pmax, ads-google-reporting, ads-analytics-setup, google-shopping-ads)
 - refactor: 8/8 software-developer methodologies migrated to new shape (batch: mocking-strategies, javascript, python-fastapi, python, django-api, go-error-handling, python-type-hints, code-coverage)
 - refactor: 8/8 software-developer methodologies migrated to new shape (batch: language-framework-guide, integration-testing, django-quality, python-poetry-setup, mobile-responsive, testing, django-decision-tree, rust-error-handling)
@@ -533,8 +512,6 @@
 - refactor: 8/8 methodologies migrated to new shape (batch: scope-management, earned-value-management, benefits-realization, stakeholder-register, risk-management, change-control, wbs-creation, stakeholder-engagement-advanced)
 - refactor: 8/8 methodologies migrated to new shape (batch: cost-estimation, agile-ceremonies-setup, procurement-management, lessons-learned, communications-management, hybrid-delivery, cross-tool-migration, pm-certification-alignment-2026)
 - refactor: 8/8 methodologies migrated to new shape (batch: predictive-analytics-pm, gitlab-boards, stakeholder-engagement, project-integration, pm-tool-selection, quality-management, resource-management, value-stream-management)
-
-### Added
 - sdlc-ai-methodologies: pool-batch +4 gov- (31/52) — gov-sonarqube-ai-code-gate, gov-conventional-commits-enforced, gov-license-compliance-scan, gov-approval-token-signed-jwt (NEW shape: AGENTS.md + 2 content/*.xml + templates/). gov- category complete (4/4). IDs S-028..S-031 after rebase on concurrent inc-/task-/sec- batches.
 - sdlc-ai-methodologies: pool-batch +3 sec- (27/52) — sec-codeql-autofix-on-pr, sec-secrets-defense-in-depth, sec-trivy-pinned-supply-chain-scan (NEW shape: AGENTS.md + 2-3 content/*.xml + templates/). sec- category complete (3/3). IDs S-025..S-027 after rebase on concurrent mr-/inc-/task- batches.
 - sdlc-ai-methodologies: pool-batch +4 task- (24/52) — task-spec-kit-three-step, task-plan-mode-locked-execution, task-worktree-runtime-isolation, task-agent-fixable-triage-gate (NEW shape: AGENTS.md + content/*.xml + templates/). task- category complete (5/5).
@@ -561,19 +538,10 @@
 - agent-methodologies: pool-batch +4 so- (53/50) — inverted-header-content-first, refusal-field-strict-schema, structured-output-mode-picker, schema-version-pinning (so- now 14/10, deep research-pool overshoot; NEW shape).
 - **feature-044 pool infrastructure (`.aidocs/feature-044-pool/`):** `/faion-poll-agents` pool=10 (Opus) for filling the new geek-tier knowledge content (35 agent-methodologies + 52 sdlc-ai-methodologies = 87 slots). Files: `BRIEF.md` (subagent instructions: full research → discovery → write loop in NEW shape AGENTS.md+content/*.xml), `TICK.md` (orchestration rules), `QUEUE.txt` (29 batch lines `<domain>:<category>:<count>`, gitignored), `DONE.txt` (gitignored). BRIEF mandates pre-flight Read of `docs/skill-authoring.md` + `rules/skill-authoring.md` + `tag-glossary.xml`. Concurrent merges serialized via `flock /tmp/faion-network-merge.lock`.
 - **`semantic-xml-content` methodology** under `skills/faion/knowledge/geek/ai/llm-integration/`: closed tag vocabulary and conventions for `content/*.xml` in faion-network methodologies. Files: `AGENTS.md` (routing), `content/01-principles.xml` (semantic vs formatting tags, four guarantees), `content/02-tag-design.xml` (naming, attributes, nesting, code-block CDATA, references), `content/03-anti-patterns.xml` (formatting masquerade, inconsistent vocabulary, over-wrapping, CDATA leaks), `templates/methodology-text.xml` (skeleton), `templates/tag-glossary.xml` (closed list of allowed tags with role descriptions).
-
-### Changed
 - **`.aidocs/{agent,sdlc-ai}-methodologies/loop-prompt.md`:** added MANDATORY pre-flight Read of `docs/skill-authoring.md` + `tag-glossary.xml`; verify checklist updated to require `content/*.xml` (not `texts/`) and forbid `README.md` in subfolders.
-
-
-### Added
 - **Methodology refactor pool (`skills/faion/.refactor/`):** infrastructure for a `faion-poll-agents` background pool that converts the OLD 5-file methodologies (`README.md` + `checklist.md` + `templates.md` + `examples.md` + `llm-prompts.md`) to the canonical NEW shape (`CLAUDE.md` → `AGENTS.md` → `content/*.xml` semantic XML + optional `templates/` + `scripts/`). Pool=10 sonnet, batch=8, tick `/loop 5m`. State files: `BRIEF.md` + `TICK.md` (tracked), `QUEUE.txt` + `DONE.txt` (gitignored). Initial QUEUE = 1245 paths (excludes `geek/ai/ai-agents/*` per migration carve-out for the 15 agent-builder methodologies that stay in the OLD shape).
-
-### Changed
 - **`rules/skill-authoring.md` slimmed to a thin pointer.** Full spec lives in `docs/skill-authoring.md` (single source of truth — the rule was previously duplicating sections of the spec, which drifted). The rule now mandates `Read docs/skill-authoring.md` AND the tag glossary BEFORE any methodology edit/creation.
 - **`subagent-brief.md` (agent + sdlc) aligned to the canonical shape:** `content/` (semantic XML using the closed tag vocabulary from `semantic-xml-content/templates/tag-glossary.xml`), no `README.md` in subfolders (everything indexed in the methodology `AGENTS.md`), explicit MANDATORY pre-flight `Read` of the spec + tag glossary before any write.
-
-### Added
 - **feature-044 setup: orchestrator-subagent loop pattern.** Both `loop-prompt.md` files (`agent-methodologies` + `sdlc-ai-methodologies`) rewritten — main thread is now an ORCHESTRATOR that reads state, picks N=3-5 candidate slugs, delegates ONE Task subagent (general-purpose) with the canonical `subagent-brief.md`, and verifies the resulting commit. Orchestrator never writes methodology content directly. Each domain gets a `subagent-brief.md` containing precise per-tick instructions: read research source, write `<slug>/CLAUDE.md` + `AGENTS.md` + `texts/` + `templates/` per `docs/skill-authoring.md`, append JSONL row, update `state.json`, append `progress.md`, commit. Quality gates reject slugs without testable rule, source citation, both When-To/When-NOT, or templates artifact. Ticks driven by cloud cron (`*/5 * * * *` for agents, `2-57/5 * * * *` for sdlc).
 - **`docs/skill-authoring.md` + `rules/skill-authoring.md`:** canonical spec for the new methodology folder shape — `CLAUDE.md` → `AGENTS.md` (routing doc, <80 lines, strict shape: Summary / Why / When To Use / When NOT / Texts / Templates+Scripts) → `texts/` (one concept per file) + `templates/` (real reusable artifacts) + `scripts/` (optional). Supersedes the OLD 5-file pattern (`README.md` + `checklist.md` + `templates.md` + `examples.md` + `llm-prompts.md`) which is RETIRED for new methodologies. The 15 already-shipped agent-builder methodologies stay in the old shape (out of scope for migration). The path-scoped rule (`paths:` YAML frontmatter) auto-loads the spec when an agent edits files under `skills/**/{SKILL,AGENTS,CLAUDE}.md` or `skills/**/{texts,templates,scripts}/`.
 - **`/faion` skill v2:** thin wrapper that spawns a read-only Agent SDK subagent (Sonnet) via `python3 skills/faion/scripts/retrieve.py "$CLAUDE_SESSION_ID"`. Subagent reads the session transcript (user+assistant text only), searches `knowledge/`, returns either `<faion_knowledge>` (XML bundle within 5000-word budget) or `<faion_clarification>` (XML instruction telling main agent to ask the user via `AskUserQuestion`, then re-invoke `/faion`). Budget enforcement via custom MCP `submit_selection` tool that returns `is_error` on overflow → subagent retries in same turn. All prompts (system, user) and outputs are XML rendered through Jinja2 templates under `skills/faion/scripts/templates/`.
@@ -785,13 +753,7 @@
 - Research: requirements-lifecycle (business-analyst) — agent-integration.md (176 lines).
 - Research: business-process-analysis (business-analyst) — agent-integration.md (196 lines).
 - **Methodology research subsystem (`skills/faion/.research/`):**
-  per-methodology `agent-integration.md` enrichment loop. Subagent researches
-  each methodology for agentic workflow, CLI tools, services, when-to-use /
-  when-NOT-to-use, failure modes. Always-5-active dispatch policy (cron as
-  safety net; completion notifications drive replacement).
 - **Research round 1: 5 methodologies enriched with `agent-integration.md`**
-  — risk-assessment, workflows, market-research-tam-sam-som,
-  competitive-intelligence, trend-analysis (pro/research/researcher).
 - Research: technical-debt-management (product-manager) — agent-integration.md (161 lines).
 - Research: feedback-management (product-manager) — agent-integration.md (155 lines).
 - Research: product-explainability (product-manager) — agent-integration.md (184 lines).
@@ -846,60 +808,13 @@
 - Research: learning-speed-competitive-moat (product-manager) — agent-integration.md (207 lines).
 - Research: acceptance-criteria (ba-modeling) — agent-integration.md (148 lines).
 - **Worktree-dispatch policy for research**: each subagent now runs in its own
-  git worktree and ships the full lifecycle (research → edit → commit → merge
-  into main via flock-serialized ff-only merge). See `.research/BRIEF.md`.
-
-### Changed
 - **Intra-domain tier reclassification round 1 (name heuristic): 90 methodology
-  folders promoted to higher tier** — enterprise stacks
-  (`java-spring*`, `php-laravel*`, `ruby-rails*`, `csharp-dotnet*`,
-  `cqrs-pattern`, `event-sourcing*`, `microservices-design`) moved from
-  `free/dev/` to `pro/dev/`; API design (`api-graphql`, `api-openapi-spec`,
-  `api-rest-design`, `contract-first-development`, `pwa-development`,
-  `nextjs-app-router`, `monorepo-turborepo`) moved `free/dev/` → `solo/dev/`;
-  AI-adjacent topics (`claude-md-creation`, `llm-friendly-architecture`,
-  `ai-*-pm-tools`, `ai-interview-analysis`, `ai-research-tool*`,
-  `ai-assisted-specification-writing`, etc.) moved to `geek/`. Applied via
-  `skills/faion/.reclass/` (rules + scripts + audit log).
-  Remaining 1009 ambiguous methodologies queued for content-review ticks.
 - **Knowledge partitioned by tier: 52 domains now live under
-  `faion/knowledge/<tier>/<group>/<name>/`** (tiers: `free`, `solo`,
-  `pro`, `geek`) matching the pricing manifest. Free tier gets 8 domains,
-  solo adds 13, pro adds 24, geek adds 7. Tier gating becomes a directory
-  boundary — a free-tier session reads only `knowledge/free/`, solo reads
-  `free + solo`, pro reads `free + solo + pro`, geek reads all four.
-  `tier-manifest.json` bumped to v3 with tier-prefixed `knowledge_paths`
-  and new `knowledge_root` per tier. Top-level docs (`SKILL.md`,
-  `CLAUDE.md`, `README.md`, `skills/CLAUDE.md`, `docs/directory-structure.md`,
-  `GEMINI.md`) rewritten for the new layout. Applied-tool cross-refs in
-  `faion-feature-executor`, `faion-improver`, `faion-sdd-execution`
-  updated to tier-prefixed paths (e.g. `knowledge/solo/sdd/sdd/`,
-  `knowledge/pro/infra/devops-engineer/`).
 - **Knowledge consolidation: 52 domain skills merged into `faion` umbrella.**
-  Renamed orchestrator skill `faion-net` → `faion`. All knowledge
-  skills (dev, AI, infra, product, PM, BA, UX, marketing, research, comms, SDD)
-  moved from `skills/faion-<name>/` to `skills/faion/knowledge/<group>/<name>/`.
-  Discovery break intentional — only umbrella + applied tools
-  (brainstorm, feature-executor, sdd-execution, improver, media-ops) remain
-  individually invocable. Knowledge loaded on-demand via `Read`, not `Skill()`.
-  Dropped duplicate skills `ppc-manager`, `seo-manager`, `smm-manager` (superseded
-  by faion-prefixed versions with finer-grained methodologies).
-  Moved docs out of skill: `content-plan/`, `content-requirements/`,
-  `product-research-2026/`, `decision-trees/` → `docs/*.md`.
 - `tier-manifest.json` schema v2: split into `applied_skills` (invocable)
-  and `knowledge_paths` (on-demand paths under `faion/knowledge/`).
 - Top-level indices (`skills/CLAUDE.md`, `faion/SKILL.md`,
-  `faion/CLAUDE.md`, `README.md`, `GEMINI.md`,
-  `docs/directory-structure.md`) rewritten to reflect umbrella structure.
 - Entry-point references in knowledge-skill CLAUDE.md/SKILL.md/README.md
-  updated from `/faion-net` routing claim to umbrella membership note.
 - Deep integrity check in `scripts/lib/integrity-check.sh`:
-  case-mismatch detection (skill.md vs SKILL.md), frontmatter schema
-  validation (name/description), Skill() cross-reference verification,
-  hook executability check, per-category summary counts,
-  INTEGRITY_VERBOSE=1 for detailed output
-
-### Added
 - Research: methodologies-index — agent-integration.md (33 lines).
 - Research: methodologies-detail — agent-integration.md (49 lines).
 - Research: product-development-trends-2026 — agent-integration.md (152 lines).
@@ -911,16 +826,16 @@
 - Research: release-planning (product-manager) — agent-integration.md (222 lines).
 - Research: business-analyst/acceptance-criteria — agent-integration.md (215 lines).
 - Atomic update with snapshot rollback for `scripts/update.sh`
-  - Pre-update snapshot creation (tarball in `~/.cache/faion-network/snapshots/`)
-  - Post-update integrity check (SKILL.md, hooks, AGENTS.md)
-  - `--rollback` flag to restore most recent snapshot
-  - `--dry-run` flag to preview changes without modifying anything
-  - Automatic snapshot rotation (keeps last 3)
-  - Auto-rollback prompt on integrity check failure
 - `scripts/lib/snapshot.sh` — snapshot create/restore/rotate library
 - `scripts/lib/integrity-check.sh` — post-update integrity verification
-
-## [Unreleased]
-
-### Changed
 - chore: migrate scope-management to methodology.xml
+- migrate: 3/3 solo/comms/communicator methodologies → methodology.xml (business-storytelling, conflict-resolution, difficult-conversations; feature-045 batch CO)
+- migrate: 3/3 pro pm/product methodologies → methodology.xml (resource-management, mlp-planning, portfolio-strategy; feature-045 batch CC)
+- migrate: 3/3 solo/comms/communicator methodologies → methodology.xml (active-listening, brainstorming-ideation, brainstorming-techniques; feature-045 batch CN)
+- migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (azure-devops-boards, benefits-realization, change-control; feature-045 batch CA)
+- migrate: solo/comms/communicator/negotiation → methodology.xml (feature-045 batch CQ)
+- migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (pm-certification-changes-2026, raci-matrix, ref-pmbok; feature-045 batch CB)
+- migrate: 3/3 API developer methodologies → methodology.xml (api-rate-limiting, api-rest-design, api-testing; feature-045 batch CT)
+- migrate: 3/3 paths to methodology.xml (storytelling, api-authentication, api-contract-first; feature-045 batch 3-final)
+- migrate: 3/3 pro/research/researcher methodologies → methodology.xml (methodologies-index, opportunity-solution-trees, risk-assessment; feature-045 batch CJ)
+- migrate: 3/3 pro/research methodologies → methodology.xml (risk-assessment, trend-analysis, methodologies-detail; feature-045 batch A)
