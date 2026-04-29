@@ -3,6 +3,7 @@
 ## [Unreleased]
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (llm-judge-rubric-evidence-first, manifest-then-fetch, map-reduce-send-fanout; feature-045 batch R)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (max-turns-circuit-breaker, mcp-gateway-composition, mcp-transport-stdio-vs-http; feature-045 batch S)
+- migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (posttool-hook-self-correction, preference-trained-router, previous-response-id-reasoning-reuse; feature-045 batch T)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (headless-cli-four-guards, idempotent-write-tools, inverted-header-content-first; feature-045 batch Q)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (gateway-fallback-chain, generator-critic-bounded-loop, handoff-id-payload; feature-045 batch P)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (claude-code-headless-default, compaction-preserve-refs, decimal-as-string-pattern; feature-045 batch N)
