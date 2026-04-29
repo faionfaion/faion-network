@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="enum-constraints-closed-vocabularies">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Use typed enums (Literal in Pydantic, enum in JSON Schema) for finite answer sets so constrained decoders eliminate hallucinated labels at sampling time.</summary>
+    <tags>
+      <tag>structured-output</tag>
+      <tag>enums</tag>
+      <tag>classification</tag>
+      <tag>constraints</tag>
+      <tag>decoding</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Enum Constraints for Closed Vocabularies</title>
+    <summary>Whenever the answer set is finite, declare it as a typed enum (Literal[...] in Pydantic, enum in JSON Schema) instead of a free-form string. Constrained decoders mask every non-enum token to probability zero, so a hallucinated label becomes mathematically impossible. The rule is a one-line schema change with the highest accuracy-per-token ratio of any structured-output trick.</summary>
+    <why>
+      <p>LLMs default to producing the most likely token among the entire vocabulary. When the field truly has 5 valid values, 99.99% of vocabulary entries are wrong by construction, yet still receive non-zero probability mass and occasionally surface (mostly in long contexts, near token-budget exhaustion, or with smaller models). Strict-mode + enum decoding removes those tokens from the candidate set during sampling. Empirically, ohmeow (2024) and the vLLM Structured Outputs docs both show category-prediction tasks going from 80–95% raw to ~100% with Literal[...] + strict mode. The sampling-time mask, not the prompt, is what closes the gap.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any classification field — sentiment, intent, severity, routing label, language code, status state.</item>
+        <item>Pick-one-of-N action selection inside an agent loop.</item>
+        <item>Field that maps to a downstream switch/case or DB enum column.</item>
+        <item>Pipelines where an unknown label silently breaks the next stage.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Open vocabularies (free-text tags, novel entity types, user names) — enum would clip valid answers.</item>
+        <item>Semi-open sets — use Literal[...] | str plus a discriminated union or post-validation instead.</item>
+        <item>JSON-mode-only fallback paths on mini/nano models — enums are advisory there, pair with strict mode or a constrained backend (XGrammar, Outlines) to actually enforce them.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Enum constraints for closed vocabularies">
+      <p>If a field's valid values are known and finite, encode them as a typed enum, not a free string. Pair the enum with strict structured-output mode so the constraint is enforced at sampling time, not by post-hoc validation.</p>
+      <rule>
+        <statement>Every classification or routing field with a finite value set must be declared as Literal[...] (Python) or enum (JSON Schema) AND served under strict mode or a constrained decoder (XGrammar, Outlines, vLLM guided generation).</statement>
+        <rationale>Strict-mode constrained decoders mask all non-enum tokens to probability zero, eliminating hallucinated labels. Free-string fields keep the full vocabulary live, so smaller models occasionally emit synonyms or novel labels that break downstream switch/case code.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[from typing import Literal
+from pydantic import BaseModel
+
+class Ticket(BaseModel):
+    category: Literal["billing", "tech_support", "refund", "spam", "other"]
+    priority: Literal["P0", "P1", "P2", "P3"]
+    sentiment: Literal["angry", "frustrated", "neutral", "happy"]]]></code>
+        <note>Each Literal compiles to a JSON Schema enum. Under OpenAI strict mode the decoder cannot produce any other token sequence in those slots.</note>
+      </example>
+      <example type="bad">
+        <code lang="python"><![CDATA[class Ticket(BaseModel):
+    category: str  # "please pick from billing/tech_support/refund/spam/other"
+    priority: str  # "one of P0/P1/P2/P3"]]></code>
+        <note>The valid set lives only in a docstring or description. The decoder is free to emit "support", "high priority", "Spam!", and downstream code crashes.</note>
+      </example>
+      <antipattern>
+        <description>Listing the valid values inside the prompt body (or Field description) but keeping the field type as str.</description>
+        <reason>Soft constraints. The model usually obeys but drifts under long context, low temperature variation, or small models — and a single wrong label silently breaks the next pipeline stage. Enums move the constraint into the decoder mask, where it cannot drift.</reason>
+      </antipattern>
+    </section>
+    <section name="Edge cases: semi-open sets, mini models, language labels">
+      <p>Some answer sets are mostly closed but allow rare novel values. Forcing a strict enum would silently clip those answers; allowing a free string loses the guarantee for the common case. The pattern is a tagged union with one closed branch and one fallback.</p>
+      <rule>
+        <statement>For semi-open sets, model the field as a discriminated union: a Literal[...] branch for known values plus a typed "other" branch carrying the free-text candidate.</statement>
+        <rationale>The discriminator forces the decoder to commit to "known" or "other" first, then constrains the rest of the structure. Downstream code can route on the discriminator without parsing free strings.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[from typing import Literal, Annotated
+from pydantic import BaseModel, Field
+
+class KnownLabel(BaseModel):
+    kind: Literal["known"] = "known"
+    value: Literal["billing", "tech_support", "refund"]
+
+class NovelLabel(BaseModel):
+    kind: Literal["novel"] = "novel"
+    proposed: str = Field(description="Free-text label; will be queued for taxonomy review.")
+
+class Ticket(BaseModel):
+    category: Annotated[KnownLabel | NovelLabel, Field(discriminator="kind")]]]></code>
+        <note>Common path stays strict. Novel labels go through a controlled escape hatch with a known shape.</note>
+      </example>
+      <p>If strict mode is unavailable (legacy provider, OSS model without grammar support), the enum is advisory only. The model will mostly comply but is free to emit synonyms.</p>
+      <rule>
+        <statement>When strict mode is not available, validate the parsed object against the Pydantic Literal AFTER the call and either retry-with-feedback or downgrade the offending field to its closest enum value via a deterministic mapping table.</statement>
+        <rationale>Without sampling-time masking, accuracy depends on prompt and luck. A retry loop with explicit "you returned X; valid values are A/B/C" feedback recovers most failures within one extra call; a mapping table absorbs the rest.</rationale>
+      </rule>
+      <antipattern>
+        <description>Trusting JSON-mode output to respect an enum without post-validation.</description>
+        <reason>Mini/nano models hallucinate enum values under JSON-mode-only fallback. Reported on OpenAI Community threads — the schema is shown to the model but never enforced by the decoder. Production systems must either upgrade to strict mode or validate-and-retry.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/enum_schema.py" purpose="Pydantic model with Literal enum fields wired for OpenAI strict mode."/>
+    </templates>
+    <see-also>
+      <link href="https://ohmeow.com/posts/2024-07-06-llms-and-enums.html">ohmeow — Structuring Enums for Flawless LLM results with Instructor.</link>
+      <link href="https://docs.vllm.ai/en/latest/features/structured_outputs/">vLLM Structured Outputs documentation.</link>
+      <link href="https://community.openai.com/t/schema-additionalproperties-must-be-false-when-strict-is-true/929996">OpenAI community — strict mode requirements.</link>
+      <link href="https://github.com/dottxt-ai/outlines">Outlines — constrained generation for OSS models when provider strict mode is missing.</link>
+    </see-also>
+  </content>
+</methodology>
