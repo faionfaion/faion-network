@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-first-development">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd</domain>
+    <summary>Design OpenAPI 3.1 specifications before implementation code. The spec drives mock generation, stubs, SDKs, and contract testing.</summary>
+    <category>sdd</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>api-design</tag>
+      <tag>openapi</tag>
+      <tag>specification</tag>
+      <tag>contract-driven</tag>
+      <tag>code-generation</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <applies-to>both</applies-to>
+  </metadata>
+
+  <content>
+    <title>API-First Development</title>
+
+    <summary>Design the OpenAPI 3.1 specification before writing any implementation code. The spec is the contract: it drives mock server generation (Prism), server stub generation (OpenAPI Generator), client SDK creation, and contract testing (schemathesis/dredd). The spec must be kept in sync with the implementation via CI contract tests — a spec that lies is worse than no spec.</summary>
+
+    <why>
+      <p>Code-first APIs produce inconsistent designs, undocumented edge cases, and breaking changes for consumers. API-first enables frontend and backend teams to work in parallel (frontend against the mock, backend against the spec), generates boilerplate automatically, and gives LLMs a machine-readable contract that dramatically reduces hallucinations during code generation.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a new API — design the spec before writing any implementation code.</item>
+        <item>Frontend and backend developed in parallel — spec enables Prism mock server for frontend.</item>
+        <item>Generating server stubs, client SDKs, or TypeScript types from spec rather than writing by hand.</item>
+        <item>Onboarding an LLM to implement or test an API — full OpenAPI spec as context eliminates ambiguity.</item>
+        <item>Multiple consumers (web, mobile, third-party) will use the API — spec is the shared contract.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Internal one-off scripts or single-consumer CLI tools with no formal contract.</item>
+        <item>Rapidly prototyping throw-away spikes — write code first, extract spec after it stabilizes.</item>
+        <item>GraphQL APIs — GraphQL has its own SDL-first approach; OpenAPI does not map cleanly.</item>
+        <item>Simple CRUD with no external consumers — spec maintenance overhead exceeds benefit.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="spec-design">
+      <p>Use OpenAPI 3.1 (not 3.0). Place all reusable schemas in components/schemas and reference them with $ref everywhere. Include example values in every schema field — Prism mock responses are generated from examples.</p>
+
+      <rule>
+        <statement>Use OpenAPI 3.1 (not 3.0). Place all reusable schemas in components/schemas and reference them with $ref everywhere. Include example values in every schema field — Prism mock responses are generated from examples.</statement>
+        <rationale>OpenAPI 3.1 aligns with JSON Schema draft 2020-12, enabling richer validation rules. $ref reuse ensures consistency: changing a schema updates it everywhere. Missing examples cause Prism mocks to return empty strings and zero values, making frontend development against the mock useless.</rationale>
+      </rule>
+
+      <section name="schema-design">
+        <rule>
+          <statement>Mark every required field explicitly in the required: array. Use type: ['string', 'null'] (not nullable: true) for optional fields in OpenAPI 3.1. Use format hints (uuid, date-time, email) and validation constraints (minLength, pattern, enum).</statement>
+          <rationale>Explicit required arrays and type constraints give LLMs and code generators the information needed to produce correct validation code. nullable: true is OpenAPI 3.0 syntax that is deprecated in 3.1.</rationale>
+        </rule>
+
+        <example type="good" title="Proper schema with required fields and format hints">
+          <code lang="yaml"><![CDATA[components:
+  schemas:
+    User:
+      type: object
+      required: [id, email, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        display_name:
+          type: ['string', 'null']  # Optional, OpenAPI 3.1 style
+          maxLength: 100
+          example: "Alice"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-01-15T12:00:00Z"]]></code>
+        </example>
+      </section>
+
+      <section name="api-versioning">
+        <rule>
+          <statement>Use URL path versioning (/v1/, /v2/) for breaking changes. Maintain separate OpenAPI documents per major version. Set info.version with semantic versioning. Mark deprecated endpoints with deprecated: true before removal.</statement>
+          <rationale>URL path versioning is visible, cacheable, and easy to test. Separate spec files per major version keep each spec clean and allow tooling to target specific versions.</rationale>
+        </rule>
+      </section>
+
+      <section name="spectral-linting">
+        <rule>
+          <statement>Run Spectral linting as a required CI check before any implementation begins. A spec that passes linting is the quality gate for proceeding to mock and implementation phases.</statement>
+          <rationale>Spectral catches missing operationIds (which break code generation), missing tags (which break SDK organization), and schema inconsistencies before any code is written.</rationale>
+        </rule>
+      </section>
+
+      <section name="spec-drift">
+        <antipattern>
+          <description>Modifying generated code to deviate from the spec, then not regenerating when the spec changes. The spec and implementation silently diverge.</description>
+          <reason>Generated code that diverges from the spec makes the spec a lie. Add a hash of the spec file as a comment in generated files; if the spec changes, the hash mismatch signals that regeneration is required.</reason>
+        </antipattern>
+      </section>
+    </section>
+
+    <section name="toolchain">
+      <p>The complete API-first workflow: spec → Spectral lint → Prism mock → OpenAPI Generator stubs → schemathesis contract tests. Tool roles and agent prompt patterns for each phase.</p>
+
+      <section name="workflow-phases">
+        <list>
+          <item>DESIGN — Write OpenAPI 3.1 spec (Stoplight Studio, Swagger Editor, or text editor).</item>
+          <item>VALIDATE — Spectral lint: spectral lint openapi.yaml --ruleset .spectral.yaml.</item>
+          <item>MOCK — Prism mock server: prism mock openapi.yaml --port 4010 --dynamic.</item>
+          <item>IMPLEMENT — Generate stubs: openapi-generator-cli generate -i openapi.yaml -g python-fastapi -o ./generated.</item>
+          <item>TEST — Contract tests: schemathesis run openapi.yaml --url http://localhost:8000.</item>
+        </list>
+      </section>
+
+      <section name="prism-mock-server">
+        <rule>
+          <statement>Start Prism with --dynamic flag to generate random data from schema constraints when no explicit example is provided. Without --dynamic, missing examples produce empty responses.</statement>
+          <rationale>Frontend teams building against the mock need realistic data shapes. --dynamic generates values that match schema types, formats, and constraints even without explicit examples.</rationale>
+        </rule>
+
+        <example type="good" title="Starting Prism mock server with dynamic flag">
+          <code lang="bash"><![CDATA[# Start mock server (lint first)
+spectral lint openapi.yaml --ruleset .spectral.yaml
+prism mock openapi.yaml --port 4010 --dynamic &
+echo "Mock server running at http://localhost:4010"
+echo "Docs at http://localhost:4010/__docs"]]></code>
+        </example>
+      </section>
+
+      <section name="contract-testing">
+        <rule>
+          <statement>Run schemathesis or dredd against the live implementation in CI. When a contract test fails, determine whether the spec or the implementation is correct — never auto-fix the spec to match a buggy implementation.</statement>
+          <rationale>Contract tests enforce that the implementation matches its documented contract. Automatically updating the spec to match implementation failures defeats the purpose of the spec as the source of truth.</rationale>
+        </rule>
+      </section>
+
+      <section name="llm-code-generation">
+        <rule>
+          <statement>When generating implementation code from spec, pass the full OpenAPI spec as context and instruct the LLM to use operationId values as function names. For APIs with 100+ endpoints, work on one tag group at a time to avoid context window overflow.</statement>
+          <rationale>operationId creates a traceable mapping from spec to code. Breaking large specs by tag group keeps the context manageable while maintaining the spec as the grounding source.</rationale>
+        </rule>
+      </section>
+
+      <section name="toolchain-quick-reference">
+        <list>
+          <item>spectral lint — npm install -g @stoplight/spectral-cli.</item>
+          <item>prism mock — npm install -g @stoplight/prism-cli.</item>
+          <item>openapi-generator-cli — npm install -g @openapitools/openapi-generator-cli.</item>
+          <item>schemathesis — pip install schemathesis.</item>
+          <item>redocly — npm install -g @redocly/cli (bundle, lint, preview).</item>
+        </list>
+      </section>
+    </section>
+
+    <templates>
+      <template path="templates/openapi-skeleton.yaml" purpose="OpenAPI 3.1 spec skeleton with all required sections."/>
+      <template path="templates/spectral-ruleset.yaml" purpose="Spectral ruleset for org-standard spec linting."/>
+    </templates>
+
+    <see-also>
+      <link href="https://spec.openapis.org/oas/v3.1.0"/>
+      <link href="https://www.postman.com/openapi-spec/"/>
+      <link href="https://stoplight.io/prism"/>
+      <link href="https://spectral.stoplight.io/"/>
+      <link href="https://openapi-generator.tech/"/>
+      <link href="https://schemathesis.readthedocs.io/"/>
+    </see-also>
+  </content>
+</methodology>
