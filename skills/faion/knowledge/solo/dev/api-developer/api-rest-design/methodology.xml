@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-rest-design">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>api-developer</domain>
+    <summary>Resource-oriented HTTP API design: noun-based URLs, correct HTTP verb semantics, idempotency guarantees, standard status codes, and optional HATEOAS links.</summary>
+    <tags>
+      <tag>api-design</tag>
+      <tag>rest</tag>
+      <tag>http</tag>
+      <tag>openapi</tag>
+      <tag>conventions</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>REST API Design</title>
+
+    <summary>Resource-oriented HTTP API design: noun-based URL structure, correct HTTP verb semantics and idempotency guarantees, canonical status code mapping, and optional HATEOAS links. URLs use plural nouns, lowercase kebab-case, and query params for filtering/sorting — never verbs.</summary>
+
+    <why>
+      <p>Inconsistent REST design (verbs in URLs, wrong status codes, missing idempotency) forces API consumers to read implementation code instead of relying on HTTP conventions. The Richardson Maturity Model shows that level 2 REST (resources + verbs) gives the highest usability gain for the lowest implementation cost; level 3 (HATEOAS) is valuable for discoverability but optional.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>New public or partner-facing HTTP APIs where stable resource semantics, browser caching, and HTTP-toolchain familiarity (curl, Postman, OpenAPI) outweigh raw RPC throughput.</item>
+        <item>CRUD-shaped domains (users, orders, posts, tickets) that map cleanly to nouns + standard verbs and benefit from HTTP cache headers, conditional requests, and CDN edge caching.</item>
+        <item>Public docs and SDK generation flows that consume an OpenAPI spec; REST + OpenAPI is the most common pairing for codegen tools.</item>
+        <item>Multi-team platforms where consistency (one URL grammar, one pagination convention, one error envelope) matters more than raw flexibility.</item>
+        <item>LLM-driven backend authoring — agents pattern-match RESTful conventions reliably, especially when paired with a contract-first OpenAPI spec.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Real-time bidirectional flows (chat, presence, live cursors) — use WebSockets / SSE / WebTransport.</item>
+        <item>Highly graph-shaped read patterns where clients fan-out to 10+ endpoints per screen — GraphQL or BFF reduces round-trips.</item>
+        <item>Internal hot paths needing strict typing and 10x throughput — gRPC + Protobuf is faster.</item>
+        <item>Streaming uploads/downloads with resumability — REST works but WebDAV / TUS / S3 multipart is purpose-built.</item>
+        <item>Cases where every endpoint is "verb-shaped" (jobs, calculations, transformations) — RPC is more honest than `POST /actions/calculate`.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="url-structure-and-resource-design">
+      <rule>
+        <statement>Use plural nouns for collections (/users), nested paths for relationships (/users/{id}/orders), query parameters for filtering and sorting — never verbs in the path.</statement>
+        <rationale>Noun-based paths map to resources, not actions. Verbs in URLs (/getUsers, /createOrder) conflate the HTTP method with the path, creating redundancy and breaking the uniform interface constraint of REST.</rationale>
+      </rule>
+
+      <example type="good" title="Proper REST URL Structure">
+        <code lang="text"><![CDATA[
+GET    /users                        # list
+GET    /users?status=active&limit=10 # filtered list
+GET    /users/{id}                   # single resource
+POST   /users                        # create
+PUT    /users/{id}                   # replace
+PATCH  /users/{id}                   # partial update
+DELETE /users/{id}                   # delete
+GET    /users/{id}/orders            # sub-collection
+]]></code>
+      </example>
+
+      <example type="bad" title="Verb-based URL Anti-pattern">
+        <code lang="text"><![CDATA[
+GET /getUsers
+POST /createUser
+POST /deleteUser
+GET /user_orders?userId=123
+]]></code>
+        <note>Verbs in paths, inconsistent pluralisation, action-based naming.</note>
+      </example>
+    </section>
+
+    <section name="http-verb-semantics">
+      <rule>
+        <statement>GET and DELETE must be idempotent. PUT must be idempotent. POST is not idempotent and creates a new resource. PATCH is not idempotent by default but may be made so with conditional requests.</statement>
+        <rationale>Idempotency enables safe retries on network failure. Clients and proxies rely on GET safety for caching. Using POST for read operations defeats caching layers.</rationale>
+      </rule>
+
+      <list>
+        <item>GET — read, idempotent, safe (no side effects)</item>
+        <item>POST — create, not idempotent, not safe</item>
+        <item>PUT — replace entire resource, idempotent, not safe</item>
+        <item>PATCH — partial update, not idempotent, not safe</item>
+        <item>DELETE — remove, idempotent, not safe</item>
+      </list>
+    </section>
+
+    <section name="status-code-mapping">
+      <rule>
+        <statement>Return the most specific applicable status code. Do not use 200 for all responses, and do not use 400 for all client errors.</statement>
+        <rationale>Status codes communicate semantics to clients, proxies, and monitoring tools. 422 Unprocessable Entity distinguishes semantic validation errors from malformed requests (400); 409 Conflict distinguishes duplicate-key errors from other failures.</rationale>
+      </rule>
+
+      <list>
+        <item>200 — GET/PUT/PATCH success with body</item>
+        <item>201 — POST success; include Location header pointing to new resource</item>
+        <item>204 — DELETE success; no body</item>
+        <item>400 — malformed request (bad JSON, missing required param)</item>
+        <item>401 — authentication missing or invalid</item>
+        <item>403 — authenticated but insufficient permissions</item>
+        <item>404 — resource does not exist</item>
+        <item>409 — state conflict (duplicate, version mismatch)</item>
+        <item>422 — syntactically valid but semantically invalid</item>
+        <item>429 — rate limit exceeded</item>
+        <item>500 — unexpected server error</item>
+        <item>503 — planned downtime or overload</item>
+      </list>
+    </section>
+
+    <section name="naming-conventions">
+      <rule>
+        <statement>Use lowercase kebab-case for multi-word resource names. Use plural nouns. Never use camelCase or PascalCase in URL paths.</statement>
+        <rationale>URLs are case-insensitive in the path by RFC, but inconsistent casing causes broken bookmarks and confuses consumers. Kebab-case is the web convention; underscores are acceptable but kebab is preferred.</rationale>
+      </rule>
+
+      <list>
+        <item>Good: /user-profiles, /order-items, /payment-methods</item>
+        <item>Bad: /UserProfiles, /orderItems, /payment_methods, /user</item>
+      </list>
+    </section>
+
+    <section name="filtering-sorting-pagination">
+      <rule>
+        <statement>Use query parameters for filtering (?status=active), sorting (?sort=-created_at for descending), and pagination (?page=2&amp;limit=20 or cursor-based ?after=token). Never encode filter state in the path.</statement>
+        <rationale>Query parameters are composable and bookmarkable. Path-encoded filters create URL explosions and make caching by path impractical.</rationale>
+      </rule>
+
+      <example type="good" title="Query Parameter Filtering and Pagination">
+        <code lang="text"><![CDATA[
+GET /users?status=active&sort=-created_at&limit=20&page=2
+GET /orders?from=2026-01-01&to=2026-03-31&status=completed
+GET /posts?after=eyJpZCI6MTIzfQ&limit=10  # cursor pagination
+]]></code>
+      </example>
+    </section>
+
+    <section name="response-conventions">
+      <rule>
+        <statement>Return the created or updated resource in the response body for 201 and 200 responses. Include a Location header on 201 pointing to the new resource URL.</statement>
+        <rationale>Returning the full resource in the creation response allows clients to update local state without an additional GET. The Location header is required by RFC 7231 for 201.</rationale>
+      </rule>
+
+      <example type="good" title="201 Created with Location Header">
+        <code lang="http"><![CDATA[
+HTTP/1.1 201 Created
+Location: /users/456
+Content-Type: application/json
+
+{
+  "id": "456",
+  "name": "Jane Smith",
+  "email": "jane@example.com",
+  "createdAt": "2026-04-26T12:00:00Z"
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="hateoas-links">
+      <rule testable="false">
+        <statement>For APIs that support client discovery, include a _links object with self, related resources, and state-transition actions. This is optional for most APIs but required for Richardson Maturity Level 3.</statement>
+        <rationale>HATEOAS enables hypermedia-driven clients that do not hard-code URLs. The value is highest in long-lived APIs with frequent state machine transitions (orders, payments).</rationale>
+      </rule>
+
+      <example type="good" title="HATEOAS Response with _links">
+        <code lang="json"><![CDATA[
+{
+  "id": "123",
+  "name": "John Doe",
+  "_links": {
+    "self": { "href": "/users/123" },
+    "orders": { "href": "/users/123/orders" },
+    "update": { "href": "/users/123", "method": "PATCH" }
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="failure-modes-and-limitations">
+      <p>N+1 round-trips: Mobile dashboards needing user + 5 collections trigger 6 calls. Mitigation: BFF / sparse fieldsets / `?include=` expansion / API composition at gateway.</p>
+      <p>Versioning drift: `v1` and `v2` routes diverge subtly; clients pin one and rot. Plan a deprecation policy before shipping `v1`.</p>
+      <p>Resource-shoehorning: Forcing actions into resources (`POST /transcoder/jobs` is fine; `PATCH /document with op=convert` is not). Allow controller resources (`POST /resources/:id:action`) sparingly.</p>
+      <p>PATCH semantics ambiguity: RFC 7396 (merge-patch) vs RFC 6902 (json-patch) — pick one, document it; clients silently disagree otherwise.</p>
+      <p>Pagination chaos: Page+limit, offset+limit, cursor — mixing within one API breaks SDKs. Standardize cursor pagination for stable feeds.</p>
+      <p>Inconsistent collection envelope: `data`, `items`, `users`, raw array — pick one envelope (`{data, meta, links}`) and enforce.</p>
+      <p>Verb leakage: `/getUser`, `/createUser`, `/userList` is RPC dressed as REST; agents copy these patterns from legacy snippets.</p>
+      <p>Cache invalidation: ETag/`If-None-Match` skipped → CDN serves stale; or `Cache-Control: no-store` everywhere → no caching at all.</p>
+      <p>HATEOAS overreach: Full HAL / Siren is rarely consumed by SDKs and adds payload weight; lightweight `_links` for next/prev only is usually sufficient.</p>
+      <p>Status-code abuse: 200 with `{"success": false}` body, 500 for validation failures — clients can't rely on HTTP semantics.</p>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Plural lowercase nouns; `/users`, `/order-items`. Hyphens for multi-word.</item>
+        <item>Sub-collections one level deep. Beyond that, expose filtered top-level collections (`/messages?conversation_id=...`).</item>
+        <item>Standard methods first. GET / POST / PUT / PATCH / DELETE map to read / create / replace / partial-update / remove. Reach for `POST /resources/:id:action` only for non-CRUD operations.</item>
+        <item>Stable status codes. 201 + `Location`, 204 no body, 207 multi-status only when justified, 409 for state conflicts, 422 for semantic validation, 429 + `Retry-After`.</item>
+        <item>One pagination style. Cursor-based for stable feeds (`?cursor=...&amp;limit=...`); offset only for small admin lists.</item>
+        <item>Consistent envelope for collections: `{ data, meta: { count, nextCursor }, links: { self, next, prev } }`.</item>
+        <item>Cache headers. GET endpoints set `ETag` + `Cache-Control`; respect `If-None-Match` (304).</item>
+        <item>Idempotency keys on POST that creates side effects (`Idempotency-Key` header per Stripe conventions).</item>
+        <item>Filtering and sorting. `?status=active&amp;sort=-created_at,name`. Document every filterable field.</item>
+        <item>Sparse fieldsets (`?fields=id,email`) and `?include=...` for related resources to reduce N+1 trips.</item>
+        <item>Versioning policy decided once. URL versioning (`/v1`) is simplest; Accept-header versioning is purer but harder to debug.</item>
+        <item>Problem Details on every error path (RFC 9457). Sync HTTP code with body status.</item>
+        <item>OpenAPI as source of truth. Codegen handlers and clients; treat hand-edited routes as drift.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive REST design top-down: (1) a resource-modeler subagent extracts nouns from product spec and proposes `/resources` + sub-collections, returning an OpenAPI skeleton (paths only, no schemas); (2) a schema-author subagent fills `components.schemas` from data model, including pagination/error refs; (3) a convention-linter subagent runs `spectral` with a project ruleset enforcing plural lowercase nouns, kebab-case, status-code/method conventions; (4) a handler-generator subagent emits FastAPI / Express handlers from the spec via `openapi-generator`; (5) a contract-test subagent (`schemathesis`) fuzzes endpoints against the spec; (6) `faion-sdd-executor-agent` runs the project quality gate. Always treat OpenAPI as source of truth — code follows. Forbid hand-rolled routes that aren't in the spec.</p>
+
+      <list>
+        <item>Recommended subagent: `faion-sdd-executor-agent` — quality gate runs lint, build, contract tests.</item>
+        <item>A purpose-built rest-resource-modeler — converts a product spec + ER diagram into a path tree with parameterized IDs and standard verb mapping.</item>
+        <item>A rest-convention-linter — wraps spectral with project rules: plural nouns, kebab-case, no verbs in URLs, every 4xx/5xx references Problem Details.</item>
+        <item>A pagination-auditor — verifies all collection endpoints use the same pagination style (cursor or offset) and emit the same `meta`/`links` shape.</item>
+        <item>A status-code-auditor — checks 201 endpoints set `Location`, 204 has no body, 429 sets `Retry-After`, 401 vs 403 are correct per route.</item>
+        <item>A breaking-change-detector — diffs OpenAPI specs between branches (e.g. `oasdiff`) and fails CI on incompatible changes within a major version.</item>
+        <item>A password-scrubber-agent — scans examples and fixtures for secrets.</item>
+      </list>
+
+      <p>Prompt pattern for resource modeling:</p>
+      <code lang="text"><![CDATA[
+Given the domain model in docs/domain.md, propose REST paths.
+Constraints:
+- Plural lowercase nouns; kebab-case for multi-word.
+- Sub-collections only one level deep; deeper relations expose
+  filtered top-level collections (e.g. /messages?conversation_id=).
+- Cursor pagination on every collection.
+- Use POST /:collection/:id:action only for non-CRUD actions
+  with documented justification.
+Output: openapi.yaml paths + a table mapping domain entity → resource.
+]]></code>
+
+      <p>Prompt pattern for lint pass:</p>
+      <code lang="text"><![CDATA[
+Run spectral on openapi.yaml with .spectral.yaml.
+For every violation, propose a minimal patch and group violations
+by rule. Reject any patch that changes URL grammar without a
+versioning note in CHANGELOG.md.
+]]></code>
+
+      <p>Example spectral lint rules:</p>
+      <code lang="yaml"><![CDATA[
+# .spectral.yaml — REST conventions guard.
+extends: ['spectral:oas']
+rules:
+  paths-kebab-case:
+    description: Path segments must be lowercase and kebab-case.
+    given: "$.paths[*]~"
+    then:
+      function: pattern
+      functionOptions:
+        match: '^(/[a-z0-9-]+(?:/\{[a-zA-Z]+\})?)+$'
+    severity: error
+  no-verbs-in-paths:
+    description: Use HTTP method, not verbs in URL.
+    given: "$.paths[*]~"
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: '/(get|create|update|delete|list|fetch)[A-Z]'
+    severity: error
+  resources-must-be-plural:
+    description: Top-level resources are plural nouns.
+    given: "$.paths[*]~"
+    then:
+      function: pattern
+      functionOptions:
+        match: '^/[a-z0-9-]+s(/.*)?$'
+    severity: warn
+  operation-operationId: error
+  operation-summary: error
+  operation-description: warn
+  oas3-valid-media-example: error
+]]></code>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Verb-y URLs: Agent emits `/getUserOrders`. Lint rule with `pattern.notMatch` blocks at PR.</item>
+        <item>PATCH ambiguity: Agent uses merge-patch shape but spec says json-patch (or vice versa). Document and enforce one.</item>
+        <item>Inconsistent collection envelope: Mid-PR shift from `data` to `items`. Force shared `Pagination` schema component.</item>
+        <item>Status code drift: 200 with `{"error": "..."}` body. Reject in `status-code-auditor`.</item>
+        <item>`Location` missing on 201: Clients can't follow the new resource. Add to convention checklist.</item>
+        <item>Sub-collections too deep: `/orgs/:o/teams/:t/projects/:p/issues/:i/comments/:c` becomes brittle. Cap depth at 1.</item>
+        <item>Mass-assigning request body: Agent reuses the response schema for input; clients can pass `id`, `createdAt`, `role`. Define separate `Create*Request` / `Update*Request` schemas.</item>
+        <item>Forgetting `Retry-After` on 429 and 503; clients hammer endpoints in tight loops.</item>
+        <item>Missing pagination on growing endpoints: `/users` returns full list with no pagination — works at 100 rows, dies at 100k. Pagination must be in the contract from day one.</item>
+        <item>CORS overlooked: Public APIs default-deny preflight; agent debugs handler instead of CORS config.</item>
+        <item>Mixing auth schemes: Bearer on most routes, basic on legacy ones. Pin one, deprecate the other on a schedule.</item>
+        <item>Breaking changes within a major version: Renamed field, removed enum value — `oasdiff` in CI catches this; without it, agents ship breaking PRs.</item>
+        <item>Hand-edited routes diverge from spec: Contract tests must pass; otherwise codegen is theater.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>spectral: Lint OpenAPI spec, custom REST conventions (https://stoplight.io/open-source/spectral)</item>
+        <item>redocly: OpenAPI lint + docs preview (https://redocly.com/docs/cli)</item>
+        <item>oasdiff: Detect breaking changes between OpenAPI versions (https://github.com/Tufin/oasdiff)</item>
+        <item>openapi-generator: Generate server stubs + clients in many languages (https://openapi-generator.tech)</item>
+        <item>schemathesis: Property-based contract testing (https://schemathesis.readthedocs.io)</item>
+        <item>dredd: OpenAPI / API Blueprint contract test runner (https://dredd.org)</item>
+        <item>httpie / curl: Manual probing during development (https://httpie.io)</item>
+        <item>Bruno / Hoppscotch: OSS Postman alternatives, file-based, agent-friendly (https://www.usebruno.com)</item>
+        <item>mockoon: Local mock API from OpenAPI (https://mockoon.com)</item>
+      </list>
+    </section>
+
+    <section name="services-and-applications">
+      <list>
+        <item>Stoplight Studio: SaaS / Desktop visual API design; export OpenAPI for agents.</item>
+        <item>Postman: SaaS collections from OpenAPI; CLI `newman` for CI.</item>
+        <item>Bruno: OSS Desktop plain-text `.bru` files commit to repo.</item>
+        <item>Readme.io: SaaS hosts docs + try-it; agents publish via API.</item>
+        <item>Mintlify: SaaS doc-as-code from OpenAPI; agents push spec to repo.</item>
+        <item>Kong / AWS API Gateway: OSS / SaaS front REST APIs; auth, rate limit, transforms.</item>
+        <item>Stripe / GitHub / Twilio: Reference implementations — read public docs as gold standards for REST design.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://github.com/microsoft/api-guidelines/blob/vNext/Guidelines.md"/>
+      <link href="https://cloud.google.com/apis/design"/>
+      <link href="https://opensource.zalando.com/restful-api-guidelines/"/>
+      <link href="https://martinfowler.com/articles/richardsonMaturityModel.html"/>
+      <link href="https://stripe.com/docs/api"/>
+      <link href="https://docs.github.com/en/rest"/>
+      <link href="https://jsonapi.org"/>
+      <link href="https://datatracker.ietf.org/doc/html/rfc9457"/>
+    </see-also>
+  </content>
+</methodology>
