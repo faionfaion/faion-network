@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="aws-lambda">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Serverless function design with cold start optimization, layer management, and event source configuration for AWS Lambda with proper batch failure handling and SnapStart.</summary>
+    <category>cloud</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>serverless</tag>
+      <tag>lambda</tag>
+      <tag>aws</tag>
+      <tag>cold-start</tag>
+      <tag>event-sources</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>python</language>
+      <language>node.js</language>
+      <language>java</language>
+    </languages>
+    <frameworks>
+      <framework>aws-sam</framework>
+      <framework>terraform</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>AWS Lambda: Serverless Function Design, Optimization, and Event Source Configuration</title>
+
+    <summary>Serverless function design, cold start optimization, layer management, and event source configuration for AWS Lambda. The concrete rule is: initialize all SDK clients and database connections outside the handler; use ReportBatchItemFailures for all polling event sources (SQS, Kinesis, DynamoDB Streams); use ARM64 (Graviton2) architecture by default for 20% cost reduction; enable SnapStart for Java/Python/.NET to reduce cold starts by 58-94%.</summary>
+
+    <why>
+      <p>Cold starts are now billed since August 2025 (INIT phase same rate as invocation). Incorrect initialization inside the handler wastes every invocation paying re-initialization cost. Partial batch failure reporting without ReportBatchItemFailures sends entire batches to DLQ on a single failure, multiplying processing cost and delay.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Writing a new Lambda handler (Python, Node.js, Java) for any event source</item>
+        <item>Optimizing cold start latency for latency-sensitive APIs</item>
+        <item>Configuring SQS, Kinesis, or DynamoDB Streams event source mappings</item>
+        <item>Packaging shared dependencies as Lambda layers</item>
+        <item>Setting up blue-green or canary deployments with Lambda aliases</item>
+        <item>Creating SAM or Terraform IaC for Lambda infrastructure</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Workloads running longer than 15 minutes — use ECS/Fargate containers instead</item>
+        <item>Functions requiring GPU — Lambda has no GPU support; use SageMaker or ECS</item>
+        <item>Steady-state high-concurrency APIs where provisioned concurrency cost exceeds container cost</item>
+        <item>Kubernetes or containerized architecture decisions — use aws-architecture-services</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="handler-structure">
+      <p>Handler structure rules, idempotency pattern, cold start optimization strategies, and layer management.</p>
+
+      <rule testable="true">
+        <statement>Initialize all SDK clients, database connections, and static configuration outside the handler function; keep the handler itself to business logic only.</statement>
+        <rationale>Code outside the handler runs once per execution environment (cold start). Code inside the handler runs on every invocation. Since August 2025, INIT phase is billed at the same rate as invocation duration — every unnecessary re-initialization now has a direct cost.</rationale>
+      </rule>
+
+      <example type="good" title="Initialize SDK clients outside handler">
+        <code lang="python"><![CDATA[
+import boto3
+
+# Initialize once outside handler
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table('my-table')
+
+def handler(event, context):
+    # Business logic only here
+    if not validate(event):
+        return {'statusCode': 400, 'body': 'Invalid input'}
+    result = process(event, table)
+    return {'statusCode': 200, 'body': result}
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use ARM64 (Graviton2) architecture for all new Lambda functions; justify x86_64 explicitly (e.g., native x86 binary dependencies).</statement>
+        <rationale>Graviton2 provides 20% lower cost per GB-second at comparable or better performance for most workloads. No code changes required for Python, Node.js, or Java runtimes.</rationale>
+      </rule>
+    </section>
+
+    <section name="cold-start-optimization">
+      <p>Cold start optimization through SnapStart, provisioned concurrency, and memory right-sizing.</p>
+
+      <rule testable="true">
+        <statement>Enable SnapStart for Java 11+, Python 3.12+, and .NET 8 functions to reduce cold starts by 58-94%; ensure initialization code is safe to snapshot (no unique IDs or time-sensitive data in INIT phase).</statement>
+        <rationale>SnapStart restores a pre-initialized execution environment snapshot instead of running INIT from scratch. Snapshots expire after 14 days of inactivity.</rationale>
+      </rule>
+
+      <rule testable="false">
+        <statement>Use Provisioned Concurrency only for strict p99 latency requirements (under 100ms); cost is 3x reserved concurrency — for 50 functions × 5 provisioned, estimated $19,000/year vs $50/month without.</statement>
+        <rationale>Provisioned Concurrency eliminates cold starts entirely by keeping environments warm 24/7. It is appropriate only when SnapStart does not meet latency targets and the cost is justified by SLA requirements.</rationale>
+      </rule>
+    </section>
+
+    <section name="idempotency">
+      <p>Idempotency implementation for reliable event processing.</p>
+
+      <rule testable="true">
+        <statement>Implement idempotency for all Lambda functions that process business transactions; use a composite idempotency key derived from the event payload and store results with TTL.</statement>
+        <rationale>Lambda can be invoked more than once for the same event due to retries. Without idempotency, duplicate charges, duplicate database inserts, or duplicate notification sends result.</rationale>
+      </rule>
+    </section>
+
+    <section name="lambda-layers">
+      <p>Lambda layers for managing shared dependencies and reducing deployment package size.</p>
+
+      <rule testable="true">
+        <statement>Use layers for shared dependencies across functions (pandas, boto3 extensions, custom utilities); limit to 5 layers per function; pin layer versions to specific ARNs in production.</statement>
+        <rationale>Layers reduce deployment package size and allow dependency updates without redeploying all functions. Unpinned layers can introduce unexpected changes when a new version is published.</rationale>
+      </rule>
+
+      <antipattern title="Initializing clients inside the handler">
+        <description>Initializing boto3 clients, database connections, or external API clients inside the handler function.</description>
+        <reason>Connection setup runs on every invocation, multiplying latency and cost. With INIT phase billed since August 2025, functions with heavy initialization inside the handler pay double.</reason>
+      </antipattern>
+    </section>
+
+    <section name="sqs-event-source">
+      <p>SQS event source configuration rules, batch processing with partial failures, and error handling.</p>
+
+      <rule testable="true">
+        <statement>Enable ReportBatchItemFailures on all SQS event source mappings; return a list of failed messageIds in the response body so only failed messages are retried, not the entire batch.</statement>
+        <rationale>Without ReportBatchItemFailures, a single processing failure causes the entire batch to be retried and eventually sent to the DLQ, multiplying cost and delay by the batch size.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set SQS visibility timeout to at least 6x the Lambda function timeout; configure a DLQ on the SQS queue; set batching window to 5-30 seconds for non-latency-critical workloads.</statement>
+        <rationale>If visibility timeout is shorter than function timeout, messages become visible mid-processing and get picked up by other consumers. DLQ captures messages that fail all retries for inspection.</rationale>
+      </rule>
+
+      <example type="good" title="SQS event source mapping with ReportBatchItemFailures">
+        <code lang="yaml"><![CDATA[
+EventSourceMapping:
+  Type: AWS::Lambda::EventSourceMapping
+  Properties:
+    FunctionName: !Ref ProcessorFunction
+    EventSourceArn: !GetAtt InputQueue.Arn
+    BatchSize: 10
+    MaximumBatchingWindowInSeconds: 5
+    FunctionResponseTypes:
+      - ReportBatchItemFailures
+    DestinationConfig:
+      OnFailure:
+        Destination: !GetAtt DLQ.Arn
+]]></code>
+      </example>
+    </section>
+
+    <section name="kinesis-dynamodb-streams">
+      <p>Kinesis and DynamoDB Streams event source configuration with batch bisection and parallelization.</p>
+
+      <rule testable="true">
+        <statement>Enable BisectBatchOnFunctionError on Kinesis and DynamoDB Streams event source mappings; set MaximumRetryAttempts (10-100) and MaximumRecordAgeInSeconds (3600-86400) to prevent infinite retries on poison messages.</statement>
+        <rationale>Without BisectBatch, a single poison record in a batch causes the entire batch to retry until MaximumRecordAge. Bisect splits the batch in half on error, isolating bad records in O(log n) retries.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Configure a parallelization factor (1-10) per shard for Kinesis streams when per-shard throughput is insufficient; set starting position to LATEST for new consumers and TRIM_HORIZON only for backfill.</statement>
+        <rationale>Default one concurrent invocation per shard limits throughput to batch size × invocation rate per shard. Parallelization factor multiplies throughput without additional shards.</rationale>
+      </rule>
+    </section>
+
+    <section name="event-filtering">
+      <p>Event filtering to reduce invocations and optimize costs at the source.</p>
+
+      <rule testable="true">
+        <statement>Use event source mapping filter criteria to reduce invocations for SQS, Kinesis, and DynamoDB Streams; apply filters at the Lambda service level to avoid paying for unwanted events.</statement>
+        <rationale>Event filtering at the source is free and eliminates Lambda invocations entirely for filtered events. Application-level filtering inside the handler wastes invocation cost on events that will be discarded.</rationale>
+      </rule>
+
+      <antipattern title="SQS without DLQ">
+        <description>SQS event source mapping without a DLQ configured on the queue.</description>
+        <reason>Messages that exhaust all retries are silently dropped if there is no DLQ. Failed processing leaves no trace for debugging or replay.</reason>
+      </antipattern>
+    </section>
+
+    <section name="pre-deployment-checklist">
+      <p>Pre-deployment verification checklist for code structure, security, event sources, and monitoring.</p>
+
+      <rule testable="true">
+        <statement>Verify: SDK clients outside handler, no blocking in INIT phase, idempotency implemented, graceful error handling with correct HTTP status codes, structured JSON logging with request ID.</statement>
+        <rationale>These are the five most common Lambda implementation errors — each increases cost, reduces reliability, or degrades debuggability.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Right-size memory using AWS Lambda Power Tuning before production deployment; set timeout with buffer (not at the maximum limit); use ARM64 architecture unless x86-only dependencies exist.</statement>
+        <rationale>Memory over-provisioning wastes GB-second cost. Timeout at limit causes silent hangs instead of fast failures. ARM64 saves 20% per GB-second.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Execution role must follow least privilege with no wildcard (*) resource ARNs; sensitive environment variables must be encrypted with KMS; no hardcoded credentials in code.</statement>
+        <rationale>Lambda execution roles with wildcard resources allow functions to access all AWS resources of that type. KMS-encrypted env vars are protected even if the function configuration is read by an unauthorized party.</rationale>
+      </rule>
+
+      <rule testable="false">
+        <statement>Store all secrets in Secrets Manager or Parameter Store and fetch at initialization; avoid using VPC unless the function genuinely needs private resource access — VPC adds cold start latency.</statement>
+        <rationale>VPC-attached Lambda functions require ENI allocation, adding 3-10 seconds to cold starts. Use VPC endpoints from non-VPC Lambda for most AWS service access instead.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For SQS: ReportBatchItemFailures enabled, DLQ configured, visibility timeout ≥ 6× function timeout. For Kinesis/DynamoDB Streams: BisectBatchOnFunctionError enabled, MaximumRetryAttempts set, on-failure destination configured.</statement>
+        <rationale>These settings collectively ensure no messages are silently dropped on failure and that poison records are isolated without blocking the entire stream shard.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Configure Lambda aliases for environment promotion (dev/staging/prod); use CodeDeploy canary or linear deployment strategies with CloudWatch alarms for automatic rollback.</statement>
+        <rationale>Aliases enable blue-green and canary deployments without URL changes. Alarm-based rollback prevents a bad deployment from reaching 100% traffic if error rate spikes.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set CloudWatch alarms on: Duration (> 80% timeout), Errors (> 1% rate), Throttles (> 0), ConcurrentExecutions (> 80% limit), IteratorAge for streams (> 60s).</statement>
+        <rationale>Duration near timeout indicates under-provisioned memory or runaway loops. Throttles indicate concurrency limit hit. IteratorAge growth signals stream consumer falling behind.</rationale>
+      </rule>
+
+      <antipattern title="Exceeding 15-minute timeout">
+        <description>Lambda functions that exceed 15-minute timeout for long-running batch jobs.</description>
+        <reason>Lambda has a hard 15-minute timeout. Jobs that approach this limit should be migrated to ECS Fargate tasks or Step Functions activities which support arbitrary runtimes.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template name="sam-basic.yaml" path="templates/sam-basic.yaml">SAM template: basic function with DynamoDB, arm64, X-Ray</template>
+      <template name="sam-api.yaml" path="templates/sam-api.yaml">SAM template: Lambda + API Gateway with access logs</template>
+      <template name="sam-sqs.yaml" path="templates/sam-sqs.yaml">SAM template: SQS trigger with DLQ, batch item failures, event filter</template>
+      <template name="sam-dynamodb-streams.yaml" path="templates/sam-dynamodb-streams.yaml">SAM template: DynamoDB Streams with bisect-on-error, parallelization</template>
+      <template name="sam-snapstart.yaml" path="templates/sam-snapstart.yaml">SAM template: SnapStart for Java and Python with AutoPublishAlias</template>
+      <template name="sam-canary.yaml" path="templates/sam-canary.yaml">SAM template: canary deployment with CodeDeploy hooks and alarms</template>
+      <template name="tf-lambda-basic.tf" path="templates/tf-lambda-basic.tf">Terraform: Lambda function with IAM role, X-Ray, CloudWatch logs</template>
+      <template name="tf-lambda-sqs.tf" path="templates/tf-lambda-sqs.tf">Terraform: SQS queue + event source mapping with filter criteria</template>
+    </templates>
+  </content>
+</methodology>

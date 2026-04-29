@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="aws-networking">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>VPC architecture, subnet segmentation, security groups, NACLs, Transit Gateway, and VPC endpoints for AWS with multi-AZ design and Zero-Trust security principles.</summary>
+    <category>cloud</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>networking</tag>
+      <tag>vpc</tag>
+      <tag>aws</tag>
+      <tag>security-groups</tag>
+      <tag>transit-gateway</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>terraform</language>
+      <language>cloudformation</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>AWS Networking: VPC Architecture, Security Controls, and Connectivity Patterns</title>
+
+    <summary>VPC architecture, subnet segmentation, security groups, NACLs, Transit Gateway, and VPC endpoints for AWS. The concrete rule is: always deploy across 3 AZs with public/private/data subnet tiers; never use 0.0.0.0/0 in security group ingress rules except on ALB port 80/443; use VPC endpoints for S3/DynamoDB/Secrets Manager to eliminate NAT Gateway costs and keep traffic on AWS backbone.</summary>
+
+    <why>
+      <p>Single-AZ deployments fail entirely during AZ outages. Overly permissive security groups (0.0.0.0/0) are the most common cause of data breaches in AWS. Data transfer through NAT Gateways to AWS services is expensive and unnecessary — VPC endpoints provide private connectivity at no data transfer cost.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Designing a new VPC with subnet segmentation (public/private/data tiers)</item>
+        <item>Selecting connectivity pattern: VPC Peering vs Transit Gateway vs VPC Lattice</item>
+        <item>Auditing security group rules for least-privilege compliance</item>
+        <item>Setting up VPC endpoints (Gateway for S3/DynamoDB, Interface for other services)</item>
+        <item>Configuring Transit Gateway for multi-VPC or hybrid on-prem connectivity</item>
+        <item>Enabling VPC Flow Logs and GuardDuty for network visibility</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>GCP networking (VPC, Cloud NAT, firewall rules) — use gcp-networking</item>
+        <item>ALB/NLB configuration and target groups — use aws-architecture-services</item>
+        <item>Route53 DNS design — not covered here; use AWS Route53 documentation directly</item>
+        <item>Security group rules for specific services (EKS, RDS) — covered in service-specific methodologies</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="subnet-architecture">
+      <p>3-tier subnet architecture, CIDR planning, multi-AZ rules, and best practices for VPC design.</p>
+
+      <rule testable="true">
+        <statement>Deploy every production VPC across 3 Availability Zones with three subnet tiers: public (ALB, NAT Gateway), private (application), and data (RDS, ElastiCache); use /24 subnets per tier per AZ.</statement>
+        <rationale>Three tiers enforce network segmentation — data subnets have no route to the internet, only from private subnets. Three AZs survive a single AZ outage with automatic failover.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use /16 VPC CIDR for production to allow future growth; plan CIDR ranges to avoid overlap with on-premises networks or peered VPCs; use IPAM for multi-account environments.</statement>
+        <rationale>VPC CIDR cannot be changed after creation without recreation. /16 provides 65,536 addresses. Overlapping CIDRs block VPC peering and Transit Gateway attachment.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Keep main route table with no routes except local; use explicit subnet associations for public, private, and data route tables; deploy a NAT Gateway per AZ (not shared).</statement>
+        <rationale>A shared NAT Gateway is a single point of failure — if that AZ goes down, all private subnets in other AZs lose internet access. Per-AZ NAT Gateways maintain egress during zone failures.</rationale>
+      </rule>
+    </section>
+
+    <section name="zero-trust-principles">
+      <p>Zero-Trust security principles for security groups, VPC endpoints, and network access control.</p>
+
+      <rule testable="true">
+        <statement>Allow 0.0.0.0/0 inbound only on ALB ports 80/443; all other security group ingress rules must reference specific CIDRs or security group IDs; audit monthly via AWS Config.</statement>
+        <rationale>Every open inbound rule is an attack surface. Security groups are the primary perimeter control — overly permissive rules are the most common cause of AWS breaches according to AWS security reports.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use Gateway VPC endpoints for S3 and DynamoDB (free); use Interface endpoints for Secrets Manager, SSM, ECR, CloudWatch Logs, and STS to keep AWS service traffic on the AWS backbone.</statement>
+        <rationale>Without VPC endpoints, traffic to AWS services leaves the VPC via NAT Gateway, incurring data processing charges ($0.045/GB). Endpoints eliminate this cost and keep traffic private.</rationale>
+      </rule>
+    </section>
+
+    <section name="flow-logs">
+      <p>VPC Flow Logs for forensic analysis and network incident investigation.</p>
+
+      <rule testable="true">
+        <statement>Enable VPC Flow Logs on all VPCs; send to CloudWatch Logs for real-time query or S3 for cost-optimized long-term storage; configure 30-90 day retention.</statement>
+        <rationale>Flow Logs are the primary forensic tool for network incidents. Without them, there is no record of which IPs communicated with which resources, making incident investigation impossible.</rationale>
+      </rule>
+
+      <antipattern title="Single NAT Gateway shared across AZs">
+        <description>Single NAT Gateway shared across multiple AZs to reduce cost.</description>
+        <reason>A shared NAT Gateway creates a single point of failure. If the NAT Gateway's AZ fails, all private subnets in other AZs lose internet egress even though those AZs are still operational.</reason>
+      </antipattern>
+    </section>
+
+    <section name="security-groups">
+      <p>Security group configuration with references, naming conventions, and audit practices.</p>
+
+      <rule testable="true">
+        <statement>Use security group references (not CIDR blocks) between application tiers; reference the ALB security group in app tier, and app security group in RDS tier.</statement>
+        <rationale>Security group references dynamically include all instances in the referenced group. CIDR-based rules require updates whenever instance IPs change, creating maintenance burden and potential security gaps.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Add a description to every security group rule; name security groups with the convention {env}-{app}-{tier}-sg; schedule monthly audits via AWS Config rule vpc-sg-open-only-to-authorized-ports.</statement>
+        <rationale>Descriptions make audit reviews actionable — reviewers can understand intent without reverse-engineering from context. AWS Config automates compliance monitoring and alerts on rule violations.</rationale>
+      </rule>
+    </section>
+
+    <section name="network-acls">
+      <p>Network ACL design for subnet-level stateless access control.</p>
+
+      <rule testable="true">
+        <statement>Use the default NACL (allow all) as baseline; create custom NACLs only for additional subnet-level guardrails; always configure ephemeral port ranges (1024-65535) in egress rules for stateless NACLs.</statement>
+        <rationale>NACLs are stateless — return traffic must be explicitly allowed. Missing ephemeral port egress rules block all TCP response traffic. Security groups handle most access control more maintainably.</rationale>
+      </rule>
+    </section>
+
+    <section name="vpc-endpoints">
+      <p>VPC Endpoints for private connectivity to AWS services and cost optimization.</p>
+
+      <rule testable="true">
+        <statement>Create Gateway endpoints for S3 and DynamoDB in all private route tables; create Interface endpoints for Secrets Manager, SSM (3 endpoints: ssm, ssmmessages, ec2messages), ECR (dkr and api), and CloudWatch Logs.</statement>
+        <rationale>Gateway endpoints are free and eliminate all NAT Gateway charges for S3/DynamoDB traffic. SSM Session Manager requires 3 specific Interface endpoints to work — missing any one prevents connections.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Attach endpoint policies to Interface endpoints restricting access to specific resources and principals; enable private DNS on all Interface endpoints.</statement>
+        <rationale>Without endpoint policies, any principal in the VPC can use the endpoint to access any resource of that service type. Private DNS ensures existing SDK code automatically routes through the endpoint.</rationale>
+      </rule>
+    </section>
+
+    <section name="threat-detection">
+      <p>Network threat detection with GuardDuty and Network Firewall.</p>
+
+      <rule testable="false">
+        <statement>Enable GuardDuty in all AWS regions; enable VPC Flow Log analysis in GuardDuty; configure Network Firewall for egress inspection in production environments with sensitive data.</statement>
+        <rationale>GuardDuty uses ML to detect anomalous traffic patterns (e.g., communication with known malicious IPs, unusual port scans). Network Firewall provides layer 7 inspection for C2 callback detection.</rationale>
+      </rule>
+
+      <antipattern title="0.0.0.0/0 ingress on non-ALB ports">
+        <description>Security groups with 0.0.0.0/0 ingress on ports other than 80/443 on ALB.</description>
+        <reason>Every open inbound rule is an active attack surface. SSH (22), RDP (3389), databases (5432, 3306), and admin interfaces exposed to the internet are continuously probed by automated scanners.</reason>
+      </antipattern>
+    </section>
+
+    <section name="vpc-peering-vs-transit-gateway">
+      <p>Connectivity pattern selection: VPC Peering, Transit Gateway, and VPC Lattice.</p>
+
+      <rule testable="true">
+        <statement>Use VPC Peering for 2-3 VPCs in the same region; use Transit Gateway for 4+ VPCs, cross-region connectivity, or hybrid on-premises connectivity via Direct Connect or VPN.</statement>
+        <rationale>VPC Peering is simpler and has no per-hour attachment cost — ideal for small deployments. Transit Gateway uses a hub-and-spoke model that scales to thousands of attachments without N×(N-1)/2 peering connections.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Configure Transit Gateway route tables segmented by environment (prod/non-prod isolation); disable DefaultRouteTableAssociation and DefaultRouteTablePropagation; use blackhole routes for deprecated networks.</statement>
+        <rationale>Default route tables associate all attachments together, creating unintended connectivity between production and development VPCs. Explicit route table assignment enforces environment isolation.</rationale>
+      </rule>
+    </section>
+
+    <section name="vpc-lattice">
+      <p>VPC Lattice for application-layer service-to-service connectivity.</p>
+
+      <rule testable="true">
+        <statement>Use VPC Lattice for application-layer service-to-service connectivity across VPCs and accounts; prefer over VPC Peering when services need built-in auth, routing, and observability.</statement>
+        <rationale>VPC Lattice provides per-service access controls, request-level observability, and HTTP/gRPC routing without managing security groups across peered VPCs. It replaces complex PrivateLink setups for internal service meshes.</rationale>
+      </rule>
+    </section>
+
+    <section name="connectivity-checklist">
+      <p>Comprehensive checklist for multi-VPC deployments and connectivity verification.</p>
+
+      <rule testable="true">
+        <statement>For VPC Peering: enable DNS resolution across peers, reference peer VPC security groups by ID, configure specific routes (not full CIDR), verify no transitive routing assumptions.</statement>
+        <rationale>VPC Peering is not transitive — VPC A peered to VPC B and B peered to VPC C does not create A-to-C connectivity. Teams frequently discover this misconfiguration in production when services cannot communicate.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For all multi-VPC deployments: use IPAM for central IP planning and overlap detection; document all CIDR allocations; reserve expansion ranges in each VPC.</statement>
+        <rationale>CIDR overlaps block all peering and TGW attachment options. IPAM provides real-time overlap detection and prevents allocation conflicts in multi-account Organizations.</rationale>
+      </rule>
+
+      <antipattern title="Transitive VPC Peering assumption">
+        <description>Assuming VPC Peering is transitive for multi-hop connectivity.</description>
+        <reason>VPC Peering is point-to-point only. Traffic cannot pass through a peered VPC to reach a third VPC. Transit Gateway or VPC Lattice is required for hub-and-spoke topologies.</reason>
+      </antipattern>
+    </section>
+  </content>
+</methodology>
