@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 solo/dev methodologies → methodology.xml (django-celery, django-services, architecture-decision-records; feature-045 batch DL)
 - migrate: 3/3 frontend-developer methodologies → methodology.xml (css-in-js-basics, design-tokens-basics, design-tokens-implementation; feature-045 batch DD)
 - migrate: 3/3 automation-tooling methodologies → methodology.xml (cd-basics, cd-pipelines, continuous-delivery; feature-045 batch CW)
 - migrate: 3/3 solo/dev/automation-tooling methodologies → methodology.xml (ab-testing-basics, ab-testing-implementation, best-practices-2026; feature-045 batch CV)
