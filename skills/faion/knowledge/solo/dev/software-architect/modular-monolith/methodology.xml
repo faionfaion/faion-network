@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="modular-monolith">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Single deployable unit with strict module boundaries: each module maps to one bounded context, owns its schema, exposes only a public API, enforced via static analysis in CI.</summary>
+    <tags>
+      <tag>modular-monolith</tag>
+      <tag>bounded-context</tag>
+      <tag>module-boundaries</tag>
+      <tag>ddd</tag>
+      <tag>strangler-fig</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Modular Monolith</title>
+    <summary>A modular monolith is a single deployable unit with strict module boundaries: each module maps to one bounded context, exposes only a public API, owns its database schema, and never directly imports internals of another module. Boundary enforcement is mandatory via static analysis (import-linter, ArchUnit, depguard) wired into CI — without it, boundaries decay within weeks.</summary>
+    <why>
+      <p>Microservices overhead (distributed tracing, network failures, polyglot ops) is only justified when modules need independent scaling, independent deployment, or polyglot stacks. Until those needs are real, a modular monolith provides the same domain isolation with in-process calls, ACID transactions, and a single deploy. It is also the safest migration path: well-isolated modules extract to services via the Strangler Fig pattern.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>New project: team size &lt;= 10, business model not fully validated</item>
+        <item>Refactoring a "big ball of mud" monolith — module boundaries first, extraction later</item>
+        <item>Needing DDD bounded contexts without distributed-systems complexity</item>
+        <item>Planning future microservices extraction (modular monolith is the required prior step)</item>
+        <item>Establishing schema-per-module isolation on a shared PostgreSQL instance</item>
+        <item>Adding import-boundary linting as a CI gate to an existing codebase</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Independent scaling per module is already needed (traffic profiles differ by 10x+) — use microservices</item>
+        <item>Multiple teams (10+) with independent release cadences requiring autonomous deploys</item>
+        <item>Polyglot tech stacks required per domain (different languages/runtimes)</item>
+        <item>Regulatory or fault-isolation requirements demand hard process separation</item>
+        <item>Throwaway prototype where module ceremony adds no value</item>
+        <item>Existing monolith already has clean package structure and passing tests — don't add ceremony</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-principles">
+      <rule>
+        <statement>Each module must represent exactly one bounded context — a distinct business domain with its own vocabulary, data ownership, and lifecycle.</statement>
+        <rationale>Modules named after technical layers (utils, helpers, common) are not modules; they are coupling points. Modules named after business domains (Orders, Payments, Inventory) enforce team ownership and enable future extraction.</rationale>
+      </rule>
+      <example type="good">
+        <note>Modules aligned with business domains</note>
+        <code lang="text"><![CDATA[
+src/
+  users/       # Authentication, profiles
+  orders/      # Cart, checkout, order lifecycle
+  payments/    # Transactions, refunds
+  inventory/   # Stock, warehouses
+  notifications/ # Email, SMS, push
+]]></code>
+      </example>
+      <antipattern>
+        <description>Module named after technical role, not business domain</description>
+        <reason>utils/, helpers/, common/ become dumping grounds for cross-module logic, recreating tight coupling</reason>
+      </antipattern>
+      <rule>
+        <statement>Modules must communicate exclusively through their declared public API. Direct imports of internal classes, models, or functions from another module are forbidden.</statement>
+        <rationale>Bypassing public APIs creates invisible coupling. When module internals change, all callers break. The public API is the contract — it is the only stable interface.</rationale>
+      </rule>
+      <example type="bad">
+        <code lang="python"><![CDATA[
+# WRONG: direct import of internal model
+from orders.models import Order
+order = Order.objects.get(id=123)
+]]></code>
+      </example>
+      <example type="good">
+        <code lang="python"><![CDATA[
+# RIGHT: through public service API
+from orders.api import OrderService
+order = OrderService.get_order(123)
+]]></code>
+      </example>
+      <rule>
+        <statement>Each module owns its domain models. When module A needs data from module B, it uses a DTO (Data Transfer Object) returned by B's public API — never B's internal model class.</statement>
+        <rationale>Shared domain models create hidden coupling: a change to the shared model forces changes across all consumers. DTOs are immutable value objects with no business logic; they decouple the wire format from the internal model.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+# orders/models.py — Orders' internal view of a customer
+class OrderCustomer:
+    user_id: int    # Reference by ID only
+    name: str       # Denormalized for display — NOT the User model
+]]></code>
+      </example>
+      <rule>
+        <statement>Each module manages its own database schema or database instance. No module may read from or write to tables owned by another module.</statement>
+        <rationale>Shared tables create the same coupling as shared code. A schema migration in one module should never break another. Data ownership is the foundation of independent module evolution.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="sql"><![CDATA[
+-- Separate schemas per module in PostgreSQL
+CREATE SCHEMA users;
+CREATE SCHEMA orders;
+CREATE SCHEMA payments;
+
+CREATE TABLE users.accounts (...);
+CREATE TABLE orders.orders (...);
+CREATE TABLE payments.transactions (...);
+]]></code>
+      </example>
+      <rule>
+        <statement>Never write SQL that joins tables across module schemas. Query data through module APIs; denormalize when read performance requires it.</statement>
+        <rationale>Cross-schema joins are invisible boundary violations. They bypass the module's public API, expose internal schema structure, and survive code review invisibly. They also block independent schema migration.</rationale>
+      </rule>
+      <example type="bad">
+        <code lang="sql"><![CDATA[
+-- WRONG: cross-schema join bypasses module boundary
+SELECT u.name, o.total
+FROM users.accounts u
+JOIN orders.orders o ON u.id = o.user_id;
+]]></code>
+      </example>
+      <example type="good">
+        <note>Denormalize the customer name into the orders schema at write time, or query via API and join in application code</note>
+      </example>
+    </section>
+
+    <section name="cross-module-communication">
+      <p>Two communication styles available in a modular monolith: synchronous direct calls (simple, strongly consistent) and asynchronous events (decoupled, eventually consistent). Start with direct calls; introduce events for cross-cutting or async concerns.</p>
+      <rule>
+        <statement>Use synchronous calls when the caller needs the result immediately and strong consistency (same database transaction) is required.</statement>
+        <rationale>Direct calls are type-safe, debuggable, and have no serialization overhead. They are the default for most cross-module interactions.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+# payments/services.py
+from orders.api import get_order  # Public API import — correct
+
+def process_payment(order_id: int):
+    order = get_order(order_id)   # In-process call, no network
+    # Process payment using order data...
+]]></code>
+      </example>
+      <list>
+        <item>Pros: simple, type-safe, debuggable, same transaction possible</item>
+        <item>Cons: tighter coupling, harder to extract to microservices later</item>
+      </list>
+      <p>Modules publish domain events to an in-memory event bus; other modules subscribe to events they care about.</p>
+      <rule>
+        <statement>Use events when the caller does not need an immediate result, when eventual consistency is acceptable, or when you are preparing for future microservices extraction.</statement>
+        <rationale>Events decouple publisher from subscriber. The Orders module does not need to know that Notifications or Analytics exist. When extracting to microservices, in-memory events map cleanly to Kafka/RabbitMQ messages.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+# orders/services.py
+def complete_order(order_id: int):
+    order = repository.complete(order_id)
+    event_bus.publish(OrderCompletedEvent(order_id=order_id))
+
+# notifications/handlers.py
+@event_handler(OrderCompletedEvent)
+def handle_order_completed(event):
+    send_confirmation_email(event.order_id)
+]]></code>
+      </example>
+      <list>
+        <item>Pros: loose coupling, easy microservices extraction, fan-out to multiple subscribers</item>
+        <item>Cons: eventual consistency, harder to debug, idempotency handling required</item>
+      </list>
+      <rule>
+        <statement>Start with direct calls. Introduce events when: (1) multiple modules must react to the same fact, (2) the operation is fire-and-forget (audit, notifications), (3) you are actively preparing to extract a module.</statement>
+        <rationale>Premature event-driven design adds eventual consistency complexity before the team has the operational maturity to handle it.</rationale>
+      </rule>
+      <list>
+        <item>Same transaction needed → direct call</item>
+        <item>Strong consistency required → direct call</item>
+        <item>Multiple consumers of the same fact → event</item>
+        <item>Fire-and-forget (email, audit, analytics) → event</item>
+        <item>Preparing for microservices extraction → event</item>
+      </list>
+    </section>
+
+    <section name="migration-paths">
+      <rule>
+        <statement>Modularize incrementally: identify domains, establish public APIs, separate schemas, add boundary enforcement — one module at a time, never all at once.</statement>
+        <rationale>Big-bang refactors of existing monoliths fail. Incremental extraction validates assumptions and keeps the system deployable throughout.</rationale>
+      </rule>
+      <list>
+        <item>1. Identify business capabilities and group into candidate modules</item>
+        <item>2. Extract shared infrastructure to a minimal shared/ package (DTOs, base exceptions, event bus)</item>
+        <item>3. Create module package directories with internal/ for private code</item>
+        <item>4. Define public API per module (api.py / api.go / Api.java)</item>
+        <item>5. Separate database schemas (CREATE SCHEMA per module)</item>
+        <item>6. Update all callers to use public APIs instead of direct imports</item>
+        <item>7. Add boundary enforcement linter and wire into CI</item>
+        <item>8. Introduce events for cross-cutting concerns</item>
+      </list>
+      <rule>
+        <statement>Extract one module at a time using Strangler Fig. A module is ready to extract only when it has: a clear public API, its own database schema, and event-based (or clearly bounded synchronous) communication. Extract the database with the service or do not extract at all.</statement>
+        <rationale>The most common microservices extraction failure is extracting the code while leaving the shared database. This creates a distributed monolith: network overhead and operational complexity without any of the isolation benefits.</rationale>
+      </rule>
+      <list>
+        <item>1. Verify: module has clean API boundary, owns its schema, no cross-schema joins</item>
+        <item>2. Copy module code to a new deployable repository</item>
+        <item>3. Add an in-monolith facade that routes calls to either old or new service</item>
+        <item>4. Replace in-process calls with HTTP/gRPC at the facade boundary</item>
+        <item>5. Replace in-memory events with message queue (Kafka, RabbitMQ)</item>
+        <item>6. Extract and migrate the module's database schema to its own instance</item>
+        <item>7. Remove the module from the monolith once the service is proven in production</item>
+      </list>
+      <antipattern>
+        <description>Extracting service code while keeping tables in the shared monolith database</description>
+        <reason>Creates tight runtime coupling via the database; the extracted service cannot be deployed independently and schema changes still block the monolith</reason>
+      </antipattern>
+    </section>
+
+    <section name="boundary-enforcement">
+      <rule>
+        <statement>Configure import-linter with an independence contract that forbids direct cross-module imports, and a layers contract that enforces clean architecture within modules. Run lint-imports in CI as a required gate.</statement>
+        <rationale>Python has no language-level module visibility. Without tooling, any developer can import any class from any module and the violation only appears at code review — if caught at all.</rationale>
+      </rule>
+      <reference path="templates/importlinter.ini">import-linter configuration enforcing module independence</reference>
+      <rule>
+        <statement>For plain Java: write ArchUnit tests verifying that internal packages are not accessed from outside their module. For Spring Boot: use Spring Modulith's ApplicationModules.of(App.class).verify() test — it runs at test time and fails the build on boundary violations.</statement>
+        <rationale>Spring Modulith provides first-class modular monolith support: boundary verification, documentation generation, and event publication tracking in one framework.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="java"><![CDATA[
+// Spring Modulith boundary test — required in every project
+@Test
+void verifyModularity() {
+    ApplicationModules.of(Application.class).verify();
+}
+
+// Module declaration limiting allowed dependencies
+@org.springframework.modulith.ApplicationModule(
+    allowedDependencies = {"shared"}
+)
+package com.example.orders;
+]]></code>
+      </example>
+      <rule>
+        <statement>Place each module under an internal/ subdirectory to leverage Go's compiler-enforced visibility. Add depguard rules to golangci-lint to block cross-module internal imports at lint time.</statement>
+        <rationale>Go's internal/ package is the only language-enforced boundary mechanism. Without it, any package in the same module can import any other. depguard adds explicit rules for cases the compiler does not catch.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[
+# .golangci.yml
+linters-settings:
+  depguard:
+    rules:
+      main:
+        deny:
+          - pkg: "myapp/orders/internal"
+            desc: "Orders internals are private; use orders.Service interface"
+          - pkg: "myapp/payments/internal"
+            desc: "Payments internals are private; use payments.Service interface"
+]]></code>
+      </example>
+      <rule>
+        <statement>Use dependency-cruiser with forbidden rules blocking cross-module internal imports. Run depcruise in CI to catch violations before merge.</statement>
+        <rationale>TypeScript has no package-level visibility. dependency-cruiser provides path-based rules that approximate module boundaries without requiring separate npm packages per module.</rationale>
+      </rule>
+      <list>
+        <item>Module imports internal class from another module → immediate boundary violation, fix before merge</item>
+        <item>Cross-schema SQL JOIN detected → refactor to use module API or denormalize at write time</item>
+        <item>Shared mutable state between modules → extract to owner module</item>
+        <item>Circular dependency between modules → break with events or extract shared concept</item>
+        <item>Module &gt; 50 files → consider splitting into two bounded contexts</item>
+        <item>Module &lt; 5 files → consider merging into a neighboring module</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/module-api.py" purpose="Python module public API: OrderService Protocol, DTOs, exceptions"/>
+      <template path="templates/domain-events.py" purpose="Python domain events: DomainEvent base, OrderCreatedEvent, OrderCompletedEvent"/>
+      <template path="templates/importlinter.ini" purpose="import-linter contract enforcing module independence and layer ordering"/>
+      <template path="templates/schema-isolation.sql" purpose="PostgreSQL schema-per-module DDL with cross-module reference-by-ID pattern"/>
+    </templates>
+  </content>
+</methodology>
