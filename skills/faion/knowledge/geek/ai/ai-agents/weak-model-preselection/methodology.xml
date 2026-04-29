@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="weak-model-preselection">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Run a cheap fast model to filter, classify, or extract. Pass only filtered results to an expensive strong model.</summary>
+    <tags>
+      <tag>multi-model-orchestration</tag>
+      <tag>cost-optimization</tag>
+      <tag>preselection</tag>
+      <tag>weak-strong-cascade</tag>
+      <tag>llm-routing</tag>
+    </tags>
+    <category>mm</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>Weak-Model Preselection</title>
+    <summary>Use a small cheap model to filter, classify, or extract references from long inputs, then pass only the filtered result to the expensive strong model. This inverts the typical pipeline to optimize cost: the weak model says what to look at, and the strong model does the reasoning.</summary>
+    <why>
+      <p>Strong models cost 5-30 times more per token. The expensive part of a hard task is reasoning over the right context, not finding the right context. A small model is usually plenty for tag, classify, rank, extract refs tasks. It can run on the full corpus and produce a 100 times shorter input for the big model.</p>
+      <p>This is the agent-level analogue of speculative decoding: small predictor narrows the search, big oracle verifies and uses.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Long input with mostly irrelevant noise such as search over docs, dedupe news, or pick code files to read.</item>
+        <item>Pre-classification before downstream-model branching: route, then dispatch.</item>
+        <item>High-volume preselection where every token saved compounds, such as RSS pipelines or log analysis.</item>
+        <item>Any pipeline where the strong model receives more than approximately 5K tokens of input of which most is irrelevant.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Short inputs, under 1K tokens: the routing overhead exceeds the savings.</item>
+        <item>Tasks where the cheap model's filter mistakes are catastrophic such as medical, legal, or security gates: use cheap model only as ranker, never sole gatekeeper.</item>
+        <item>When the strong model needs the full context for emergent insights, for example long-context literary analysis.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Pattern Variants">
+      <p>There are four main variants of weak-model preselection:</p>
+      <section name="A. Filter-then-reason">
+        <code lang="text"><![CDATA[Cheap model → list[bool] keep_flags → strong model receives only the True items]]></code>
+      </section>
+      <section name="B. Reference-extract-then-load">
+        <code lang="text"><![CDATA[Cheap model → list[file_path] → strong model is given those files only]]></code>
+      </section>
+      <section name="C. Classify-then-route">
+        <code lang="text"><![CDATA[Cheap model → category → routed to specialized strong-model prompt]]></code>
+      </section>
+      <section name="D. Rank-then-select-top-N">
+        <code lang="text"><![CDATA[Cheap model → score per item → strong model gets top-N by score]]></code>
+      </section>
+    </section>
+    <section name="Canonical Example (faion-net news pipeline)">
+      <p>Stage 1 runs Haiku:</p>
+      <code lang="text"><![CDATA[Given 200 RSS items, return the 10 most likely to be interesting to a tech-savvy UA audience.
+Return ONLY a JSON list of {rss_id: int, score: float}.]]></code>
+      <p>Stage 2 runs Sonnet:</p>
+      <code lang="text"><![CDATA[Given these 10 items (full text), pick 3 to publish, write a hook for each.]]></code>
+      <p>Cost goes from approximately 200K tokens × Sonnet to 200K × Haiku + 10K × Sonnet, which is approximately 80 percent saved.</p>
+    </section>
+    <rules>
+      <rule>
+        <statement>The cheap model must return only references or booleans, never raw content. Force the schema to return refs, IDs, or scores only, like list[int], list[str], or list[{id: int, score: float}].</statement>
+        <rationale>Returning full content defeats the purpose of preselection. The reference constraint ensures the weak model output is orders of magnitude smaller than the input.</rationale>
+      </rule>
+      <rule>
+        <statement>Cheap model keep-rate should be tuned to 5-30 percent. If the filter keeps 80 percent of items, there is no savings.</statement>
+        <rationale>At 5-30 percent keep-rate, the reduction in tokens for the strong model stage outweighs the cost of running the weak model.</rationale>
+      </rule>
+      <rule>
+        <statement>Add a fallback path: when the cheap model returns 0 items, either pass the full set to the strong model or retry with a relaxed prompt.</statement>
+        <rationale>Filter overfitting causes pipelines to fail silently. The fallback ensures the pipeline does not collapse on edge cases.</rationale>
+      </rule>
+      <rule>
+        <statement>Use the same model family if possible, for example Haiku to Sonnet or gpt-4o-mini to gpt-4o. This ensures consistent tokenization and persona.</statement>
+        <rationale>Cross-family preselection introduces systematic bias. Haiku filters differently than GPT-mini, and the result may be less useful to Sonnet.</rationale>
+      </rule>
+    </rules>
+    <section name="Anti-patterns">
+      <antipattern>
+        <description>Big model does the filter itself.</description>
+        <reason>Do not skip the weak model stage. Add a Haiku or Mini stage in front.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Cheap model returns full content, just regurgitating the input.</description>
+        <reason>Force the schema to return refs and IDs only. Validate with sample runs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Cheap model has a different tokenizer or persona than expected.</description>
+        <reason>Use the same family if possible. Test Haiku to Sonnet first, only cross families when necessary.</reason>
+      </antipattern>
+      <antipattern>
+        <description>No fallback: when the cheap model returns 0 items, the pipeline dies.</description>
+        <reason>Add if filtered.is_empty: pass full set to strong model.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Filter is permissive, keeps 80 percent of items.</description>
+        <reason>Tune the cheap-model prompt until keep-rate is less than 30 percent. Otherwise there is no savings.</reason>
+      </antipattern>
+    </section>
+    <section name="Composition with Other Techniques">
+      <list>
+        <item>Plus schema-field-order: cheap model schema is [reasoning, kept_ids] so it briefly justifies the filter before listing IDs.</item>
+        <item>Plus file-reference-passing: cheap model returns file paths instead of file content.</item>
+        <item>Plus prompt caching: cache the long prompt and tool defs across both stages in the same family.</item>
+      </list>
+    </section>
+    <section name="Design and Implementation Checklist">
+      <p>Before implementation, verify design:</p>
+      <list>
+        <item>Identify the input volume: is it more than 5K tokens with mostly irrelevant content?</item>
+        <item>Identify the expensive part of the task: reasoning, not filtering.</item>
+        <item>Pick a small or cheap model from the same family if possible to ensure consistent tokenizer.</item>
+        <item>Define the filter contract: return refs or bools, never raw content.</item>
+        <item>Set a target keep-rate of 5 to 30 percent, the sweet spot.</item>
+      </list>
+      <p>During implementation:</p>
+      <list>
+        <item>Cheap-model schema returns minimal data: list[int], list[str], or list[{id, score}].</item>
+        <item>Strong-model receives only the filtered subset.</item>
+        <item>Fallback path: empty filter result passes full set or retries with relaxed prompt.</item>
+        <item>Log keep-rate per run for monitoring.</item>
+      </list>
+    </section>
+    <section name="Quality Gates">
+      <p>Validate the implementation works correctly:</p>
+      <list>
+        <item>Sample 20 runs and measure recall: did the cheap model drop important items?</item>
+        <item>If recall is less than 95 percent on critical items, tighten the cheap-model prompt or use a slightly stronger filter model.</item>
+        <item>Track latency: the cheap-model stage should add less than 30 percent overhead. Cheap models are fast.</item>
+        <item>Measure tokens-saved per run and confirm cost-per-task is lower, not just compute-time per stage.</item>
+        <item>No regression in answer quality versus single-strong-model baseline. Validate on 50 or more tasks.</item>
+        <item>Cheap model uses schema-field-order rule with reasoning before refs.</item>
+        <item>Pipeline state stores only refs between stages, never the cheap model's full reasoning trace.</item>
+        <item>When chaining 3 or more stages, each is preselected by the previous one's cheap-stage output.</item>
+      </list>
+    </section>
+    <section name="Real-World Examples">
+      <example type="good" title="News pipeline (neromedia)">
+        <p>200 RSS items per hour from 30 feeds. Native Sonnet over full set costs approximately 3 dollars per hour.</p>
+        <p>Filter stage using Haiku: input 200 items times 100 tokens equals 20K tokens. Output list of 10 IDs plus 1-sentence rationale equals 200 tokens. Cost approximately 0.005 dollars.</p>
+        <p>Synthesis stage using Sonnet: input 10 items times 500 tokens equals 5K tokens. Output 3 posts times 300 tokens equals 900 tokens. Cost approximately 0.06 dollars.</p>
+        <p>Total: 0.07 dollars versus 3 dollars equals 40 times cheaper.</p>
+      </example>
+      <example type="good" title="Code review subagent (faion-cli)">
+        <p>Project has 800 changed files. Reading all costs 5 dollars or more per review.</p>
+        <p>Filter stage using Haiku: input list of file paths plus brief diff stats. Output list of files most likely to need review. Output schema {rationale: str, paths: list[str]}. Typically narrows 800 down to 20 or 40.</p>
+        <p>Review stage using Sonnet or Opus: reads only 20 or 40 files. Approximately 50 times cheaper than naive approach.</p>
+      </example>
+      <example type="good" title="Customer support routing">
+        <p>User message goes to Haiku classifies into one of 12 categories, then routed to category-specific Sonnet prompt with category-specific tools.</p>
+        <p>Routing cost: 0.0001 dollars. Handler cost: 0.01 to 0.05 dollars. Saves approximately 80 percent versus single big model with all tools.</p>
+      </example>
+      <example type="good" title="Memory retrieval">
+        <p>Agent has 1000 prior conversation turns in long-term memory. Naive approach: dump all 1000 into context, slow, expensive, often blows window.</p>
+        <p>With preselection: embedding search returns top 50 candidates. Haiku reranks 50 down to top 10. Sonnet uses 10 turns plus current message. Each layer narrows; each layer is cheaper than the next.</p>
+      </example>
+      <example type="good" title="Rejection and refusal first">
+        <code lang="python"><![CDATA[class Pre(BaseModel):
+    is_safe: bool
+    is_in_scope: bool
+    rationale: str
+
+pre = haiku_check(user_input)
+if not pre.is_safe or not pre.is_in_scope:
+    return canned_refusal(pre.rationale)
+
+# only here do we burn the strong model
+return sonnet_handle(user_input)]]></code>
+        <p>A cheap pre-filter catches approximately 90 percent of refusals at less than 0.001 dollars each.</p>
+      </example>
+      <example type="good" title="Cache-friendly pre-filter">
+        <p>When the prompt is identical across many inputs, for example classifying a stream, put the cheap model behind prompt caching:</p>
+        <code lang="python"><![CDATA[filter_resp = client.messages.create(
+    model="claude-haiku-4-5",
+    system=[
+        {"type": "text", "text": LONG_RUBRIC, "cache_control": {"type": "ephemeral"}}
+    ],
+    messages=[{"role": "user", "content": item}]
+)]]></code>
+        <p>Now even the cheap stage costs approximately 10 percent per call.</p>
+      </example>
+    </section>
+    <section name="LLM Prompts">
+      <example type="good" title="Filter prompt (Haiku-class model)">
+        <code lang="text"><![CDATA[You are a fast filter. You will receive {n} items. Your job is to select the at most {k} most relevant for {downstream task}.
+
+Return STRICT JSON matching this schema:
+{
+  "rationale": "one sentence justifying your top picks",
+  "kept_ids": [int, ...]   // at most k ids; in order of relevance
+}
+
+Items:
+{items}]]></code>
+      </example>
+      <example type="good" title="Classifier prompt">
+        <code lang="text"><![CDATA[Classify the input into exactly ONE of: {categories}.
+
+Return STRICT JSON:
+{
+  "rationale": "one sentence",
+  "category": "<one of the above>"
+}
+
+Input:
+{input}]]></code>
+      </example>
+      <example type="good" title="Ranker prompt">
+        <code lang="text"><![CDATA[Score each item from 0.0 (irrelevant) to 1.0 (perfect match) for {criterion}.
+
+Return STRICT JSON:
+{
+  "rationale": "one sentence",
+  "scores": [
+    {"id": ..., "score": ...},
+    ...
+  ]
+}
+
+Items:
+{items}]]></code>
+      </example>
+      <example type="good" title="Reference extractor">
+        <code lang="text"><![CDATA[Read the long text. Return ONLY the file paths / URLs / IDs that are relevant to {question}. Do NOT return any content from the text itself.
+
+Return STRICT JSON:
+{
+  "rationale": "one sentence",
+  "refs": [str, ...]
+}
+
+Text:
+{text}]]></code>
+      </example>
+      <example type="good" title="Two-stage instruction (single agent calls both)">
+        <code lang="text"><![CDATA[You are an orchestrator. The task is too large to handle in one shot. Use this protocol:
+
+1. Call `filter` tool with all candidates → returns kept ids
+2. For each kept id, call `expand` tool to fetch full content
+3. Synthesize the final answer using ONLY expanded content
+
+Do NOT skip step 1. Do NOT pass full candidates to step 3.]]></code>
+      </example>
+    </section>
+    <templates>
+      <template path="templates/two-stage-filter-reason.py" purpose="Python template for Anthropic-based two-stage filter and reason pipeline using Haiku and Opus"/>
+    </templates>
+  </content>
+</methodology>

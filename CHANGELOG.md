@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/claude-code + geek/ai/ai-agents methodologies → methodology.xml (weak-model-preselection, agents, commands; feature-045 batch Y)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (terse-default-tool-output, two-pass-reason-then-extract, verb-object-tool-naming; feature-045 batch X)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (strict-mode-required-fields, structured-output-mode-picker, structured-tool-errors; feature-045 batch W)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (llm-judge-rubric-evidence-first, manifest-then-fetch, map-reduce-send-fanout; feature-045 batch R)
