@@ -4,21 +4,159 @@
     <tier>solo</tier>
     <group>dev</group>
     <domain>software-developer</domain>
-    <summary>Relational schema design for integrity, performance, and maintainability. Core rules: normalize to 3NF, use ULID/UUIDv7 PKs, explicit ON DELETE, created/updated timestamps, migrations via expand-contract pattern.</summary>
+    <summary>Relational schema design for integrity, performance, and maintainability: normalize to 3NF, use ULID/UUIDv7 PKs, explicit ON DELETE, timestamps on every entity, expand-contract migrations.</summary>
     <difficulty>intermediate</difficulty>
     <created>2026-04-29</created>
-    <tags><tag>database</tag><tag>postgresql</tag><tag>schema</tag><tag>migrations</tag></tags>
+    <tags>
+      <tag>database</tag>
+      <tag>postgresql</tag>
+      <tag>schema</tag>
+      <tag>migrations</tag>
+    </tags>
   </metadata>
   <content>
     <title>Database Design</title>
+
     <summary>Relational schema design for integrity, performance, and maintainability. Core rules: normalize to 3NF first and denormalize only with a measured query showing the join is the bottleneck; use ULID or UUIDv7 primary keys (not auto-increment integers that leak row counts); every entity needs created_at and updated_at (timestamptz); foreign keys must have explicit ON DELETE (default RESTRICT, never implicit CASCADE).</summary>
-    <why><p>Premature denormalization creates update-fanout consistency bugs. Auto-increment integer PKs leak business information (record count, growth rate). Missing ON DELETE defaults produce accidental mass deletes when a parent is removed. Migrations combining ALTER TABLE ADD COLUMN NOT NULL DEFAULT on large tables cause production lock-outs; the expand-contract pattern eliminates this risk.</p></why>
-    <when-to-use><list><item>Greenfield schema for a new product (3NF first, denormalize with evidence later).</item><item>Major feature touching more than 2 tables — needs ER diagram + migration plan.</item><item>Performance regression traced to schema (missing index, wrong column type, hot row contention).</item></list></when-to-use>
-    <when-not-to-use><list><item>Move fast prototypes you will throw away in a week — SQLite + single table is fine.</item><item>Read-mostly content sites — a CMS or static generator covers it without a relational model.</item><item>Append-only event logs — use TimescaleDB or ClickHouse instead of fighting Postgres indexes.</item></list></when-not-to-use>
-    <section name="primary-key"><rule testable="true"><statement>Use ULID or UUID v7 primary keys, not auto-incrementing integers. Every entity table must have created_at and updated_at timestamptz columns defaulting to now().</statement><rationale>Auto-increment integers leak business information (record count, growth rate). UUID v4 has random distribution that fragments B-tree indexes. ULID/UUID v7 are time-ordered, maintaining insert locality while preventing enumeration.</rationale></rule><rule testable="true"><statement>Every foreign key must have an explicit ON DELETE action. Default to ON DELETE RESTRICT. Use CASCADE only when the child rows are logically part of the parent (e.g., order items when an order is deleted).</statement><rationale>Implicit ON DELETE NO ACTION defers the check but still raises on commit, surprising developers. RESTRICT is explicit intent. Accidental CASCADE on a chain of 3+ tables can wipe large portions of the database with a single accidental delete.</rationale></rule></section>
-    <section name="indexing"><rule testable="true"><statement>Create indexes based on actual query patterns. Review pg_stat_user_indexes.idx_scan quarterly and drop indexes with zero scans.</statement><rationale>Every index increases write overhead (INSERT, UPDATE, DELETE must maintain all indexes). An unused index wastes I/O and storage with no read benefit.</rationale></rule><rule testable="true"><statement>Order composite index columns by selectivity: put the most selective column (or the column used in equality filters) first. Columns used only in ORDER BY go last.</statement><rationale>A composite index (status, created_at) supports WHERE status = 'pending' ORDER BY created_at but NOT WHERE created_at > ? ORDER BY status. The leading column must match the filter.</rationale></rule></section>
-    <section name="migrations"><rule testable="true"><statement>Use the expand-contract pattern for adding NOT NULL columns to large tables: add as nullable, backfill in batches, then add the NOT NULL constraint once 100% populated.</statement><rationale>A single ALTER TABLE ADD COLUMN NOT NULL DEFAULT on a large Postgres table rewrites the entire table and holds an exclusive lock for the duration. This causes production downtime proportional to table size.</rationale></rule><rule testable="true"><statement>Every migration must have a reversible downgrade() function or be explicitly marked as irreversible with a comment explaining why.</statement><rationale>Without a down migration, rolling back a deployment requires manual intervention. Even irreversible data migrations (e.g., dropping a column) should have a stub that raises an explicit error rather than silently failing.</rationale></rule></section>
-    <section name="antipatterns"><antipattern><description>God table: a single table with 50+ columns for loosely related entities.</description><reason>Makes every query wide; most columns are NULL for any given row; adding indexes for different query patterns bloats write overhead. Normalize into focused tables and join when needed.</reason></antipattern><antipattern><description>Using FLOAT or DOUBLE for monetary amounts.</description><reason>IEEE 754 floating-point cannot represent most decimal fractions exactly. Repeated arithmetic accumulates rounding errors. Always use NUMERIC(12,2) or BIGINT cents for money.</reason></antipattern><antipattern><description>Applying ON DELETE CASCADE to foreign keys without careful review of the deletion chain.</description><reason>A cascade chain 3+ tables deep means a single parent delete wipes all descendant rows. A developer deleting a test user can wipe all their orders, payments, and shipments in a single query.</reason></antipattern></section>
-    <templates><template path="templates/schema.sql" purpose="Reference e-commerce schema with UUIDs, constraints, indexes, soft-delete, audit trigger"/><template path="templates/migration.py" purpose="Alembic migration with up/down using expand-contract pattern"/></templates>
+
+    <why>
+      <p>Premature denormalization creates update-fanout consistency bugs. Auto-increment integer PKs leak business information (record count, growth rate). Missing ON DELETE defaults produce accidental mass deletes when a parent is removed. Migrations combining ALTER TABLE ADD COLUMN NOT NULL DEFAULT on large tables cause production lock-outs; the expand-contract pattern eliminates this risk.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield schema for a new product (3NF first, denormalize with evidence later).</item>
+        <item>Major feature touching more than 2 tables — needs ER diagram + migration plan.</item>
+        <item>Performance regression traced to schema (missing index, wrong column type, hot row contention).</item>
+        <item>Designing audit trails, soft deletes, multi-tenancy, or time-series partitioning.</item>
+        <item>Migrating between engines (Postgres to MySQL, monolith to sharded, OLTP to OLAP mirror).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Move fast prototypes you will throw away in a week — SQLite + single table is fine.</item>
+        <item>Read-mostly content sites — a CMS or static generator covers it without a relational model.</item>
+        <item>Append-only event logs — use TimescaleDB or ClickHouse instead of fighting Postgres indexes.</item>
+        <item>Graph-heavy domains (recommendation, social) — relational JOIN explosions hurt; use Neo4j or dgraph.</item>
+        <item>When the team has no ops capacity for migrations / backups — a managed KV (DynamoDB, Firestore) trades schema rigour for zero-ops.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="primary-key">
+      <rule>
+        <statement>Use ULID or UUID v7 primary keys, not auto-incrementing integers. Every entity table must have created_at and updated_at timestamptz columns defaulting to now().</statement>
+        <rationale>Auto-increment integers leak business information (record count, growth rate). UUID v4 has random distribution that fragments B-tree indexes. ULID/UUID v7 are time-ordered, maintaining insert locality while preventing enumeration.</rationale>
+      </rule>
+      <rule>
+        <statement>Every foreign key must have an explicit ON DELETE action. Default to ON DELETE RESTRICT. Use CASCADE only when the child rows are logically part of the parent (e.g., order items when an order is deleted).</statement>
+        <rationale>Implicit ON DELETE NO ACTION defers the check but still raises on commit, surprising developers. RESTRICT is explicit intent. Accidental CASCADE on a chain of 3+ tables can wipe large portions of the database with a single accidental delete.</rationale>
+      </rule>
+    </section>
+
+    <section name="indexing">
+      <rule>
+        <statement>Create indexes based on actual query patterns. Review pg_stat_user_indexes.idx_scan quarterly and drop indexes with zero scans.</statement>
+        <rationale>Every index increases write overhead (INSERT, UPDATE, DELETE must maintain all indexes). An unused index wastes I/O and storage with no read benefit.</rationale>
+      </rule>
+      <rule>
+        <statement>Order composite index columns by selectivity: put the most selective column (or the column used in equality filters) first. Columns used only in ORDER BY go last.</statement>
+        <rationale>A composite index (status, created_at) supports WHERE status = 'pending' ORDER BY created_at but NOT WHERE created_at &gt; ? ORDER BY status. The leading column must match the filter.</rationale>
+      </rule>
+    </section>
+
+    <section name="migrations">
+      <rule>
+        <statement>Use the expand-contract pattern for adding NOT NULL columns to large tables: add as nullable, backfill in batches, then add the NOT NULL constraint once 100% populated.</statement>
+        <rationale>A single ALTER TABLE ADD COLUMN NOT NULL DEFAULT on a large Postgres table rewrites the entire table and holds an exclusive lock for the duration. This causes production downtime proportional to table size.</rationale>
+      </rule>
+      <rule>
+        <statement>Every migration must have a reversible downgrade() function or be explicitly marked as irreversible with a comment explaining why.</statement>
+        <rationale>Without a down migration, rolling back a deployment requires manual intervention. Even irreversible data migrations (e.g., dropping a column) should have a stub that raises an explicit error rather than silently failing.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>God table: a single table with 50+ columns for loosely related entities.</description>
+        <reason>Makes every query wide; most columns are NULL for any given row; adding indexes for different query patterns bloats write overhead. Normalize into focused tables and join when needed.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using FLOAT or DOUBLE for monetary amounts.</description>
+        <reason>IEEE 754 floating-point cannot represent most decimal fractions exactly. Repeated arithmetic accumulates rounding errors. Always use NUMERIC(12,2) or BIGINT cents for money.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Applying ON DELETE CASCADE to foreign keys without careful review of the deletion chain.</description>
+        <reason>A cascade chain 3+ tables deep means a single parent delete wipes all descendant rows. A developer deleting a test user can wipe all their orders, payments, and shipments in a single query.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Schema-first: agent produces an ER diagram (Mermaid or dbml) from the spec, gets human sign-off, then generates DDL + migration. Reviewer agent runs sqlfluff + squawk (Postgres migration linter) and rejects locking statements. Each migration must be reversible (up + down) and tested against a fixture DB. For indexing, agent profiles top 10 slow queries (pg_stat_statements) and proposes indexes only after measuring; never invent indexes from imagination.</p>
+      <prompt purpose="schema-design"><![CDATA[Design schema for <feature>.
+Inputs:
+- Domain: <bounded context>
+- Read patterns: <queries with frequency>
+- Write patterns: <inserts/updates with rate>
+Output:
+1. dbml diagram (text).
+2. PostgreSQL DDL with CHECK constraints + FKs (ON DELETE explicit).
+3. Index plan keyed to read patterns; justify each index.
+4. Migration up/down (reversible, no NOT NULL DEFAULT on existing big tables).
+Constraints: ULID primary keys, created_at/updated_at on every entity, soft-delete only where business-justified.]]></prompt>
+    </section>
+
+    <section name="limitations">
+      <p>Premature denormalization: agents replicate user.email into 5 tables; updates become a fanout consistency problem.</p>
+      <p>Hot row contention: a counters table with one row per app gets UPDATE storms; needs sharded counters or atomic increments.</p>
+      <p>Composite indexes ordered wrong: (status, created_at) does not serve WHERE created_at &gt; ? ORDER BY status — column order matters.</p>
+      <p>Soft-delete leaks: deleted_at IS NULL filter forgotten in JOINs — ghost data resurfaces in admin views.</p>
+      <p>Foreign keys with ON DELETE CASCADE chained 3+ deep — accidental mass deletes; use RESTRICT defaults and explicit cleanup jobs.</p>
+      <p>Auto-incrementing PKs leak business info (count of records, growth rate); UUID v4 has random distribution cold cache; UUID v7 / ULID is the modern compromise.</p>
+      <p>Migrations that lock big tables (ALTER TABLE ADD COLUMN NOT NULL DEFAULT) cause prod outages; use pg_repack, gh-ost, or expand-contract pattern.</p>
+    </section>
+
+    <section name="cli-tools">
+      <p>sqlfluff — multi-dialect SQL linter / formatter (pip install sqlfluff). squawk — Postgres migration linter, catches locking ALTERs (npm i -g squawk-cli). dbmate / sqlx-cli / Alembic / Flyway / Liquibase — migration tooling per stack. atlas (ariga) — declarative schema migrations across engines (atlasgo.io). pg_repack — online table rewrite without long locks (apt/yum). pgbadger — Postgres log analyser (github.com/darold/pgbadger). pg_stat_statements + pgss view — slow-query enumeration (enable in postgresql.conf). dbml-cli — compile dbml diagrams (npm i -g @dbml/cli). schemaspy / SchemaCrawler — reverse-engineer ER diagrams (open source). pgtap — TAP-style schema/constraint tests (pgxn).</p>
+    </section>
+
+    <section name="services">
+      <p>Postgres (RDS / Aurora / Cloud SQL / Supabase / Neon) — default OLTP choice; Neon has branching for ephemeral test DBs the agent can spin up per PR. MySQL / PlanetScale / Vitess — PlanetScale deploy requests fit agent workflows. TimescaleDB — Postgres extension for time-series partitioning. ClickHouse — OLAP / analytics counterpart. DynamoDB — single-table design, totally different mental model; brief the agent explicitly. Atlas Cloud (ariga) — schema as code with CI integration. dbdocs.io — hosts dbml diagrams for review (dbdocs build). pganalyze / Datadog DB — index recommendations, slow-query trend; agent can ingest reports.</p>
+    </section>
+
+    <section name="best-practices">
+      <p>Start at 3NF; denormalize only with a measured query showing the join is the bottleneck. Document the reason in a comment.</p>
+      <p>Every entity table: id (ULID/UUIDv7), created_at, updated_at (timestamptz, default now()), updated by trigger.</p>
+      <p>Foreign keys explicit ON DELETE (default RESTRICT); never rely on app-layer cascades.</p>
+      <p>CHECK constraints on enums or use Postgres ENUM / lookup table; never validate in app only.</p>
+      <p>Indexes sized to read patterns; review pg_stat_user_indexes.idx_scan quarterly and drop the zeroes.</p>
+      <p>Migrations are expand, backfill, contract: add nullable column, backfill in batches, then add NOT NULL constraint when 100% populated.</p>
+      <p>Backups + PITR tested by restoring monthly; an untested backup is no backup.</p>
+      <p>For multi-tenancy: row-level security (RLS) in Postgres or schema-per-tenant; never just WHERE tenant_id = ? in app code (one missing filter = data leak).</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>LLMs default to INTEGER PRIMARY KEY AUTOINCREMENT; in Postgres prefer BIGINT GENERATED ALWAYS AS IDENTITY or ULID. Pin the choice in the prompt.</p>
+      <p>Agents add ON DELETE CASCADE everywhere to be safe; the result is a single accidental delete wiping half the DB.</p>
+      <p>Migrations generated by agents often combine ALTER TABLE NOT NULL with DEFAULT on huge tables — full rewrite + lock. Run squawk against every migration.</p>
+      <p>Indexes on every column for performance — bloats writes. Force a list query to index mapping in the spec.</p>
+      <p>Agents skip down migrations or stub them with pass; CI must enforce a real reverse path or explicit irreversible flag.</p>
+      <p>Soft-delete added without updating queries: stale data appears. Agent must produce a _active view or update every query in the same PR.</p>
+      <p>Decimals for money: agents reach for FLOAT/DOUBLE. Force NUMERIC(12,2) (or BIGINT cents) and check constraints &gt;= 0.</p>
+      <p>Human-in-loop checkpoint: any migration that drops a column, drops a table, or runs &gt;5s on prod-sized data must require explicit human approval.</p>
+    </section>
+
+    <templates>
+      <template path="templates/schema.sql" purpose="Reference e-commerce schema with UUIDs, constraints, indexes, soft-delete, audit trigger"/>
+      <template path="templates/migration.py" purpose="Alembic migration with up/down using expand-contract pattern"/>
+    </templates>
+
+    <see-also>
+      <link href="https://use-the-index-luke.com/"/>
+      <link href="https://www.postgresql.org/docs/current/"/>
+      <link href="https://squawkhq.com/"/>
+      <link href="https://pganalyze.com/docs/index-advisor"/>
+      <link href="https://atlasgo.io/"/>
+    </see-also>
   </content>
 </methodology>

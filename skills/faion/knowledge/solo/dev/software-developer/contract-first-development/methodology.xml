@@ -4,20 +4,148 @@
     <tier>solo</tier>
     <group>dev</group>
     <domain>software-developer</domain>
-    <summary>Design API contracts (OpenAPI spec) before implementation. Spec is the source of truth: server stubs, client SDKs, mock servers, and contract tests are all generated from it.</summary>
+    <summary>Design API contracts (OpenAPI spec) before implementation. Spec is source of truth: server stubs, client SDKs, mock servers, and contract tests all generated from it.</summary>
     <difficulty>intermediate</difficulty>
     <created>2026-04-29</created>
-    <tags><tag>openapi</tag><tag>api-design</tag><tag>contract</tag><tag>codegen</tag></tags>
+    <tags>
+      <tag>openapi</tag>
+      <tag>api-design</tag>
+      <tag>contract</tag>
+      <tag>codegen</tag>
+    </tags>
   </metadata>
   <content>
     <title>Contract-First Development</title>
+
     <summary>Design API contracts (OpenAPI spec) before writing implementation code. The spec is the source of truth: server stubs, client SDKs, mock servers, and contract tests are all generated from it. No server code is written until the spec passes spectral lint and human review. Spec changes are treated like code — PR review, semver, oasdiff breaking-change detection in CI.</summary>
-    <why><p>Code-first leads to inconsistent APIs and integration delays when FE and BE build in parallel. A committed spec lets FE start against a Prism mock immediately. The spec also becomes a deterministic anchor for LLM-generated services — the model cannot drift from a contract it must satisfy.</p></why>
-    <when-to-use><list><item>New API with multiple consumers (frontend, mobile, partners) planned or existing.</item><item>Cross-team handoff where BE and FE build in parallel.</item><item>Public or partner APIs needing stable, versioned, machine-readable contracts.</item><item>AI-agent-generated services — spec prevents drift between iterations.</item></list></when-to-use>
-    <when-not-to-use><list><item>One-off internal scripts or single-team tools where overhead exceeds value.</item><item>Highly experimental endpoints during prototyping (spec churn dominates).</item><item>Pure GraphQL stacks — schema-first GraphQL achieves the same with different tooling.</item><item>gRPC — .proto is already the contract.</item></list></when-not-to-use>
-    <section name="workflow"><rule testable="true"><statement>Write the OpenAPI spec before any server code; no implementation file is created until the spec passes spectral lint and human review.</statement><rationale>Code-first leads to inconsistent APIs and integration delays. A committed spec lets FE start against a Prism mock immediately and gives the LLM a constraint it cannot drift from.</rationale></rule><rule testable="true"><statement>Define all request/response schemas using $ref to shared components; never inline schema definitions in path operations.</statement><rationale>Inlined schemas duplicate across endpoints, diverge over time, and break codegen that expects named schemas.</rationale></rule></section>
-    <section name="validation"><rule testable="true"><statement>Run spectral lint on every PR that touches openapi.yaml; treat operation-operationId and oas3-schema as errors, not warnings.</statement><rationale>Missing operationId breaks codegen method names; schema errors produce unusable generated types.</rationale></rule><rule testable="true"><statement>Run oasdiff breaking against the main branch spec on every PR; block merge on any ERR-level breaking change unless the commit body contains BREAKING-CHANGE: with justification.</statement><rationale>Silent breaking changes cause consumer SDK failures on the next deploy; automated detection prevents surprise.</rationale></rule></section>
-    <section name="antipatterns"><antipattern><description>Agent modifies server code first, then back-fills the OpenAPI spec to match the implementation.</description><reason>Code-first produces inconsistent APIs across endpoints; the spec becomes documentation, not a contract. Invert the flow: spec changes only until spec is committed.</reason></antipattern><antipattern><description>Hand-editing generated server stubs "just this once" instead of modifying the spec and regenerating.</description><reason>Hand-edited generated code is overwritten on the next regen; the change is silently lost, causing a regression.</reason></antipattern><antipattern><description>Copy-pasting schema definitions across paths instead of using $ref to components/schemas.</description><reason>Duplicated schemas diverge; changing one definition does not update the others, creating inconsistent validation.</reason></antipattern></section>
-    <templates><template path="templates/openapi-scaffold.yaml" purpose="Minimal OpenAPI 3.1 spec with paths, components, reusable error responses"/><template path="templates/spectral.yaml" purpose="Spectral ruleset enforcing operationId, descriptions, and schema correctness"/></templates>
+
+    <why>
+      <p>Code-first leads to inconsistent APIs and integration delays when FE and BE build in parallel. A committed spec lets FE start against a Prism mock immediately. The spec also becomes a deterministic anchor for LLM-generated services — the model cannot drift from a contract it must satisfy.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>New API with multiple consumers (frontend, mobile, partners) planned or existing.</item>
+        <item>Cross-team handoff where BE and FE build in parallel.</item>
+        <item>Public or partner APIs needing stable, versioned, machine-readable contracts.</item>
+        <item>AI-agent-generated services — spec prevents drift between iterations.</item>
+        <item>Microservices where service boundaries are evolving and need explicit contracts to prevent drift.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-off internal scripts or single-team tools where overhead exceeds value.</item>
+        <item>Highly experimental endpoints during prototyping (spec churn dominates).</item>
+        <item>Pure GraphQL stacks — schema-first GraphQL achieves the same with different tooling.</item>
+        <item>gRPC — .proto is already the contract; different tools apply.</item>
+        <item>Server-rendered web apps where the API is HTML forms, not JSON.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="workflow">
+      <rule>
+        <statement>Write the OpenAPI spec before any server code; no implementation file is created until the spec passes spectral lint and human review.</statement>
+        <rationale>Code-first leads to inconsistent APIs and integration delays. A committed spec lets FE start against a Prism mock immediately and gives the LLM a constraint it cannot drift from.</rationale>
+      </rule>
+      <rule>
+        <statement>Define all request/response schemas using $ref to shared components; never inline schema definitions in path operations.</statement>
+        <rationale>Inlined schemas duplicate across endpoints, diverge over time, and break codegen that expects named schemas.</rationale>
+      </rule>
+    </section>
+
+    <section name="validation">
+      <rule>
+        <statement>Run spectral lint on every PR that touches openapi.yaml; treat operation-operationId and oas3-schema as errors, not warnings.</statement>
+        <rationale>Missing operationId breaks codegen method names; schema errors produce unusable generated types.</rationale>
+      </rule>
+      <rule>
+        <statement>Run oasdiff breaking against the main branch spec on every PR; block merge on any ERR-level breaking change unless the commit body contains BREAKING-CHANGE: with justification.</statement>
+        <rationale>Silent breaking changes cause consumer SDK failures on the next deploy; automated detection prevents surprise.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Agent modifies server code first, then back-fills the OpenAPI spec to match the implementation.</description>
+        <reason>Code-first produces inconsistent APIs across endpoints; the spec becomes documentation, not a contract. Invert the flow: spec changes only until spec is committed.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hand-editing generated server stubs "just this once" instead of modifying the spec and regenerating.</description>
+        <reason>Hand-edited generated code is overwritten on the next regen; the change is silently lost, causing a regression.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Copy-pasting schema definitions across paths instead of using $ref to components/schemas.</description>
+        <reason>Duplicated schemas diverge; changing one definition does not update the others, creating inconsistent validation.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive contract-first as: (1) agent drafts OpenAPI from PRD/feature spec, (2) human + spectral lint, (3) approved spec triggers codegen for server stubs + client SDK + contract tests, (4) implementer agent fills only TODO-marked methods, (5) CI re-generates and diffs to detect drift. The spec file lives at the repo root as openapi.yaml; treat its commits as breaking-change events — they trigger consumer regen.</p>
+      <prompt purpose="draft-spec"><![CDATA[Read .product/features/<feature>/spec.md. Produce openapi.yaml fragment
+covering only the new endpoints. Use $ref for shared schemas already in
+components/schemas. Include 4xx error responses from
+components/responses/*. Stop. Do not implement.]]></prompt>
+      <prompt purpose="check-drift"><![CDATA[Run `redocly lint openapi.yaml`. Run `openapi-generator generate -i
+openapi.yaml -g python-fastapi -o ./generated`. Diff generated/models
+against server/models and surface mismatches. Do not edit either side
+yet — surface diff for review.]]></prompt>
+    </section>
+
+    <section name="limitations">
+      <p>Generated stubs for OpenAPI 3.1 are uneven across languages — Python FastAPI generator lags spec features.</p>
+      <p>Spec-vs-implementation drift if regen is not enforced in CI; teams hand-edit generated code just this once.</p>
+      <p>oneOf / anyOf / discriminator support varies between generators — complex polymorphism breaks codegen.</p>
+      <p>Auth flows (OAuth2 redirects, MFA) cannot be fully expressed; you still need narrative docs.</p>
+      <p>Spec linters can pass while the API is semantically broken (wrong status codes, wrong pagination shape).</p>
+      <p>Large monolith specs (over 5k lines) become unreviewable — split by tag/domain or use $ref across files.</p>
+      <p>Generated TypeScript clients use untagged unions for oneOf; consumers need additional type guards.</p>
+    </section>
+
+    <section name="cli-tools">
+      <p>redocly cli — lint, bundle, preview, diff specs (npm i -g @redocly/cli). spectral — customizable OpenAPI linter (npm i -g @stoplight/spectral-cli). openapi-generator-cli — multi-language client/server stubs (npm i -g @openapitools/openapi-generator-cli). oasdiff — detect breaking changes between two specs (go install github.com/Tufin/oasdiff). prism — mock server from spec, validation proxy (npm i -g @stoplight/prism-cli). schemathesis — property-based contract testing from spec (pip install schemathesis). dredd — spec-vs-implementation HTTP test runner (npm i -g dredd). swagger-cli — validate, bundle, resolve $ref (npm i -g swagger-cli).</p>
+    </section>
+
+    <section name="services">
+      <p>Stoplight Studio (SaaS+OSS) — visual editor; agents prefer CLI but humans benefit from review UI. SwaggerHub (SaaS) — spec hosting + governance + codegen; has org-level style guides. Redocly (SaaS+OSS) — best-in-class docs renderer + lint. Postman (SaaS) — imports OpenAPI, generates collections + monitors. Bump.sh (SaaS) — versioned spec hosting + diff alerts to Slack. Apicurio Registry (OSS) — self-hosted spec registry with semver. Mockoon (OSS) — local mock server from OpenAPI. Zuplo (SaaS) — API gateway built directly from OpenAPI.</p>
+    </section>
+
+    <section name="drift-detection-script">
+      <p>CI drift detector script: run redocly lint on the spec, run openapi-generator to regenerate models into a temp dir, diff generated models against server models and surface mismatches. If diff is non-empty print the delta and exit 1. Run oasdiff breaking against main branch spec to detect ERR-level breaking changes. This script should run on every PR that modifies openapi.yaml or server/models.</p>
+    </section>
+
+    <section name="best-practices">
+      <p>Treat the spec as code: PR review, semver, branch protection, codeowners.</p>
+      <p>Split spec by domain (paths/users.yaml, paths/billing.yaml) and bundle in CI — avoids merge hell.</p>
+      <p>Run oasdiff on every PR; block merge on breaking changes unless BREAKING-CHANGE: is in commit body.</p>
+      <p>Use operationId everywhere — generators rely on it for method names; absence breaks regen.</p>
+      <p>Keep examples realistic and synced with seed data; prism will use them for mocking.</p>
+      <p>Generate consumer SDK + publish to npm/PyPI on every release — consumers npm update, get type safety.</p>
+      <p>Pin codegen version; updates change generated output and cause spurious diffs.</p>
+      <p>Add x-internal: true extension on routes that should not appear in public docs; redocly filters them.</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Agents asked to add an endpoint often modify server code first then back-fill spec — invert the flow with a hard rule in the agent prompt: spec changes only; refuse to touch server/* until spec is committed.</p>
+      <p>LLMs hallucinate JSON Schema keywords that do not exist (format: phone-number) — pin to OpenAPI 3.1 + JSON Schema 2020-12 vocab and run spectral on every output.</p>
+      <p>Generators output code with framework versions baked in — agent regen with newer generator can subtly break (e.g., FastAPI Pydantic v1 to v2). Pin generator + framework versions in pyproject.toml / package.json.</p>
+      <p>Agents copy-paste schemas instead of using $ref, drifting two definitions of User. Add a spectral rule no-duplicate-schemas.</p>
+      <p>Long specs blow context; agents truncate then fix missing fields. Solution: split into multi-file spec, agent only loads the file it modifies, bundles in CI.</p>
+      <p>Human-in-loop checkpoint: every spec PR needs a human approve — automated merge of spec changes is a recipe for silent breaking changes downstream.</p>
+    </section>
+
+    <templates>
+      <template path="templates/openapi-scaffold.yaml" purpose="Minimal OpenAPI 3.1 spec with paths, components, reusable error responses"/>
+      <template path="templates/spectral.yaml" purpose="Spectral ruleset enforcing operationId, descriptions, and schema correctness"/>
+    </templates>
+
+    <see-also>
+      <link href="https://spec.openapis.org/oas/v3.1.0"/>
+      <link href="https://redocly.com/docs/cli/guides/api-governance/"/>
+      <link href="https://meta.stoplight.io/docs/spectral"/>
+      <link href="https://github.com/Tufin/oasdiff"/>
+      <link href="https://www.postman.com/api-platform/api-design/"/>
+      <link href="https://schemathesis.readthedocs.io/"/>
+    </see-also>
   </content>
 </methodology>

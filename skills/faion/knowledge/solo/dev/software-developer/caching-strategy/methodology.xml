@@ -4,7 +4,7 @@
     <tier>solo</tier>
     <group>dev</group>
     <domain>software-developer</domain>
-    <summary>Multi-level caching (CDN → app in-memory → Redis/Valkey → DB) with explicit pattern selection and mandatory per-key TTL, invalidation trigger, and hit-rate monitoring.</summary>
+    <summary>Multi-level caching (CDN to app in-memory to Redis/Valkey to DB) with explicit pattern selection and mandatory per-key TTL, invalidation trigger, and hit-rate monitoring.</summary>
     <difficulty>intermediate</difficulty>
     <created>2026-04-29</created>
     <tags>
@@ -19,7 +19,7 @@
   <content>
     <title>Caching Strategy</title>
 
-    <summary>Multi-level caching (CDN → app in-memory → Redis/Valkey → DB) with explicit pattern selection (cache-aside, write-through, write-behind, SWR) and mandatory per-key TTL, invalidation trigger, and hit-rate monitoring. Every cache layer requires a documented invalidation path and stampede protection for endpoints serving > 100 RPS.</summary>
+    <summary>Multi-level caching (CDN to app in-memory to Redis/Valkey to DB) with explicit pattern selection (cache-aside, write-through, write-behind, SWR) and mandatory per-key TTL, invalidation trigger, and hit-rate monitoring. Every cache layer requires a documented invalidation path and stampede protection for endpoints serving &gt; 100 RPS.</summary>
 
     <why>
       <p>Unbounded read traffic can saturate databases even when queries are well-tuned. Caching reduces latency and DB load, but only when hit rates are measured and staleness tolerance is explicitly decided. Without stampede protection (singleflight / SWR) a cache miss under load sends all concurrent requests to the DB simultaneously, reproducing the original problem.</p>
@@ -48,86 +48,72 @@
       </list>
     </when-not-to-use>
 
-    <summary>Cache-aside (lazy loading), write-through, and write-behind patterns with rules for pattern selection and Redis key naming.</summary>
-
-  
-    <section name="Pattern Selection">
-    <rule>
-      <statement>Set a TTL on every Redis key without exception. A key without TTL makes Redis an append-only memory store and causes unbounded growth.</statement>
-      <rationale>Redis does not garbage-collect keys without TTL. Even "permanent" configuration data should have a long TTL (e.g., 86400s) so stale entries are eventually cleaned.</rationale>
-    </rule>
-    <rule>
-      <statement>Use the namespace convention {service}:{entity}:{id}:{version} for all cache keys. Enforce this in code review and via a linting rule on string literals.</statement>
-      <rationale>Collisions across services or versions produce silent staleness bugs. Namespacing prevents them and makes KEYS scans interpretable.</rationale>
-    </rule>
-    <rule>
-      <statement>Before adding any cache layer, measure the baseline hit ratio target and instrument cache_hit_total, cache_miss_total, and cache_evictions in Prometheus/Grafana. Do not add caching without monitoring.</statement>
-      <rationale>Caching without hit-rate monitoring is dead weight. Low hit rates waste memory with no latency benefit; high eviction rates indicate mismatched TTL or maxmemory settings.</rationale>
-    </rule>
-  </section>
-
-  
-    <section name="Cache-Aside (Lazy Loading)">
-    <p>Read: check cache first; on miss, load from DB, write to cache, return. Write: update DB, invalidate or update cache key. Best for read-heavy data with bounded staleness tolerance.</p>
-    <rule>
-      <statement>For cache-aside on endpoints serving &gt; 100 RPS, implement stampede protection (singleflight / stale-while-revalidate). A bare cache-aside miss under load sends N concurrent requests to the DB simultaneously.</statement>
-      <rationale>On miss, all concurrent waiters bypass the cache together. Singleflight coalesces them: one fetches, the rest wait for the result.</rationale>
-    </rule>
-    <reference path="templates/cache-aside.py">Cache-aside decorator with Redis, TTL, and invalidation helper</reference>
-    <reference path="scripts/cache-singleflight.py">Async singleflight with Redis NX mutex for stampede protection</reference>
-  </section>
-
-  
-    <section name="Write-Through">
-    <p>Write to DB first, then update cache atomically. Reads always hit cache (populated on first write). Best for data that is written and immediately re-read (user profiles, settings).</p>
-    <rule>
-      <statement>In write-through, always write to the DB before writing to the cache. Reverse order creates a window where the cache shows new data but the DB still holds stale data.</statement>
-      <rationale>If the DB write fails after a successful cache update, the cache is poisoned until TTL expires. Writing DB first means a failed cache write is safe — the next read will miss and re-populate.</rationale>
-    </rule>
-  </section>
-
-  
-    <section name="Write-Behind (Write-Back)">
-    <p>Write to cache immediately, queue DB write for async flush. Reduces write latency; risks data loss if cache crashes before flush. Use only for high-write counters and analytics.</p>
-    <rule>
-      <statement>Only use write-behind for data where transient loss is acceptable (counters, analytics). Never use for financial, authentication, or order data.</statement>
-      <rationale>Write-behind defers persistence. Cache crash before flush = data loss. For correctness-critical data, write-through or write-through with outbox is required.</rationale>
-    </rule>
-  </section>
-
-    <summary>TTL-based, event-based, and version-based invalidation strategies; HTTP ETag and Cache-Control directives for CDN/browser caching.</summary>
-
-  
-    <section name="Invalidation Strategies">
-    <rule>
-      <statement>Document the invalidation trigger for every cache key explicitly in code (comment or config entry). TTL alone is not sufficient for correctness-critical data.</statement>
-      <rationale>TTL-only caches serve stale data for the full TTL window after a write. Correctness-critical data (inventory, pricing) requires event-based or version-based invalidation triggered by writes.</rationale>
-    </rule>
-
-    <section name="Event-Based Invalidation">
-      <p>Invalidate specific keys on write events. Use tag-based grouping (Redis SADD cache:tag:T key; on invalidate: SMEMBERS + DELETE) to invalidate related keys atomically without KEYS * scans.</p>
+    <section name="pattern-selection">
       <rule>
-        <statement>Never use KEYS * or SCAN with a wildcard pattern on production Redis for cache invalidation. Use tag sets instead.</statement>
-        <rationale>KEYS * is O(N) and blocks the Redis event loop. Tag-based invalidation is O(members) and non-blocking.</rationale>
+        <statement>Set a TTL on every Redis key without exception. A key without TTL makes Redis an append-only memory store and causes unbounded growth.</statement>
+        <rationale>Redis does not garbage-collect keys without TTL. Even "permanent" configuration data should have a long TTL (e.g., 86400s) so stale entries are eventually cleaned.</rationale>
+      </rule>
+      <rule>
+        <statement>Use the namespace convention {service}:{entity}:{id}:{version} for all cache keys. Enforce this in code review and via a linting rule on string literals.</statement>
+        <rationale>Collisions across services or versions produce silent staleness bugs. Namespacing prevents them and makes KEYS scans interpretable.</rationale>
+      </rule>
+      <rule>
+        <statement>Before adding any cache layer, measure the baseline hit ratio target and instrument cache_hit_total, cache_miss_total, and cache_evictions in Prometheus/Grafana. Do not add caching without monitoring.</statement>
+        <rationale>Caching without hit-rate monitoring is dead weight. Low hit rates waste memory with no latency benefit; high eviction rates indicate mismatched TTL or maxmemory settings.</rationale>
       </rule>
     </section>
 
-    <section name="Version-Based Invalidation">
-      <p>Bump a version counter (INCR cache:version:entity) on writes. Cache keys include the version: {entity}:v{version}:{id}. Old versions are never explicitly deleted — they expire via TTL.</p>
-      <p>Best for bulk invalidation (invalidate all products) without KEYS scans.</p>
+    <section name="cache-aside">
+      <p>Read: check cache first; on miss, load from DB, write to cache, return. Write: update DB, invalidate or update cache key. Best for read-heavy data with bounded staleness tolerance.</p>
+      <rule>
+        <statement>For cache-aside on endpoints serving &gt; 100 RPS, implement stampede protection (singleflight / stale-while-revalidate). A bare cache-aside miss under load sends N concurrent requests to the DB simultaneously.</statement>
+        <rationale>On miss, all concurrent waiters bypass the cache together. Singleflight coalesces them: one fetches, the rest wait for the result.</rationale>
+      </rule>
+      <reference path="templates/cache-aside.py">Cache-aside decorator with Redis, TTL, and invalidation helper</reference>
+      <reference path="scripts/cache-singleflight.py">Async singleflight with Redis NX mutex for stampede protection</reference>
     </section>
-  </section>
 
-  
-    <section name="HTTP Caching Headers">
-    <rule>
-      <statement>Use Cache-Control: public, max-age=N, stale-while-revalidate=M for public, slowly-changing API responses. Use Cache-Control: private, max-age=0, must-revalidate for per-user data. Never omit Cache-Control on API endpoints — browser and CDN defaults are inconsistent.</statement>
-      <rationale>Missing Cache-Control allows CDNs and browsers to use their own heuristics, which may cache private data publicly or cache public data too aggressively.</rationale>
-    </rule>
-    <example type="good">
-      <note>FastAPI Cache-Control headers with ETag</note>
-      <code lang="python">
-import hashlib
+    <section name="write-through">
+      <p>Write to DB first, then update cache atomically. Reads always hit cache (populated on first write). Best for data that is written and immediately re-read (user profiles, settings).</p>
+      <rule>
+        <statement>In write-through, always write to the DB before writing to the cache. Reverse order creates a window where the cache shows new data but the DB still holds stale data.</statement>
+        <rationale>If the DB write fails after a successful cache update, the cache is poisoned until TTL expires. Writing DB first means a failed cache write is safe — the next read will miss and re-populate.</rationale>
+      </rule>
+    </section>
+
+    <section name="write-behind">
+      <p>Write to cache immediately, queue DB write for async flush. Reduces write latency; risks data loss if cache crashes before flush. Use only for high-write counters and analytics.</p>
+      <rule>
+        <statement>Only use write-behind for data where transient loss is acceptable (counters, analytics). Never use for financial, authentication, or order data.</statement>
+        <rationale>Write-behind defers persistence. Cache crash before flush = data loss. For correctness-critical data, write-through or write-through with outbox is required.</rationale>
+      </rule>
+    </section>
+
+    <section name="invalidation-strategies">
+      <rule>
+        <statement>Document the invalidation trigger for every cache key explicitly in code (comment or config entry). TTL alone is not sufficient for correctness-critical data.</statement>
+        <rationale>TTL-only caches serve stale data for the full TTL window after a write. Correctness-critical data (inventory, pricing) requires event-based or version-based invalidation triggered by writes.</rationale>
+      </rule>
+      <section name="event-based-invalidation">
+        <p>Invalidate specific keys on write events. Use tag-based grouping (Redis SADD cache:tag:T key; on invalidate: SMEMBERS + DELETE) to invalidate related keys atomically without KEYS * scans.</p>
+        <rule>
+          <statement>Never use KEYS * or SCAN with a wildcard pattern on production Redis for cache invalidation. Use tag sets instead.</statement>
+          <rationale>KEYS * is O(N) and blocks the Redis event loop. Tag-based invalidation is O(members) and non-blocking.</rationale>
+        </rule>
+      </section>
+      <section name="version-based-invalidation">
+        <p>Bump a version counter (INCR cache:version:entity) on writes. Cache keys include the version: {entity}:v{version}:{id}. Old versions are never explicitly deleted — they expire via TTL.</p>
+        <p>Best for bulk invalidation (invalidate all products) without KEYS scans.</p>
+      </section>
+    </section>
+
+    <section name="http-caching-headers">
+      <rule>
+        <statement>Use Cache-Control: public, max-age=N, stale-while-revalidate=M for public, slowly-changing API responses. Use Cache-Control: private, max-age=0, must-revalidate for per-user data. Never omit Cache-Control on API endpoints — browser and CDN defaults are inconsistent.</statement>
+        <rationale>Missing Cache-Control allows CDNs and browsers to use their own heuristics, which may cache private data publicly or cache public data too aggressively.</rationale>
+      </rule>
+      <example type="good" title="FastAPI Cache-Control headers with ETag">
+        <code lang="python"><![CDATA[import hashlib
 import json
 from fastapi import FastAPI, Response
 
@@ -144,58 +130,103 @@ async def get_product(product_id: str, response: Response):
 @app.get("/api/user/profile")
 async def get_profile(response: Response):
     response.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
-    return await db.get_current_user()
-      </code>
-    </example>
-    <rule>
-      <statement>Cache misses (404 responses) with a short TTL (60s) to prevent DB hammering on bad inputs. Never cache nulls permanently.</statement>
-      <rationale>Without negative caching, repeated requests for non-existent resources hit the DB every time. Permanent null caching causes an app to believe deleted entities never existed.</rationale>
-    </rule>
-  </section>
+    return await db.get_current_user()]]></code>
+      </example>
+      <rule>
+        <statement>Cache misses (404 responses) with a short TTL (60s) to prevent DB hammering on bad inputs. Never cache nulls permanently.</statement>
+        <rationale>Without negative caching, repeated requests for non-existent resources hit the DB every time. Permanent null caching causes an app to believe deleted entities never existed.</rationale>
+      </rule>
+    </section>
 
-    <summary>Failure modes: stampede, stale data, memory pressure, hot key, pickle RCE, async/sync client mix-up, write order inversion.</summary>
+    <section name="antipatterns">
+      <antipattern>
+        <description>Cache stampede (thundering herd): N concurrent misses all hit the DB simultaneously.</description>
+        <reason>Bare cache-aside with no stampede protection sends every concurrent waiter to the DB on miss. Under load, this can produce N times single-request DB load, exactly reproducing the original problem.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using pickle to serialize cache values in Redis.</description>
+        <reason>Pickle deserializes arbitrary Python objects. If cache contents are attacker-controlled, deserialization is remote code execution. Use JSON or msgpack with schema validation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Importing redis.Redis (sync) in async FastAPI code.</description>
+        <reason>Sync Redis calls block the event loop, serializing all concurrent requests. Import redis.asyncio.Redis for async services.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent sets TTL=86400 by default without computing it from staleness tolerance.</description>
+        <reason>24-hour TTL is too long for most user-visible data. Compute TTL from the agreed staleness tolerance (e.g., 1800s for user profile if 30min stale is acceptable). Stale data for 24h produces customer complaints.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Cache key includes mutable or high-cardinality arguments (timestamps, request IDs).</description>
+        <reason>A key that encodes request_id or current timestamp generates a new key per request, producing 0% hit rate and unbounded key growth in Redis.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hot key: a single Redis key receiving all traffic (e.g., global feature flag served to every request).</description>
+        <reason>A single Redis key is bound to one shard. At extreme traffic, it saturates network bandwidth or CPU for that shard. Mitigate with local in-process cache with short TTL + Redis fallback.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Adding a cache layer without Prometheus metrics in the same PR.</description>
+        <reason>Cache effectiveness is invisible without hit-rate monitoring. An unmonitored cache may have 10% hit rate (wasted infrastructure) or cause subtle staleness bugs that are only visible via metrics divergence.</reason>
+      </antipattern>
+    </section>
 
-  
-    <antipattern>
-    <description>Cache stampede (thundering herd): N concurrent misses all hit the DB simultaneously.</description>
-    <reason>Bare cache-aside with no stampede protection sends every concurrent waiter to the DB on miss. Under load, this can produce N × single-request DB load, exactly reproducing the original problem.</reason>
-  </antipattern>
+    <section name="agentic-workflow">
+      <p>Drive caching as: (1) measure baseline (RPS, DB query p95, hot endpoints), (2) classify each endpoint by read/write ratio + staleness tolerance, (3) pick layer (CDN, app, Redis) per class, (4) implement chosen pattern (cache-aside / write-through / write-behind / read-through), (5) emit hit-rate dashboard + alarm on hit below threshold, (6) run before/after load test. Treat cache invalidation as an explicit design decision documented per cache key — TTL, event-based, version-based.</p>
+      <prompt purpose="audit-endpoints"><![CDATA[Audit endpoints in <api-dir>. For each, output JSON:
+{path, read_write_ratio, avg_db_latency_ms, staleness_tolerance_s,
+ cache_recommendation (none|cdn|app|redis|multi-layer),
+ pattern (aside|through|behind|swr), key_template, ttl_s,
+ invalidation_trigger (ttl|event|version)}.
+Stop. Wait for human review of staleness/TTL choices.]]></prompt>
+      <prompt purpose="implement-cache-aside"><![CDATA[Implement cache-aside for /api/products/{id} per approved plan.
+Use Redis sliding TTL=1800. Add metrics: cache_hit_total{key},
+cache_miss_total{key}, cache_set_duration_seconds. Add invalidation
+hook in update_product. Add stampede protection via 'singleflight'
+pattern. Tests: hit, miss, invalidate, concurrent miss.]]></prompt>
+    </section>
 
-  
-    <antipattern>
-    <description>Using pickle to serialize cache values in Redis.</description>
-    <reason>Pickle deserializes arbitrary Python objects. If cache contents are attacker-controlled, deserialization is remote code execution. Use JSON or msgpack with schema validation.</reason>
-  </antipattern>
+    <section name="limitations">
+      <p>Cache stampede (thundering herd): N processes miss simultaneously, all hit DB. Mitigations: SWR, request coalescing, probabilistic refresh.</p>
+      <p>Stale data after writes if invalidation is missed; double-source-of-truth bugs.</p>
+      <p>Memory pressure: TTL too long leads to unbounded growth; too short leads to low hit rate.</p>
+      <p>Multi-region cache divergence; eventually-consistent stores leak stale reads.</p>
+      <p>Negative caching (cache nulls) without TTL means app stuck believing entity does not exist.</p>
+      <p>Cache key collisions across services without strict namespacing.</p>
+      <p>Hot key problem: one Redis key serving all traffic (homepage feature flag) saturates a single Redis shard.</p>
+      <p>Cache-aside on write-heavy data thrashes: read, miss, fetch, set, then immediate write invalidates.</p>
+    </section>
 
-  
-    <antipattern>
-    <description>Importing redis.Redis (sync) in async FastAPI code.</description>
-    <reason>Sync Redis calls block the event loop, serializing all concurrent requests. Import redis.asyncio.Redis for async services.</reason>
-  </antipattern>
+    <section name="cli-tools">
+      <p>redis-cli / valkey-cli — INFO, MONITOR, --latency, MEMORY USAGE (apt install redis-tools). redis-cli --bigkeys finds oversized keys. redis-cli --hotkeys detects hot keys (LFU mode). nginx/varnish — edge HTTP caching (apt install varnish). cf-cli (Cloudflare) — purge zone, configure cache rules (npm i -g wrangler). redis-rdb-tools — RDB memory analysis (pip install rdbtools). prometheus + node_exporter — metrics for hit rate, eviction.</p>
+    </section>
 
-  
-    <antipattern>
-    <description>Agent sets TTL=86400 by default without computing it from staleness tolerance.</description>
-    <reason>24-hour TTL is too long for most user-visible data. Compute TTL from the agreed staleness tolerance (e.g., 1800s for user profile if 30min stale is acceptable). Stale data for 24h produces customer complaints.</reason>
-  </antipattern>
+    <section name="best-practices">
+      <p>Set a TTL on every key — without TTL Redis becomes append-only memory.</p>
+      <p>Choose namespace convention: {service}:{entity}:{id}:{version}. Enforce in code review.</p>
+      <p>Negative caching: cache misses with shorter TTL (e.g. 60s) to avoid hammering DB on bad inputs, but never permanent.</p>
+      <p>Stampede protection: singleflight, probabilistic early refresh, or stale-while-revalidate.</p>
+      <p>Always implement explicit invalidation alongside writes; do not rely on TTL for correctness-critical data.</p>
+      <p>Use ETag + If-None-Match for HTTP-layer caching; saves payload not just compute.</p>
+      <p>Surface metrics: cache_hit_total, cache_miss_total, cache_evictions, cache_size_bytes to Prometheus/Grafana.</p>
+      <p>Plan for cache outage: app must function (degraded but functional) when Redis is down.</p>
+      <p>Cache invalidation by tag/group beats wildcard KEYS * (which is O(N) and blocks).</p>
+      <p>Use Cache-Control: stale-while-revalidate=N to mask backend latency at CDN.</p>
+      <p>Pin Redis version + maxmemory-policy (allkeys-lru for cache; noeviction for queue/session).</p>
+      <p>For multi-region: read-local-write-global, accept eventual consistency, document it.</p>
+    </section>
 
-  
-    <antipattern>
-    <description>Cache key includes mutable or high-cardinality arguments (timestamps, request IDs).</description>
-    <reason>A key that encodes request_id or current timestamp generates a new key per request, producing 0% hit rate and unbounded key growth in Redis.</reason>
-  </antipattern>
-
-  
-    <antipattern>
-    <description>Hot key: a single Redis key receiving all traffic (e.g., global feature flag served to every request).</description>
-    <reason>A single Redis key is bound to one shard. At extreme traffic, it saturates network bandwidth or CPU for that shard. Mitigate with local in-process cache with short TTL + Redis fallback.</reason>
-  </antipattern>
-
-  
-    <antipattern>
-    <description>Adding a cache layer without Prometheus metrics in the same PR.</description>
-    <reason>Cache effectiveness is invisible without hit-rate monitoring. An unmonitored cache may have 10% hit rate (wasted infrastructure) or cause subtle staleness bugs that are only visible via metrics divergence.</reason>
-  </antipattern>
+    <section name="ai-agent-gotchas">
+      <p>LLMs produce cache layers without invalidation paths — add prompt rule: every cache write must have a documented invalidator.</p>
+      <p>Agents pick TTL=86400 by default — too long for most data. Force them to compute TTL from staleness tolerance.</p>
+      <p>Negative caching agents forget shorter TTL — they cache None for 1 day; bad data flows for hours.</p>
+      <p>Cache key includes mutable args (timestamps, request IDs) — every call misses. Always hash on canonical inputs.</p>
+      <p>Pickle/JSON in Redis: agents pickle untrusted data leading to RCE risk. Force JSON or msgpack with schema validation.</p>
+      <p>Decorators that swallow exceptions: agents wrap loader() in try/except, return cache hit silently — masks DB outage. Surface errors, log, fall through.</p>
+      <p>Async + sync redis client mix-up: agents import redis.Redis in async code. Pin to redis.asyncio.Redis for FastAPI.</p>
+      <p>LLMs implement write-through but call DB after Redis (wrong order) — race window where cache shows new, DB still old.</p>
+      <p>Agents add cache without measurement: no Prometheus, no hit-rate. Require metrics in the same PR.</p>
+      <p>Human-in-loop checkpoint: TTL + invalidation policy per key — these are correctness decisions; agent suggests, human approves.</p>
+      <p>Stampede: agents implement basic cache-aside; under load, one DB-killing event traces back to thundering herd. Always include singleflight/SWR for &gt;100 RPS endpoints.</p>
+    </section>
 
     <templates>
       <template path="templates/cache-aside.py" purpose="Cache-aside decorator with Redis, TTL, key builder, and invalidation helper"/>
@@ -211,6 +242,9 @@ async def get_profile(response: Response):
       <link href="https://datatracker.ietf.org/doc/html/rfc5861"/>
       <link href="https://developers.cloudflare.com/cache/"/>
       <link href="https://docs.aws.amazon.com/AmazonElastiCache/latest/mem-ug/BestPractices.html"/>
+      <link href="https://netflixtechblog.com/caching-for-a-global-netflix-7bcc457012f1"/>
+      <link href="https://pkg.go.dev/golang.org/x/sync/singleflight"/>
+      <link href="https://www.dragonflydb.io"/>
     </see-also>
   </content>
 </methodology>
