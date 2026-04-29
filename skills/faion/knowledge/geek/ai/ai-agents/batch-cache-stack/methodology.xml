@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="batch-cache-stack">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Combine Batch API (50% discount) and prompt caching (90% read discount) to reduce effective token cost to 5% of synchronous-uncached pricing on stable-prefix workloads.</summary>
+    <tags>
+      <tag>batch-api</tag>
+      <tag>prompt-caching</tag>
+      <tag>cost-optimization</tag>
+      <tag>async-pipelines</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Batch API + Prompt Caching Stack</title>
+    <summary>For any non-real-time agent workload (overnight pipelines, eval harnesses, content backfills, dataset labeling), submit requests through the provider's Message Batches / Batch Mode API and put cache_control on the longest stable prefix (system + tools). The 50% batch discount stacks multiplicatively with the 90% prompt-cache-read discount on every batch item that hits the cache, yielding an effective ~5% of synchronous-uncached cost on the cached portion. This requires picking the batch route over real-time AND keeping every batch item's prefix byte-identical so cache lookups succeed.</summary>
+    <why>
+      <p>Anthropic's pricing page documents a 50% discount for the Message Batches API (24h SLA). Cache-read pricing is 0.1× base input cost, and Anthropic explicitly states that batch and cache discounts compose: 0.5 × 0.1 = 0.05 of baseline read cost. Google's Gemini Batch Mode is also 50% off and stacks with implicit context caching. OpenAI's Batch API is 50% off but its prompt caching does NOT stack with batch discount — pick the provider matching your stack. The mechanism is independent: the gateway charges the discount before the cache layer dedupes, so each batch item's cached tokens are billed at the floor of both factors.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Async content pipelines tolerating up to 24h latency (neromedia/pashtelka/longlife nightly summarization).</item>
+        <item>Eval suites and regression runs over 100s-100ks of fixtures sharing one rubric.</item>
+        <item>Bulk extraction / classification / labeling over a static document corpus.</item>
+        <item>Large agent backfill jobs (re-tag the last 30 days of news with a new schema).</item>
+        <item>Any pipeline where the system prompt + tool definitions are byte-identical across all items.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Interactive chat or any user-facing surface — 24h SLA is unacceptable.</item>
+        <item>Real-time tool-use loops where you need streaming and per-call decisions.</item>
+        <item>Workloads with strict &lt;1h SLAs — batches can take up to 24h.</item>
+        <item>Pipelines whose prefix mutates per item (different system prompt per row) — cache never hits, you pay the 1.25× cache-write tax for nothing.</item>
+        <item>OpenAI workloads where you assumed batch+cache stack — they do not on OpenAI; read the provider's pricing carefully.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Stacking math and provider matrix">
+      <p>The Batch API charges 0.5× base price and applies before the cache layer; cache-read is 0.1× base. Both factors combine multiplicatively on cached tokens, giving 0.5 × 0.1 = 0.05 of synchronous uncached input cost per batch item that hits the cache. This works on Anthropic Messages Batches and Gemini Batch Mode; OpenAI's Batch API is 50% off but explicitly does NOT stack with prompt caching.</p>
+      <rule>
+        <statement>For any agent workload tolerating 24h SLA, submit through the provider Batch API AND mark the longest static prefix (tools and system) with cache_control: ephemeral — verify the provider documents stack composition before assuming both discounts apply.</statement>
+        <rationale>Anthropic pricing page states batch + cache compose; Gemini documents stacking with implicit caching; OpenAI documents that they do not. Skipping the cache_control inside batches forfeits 90% on the dominant input bill, so the per-item cost on stable-prefix workloads is 10× higher than necessary.</rationale>
+      </rule>
+      <example type="good" title="Anthropic batch + cache stacking">
+        <code lang="python"><![CDATA[
+# Anthropic — batch + cache stack: 0.5 * 0.1 = 0.05x on cached tokens
+client.messages.batches.create(requests=[
+    {"custom_id": f"doc-{i}",
+     "params": {
+         "model": "claude-sonnet-4-6",
+         "system": [{"type": "text", "text": STABLE_PROMPT,
+                     "cache_control": {"type": "ephemeral"}}],
+         "tools": TOOLS,  # static across all items
+         "messages": [{"role": "user", "content": doc.text}],
+     }}
+    for i, doc in enumerate(docs)
+])
+        ]]></code>
+        <note>System prompt and tools are byte-identical across items — first item pays cache-write (1.25x), every subsequent item lands at 0.5 * 0.1 = 0.05x of synchronous-uncached input.</note>
+      </example>
+      <example type="bad" title="OpenAI: no stacking">
+        <code lang="python"><![CDATA[
+# OpenAI — batch and cache do NOT stack
+client.batches.create(input_file_id=f.id, endpoint="/v1/chat/completions",
+                     completion_window="24h")
+# Each row reuses the same system prompt; you get 50% off.
+# Adding `prompt_cache_key` does not compose — you still get 50%, not 5%.
+        ]]></code>
+        <note>Designing the OpenAI pipeline as if stacking applied overestimates savings 10×; verify provider pricing docs before promising the number to the team.</note>
+      </example>
+      <antipattern>
+        <description>Embedding the timestamp, request ID, or row index inside the cached system prompt because it "feels safer."</description>
+        <reason>Every item's prefix differs by 8 bytes, so every item is a cache miss; you pay 1.25× cache-write per item AND get the 50% batch discount only — net cost is HIGHER than uncached batch.</reason>
+      </antipattern>
+    </section>
+    <section name="Prefix stability is required for the stack to fire">
+      <p>Cache hits require byte-identical prefixes across batch items; common drift sources (timestamps, sorted-by-runtime tools, randomized example order) silently break stacking and turn the discount into a tax. A single byte difference between two items' system+tools section makes the second item a cache miss — it pays 1.25× cache-write again. Across a 100k-item batch this is the difference between a 5% input cost and a 125% input cost. Every drift source below is a real production failure in pipelines that "should have stacked".</p>
+      <rule>
+        <statement>Build the cached prefix once OUTSIDE the per-item loop, freeze its bytes (no f-strings, no time.time(), no dict-iteration order), and assert that hashlib.sha256(prefix) is constant across items before submitting the batch.</statement>
+        <rationale>Anthropic and Gemini both key cache lookups on exact prefix bytes including whitespace and tool ordering; an automated hash check at submit time catches drift that humans miss in code review.</rationale>
+      </rule>
+      <example type="bad" title="Three drift sources in five lines">
+        <code lang="python"><![CDATA[
+# Three drift sources in five lines
+for doc in docs:
+    sys = f"You are an analyst. Today is {date.today()}. Doc: {doc.id}"  # 1
+    tools = sorted(TOOL_DICT.values(), key=lambda t: t.last_used)        # 2
+    examples = random.sample(EXAMPLES, 3)                                # 3
+    submit({"system": sys, "tools": tools, "messages": [...]})
+        ]]></code>
+        <note>Date in the system prompt, runtime-sorted tools, and randomized examples each independently invalidate the cache. The pipeline pays cache-write tax on EVERY item.</note>
+      </example>
+      <example type="good" title="Frozen prefix with hash verification">
+        <code lang="python"><![CDATA[
+SYSTEM = "You are an analyst. Follow the schema below."  # frozen
+TOOLS = list(TOOL_DICT.values())                          # insertion-ordered
+PREFIX_HASH = hashlib.sha256(
+    json.dumps({"sys": SYSTEM, "tools": TOOLS}, sort_keys=True).encode()
+).hexdigest()
+
+for doc in docs:
+    item = {"system": [{"type": "text", "text": SYSTEM,
+                        "cache_control": {"type": "ephemeral"}}],
+            "tools": TOOLS,
+            "messages": [{"role": "user", "content": doc.text}]}
+    assert PREFIX_HASH == _hash_prefix(item)  # cheap guard
+    submit(item)
+        ]]></code>
+        <note>Prefix is built once and reused; the per-item hash check fails fast if any future refactor reintroduces drift.</note>
+      </example>
+      <antipattern>
+        <description>Putting the per-item context (URL, doc text, user question) at the START of the messages section instead of as a regular user turn at the end.</description>
+        <reason>Cache hits require the variable content to come AFTER the cache_control breakpoint; fronting it makes every item miss — same failure mode as drift, harder to spot.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/batch_with_cache.py" purpose="Anthropic Messages Batches submission with cache_control on system+tools — the canonical stack."/>
+    </templates>
+    <see-also>
+      <link href="https://platform.claude.com/docs/en/about-claude/pricing">Anthropic pricing — batch and cache discount composition.</link>
+      <link href="https://www.anthropic.com/news/prompt-caching">Anthropic prompt caching announcement (90% read discount).</link>
+      <link href="https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/batch-prediction-gemini">Gemini Batch Mode (50% off, stacks with implicit caching).</link>
+      <link href="https://platform.openai.com/docs/guides/batch">OpenAI Batch API — 50% discount; does not stack with prompt caching.</link>
+      <link href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">Anthropic prompt caching cache-key semantics.</link>
+    </see-also>
+  </content>
+</methodology>
