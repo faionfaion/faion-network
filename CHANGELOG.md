@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 - chore: migrate seo-techniques, topical-authority, clickup-setup to methodology.xml (feature-045 batch FA 3/3)
 - chore: migrate growth-seo-link-building, seo, seo-basics to methodology.xml (feature-045 batch EZ)
 - chore: migrate swap-memory-management, systemd-user-services, tmux-power-user to methodology.xml (feature-045 batch ES 3/3)
+- chore: migrate 3/3 solo/sdd methodologies → methodology.xml (api-first-development, architecture-decision-records, backlog-grooming-roadmapping; feature-045 batch FI)
 - chore: migrate go-concurrency-patterns, unattended-upgrades, wireguard-vpn to methodology.xml format (FEATURE-045 batch ET 3/3)
 - chore: migrate 3/3 solo/marketing methodologies → methodology.xml (ops-automation-workflow, ops-dashboard-setup, ops-customer-support; feature-045 batch EX)
 - migrate: 3/3 solo/dev/software-developer methodologies → methodology.xml (api-versioning, browser-automation, api-graphql; feature-045 batch EK)
