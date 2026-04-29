@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="nginx-reverse-proxy">
+  <metadata>
+    <tier>solo</tier>
+    <group>infra</group>
+    <domain>server-craft</domain>
+    <summary>Configure nginx as a multi-domain reverse proxy: proxy_pass routing, WebSocket upgrades, security headers, rate limiting, and the snippets pattern for DRY configuration.</summary>
+    <tags>
+      <tag>nginx</tag>
+      <tag>reverse-proxy</tag>
+      <tag>websocket</tag>
+      <tag>rate-limiting</tag>
+      <tag>security-headers</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>nginx Reverse Proxy</title>
+    <summary>Configure nginx as a multi-domain reverse proxy on a single VPS: proxy_pass to backend services, WebSocket upgrades, security headers, rate limiting, and the snippets pattern for DRY configuration. Architecture: Internet → Cloudflare → nginx (80/443) → local services on 127.0.0.1:PORT.</summary>
+    <why>
+      <p>nginx is the standard single entry point for all domains on a VPS. It terminates SSL, handles WebSocket upgrades, applies security headers consistently, rate-limits API endpoints, and serves static files — none of which backends need to implement themselves.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Deploying any web application on a VPS that needs HTTP/HTTPS routing</item>
+        <item>Exposing multiple domains or subdomains from a single server</item>
+        <item>Adding WebSocket support to an existing proxy setup</item>
+        <item>Applying security headers (HSTS, CSP, X-Content-Type-Options) across all sites</item>
+        <item>Rate limiting API endpoints against brute-force or abuse</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>When using a managed platform (Heroku, Railway, Render) — proxy is handled for you</item>
+        <item>Kubernetes environments — use an Ingress controller instead</item>
+        <item>When Caddy or Traefik is already in use — don't mix reverse proxies on the same server</item>
+        <item>For TLS termination when Cloudflare Full(Strict) mode is configured — Cloudflare already handles the browser-facing TLS, nginx still needs a cert for origin</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="proxy-pass-trailing-slash-rule">
+      <rule>
+        <statement>When stripping a URL prefix, use rewrite + break — not a trailing slash on proxy_pass.</statement>
+        <rationale>A trailing slash on proxy_pass causes nginx to rewrite the URI internally, but rewrite with break gives explicit control and avoids double-slash bugs when the prefix is multi-segment.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="nginx"><![CDATA[
+location /api/ {
+    rewrite ^/api/(.*) /$1 break;
+    proxy_pass http://127.0.0.1:8100;
+}
+        ]]></code>
+        <note>FastAPI routes start at /, so /api/users → /users</note>
+      </example>
+      <example type="bad">
+        <code lang="nginx"><![CDATA[
+location /api/ {
+    proxy_pass http://127.0.0.1:8100/;  # Can cause /api//path double-slash
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="websocket-upgrade-map">
+      <p>Define the map block in the http context (nginx.conf or conf.d/), then include websocket.conf in WebSocket locations.</p>
+      <example type="good">
+        <code lang="nginx"><![CDATA[
+# http context — defines $connection_upgrade variable
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="proxy-headers">
+      <p>All proxy locations must forward these headers so backends see the real client IP and protocol.</p>
+      <example type="good">
+        <code lang="nginx"><![CDATA[
+# /etc/nginx/snippets/proxy-params.conf
+proxy_set_header Host              $host;
+proxy_set_header X-Real-IP         $remote_addr;
+proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto https;
+proxy_set_header X-Forwarded-Host  $host;
+proxy_set_header X-Forwarded-Port  $server_port;
+proxy_connect_timeout 60s;
+proxy_send_timeout    60s;
+proxy_read_timeout    60s;
+proxy_buffering       off;
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Always hardcode X-Forwarded-Proto as https when Cloudflare proxies traffic.</statement>
+        <rationale>Cloudflare sends HTTP to the origin even when the browser used HTTPS. Backends rely on X-Forwarded-Proto to generate correct redirect and cookie URLs.</rationale>
+      </rule>
+    </section>
+
+    <section name="upstream-blocks">
+      <p>Use upstream blocks when multiple backends need load balancing or when the backend address appears in more than one location.</p>
+      <example type="good">
+        <code lang="nginx"><![CDATA[
+upstream nero_api {
+    server 127.0.0.1:8100;
+    keepalive 16;
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="security-headers">
+      <p>Apply via a snippet included in every server block. Do not set per-location unless a site needs CSP overrides.</p>
+      <example type="good">
+        <code lang="nginx"><![CDATA[
+# /etc/nginx/snippets/security-headers.conf
+add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+add_header X-Content-Type-Options    "nosniff"                              always;
+add_header X-Frame-Options           "SAMEORIGIN"                           always;
+add_header Referrer-Policy           "strict-origin-when-cross-origin"       always;
+add_header Permissions-Policy        "camera=(), microphone=(), geolocation=()" always;
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Set HSTS max-age to at least 63072000 (2 years) for production; do not add preload until all subdomains support HTTPS.</statement>
+        <rationale>HSTS with preload is irreversible for months. A subdomain that loses its certificate will become inaccessible to browsers that cached the preload entry.</rationale>
+      </rule>
+      <antipattern>
+        <description>Setting Content-Security-Policy in the global snippet</description>
+        <reason>CSP requires per-site values (each app has different allowed sources). A global CSP either blocks functionality or is too permissive to matter.</reason>
+      </antipattern>
+    </section>
+
+    <section name="rate-limiting-zones">
+      <p>Define zones in http context (conf.d/rate-limiting.conf). Reference with limit_req in location blocks.</p>
+      <example type="good">
+        <code lang="nginx"><![CDATA[
+# http context
+limit_req_zone $binary_remote_addr zone=api_general:10m rate=10r/s;
+limit_req_zone $binary_remote_addr zone=api_auth:10m    rate=3r/m;
+limit_req_zone $binary_remote_addr zone=api_upload:10m  rate=5r/m;
+limit_req_status 429;
+
+# location
+location /api/ {
+    limit_req zone=api_general burst=20 nodelay;
+    ...
+}
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Use api_auth zone (3r/m) for login and password-reset endpoints to prevent brute force.</statement>
+        <rationale>General API rate limiting (10r/s) is too permissive for auth endpoints. A bot can attempt 600 passwords per minute before triggering it.</rationale>
+      </rule>
+    </section>
+
+    <section name="snippets-pattern">
+      <p>Store reusable configuration fragments in /etc/nginx/snippets/ and include them with a single line.</p>
+      <list>
+        <item>proxy-params.conf — proxy headers for every proxied location</item>
+        <item>websocket.conf — HTTP/1.1 upgrade headers and 24h timeouts</item>
+        <item>security-headers.conf — HSTS and other response security headers</item>
+        <item>cloudflare-realip.conf — set_real_ip_from for all Cloudflare IP ranges</item>
+      </list>
+    </section>
+
+    <section name="nero-platform-example">
+      <p>Architecture: Cloudflare → nginx → FastAPI on 8100 (API + WebSocket) + React SPA on 8101. API routes stripped of /api prefix. Attachments served internally via X-Accel-Redirect.</p>
+      <example type="good">
+        <code lang="nginx"><![CDATA[
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80;
+    listen 443 ssl;
+    server_name nero.faion.net;
+
+    ssl_certificate     /etc/nginx/ssl/cloudflare-origin.pem;
+    ssl_certificate_key /etc/nginx/ssl/cloudflare-origin-key.pem;
+
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Content-Security-Policy "default-src 'self'; connect-src 'self' wss://nero.faion.net; frame-ancestors https://*.telegram.org;" always;
+
+    location /api/ {
+        rewrite ^/api/(.*) /$1 break;
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:8100;
+    }
+
+    location /health {
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:8100;
+    }
+
+    location /ws {
+        include snippets/proxy-params.conf;
+        include snippets/websocket.conf;
+        proxy_pass http://127.0.0.1:8100;
+    }
+
+    location /internal-attachments/ {
+        internal;
+        alias /srv/nero/attachments/;
+    }
+
+    location / {
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:8101;
+    }
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="multi-subdomain-example">
+      <p>Three server blocks: static landing at meetingtax.io, full-stack app at app.meetingtax.io, API direct at api.meetingtax.io.</p>
+      <example type="good">
+        <code lang="nginx"><![CDATA[
+server {
+    listen 80;
+    server_name meetingtax.io www.meetingtax.io;
+    root /var/www/meetingtax;
+    index index.html;
+    location / { try_files $uri $uri/ /index.html; }
+}
+
+server {
+    listen 80;
+    server_name app.meetingtax.io;
+    include snippets/security-headers.conf;
+
+    location /api/ {
+        rewrite ^/api/(.*) /$1 break;
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:8000;
+    }
+    location /ws {
+        include snippets/proxy-params.conf;
+        include snippets/websocket.conf;
+        proxy_pass http://127.0.0.1:8000;
+    }
+    location / {
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:3000;
+    }
+}
+
+server {
+    listen 80;
+    server_name api.meetingtax.io;
+    include snippets/security-headers.conf;
+    location / {
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:8000;
+        limit_req zone=api_general burst=20 nodelay;
+    }
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="adding-a-new-domain">
+      <example type="good">
+        <code lang="bash"><![CDATA[
+sudo tee /etc/nginx/sites-available/newsite.example.com << 'NGINX'
+server {
+    listen 80;
+    server_name newsite.example.com;
+    include snippets/security-headers.conf;
+    client_max_body_size 10M;
+
+    location /api/ {
+        rewrite ^/api/(.*) /$1 break;
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:8200;
+    }
+
+    location / {
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:3200;
+    }
+}
+NGINX
+
+sudo ln -sf /etc/nginx/sites-available/newsite.example.com /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+        ]]></code>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/proxy-params.conf" purpose="Reusable snippet: Host, X-Real-IP, X-Forwarded-For, X-Forwarded-Proto headers"/>
+      <template path="templates/websocket.conf" purpose="Reusable snippet: HTTP/1.1 upgrade headers, 24h timeouts"/>
+      <template path="templates/security-headers.conf" purpose="Reusable snippet: HSTS, X-Content-Type-Options, Referrer-Policy, X-Frame-Options"/>
+      <template path="templates/rate-limiting.conf" purpose="http-context zones: api_general (10r/s), api_auth (3r/m), api_upload (5r/m)"/>
+      <template path="templates/cloudflare-realip.conf" purpose="set_real_ip_from for all Cloudflare IP ranges"/>
+      <template path="templates/site-fullstack.conf" purpose="Full-stack app template: API prefix-strip, WebSocket, X-Accel-Redirect, SPA"/>
+    </templates>
+
+    <scripts>
+      <script path="scripts/nginx-audit.sh" purpose="Audit active sites, snippets, rate-limit zones, security headers, recent errors"/>
+    </scripts>
+
+    <see-also>
+      <ref slug="ssl-tls-management"/>
+      <ref slug="server-init-bootstrap"/>
+    </see-also>
+  </content>
+</methodology>

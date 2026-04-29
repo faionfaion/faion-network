@@ -3,6 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+- chore: migrate nginx-reverse-proxy, ssl-tls-management, server-init-bootstrap to methodology.xml (feature-045 batch FU)
 - chore: migrate secrets-management, shell-productivity, ssh-hardening to methodology.xml (feature-045 batch FV)
 - chore: migrate product-discovery, product-launch, release-planning to methodology.xml (feature-045 batch FT)
 - chore: migrate continuous-discovery, feature-prioritization-moscow, feature-prioritization-rice to methodology.xml (feature-045 batch FS)
