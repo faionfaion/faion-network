@@ -1,0 +1,95 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<methodology slug="inverted-header-content-first">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>In SO calls producing content and metadata, declare content first and every metadata field (title, slug, tags) after it. The model then conditions metadata on body tokens, not a blind label.</summary>
+    <tags>
+      <tag>structured-output</tag>
+      <tag>schema-design</tag>
+      <tag>json</tag>
+      <tag>pydantic</tag>
+      <tag>quality</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Inverted Header — Content First, Metadata Last</title>
+    <summary>When one structured-output call must produce both a long-form body and metadata about that body (title, slug, summary, tags, sentiment), declare the body field FIRST in the schema and every metadata field AFTER it. The autoregressive model can only condition the title on tokens that already exist; if title is generated before body, the body is forced to fit a blind title; if body comes first, the title becomes a faithful summary of what was actually written.</summary>
+    <why>
+      <p>This is the schema-field-order rule applied to the title-vs-body case. The body IS the reasoning trace for the title — every paragraph of body becomes context for the next-token prediction of title, slug, and tags. AWS Bedrock's 2026 SO design guide states it directly: "Field ordering represents a form of Chain of Thought embedded directly into your data structure." Castillo's empirical study showed a 13 percentage-point accuracy gap (46.67% vs 33.33%, p &lt; 0.01) on LiveBench from field reorder alone, and the title/body case is the most common production manifestation.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Article, blog post, email, social-media post generation in one SO call.</item>
+        <item>Product description plus tags, slug, SEO title.</item>
+        <item>Code generation followed by an explanation summary.</item>
+        <item>Image caption with both long alt-text and short title.</item>
+        <item>Any single-call output where short metadata fields summarize a long content field.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>The title is a hard input constraint provided by the user — pass it in the prompt, omit from schema.</item>
+        <item>Streaming UI must show a title before the body finishes — split into two calls instead.</item>
+        <item>Metadata is fully deterministic from the prompt (e.g., lang="en" from a known input) — order does not matter.</item>
+        <item>The "metadata" field is in fact a routing decision the user already gave you — keep that out of generated output.</item>
+      </list>
+    </when-not-to-use>
+    <section name="The Inverted Header Rule">
+      <p>Autoregressive sampling means each field is generated using only the tokens that came before it in JSON output order. A title declared before the body is a blind label; the body is then forced to match that label. Reverse the order and the title summarizes the body that already exists.</p>
+      <rule>
+        <statement>In any single SO call producing both content and metadata about that content, declare the content field first and every metadata field after it.</statement>
+        <rationale>Castillo (2025) measured 46.67% vs 33.33% LiveBench accuracy for reasoning-before-answer vs answer-before-reasoning at p &lt; 0.01; AWS Bedrock SO design guide names field order "Chain of Thought embedded in the data structure".</rationale>
+      </rule>
+      <example type="good" title="Body-first Pydantic BlogPost">
+        <code lang="python">class BlogPost(BaseModel):
+    body: str = Field(description="600-800 word article, markdown")
+    title: str = Field(description="6-10 word title summarizing body")
+    slug: str = Field(description="kebab-case slug derived from title")
+    tags: list[str] = Field(description="3-5 lowercase tags from body topics")</code>
+        <note>Title and slug see the full body before being sampled.</note>
+      </example>
+      <example type="bad" title="Title-first schema (blind label)">
+        <code lang="python">class BlogPost(BaseModel):
+    title: str
+    slug: str
+    body: str  # forced to fit a blind title</code>
+        <note>Body must rationalize a title generated without information.</note>
+      </example>
+      <antipattern>
+        <description>Putting summary first because "humans read summaries first".</description>
+        <reason>Schema order is generation order, not display order; the model is the consumer at sample time, not the human at view time.</reason>
+      </antipattern>
+    </section>
+    <section name="Streaming UI Escape Hatch">
+      <p>Streaming the body before the title is fine when the consumer waits for the full JSON envelope, but UI consumers that render the title above the body need the title bytes first. Reordering the schema to put the title first restores the blind-label problem; splitting into two calls preserves quality.</p>
+      <rule>
+        <statement>If the consumer requires the title to render before the body completes, run two SO calls — first body, then a cheap second call that takes the body as input and returns title/slug/tags — instead of putting title first in one schema.</statement>
+        <rationale>Two cheap calls with the right ordering beat one badly-ordered call: the second call can use a smaller model (haiku/mini) and the title is grounded in the actual body.</rationale>
+      </rule>
+      <example type="good" title="Two-call pattern with grounded metadata">
+        <code lang="python">draft = strong.responses.parse(
+    model="claude-opus-4-7",
+    input=msgs,
+    text_format=Body,
+)
+meta = cheap.responses.parse(
+    model="claude-haiku-4-7",
+    input=[{"role": "user", "content": draft.body}],
+    text_format=Metadata,
+)</code>
+        <note>Body grounds metadata; metadata call is order-of-magnitude cheaper.</note>
+      </example>
+      <antipattern>
+        <description>Reordering one-call schema to title-first because the frontend needs the title earlier.</description>
+        <reason>Trades measurable accuracy loss (Castillo 13 pp gap) for a UI convenience that two calls solve cleanly.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/blog_post_schema.py" purpose="Working Pydantic schema for article generation with body-first ordering, H2 headers, example blocks, and metadata fields." />
+    </templates>
+  </content>
+</methodology>
