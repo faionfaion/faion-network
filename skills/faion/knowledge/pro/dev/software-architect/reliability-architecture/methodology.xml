@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="reliability-architecture">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Design systems that maintain availability targets, recover from failures, and degrade gracefully under stress through SLO/SLI definitions, fault tolerance patterns, and disaster recovery strategies.</summary>
+    <tags>
+      <tag>reliability</tag>
+      <tag>slo</tag>
+      <tag>fault-tolerance</tag>
+      <tag>disaster-recovery</tag>
+      <tag>chaos-engineering</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Reliability Architecture</title>
+    <summary>Designing systems that maintain availability targets, recover from failures, and degrade gracefully under stress. Core outputs: SLO/SLI/error-budget definitions, fault-tolerance pattern selection (circuit breaker, retry with jitter, bulkhead, timeout), graceful degradation tiers, health check endpoints, chaos engineering plan, and DR strategy (RPO/RTO, 3-2-1 backups).</summary>
+    <why>
+      <p>Without explicit reliability design, every component failure becomes a user-facing incident. Error budgets translate business uptime goals (99.9% = 43 min/month downtime) into actionable engineering constraints. Patterns like circuit breakers prevent cascading failures; bulkheads stop one failing dependency from exhausting shared resources.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Defining SLOs before a new service goes to production</item>
+        <item>Conducting an architecture review where availability targets exceed 99.9%</item>
+        <item>Adding fault tolerance after an outage revealed cascading failure modes</item>
+        <item>Designing health check endpoints for Kubernetes probes</item>
+        <item>Planning a chaos engineering programme or DR drill</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>MVP or internal tool where 99% availability (3.65 days/year downtime) is acceptable — over-engineering adds cost</item>
+        <item>Single-service monolith without external dependencies — most patterns target distributed call paths</item>
+        <item>When the bottleneck is a business/product problem, not an infrastructure one</item>
+      </list>
+    </when-not-to-use>
+    <section name="slo-sli-and-error-budget">
+      <p>Defines the measurement vocabulary (SLI), targets (SLO), and engineering budget (error budget) that translate business uptime goals into actionable constraints.</p>
+      <rule>
+        <statement>Choose SLIs that measure user-visible behaviour, not internal component health.</statement>
+        <rationale>Internal CPU metrics do not tell you whether users are experiencing failures. Measuring from the user perspective (successful requests / total requests) ensures the SLO reflects real service quality.</rationale>
+      </rule>
+      <rule>
+        <statement>Set SLO targets slightly stricter than SLA to preserve an internal buffer before contractual breach.</statement>
+        <rationale>If SLA = 99.9%, set SLO = 99.95%. The gap is the operational buffer for undetected degradation.</rationale>
+      </rule>
+      <section name="sli-types-by-service">
+        <p>Common SLIs mapped to service categories:</p>
+        <list>
+          <item>API: request latency (p50/p95/p99), error rate (5xx / total), throughput</item>
+          <item>Database: query latency, availability, replication lag</item>
+          <item>Storage: durability (data loss probability), read/write latency</item>
+          <item>Streaming: end-to-end latency, message loss rate, consumer lag</item>
+          <item>Batch: success rate, processing duration, data freshness</item>
+        </list>
+      </section>
+      <section name="availability-tiers">
+        <p>Map business context to availability target before choosing patterns:</p>
+        <list>
+          <item>99% (2 nines): 3.65 days/year downtime — internal tools, dev environments</item>
+          <item>99.9% (3 nines): 8.76 hours/year — business applications, growth-stage products</item>
+          <item>99.99% (4 nines): 52.6 minutes/year — critical services, e-commerce checkout</item>
+          <item>99.999% (5 nines): 5.26 minutes/year — financial, healthcare, safety-critical</item>
+        </list>
+      </section>
+      <section name="error-budget">
+        <rule>
+          <statement>Calculate monthly error budget as (1 - SLO) * 43,200 minutes and enforce a feature freeze when it is exhausted.</statement>
+          <rationale>Error budget converts an abstract percentage into a concrete time allowance that engineering and product can negotiate. Exhausted budget means reliability work takes priority over features.</rationale>
+        </rule>
+        <example type="good" title="error-budget-calculation">
+          <note>SLO = 99.95% → error budget = 0.05% * 43,200 min = 21.6 min/month. Alert at 50% consumed (10.8 min used) to trigger reliability review before breach.</note>
+        </example>
+        <rule>
+          <statement>Use rolling 30-day windows for error budget calculation, not calendar months.</statement>
+          <rationale>Rolling windows avoid cliff effects where budget resets at month boundary, hiding sustained slow degradation.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="fault-tolerance-patterns">
+      <p>Circuit Breaker, Retry with exponential backoff and jitter, Bulkhead, and Timeout — the four patterns that prevent individual failures from cascading across a distributed system.</p>
+      <section name="circuit-breaker">
+        <rule>
+          <statement>Wrap every external I/O call (API, database, cache) in a circuit breaker with explicit failure threshold, open timeout, and success threshold.</statement>
+          <rationale>Without a circuit breaker, a slow downstream causes thread pool exhaustion in the caller, which then propagates to its callers (cascading failure). A circuit breaker fails fast once the threshold is reached.</rationale>
+        </rule>
+        <p>Three states: Closed (normal) → Open (fail fast after threshold) → Half-Open (test recovery). Typical config: failure threshold 5-10 failures in a 10-60s window; open timeout 30-60s; success threshold 3-5 in half-open.</p>
+      </section>
+      <section name="retry-with-exponential-backoff-and-jitter">
+        <rule>
+          <statement>Apply jitter to exponential backoff delays to prevent thundering herd when multiple callers retry simultaneously.</statement>
+          <rationale>Pure exponential backoff synchronises retries across many clients — all wait exactly 2s, then 4s — causing traffic spikes. Jitter spreads retry attempts across time.</rationale>
+        </rule>
+        <rule>
+          <statement>Retry only on transient errors (5xx, timeouts, connection errors). Never retry 4xx client errors except 429 (rate limited).</statement>
+          <rationale>Retrying a 400 Bad Request wastes resources and masks a bug in the caller. Retrying 429 with the Retry-After header respects server capacity.</rationale>
+        </rule>
+        <p>AWS/Netflix recommended decorrelated jitter formula: wait = min(cap, random(base, prev_sleep * 3)). Cap at 30-60s; max 3-5 attempts.</p>
+      </section>
+      <section name="bulkhead">
+        <rule>
+          <statement>Assign separate thread pools or semaphores to each critical dependency so that a slow dependency cannot exhaust shared resources.</statement>
+          <rationale>A single thread pool shared by all downstream calls means one slow dependency starves all others. Bulkheads contain blast radius to a single partition.</rationale>
+        </rule>
+        <p>Thread-pool bulkhead: full isolation, supports timeouts; higher overhead. Semaphore bulkhead: lower overhead, no timeout for waiting threads. Size each pool to expected concurrency, not max capacity.</p>
+      </section>
+      <section name="timeout-management">
+        <rule>
+          <statement>Set explicit connect, read, and request timeouts on every external call; never use infinite timeouts.</statement>
+          <rationale>Infinite timeouts cause threads to block indefinitely during a downstream hang, eventually exhausting the thread pool silently.</rationale>
+        </rule>
+        <rule>
+          <statement>Propagate a deadline budget across a call chain so each downstream call receives the remaining time, not the original full timeout.</statement>
+          <rationale>Without deadline propagation, a chain of 3 services each with a 10s timeout can block for 30s even though the upstream client has already given up at 5s.</rationale>
+        </rule>
+        <p>Typical values: connection 3-5s, read 5-30s (operation-dependent), idle 60-300s.</p>
+      </section>
+      <section name="pattern-combinations">
+        <antipattern>
+          <description>Applying retry without circuit breaker on a dependency that is completely down.</description>
+          <reason>Retries amplify load on an already-failing service, accelerating its recovery delay. Circuit breaker must open first to stop retry traffic.</reason>
+        </antipattern>
+        <example type="good" title="pattern-stack">
+          <note>Stack in order: Timeout → Circuit Breaker → Retry with jitter → Bulkhead. Each layer handles a different failure mode: Timeout prevents infinite wait; CB stops cascading; Retry handles transient; Bulkhead limits resource impact.</note>
+        </example>
+      </section>
+    </section>
+    <section name="graceful-degradation">
+      <p>Classify features by criticality (P0-P3), define fallback behaviour at each tier, and implement load shedding to preserve core functionality when under stress.</p>
+      <section name="feature-criticality-classification">
+        <rule>
+          <statement>Assign every feature a criticality tier (P0-P3) and define its degradation behaviour before a failure occurs, not during one.</statement>
+          <rationale>Incident response under pressure produces inconsistent decisions. Pre-classified features and documented fallbacks allow automated or rapid manual degradation without debate.</rationale>
+        </rule>
+        <list>
+          <item>P0 (Critical): Never degrade; allocate maximum resources. Example: checkout, authentication.</item>
+          <item>P1 (Important): Degrade to cached or simplified response. Example: search, product pages.</item>
+          <item>P2 (Standard): Disable or show generic content. Example: personalised recommendations, reviews.</item>
+          <item>P3 (Optional): Silently disable. Example: analytics tracking, A/B test assignment.</item>
+        </list>
+      </section>
+      <section name="degradation-patterns">
+        <list>
+          <item>Static Fallback: return cached or default data when live service unavailable (cached product catalogue)</item>
+          <item>Simplified Response: return basic subset of data, omit non-essential fields (basic user profile without preferences)</item>
+          <item>Feature Toggle: disable feature at runtime via flag without deployment (turn off recommendation engine)</item>
+          <item>Load Shedding: reject low-priority requests at admission to protect high-priority paths</item>
+          <item>Read-Only Mode: disable writes but allow reads when write path is degraded</item>
+        </list>
+        <example type="good" title="p2-feature-degradation">
+          <note>On recommendation service failure: P2 feature → return popular products from in-process cache rather than 500 error. User sees generic list; checkout path (P0) is unaffected.</note>
+        </example>
+        <antipattern>
+          <description>Returning an error page for any downstream failure, including non-critical P2/P3 features.</description>
+          <reason>Degrades the entire user experience for a failure in an optional feature. Partial page rendering with degraded components is always preferable for P2/P3.</reason>
+        </antipattern>
+      </section>
+      <section name="load-shedding-priority">
+        <rule>
+          <statement>Implement admission control at the service entry point that rejects requests by priority tier as load increases.</statement>
+          <rationale>Without shedding, overload affects all tiers equally including P0. Prioritised shedding ensures P0 operations always have capacity.</rationale>
+        </rule>
+        <p>Load shedding ladder: Normal → accept all. High load → reject P3. Critical load → reject P2+P3. Overload → accept only P0 + health checks. Assign request priority via headers or request attributes at the gateway.</p>
+      </section>
+    </section>
+    <section name="health-checks-disaster-recovery-and-chaos-engineering">
+      <p>Kubernetes probe design, DR strategy selection by RTO/RPO, 3-2-1 backup rule, and the chaos engineering maturity model for validating reliability assumptions.</p>
+      <section name="kubernetes-health-probes">
+        <rule>
+          <statement>Liveness probe must check only the process itself (no external deps); readiness probe must check all critical dependencies.</statement>
+          <rationale>If liveness checks the database and the database is slow, Kubernetes kills and restarts the pod — which does not fix the database. Liveness should only detect deadlocks and infinite loops. Readiness correctly removes the pod from load balancer rotation when deps are unavailable.</rationale>
+        </rule>
+        <rule>
+          <statement>Use a startup probe for slow-starting applications with failureThreshold * periodSeconds greater than the maximum startup time.</statement>
+          <rationale>Without startup probe, liveness begins immediately and kills the pod before it finishes initialising — causing a restart loop.</rationale>
+        </rule>
+        <list>
+          <item>GET /health/live → liveness: 200 OK if process running, no external checks</item>
+          <item>GET /health/ready → readiness: checks DB, cache, critical external APIs; returns 503 if any critical dependency unhealthy</item>
+          <item>GET /health/startup → startup: verifies essential initialisation complete</item>
+          <item>GET /health/detailed → internal only (not exposed publicly); full dependency status with latencies</item>
+        </list>
+      </section>
+      <section name="disaster-recovery-strategies">
+        <rule>
+          <statement>Select a DR strategy based on explicit RTO and RPO requirements, not by default to the cheapest option.</statement>
+          <rationale>Backup/Restore is cheap but has hours of RTO — unacceptable for a payment API with a 15-minute SLA. Matching strategy to requirement avoids both over-spending and under-protecting.</rationale>
+        </rule>
+        <list>
+          <item>Backup/Restore: RTO hours, RPO hours, cost $. Use for non-critical workloads.</item>
+          <item>Pilot Light: RTO 10-30 min, RPO minutes, cost $$. Core services warm, scale on failure.</item>
+          <item>Warm Standby: RTO minutes, RPO seconds, cost $$$. Scaled-down copy always running.</item>
+          <item>Hot Standby / Multi-Active: RTO seconds/zero, RPO near-zero, cost $$$$. Mission-critical only.</item>
+        </list>
+        <rule>
+          <statement>Apply the 3-2-1 backup rule: 3 copies, 2 different storage media types, 1 offsite location.</statement>
+          <rationale>A single backup in the same region as production is destroyed by the same event (region outage, ransomware) that caused the original failure.</rationale>
+        </rule>
+      </section>
+      <section name="chaos-engineering">
+        <rule>
+          <statement>Define steady-state hypothesis before each chaos experiment; abort if SLO is breached during the experiment.</statement>
+          <rationale>Without a hypothesis, chaos is destructive testing not learning. Aborting on SLO breach limits blast radius and preserves the error budget.</rationale>
+        </rule>
+        <p>Maturity levels: 1=Manual failover game days, 2=Automated chaos in staging, 3=Production chaos at low traffic, 4=Continuous always-on chaos. Progress sequentially — never start at level 3 without level 2 confidence.</p>
+        <list>
+          <item>Instance termination: tests auto-scaling and failover</item>
+          <item>Network latency injection (200ms): tests timeout and retry behaviour</item>
+          <item>Network partition: tests split-brain handling</item>
+          <item>CPU/memory stress: tests autoscaling and throttling</item>
+          <item>Zone/region failure: tests multi-zone/multi-region resilience</item>
+        </list>
+      </section>
+    </section>
+    <templates>
+      <template path="templates/slo-definition.yaml" purpose="SLO document template with SLI expression, target, window, and escalation thresholds"/>
+      <template path="templates/circuit-breaker.py" purpose="Python circuit breaker implementation with decorator usage"/>
+      <template path="templates/retry-config.py" purpose="tenacity-based retry decorator factory with jitter"/>
+      <template path="templates/health-endpoint.py" purpose="FastAPI liveness/readiness/startup endpoints with structured response"/>
+    </templates>
+  </content>
+</methodology>
