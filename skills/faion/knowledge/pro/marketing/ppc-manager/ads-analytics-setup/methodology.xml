@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ads-analytics-setup">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>ppc-manager</domain>
+    <summary>Three-layer analytics implementation covering GA4 property creation, event tracking plan, conversion designation, UTM naming conventions, and dashboard setup with Consent Mode v2 from day one.</summary>
+    <tags>
+      <tag>analytics</tag>
+      <tag>ga4</tag>
+      <tag>tracking</tag>
+      <tag>conversion</tag>
+      <tag>utm</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Analytics Setup</title>
+
+    <summary>Three-layer analytics implementation — Collect, Analyze, Attribute — covering GA4 property creation, event tracking plan, conversion designation, UTM naming conventions, and dashboard setup. Define the event spec before writing any tracking code. Implement Consent Mode v2 from day one. Link GA4 to Google Ads, BigQuery, and Search Console immediately after property creation to unlock features without future migration work.</summary>
+
+    <why>
+      <p>Without a properly structured analytics stack, ad platforms receive incomplete or inconsistent conversion signals, bidding algorithms optimize for the wrong goals, and channel attribution is unreliable. A documented event spec with consistent UTM conventions is the foundation all downstream reporting, attribution, and optimization depends on. Missing it means silent data loss that only surfaces weeks later when campaigns underperform.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>New site or app launch needing GA4 and ad-platform pixels installed correctly from day one</item>
+        <item>Migration from Universal Analytics to GA4 (UA sunset 2023; validate event mapping)</item>
+        <item>Multi-channel attribution rebuild: UTM standards, dataLayer schema, conversion definitions</item>
+        <item>E-commerce or SaaS rolling out enhanced ecommerce or product analytics</item>
+        <item>Compliance refit (Consent Mode v2, GDPR/CCPA banners, server-side tagging migration)</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Sites with a working analytics stack and consistent UTM data — focus on optimization, not reinstall</item>
+        <item>Pure backend or API-only products with no front-end — use server-side analytics (PostHog Backend)</item>
+        <item>Privacy-first or low-traffic projects where Plausible or Fathom suffices</item>
+        <item>One-page marketing sites — Plausible/Fathom plus UTM macros is sufficient</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="ga4-setup-sequence">
+      <p>GA4 property creation, tag installation via GTM or direct, enhanced measurement settings, and standard event schema for common business types.</p>
+
+      <rule>
+        <statement>Define the event tracking spec before writing any tracking code; treat it as a versioned document in the repo reviewed alongside the code it describes.</statement>
+        <rationale>Analytics drift silently. Without a spec, events get added inconsistently, custom dimensions fill up, and the data becomes unreliable. A spec-first approach prevents this and makes the tracking auditable.</rationale>
+      </rule>
+
+      <list>
+        <item>Create GA4 property in Google Analytics admin</item>
+        <item>Get Measurement ID (G-XXXXXXXXXX)</item>
+        <item>Install via Google Tag Manager (recommended) or direct gtag.js</item>
+        <item>Enable enhanced measurement (page views, scrolls, outbound clicks, file downloads, video engagement)</item>
+        <item>Link to Google Ads, BigQuery, and Search Console immediately</item>
+      </list>
+
+      <rule>
+        <statement>Link GA4 to BigQuery from day one even if you do not use it immediately; the export cannot backfill historical data, so enabling it late means permanently losing that history.</statement>
+        <rationale>GA4 standard UI sampled above 10M events. BigQuery export is the only path to raw unsampled data. A delayed setup creates an irrecoverable data gap.</rationale>
+      </rule>
+    </section>
+
+    <section name="event-configuration">
+      <p>Mark conversion events explicitly in GA4 Admin; configure event schema for common business types.</p>
+
+      <rule>
+        <statement>Mark conversion events explicitly in GA4 Admin; do not rely on GA4's automatic conversion detection — it is unreliable across business types.</statement>
+        <rationale>GA4 auto-marks some standard events as conversions, but the logic varies by property type and is not documented clearly. Explicit designation ensures the events the business cares about are actually tracked as conversions.</rationale>
+      </rule>
+
+      <list>
+        <item>E-commerce key events: purchase, add_to_cart, begin_checkout, view_item</item>
+        <item>SaaS key events: sign_up, trial_started, purchase, onboarding_completed</item>
+        <item>Lead gen key events: generate_lead, form_submit, phone_call</item>
+        <item>Content key events: newsletter_signup, download, content_viewed</item>
+      </list>
+
+      <antipattern>
+        <description>Using GA4 reserved event names (session_start, first_visit, etc.) for custom events.</description>
+        <reason>Reserved event names cause silent collision with GA4's automatically collected events. The custom events will either be dropped or overwrite system data, corrupting session metrics.</reason>
+      </antipattern>
+
+      <rule>
+        <statement>Include transaction_id in the purchase event for deduplication; missing it causes inflated revenue figures when users reload the confirmation page.</statement>
+        <rationale>GA4 deduplicates purchase events by transaction_id. Without it, every page reload triggers a new purchase event, which is the most common source of inflated revenue reporting.</rationale>
+      </rule>
+    </section>
+
+    <section name="custom-dimensions-and-limits">
+      <p>Custom dimensions and cardinality management in GA4.</p>
+
+      <rule>
+        <statement>Stay under 50 custom event-scoped dimensions and 25 user-scoped dimensions per GA4 property; hitting the limit silently drops new dimensions without warning.</statement>
+        <rationale>GA4 has hard limits on custom dimensions. Once hit, new custom parameters are not collected — data simply disappears with no error message unless you check the property limits dashboard.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Never use user_id as a custom dimension; use the dedicated User-ID feature in GA4 instead. High-cardinality dimensions (user IDs, session IDs) aggregate to "(other)" in reports.</statement>
+        <rationale>Custom dimensions with high cardinality (millions of unique values) are aggregated to "(other)" in all reports. They consume a dimension slot and provide no reporting value.</rationale>
+      </rule>
+    </section>
+
+    <section name="conversion-configuration">
+      <p>Conversion designation in GA4 and ad platforms, with Consent Mode v2 requirements.</p>
+
+      <rule>
+        <statement>Implement Consent Mode v2 from day one even outside the EEA; retrofitting it later requires a migration and risks 30-50% conversion loss in reports during the transition.</statement>
+        <rationale>Consent Mode v2 became mandatory in the EEA in March 2024. Sites outside EEA will need to add it when expanding. Installing it at launch eliminates a future migration and ensures modeled conversion data flows correctly.</rationale>
+      </rule>
+
+      <list>
+        <item>GA4 Admin → Events → mark key events as conversions</item>
+        <item>Set conversion value for revenue-generating events</item>
+        <item>Import GA4 conversion actions into Google Ads (Tools → Conversions → Import from GA4)</item>
+        <item>Set attribution window per conversion type (match to sales cycle)</item>
+      </list>
+    </section>
+
+    <section name="utm-parameters">
+      <p>Standardize UTM naming in code and implement Consent Mode v2 for GDPR compliance.</p>
+
+      <rule>
+        <statement>Standardize UTM naming in code as exported constants; never rely on humans typing utm_source values manually — typos produce fragmented source/medium data that cannot be cleaned retroactively.</statement>
+        <rationale>A constant export (`UTM_SOURCES = {"google": "google", "meta": "meta"}`) prevents "Google", "google", "goog" all appearing as separate sources. Fragmented data corrupts channel attribution permanently.</rationale>
+      </rule>
+
+      <list>
+        <item>utm_source: traffic origin (google, meta, linkedin, twitter, email, affiliate) — lowercase only</item>
+        <item>utm_medium: marketing channel type (cpc, paid_social, email, organic_social, referral)</item>
+        <item>utm_campaign: format [initiative]_[description]_[date] e.g. launch_spring_sale_2026q1</item>
+        <item>utm_content: ad variation format [type]_[description]_[version] e.g. video_testimonial_v2</item>
+        <item>utm_term: keyword for paid search</item>
+      </list>
+
+      <antipattern>
+        <description>Using spaces or uppercase letters in UTM values.</description>
+        <reason>Spaces get encoded as %20 or + differently across browsers and tools. Mixed case creates separate entries in GA4 reports. Both produce reporting fragmentation that requires manual cleanup.</reason>
+      </antipattern>
+
+      <rule>
+        <statement>Set analytics_storage and ad_storage to "denied" by default before the consent banner renders; only upgrade to "granted" after explicit user consent is recorded.</statement>
+        <rationale>Collecting analytics data before consent is recorded violates GDPR in the EEA and is increasingly enforced. Denied-by-default is the only approach that survives a regulatory audit.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Hash all PII (email, phone) via SHA-256 on lowercase-trimmed values before sending to ad pixels; use server-side tagging to prevent raw PII from reaching client-side code.</statement>
+        <rationale>Ad platforms require hashed PII for enhanced matching. Sending raw PII violates GDPR and ad platform terms. Skipping normalization (lowercase + trim) produces near-zero match rates.</rationale>
+      </rule>
+    </section>
+
+    <section name="install-sequence-rules">
+      <p>Agent-specific rules for analytics install, GTM, Measurement Protocol, and common LLM failure modes in analytics implementation.</p>
+
+      <rule>
+        <statement>Call gtag('config', ...) before gtag('event', ...) in all page load sequences; events queued before config runs are sent to the wrong property.</statement>
+        <rationale>gtag processes calls sequentially. An event fired before the config call has no property destination and silently drops. This commonly happens in SPA route-change handlers that fire before the config tag has loaded.</rationale>
+      </rule>
+
+      <rule>
+        <statement>For cross-domain tracking, configure the linker parameter explicitly; cross-domain sessions break silently after redesigns without obvious error messages.</statement>
+        <rationale>Without linker configuration, users crossing domains create new sessions and appear as new users from "direct" traffic. The conversion gets attributed to the wrong channel.</rationale>
+      </rule>
+    </section>
+
+    <section name="gtm-specific-rules">
+      <p>GTM container management and single-page app event firing.</p>
+
+      <rule>
+        <statement>Export and version-control the GTM container JSON; containers exported across accounts have secrets stripped and require manual re-linking of API keys.</statement>
+        <rationale>GTM container exports are the only backup for tracking configuration. Without version control, a misconfigured container deployment has no rollback path.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Firing page_view events in single-page apps before the URL route is settled.</description>
+        <reason>GTM fires on history change events immediately. In some frameworks, the route update completes asynchronously after the history push. Early fires record the previous URL as the page_view location.</reason>
+      </antipattern>
+    </section>
+
+    <section name="measurement-protocol">
+      <p>Server-side event tracking with the Measurement Protocol.</p>
+
+      <rule>
+        <statement>Server-side Measurement Protocol events require the client_id matching the gtag-set first-party cookie; events without a matching client_id create orphaned sessions and inflate session counts.</statement>
+        <rationale>GA4 stitches sessions using client_id. Server-side events with mismatched or missing client_id create new phantom sessions, inflating bounce rates and breaking funnel analysis.</rationale>
+      </rule>
+    </section>
+
+    <section name="human-in-loop-checkpoints">
+      <p>Required human checkpoints in the analytics setup workflow.</p>
+
+      <list>
+        <item>Consent banner copy and consent categories: human legal review required</item>
+        <item>PII filtering rules for server-side tagging: human privacy review required</item>
+        <item>Conversion event designation (which events count): human business review required</item>
+        <item>Production GTM container publish: human approval required</item>
+      </list>
+
+      <reference path="templates/validate-events.js">Playwright script to verify event firing on staging via dataLayer interception before production publish</reference>
+    </section>
+
+    <templates>
+      <template path="templates/event-tracking-plan.md" purpose="Event spec template: page events, user events, engagement events, conversion flags"/>
+      <template path="templates/utm-conventions.md" purpose="UTM naming conventions: source, medium, campaign, content format"/>
+      <template path="templates/validate-events.js" purpose="Playwright script to verify event firing on staging via dataLayer interception"/>
+    </templates>
+
+    <see-also>
+      <link href="https://support.google.com/analytics/answer/9322688"/>
+      <link href="https://support.google.com/analytics/answer/13316687"/>
+      <link href="https://support.google.com/analytics/answer/9976101"/>
+      <link href="https://developers.google.com/analytics/devguides/collection/protocol/ga4"/>
+      <link href="https://support.google.com/analytics/answer/7029846"/>
+      <link href="https://developers.google.com/tag-platform/tag-manager/server-side"/>
+    </see-also>
+  </content>
+</methodology>
