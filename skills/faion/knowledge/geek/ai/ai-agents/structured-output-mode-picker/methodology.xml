@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="structured-output-mode-picker">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Pick constrained-decoding mode by use case: extraction → SO strict, action → tool call, DSL → grammar, legacy → json mode.</summary>
+    <tags>
+      <tag>structured-outputs</tag>
+      <tag>json-schema</tag>
+      <tag>tool-calling</tag>
+      <tag>constrained-decoding</tag>
+      <tag>llm-api</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Structured Output Mode — JSON-Mode vs SO vs Tool-Call vs Grammar</title>
+    <summary>Four constrained-decoding modes ship in 2026 SDKs and they are NOT interchangeable. JSON mode guarantees only valid JSON; Structured Outputs (response_format: json_schema, strict: true) guarantees full schema compliance; tool calls guarantee schema-compliant arguments and dispatch to a function; grammar-mode (XGrammar / Outlines / GBNF) constrains generation to any context-free grammar including non-JSON DSLs. Picking by use case — extraction → SO, action → tool call, custom DSL/SQL → grammar, legacy fallback → json mode — saves tokens and prevents silent constraint violations.</summary>
+    <why>
+      <p>JSON mode in 2024 was the only constrained option, so codebases defaulted to it for everything. By 2026 every major provider ships strict SO, native tool calls, and (for local models) full grammar libraries. Using json_object mode for a task that needs a schema produces valid-but-wrong outputs that pass json.loads() and fail downstream typing; using SO for an action-dispatch task wastes the routing affordance the tool-call ecosystem already provides; using tool calls for a SQL DSL forces a JSON detour. The match between mode and use case is now the single biggest correctness lever in SO design.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Choosing constrained decoding for a new agent or pipeline stage</item>
+        <item>Migrating a legacy response_format={"type": "json_object"} codebase</item>
+        <item>Adding a constrained-output step on a local open-source model (vLLM/Ollama)</item>
+        <item>Designing an agent that mixes data extraction and action dispatch in one loop</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Free-form chat where structure is undesirable — keep plain text</item>
+        <item>One-off scripts where downstream parsing tolerates failure — json_object is acceptable</item>
+        <item>Pure transformation tasks fully solved by regex / deterministic code — skip the LLM</item>
+        <item>When the chosen provider does not support the mode you picked — fall back to closest peer</item>
+      </list>
+    </when-not-to-use>
+    <section name="mode-comparison">
+      <p>Every constrained-decoding mode trades off format guarantee, schema guarantee, dispatch semantics, and provider availability. The decision is determined by what the output will be USED for, not by which API your team learned first.</p>
+      <list>
+        <item>JSON mode — guarantees valid JSON only, no schema. Use for legacy fallback when strict SO is unavailable.</item>
+        <item>Structured Outputs — guarantees full JSON-schema compliance via grammar mask. Use for data extraction and classification.</item>
+        <item>Tool call — guarantees schema-compliant arguments AND surfaces a function name for dispatch. Use for agent actions.</item>
+        <item>Grammar mode (XGrammar / Outlines / GBNF) — constrains to any context-free grammar including SQL, regex, custom DSLs. Use for non-JSON outputs and local models.</item>
+      </list>
+      <rule testable="true">
+        <statement>Pick mode by output consumer: deterministic extraction → SO strict; agent action → tool call; custom DSL or local-model output → grammar; everything else legacy → json mode (only if strict SO unsupported).</statement>
+        <rationale>BuildMVPFast 2026 production guide and Vellum's mode comparison both show silent correctness regressions when json-mode is used for typed extraction; XGrammar paper shows 100x speedups vs alternatives on local DSL workloads.</rationale>
+      </rule>
+      <example type="good" title="Picking the right mode for the use case">
+        <code lang="python"><![CDATA[# Extraction → SO strict
+client.responses.parse(model="gpt-5", input=msgs, text_format=Verdict)
+
+# Agent action → tool call (Anthropic)
+client.messages.create(
+    model="claude-opus-4-7",
+    tools=[{"name": "submit_verdict", "input_schema": Verdict.model_json_schema()}],
+    tool_choice={"type": "tool", "name": "submit_verdict"},
+)
+
+# Custom DSL → grammar (Outlines)
+generator = outlines.generate.cfg(model, sql_grammar)]]></code>
+        <note>Each call uses the mode whose guarantees match the consumer's needs.</note>
+      </example>
+      <example type="bad" title="Typed extraction with json_object — passes json.loads, fails typing">
+        <code lang="python"><![CDATA[# same repo, default image — pulls every linter on every CI run
+client.chat.completions.create(
+    model="gpt-5",
+    response_format={"type": "json_object"},
+    messages=[{"role": "user", "content": "Extract invoice as JSON..."}],
+)]]></code>
+        <note>Fields, types, enums all unconstrained; downstream Pydantic parse fails on every malformed batch.</note>
+      </example>
+      <templates>
+        <template path="templates/mode_examples.py" purpose="One minimal call per mode (json-mode, SO, tool-call, grammar) for side-by-side comparison"/>
+      </templates>
+    </section>
+    <section name="common-mode-mismatch-failures">
+      <p>Three production failure modes from picking the wrong constrained-decoding mode for the use case.</p>
+      <antipattern>
+        <description>Using response_format={"type": "json_object"} for extraction that downstream code expects to be schema-conformant.</description>
+        <reason>json_object guarantees only that json.loads() succeeds — field names, types, enums, required-ness are all free. Pydantic parse fails on roughly every malformed batch and the failure is intermittent, not signal-rich.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Modeling agent actions as a discriminated union under SO and dispatching on the discriminator field in user code.</description>
+        <reason>Tool calls already give you the dispatch affordance natively (function name + typed args + provider-side validation + multi-tool selection). Doing it via SO discriminator forces a custom router that re-implements what the tool API already does and forfeits parallel tool calls.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Forcing SQL, regex, GBNF, or other non-JSON output through a tool call argument as a single string field.</description>
+        <reason>The model still has to generate the DSL inside an unconstrained string — no grammar mask applies inside string values. Use a real grammar (Outlines/XGrammar/GBNF) on a model that supports it; XGrammar reports 100x throughput vs string-inside-JSON workarounds.</reason>
+      </antipattern>
+      <example type="bad" title="Forcing SQL through a tool call string argument">
+        <code lang="python"><![CDATA[tools = [{"name": "run_sql", "input_schema": {
+    "type": "object",
+    "properties": {"query": {"type": "string"}},
+    "required": ["query"],
+}}]
+# `query` is unconstrained — model can emit any string, including invalid SQL.]]></code>
+        <note>No grammar applies inside the string; you get LLM-flavoured SQL with the same syntax errors as plain prompting.</note>
+      </example>
+    </section>
+    <see-also>
+      <link href="https://www.buildmvpfast.com/blog/structured-output-llm-json-mode-function-calling-production-guide-2026">BuildMVPFast 2026 production guide</link>
+      <link href="https://www.vellum.ai/blog/when-should-i-use-function-calling-structured-outputs-or-json-mode">Vellum mode comparison</link>
+      <link href="https://arxiv.org/abs/2411.15100">XGrammar — Flexible and Efficient Structured Generation</link>
+    </see-also>
+  </content>
+</methodology>
