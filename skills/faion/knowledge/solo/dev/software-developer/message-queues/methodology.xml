@@ -38,8 +38,13 @@
         <item>Decoupling producer and consumer services with different throughput or availability profiles.</item>
         <item>Background work: emails, image processing, LLM calls, webhook fan-out.</item>
         <item>Load leveling during traffic spikes.</item>
-        <item>Event-driven architectures: one publish → multiple independent subscribers.</item>
+        <item>Event-driven architectures: one publish to multiple independent subscribers.</item>
         <item>Reliable delivery with retry + dead-letter for at-least-once processing.</item>
+        <item>Decoupling producer and consumer services with very different throughput or availability profiles.</item>
+        <item>Background work: emails, image/video processing, PDF generation, LLM calls, webhook fan-out.</item>
+        <item>Load leveling during traffic spikes (sign-ups, cron job storms, marketing pushes).</item>
+        <item>Event-driven architectures: order placed to invoice + shipping + analytics consumers.</item>
+        <item>Fan-out / pub-sub: one publish hits many independent subscribers.</item>
       </list>
     </when-to-use>
 
@@ -50,6 +55,8 @@
         <item>Multi-step transactional flows where ordering and exactly-once matter — use a workflow engine (Temporal, Airflow).</item>
         <item>Streaming analytics with windowing — use Kafka + Flink/ksqlDB.</item>
         <item>Storing large blobs — queues are for references; put bytes in S3/object storage.</item>
+        <item>Coordination of multi-step transactional flows where ordering and exactly-once matter — use a workflow engine (Temporal, Airflow, Prefect) instead.</item>
+        <item>Streaming analytics with windowing — use Kafka + Flink/ksqlDB, not a queue.</item>
       </list>
     </when-not-to-use>
 
@@ -158,6 +165,161 @@ def process_order(self, order_id: str):
       <reference path="scripts/idempotent-handler.py">DB-backed idempotency key claim with ON CONFLICT DO NOTHING</reference>
     </section>
 
+    <section name="limitations">
+      <p>Known failure modes and operational limitations.</p>
+      <list>
+        <item>"Exactly once" is a marketing promise; in practice plan for at-least-once and design idempotent consumers.</item>
+        <item>DLQ without an alerting + replay process becomes a black hole.</item>
+        <item>Unbounded retries on a poison message stop the queue for everyone (head-of-line blocking on FIFO queues).</item>
+        <item>Queues do not enforce ordering across partitions/shards; if you need global order, throughput is capped at one consumer.</item>
+        <item>RabbitMQ TTL+DLX patterns silently lose messages if exchange/queue not declared exactly right.</item>
+        <item>Redis Streams are great until memory pressure causes maxlen to trim unread messages.</item>
+        <item>Celery + Redis broker has no transactional guarantees for apply_async from inside a DB transaction — use transaction.on_commit().</item>
+        <item>SQS: 256 KB hard message limit; visibility timeout misconfig causes duplicate processing.</item>
+        <item>Kafka adds operational cost (Zookeeper/KRaft, ZK upgrades, partition rebalancing); overkill for solo SaaS.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A planner subagent picks the broker (RabbitMQ vs Redis Streams vs Celery vs SQS vs Kafka) based on guarantees needed (at-least-once / ordering / fan-out / TTL / size). An implementer subagent writes producer + consumer + DLQ wiring + retry policy. A reliability subagent generates idempotency tests (replay same message N times) and chaos tests (kill consumer mid-process, restart, verify no duplicate effect). A monitoring subagent provisions queue-depth + age-of-oldest-message dashboards + alerts.</p>
+
+      <section name="recommended-subagents">
+        <p>Subagents for message queue reliability and operations.</p>
+        <list>
+          <item>faion-sdd-executor-agent — runs spec to code to idempotency-tests to review.</item>
+          <item>A user-defined chaos-runner (model: haiku) — simulates consumer crash mid-handler, verifies replay safety.</item>
+          <item>A user-defined idempotency-auditor (model: sonnet) — reads handler code, flags non-idempotent operations (raw INSERTs, non-conditional emails, charges without idempotency key).</item>
+          <item>password-scrubber-agent — sweep messages and tests for embedded credentials.</item>
+        </list>
+      </section>
+
+      <section name="prompt-patterns">
+        <p>Reusable LLM prompt patterns for message queue tasks.</p>
+
+        <prompt purpose="broker-selection"><![CDATA[
+Read `message-queues/README.md`. Given workload `<X>` (rate, payload size, ordering, retry semantics), pick a broker and justify in 5 bullets. Output a YAML config: queue names, DLQ name, max receive count, TTL, prefetch.
+]]></prompt>
+
+        <prompt purpose="implement-rabbitmq"><![CDATA[
+Implement RabbitMQ producer + consumer for `orders` with DLQ, persistent delivery, prefetch=10, manual ack. Add a unit test that proves replaying the same message twice causes exactly one DB row. Use the `idempotency_key` column.
+]]></prompt>
+      </section>
+    </section>
+
+    <section name="cli-tools">
+      <p>CLI tools for message queue operations and inspection.</p>
+      <list>
+        <item>rabbitmqadmin — Declare queues/exchanges, publish, consume from CLI. Bundled with RabbitMQ.</item>
+        <item>redis-cli / valkey-cli — XADD, XREADGROUP, XPENDING for Streams ops. Bundled.</item>
+        <item>awscli (aws sqs) — Send/receive/inspect SQS queues. Install: pip install awscli</item>
+        <item>kcat (former kafkacat) — Kafka producer/consumer/inspector. https://github.com/edenhill/kcat</item>
+        <item>kaf — Friendlier Kafka CLI. https://github.com/birdayz/kaf</item>
+        <item>celery CLI — celery -A app inspect active / purge / events. Install: pip install celery</item>
+        <item>flower — Celery monitoring dashboard. Install: pip install flower</item>
+        <item>pulsar-admin — Pulsar topic ops. Bundled.</item>
+        <item>nats CLI — NATS / JetStream ops. https://docs.nats.io/using-nats/nats-tools/nats_cli</item>
+      </list>
+    </section>
+
+    <section name="services">
+      <p>Message broker services and applications.</p>
+      <list>
+        <item>RabbitMQ (OSS) — Mature; classic, quorum, streams queues; great DLX/TTL. Agent-friendly.</item>
+        <item>Redis Streams / Valkey (OSS) — Lightweight, consumer groups, ack model. Agent-friendly.</item>
+        <item>AWS SQS (SaaS) — Standard + FIFO; built-in DLQ; trivial to scale. Agent-friendly via boto3, IaC.</item>
+        <item>AWS SNS + SQS fan-out (SaaS) — Cheap pub-sub; combine with SQS for durable subscribers. Agent-friendly.</item>
+        <item>Google Pub/Sub (SaaS) — At-least-once, dead-letter topics, filters. Agent-friendly.</item>
+        <item>Kafka / Redpanda (OSS / SaaS) — Heavy; pick when ordering + replay across consumers is critical. Agent-friendly.</item>
+        <item>Pulsar (OSS / SaaS) — Tiered storage; multi-tenant; geo-replication. Agent-friendly.</item>
+        <item>NATS / JetStream (OSS) — Low-latency, simple ops; good for edge / IoT. Agent-friendly.</item>
+        <item>Celery broker: Redis/RabbitMQ (OSS) — Python task queue; chains/groups/chords. Agent-friendly.</item>
+        <item>Sidekiq (OSS / SaaS) — Ruby/Rails ecosystem; Redis-backed. Partially agent-friendly.</item>
+        <item>RQ / Dramatiq / Arq (OSS) — Lighter Python alternatives to Celery. Agent-friendly.</item>
+        <item>Inngest / Trigger.dev (SaaS) — TS-native event-driven workflows; great for solo. Agent-friendly.</item>
+        <item>Temporal (OSS / SaaS) — Workflow engine, not a queue — pick when you need state machines. Agent-friendly.</item>
+      </list>
+    </section>
+
+    <section name="idempotency-skeleton">
+      <p>Idempotent-handler skeleton an agent should reuse in any consumer callback.</p>
+      <example type="good" title="Idempotent consumer handler">
+        <code lang="python"><![CDATA[
+# idempotent_handler.py
+import hashlib
+from contextlib import contextmanager
+
+def message_idempotency_key(msg: dict) -> str:
+    # Prefer producer-supplied id; fall back to deterministic hash.
+    if mid := msg.get("idempotency_key"):
+        return mid
+    body = repr(sorted(msg.items())).encode()
+    return hashlib.sha256(body).hexdigest()
+
+@contextmanager
+def claim_once(db, key: str):
+    # Postgres example: UNIQUE(idempotency_key) on processed_messages.
+    inserted = db.execute(
+        "INSERT INTO processed_messages(key) VALUES (%s) ON CONFLICT DO NOTHING RETURNING 1",
+        (key,),
+    ).fetchone()
+    if not inserted:
+        yield False  # duplicate, skip
+        return
+    try:
+        yield True
+        db.commit()
+    except Exception:
+        db.rollback()
+        # row stays unless caller deletes — choose: delete on failure for retry, keep for poison-stop
+        db.execute("DELETE FROM processed_messages WHERE key = %s", (key,))
+        db.commit()
+        raise
+
+# Usage inside consumer callback:
+def handler(msg, db):
+    key = message_idempotency_key(msg)
+    with claim_once(db, key) as fresh:
+        if not fresh:
+            return  # silently ack
+        do_work(msg, db)
+]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <p>Operational best practices for message queue usage.</p>
+      <list>
+        <item>Make every consumer idempotent (DB unique key, ON CONFLICT DO NOTHING, conditional updates with version/updated_at).</item>
+        <item>Always wire a DLQ with max_receive_count (3-5). Add an alert when DLQ is greater than 0.</item>
+        <item>Set prefetch_count (RabbitMQ) / worker_prefetch_multiplier=1 (Celery) for slow handlers; otherwise one worker hogs messages.</item>
+        <item>Use manual ack + ack-after-success; never auto_ack for anything important.</item>
+        <item>Persist messages (delivery_mode=2) for durable queues; mirror or use quorum queues for HA.</item>
+        <item>Include correlation_id and causation_id headers for tracing through fan-out trees.</item>
+        <item>Use transaction.on_commit() (Django) / outbox pattern when enqueuing from inside DB transactions, otherwise consumers race the writer.</item>
+        <item>Keep payloads small (less than 10 KB ideal, less than 100 KB hard limit, less than 256 KB SQS limit). Put blobs in S3, send the URL.</item>
+        <item>Set MessageRetentionPeriod on DLQs to 14+ days so you have time to triage.</item>
+        <item>For Kafka: pick key deliberately — wrong key = wrong partition = lost ordering guarantees.</item>
+        <item>Prefer producer-supplied idempotency keys (UUIDv7 tied to a domain action) over content hashes.</item>
+        <item>Add jitter to retry backoff to avoid thundering herds on transient failures.</item>
+      </list>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common mistakes AI agents make with message queue implementations.</p>
+      <list>
+        <item>LLMs paste the README's auto_ack=False example then forget to actually basic_ack in the success path; messages get re-delivered on prefetch refill.</item>
+        <item>Agents emit consumers without idempotency. Force the idempotency_key table + ON CONFLICT in every plan.</item>
+        <item>DLQ wiring with RabbitMQ dead-letter-exchange/dead-letter-routing-key: agents declare queues with mismatched arguments and silently get a different queue. Always test by publishing a known-bad message and checking the DLQ.</item>
+        <item>Celery task_acks_late=True is required for safe replay but agents skip it because the default is False.</item>
+        <item>For AWS SQS, agents forget visibility timeout greater than p99 handler runtime causes message processed twice in parallel.</item>
+        <item>Redis Streams XCLAIM for stuck-consumer recovery is omitted by default; without it, crashed consumers block messages forever.</item>
+        <item>Agents fan-out via app code (for sub in subs: queue.publish(...)) instead of using exchange/topic — this loses durability if the publisher crashes mid-loop.</item>
+        <item>Outbox pattern is rarely emitted by default; LLMs publish from inside the DB transaction and you lose messages if the broker is briefly down.</item>
+        <item>Human-in-loop checkpoint: any change to retry counts, visibility timeout, or DLQ wiring on production-payment / production-email queues must be human-approved.</item>
+        <item>Watch for log-spam: agents log every consumed message at INFO; in production, sample or move to DEBUG.</item>
+      </list>
+    </section>
+
     <section name="antipatterns">
       <p>Common failure modes in message queue usage.</p>
 
@@ -206,12 +368,14 @@ def process_order(self, order_id: str):
     </scripts>
 
     <see-also>
-      <link href="https://www.rabbitmq.com/"/>
+      <link href="https://www.rabbitmq.com/tutorials"/>
       <link href="https://redis.io/docs/data-types/streams/"/>
-      <link href="https://docs.aws.amazon.com/sqs/"/>
-      <link href="https://kafka.apache.org/"/>
-      <link href="https://docs.celeryproject.org/"/>
-      <link href="https://www.temporal.io/"/>
+      <link href="https://docs.celeryq.dev/en/stable/userguide/tasks.html#best-practices"/>
+      <link href="https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html"/>
+      <link href="https://kafka.apache.org/documentation/#design"/>
+      <link href="https://microservices.io/patterns/data/transactional-outbox.html"/>
+      <link href="https://www.enterpriseintegrationpatterns.com/"/>
+      <link href="https://en.wikipedia.org/wiki/Idempotence#Computer_science_meaning"/>
     </see-also>
   </content>
 </methodology>
