@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rust-error-handling">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Result&lt;T, E&gt; for fallible operations, Option&lt;T&gt; for optional values, ? operator for ergonomic propagation. Use thiserror for libraries, anyhow for apps. Never .unwrap() in production.</summary>
+    <tags>
+      <tag>rust</tag>
+      <tag>error-handling</tag>
+      <tag>result</tag>
+      <tag>exceptions</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>rust</language>
+    </languages>
+  </metadata>
+  <content>
+    <title>Rust Error Handling</title>
+    <summary>Result&lt;T, E&gt; for fallible operations, Option&lt;T&gt; for optional values, ? operator for ergonomic propagation. Use thiserror for libraries, anyhow for apps. Never .unwrap() in production.</summary>
+    <why>
+      <p>Rust has no exceptions. Unhandled errors that would panic in production are a design failure. The ? operator makes propagation as ergonomic as throwing, while preserving explicit, type-checked error contracts. thiserror generates boilerplate-free Display/Error impls. anyhow adds context at the application layer without requiring typed errors everywhere.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Writing or refactoring any Rust code where functions can fail (file I/O, network, parsing, FFI, DB).</item>
+        <item>Designing the public API of a Rust library — choice between thiserror (libraries) and anyhow (apps) is fundamental.</item>
+        <item>Migrating from unwrap()/expect() panics in prototype code to Result&lt;T, E&gt; for production.</item>
+        <item>Adding error reporting / observability so failures carry context, source chains, and (optionally) backtraces.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Truly unrecoverable invariants (out-of-bounds array access in safety-critical code) — use panic! or assert!; turning them into Result muddies intent.</item>
+        <item>Build scripts (build.rs) and one-off tooling — ? + Box&lt;dyn Error&gt; is fine, no custom error type needed.</item>
+        <item>#![no_std] embedded code where std::error::Error doesn't exist (use core::error::Error from 1.81 stable, but ecosystem support is partial).</item>
+        <item>Procedural macro internals — syn::Result is the convention; rolling a custom error there fights the ecosystem.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Result and Option Fundamentals">
+      <rule>
+        <statement>Use Result&lt;T, E&gt; for every function that can fail for expected reasons. Use Option&lt;T&gt; for values that may legitimately be absent. Never use a sentinel value (0, -1, empty string) to represent absence.</statement>
+        <rationale>Sentinel values are untyped contracts that callers can forget to check. Result and Option make the possibility of absence part of the type signature, enforced at compile time.</rationale>
+      </rule>
+      <rule>
+        <statement>Use the ? operator to propagate errors up the call stack. It is equivalent to an early return with Err(e.into()). Use ? instead of match err { Ok(v) => v, Err(e) => return Err(e.into()) }.</statement>
+        <rationale>Explicit match for every fallible call produces deeply nested code that obscures the happy path. ? makes fallible code as readable as exception-throwing code while remaining explicit.</rationale>
+      </rule>
+      <example type="good" title="Result Propagation with ?">
+        <code lang="rust"><![CDATA[
+use std::fs;
+use std::io;
+
+fn read_username() -> Result<String, io::Error> {
+    let mut s = String::new();
+    fs::File::open("username.txt")?.read_to_string(&mut s)?;
+    Ok(s)
+}
+]]></code>
+        <note>Two fallible operations, both propagated with ?. The happy path is linear and readable.</note>
+      </example>
+      <section name="Converting Between Result and Option">
+        <list>
+          <item>option.ok_or(err) — Option to Result, providing an error value</item>
+          <item>option.ok_or_else(|| err) — Option to Result, lazy error value</item>
+          <item>result.ok() — Result to Option, discards the error</item>
+          <item>result.err() — Result to Option of the error type</item>
+        </list>
+      </section>
+    </section>
+    <section name="Custom Error Types">
+      <rule>
+        <statement>Define a domain-specific error enum for each module or library. Implement std::fmt::Display and std::error::Error. Add From&lt;OtherError&gt; impls to enable ? propagation from underlying errors.</statement>
+        <rationale>Typed errors allow callers to match on specific variants. String errors lose the original error type and prevent programmatic handling.</rationale>
+      </rule>
+      <example type="good" title="Manual Error Enum">
+        <code lang="rust"><![CDATA[
+use std::fmt;
+
+#[derive(Debug)]
+pub enum AppError {
+    NotFound(String),
+    Unauthorized,
+    Validation(String),
+    Database(String),
+}
+
+impl fmt::Display for AppError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AppError::NotFound(msg) => write!(f, "not found: {}", msg),
+            AppError::Unauthorized => write!(f, "unauthorized"),
+            AppError::Validation(msg) => write!(f, "validation error: {}", msg),
+            AppError::Database(msg) => write!(f, "database error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for AppError {}
+
+impl From<sqlx::Error> for AppError {
+    fn from(err: sqlx::Error) -> Self {
+        AppError::Database(err.to_string())
+    }
+}
+]]></code>
+      </example>
+      <rule>
+        <statement>Use the thiserror crate for library error types. It generates Display, Error, and From impls from #[error("...")] and #[from] attributes, eliminating boilerplate while producing the same typed error enum.</statement>
+        <rationale>Manual Display + Error impls are repetitive and error-prone. thiserror produces identical code with a fraction of the surface area.</rationale>
+      </rule>
+      <example type="good" title="thiserror Macro">
+        <code lang="rust"><![CDATA[
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum UserError {
+    #[error("user not found: {0}")]
+    NotFound(String),
+
+    #[error("invalid email format: {email}")]
+    InvalidEmail { email: String },
+
+    #[error("database error")]
+    Database(#[from] sqlx::Error),
+}
+]]></code>
+        <note>#[from] generates the From impl automatically. The variant is populated by ? when a sqlx::Error is propagated.</note>
+      </example>
+    </section>
+    <section name="anyhow for Applications and Combinators">
+      <rule>
+        <statement>Use anyhow for application binary code where callers do not need to match on specific error variants. Use typed errors (thiserror) for library code where callers must be able to distinguish errors.</statement>
+        <rationale>Libraries have callers who need to handle errors programmatically. Applications catch errors at the top level and display them. anyhow's dynamic error type is ideal for applications, typed enums for libraries.</rationale>
+      </rule>
+      <example type="good" title="anyhow for Applications">
+        <code lang="rust"><![CDATA[
+use anyhow::{bail, Context, Result};
+
+fn run_app() -> Result<()> {
+    let config = load_config().context("failed to load configuration")?;
+
+    if config.port == 0 {
+        bail!("invalid port configuration");
+    }
+
+    connect_db(&config.database_url)
+        .with_context(|| format!("failed to connect to {}", config.database_url))?;
+
+    Ok(())
+}
+]]></code>
+        <note>context() adds a human-readable message to any error. bail! returns an Err early with a new error message.</note>
+      </example>
+      <section name="Result Combinators">
+        <list>
+          <item>result.map(|v| transform(v)) — transform the Ok value</item>
+          <item>result.map_err(|e| convert(e)) — transform the Err value</item>
+          <item>result.and_then(|v| fallible_op(v)) — chain a fallible operation on Ok</item>
+          <item>result.or_else(|_| fallback()) — provide a fallback on Err</item>
+          <item>result.unwrap_or(default) — extract Ok or return default on Err</item>
+          <item>result.unwrap_or_else(|_| compute()) — lazy default on Err</item>
+        </list>
+      </section>
+      <section name="Async Error Handling">
+        <rule>
+          <statement>In async functions, ? propagates errors across await points. Use futures::future::join_all() to run multiple async operations concurrently; call .into_iter().collect::&lt;Result&lt;Vec&lt;_&gt;&gt;&gt;() to fail on first error.</statement>
+          <rationale>join_all returns Vec&lt;Result&lt;T&gt;&gt;. Collecting into a single Result&lt;Vec&gt; is the idiomatic way to propagate the first failure while preserving error context.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="Antipatterns">
+      <section name="Production Code Antipatterns">
+        <antipattern>
+          <description>Calling .unwrap() or .expect() on Result or Option values in non-test production code.</description>
+          <reason>.unwrap() panics at runtime on Err/None. In production, this terminates the process without cleanup. Use ? for propagation or handle the None/Err case explicitly.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Silently ignoring errors with let _ = fallible_operation().</description>
+          <reason>Silent discards hide failures that should be logged or propagated. At minimum, log with error!("{}", e); or propagate with ?. The let _ = pattern is acceptable only when the error is genuinely irrelevant (e.g., closing a channel that may already be closed).</reason>
+        </antipattern>
+        <antipattern>
+          <description>Returning Result&lt;(), String&gt; or Err("something went wrong".to_string()) from functions that callers need to handle.</description>
+          <reason>String errors lose the original error type, prevent match-based handling, and destroy the error chain. Use typed enums or anyhow::Error.</reason>
+        </antipattern>
+      </section>
+      <section name="Panic vs Result">
+        <rule>
+          <statement>Use panic only for unrecoverable programming errors (invariant violations, out-of-bounds index where the index is a bug). Use Result for expected failures (I/O, parsing, network, user input). Never panic in library code.</statement>
+          <rationale>Libraries have no control over the application's error recovery strategy. A library panic kills the application. Return Result and let the caller decide how to handle the error.</rationale>
+        </rule>
+        <example type="good" title="Panic vs Result">
+          <code lang="rust"><![CDATA[
+// OK: unwrap in tests
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_something() {
+        let result = do_something();
+        let value = result.unwrap(); // acceptable in tests
+        assert_eq!(value, expected);
+    }
+}
+
+// OK: expect for env vars that must be set at startup
+fn main() {
+    let config_path = std::env::var("CONFIG_PATH")
+        .expect("CONFIG_PATH environment variable must be set");
+}
+]]></code>
+        </example>
+      </section>
+    </section>
+    <section name="Agent Workflow">
+      <p>A code-writing agent picks the strategy based on artifact type: library → thiserror enum + #[from]; binary → anyhow::Result + .context("…") everywhere. A code-review agent runs clippy::unwrap_used and clippy::expect_used denial lints, plus a custom AST walker that flags .unwrap() outside #[cfg(test)]. A test agent verifies that error variants have stable Display strings (snapshot tests) and that #[from] conversions roundtrip.</p>
+      <section name="Recommended Subagents">
+        <list>
+          <item>faion-sdd-executor-agent — drives implementation; constitution.md should pin "thiserror for libs, anyhow for bins".</item>
+          <item>A purpose-built clippy-enforcer subagent — runs cargo clippy -- -D clippy::unwrap_used -D clippy::expect_used -D warnings.</item>
+          <item>A error-doc-writer subagent — for each pub enum *Error variant, generates a doc comment with cause + recovery hint.</item>
+        </list>
+      </section>
+      <section name="Prompt Pattern">
+        <p>This crate is a library. Define a public Error enum with thiserror. Variants: &lt;list&gt;. Use #[from] for IO/Parse/Db sources. No anyhow. No Box&lt;dyn Error&gt;. Add #[non_exhaustive] to allow future variants.</p>
+        <p>Refactor unwrap() calls in &lt;file&gt;. Each must become either: (a) ? if the function returns Result, after declaring the right error type; (b) expect("…") with a clear invariant message if truly unreachable; (c) explicit match if recovery is possible. Output a diff. Stop.</p>
+      </section>
+    </section>
+    <section name="Tooling">
+      <section name="CLI Tools">
+        <list>
+          <item>cargo — Build + test runner</item>
+          <item>cargo clippy — Lints incl. unwrap_used/expect_used</item>
+          <item>cargo expand — See generated thiserror impls</item>
+          <item>cargo deny — Audit deps; ban unmaintained error crates</item>
+          <item>cargo nextest — Faster test runner; better failure formatting</item>
+          <item>cargo udeps — Dead-dep check after error-crate consolidation</item>
+          <item>cargo audit — Security CVEs in error chain deps</item>
+          <item>mold / lld — Faster linker; helps when ? blows compile time</item>
+        </list>
+      </section>
+      <section name="Services &amp; Apps">
+        <list>
+          <item>Sentry (sentry crate) — Captures errors with source chain via Error::source().</item>
+          <item>Honeycomb / Datadog — tracing-error integration carries error spans.</item>
+          <item>tracing + tracing-error — SpanTrace augments errors with span context; better than naive backtrace.</item>
+          <item>eyre / color-eyre — Drop-in replacement for anyhow with prettier reports.</item>
+          <item>GitHub Issues + cargo-make — Auto-create issues on panic with stable error variant id.</item>
+        </list>
+      </section>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Libraries: thiserror enums, #[non_exhaustive], #[from] for source conversions, doc-comment per variant.</item>
+        <item>Binaries: anyhow::Result&lt;()&gt; everywhere; chain .context("doing X") at every meaningful step. End-user output is via Display, not Debug.</item>
+        <item>Always implement Display such that the message is human-readable WITHOUT trailing punctuation; the formatter chains causes with ": ".</item>
+        <item>Use ? not .unwrap() outside tests; clippy::unwrap_used + clippy::expect_used denied at workspace level.</item>
+        <item>Don't panic! for input validation in libs — return Err. Reserve panics for "this can't happen" invariants.</item>
+        <item>For async: Send + Sync + 'static bounds matter; anyhow::Error is Send + Sync by default, custom errors must implement them.</item>
+        <item>Convert errors at boundaries: domain code returns domain errors; only the API/handler layer maps to HTTP status codes.</item>
+        <item>tracing-error::SpanTrace is more useful than Backtrace in async code — it shows logical path, not stack frames.</item>
+        <item>Don't .to_string() inner errors and lose source — that breaks Error::source() chains. Use #[source] or #[from].</item>
+      </list>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <list>
+        <item>LLMs default to unwrap() in examples because it's shorter. Add #![deny(clippy::unwrap_used)] at crate root + system prompt instructing ? + Result everywhere.</item>
+        <item>LLMs frequently produce Box&lt;dyn std::error::Error&gt; returns in libraries. That's an anti-pattern; always specify the error type.</item>
+        <item>? only works if the error implements From&lt;SourceError&gt; for the function's error type. LLMs forget the conversion impl — Clippy + cargo build fail loud, but agents that don't read errors carefully will keep iterating without fixing it.</item>
+        <item>When mixing anyhow and thiserror in the same crate, agents lose track of which functions return which. Convention: every pub fn uses crate::Result; only main uses anyhow.</item>
+        <item>LLMs often write .map_err(|e| MyError::Other(e.to_string())) — this drops the source error. Use #[from] and let the conversion be automatic.</item>
+        <item>Agents skip #[non_exhaustive] on public enums, then break SemVer when adding a variant. Default policy: always add it on new pub enums.</item>
+        <item>Async error reporting: agents wrap futures with ? but forget Send + 'static bounds; spawning the future fails with cryptic trait-bound errors.</item>
+        <item>Logging vs returning: agents log-and-swallow errors. Rule: log at the boundary that decides recovery (handler), return everywhere else.</item>
+        <item>LLMs misuse expect("invariant") as a fancy unwrap. The expect message must explain WHY it can't fail; reviewers should reject "should never happen" as the message.</item>
+      </list>
+    </section>
+    <section name="When NOT to bother with custom error types">
+      <list>
+        <item>Binaries / CLIs: just use anyhow::Result&lt;()&gt; everywhere; you don't need a typed enum.</item>
+        <item>Libraries used by exactly one consumer (your own app): one shared AppError enum is fine; don't overengineer per-module error types.</item>
+      </list>
+    </section>
+    <section name="Where it fails / limitations">
+      <list>
+        <item>Box&lt;dyn Error&gt; discards type information and prevents callers from matching specific failures — fine in mains, terrible in libraries.</item>
+        <item>? operator + From conversions can blow up compile times in deeply nested chains; explicit .map_err(...) is sometimes faster to compile.</item>
+        <item>thiserror won't generate #[from] impls for generic types easily; agents writing generic libraries will hit confusing trait-bound errors.</item>
+        <item>anyhow::Error erases types: you can't downcast cleanly across async boundaries when the type implements !Send.</item>
+        <item>Backtrace capture (RUST_BACKTRACE=1) costs runtime; agents writing performance-sensitive code must scope it (e.g., debug-only).</item>
+        <item>Errors thrown across FFI boundaries lose Rust panics — agents writing C ABIs must catch panics with std::panic::catch_unwind.</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://doc.rust-lang.org/book/ch09-00-error-handling.html"/>
+      <link href="https://docs.rs/thiserror/"/>
+      <link href="https://docs.rs/anyhow/"/>
+      <link href="https://docs.rs/tracing-error/"/>
+      <link href="https://blog.burntsushi.net/rust-error-handling/"/>
+      <link href="https://nrc.github.io/error-docs/"/>
+      <link href="https://sabrinajewson.org/blog/errors"/>
+      <link href="https://docs.rs/snafu/"/>
+    </see-also>
+  </content>
+</methodology>
