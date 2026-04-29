@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tailwind-patterns">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>frontend-developer</domain>
+    <summary>Reusable variant composition using cva() (class-variance-authority) and cn() for type-safe, conflict-free class merging in Tailwind components.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>tailwind</tag>
+      <tag>cva</tag>
+      <tag>variants</tag>
+      <tag>components</tag>
+      <tag>design-patterns</tag>
+    </tags>
+    <languages>
+      <language>typescript</language>
+      <language>javascript</language>
+    </languages>
+    <frameworks>
+      <framework>react</framework>
+      <framework>vue</framework>
+      <framework>svelte</framework>
+    </frameworks>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Tailwind Patterns with CVA</title>
+
+    <summary>Tailwind Patterns covers reusable variant composition on top of an existing Tailwind project using `cva()` (class-variance-authority) for type-safe variant definitions and `cn()` (clsx + tailwind-merge) for conflict-safe class merging. Every component has one `cva()` block next to it; variants describe intent (`tone="danger"`) not style (`color="red"`). Dynamic class interpolation (`bg-${color}-500`) is forbidden — JIT purges interpolated strings.</summary>
+
+    <why>
+      <p>Raw utility strings copied across components defeat the utility-first value proposition. `cva()` turns variant logic into a typed API that agents can extend without introducing class conflicts or tailwind-merge collisions. The pattern also makes components friendly to visual regression: Storybook can matrix every variant automatically.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Existing Tailwind project needing reusable variant patterns (button, badge, card, input) without pulling in a UI library.</item>
+        <item>Type-safe class composition via `cva()` + `cn()` for AI-generated components.</item>
+        <item>Migrating ad-hoc utility soup into named components without giving up utility-first.</item>
+        <item>Building a private design system on top of Tailwind for a single product.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Project does not yet have Tailwind configured — start with the `tailwind` methodology first.</item>
+        <item>Static marketing site that ships once and is never refactored; raw utilities are fine.</item>
+        <item>Team prefers CSS Modules or styled-components — mixing paradigms doubles the surface area.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="one-cva-per-component">
+      <rule>
+        <statement>Define one `cva()` block per component, colocated in the component file. Never centralize variant definitions across multiple components in a shared variants file.</statement>
+        <rationale>Centralized variant files create invisible coupling. A change to a shared cva() block breaks components that import it. Colocation keeps the component self-contained and diffable.</rationale>
+      </rule>
+    </section>
+
+    <section name="intent-based-variant-names">
+      <rule>
+        <statement>Name variants by intent, not by style: `tone="danger"` not `color="red"`, `size="sm"` not `padding="small"`. Variant values must map to design tokens, not raw Tailwind classes.</statement>
+        <rationale>Intent names decouple component API from implementation. When the brand changes "danger" from red to orange, only the cva() mapping changes — callers are unaffected.</rationale>
+      </rule>
+    </section>
+
+    <section name="no-dynamic-class-interpolation">
+      <rule>
+        <statement>Never build Tailwind class names with template literals or string interpolation (`bg-${color}-500`). Use lookup objects with full literal class strings.</statement>
+        <rationale>Tailwind's JIT compiler scans for string literals. Interpolated strings are not statically analyzable — the class is purged from the output CSS and the component renders unstyled.</rationale>
+      </rule>
+    </section>
+
+    <section name="cn-mandatory">
+      <rule>
+        <statement>Always merge className overrides through `cn()` (clsx + tailwind-merge). Never pass raw className strings to JSX elements alongside cva() output.</statement>
+        <rationale>Without tailwind-merge, conflicting utility classes (e.g. `p-2 p-4`) resolve non-deterministically. cn() makes the last-wins rule explicit and predictable for agents.</rationale>
+      </rule>
+    </section>
+
+    <section name="data-selectors-over-imperative-toggling">
+      <rule>
+        <statement>Use Tailwind data-* selectors (`data-[state=open]:opacity-100`) instead of toggling class names imperatively via JavaScript. State drives data attributes, not class lists.</statement>
+        <rationale>Class toggling in JS creates a second source of truth. data-* selectors are declarative, visible in markup, and compatible with Radix UI's built-in state attributes.</rationale>
+      </rule>
+    </section>
+
+    <section name="compoundvariants-usage">
+      <rule>
+        <statement>Use `compoundVariants` only for overrides that apply when two or more specific variant values co-occur. Do not use them to define new base variants.</statement>
+        <rationale>Misusing compoundVariants as a variant slot bloats the cva() config and confuses type inference. New visual states deserve a first-class variant, not a compound override.</rationale>
+      </rule>
+    </section>
+
+    <section name="button-with-cva">
+      <example type="good" title="Button Component with CVA Variants">
+        <code lang="typescript"><![CDATA[
+// components/button.tsx
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  [
+    "inline-flex items-center justify-center font-medium rounded-md",
+    "transition-colors focus-visible:outline-none focus-visible:ring-2",
+    "focus-visible:ring-ring focus-visible:ring-offset-2",
+    "disabled:pointer-events-none disabled:opacity-50",
+  ],
+  {
+    variants: {
+      tone: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        danger: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        outline: "border border-input bg-background hover:bg-accent",
+      },
+      size: {
+        sm: "h-9 px-3 text-sm",
+        md: "h-10 px-4",
+        lg: "h-11 px-8",
+        icon: "h-10 w-10",
+      },
+    },
+    defaultVariants: { tone: "default", size: "md" },
+  }
+)
+
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+  VariantProps<typeof buttonVariants>
+
+export function Button({ tone, size, className, ...props }: ButtonProps) {
+  return (
+    <button className={cn(buttonVariants({ tone, size }), className)} {...props} />
+  )
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="input-with-cva-state-variants">
+      <example type="good" title="Input Component with State Variants">
+        <code lang="typescript"><![CDATA[
+// components/input.tsx
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/utils"
+
+const inputVariants = cva(
+  [
+    "w-full rounded-md border bg-background px-3 py-2 text-sm",
+    "focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent",
+    "disabled:cursor-not-allowed disabled:opacity-50",
+    "placeholder:text-muted-foreground",
+  ],
+  {
+    variants: {
+      state: {
+        default: "border-input",
+        error: "border-destructive focus:ring-destructive",
+        success: "border-green-500 focus:ring-green-500",
+      },
+    },
+    defaultVariants: { state: "default" },
+  }
+)
+
+interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement>,
+    VariantProps<typeof inputVariants> {
+  label?: string
+  error?: string
+  hint?: string
+}
+
+export function Input({ label, error, hint, state, className, id, ...props }: InputProps) {
+  const inputId = id ?? label?.toLowerCase().replace(/\s+/g, "-")
+  return (
+    <div className="space-y-1">
+      {label && (
+        <label htmlFor={inputId} className="block text-sm font-medium text-foreground">
+          {label}{props.required && <span className="text-destructive ml-1">*</span>}
+        </label>
+      )}
+      <input
+        id={inputId}
+        className={cn(inputVariants({ state: error ? "error" : state }), className)}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
+        {...props}
+      />
+      {error && <p id={`${inputId}-error`} className="text-sm text-destructive">{error}</p>}
+      {hint && !error && <p id={`${inputId}-hint`} className="text-sm text-muted-foreground">{hint}</p>}
+    </div>
+  )
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="card-compound-pattern">
+      <example type="good" title="Card Compound Pattern">
+        <code lang="typescript"><![CDATA[
+// Simple Card using Tailwind tokens, no cva() needed (no variants)
+import { cn } from "@/lib/utils"
+
+function Card({ className, children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <div className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)}>
+      {children}
+    </div>
+  )
+}
+
+function CardHeader({ className, children }: { className?: string; children: React.ReactNode }) {
+  return <div className={cn("flex flex-col space-y-1.5 p-6", className)}>{children}</div>
+}
+
+function CardContent({ className, children }: { className?: string; children: React.ReactNode }) {
+  return <div className={cn("p-6 pt-0", className)}>{children}</div>
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="dark-mode-with-data-state">
+      <example type="good" title="Dark Mode Using data-* Attributes">
+        <code lang="typescript"><![CDATA[
+// Prefer CSS variables (bg-background) over dark: prefix when using shadcn tokens
+// Use dark: prefix only for components that do not use CSS variable tokens
+function Sidebar({ isOpen }: { isOpen: boolean }) {
+  return (
+    <aside
+      data-open={isOpen}
+      className={cn(
+        "fixed inset-y-0 left-0 w-64 border-r bg-background",
+        // data-* selector instead of conditional class toggling
+        "translate-x-0 data-[open=false]:-translate-x-full",
+        "transition-transform duration-200 ease-in-out",
+      )}
+    >
+      {/* content */}
+    </aside>
+  )
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>Agents use string template interpolation: `bg-${tone}-500`.</description>
+        <reason>JIT scans for string literals only. Interpolated class names are purged from the output CSS. Use lookup objects with full class strings.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents propose @apply chains in a shared stylesheet to abstract variants.</description>
+        <reason>@apply in a global stylesheet defeats the per-component variant pattern. Variants belong in cva() next to the component. Reject @apply usage outside globals.css reset helpers.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents add new colors to tailwind.config but forget the matching CSS variable in globals.css.</description>
+        <reason>The build succeeds (TypeScript passes) but dark mode renders the wrong color. Every new token in config needs a corresponding --token-name entry in both :root and .dark blocks.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/cn.ts" purpose="Canonical cn() helper (clsx + tailwind-merge)."/>
+      <template path="templates/button.tsx" purpose="Full Button component with cva() variants (primary, secondary, outline, ghost, danger) and sizes."/>
+      <template path="templates/input.tsx" purpose="Input component with label, error, hint, aria wiring, and cva() state variants."/>
+      <template path="templates/check-no-interp-classes.sh" purpose="CI guard: fail on dynamic Tailwind class interpolation."/>
+    </templates>
+
+    <see-also>
+      <link href="https://cva.style"/>
+      <link href="https://github.com/dcastil/tailwind-merge"/>
+      <link href="https://github.com/lukeed/clsx"/>
+      <link href="https://tailwindcss.com/docs"/>
+      <ref slug="tailwind"/>
+      <ref slug="tailwind-architecture"/>
+    </see-also>
+  </content>
+</methodology>
