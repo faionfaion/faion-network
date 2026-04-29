@@ -1,0 +1,790 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-channels">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Channels are Go's primary mechanism for communication between goroutines. This methodology covers channel patterns, pipelines, and select operations for building concurrent data processing systems.</summary>
+    <category>backend</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>go</tag>
+      <tag>concurrency</tag>
+      <tag>channels</tag>
+      <tag>pipelines</tag>
+      <tag>goroutines</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Go Channels and Pipeline Patterns</title>
+
+    <summary>Channels are Go's primary mechanism for communication between goroutines. Use channels to build data pipelines, coordinate multiple goroutines, distribute work to parallel workers, merge results, and manage event-driven systems. Always use context for cancellation, close channels from the sender side, and test with race detector to prevent deadlocks and data races.</summary>
+
+    <why>
+      <p>Channels solve the core concurrency problem: how do goroutines safely communicate without shared mutable state? They enforce a programming model where data flows through stages (producer, transform, consumer) instead of multiple threads racing to modify shared memory. The select statement multiplexes across multiple channel operations, timeouts, and cancellation signals, making it natural to build responsive systems that don't block waiting for slow I/O.</p>
+      <p>The pattern prevents common concurrency bugs: channels explicitly encode ownership (the goroutine that creates a channel is responsible for closing it), and the type system (receive-only and send-only types) catches accidental misuse at compile time. Context integration allows graceful shutdown across arbitrarily deep call stacks without global state.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Data pipeline processing where output of one stage feeds input of the next.</item>
+        <item>Event-driven systems where goroutines react to events from multiple sources.</item>
+        <item>Coordinating multiple goroutines without shared memory mutation.</item>
+        <item>Building producer-consumer patterns and pub-sub systems.</item>
+        <item>Multiplexing I/O sources (network, timers, done signals) in a single goroutine.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Shared mutable state with random access. Use sync.Mutex or sync.Map instead; channels are not a database.</item>
+        <item>Single-producer/single-consumer with predictable order. A slice plus for loop is simpler and faster.</item>
+        <item>Cross-process communication. Use a real queue (Kafka/RabbitMQ/NATS); channels die with the process.</item>
+        <item>Replacing function calls with goroutines plus channels just to feel async. You add scheduling cost, lose stack traces, and gain race-condition risk.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="key-principles">
+      <p>These principles guide safe channel use:</p>
+      <rule testable="true">
+        <statement>Channels are first-class values. Pass them as parameters to functions so the function signature makes ownership explicit.</statement>
+        <rationale>Explicit parameter passing makes it clear which goroutine owns the channel and who is responsible for closing it.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Close channels from sender side only. Receivers detect closure; attempting to close a receive-only channel is a compile error.</statement>
+        <rationale>This prevents panic on send-to-closed-channel. The compiler enforces this rule if you use directional channel types.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use buffered channels to decouple sender from receiver only when you can name a backpressure policy. Default to unbuffered.</statement>
+        <rationale>Buffered channels mask backpressure; once full they block silently and the upstream stage stalls. Unbuffered channels force synchronous handoff and immediately expose bottlenecks.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use select for multiplexing multiple channel operations, timeouts, and cancellation. Remember that select chooses a ready case pseudo-randomly if multiple are ready. Do not assume priority order.</statement>
+        <rationale>Pseudo-random selection prevents starvation and makes code resilient to ordering assumptions. Agents that assume priority order write fragile code.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use context.Done() for cancellation in every goroutine that may block on channel operations. Always include a case for context.Done() in select statements.</statement>
+        <rationale>Context propagates cancellation signals gracefully and prevents goroutine leaks when the consumer disappears.</rationale>
+      </rule>
+    </section>
+
+    <section name="pipeline-pattern">
+      <p>A pipeline chains stages where each stage is a function that takes an input channel and returns an output channel. Each stage owns its output channel and closes it when done.</p>
+
+      <rule testable="true">
+        <statement>Pipeline stages MUST have identical structure: accept context, accept input channel (receive-only), return output channel (send-only), spawn exactly one goroutine, defer close(output), loop over input with select on context.Done().</statement>
+        <rationale>This uniform structure prevents goroutine leaks and makes the ownership model obvious to readers and reviewers.</rationale>
+      </rule>
+
+      <example type="good" title="Three-stage pipeline with context cancellation">
+        <code lang="go"><![CDATA[
+package pipeline
+
+import "context"
+
+// Stage 1: Generate numbers
+func generate(ctx context.Context, nums ...int) <-chan int {
+    out := make(chan int)
+    go func() {
+        defer close(out)
+        for _, n := range nums {
+            select {
+            case out <- n:
+            case <-ctx.Done():
+                return
+            }
+        }
+    }()
+    return out
+}
+
+// Stage 2: Square numbers
+func square(ctx context.Context, in <-chan int) <-chan int {
+    out := make(chan int)
+    go func() {
+        defer close(out)
+        for n := range in {
+            select {
+            case out <- n * n:
+            case <-ctx.Done():
+                return
+            }
+        }
+    }()
+    return out
+}
+
+// Stage 3: Filter even numbers
+func filterEven(ctx context.Context, in <-chan int) <-chan int {
+    out := make(chan int)
+    go func() {
+        defer close(out)
+        for n := range in {
+            if n%2 == 0 {
+                select {
+                case out <- n:
+                case <-ctx.Done():
+                    return
+                }
+            }
+        }
+    }()
+    return out
+}
+
+// Usage
+func main() {
+    ctx, cancel := context.WithCancel(context.Background())
+    defer cancel()
+
+    // Build pipeline
+    nums := generate(ctx, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    squared := square(ctx, nums)
+    even := filterEven(ctx, squared)
+
+    for n := range even {
+        fmt.Println(n)
+    }
+}
+]]></code>
+        <note>Every stage owns its output channel, closes it on return, and respects context.Done(). Canceling the context unwinds all stages cleanly.</note>
+      </example>
+
+      <antipattern>
+        <description>Building a pipeline where one stage forgets to include the context.Done() case in its select statement.</description>
+        <reason>That stage will block indefinitely on send if the consumer disappears, causing a goroutine leak.</reason>
+      </antipattern>
+    </section>
+
+    <section name="fan-out-fan-in">
+      <p>Fan-out distributes work from a single source to multiple worker goroutines. Fan-in merges results from multiple workers back into a single channel.</p>
+
+      <rule testable="true">
+        <statement>Fan-out functions MUST return a slice of output channels, one per worker, all receiving from the same input. Fan-in functions MUST use sync.WaitGroup to track worker completion and close the merged output only after all workers have exited.</statement>
+        <rationale>This prevents the common bug of closing the output channel before the last worker has finished sending. WaitGroup ensures we wait for all workers before closing.</rationale>
+      </rule>
+
+      <example type="good" title="Fan-in merging multiple worker outputs">
+        <code lang="go"><![CDATA[
+func fanIn(ctx context.Context, channels ...<-chan int) <-chan int {
+    out := make(chan int)
+    var wg sync.WaitGroup
+
+    output := func(c <-chan int) {
+        defer wg.Done()
+        for n := range c {
+            select {
+            case out <- n:
+            case <-ctx.Done():
+                return
+            }
+        }
+    }
+
+    wg.Add(len(channels))
+    for _, c := range channels {
+        go output(c)
+    }
+
+    go func() {
+        wg.Wait()
+        close(out)
+    }()
+
+    return out
+}
+]]></code>
+        <note>Each worker goroutine calls wg.Done() on exit. The final goroutine waits for all workers, then closes output. This ensures no send-on-closed-channel panic.</note>
+      </example>
+
+      <antipattern>
+        <description>Closing the fan-in output channel inside the worker loop instead of waiting for all workers to complete.</description>
+        <reason>Some workers may still be sending when the output is closed, causing a panic.</reason>
+      </antipattern>
+    </section>
+
+    <section name="select-and-timeout">
+      <p>The select statement blocks on the first ready channel case. Add context timeouts and cancellation by including appropriate cases.</p>
+
+      <rule testable="true">
+        <statement>Use time.NewTimer and reuse it in loops instead of time.After inside long-running select statements. time.After leaks until the timer fires.</statement>
+        <rationale>Each time.After call allocates a timer that doesn't fire until the timeout expires, accumulating garbage in the timer heap. Reusing a timer prevents leaks.</rationale>
+      </rule>
+
+      <example type="good" title="Timeout with select">
+        <code lang="go"><![CDATA[
+func fetchWithTimeout(url string, timeout time.Duration) (string, error) {
+    ctx, cancel := context.WithTimeout(context.Background(), timeout)
+    defer cancel()
+
+    resultCh := make(chan string, 1)
+    errCh := make(chan error, 1)
+
+    go func() {
+        result, err := doFetch(ctx, url)
+        if err != nil {
+            errCh <- err
+            return
+        }
+        resultCh <- result
+    }()
+
+    select {
+    case result := <-resultCh:
+        return result, nil
+    case err := <-errCh:
+        return "", err
+    case <-ctx.Done():
+        return "", fmt.Errorf("timeout after %v", timeout)
+    }
+}
+
+// Race multiple requests, return first success
+func fetchFirst(ctx context.Context, urls []string) (string, error) {
+    ctx, cancel := context.WithCancel(ctx)
+    defer cancel()
+
+    resultCh := make(chan string, len(urls))
+
+    for _, url := range urls {
+        go func(u string) {
+            result, err := doFetch(ctx, u)
+            if err == nil {
+                resultCh <- result
+            }
+        }(url)
+    }
+
+    select {
+    case result := <-resultCh:
+        return result, nil
+    case <-ctx.Done():
+        return "", ctx.Err()
+    }
+}
+]]></code>
+        <note>The second example cancels all remaining requests as soon as the first succeeds, preventing wasted network calls.</note>
+      </example>
+
+      <example type="bad" title="time.After inside loop">
+        <code lang="go"><![CDATA[
+for {
+    select {
+    case <-time.After(5 * time.Second):  // BAD: leaks timer if other case fires
+        doTask()
+    case <-done:
+        return
+    }
+}
+]]></code>
+        <note>Every iteration creates a new timer. If done fires, the timer stays allocated until it expires.</note>
+      </example>
+    </section>
+
+    <section name="broadcast-pattern">
+      <p>Broadcasting sends a message to N dynamic subscribers without a message broker. Protect the subscriber map with a mutex; subscribers receive on buffered channels so slow subscribers don't block the broadcaster.</p>
+
+      <example type="good" title="Broadcaster with subscriber map">
+        <code lang="go"><![CDATA[
+type Broadcaster struct {
+    mu          sync.RWMutex
+    subscribers map[int]chan interface{}
+    nextID      int
+}
+
+func New() *Broadcaster {
+    return &Broadcaster{
+        subscribers: make(map[int]chan interface{}),
+    }
+}
+
+func (b *Broadcaster) Subscribe() (int, <-chan interface{}) {
+    b.mu.Lock()
+    defer b.mu.Unlock()
+
+    id := b.nextID
+    b.nextID++
+
+    ch := make(chan interface{}, 1)
+    b.subscribers[id] = ch
+
+    return id, ch
+}
+
+func (b *Broadcaster) Unsubscribe(id int) {
+    b.mu.Lock()
+    defer b.mu.Unlock()
+
+    if ch, exists := b.subscribers[id]; exists {
+        close(ch)
+        delete(b.subscribers, id)
+    }
+}
+
+func (b *Broadcaster) Broadcast(msg interface{}) {
+    b.mu.RLock()
+    defer b.mu.RUnlock()
+
+    for _, ch := range b.subscribers {
+        select {
+        case ch <- msg:
+        default:
+            // Skip slow subscriber
+        }
+    }
+}
+]]></code>
+        <note>Buffered subscriber channels allow non-blocking send via default case. Slow subscribers that don't read are skipped without blocking the broadcaster.</note>
+      </example>
+    </section>
+
+    <section name="done-channel-and-ordone">
+      <p>The done-channel pattern uses a single done channel to signal all goroutines to stop. The or-done pattern wraps a data channel to simplify select with done.</p>
+
+      <example type="good" title="Done channel for broadcast cancellation">
+        <code lang="go"><![CDATA[
+func worker(done <-chan struct{}) {
+    for {
+        select {
+        case <-done:
+            fmt.Println("Worker stopping")
+            return
+        default:
+            // Do work
+            time.Sleep(100 * time.Millisecond)
+            fmt.Println("Working...")
+        }
+    }
+}
+
+func main() {
+    done := make(chan struct{})
+
+    go worker(done)
+    go worker(done)
+
+    time.Sleep(1 * time.Second)
+
+    // Signal all workers to stop
+    close(done)
+
+    time.Sleep(200 * time.Millisecond)
+}
+]]></code>
+        <note>Closing the done channel broadcasts to all workers at once. No need to close multiple channels; one close signal stops everyone.</note>
+      </example>
+
+      <example type="good" title="Or-done pattern">
+        <code lang="go"><![CDATA[
+// Wraps channel to simplify select with done
+func orDone(done <-chan struct{}, c <-chan interface{}) <-chan interface{} {
+    out := make(chan interface{})
+    go func() {
+        defer close(out)
+        for {
+            select {
+            case <-done:
+                return
+            case v, ok := <-c:
+                if !ok {
+                    return
+                }
+                select {
+                case out <- v:
+                case <-done:
+                    return
+                }
+            }
+        }
+    }()
+    return out
+}
+
+// Usage: iterate over data channel, but respect done signal
+func main() {
+    done := make(chan struct{})
+    defer close(done)
+
+    data := make(chan interface{})
+    go func() {
+        for i := 0; i < 10; i++ {
+            data <- i
+        }
+        close(data)
+    }()
+
+    // Simplified iteration with orDone
+    for val := range orDone(done, data) {
+        fmt.Println(val)
+    }
+}
+]]></code>
+        <note>Or-done eliminates the need to duplicate context.Done() cases in every inner select; the wrapper handles it.</note>
+      </example>
+    </section>
+
+    <section name="tee-channel">
+      <p>The tee channel splits a single input stream into two output streams, sending each value to both outputs.</p>
+
+      <example type="good" title="Tee channel with explicit variable names">
+        <code lang="go"><![CDATA[
+func tee(done <-chan struct{}, in <-chan interface{}) (<-chan interface{}, <-chan interface{}) {
+    out1 := make(chan interface{})
+    out2 := make(chan interface{})
+
+    go func() {
+        defer close(out1)
+        defer close(out2)
+
+        for val := range orDone(done, in) {
+            // Send to both outputs
+            var out1Ch, out2Ch = out1, out2
+            for i := 0; i < 2; i++ {
+                select {
+                case <-done:
+                    return
+                case out1Ch <- val:
+                    out1Ch = nil
+                case out2Ch <- val:
+                    out2Ch = nil
+                }
+            }
+        }
+    }()
+
+    return out1, out2
+}
+]]></code>
+        <note>The pattern uses explicit variable shadowing: each iteration, the channels are renamed to nil after sending, forcing the next select to skip them. This avoids the copy-paste footgun of reusing variable names from outer scopes.</note>
+      </example>
+
+      <antipattern>
+        <description>The classic tee snippet shadows the names out1 and out2 without renaming, then uses the same names inside the inner select.</description>
+        <reason>This is a known footgun in the Go community; agents copy it verbatim and it works by accident because the shadowed variables are the ones you want, but it is fragile and confusing.</reason>
+      </antipattern>
+    </section>
+
+    <section name="common-anti-patterns">
+      <p>Avoid these patterns that cause deadlocks, panics, and goroutine leaks:</p>
+
+      <antipattern>
+        <description>Sending on a closed channel.</description>
+        <reason>Panics. Always ensure the sender never closes; only the receiver-side goroutine that owns the channel may close it.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Attempting to close a receive-only channel. This is a compile error, but only if you use directional types.</description>
+        <reason>The compiler prevents this if you use receive-only types in your function signature. Bidirectional channels allow accidental close.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using range on an unbuffered channel whose producer never closes.</description>
+        <reason>Range waits for close(); if the sender never closes, range blocks forever.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Buffered channels masking backpressure. Setting a buffer size without a documented capacity rationale.</description>
+        <reason>Once the buffer fills, send blocks silently. The upstream stage stalls and the root cause is hard to diagnose. Always document why you buffered.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using select with a default case for real work to poll without blocking.</description>
+        <reason>This creates a busy-wait loop that burns CPU. Use a timer or block normally instead.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Goroutine leaks in fan-in: workers block on send forever if the consumer disappeared.</description>
+        <reason>Always include context.Done() in send operations inside workers so they can exit when cancelled.</reason>
+      </antipattern>
+    </section>
+
+    <section name="testing-channel-code">
+      <p>Channel code is inherently concurrent and race-prone. Always run tests with the race detector and goleak to verify no goroutines leak.</p>
+
+      <rule testable="true">
+        <statement>Every test that spawns goroutines MUST call defer goleak.VerifyNone(t) at the top. Every channel-heavy test MUST run with go test -race -count=10 to surface flaky concurrency bugs.</statement>
+        <rationale>The race detector finds data races at runtime. Running with -count=10 reruns the test 10 times to surface timing-dependent bugs. Goleak ensures no goroutines are leaked at test cleanup.</rationale>
+      </rule>
+
+      <example type="good" title="Channel test with race detection and leak check">
+        <code lang="go"><![CDATA[
+func TestPipelineWithCancellation(t *testing.T) {
+    defer goleak.VerifyNone(t)
+
+    ctx, cancel := context.WithCancel(context.Background())
+    out := generate(ctx, 1, 2, 3, 4, 5)
+    squared := square(ctx, out)
+
+    // Read one value, then cancel
+    val := <-squared
+    if val != 1 {
+        t.Errorf("got %d, want 1", val)
+    }
+
+    cancel()
+
+    // Drain remaining values; pipeline must close output
+    timeout := time.After(2 * time.Second)
+    for {
+        select {
+        case _, ok := <-squared:
+            if !ok {
+                return // Success: output closed
+            }
+        case <-timeout:
+            t.Fatal("pipeline did not close output after cancel")
+        }
+    }
+}
+]]></code>
+        <note>Run with: go test -race -count=10 ./... The race detector will flag any data races; goleak will verify no goroutines leak.</note>
+      </example>
+    </section>
+
+    <section name="agent-workflow">
+      <p>When using AI agents to build channel code, treat topologies as small graphs that the agent must diagram (in comments) before coding: sources, stages, sinks, and shutdown signals. Always run go test -race and go vet after every channel change; the data-race detector catches most concurrency mistakes that escape review. For non-trivial pipelines, ask a reviewer agent to enumerate every goroutine and prove: (a) it has an exit condition, (b) something closes its input, (c) the receiver isn't dropped before the sender stops.</p>
+
+      <p>Closing a channel from the wrong side (receiver side) panics; agents conflate "stop reading" with "close". The range ch blocks forever if the producer never closes; this is the README's anti-pattern and the most common LLM-generated bug. Buffered channels mask backpressure; once full, they block silently and the upstream stage stalls. The tee-channel snippet from common examples has shadow-name bugs (out1, out2 rebound inside the loop); this is a common copy-paste hazard. Select chooses pseudo-randomly; agents that assume priority order (e.g., done always wins) write fragile code. Goroutine leaks inside fan-in are nearly invisible; workers block on send forever if the consumer disappeared.</p>
+
+      <rule testable="true">
+        <statement>LLMs default to make(chan T) (unbuffered) but then write ch &lt;- x outside any goroutine — instant deadlock. Force select or buffered with rationale.</statement>
+        <rationale>Unbuffered channels require both sender and receiver to be ready simultaneously. If you send outside a goroutine, the receiver must also be running, or the send deadlocks.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Do not use select { case &lt;-done: ... default: ... } to poll without blocking. Reject busy-wait loops in review where real work happens in default.</statement>
+        <rationale>Busy-wait loops burn CPU. Either block on a timer or a real channel operation.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Do not mix sync.Mutex and channels in the same data structure to be safe. Pick one concurrency model per data structure.</statement>
+        <rationale>The resulting code is both slow and harder to reason about.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Nil channel in select blocks forever (intentional pattern, but easy to introduce by accident). Flag any var ch chan T declaration without a make.</statement>
+        <rationale>A nil channel on the receive side of select will never fire, causing the select to block. This is sometimes intentional (used to disable a branch), but usually accidental.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Any new long-lived goroutine (lifetime greater than or equal to request) needs explicit reviewer approval naming the owner, the cancellation source, and the metric/log emitted on exit.</statement>
+        <rationale>Long-lived goroutines are easy to leak. Explicit approval ensures the lifecycle is well-defined.</rationale>
+      </rule>
+    </section>
+
+    <section name="tools-and-libraries">
+      <p>Essential tools and libraries for working with channels:</p>
+
+      <list>
+        <item>go test -race: Race detector. Non-negotiable for channel code. Run with -count=N to disable test cache and surface flaky concurrency bugs.</item>
+        <item>go vet: Catches unkeyed composite literals and lostcancel issues.</item>
+        <item>staticcheck: SA1015 (time.After leak), SA4031 (nil channel select).</item>
+        <item>pprof (/debug/pprof/goroutine): Inspect leaked goroutines at runtime.</item>
+        <item>goleak (Uber): Asserts no leaked goroutines at test teardown.</item>
+        <item>gops: Live goroutine count of a running process.</item>
+        <item>delve: Step-debug goroutines, inspect channel state.</item>
+        <item>golang.org/x/sync/errgroup: Replaces ad-hoc WaitGroup plus errCh in fan-out. Agent should default to it.</item>
+        <item>golang.org/x/sync/semaphore: Use instead of hand-rolled chan struct{} semaphores when N is large or dynamic.</item>
+        <item>eapache/channels: Generic channel utilities (infinite, batching). Useful but extra dependency.</item>
+        <item>nats.io (in-proc): When the channel pattern outgrows one process, NATS is the smallest jump.</item>
+        <item>Datadog/OTel goroutine metrics: Track go_goroutines to alert on leaks.</item>
+      </list>
+    </section>
+
+    <section name="best-practices-summary">
+      <p>Distilled from real production channel code:</p>
+
+      <list>
+        <item>The goroutine that creates a channel owns its close. Document this on every channel-returning function.</item>
+        <item>Use directional channel types (send-only chan&lt;- and receive-only &lt;-chan) in signatures so the compiler enforces direction. Agents otherwise pass bidirectional channels and accidentally close the input.</item>
+        <item>Replace time.After inside long-running select loops with a reused time.NewTimer. time.After leaks until the timer fires.</item>
+        <item>Prefer errgroup.WithContext for fan-out with errors. It cancels siblings on first failure and bounds goroutines.</item>
+        <item>Set a buffer capacity only when you can name a backpressure policy (drop oldest, block producer for N ms); otherwise default to unbuffered.</item>
+        <item>Add defer goleak.VerifyNone(t) (or goleak.VerifyTestMain) to test files that spawn goroutines.</item>
+      </list>
+    </section>
+
+    <section name="implementation-checklist">
+      <p>When implementing a new channel-based system, use this checklist to ensure completeness and correctness.</p>
+
+      <rule testable="true">
+        <statement>Phase 1: Requirements and Technology Assessment. Document current implementation if it exists. Identify pain points and limitations. Measure baseline metrics. List technical debt. Gather stakeholder requirements. Set performance targets. Define quality attributes. Establish testing requirements. Document constraints. Identify risks and mitigations. Evaluate tool options: Go runtime, context package. Consider team expertise. Review infrastructure compatibility. Assess maintenance burden. Calculate total cost of ownership.</statement>
+        <rationale>Before writing code, understand what you are solving and what constraints exist. This prevents building the wrong solution.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Phase 2: Design. Define overall structure. Identify components and boundaries. Plan data flow. Design error handling strategy. Document key decisions. Define public APIs. Design data models. Plan configuration management. Create integration points. Document contracts. Identify security requirements. Plan authentication/authorization. Review data protection needs. Plan audit logging. Document threat model.</statement>
+        <rationale>Architecture and design decisions should be explicit and documented. Design reviews catch issues before implementation.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Phase 3: Implementation. Initialize project structure. Configure development environment. Set up CI/CD pipeline. Configure linting and formatting. Initialize testing framework. Implement main functionality. Add error handling. Implement logging. Add metrics and monitoring. Write documentation. Integrate with existing systems. Implement adapters and bridges. Add feature flags. Configure deployment. Plan rollout strategy.</statement>
+        <rationale>Follow a systematic implementation process. Each step builds on the previous one.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Phase 4: Testing. Write unit tests with greater than 80% coverage. Test edge cases. Test error scenarios. Mock external dependencies. Verify assertions. Test component interactions. Verify data persistence. Test external integrations. Validate configuration. Test deployment process. Benchmark critical paths. Load test under realistic traffic. Test scaling behavior. Identify bottlenecks. Optimize hot paths.</statement>
+        <rationale>Testing is not optional for concurrent code. Race-condition bugs are hard to find in production.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Phase 5: Deployment. Review code changes. Run full test suite. Update documentation. Prepare rollback plan. Schedule deployment window. Deploy to staging. Smoke test staging. Deploy to production (canary or blue-green). Monitor metrics during rollout. Verify functionality. Monitor error rates. Check performance metrics. Gather user feedback. Document lessons learned. Plan follow-up improvements.</statement>
+        <rationale>Deployment is not the end; careful rollout and monitoring ensure stability.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Phase 6: Monitoring and Maintenance. Set up logging. Configure metrics collection. Enable distributed tracing. Create dashboards. Set up alerts. Monitor for issues. Address bug reports. Update dependencies. Refactor as needed. Optimize performance. Maintain code documentation. Update runbooks. Document operational procedures. Create troubleshooting guides. Share knowledge with team.</statement>
+        <rationale>Production systems require ongoing care. Monitoring catches problems early; documentation prevents knowledge loss.</rationale>
+      </rule>
+    </section>
+
+    <section name="prompt-patterns-for-ai">
+      <p>Effective patterns for using AI agents to generate and review channel code:</p>
+
+      <example type="good" title="Architecture and design prompt">
+        <code lang="text"><![CDATA[
+I need to implement go channels for my project.
+
+Context:
+- Project type: [web app / API / microservice / CLI]
+- Scale: [X requests/sec, Y concurrent users]
+- Infrastructure: [AWS / GCP / on-premise / Kubernetes]
+
+Requirements:
+- [Requirement 1]
+- [Requirement 2]
+- [Requirement 3]
+
+Constraints:
+- [Constraint 1]
+- [Constraint 2]
+
+Please provide:
+1. Recommended architecture
+2. Technology choices
+3. Implementation approach
+4. Key trade-offs
+5. Risk mitigations
+]]></code>
+        <note>Start with architecture before diving into code. This ensures the agent understands the problem domain.</note>
+      </example>
+
+      <example type="good" title="Implementation with testing and auditing">
+        <code lang="text"><![CDATA[
+Generate go channels implementation for [language].
+
+Requirements:
+- Focus: Channel patterns, buffering, select, context
+- Features:
+  - [Feature 1]
+  - [Feature 2]
+  - [Feature 3]
+- Error handling: [strategy]
+- Testing: [unit/integration]
+
+Include:
+1. Core implementation
+2. Error handling
+3. Logging
+4. Tests with goleak verification
+5. Documentation
+6. Usage examples
+
+Then, audit pipeline.go: list every go func. For each row state:
+- who closes the input
+- who closes the output
+- what causes exit
+- max blocked time on send
+
+Reject if any row has "unknown".
+]]></code>
+        <note>Always request tests and auditing. Human reviewers should not approve untested concurrent code.</note>
+      </example>
+
+      <example type="good" title="Review for production readiness">
+        <code lang="text"><![CDATA[
+Review this go channels code:
+[paste code]
+
+Check:
+1. Best practices
+2. Performance
+3. Security
+4. Testability
+5. Error handling
+6. Goroutine lifecycle
+
+Specifically verify:
+- Every goroutine has an exit condition
+- Channel ownership is clear (who closes what)
+- Context cancellation is respected
+- No deadlock risk
+- No goroutine leaks (can be verified with goleak)
+
+Provide fixes with explanations.
+]]></code>
+        <note>Code review is critical for concurrent code. Never ship channel code that has not been reviewed by a human and tested with go test -race.</note>
+      </example>
+
+      <example type="good" title="Refactoring for maintainability">
+        <code lang="text"><![CDATA[
+Refactor this go channels code for better maintainability.
+
+Current Issues:
+- [Issue 1]
+- [Issue 2]
+- [Issue 3]
+
+Code:
+[paste code]
+
+Goals:
+- Improve readability
+- Reduce complexity
+- Better error handling
+- Enhanced testability
+- Clearer goroutine lifecycle
+
+Provide refactored code with explanations of each change.
+]]></code>
+        <note>Refactoring for clarity is time well spent with concurrent code. Complex channel topologies are hard to understand and hard to debug.</note>
+      </example>
+    </section>
+
+    <section name="common-patterns-and-variations">
+      <p>Real-world variations on the basic patterns:</p>
+
+      <p>Producer with buffered channel: A producer generates values and sends them to a buffered channel. The buffer allows the producer to get ahead of the consumer without blocking. The consumer processes values at its own pace, reading from the buffered channel until the producer closes it.</p>
+
+      <p>Consumer with processing delay: A consumer reads from a channel and processes each value with a delay. The processing delay simulates real work. Context cancellation allows early exit if needed.</p>
+
+      <p>Or-channel helper: Simplifies select statements by wrapping a data channel and a done channel. The or-done function returns a new channel that closes when either the input closes or done fires. This eliminates the need to repeat done case logic in multiple places.</p>
+
+      <p>Broadcast with slow-subscriber skipping: The broadcaster sends to all subscribers, but skips subscribers that are not ready (via the default case in select). This prevents slow subscribers from blocking the broadcaster. Slow subscribers miss messages but the broadcaster keeps running.</p>
+
+      <p>Timeout patterns for racing requests: Use select with multiple goroutines racing to complete. The first to finish wins. Context cancellation stops the remaining requests, preventing wasted work. Useful for redundancy and failover scenarios where you want the fastest response.</p>
+
+      <p>Goroutine per request: HTTP servers spawn a goroutine per incoming request. Each goroutine has the request lifecycle. The select statement multiplexes timeouts, cancellation, and I/O operations. Proper context propagation ensures all work associated with a request is cancelled when the client disconnects or a deadline passes.</p>
+
+      <p>Batch processing with worker pool: A fixed number of worker goroutines read from a jobs channel. Each worker processes a job, sends the result to a results channel, and loops. The fan-in pattern merges results. sync.WaitGroup ensures we don't close results until all workers finish. This pattern is efficient for CPU-bound work and prevents unbounded goroutine growth.</p>
+    </section>
+
+    <see-also>
+      <link href="https://go.dev/blog/pipelines"/>
+      <link href="https://go.dev/blog/context"/>
+      <link href="https://go.dev/blog/io2013-talk-concurrency"/>
+      <link href="https://gobyexample.com/channels"/>
+      <link href="https://go.dev/doc/effective_go#channels"/>
+      <link href="https://github.com/uber-go/goleak"/>
+      <link href="https://pkg.go.dev/golang.org/x/sync/errgroup"/>
+      <link href="https://pkg.go.dev/golang.org/x/sync/semaphore"/>
+      <ref slug="go-goroutines"/>
+      <ref slug="go-error-handling"/>
+    </see-also>
+  </content>
+</methodology>
