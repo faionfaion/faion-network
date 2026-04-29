@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="php-laravel-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Layered Laravel architecture: thin HTTP controllers, services owning business logic, Resources for responses. Form Requests handle validation; no Eloquent calls in controllers.</summary>
+    <tags>
+      <tag>laravel</tag>
+      <tag>architecture</tag>
+      <tag>patterns</tag>
+      <tag>controller</tag>
+      <tag>service</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Laravel Patterns (Controller → Service → Resource)</title>
+    <summary>Layered Laravel architecture: thin HTTP controllers, service classes that own business logic and transactions, Eloquent models accessed through service methods, and API Resources for response shaping. Form Requests handle validation and authorization. No Eloquent calls in controllers; no request() helper in services; inject contracts, not facades.</summary>
+    <why>
+      <p>Fat controllers accumulate unrelated business rules, making them untestable and unmergeable. The Controller/Service/Resource split separates HTTP concerns from domain logic: controllers receive a Request, delegate to a Service, return a Resource. Services own DB::transaction and event dispatch. Resources produce consistent, explicit API contracts and preserve pagination metadata. This is testable at each layer independently.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Greenfield Laravel 10/11/12 APIs that need Controller → Service → Resource layering.</item>
+        <item>Brownfield refactors extracting business logic out of fat controllers.</item>
+        <item>Generating CRUD slices (Controller + FormRequest + Resource + Service + Policy) for new resources.</item>
+        <item>Cross-cutting hardening: FormRequests for validation, Resources for serialization, Services for transactions.</item>
+        <item>Standardizing API versioning (Api\V1\) and Sanctum/Passport authentication at the controller boundary.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Tiny apps (&lt;10 routes) where Service + Resource is over-engineering — Eloquent inside controllers is acceptable.</item>
+        <item>Projects standardized on lorisleiva/laravel-actions or Spatie LaravelData + DDD — check team standard first.</item>
+        <item>Inertia / Livewire / Filament apps where the framework idiom (controller → component) is the boundary.</item>
+        <item>Console-only artisan apps — the controller/FormRequest/Resource trio doesn't apply.</item>
+      </list>
+    </when-not-to-use>
+    <section name="controller-rules">
+      <rule>
+        <statement>Controllers must contain only HTTP-layer logic: receive a Request (or FormRequest), call a single Service method, return a Resource or JsonResponse. No Eloquent calls, no business rules, no validation logic inside controller methods.</statement>
+        <rationale>Controllers that contain business logic cannot be tested without booting the HTTP kernel. Service-level logic is testable in unit tests without HTTP overhead.</rationale>
+      </rule>
+      <rule>
+        <statement>Use FormRequest classes (StoreXRequest, UpdateXRequest) for all writes. Never call $request->all(), $request->validate(), or Validator::make() inside a controller method.</statement>
+        <rationale>FormRequests are the single source of validation and authorization. Inline validation duplicates rules across methods and makes them untestable in isolation.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="php"><![CDATA[
+public function store(StoreUserRequest $request): JsonResponse
+{
+    $user = $this->userService->create($request->validated());
+    return (new UserResource($user))
+        ->response()
+        ->setStatusCode(Response::HTTP_CREATED);
+}
+        ]]></code>
+        <note>Controller receives validated data only — no raw $request->all(). Returns a Resource, not an array or the Eloquent model directly.</note>
+      </example>
+    </section>
+    <section name="service-rules">
+      <rule>
+        <statement>Services own all business logic, DB::transaction boundaries, and event dispatch. Services must not read from the request (no request() helper, no Auth::user() facade) — receive all inputs as explicit method arguments.</statement>
+        <rationale>Services called from queue jobs or CLI commands have no HTTP request context. request() inside a service silently returns null outside HTTP and crashes.</rationale>
+      </rule>
+      <rule>
+        <statement>Inject contracts (Mailer, CacheRepository, Dispatcher) via constructor — do not call Cache::, Mail::, Notification:: facades directly inside services.</statement>
+        <rationale>Facades in services cannot be mocked without facade swap magic. Injected contracts swap cleanly in unit tests.</rationale>
+      </rule>
+      <rule>
+        <statement>DB::transaction must wrap only DB writes. External HTTP calls (Stripe, SES, Slack) go before or after the transaction with idempotency keys — never inside.</statement>
+        <rationale>A DB lock held across a network call creates a deadlock window proportional to the external service's latency. Stripe timeouts with an open transaction can lock rows for seconds.</rationale>
+      </rule>
+    </section>
+    <section name="resource-rules">
+      <rule>
+        <statement>Every API endpoint must return an API Resource or ResourceCollection — never a raw array or the Eloquent model directly. List resources via ResourceCollection (not Resource::collection on a paginator) to preserve pagination meta.</statement>
+        <rationale>Eloquent models expose hidden fields (password, remember_token) and dates in inconsistent formats. Resources produce explicit, versioned contracts. Resource::collection on a paginator silently drops links/meta.</rationale>
+      </rule>
+      <rule>
+        <statement>Resources must not access relations that were not eager-loaded by the calling controller or service. Every relation accessed in toArray() must be listed in a with() or load() call upstream.</statement>
+        <rationale>Lazy relation access inside toArray() produces one query per model in a list — N+1. Telescope flags it in development; it silently degrades production.</rationale>
+      </rule>
+    </section>
+    <section name="policy-rules">
+      <rule>
+        <statement>Create a Policy for every Eloquent model used in a controller. FormRequest's authorize() must delegate to the appropriate Policy method. Never return true from authorize() as a placeholder.</statement>
+        <rationale>Missing policies allow unauthorized access silently. Placeholder authorize() true bypasses authorization entirely without a visible failure.</rationale>
+      </rule>
+    </section>
+    <section name="antipatterns">
+      <antipattern>
+        <description>Eloquent calls inside Controller methods: User::where(...)->get(), Order::find($id), $model->save() directly in a controller action.</description>
+        <reason>Business logic in the controller cannot be tested without the HTTP kernel. When the query logic changes, it must be found and changed in every controller that duplicates it.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Validation via $request->validate() or Validator::make() inside a controller method instead of a FormRequest class.</description>
+        <reason>Inline validation duplicates rules across methods, makes authorize() logic invisible, and cannot be unit-tested without a real Request object.</reason>
+      </antipattern>
+      <antipattern>
+        <description>UserRepository wrapping Eloquent::query() without a second backing implementation (e.g., no ElasticSearch or Redis projection).</description>
+        <reason>Eloquent is already a repository. A wrapper class that delegates to User::query() adds a layer of indirection with no benefit and confuses schema changes (two classes must change instead of one).</reason>
+      </antipattern>
+      <antipattern>
+        <description>request() helper inside Service classes.</description>
+        <reason>Services called from queue workers or CLI commands have no HTTP request context. request() returns null or a partial request and the service crashes silently.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Magic facades (Cache::, Mail::, Notification::) inside Service classes.</description>
+        <reason>Facades are hard to mock without facade swap boilerplate. Injected contracts (Mailer, CacheRepository) swap cleanly in unit tests and express the dependency explicitly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>DB::transaction wrapping external HTTP calls (Stripe::charge, Http::post, Mail::send).</description>
+        <reason>Locks are held for the full duration of the network call. A Stripe timeout at 5s holds a DB row locked for 5s, potentially deadlocking concurrent requests on the same row.</reason>
+      </antipattern>
+      <antipattern>
+        <description>firstOrCreate / updateOrCreate without explicit lockForUpdate under concurrent load.</description>
+        <reason>Two concurrent requests both miss the existing row, both attempt insert, and the second hits a unique constraint violation. Use upsert() or wrap in DB::transaction + lockForUpdate().</reason>
+      </antipattern>
+      <antipattern>
+        <description>Resource accessing relations not eager-loaded by the caller: $this->profile->name inside toArray() without with('profile') in the controller.</description>
+        <reason>Lazy-loads one query per model item in a paginated list. A page of 20 users triggers 20 additional queries. Telescope flags it; CI passes because tests run with a single model.</reason>
+      </antipattern>
+    </section>
+    <section name="where-it-fails-limitations">
+      <p>UserRepository over Eloquent is anti-pattern. README's repository wraps User::query() and adds nothing. Eloquent is already a repository. Drop the wrapper unless you actually swap implementations (Postgres → ElasticSearch projection).</p>
+      <p>Service classes drift into God services. Without a clear boundary (one action per service or one aggregate per service), UserService accumulates 30 methods.</p>
+      <p>Form Request authorization vs. policy duplication. authorize() in Form Request and Policy::create() both run; teams forget which is the source of truth, get 403s in test, and disable both.</p>
+      <p>Resource collections forgetting pagination meta. UserResource::collection($users) on a paginator drops links / meta. Use (new UserCollection($paginator)) or UserResource::collection($paginator)->additional([...]).</p>
+      <p>Eloquent::firstOrCreate race conditions. Concurrent requests both miss, both insert, unique constraint fails. Use upsert or wrap in DB::transaction + lockForUpdate.</p>
+      <p>N+1 in Resources. Resource accesses $this->profile->name; if controller didn't with('profile'), every list item triggers a query. Telescope flags it; agents miss it.</p>
+      <p>request() helper in services. Services that read request()->user() are not testable in isolation and break in queue context. Pass user explicitly.</p>
+      <p>Too many magic facades. Cache::, Mail::, Notification:: in services are hard to mock; favor injected contracts (CacheRepository, Mailer).</p>
+      <p>Transactions wrapping HTTP calls. Services wrap DB::transaction around Stripe/SendGrid calls; locks held across network = deadlocks. External calls go BEFORE or AFTER the transaction, with idempotency keys.</p>
+    </section>
+    <section name="agentic-workflow">
+      <p>Drive Laravel pattern adoption as a four-stage pipeline: (1) a discovery agent inventories controllers/models/services and rates each against the layer-rules pattern; (2) a slice-gen agent emits Controller + FormRequest + Resource + Service for one resource per task; (3) a refactor agent moves business logic out of controllers, replaces array responses with Resources, replaces inline validator() with FormRequest, replaces find() with policy-aware service methods; (4) a test agent generates feature tests (Pest / PHPUnit) against routes and unit tests for services. Use faion-sdd-executor-agent to drive each resource per SDD task.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent for decision-heavy Laravel boundary decisions; faion-feature-executor skill for sequential mode (FormRequest → Service → Controller → Resource → tests); laravel-anti-pattern-lint agent for linting banned patterns; password-scrubber-agent for seeders/fixtures/.env.example.</p>
+    </section>
+    <section name="cli-tools">
+      <list>
+        <item>php artisan — Laravel CLI (make:*, route:list, telescope, queue:work) https://laravel.com/docs/artisan</item>
+        <item>composer — PHP dependency management https://getcomposer.org</item>
+        <item>laravel pint — Opinionated PHP-CS-Fixer for Laravel style https://laravel.com/docs/pint</item>
+        <item>phpstan / larastan — Static analysis with Laravel rules https://github.com/larastan/larastan</item>
+        <item>pest — Modern test runner; collapses PHPUnit ceremony https://pestphp.com</item>
+        <item>php artisan ide-helper:* (barryvdh) — IDE helpers + model docs for static analysis</item>
+        <item>laravel telescope / pulse / horizon — Local introspection: queries, jobs, queues https://laravel.com/docs/telescope</item>
+        <item>clockwork — Request profiling, lightweight Telescope https://underground.works/clockwork</item>
+      </list>
+    </section>
+    <section name="prompt-patterns">
+      <p>Resource slice generation: You are scaffolding a CRUD slice for resource Resource on Laravel 11. Output exactly: (1) app/Http/Controllers/Api/V1/ResourceController.php — typed, constructor-injected ResourceService. NO Eloquent calls. Methods: index, store(StoreXRequest), show($id), update(UpdateXRequest, $id), destroy($id). Returns Resource / Collection / JsonResponse only. (2) app/Http/Requests/StoreResourceRequest.php — authorize() returns $this->user()->can('create', Resource::class); rules() typed. (3) app/Http/Requests/UpdateResourceRequest.php similar. (4) app/Http/Resources/ResourceResource.php — explicit field list, no $this->resource->getAttributes() return-all. (5) app/Http/Resources/ResourceCollection.php — extends ResourceCollection to preserve pagination meta. (6) app/Services/ResourceService.php — methods paginate(perPage), create(array $data), findOrFail($id), update($id, array $data), delete($id). NO request() helper. NO facades for Cache/Mail — inject contracts. (7) app/Policies/ResourcePolicy.php with viewAny, view, create, update, delete. (8) routes/api.php — Route::apiResource('v1/resources', controller)->middleware('auth:sanctum'). (9) tests/Feature/ResourceTest.php (Pest) covering all five endpoints. NEVER add a ResourceRepository unless asked — Eloquent is the repository.</p>
+      <p>Anti-pattern review: You are reviewing a PR with Laravel changes. Flag: (1) Eloquent calls inside Controller methods (must be in Service), (2) validator() / Validator::make in controller (use FormRequest), (3) controller returning raw array / Eloquent model directly (must use Resource), (4) UserRepository wrapping User::query without a second backing impl, (5) request() helper inside Service classes, (6) Cache:: / Mail:: / Notification:: facade inside Service (inject contract), (7) DB::transaction wrapping external HTTP / queue dispatch, (8) firstOrCreate / updateOrCreate without explicit lockForUpdate, (9) Resource accessing relations not eager-loaded in controller (N+1), (10) Policy missing for any model used in a controller. Cite file:line. Do not propose fixes.</p>
+    </section>
+    <section name="agent-gotchas">
+      <p>Repository over Eloquent reflex. Older Laravel tutorials lean on Repository pattern; agents emit it by default. Block in review unless there's a real second backing store.</p>
+      <p>Mass assignment in service. Agents User::create($request->all()) straight through the service, ignoring $fillable. Force validated() from FormRequest.</p>
+      <p>Eloquent::find returning null without findOrFail. Agents return null → controller returns 200 with null body. Use findOrFail + handler that maps ModelNotFoundException to 404.</p>
+      <p>N+1 hidden in Resources. Agents add a relation to toArray() without eager-loading in Service. Telescope catches in dev; CI must run a feature test that asserts query count.</p>
+      <p>Magic facades in services. Cache::remember, Notification::send are easy to write, hard to test. Inject contracts.</p>
+      <p>DB::transaction swallowing exceptions. Agents wrap and forget to log/rethrow; failures are silent.</p>
+      <p>firstOrCreate race conditions. Agents accept the convenience; under load, duplicate records or unique-constraint failures appear in prod.</p>
+      <p>auth()->user() in service called from queue. Queue context has no auth user; service crashes. Pass user explicitly.</p>
+      <p>Resources returning Eloquent dates as strings inconsistently. Some PHP versions / locales differ. Force ISO-8601 via $this->created_at->toIso8601String().</p>
+      <p>Policies forgotten. Agents implement controller without authorize(). Linter must enforce a policy gate per CRUD endpoint.</p>
+      <p>Tests bind to Eloquent fixtures, not behaviors. Agents factory + assertDatabaseHas. Add HTTP-level Pest tests that hit routes via actingAs($user)->postJson(...).</p>
+      <p>Routes registered without middleware. Agents add Route::apiResource(...) and forget auth:sanctum / throttle. Force a default middleware stack in routes/api.php.</p>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Controllers thin and HTTP-only. Receive Request, call Service, return Resource. No Eloquent, no business rules, no validation logic.</item>
+        <item>FormRequest = single source of validation. Authorization in authorize(); rules in rules(). Policy methods called from FormRequest where possible.</item>
+        <item>Resources for every API response. Even single-field responses. Explicit field list ('id' => $this->id), never spread $this->resource->getAttributes().</item>
+        <item>Service per use-case or single-action invokable. ProcessOrderPayment as __invoke(); resists the God-service drift better than OrderService.</item>
+        <item>Inject contracts, not facades, in services. Mailer, CacheRepository, Dispatcher — testable, swappable.</item>
+        <item>No request() in services. Pass auth()->user() and explicit args.</item>
+        <item>Eloquent::with(...) based on Resource needs. Eager-load in Service / Controller, never lazy-load in Resource.</item>
+        <item>DB::transaction only around DB writes. External calls (Stripe, SES) go before/after with idempotency.</item>
+        <item>firstOrCreate / updateOrCreate need locking. Wrap in transaction + lockForUpdate or use upsert with unique constraints.</item>
+        <item>Policies for every model. php artisan make:policy per resource; FormRequest's authorize() delegates.</item>
+        <item>API versioning by namespace. Api\V1\ not query-string version.</item>
+        <item>Queue heavy work. Email sends, third-party syncs, image processing — dispatch(new SyncToCrm($user)). Service stays sync-fast.</item>
+        <item>Pint + Larastan + Pest in CI. Style + types + tests.</item>
+        <item>Telescope in local + staging only. Disable in prod (TELESCOPE_ENABLED=false); it persists every request.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/controller.php" purpose="Thin API controller with constructor-injected service, all five CRUD methods returning Resource"/>
+      <template path="templates/service.php" purpose="Service class with paginate, create (with transaction + event), update, delete"/>
+    </templates>
+    <scripts>
+      <script path="scripts/laravel-anti-pattern-lint.sh" purpose="Flag banned patterns: Eloquent in controllers, validator() in controllers, request() in services, facade in services"/>
+    </scripts>
+  </content>
+</methodology>
