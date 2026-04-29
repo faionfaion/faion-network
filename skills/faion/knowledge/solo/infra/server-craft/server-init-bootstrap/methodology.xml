@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="server-init-bootstrap">
+  <metadata>
+    <tier>solo</tier>
+    <group>infra</group>
+    <domain>server-craft</domain>
+    <summary>First-login Ubuntu 24.04 VPS setup: 5 phases (access+users, system identity, packages, security hardening, services foundation). Always test SSH as new user before disabling root login.</summary>
+    <tags>
+      <tag>server-setup</tag>
+      <tag>ubuntu</tag>
+      <tag>ssh</tag>
+      <tag>ufw</tag>
+      <tag>fail2ban</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Server Init Bootstrap</title>
+    <summary>Complete first-login setup for a fresh Ubuntu 24.04 VPS: 5-phase sequence (access+users → system identity → packages+tools → security hardening → services foundation). Critical sequence constraint: always test SSH login as the new user BEFORE disabling root login — one wrong sshd_config line will lock you out. Requires loginctl enable-linger for systemd user services to survive logout.</summary>
+    <why>
+      <p>An unscripted first login takes 2+ hours and leaves gaps — forgotten fail2ban, wrong locale, root SSH still enabled. A documented bootstrap sequence is reproducible, auditable, and serves as the server runbook. Cloud-init can automate it on provisioning, eliminating the first manual SSH session entirely.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>First login to any new VPS (Hetzner, DigitalOcean, Linode, Vultr)</item>
+        <item>Rebuilding a server after a breach or OS reinstall</item>
+        <item>Automating server provisioning with cloud-init user-data</item>
+        <item>Auditing an existing server against the bootstrap checklist</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Managed platforms (Heroku, Railway, Render) — OS is abstracted, bootstrap doesn't apply</item>
+        <item>Kubernetes nodes — managed by the cluster control plane, not manual setup</item>
+        <item>Before verifying SSH key access as the new user — never disable root login first</item>
+        <item>Running the full bootstrap on a live production server — only during initial setup</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="phase-1-access-and-users">
+      <p>First 5 minutes. SSH as root, create non-root user, deploy SSH key, TEST login as new user before any other action.</p>
+      <rule>
+        <statement>Always test SSH as the new user in a separate terminal BEFORE disabling root login.</statement>
+        <rationale>A misconfigured sshd_config (wrong AllowUsers, wrong key) will lock you out permanently unless you have the server provider's console. Testing first guarantees a recovery path.</rationale>
+      </rule>
+      <list>
+        <item>SSH as root → create non-root user with sudo</item>
+        <item>Deploy SSH public key to new user's authorized_keys</item>
+        <item>Open a new terminal, test: ssh newuser@server-ip</item>
+        <item>Verify sudo works: sudo whoami → should output "root"</item>
+        <item>Only now: disable root SSH login and password auth</item>
+      </list>
+    </section>
+
+    <section name="phase-2-system-identity">
+      <list>
+        <item>Set hostname: hostnamectl set-hostname server-name</item>
+        <item>Update /etc/hosts: add 127.0.1.1 server-name</item>
+        <item>Set timezone: timedatectl set-timezone Europe/Lisbon</item>
+        <item>Set locale: locale-gen en_US.UTF-8 &amp;&amp; update-locale LANG=en_US.UTF-8</item>
+        <item>Enable NTP: timedatectl set-ntp true</item>
+      </list>
+    </section>
+
+    <section name="phase-3-packages-and-tools">
+      <list>
+        <item>apt update &amp;&amp; apt upgrade -y — apply all pending updates first</item>
+        <item>Install essentials: build-essential, curl, git, tmux, htop, jq, rsync, ncdu</item>
+        <item>Install Python dev: python3-dev, python3-venv, libpq-dev</item>
+        <item>Install mise: curl https://mise.run | sh</item>
+        <item>Install direnv: apt install -y direnv</item>
+        <item>Add hooks to .bashrc: mise before direnv</item>
+      </list>
+    </section>
+
+    <section name="phase-4-security-hardening">
+      <list>
+        <item>Configure UFW: deny incoming, allow SSH port, allow 80/443, enable</item>
+        <item>Install fail2ban, configure jail.local (3 retries, 1h ban)</item>
+        <item>Install unattended-upgrades, enable auto-reboot at 4 AM</item>
+        <item>Apply sshd_config hardening: no root, no password, MaxAuthTries 3</item>
+        <item>Test SSH config: sshd -t before reloading</item>
+      </list>
+    </section>
+
+    <section name="phase-5-services-foundation">
+      <rule>
+        <statement>Enable loginctl linger for the service user before creating any systemd user services.</statement>
+        <rationale>Without linger, user services (--user) only run during an active login session. They stop when you log out and do not start at boot. Linger makes them persistent.</rationale>
+      </rule>
+      <list>
+        <item>loginctl enable-linger username — services survive logout and start at boot</item>
+        <item>mkdir -p ~/.config/systemd/user — create user service directory</item>
+        <item>Install Docker if needed (bind all ports to 127.0.0.1)</item>
+        <item>Configure journal size: SystemMaxUse=500M in journald.conf</item>
+      </list>
+    </section>
+
+    <section name="sshd-config-hardening">
+      <example type="good">
+        <code lang="text"><![CDATA[
+# /etc/ssh/sshd_config — key changes
+Port                     22022
+PermitRootLogin          no
+PasswordAuthentication   no
+PubkeyAuthentication     yes
+MaxAuthTries             3
+ClientAliveInterval      300
+ClientAliveCountMax      2
+AllowUsers               nero
+X11Forwarding            no
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Always run sshd -t to test config before systemctl reload sshd.</statement>
+        <rationale>A syntax error in sshd_config causes sshd to refuse to reload, but the running process continues to accept connections on the old config — you won't notice the error until the next restart.</rationale>
+      </rule>
+    </section>
+
+    <section name="ufw-bootstrap-sequence">
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# ALWAYS add SSH rule BEFORE enabling
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw limit 22022/tcp comment 'SSH'
+sudo ufw allow 80/tcp  comment 'HTTP'
+sudo ufw allow 443/tcp comment 'HTTPS'
+sudo ufw logging low
+sudo ufw --force enable
+sudo ufw status verbose
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="fail2ban-jail-local">
+      <example type="good">
+        <code lang="ini"><![CDATA[
+# /etc/fail2ban/jail.local
+[DEFAULT]
+bantime  = 3600
+findtime = 600
+maxretry = 3
+
+[sshd]
+enabled  = true
+port     = 22022
+filter   = sshd
+logpath  = /var/log/auth.log
+maxretry = 3
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="loginctl-linger">
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Enable linger — user services run at boot, survive logout
+sudo loginctl enable-linger nero
+
+# Verify
+loginctl show-user nero | grep Linger
+# Linger=yes
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="post-bootstrap-verification">
+      <example type="good">
+        <code lang="bash"><![CDATA[
+echo "=== Hostname ==="  && hostname
+echo "=== Timezone ==="  && timedatectl | grep "Time zone"
+echo "=== Locale ==="    && locale | head -1
+echo "=== UFW ==="       && sudo ufw status | head -5
+echo "=== fail2ban ==="  && sudo fail2ban-client status sshd 2>/dev/null || echo "not running"
+echo "=== SSH ==="       && grep -E "PermitRootLogin|PasswordAuthentication" /etc/ssh/sshd_config
+echo "=== Swap ==="      && swapon --show
+echo "=== Memory ==="    && free -h | head -2
+echo "=== Disk ==="      && df -h / | tail -1
+echo "=== Linger ==="    && loginctl show-user nero 2>/dev/null | grep Linger
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="hetzner-cloud-init">
+      <p>Automate the entire bootstrap on first boot. Paste into Hetzner Cloud: Create server → Cloud config (User data).</p>
+      <example type="good">
+        <code lang="yaml"><![CDATA[
+#cloud-config
+users:
+  - name: nero
+    groups: sudo, docker
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3... your_key_here
+
+package_update: true
+package_upgrade: true
+packages:
+  - ufw
+  - fail2ban
+  - unattended-upgrades
+  - curl
+  - git
+  - tmux
+  - htop
+  - jq
+  - rsync
+
+runcmd:
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw limit 22022/tcp
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - ufw --force enable
+  - loginctl enable-linger nero
+  - dpkg-reconfigure -plow unattended-upgrades
+        ]]></code>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/bootstrap.sh" purpose="Full interactive bootstrap script: all 5 phases with verification steps"/>
+      <template path="templates/cloud-init.yml" purpose="cloud-init user-data: user, SSH key, packages, UFW, unattended-upgrades"/>
+      <template path="templates/sshd-hardened.conf" purpose="Production sshd_config: no root, no password, MaxAuthTries 3, AllowUsers"/>
+      <template path="templates/fail2ban-jail.local" purpose="jail.local: 1h ban, 3 retries, sshd jail enabled"/>
+      <template path="templates/verify-bootstrap.sh" purpose="Post-bootstrap checklist: hostname, timezone, locale, UFW, fail2ban, SSH config, swap, linger"/>
+    </templates>
+
+    <scripts>
+      <script path="scripts/server-status.sh" purpose="Dashboard: uptime, disk, memory, swap, running services, UFW rules, open ports"/>
+    </scripts>
+
+    <see-also>
+      <ref slug="nginx-reverse-proxy"/>
+      <ref slug="ssl-tls-management"/>
+      <ref slug="fail2ban-setup"/>
+      <ref slug="ssh-hardening"/>
+    </see-also>
+  </content>
+</methodology>
