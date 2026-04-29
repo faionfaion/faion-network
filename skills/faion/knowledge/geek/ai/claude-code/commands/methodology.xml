@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="commands">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>claude-code</domain>
+    <summary>Create manual /invoke commands with optional arguments and whitelisted tools. Lightweight actions under 250 lines, no overhead of skills or agents.</summary>
+    <tags>
+      <tag>commands</tag>
+      <tag>slash-commands</tag>
+      <tag>quick-actions</tag>
+      <tag>argument-syntax</tag>
+      <tag>tool-whitelisting</tag>
+    </tags>
+    <category>commands</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>Creating or Updating Commands</title>
+    <summary>Use this reference when creating a new command, editing or updating an existing command, or fixing or improving a command. Commands are short manual /invoke actions with optional arguments and whitelisted tools. Keep them concise: under 150 lines ideal, max 250.</summary>
+    <when-to-use>
+      <list>
+        <item>Exposing a repeatable action to developers with a predictable interface such as /deploy, /commit, /review.</item>
+        <item>Wrapping a complex Bash plus context injection sequence that would be tedious to type every session.</item>
+        <item>Creating lightweight project-specific shortcuts that do not need the overhead of a full skill or agent.</item>
+        <item>Injecting live context, current branch, diff, or environment, at invocation time via !-prefix bash execution.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Workflow requires multiple sequential agents, memory between steps, or parallel subtasks: use a skill or agent instead.</item>
+        <item>Action must run automatically, not via manual /invoke: use hooks.</item>
+        <item>Logic exceeds approximately 250 lines: split into a skill with SKILL.md.</item>
+        <item>Command is project-private and the team does not use faion-network: store locally, gitignore it.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Token Economy Rules (CRITICAL)">
+      <p>Commands consume context window. Keep them concise.</p>
+      <p>Do:</p>
+      <list>
+        <item>Use bullet lists instead of tables</item>
+        <item>Write in English</item>
+        <item>Keep under 150 lines ideal, max 250</item>
+        <item>Challenge each line: Does Claude need this?</item>
+      </list>
+      <p>Do not:</p>
+      <list>
+        <item>Use ASCII borders</item>
+        <item>Write verbose explanations</item>
+        <item>Use tables where lists work</item>
+        <item>Use emojis</item>
+      </list>
+    </section>
+    <section name="Command File Format">
+      <code lang="markdown"><![CDATA[---
+description: Short description for /help
+argument-hint: [arg1] [arg2]
+allowed-tools: Bash(git:*), Read
+model: claude-sonnet-4-20250514
+---
+
+# Command Title
+
+Instructions using $1, $2, or $ARGUMENTS]]></code>
+    </section>
+    <section name="Frontmatter Fields">
+      <p>Basic:</p>
+      <list>
+        <item>description: shown in autocomplete</item>
+        <item>argument-hint: expected args like [message] or [pr] [priority]</item>
+        <item>allowed-tools: tools without permission</item>
+        <item>model: specific model like sonnet, opus, or haiku</item>
+      </list>
+      <p>Visibility (Jan 2026):</p>
+      <list>
+        <item>disable-model-invocation: true prevents Skill tool from calling</item>
+      </list>
+      <p>All fields are optional.</p>
+    </section>
+    <section name="Argument Syntax">
+      <p>Dollar-sign variables pass arguments to the command:</p>
+      <p>$ARGUMENTS: all arguments as string</p>
+      <code lang="text"><![CDATA[Fix issue $ARGUMENTS
+# /fix 123 high → "Fix issue 123 high"]]></code>
+      <p>$1, $2, $3: positional arguments</p>
+      <code lang="text"><![CDATA[Review PR #$1 with priority $2
+# /review 456 high → "Review PR #456 with priority high"]]></code>
+    </section>
+    <section name="Special Syntax">
+      <p>Bash execution with ! prefix:</p>
+      <code lang="markdown"><![CDATA[---
+allowed-tools: Bash(git:*)
+---
+Current branch: !`git branch --show-current`
+Recent commits: !`git log --oneline -5`]]></code>
+      <p>Note: Must include Bash in allowed-tools for ! to work.</p>
+      <p>File references with @ prefix:</p>
+      <code lang="text"><![CDATA[Review @src/main.py
+Compare @old.js with @new.js]]></code>
+      <p>Environment variables:</p>
+      <code lang="text"><![CDATA[Deploy to $ENVIRONMENT]]></code>
+    </section>
+    <section name="Built-in Tools">
+      <p>No permission required:</p>
+      <list>
+        <item>Read, Glob, Grep, Task, AskUserQuestion, TodoWrite</item>
+      </list>
+      <p>Permission required:</p>
+      <list>
+        <item>Write, Edit, Bash, Skill, WebFetch, WebSearch, LSP</item>
+      </list>
+    </section>
+    <section name="allowed-tools Syntax">
+      <p>Basic: allowed-tools: Read, Grep</p>
+      <p>Bash prefix matching:</p>
+      <list>
+        <item>Bash(git:*) - all git commands</item>
+        <item>Bash(npm run:*) - npm scripts</item>
+      </list>
+      <p>WebFetch domain: WebFetch(domain:github.com)</p>
+      <p>Pattern is prefix match. Without :* requires exact match.</p>
+    </section>
+    <section name="Command Locations">
+      <list>
+        <item>Project: .claude/commands/name.md (shows as "project")</item>
+        <item>Personal: ~/.claude/commands/name.md (shows as "user")</item>
+        <item>Namespaced: .claude/commands/group/name.md (shows as "project:group")</item>
+      </list>
+      <p>Project overrides personal with same name.</p>
+    </section>
+    <section name="Naming Convention">
+      <p>For shared reusable commands in faion-network:</p>
+      <list>
+        <item>Short memorable action verbs</item>
+        <item>No faion- prefix</item>
+        <item>Lowercase, hyphens OK</item>
+        <item>Action: {verb}, example commit, deploy, test</item>
+        <item>Namespaced: {group}/{action}, example git/sync, db/migrate</item>
+        <item>With target: {verb}-{target}, example run-tests, build-docs</item>
+      </list>
+      <p>Good: commit, deploy, test, fix, review</p>
+      <p>Bad: MyCommand, do_thing, cmd1</p>
+      <p>For project-specific commands not committed to faion-network, use pattern: {project}-{action}. Add to .gitignore at the same level as .claude/.</p>
+    </section>
+    <section name="Examples">
+      <example type="good" title="Simple command">
+        <code lang="markdown"><![CDATA[---
+description: Fix linting
+allowed-tools: Bash(npm run:*), Edit
+---
+Run `npm run lint --fix` and report issues.]]></code>
+      </example>
+      <example type="good" title="With arguments">
+        <code lang="markdown"><![CDATA[---
+description: Git commit
+argument-hint: [message]
+allowed-tools: Bash(git:*)
+---
+Commit with message: $ARGUMENTS]]></code>
+      </example>
+      <example type="good" title="With context">
+        <code lang="markdown"><![CDATA[---
+description: Create PR
+argument-hint: [title]
+allowed-tools: Bash(git:*), Bash(gh:*)
+---
+Branch: !`git branch --show-current`
+Diff: !`git diff main --stat`
+
+Create PR titled: $ARGUMENTS]]></code>
+      </example>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Keep commands stateless: no file writes, no side effects unless the name implies it like /deploy, /commit</item>
+        <item>Use model: haiku for mechanical tasks like lint, format check; saves cost on high-frequency commands</item>
+        <item>Put shared helper scripts in ~/.claude/scripts/ and call them via Bash; do not inline 50-line scripts in commands</item>
+        <item>Namespace project-specific commands: .claude/commands/{project}-{action}.md, plus gitignore at parent level</item>
+        <item>Test !-bash prefix separately in terminal before embedding; errors produce silent empty strings</item>
+        <item>The disable-model-invocation: true flag prevents auto-delegation. Use for commands that must only run manually.</item>
+      </list>
+    </section>
+    <section name="Limitations and Gotchas">
+      <antipattern>
+        <description>Commands share the main agent's context window.</description>
+        <reason>Heavy !-bash output inflates context fast. Keep bash invocations short and filtered.</reason>
+      </antipattern>
+      <antipattern>
+        <description>No built-in state persistence between invocations.</description>
+        <reason>Each /cmd is a fresh call. Use files for state if needed.</reason>
+      </antipattern>
+      <antipattern>
+        <description>argument-hint is cosmetic only.</description>
+        <reason>The model sees raw $ARGUMENTS, no parsing or validation. Do not assume structure.</reason>
+      </antipattern>
+      <antipattern>
+        <description>allowed-tools: Bash(git:*) uses prefix matching; typo in prefix silently grants no permission.</description>
+        <reason>Test permission behavior carefully. Test actual invocation before deploying.</reason>
+      </antipattern>
+      <antipattern>
+        <description>SlashCommand to Skill tool rename (Jan 2026): permissions referencing SlashCommand must be updated to Skill.</description>
+        <reason>Update settings files and hooks accordingly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Model field selects model for command's primary turn but subagent calls within use their own model.</description>
+        <reason>Do not assume all nested calls use the command's specified model.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Commands invoked by an agent run in agent's context window.</description>
+        <reason>!-bash output is injected verbatim; keep it short to avoid context bloat.</reason>
+      </antipattern>
+      <antipattern>
+        <description>If command writes files, it bypasses agent's permission system unless Write is in allowed-tools.</description>
+        <reason>Audit write-capable commands carefully.</reason>
+      </antipattern>
+      <antipattern>
+        <description>$ARGUMENTS passes full argument string unparsed.</description>
+        <reason>Agent-generated arguments may contain newlines or quotes that break shell interpolation in !-bash blocks.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Auto-delegation: Claude selects commands based on description field.</description>
+        <reason>Vague descriptions cause wrong command invocation. Test descriptions by asking: would I use this if I saw this description?</reason>
+      </antipattern>
+      <antipattern>
+        <description>Avoid allowed-tools: Bash without prefix in shared commands.</description>
+        <reason>Grants unrestricted shell access to any agent using the command. Dangerous.</reason>
+      </antipattern>
+    </section>
+    <section name="Degrees of Freedom">
+      <list>
+        <item>High freedom: Review code and suggest improvements</item>
+        <item>Low freedom: Run exactly: make deploy-staging</item>
+      </list>
+      <p>Choose freedom level based on use case.</p>
+    </section>
+    <section name="MCP Tools and Advanced">
+      <p>Commands can use MCP tools via syntax: ServerName:tool_name</p>
+      <p>Use model: haiku for simple commands to save cost and improve speed.</p>
+    </section>
+    <section name="Important Note (Jan 2026)">
+      <p>SlashCommand tool unified into Skill tool. Update any permission rules from SlashCommand to Skill.</p>
+    </section>
+    <section name="Command Creation Workflow">
+      <p>A command-creation agent reads user intent, checks for duplicates in .claude/commands/, drafts frontmatter with tools and model, then writes the file. A separate review pass validates token economy: no tables where lists work, English only, under 200 lines.</p>
+      <p>Pattern:</p>
+      <code lang="text"><![CDATA[Create a Claude Code slash command for: {task_description}
+- Location: {.claude/commands/name.md or ~/.claude/commands/name.md}
+- Arguments: {$1 = X, $2 = Y or $ARGUMENTS}
+- Tools needed: {list}
+- Keep under 150 lines. English. No tables where lists work.]]></code>
+    </section>
+    <section name="Command vs Skill Decision Matrix">
+      <p>When to use commands versus skills:</p>
+      <p>Use a command when:</p>
+      <list>
+        <item>Action is manual, user-invoked via /name</item>
+        <item>No memory or state between invocations</item>
+        <item>Logic fits in under 150 lines</item>
+        <item>Simple argument passing (no validation or parsing needed)</item>
+        <item>Quick repeatable action like /deploy, /test, /commit</item>
+      </list>
+      <p>Use a skill when:</p>
+      <list>
+        <item>Automatic discovery and routing based on context</item>
+        <item>Complex workflows with multiple files and sections</item>
+        <item>Reusable knowledge package across many projects</item>
+        <item>Needs SKILL.md with multiple methodology files</item>
+        <item>Involves stateful multi-step processes</item>
+      </list>
+    </section>
+    <section name="Bash Execution and Context Injection">
+      <p>Commands can inject live context via !-bash prefix:</p>
+      <code lang="markdown"><![CDATA[---
+allowed-tools: Bash(git:*)
+---
+Current branch: !`git branch --show-current`
+Uncommitted files: !`git status --short`
+Recent commits: !`git log --oneline -5`]]></code>
+      <p>The !-syntax executes the command at invocation time and injects the result into the command prompt. This is powerful for context but has limitations:</p>
+      <list>
+        <item>Must include Bash in allowed-tools for ! to work</item>
+        <item>Heavy bash output inflates context fast</item>
+        <item>Errors in bash execution produce silent empty strings</item>
+        <item>Test bash commands in terminal separately before embedding</item>
+        <item>Keep bash invocations short and filtered</item>
+      </list>
+    </section>
+    <section name="File References and Context Passing">
+      <p>Commands can reference files via @ prefix:</p>
+      <code lang="text"><![CDATA[Review @src/main.py
+Compare @old.js with @new.js]]></code>
+      <p>This tells Claude to read those files and include them in context. Alternatively, inline the file contents directly if the file is small.</p>
+      <p>For larger files, prefer referencing the path; Claude will read via the Read tool when needed.</p>
+    </section>
+    <section name="Argument Processing and Edge Cases">
+      <p>$ARGUMENTS passes the full argument string unparsed. No parsing or validation occurs:</p>
+      <code lang="markdown"><![CDATA[---
+description: Commit with message
+argument-hint: [message]
+allowed-tools: Bash(git:*)
+---
+# Git Commit
+
+Commit staged changes with message: $ARGUMENTS]]></code>
+      <p>Issues to watch:</p>
+      <list>
+        <item>$ARGUMENTS may contain newlines or quotes that break shell interpolation</item>
+        <item>If agent-generated, arguments may include unexpected characters</item>
+        <item>argument-hint is cosmetic only; Claude sees raw $ARGUMENTS</item>
+        <item>No built-in argument parsing; validate in your bash or code</item>
+      </list>
+      <p>Positional arguments ($1, $2, $3) are safer when you need structured input:</p>
+      <code lang="markdown"><![CDATA[---
+description: Review PR
+argument-hint: [pr_number] [priority]
+---
+Review PR #$1 with priority $2]]></code>
+    </section>
+    <section name="Model Selection for Commands">
+      <p>Choose model based on complexity:</p>
+      <list>
+        <item>model: haiku for mechanical tasks like linting, formatting, simple checks. Fastest and cheapest.</item>
+        <item>model: sonnet (default) for general commands like code review, commit messages, documentation.</item>
+        <item>model: opus for complex reasoning, design decisions, multi-step orchestration.</item>
+      </list>
+      <p>Most commands are best served by haiku or sonnet. Reserve opus for complex tasks.</p>
+    </section>
+    <section name="Helper Scripts and Automation">
+      <p>Commands can call helper scripts to avoid inlining long logic:</p>
+      <p>Script locations:</p>
+      <list>
+        <item>~/.claude/scripts/ — global scripts for all commands</item>
+        <item>~/.claude/skills/{skill-name}/scripts/ — skill-specific scripts</item>
+      </list>
+      <p>Call scripts via Bash with ! prefix:</p>
+      <code lang="text"><![CDATA[!bash ~/.claude/scripts/deploy.sh "$1"]]></code>
+      <p>This keeps commands concise while supporting complex automation.</p>
+    </section>
+    <section name="Auto-Delegation and Description Quality">
+      <p>Commands can be auto-invoked by Claude when you describe a task. Quality of the description field directly affects whether the right command is chosen:</p>
+      <p>Good descriptions use action verbs and clarify intent:</p>
+      <list>
+        <item>Good: Fix linting errors in the current file</item>
+        <item>Good: Commit staged changes with a message</item>
+        <item>Good: Create a GitHub PR from the current branch</item>
+      </list>
+      <p>Bad descriptions are vague or misleading:</p>
+      <list>
+        <item>Bad: Do stuff</item>
+        <item>Bad: Git operations</item>
+        <item>Bad: Utility command</item>
+      </list>
+      <p>Test your description by asking: if I (Claude) saw this description in a menu, would I select this command for the user's task?</p>
+    </section>
+    <section name="Integration with Agents and Skills">
+      <p>Agents can invoke commands via the Skill tool. When an agent calls a command:</p>
+      <list>
+        <item>The command runs in the agent's context window (not a separate window)</item>
+        <item>!-bash output is injected verbatim; keep it short</item>
+        <item>If the command writes files, it may bypass some permissions unless Write is whitelisted</item>
+        <item>Arguments passed to the command may contain newlines or special characters</item>
+      </list>
+      <p>Be cautious with commands that have side effects (write, push, delete) when called from agents.</p>
+    </section>
+  </content>
+</methodology>
