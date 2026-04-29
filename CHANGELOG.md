@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 javascript-developer methodologies → methodology.xml (nodejs-service-layer-implementation, react-component-architecture, decomposition-django; feature-045 batch DK)
 - migrate: 3/3 automation-tooling methodologies → methodology.xml (dev-methodologies-architecture, internationalization, logging-patterns; feature-045 batch CX)
 - migrate: 3/3 frontend-developer methodologies → methodology.xml (frontend-design, mobile-responsive, pwa-core; feature-045 batch DE)
 - migrate: 3/3 pro/research/market-researcher methodologies → methodology.xml (market-research-tam-sam-som, product-development-trends, product-development-trends-2026; feature-045 batch CH)
