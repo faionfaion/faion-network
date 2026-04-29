@@ -1,0 +1,411 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="agents">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>claude-code</domain>
+    <summary>Create isolated subagents for autonomous workers with dedicated context windows, model choices, and tool whitelists.</summary>
+    <tags>
+      <tag>agents</tag>
+      <tag>subagents</tag>
+      <tag>autonomous-workers</tag>
+      <tag>task-delegation</tag>
+      <tag>parallel-execution</tag>
+    </tags>
+    <category>agents</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>Creating or Updating Agents</title>
+    <summary>Use this reference when creating a new agent or subagent, editing an existing agent, fixing or improving an agent, or adding functionality to an agent. Agents are autonomous workers with isolated contexts, whitelisted tools, and designated roles.</summary>
+    <when-to-use>
+      <list>
+        <item>Parallelizing independent tasks that do not share state, such as three modules implemented simultaneously.</item>
+        <item>Context isolation: preventing unrelated research from polluting the primary agent's context window.</item>
+        <item>Role specialization: a reviewer agent that only reads, a coder agent that only writes.</item>
+        <item>Long-running background work dispatched from an orchestrator, such as research, web scraping, or report generation.</item>
+        <item>Sequential pipeline stages where each stage needs a clean context: spec, then design, then implement, then test.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Simple single-step tasks that complete in one tool call: agent overhead is not justified.</item>
+        <item>The subtask requires interactive user input mid-execution: agents run autonomously.</item>
+        <item>Real-time streaming output is required: Task tool is async; results return on completion.</item>
+        <item>Task needs to share mutable in-memory state with the parent: agents are isolated, use files as IPC.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Agents vs Skills vs Commands">
+      <p>Three main Claude Code components serve different purposes:</p>
+      <rule>
+        <statement>Agent: Explicit or auto-delegated invocation. Isolated context. Use for autonomous workers, parallel tasks.</statement>
+        <rationale>Agents have dedicated context windows that do not pollute the parent's context. They run asynchronously and enable parallel execution.</rationale>
+      </rule>
+      <rule>
+        <statement>Skill: Auto-triggered by context. Shared context. Use for knowledge packages, procedures.</statement>
+        <rationale>Skills are invoked automatically based on keywords and integrate into the shared context. They hold reusable knowledge.</rationale>
+      </rule>
+      <rule>
+        <statement>Command: Manual /invoke. Shared context. Use for quick actions with arguments.</statement>
+        <rationale>Commands are short, stateless actions that the user invokes manually with arguments.</rationale>
+      </rule>
+    </section>
+    <section name="Agent File Format">
+      <code lang="markdown"><![CDATA[---
+name: agent-name
+description: Action-oriented description for auto-delegation
+model: sonnet                    # sonnet, opus, haiku, inherit
+tools: [Read, Write, Bash, Grep] # Tool whitelist (least privilege)
+skills: [skill-name]             # Optional skills to load
+color: "#2F54EB"                 # UI color
+version: "1.0.0"
+disable-model-invocation: false  # true = only manual /agent-name
+permissionMode: default          # default, acceptEdits, bypassPermissions
+---
+
+# Agent System Prompt
+
+Instructions for the agent...]]></code>
+    </section>
+    <section name="Frontmatter Fields">
+      <p>Required fields:</p>
+      <list>
+        <item>name: unique identifier</item>
+        <item>description: what agent does, critical for auto-delegation</item>
+      </list>
+      <p>Model and tools:</p>
+      <list>
+        <item>model: sonnet (default), opus, or haiku</item>
+        <item>tools: whitelist of allowed tools (see Available Tools below)</item>
+        <item>disallowedTools: blacklist as alternative to whitelist</item>
+        <item>skills: skills to load in agent context</item>
+      </list>
+      <p>Visibility and permissions:</p>
+      <list>
+        <item>disable-model-invocation: true means only callable via /agent-name</item>
+        <item>permissionMode: default (ask for each tool), acceptEdits (auto-accept file edits), bypassPermissions (no prompts, dangerous)</item>
+      </list>
+      <p>UI and metadata:</p>
+      <list>
+        <item>color: CSS color for identification</item>
+        <item>version: version string</item>
+      </list>
+    </section>
+    <section name="Available Tools">
+      <p>File operations:</p>
+      <list>
+        <item>Read: read file contents</item>
+        <item>Write: create or overwrite files</item>
+        <item>Edit: targeted string replacements</item>
+        <item>Glob: find files by pattern</item>
+        <item>Grep: search with regex</item>
+      </list>
+      <p>Execution:</p>
+      <list>
+        <item>Bash: shell commands</item>
+        <item>Task: spawn subagents</item>
+        <item>TodoWrite: task management</item>
+      </list>
+      <p>Web:</p>
+      <list>
+        <item>WebFetch: fetch URL content</item>
+        <item>WebSearch: web search</item>
+      </list>
+      <p>Other:</p>
+      <list>
+        <item>NotebookEdit: Jupyter notebooks</item>
+        <item>AskUserQuestion: user input</item>
+      </list>
+    </section>
+    <section name="Agent Locations">
+      <list>
+        <item>Personal: ~/.claude/agents/agent-name.md</item>
+        <item>Project: .claude/agents/agent-name.md</item>
+      </list>
+      <p>Project agents override personal agents with the same name.</p>
+    </section>
+    <section name="Naming Convention">
+      <p>For shared reusable agents in faion-network, use pattern: faion-{name}-agent, always ending with -agent.</p>
+      <list>
+        <item>Role-based: faion-{role}-agent, example faion-pm-agent, faion-ba-agent</item>
+        <item>Action-based: faion-{action}-agent, example faion-rag-agent, faion-tts-agent</item>
+        <item>Reviewer: faion-{what}-reviewer-agent, example faion-spec-reviewer-agent</item>
+        <item>Analyzer: faion-{what}-analyzer-agent, example faion-competitor-analyzer-agent</item>
+        <item>Builder: faion-{what}-builder-agent, example faion-voice-agent-builder-agent</item>
+        <item>Generator: faion-{what}-generator-agent, example faion-idea-generator-agent</item>
+      </list>
+      <p>For project-specific agents not committed to faion-network, use pattern: {project}-{name}-agent. Add to .gitignore at the same level as .claude/.</p>
+    </section>
+    <section name="Best Practices">
+      <p>Design:</p>
+      <list>
+        <item>One clear goal per agent</item>
+        <item>Action-oriented descriptions for auto-delegation</item>
+        <item>Scope tools per agent (least privilege)</item>
+      </list>
+      <p>Tool scoping by role:</p>
+      <list>
+        <item>Read-only (reviewers): Read, Grep, Glob with sonnet</item>
+        <item>Research (analysts): Read, Grep, Glob, WebFetch, WebSearch with sonnet</item>
+        <item>Code writers: Read, Write, Edit, Bash, Glob, Grep with opus</item>
+        <item>Documentation: Read, Write, Edit, Glob, Grep with sonnet</item>
+        <item>Orchestrators: Read, Glob, Task, TodoWrite with sonnet</item>
+      </list>
+      <p>Context:</p>
+      <list>
+        <item>Each agent has isolated context window</item>
+        <item>Prevents context pollution between tasks</item>
+        <item>Enables parallel execution</item>
+      </list>
+    </section>
+    <section name="Prompt Writing Guidelines">
+      <p>Effective agent prompts include:</p>
+      <list>
+        <item>Role definition: You are a {role} with expertise in...</item>
+        <item>Input/Output contract: What agent receives, what it produces</item>
+        <item>Step-by-step workflow: Clear phases</item>
+        <item>Rules and constraints: What to avoid</item>
+        <item>Error handling: What to do when things fail</item>
+        <item>Output format: Templates, examples</item>
+      </list>
+    </section>
+    <section name="Agentic Workflow">
+      <p>An orchestrator agent with Task tool and read-only tools breaks work into focused subtasks and dispatches them to specialized agents via the Task tool. Each subagent returns structured output in JSON. The orchestrator aggregates results and writes the final artifact. For multi-stage pipelines, each stage's output file is the next stage's input. The file system is the coordination layer.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-pm-agent: project management, issue creation, backlog grooming</item>
+        <item>faion-ba-agent: requirements analysis, spec drafting</item>
+        <item>faion-spec-reviewer-agent: validates spec and design documents against quality rubric</item>
+        <item>faion-task-YOLO-executor-opus-agent: executes implementation tasks with maximum autonomy</item>
+        <item>faion-idea-generator-agent: generates options and alternatives for architectural decisions</item>
+        <item>Built-in Explore subagent: fast read-only codebase search</item>
+      </list>
+    </section>
+    <section name="Limitations and Gotchas">
+      <antipattern>
+        <description>Each agent instance consumes a full context window.</description>
+        <reason>Spawning 10 agents in parallel is costly. Use agent instances sparingly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent descriptions drive auto-delegation; weak descriptions cause wrong agent selection.</description>
+        <reason>Write action-oriented descriptions with clear keywords. Test by asking: would I use this agent if I saw this description?</reason>
+      </antipattern>
+      <antipattern>
+        <description>bypassPermissions mode in agents runs without guardrails.</description>
+        <reason>Dangerous in automated pipelines. Use with extreme caution. Audit before granting.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Isolated context means agents cannot see the parent's conversation history unless explicitly passed.</description>
+        <reason>Pass context via Task tool prompt; reference files rather than inlining large content.</reason>
+      </antipattern>
+      <antipattern>
+        <description>No built-in retry on agent failure.</description>
+        <reason>Orchestrator must handle errors from the Task tool return value.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent files in .claude/agents/ are loaded at Claude Code startup; changes require session restart.</description>
+        <reason>Plan session lifecycle carefully when developing agents.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Circular delegation: agent A spawns agent B which spawns agent A.</description>
+        <reason>Causes infinite loops. Design delegation tree carefully.</reason>
+      </antipattern>
+    </section>
+    <section name="Built-in Agents">
+      <p>Claude Code includes built-in subagents:</p>
+      <list>
+        <item>Explore: fast read-only codebase search. Uses Read, Grep, Glob.</item>
+        <item>Plan: research during plan mode. Uses Read, Grep, Glob, WebSearch.</item>
+        <item>general-purpose: complex multi-step tasks. Uses all tools.</item>
+      </list>
+      <p>Use subagent_type in Task tool to invoke.</p>
+    </section>
+    <section name="Creation Process">
+      <list>
+        <item>Ask: purpose, tools needed, when to delegate</item>
+        <item>Ask: local or shared? Local = project-specific, not committed to main repo. Shared = committed to .claude/ repo.</item>
+        <item>Check if parent project is a git repo; if not, initialize it.</item>
+        <item>Create file: .claude/agents/agent-name.md</item>
+        <item>Write frontmatter with minimal tools</item>
+        <item>Write clear system prompt</item>
+        <item>If local: add to .gitignore at same level as .claude/</item>
+        <item>Test with /agent-name</item>
+      </list>
+    </section>
+    <section name="Example Agent Files">
+      <example type="good" title="Research agent">
+        <code lang="markdown"><![CDATA[---
+name: faion-research-agent
+description: Researches codebase patterns. Use when you need to understand code structure.
+model: haiku
+tools: [Read, Glob, Grep, WebFetch]
+---
+
+# Research Agent
+
+Research the codebase thoroughly before answering.
+Use Grep to find patterns, Glob to find files.
+Report findings in structured format.]]></code>
+        <p>Use Haiku for read-only research tasks to save cost.</p>
+      </example>
+      <example type="good" title="Implementation agent">
+        <code lang="markdown"><![CDATA[---
+name: implementer
+description: Implements features and fixes bugs. Use when code changes are needed.
+model: sonnet
+tools: [Read, Write, Edit, Bash, Grep, Glob]
+permissionMode: acceptEdits
+---
+
+# Implementation Agent
+
+Implement the requested changes following project conventions.
+Run tests after changes.
+Commit with descriptive message.]]></code>
+        <p>Reserve Opus for complex architectural decisions. Use Sonnet for implementation.</p>
+      </example>
+      <example type="good" title="Reviewer agent">
+        <code lang="markdown"><![CDATA[---
+name: faion-spec-reviewer-agent
+description: Validates spec and design documents. Use for quality reviews.
+model: sonnet
+tools: [Read, Grep, Glob]
+---
+
+# Spec Reviewer Agent
+
+You review specifications and design documents.
+Check for completeness, clarity, and alignment with standards.
+Report issues and suggestions in structured format.]]></code>
+        <p>Reviewer agents need only read access. No write or execute permissions.</p>
+      </example>
+      <example type="good" title="Orchestrator agent">
+        <code lang="markdown"><![CDATA[---
+name: faion-orchestrator-agent
+description: Orchestrates complex workflows. Use for multi-stage pipelines.
+model: sonnet
+tools: [Read, Glob, Task, TodoWrite]
+---
+
+# Orchestrator Agent
+
+You break complex tasks into focused subtasks.
+Dispatch each subtask to a specialized subagent using the Task tool.
+Each subagent returns structured JSON output.
+Aggregate results and write the final artifact.]]></code>
+        <p>Orchestrators use Task tool to dispatch. They read outputs but do not write directly.</p>
+      </example>
+    </section>
+    <section name="Agent Patterns and Workflows">
+      <p>Several reusable patterns emerge for agent-based workflows:</p>
+      <p>Parallel execution: Main agent spawns multiple independent agents in parallel. Each agent has its own context window. Results are aggregated when all complete.</p>
+      <code lang="text"><![CDATA[Main Agent
+├── Agent A (module 1) ─┐
+├── Agent B (module 2) ─┼─ parallel
+└── Agent C (module 3) ─┘]]></code>
+      <p>Sequential pipeline: Each stage has a focused context and clear input/output contract. Output file from one stage is input to the next stage. The file system is the coordination layer.</p>
+      <code lang="text"><![CDATA[spec-writer → architect-review → implementer → tester]]></code>
+      <p>Agentic workflow: An orchestrator agent reads configuration or requirements, breaks work into subtasks, dispatches each to a specialized subagent via the Task tool, collects structured results, and writes the final artifact. This pattern scales to complex multi-step workflows.</p>
+    </section>
+    <section name="Tool Scoping and Least Privilege">
+      <p>Always whitelist only the tools an agent actually needs. Least privilege prevents accidental side effects:</p>
+      <list>
+        <item>Read-only research agent: Read, Grep, Glob, WebFetch with Haiku model</item>
+        <item>Code reviewer: Read, Grep, Glob with Sonnet model</item>
+        <item>Code writer: Read, Write, Edit, Bash, Grep, Glob with Opus model</item>
+        <item>Documentation writer: Read, Write, Edit, Glob, Grep with Sonnet model</item>
+        <item>Orchestrator: Read, Glob, Task, TodoWrite with Sonnet model</item>
+      </list>
+      <p>When an agent has unnecessary tools, it becomes unpredictable and may produce unintended side effects. Always ask: does this agent truly need this tool?</p>
+    </section>
+    <section name="Agent Models and Cost Optimization">
+      <p>Choose model based on task complexity and cost:</p>
+      <list>
+        <item>Haiku: simple tasks, research, read-only, filtering. Fastest and cheapest.</item>
+        <item>Sonnet: general purpose, implementation, documentation, reviews. Good balance.</item>
+        <item>Opus: complex reasoning, architecture, design decisions. Most capable but expensive.</item>
+      </list>
+      <p>Right-size the model: use Haiku for straightforward work, Sonnet for general purpose, Opus only when reasoning complexity demands it. This directly impacts cost and latency.</p>
+    </section>
+    <section name="Orchestration with Task Tool">
+      <p>The Task tool spawns subagents and collects their output. Typical orchestrator pattern:</p>
+      <code lang="markdown"><![CDATA[Use the Task tool to spawn a research agent:
+- subagent_type: "general-purpose"
+- prompt: "Read {files}, extract {information}, write findings to {output_path} as JSON."
+Then spawn an implementation agent with the findings as input.]]></code>
+      <p>Key rules for orchestration:</p>
+      <list>
+        <item>Each subagent receives clear input contract and output path</item>
+        <item>Subagent writes to a file; orchestrator reads that file</item>
+        <item>File is the coordination mechanism; the file system is the IPC layer</item>
+        <item>Pass context via Task tool prompt; reference files rather than inlining large content</item>
+        <item>Keep Task prompts concise to avoid bloating subagent context</item>
+        <item>Handle errors from Task tool return value; no built-in retry mechanism</item>
+      </list>
+    </section>
+    <section name="CLI Tools and Integration">
+      <p>Agents work with external CLI tools:</p>
+      <list>
+        <item>claude CLI: Launch Claude Code, list agents, invoke /agent-name</item>
+        <item>gh: GitHub CLI used inside agents for PR and issue operations</item>
+        <item>jq: Parse JSON output from agents in shell scripts</item>
+        <item>flock: Serialize concurrent agent writes to shared files</item>
+      </list>
+      <p>Services that work well with agents:</p>
+      <list>
+        <item>Claude Code: agents are first-class primitives</item>
+        <item>Anthropic Agent SDK: alternative for programmatic agent orchestration</item>
+        <item>GitHub Actions: agents can trigger workflows, push commits, create PRs</item>
+        <item>Linear: agents create and update issues via Linear API</item>
+      </list>
+    </section>
+    <section name="Common Failures and Fixes">
+      <antipattern>
+        <description>Agent spawning 10 parallel instances blows context budget.</description>
+        <reason>Each agent has a full context window. Use parallelism judiciously. Prefer sequential pipelines when possible.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent description is vague; auto-delegation selects wrong agent.</description>
+        <reason>Write action-oriented descriptions with clear keywords. Test by asking: would I manually invoke this agent if I saw this description?</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using permissionMode: bypassPermissions in production.</description>
+        <reason>Agents run without guardrails. Dangerous in automated pipelines. Use default or acceptEdits instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Inlining large content in Task prompt instead of referencing a file.</description>
+        <reason>This bloats subagent context. Instead, write content to a file; subagent reads via Read tool.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent file loaded at startup; changes require session restart.</description>
+        <reason>Plan session lifecycle when developing agents. Consider restarting for safety.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Circular delegation: agent A spawns B which spawns A.</description>
+        <reason>Results in infinite loops. Design delegation tree as a DAG with clear endpoints.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent with Bash tool and bypassPermissions mode.</description>
+        <reason>Can delete files, push to remote, send network requests. Audit before granting.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Loading too many skills into agent's context frontmatter.</description>
+        <reason>Inflates context and degrades instruction-following. Load only essential skills.</reason>
+      </antipattern>
+    </section>
+    <section name="Best Practices Summary">
+      <list>
+        <item>One clear goal per agent. Agents that do everything succeed at nothing.</item>
+        <item>Whitelist only tools the agent needs. Least privilege prevents side effects.</item>
+        <item>Use model: haiku for read-only research agents. Reserve opus for architecture and spec.</item>
+        <item>Put shared context in agent's system prompt, not the Task prompt.</item>
+        <item>Write agent output to files, not stdout. Orchestrator reads files.</item>
+        <item>Prefer permissionMode: acceptEdits over bypassPermissions for file-writing agents.</item>
+        <item>Name agents with action verbs in description: Analyzes X, Implements Y, Reviews Z.</item>
+        <item>Design orchestration as a DAG: clear inputs, outputs, and order.</item>
+        <item>Test descriptions: would I use this agent if I saw this description?</item>
+      </list>
+    </section>
+  </content>
+</methodology>
