@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-contract-first">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>api-developer</domain>
+    <summary>Design OpenAPI spec before code, review like a PR, generate server stubs and SDKs, validate implementation against spec at runtime. Spec is the single source of truth.</summary>
+    <tags>
+      <tag>contract-first</tag>
+      <tag>openapi</tag>
+      <tag>code-generation</tag>
+      <tag>api-design</tag>
+      <tag>specification</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>API Contract-First Development</title>
+    <summary>Design the OpenAPI spec before writing any implementation code. The spec is reviewed like a PR, then used to generate server stubs, typed client SDKs, and contract test scaffolding via openapi-generator. CI lints the spec with Spectral on every change and validates the running implementation against the spec with openapi-core. The spec is the single source of truth, reviewed before any code exists, making breaking changes visible at design time.</summary>
+    <why>
+      <p>Code-first APIs drift: the implementation diverges from docs, clients break on undocumented fields, and breaking changes slip into minor releases. Contract-first inverts this—the spec is the single source of truth, reviewed before any code exists, making breaking changes visible at design time. Generated stubs enforce the contract structurally; contract tests enforce it at runtime.</p>
+      <p>Multi-team and multi-language API platforms benefit most: producers (backend) and consumers (frontend, mobile, partner SDKs) develop in parallel from a shared OpenAPI contract. B2B partner integrations gain a published, versioned artifact subject to change-management; agreement happens before code. LLM-driven backend authoring thrives on strict specs; codegen + contract tests catch drift before merge.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>New APIs where frontend and backend are developed in parallel (spec enables frontend to mock immediately)</item>
+        <item>APIs that will be versioned and shared with external consumers</item>
+        <item>Multi-team / multi-language platforms where producers and consumers develop in parallel from a shared OpenAPI / AsyncAPI / Protobuf contract</item>
+        <item>B2B partner integrations where the contract is a published, versioned artifact subject to change-management</item>
+        <item>LLM-driven backend authoring where agents thrive on a strict spec; codegen + contract tests catch drift before merge</item>
+        <item>Migration projects (legacy → modular monolith → microservices) where the spec freezes external behavior while internals change</item>
+        <item>SDK-distribution products where TypeScript / Python / Go clients must regenerate from one source on every release</item>
+        <item>Teams that want spec-driven SDK generation to avoid hand-written client code</item>
+        <item>When breaking change detection is required in CI</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Internal scripts or glue APIs used only by one service—spec overhead is disproportionate</item>
+        <item>Rapidly evolving prototypes where the contract changes every day—lock it down first</item>
+        <item>Solo prototypes / spike code where the API is volatile and round-trip codegen overhead exceeds the design value</item>
+        <item>Teams without OpenAPI / Protobuf fluency—premature contracts written by non-fluent authors produce worse APIs than code-first iteration</item>
+        <item>Domains where the contract genuinely cannot be predicted (research / ML scoring with evolving outputs)</item>
+        <item>GraphQL APIs—use SDL as the contract instead of OpenAPI</item>
+      </list>
+    </when-not-to-use>
+    <section name="Workflow Steps">
+      <rule>
+        <statement>Follow the contract-first order: design spec → review spec (treat as a code PR) → generate stubs + clients → implement business logic → validate implementation against spec → deploy. Never write implementation code before the spec is approved.</statement>
+        <rationale>Writing code before the contract is approved locks the API shape prematurely. Reviewing spec-first exposes interface problems (missing fields, wrong HTTP verbs, unclear error shapes) before they are encoded in implementation that is expensive to change.</rationale>
+      </rule>
+      <list>
+        <item>1. Design: write OpenAPI spec for the new feature</item>
+        <item>2. Review: spec PR reviewed by frontend, backend, and API consumers</item>
+        <item>3. Generate: server stubs, typed client SDKs, test scaffolding from spec</item>
+        <item>4. Implement: fill in business logic in generated stubs only</item>
+        <item>5. Validate: run openapi-core contract tests against running server</item>
+        <item>6. Deploy: spec and implementation are in sync</item>
+      </list>
+    </section>
+    <section name="Design Phase">
+      <rule>
+        <statement>OpenAPI spec must define operationId for every endpoint, use $ref for all reusable schemas, and include all response codes including 400 and 500 via shared response references.</statement>
+        <rationale>operationId is required for meaningful code generation (method names in clients). $ref prevents schema duplication and keeps the spec maintainable. Documenting error codes in the spec generates typed error handling in SDK clients.</rationale>
+      </rule>
+    </section>
+    <section name="Review Rules">
+      <rule>
+        <statement>Treat OpenAPI spec changes as code changes: require at least one reviewer from each side of the contract (frontend/client and backend/server). Breaking changes must be flagged explicitly in the PR description.</statement>
+        <rationale>Silent breaking changes (renaming fields, changing types, removing endpoints) break deployed clients. Review gates make breaking changes deliberate and documentable.</rationale>
+      </rule>
+      <antipattern>
+        <description>Updating the spec after the implementation is already deployed.</description>
+        <reason>Spec becomes documentation-after-the-fact; it will drift from reality whenever implementation is changed without updating the spec.</reason>
+      </antipattern>
+    </section>
+    <section name="Code Generation">
+      <rule>
+        <statement>Use openapi-generator to produce server stubs, typed client SDKs, and test scaffolding from the spec. Regenerate clients on every spec change; never hand-edit generated files.</statement>
+        <rationale>Hand-editing generated files creates divergence between spec and implementation. Regeneration on spec change keeps clients in sync automatically and catches breaking changes immediately.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="bash"><![CDATA[# Python FastAPI server stubs
+openapi-generator generate \
+  -i openapi.yaml \
+  -g python-fastapi \
+  -o ./server \
+  --additional-properties=packageName=payment_api
+
+# TypeScript axios client
+openapi-generator generate \
+  -i openapi.yaml \
+  -g typescript-axios \
+  -o ./client
+
+# Test stubs
+openapi-generator generate \
+  -i openapi.yaml \
+  -g python \
+  -o ./tests \
+  --global-property=apiTests=true]]></code>
+      </example>
+    </section>
+    <section name="Spec Linting">
+      <rule>
+        <statement>Lint the OpenAPI spec with Spectral on every commit and PR. Require operationId on all operations (for stable SDK method names) and description on all operations and info contact.</statement>
+        <rationale>Spectral catches spec quality issues before generation. Missing operationId produces auto-generated method names that break when paths change.</rationale>
+      </rule>
+    </section>
+    <section name="Contract Validation">
+      <rule>
+        <statement>Use openapi-core in test suite to validate every response against the spec at runtime. Run contract tests as a separate test suite in CI.</statement>
+        <rationale>Static generation only ensures stubs match the spec shape; runtime validation ensures the actual running implementation returns responses that conform to the spec, catching mismatches in serialisation and optional fields.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[from openapi_core import OpenAPI
+from openapi_core.testing.mock import MockRequest, MockResponse
+
+spec = OpenAPI.from_file_path("openapi.yaml")
+
+def test_create_payment_matches_spec():
+    response = client.post("/payments", json={
+        "amount": 1000, "currency": "USD",
+        "customer_id": "550e8400-e29b-41d4-a716-446655440000"
+    })
+    mock_request = MockRequest("http://localhost", "POST", "/payments")
+    mock_response = MockResponse(
+        data=response.content, status_code=response.status_code
+    )
+    result = spec.validate_response(mock_request, mock_response)
+    assert not result.errors]]></code>
+      </example>
+    </section>
+    <section name="CI Integration">
+      <rule>
+        <statement>Run spec lint, stub generation, model diff, and contract tests in CI on every PR that touches openapi.yaml or server/ code. Fail the build on any divergence.</statement>
+        <rationale>Contract drift that is not caught in CI reaches production and breaks deployed clients. CI is the safety net that makes contract-first sustainable at scale.</rationale>
+      </rule>
+    </section>
+    <section name="Limitations and failure modes">
+      <p>Spec-impl drift occurs when devs hand-edit handlers without updating the spec; clients and docs lag. Mitigation: contract tests in CI (schemathesis/dredd) plus oasdiff to fail breaking PRs. Generated stub limitations exist; openapi-generator output has rough edges per language (FastAPI Python generator does not match modern idioms). Treat generators as starting points, not final code. Generator version churn changes output between generator versions; lock the version, regenerate intentionally. Spec-as-bottleneck makes every change require a spec PR + review; teams revert to ad-hoc fields. Mitigation: lightweight RFC review for non-breaking, full review for breaking. Versioning paralysis arises from fear of breaking clients, leading to spec freeze; introduce additive changes freely (new fields, new endpoints) with oasdiff enforcement. Schema duplication occurs when inline schemas across operations diverge subtly. Use $ref for every shared shape. Mock-prod gap results from mock servers (prism, mockoon) feeding clients fake data that masks producer bugs. Pair mocks with contract tests against real implementation. Polyglot codegen quirks cause discriminated unions, nullable: true, allOf/oneOf/anyOf each have language-specific gotchas; agents pick patterns the generator handles poorly. Spec format drift between OpenAPI 3.0, 3.1, 3.2, AsyncAPI 2.x/3.x occurs; pin a version, document migration cost before bumping. Contract for synchronous only captures request/response in REST/OpenAPI; event payloads need AsyncAPI; gRPC needs Protobuf. Do not try to fit events into OpenAPI.</p>
+    </section>
+    <section name="Best practices">
+      <list>
+        <item>Spec PR before code PR. Review and merge contract changes alone; never bundle with implementation.</item>
+        <item>Generated code is committed but read-only—.openapi-generator-ignore lists hand-written extensions; CI verifies regeneration is a no-op.</item>
+        <item>Pin generator version in CI; bump intentionally with a changelog entry covering output diffs.</item>
+        <item>oasdiff in CI to flag breaking changes; require an explicit breaking-change label and bumped major version to merge.</item>
+        <item>Mock + contract tests at every level: frontend devs hit prism mock; backend impl validated by schemathesis against the spec.</item>
+        <item>Schema component library. Reuse $refs for User, Pagination, ProblemDetail, Money, etc. Forbid inline duplicates.</item>
+        <item>Versioning policy baked in: URL-versioned /v1, additive within version, deprecated fields tagged deprecated: true for ≥2 minor releases.</item>
+        <item>Examples per response. Even 4xx—clients learn error shapes from realistic examples, not prose.</item>
+        <item>Linter ruleset committed (.spectral.yaml); enforce in CI; add custom rules for project conventions (idempotency-key headers, problem-details refs, etc.).</item>
+        <item>One spec, one repo for the source of truth. Mirror to a public docs repo on release.</item>
+        <item>Schema registry when many specs share schemas (Apicurio, Buf); avoid copy-paste.</item>
+        <item>AsyncAPI for events. Do not bend OpenAPI to describe events; use AsyncAPI alongside.</item>
+      </list>
+    </section>
+    <section name="Agentic workflow">
+      <p>Drive contract-first in five stages: (1) a spec-author subagent translates a feature brief into spec deltas (paths, schemas, security, error refs), opens a spec-only PR; (2) a spec-linter subagent runs spectral + custom REST/REST-style rules and oasdiff against main to flag breaking changes; (3) a codegen-runner subagent regenerates server stubs (commit generated/ directory), client SDKs (one repo per language), mocks, and docs; (4) an impl-author subagent fills handler bodies, importing only generated models; (5) a contract-tester subagent runs schemathesis against the implementation, asserting every operation matches its 2xx/4xx/5xx schemas. Always merge spec PR first, codegen second, impl third—never mix in one PR. faion-sdd-executor-agent runs the standard quality gate at every step.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent (agents/faion-sdd-executor-agent.md)—runs lint/build/test gate plus contract tests. A purpose-built spec-author—produces openapi.yaml diffs from feature briefs, refusing to introduce inline schemas. A spec-reviewer—reviews spec PRs against project rules (kebab-case paths, plural resources, every error references Problem Details, every operation has examples). A breaking-change-bot—runs oasdiff between PR head and main; fails on incompatible changes, posts changelog comment. A codegen-orchestrator—re-runs openapi-generator for each target (server, ts-client, py-client, go-client) and commits to designated paths. A mock-server-runner—boots prism mock openapi.yaml for frontend agents during development. A contract-fuzzer—schemathesis run --checks=all against the running impl in CI. password-scrubber-agent (agents/password-scrubber-agent.md)—scans spec examples for tokens / PII.</p>
+    </section>
+    <section name="AI-agent gotchas">
+      <list>
+        <item>Editing handlers without touching spec. Spec-first guard script in pre-commit + CI.</item>
+        <item>Hand-editing generated/. Disabled in .gitattributes linguist-generated, plus CI re-runs and diffs.</item>
+        <item>Inline schema duplication. Agent inlines a User-shaped object inside requestBody instead of $ref. Reject in spec review.</item>
+        <item>Inventing fields not yet in spec. Generated client SDK lacks the field; integration breaks. Always model in spec first.</item>
+        <item>Breaking change disguised as "fix". Rename userId → user_id. oasdiff must run; without it, agents ship breaking changes.</item>
+        <item>Generator version drift across services. Two services on different generator versions emit incompatible client types. Lock per-org.</item>
+        <item>anyOf / oneOf overuse. Generators handle inconsistently; pick oneOf with discriminator for tagged unions, otherwise simplify.</item>
+        <item>Mock-only validation. Frontend dev passes against prism but real impl mismatches. Always run contract tests against the impl.</item>
+        <item>Examples that fail validation. Agent writes example payloads that break the schema (wrong enum, missing field). Validate examples in CI.</item>
+        <item>Forgetting Idempotency-Key headers on POST that creates side effects; clients hit duplicate creation. Spec rule + handler middleware.</item>
+        <item>additionalProperties: true left default. Spec accepts unknown fields silently; agents lean on this; later strictification breaks integrations. Decide policy at design time.</item>
+        <item>Spec for sync APIs only. Event payloads documented in prose; consumers do not have a typed schema. Switch to AsyncAPI.</item>
+        <item>Stale CHANGELOG. Generated changelog from oasdiff is more reliable than agent-written prose.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/openapi-base.yaml" purpose="OpenAPI 3.1 spec skeleton with Payment API example (request, response, error refs)"/>
+      <template path="templates/spectral-rules.yaml" purpose=".spectral.yaml extending oas ruleset with required operationId/description"/>
+      <template path="templates/contract-ci.yaml" purpose="GitHub Actions workflow: lint spec, generate, diff models, run contract tests"/>
+    </templates>
+    <see-also>
+      <link href="https://spec.openapis.org/oas/v3.1.0"/>
+      <link href="https://www.asyncapi.com"/>
+      <link href="https://openapi-generator.tech"/>
+      <link href="https://stoplight.io/open-source/spectral"/>
+      <link href="https://github.com/Tufin/oasdiff"/>
+      <link href="https://schemathesis.readthedocs.io"/>
+      <link href="https://stoplight.io/open-source/prism"/>
+      <link href="https://buf.build"/>
+      <link href="https://www.speakeasy.com"/>
+      <ref slug="api-openapi-spec"/>
+      <ref slug="api-rest-design"/>
+      <ref slug="api-versioning"/>
+      <ref slug="api-documentation"/>
+    </see-also>
+  </content>
+</methodology>
