@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 - chore: migrate reflexion-learning, sdd-workflow-overview, task-creation-parallelization to methodology.xml (feature-045 batch FM 3/3)
 - chore: migrate 3/3 solo/sdd methodologies → methodology.xml (key-trends-summary, living-documentation, mistake-memory; feature-045 batch FO)
+- chore: migrate ops-financial-planning, ops-pricing-strategy, tailwind-design-tokens to methodology.xml (feature-045 batch FQ)
 - chore: migrate product-launch, roadmap-design, feature-prioritization-rice to methodology.xml (feature-045 batch FD 3/3)
 - chore: migrate 3/3 solo/product/product-manager methodologies → methodology.xml (mvp-scoping, outcome-based-roadmaps-advanced, product-discovery; feature-045 batch FC)
 - chore: migrate seo-techniques, topical-authority, clickup-setup to methodology.xml (feature-045 batch FA 3/3)
