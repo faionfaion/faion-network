@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (strict-mode-required-fields, structured-output-mode-picker, structured-tool-errors; feature-045 batch W)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (llm-judge-rubric-evidence-first, manifest-then-fetch, map-reduce-send-fanout; feature-045 batch R)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (max-turns-circuit-breaker, mcp-gateway-composition, mcp-transport-stdio-vs-http; feature-045 batch S)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (posttool-hook-self-correction, preference-trained-router, previous-response-id-reasoning-reuse; feature-045 batch T)

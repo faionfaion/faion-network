@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="strict-mode-required-fields">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>In OpenAI/Azure strict mode, every property must be required and every object must forbid additional properties; this is a grammar invariant, not a style choice.</summary>
+    <tags>
+      <tag>structured-outputs</tag>
+      <tag>json-schema</tag>
+      <tag>strict-mode</tag>
+      <tag>pydantic</tag>
+      <tag>openai</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Strict-Mode Schemas: Required-Everything + No Additional Properties</title>
+    <summary>OpenAI/Azure strict-mode structured outputs compile each schema into a finite-state grammar. The grammar refuses any schema where some properties are required and others are merely declared, or where the object accepts unknown keys. The rule: every property defined on an object must be listed in required, and every object must set additionalProperties: false. Optional fields are simulated by making the type nullable (T | None), not by omitting them from required.</summary>
+    <why>
+      <p>Strict mode trades flexibility for guaranteed validity. Internally, the schema is converted into a regular grammar; an "optional" key would create non-determinism in the FSM (do we expect this token next or skip to the closing brace?), so the compiler rejects it. The same constraint applies to additional properties — without additionalProperties: false, the grammar would have to allow arbitrary key/value tokens at every object boundary, which collapses guarantees. Pydantic's Optional[X] translates correctly only when the bridge (openai-python, Instructor, pydantic-ai) emits {"type": ["X", "null"]} AND keeps the field in required. Teams hit this every time they migrate a "loose" Pydantic model to strict mode and get 400: schema additionalProperties must be false when strict is true.</p>
+      <p>Anthropic's tool-use input schemas, Azure's parse API, and Google's Gemini responseSchema with strict mode all enforce the same constraint. A model that ships in 2026 without this rule will fail in production the first time it touches strict mode.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any call against the OpenAI Responses API or Chat Completions with response_format: {type: "json_schema", strict: true}.</item>
+        <item>Anthropic tool-use where the tool input must be exhaustively typed (additionalProperties: false keeps the model from inventing parameters).</item>
+        <item>Azure OpenAI strict mode and Google Gemini responseSchema with strict enforcement.</item>
+        <item>Generating JSON-Schema artifacts to ship to a third-party that runs the same compiler (Outlines / XGrammar with strict-grammar mode).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Local Outlines or XGrammar pipelines that support standard JSON-Schema optional fields natively — required-everything wastes tokens for no grammar gain.</item>
+        <item>Loose JSON mode (response_format: {type: "json_object"}) — there is no grammar, so the constraint does not apply (and you also do not get format guarantees).</item>
+        <item>Schemas that intentionally accept open-ended additional properties (e.g., a metadata bag for arbitrary user keys) — strict mode is the wrong tool; either drop strict or split the bag into a typed sub-object plus a separate audit field.</item>
+      </list>
+    </when-not-to-use>
+    <section name="strict-mode-rule">
+      <p>Strict-mode structured outputs compile the JSON Schema into a finite-state grammar. The compiler rejects any schema where the set of required properties is not equal to the set of declared properties, or where additionalProperties is missing or true. Optional semantics are encoded by making a field nullable, not by removing it from required.</p>
+      <rule testable="true">
+        <statement>For every object schema submitted with strict: true, set additionalProperties: false, and list every declared property in required. To express "this field may be absent", use a nullable type ({"type": ["string", "null"]} or Pydantic str | None) — never omit the field from required.</statement>
+        <rationale>The strict-mode compiler builds a regular grammar; optional fields would introduce branch non-determinism (skip token vs read token), and unrestricted additional properties would force the grammar to accept arbitrary tokens between every key. The OpenAI error 400: Invalid schema for response_format ... additionalProperties must be false is the compiler refusing the schema.</rationale>
+      </rule>
+      <example type="good" title="Pydantic model with nullable fields for strict mode">
+        <code lang="python"><![CDATA[from pydantic import BaseModel, ConfigDict
+
+class User(BaseModel):
+    model_config = ConfigDict(extra="forbid")  # -> additionalProperties: false
+    name: str
+    email: str
+    middle_name: str | None = None             # nullable, NOT optional]]></code>
+        <note>extra="forbid" makes Pydantic emit additionalProperties: false. str | None becomes {"type": ["string","null"]} and stays in required.</note>
+      </example>
+      <example type="bad" title="JSON Schema with missing required and additionalProperties">
+        <code lang="json"><![CDATA[{
+  "type": "object",
+  "properties": {
+    "name":  {"type": "string"},
+    "email": {"type": "string"},
+    "middle_name": {"type": "string"}
+  },
+  "required": ["name", "email"]
+}]]></code>
+        <note>middle_name is declared but not required, and additionalProperties is missing. OpenAI strict mode returns 400 on submission.</note>
+      </example>
+      <templates>
+        <template path="templates/strict_pydantic.py" purpose="Pydantic model with extra=forbid and nullable fields ready for strict mode"/>
+        <template path="templates/strict.schema.json" purpose="Equivalent JSON Schema that passes the OpenAI strict-mode compiler"/>
+      </templates>
+    </section>
+    <section name="nullable-vs-optional">
+      <p>Pydantic's Optional[X] is shorthand for X | None — the type is nullable, not the field. To make Pydantic emit a strict-mode-compatible schema, the field must keep a default (= None) so the model knows the absence-case maps to null, AND extra="forbid" must be set so the bridge emits additionalProperties: false.</p>
+      <rule testable="true">
+        <statement>Encode "may be absent" by declaring the field as T | None = None and keeping it in required. Never drop a property from required to mean "optional" under strict mode.</statement>
+        <rationale>Strict-mode compilers translate T | None into {"type": ["T","null"]} and keep the property required, which is the only encoding the FSM accepts.</rationale>
+      </rule>
+      <example type="good" title="Address model with optional apartment field">
+        <code lang="python"><![CDATA[class Address(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    street: str
+    city: str
+    apartment: str | None = None  # the model emits null when absent]]></code>
+        <note>The bridge emits apartment in required with type ["string","null"]. The model writes "apartment": null when there is no apartment.</note>
+      </example>
+      <antipattern>
+        <description>Defining apartment: str = "" (empty-string sentinel) instead of str | None.</description>
+        <reason>Empty string is a valid value, indistinguishable from "explicitly empty". Downstream code cannot tell "field absent" from "field empty"; data quality degrades silently.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using total: int | None for a strict-mode money field.</description>
+        <reason>int | None allows the model to skip the calculation by emitting null. Use a non-nullable type and pair it with so-08-style refusal handling for the genuine "cannot compute" case.</reason>
+      </antipattern>
+      <rule testable="true">
+        <statement>Before deploying a strict-mode pipeline, dump Model.model_json_schema() and assert that for every nested object: (a) additionalProperties is false, (b) the required list equals the properties keys.</statement>
+        <rationale>The strict-mode 400 error fires at request time, not build time; an automated assertion catches the regression before traffic hits.</rationale>
+      </rule>
+    </section>
+    <see-also>
+      <link href="https://platform.openai.com/docs/guides/structured-outputs">OpenAI structured outputs guide — strict-mode constraints.</link>
+      <link href="https://community.openai.com/t/schema-additionalproperties-must-be-false-when-strict-is-true/929996">OpenAI community thread documenting the 400 error.</link>
+      <link href="https://medium.com/@aviadr1/how-to-fix-openai-structured-outputs-breaking-your-pydantic-models-bdcd896d43bd">Walk-through of fixing common Pydantic→strict-mode breakages.</link>
+      <link href="https://docs.pydantic.dev/latest/concepts/json_schema/">Pydantic JSON-Schema generation behaviour.</link>
+    </see-also>
+  </content>
+</methodology>
