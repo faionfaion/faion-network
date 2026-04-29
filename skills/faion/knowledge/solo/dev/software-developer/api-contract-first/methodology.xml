@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-contract-first">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Design the API in OpenAPI before code, generate stubs and SDKs, validate implementation conforms.</summary>
+    <tags>
+      <tag>api-design</tag>
+      <tag>openapi</tag>
+      <tag>contract-testing</tag>
+      <tag>code-generation</tag>
+      <tag>specification</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>API Contract-First Development</title>
+    <summary>Write the OpenAPI spec before any implementation code, get it reviewed like a PR, then generate server stubs and client SDKs from it. The spec is the source of truth; CI validates that the running implementation still matches it. Breaking changes require spec version bumps.</summary>
+    <why>
+      <p>Designing the API surface in YAML forces deliberate decisions about resource shapes, error responses, and versioning before any code exists — reversing those decisions is cheap at spec stage, expensive after clients integrate. Code generation eliminates drift between spec and implementation. Spectral linting catches naming and structure violations automatically.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Starting a new API that will have external consumers or multiple client teams.</item>
+        <item>Adding a significant new resource or workflow to an existing API.</item>
+        <item>Integrating with a partner that requires a published contract.</item>
+        <item>Any API where mobile and backend teams work in parallel.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Internal APIs consumed only by one service written by the same team.</item>
+        <item>Rapid prototyping where the API shape is still being discovered.</item>
+        <item>APIs that are wrappers over a third-party spec (just import their spec).</item>
+        <item>Micro-services that communicate exclusively over gRPC/protobuf.</item>
+      </list>
+    </when-not-to-use>
+    <section name="agentic-workflow">
+      <p>A four-stage pipeline. (1) Design: a domain-modeling agent produces an OpenAPI 3.1 spec from PRD + REST style guide; a critic agent runs Spectral and the api-rest-design rules. (2) Approve: human-in-the-loop merge gate; oasdiff breaking blocks regressions. (3) Generate: CI pipeline emits server stubs (FastAPI / NestJS / go-chi), client SDKs (TS, Py, Go), and contract test scaffolds via openapi-generator or orval/oazapfts. (4) Implement: an SDD-driven coding agent fills business logic in the generated stub, never editing the generated models — contract tests enforce the spec. Repeat: any spec change re-runs (3) and any new endpoint re-runs (1)–(4).</p>
+      <rule testable="true">
+        <statement>Each endpoint life-cycle requires human approval at the spec stage (design review gate) before code generation begins.</statement>
+        <rationale>Agents can produce technically valid specs that are semantically poor. Human-in-loop ensures the contract aligns with product intent before consuming teams depend on stubs.</rationale>
+      </rule>
+      <example type="good" title="Four-stage spec-first pipeline">
+        <code lang="text"><![CDATA[Stage 1 — Design:
+- Agent reads PRD and api-rest-design rules
+- Produces openapi.yaml with all endpoints, request/response schemas, error definitions, examples
+- Runs Spectral; outputs PASS/WARN/FAIL
+
+Stage 2 — Approve:
+- Human reviews spec PR, checks resource naming, HTTP methods, status codes
+- Runs oasdiff breaking; blocks unless MAJOR version bump
+
+Stage 3 — Generate:
+- CI runs openapi-generator → FastAPI server stubs, TypeScript client, contract test scaffolds
+- All generated code committed (marked DO NOT EDIT)
+
+Stage 4 — Implement:
+- Agent fills NotImplementedError in server; forbidden from editing models
+- Runs pytest -k contract_<operationId> per endpoint
+- Commits implementation code only]]></code>
+      </example>
+    </section>
+    <section name="workflow">
+      <p>Six-phase workflow from spec design to deployment, with CI integration rules.</p>
+      <rule testable="true">
+        <statement>The OpenAPI spec is the source of truth. Implementation must conform to the spec; the spec is never updated to match a drifted implementation.</statement>
+        <rationale>Allowing spec-to-implementation drift invalidates generated clients and documentation. Once consumers rely on the spec, breaking it silently causes integration failures.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Treat spec changes that break existing responses (remove fields, change types) as breaking changes requiring a version bump.</statement>
+        <rationale>Additive changes (new optional fields) are backwards-compatible. Removals and type changes break existing clients silently.</rationale>
+      </rule>
+    </section>
+    <section name="ci-integration">
+      <rule testable="true">
+        <statement>Run Spectral lint on every PR that touches the spec file; fail the build on errors.</statement>
+        <rationale>Spectral catches missing operationIds, undocumented error responses, and naming violations before review — issues that are cheap to fix early and expensive later.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Run contract tests (openapi-core response validation) on every commit; do not merge if responses diverge from the spec.</statement>
+        <rationale>Contract tests are the only automated check that the running implementation still matches the published spec.</rationale>
+      </rule>
+    </section>
+    <section name="code-generation">
+      <rule testable="true">
+        <statement>Generate server stubs and client SDKs from the spec using openapi-generator; regenerate on every spec change.</statement>
+        <rationale>Manual synchronization between spec and generated code always drifts. Automated regeneration is the only reliable approach.</rationale>
+      </rule>
+      <example type="good" title="openapi-generator commands">
+        <code lang="bash"><![CDATA[# Generate Python FastAPI server stubs
+openapi-generator generate \
+  -i openapi.yaml \
+  -g python-fastapi \
+  -o ./server \
+  --additional-properties=packageName=payment_api
+
+# Generate TypeScript Axios client
+openapi-generator generate \
+  -i openapi.yaml \
+  -g typescript-axios \
+  -o ./client]]></code>
+      </example>
+    </section>
+    <section name="spectral-linting">
+      <rule testable="true">
+        <statement>Enforce at minimum: operation-operationId (error), oas3-schema (error), operation-description (warn).</statement>
+        <rationale>Missing operationIds break SDK generation. Schema errors break client validation. Missing descriptions degrade documentation quality.</rationale>
+      </rule>
+      <example type="good" title="Spectral configuration">
+        <code lang="yaml"><![CDATA[# .spectral.yaml
+extends: spectral:oas
+rules:
+  operation-operationId: error
+  operation-description: warn
+  info-contact: warn
+  oas3-schema: error]]></code>
+      </example>
+    </section>
+    <section name="contract-validation">
+      <p>Validate that running responses match the spec using openapi-core and schemathesis.</p>
+      <example type="good" title="Python contract test">
+        <code lang="python"><![CDATA[from openapi_core import OpenAPI
+
+spec = OpenAPI.from_file_path("openapi.yaml")
+
+def test_create_payment_matches_spec(client):
+    response = client.post("/payments", json={
+        "amount": 1000,
+        "currency": "USD",
+        "customer_id": "550e8400-e29b-41d4-a716-446655440000",
+    })
+    assert not spec.validate_response(
+        MockRequest("http://localhost", "POST", "/payments"),
+        MockResponse(data=response.content, status_code=response.status_code),
+    ).errors]]></code>
+      </example>
+    </section>
+    <section name="tools-and-services">
+      <p>Contract-first development relies on a suite of CI/CD tooling and SaaS platforms. Select tools based on language support, IDE integration, and team size. Core tools: openapi-generator (code generation), oapi-codegen (Go), orval (TypeScript), spectral (spec linting), oasdiff (breaking-change detection), schemathesis (property-based testing), buf (gRPC equivalent). SaaS platforms include Stoplight (visual design + governance), SwaggerHub (hosted governance), Bump.sh (versioning + breaking-change diffs), Apicurio Registry (self-hosted registry), Postman (spec import + contract tests), Speakeasy (polished SDK generation), Fern (SDK + docs), Buf Schema Registry (gRPC registry), and Konnect (Kong gateway).</p>
+    </section>
+    <section name="failures-and-limitations">
+      <p>Spec drift: developers patch the controller and forget the spec; without CI enforcement the spec rots quickly. Generated code ergonomics: openapi-generator output is often verbose, idiomatic-poor, and locked to template choices. Generator bugs: certain Python / TypeScript generators emit broken code for oneOf, recursive schemas, or additionalProperties — silently. Breaking-change detection is brittle: same JSON schema can be expressed two ways and oasdiff reports false breaks. Conditional / polymorphic responses (oneOf, anyOf, discriminator) are hard for generators and harder for SDK consumers. AsyncAPI tooling lags OpenAPI by 2–3 years; stub generation is shaky for event-driven contracts. Spec authoring tools (Stoplight Studio, Swagger Editor) make easy contracts easy and hard contracts harder; agents often produce spec that is technically valid but semantically poor. Mock servers diverge from real backend semantics (auth, idempotency, rate limits) — clients pass mock tests and break in staging.</p>
+    </section>
+    <section name="agentic-gotchas">
+      <p>Agents edit generated files when "fixing tests". Mark generated dirs with // CODEGEN — DO NOT EDIT headers and add a pre-commit hook that fails on changes inside them. LLMs invent OpenAPI fields that don't exist (x-magic-flag) or use deprecated 2.0 syntax. Pin the prompt to OAS 3.1 and validate with the official JSON Schema. Polymorphic schemas (oneOf / discriminator) trip both generators and agents — keep schemas flat where possible and document the discriminator value. Agents skip examples to save tokens. Force examples blocks on every request and 2xx response via Spectral oas3-valid-media-example plus a custom "min-1-example" rule. Agents conflate "spec" and "docs" — they'll add narrative prose into description fields. Keep description short; reference external docs via externalDocs. Breaking-change blindness: agents widen response shapes (add a null to a non-nullable field) without bumping major. oasdiff catches this; the agent prompt must be told to read its output. Mock-server overconfidence: agents wire frontend to Prism mock and declare "done"; mock semantics differ from real (auth, rate limits). Require contract tests against the real server before completing an SDD task. Human-in-loop checkpoints: any spec PR labeled breaking must be human-approved; any new resource must pass design review before code generation runs. Generator pinning: agents may bump generator versions silently; pin the version in package.json / Makefile and treat upgrades as their own PR.</p>
+    </section>
+    <section name="recommended-agents-and-subagents">
+      <p>Recommended subagents for contract-first pipelines: faion-sdd-executor-agent (gates: spec compiles, Spectral clean, oasdiff non-breaking or major-bumped, generated code committed in same PR). A spec-critic subagent (worth creating): runs Spectral + custom rules from api-rest-design and api-versioning; outputs PASS/FAIL with rule IDs. faion-feature-executor (skill) — sequences the four stages as ordered tasks; pauses at the human-approve gate. A stub-impl subagent: instructed to fill NotImplementedError in the generated server with business logic, forbidden from touching the model files. password-scrubber-agent — scrub examples in spec before publishing.</p>
+    </section>
+    <section name="prompt-pattern-for-spec-drafting">
+      <p>Spec drafting prompt template:</p>
+      <code lang="text"><![CDATA[You are an API designer. Produce an OpenAPI 3.1 YAML for the use cases in <prd>. Follow Zalando RESTful guidelines and the rules in api-rest-design/README.md. Use Problem+JSON for errors. Tag every operation. Include 2 examples per request and per 2xx response. Output only the YAML; no commentary.]]></code>
+    </section>
+    <section name="prompt-pattern-for-stub-fill">
+      <p>Stub-fill (post-generation) prompt template:</p>
+      <code lang="text"><![CDATA[You are filling generated server stubs. Files under server/models/** are GENERATED — DO NOT EDIT. Implement only methods raising NotImplementedError in server/apis/**. Use the repository in server/repositories/<resource>.py. After each method, run pytest -k contract_<operationId>; the test must pass.]]></code>
+    </section>
+    <section name="cli-tools-ecosystem">
+      <p>Contract-first development uses a standard suite of CLI tools: openapi-generator (generate stubs/clients in 50+ targets); oapi-codegen (Go server + client from OpenAPI); orval (TS clients with axios, fetch, react-query, zod support); oazapfts (minimal TS fetch client); datamodel-code-generator (OpenAPI → Pydantic / dataclasses); spectral (spec linter with custom rulesets); oasdiff (breaking change detector); prism (mock server + contract validation proxy); dredd (spec-vs-implementation contract test runner); schemathesis (property-based testing from OpenAPI); buf (Protobuf-equivalent for gRPC).</p>
+    </section>
+    <section name="saas-platforms-for-contract-management">
+      <p>Stoplight (SaaS + desktop) provides visual design + governance with Spectral CLI integration. SwaggerHub (SaaS) offers hosted spec governance + style guides via REST API. Bump.sh (SaaS) provides versioned hosting + breaking-change diff visualization. Apicurio Registry (OSS) is a self-hosted spec/schema registry. Postman (SaaS) enables spec import + contract tests in CI with Newman CLI. Speakeasy (SaaS) generates polished SDK generation across languages. Fern (SaaS + OSS CLI) provides spec-first SDK + docs generation. Buf Schema Registry (SaaS) is the gRPC-equivalent of SwaggerHub. Konnect (Kong, SaaS) enables spec-first deploy to gateway.</p>
+    </section>
+    <section name="best-practices">
+      <p>The spec is the source of truth. Hand-edits to generated files fail CI. Lint with a strict Spectral ruleset (operation IDs, descriptions, examples, tags) — agents will skip these otherwise. Run oasdiff breaking on every PR; require a MAJOR bump on any breaking change. Keep the spec under api/openapi.yaml (or split with $ref) and version-control it next to the code; PRs that change behavior must change the spec. Generate at build time, not at commit time — committed generated code is fine, but it must match the spec exactly (CI re-generates and diffs). Provide examples (≥1 per operation, both request and response) — they double as fixture data and improve LLM SDK output. Run schemathesis or dredd in CI: property-based tests catch generator bugs and implementation drift. For events / async, use AsyncAPI 3.0 with @asyncapi/cli; treat the same way as OpenAPI. For gRPC, use buf and the same workflow: spec → generate → impl → contract test.</p>
+    </section>
+    <templates>
+      <template path="templates/openapi-base.yaml" purpose="Minimal OpenAPI 3.1 spec with one POST endpoint, request/response schemas, and error ref"/>
+      <template path="templates/contract-ci.yaml" purpose="GitHub Actions workflow: lint spec, generate server, compare models, run contract tests"/>
+    </templates>
+    <see-also>
+      <link href="https://spec.openapis.org/oas/latest.html">OpenAPI Specification 3.1</link>
+      <link href="https://www.asyncapi.com/docs/reference/specification/v3.0.0">AsyncAPI 3.0</link>
+      <link href="http://apistylebook.com/design/guidelines/">API Stylebook</link>
+      <link href="https://meta.stoplight.io/docs/spectral">Spectral rulesets</link>
+      <link href="https://github.com/Tufin/oasdiff">oasdiff (breaking change detection)</link>
+      <link href="https://schemathesis.readthedocs.io">Schemathesis</link>
+      <link href="https://buf.build">Buf (gRPC equivalent)</link>
+    </see-also>
+  </content>
+</methodology>
