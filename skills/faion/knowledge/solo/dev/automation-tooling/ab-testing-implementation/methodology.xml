@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ab-testing-implementation">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>The implementation layer for A/B experiments: typed ExperimentEvent tracking, exposure deduplication, z-test analysis with Wilson CI, SRM guard, and structured reporting. Pair with ab-testing-basics.</summary>
+    <tags>
+      <tag>a-b-testing</tag>
+      <tag>experiment-tracking</tag>
+      <tag>statistical-analysis</tag>
+      <tag>event-analytics</tag>
+      <tag>experiment-reporting</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+
+  <content>
+    <title>A/B Testing Implementation</title>
+
+    <summary>The implementation layer for A/B experiments: typed ExperimentEvent tracking (exposure + conversion), ExperimentTracker with in-request exposure deduplication, ExperimentAnalyzer using z-test for proportions with Wilson confidence intervals, and ExperimentReporter for dashboard summaries. Pair with ab-testing-basics for experiment design and sample-size calculation.</summary>
+
+    <why>
+      <p>Unstructured event tracking leads to data that cannot support analysis: missing variant labels, duplicate exposures inflating sample size, or conversions logged without checking whether the user was actually exposed. Typed dataclasses + a single analytics call pattern make the event schema a code-reviewable contract; the analyzer runs only on closed datasets to prevent peeking.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building experiment plumbing in code: deterministic assignment, exposure tracking, conversion events.</item>
+        <item>Adding a typed analytics layer so events land cleanly in Mixpanel / Amplitude / PostHog / a warehouse.</item>
+        <item>Implementing significance, lift, confidence interval, and power calculations for shipped experiments.</item>
+        <item>Generating an experiment summary endpoint or daily-metrics report for a dashboard.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>For experiment design (hypothesis, MDE, sample size) — that belongs in ab-testing-basics.</item>
+        <item>When a managed platform (Statsig, Optimizely, GrowthBook, LaunchDarkly Experiments, PostHog) already runs assignment and stats — wiring them in is far cheaper than reimplementing.</item>
+        <item>For multi-armed bandit / contextual bandits — the methodology is fixed-allocation A/B. Bandits need a different stack (Vowpal Wabbit, Thompson sampling).</item>
+        <item>For tests that require sequential analysis (always-valid p-values, mSPRT). Naive z-test peeking gives false positives.</item>
+        <item>For tiny user volumes where you'll never reach significance — switch to qualitative or holdout testing instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="experiment-event-tracking-schema-and-exposure-deduplication">
+      <p>ExperimentEvent typed schema, ExperimentTracker with in-process exposure deduplication, and exposure vs conversion call sites.</p>
+
+      <rule testable="true">
+        <statement>Model every experiment event as a typed dataclass with experiment_id, variant, user_id, event_type (exposure | conversion | metric), metric_name, metric_value, timestamp, and properties.</statement>
+        <rationale>An untyped dict passed to the analytics client drifts over time; a dataclass is a code-reviewable schema that fails fast when fields are missing.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Deduplicate exposures by (experiment_id, user_id) within a request/session; never fire multiple exposure events for the same user in the same experiment during one page load.</statement>
+        <rationale>Duplicate exposures inflate the exposure count, causing sample-ratio mismatch and underestimating conversion rate.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>In-process deduplication (_exposures set) is for development only; in production, persist the deduplication state to a durable store (Redis or a warehouse exposure table).</statement>
+        <rationale>In-process sets are lost on pod restart; in a multi-replica deployment each pod builds its own set, allowing duplicates across replicas.</rationale>
+      </rule>
+
+      <example type="good" title="Exposure deduplication with separate conversion tracking">
+        <code lang="python"><![CDATA[
+@app.get("/checkout")
+async def checkout(user_id: str):
+    variant = assigner.get_variant("checkout-v2", user_id)
+    tracker.track_exposure("checkout-v2", user_id)  # deduplicated
+    if variant == "treatment":
+        return render_new_checkout()
+    return render_old_checkout()
+
+@app.post("/checkout/complete")
+async def complete_checkout(user_id: str, order: Order):
+    tracker.track_conversion(
+        "checkout-v2", user_id, "checkout_conversion",
+        value=1.0, properties={"order_value": float(order.total)},
+    )
+        ]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Track exposure when the variant is rendered, not when assignment happens; track conversion on the specific downstream event — never at the same call site as exposure.</statement>
+        <rationale>Logging exposure and conversion at the same site conflates assignment with outcome. Analysis must join exposure → subsequent conversion; co-located calls destroy the temporal relationship.</rationale>
+      </rule>
+    </section>
+
+    <section name="statistical-analysis-z-test-wilson-ci-power-srm-guard">
+      <p>ExperimentAnalyzer: z-test for proportions, Wilson confidence intervals, power calculation, sample-size solver, and SRM prerequisite guard.</p>
+
+      <rule testable="true">
+        <statement>Refuse to run analysis unless: minimum runtime has elapsed, pre-registered sample size has been reached, and SRM check passes (chi-square p > 0.001).</statement>
+        <rationale>Running analysis before sample size is reached inflates false positives. SRM (sample-ratio mismatch) indicates a bucketing or logging bug; analysis on SRM data produces biased lift estimates.</rationale>
+      </rule>
+
+      <reference path="templates/srm-check.py">Chi-square SRM guard that exits non-zero on traffic split deviation.</reference>
+
+      <rule testable="true">
+        <statement>Use a two-sided z-test for binary conversion metrics; compute pooled standard error from combined conversion rate; report Wilson confidence intervals (not Wald intervals) for robustness at small n.</statement>
+        <rationale>Wald intervals can include values outside [0,1] for very high or very low rates; Wilson intervals are bounded and more accurate for proportions near 0 or 1.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Maintain a typed metric registry: binary (z-test for proportions), continuous (Welch's t-test), ratio (delta method) — never apply the binary z-test to continuous or ratio metrics.</statement>
+        <rationale>Applying a binomial z-test to continuous metrics (e.g., revenue per user) produces wrong variance estimates and unreliable p-values.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Agent reuses the binary conversion analyzer for revenue per user or latency p95.</description>
+        <reason>Revenue per user is a ratio metric (sum of revenue / count of users); latency p95 is a quantile metric. Both require different test statistics than the two-proportion z-test.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Analysis output must be structured JSON: control stats, treatment stats, lift, p_value, confidence_interval, power, srm_p, duration_days, decision_ready boolean — never a narrative sentence like "the variant is winning".</statement>
+        <rationale>A narrative sentence encodes a decision; the structured output presents evidence. Humans decide ship/no-ship; the analyzer presents the evidence without editorializing.</rationale>
+      </rule>
+    </section>
+
+    <section name="experiment-reporting-summary-endpoint-and-daily-metrics">
+      <p>ExperimentReporter: per-variant summary with stats, daily-metrics trend data, and guardrail metric monitoring.</p>
+
+      <rule testable="true">
+        <statement>Expose experiment summaries as a JSON endpoint with per-variant exposure counts, conversion rates, analysis results, and a generated_at timestamp; never cache summary data beyond 5 minutes to reflect new conversions.</statement>
+        <rationale>A stale cached summary misleads operators checking experiment health; the 5-minute window balances freshness against repeated heavy analysis queries.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Provide daily metric data for at least the last 14 days; include both cumulative and per-day rates to detect novelty effects (initial spike that fades) or ramp effects (gradual improvement).</statement>
+        <rationale>Cumulative-only reporting hides temporal patterns. A novelty effect produces an early significant result that regresses to null later; per-day data reveals this before shipping.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Monitor at least two guardrail metrics alongside the primary metric: latency p95 and error rate; flag any guardrail degradation even if the primary metric is positive.</statement>
+        <rationale>A checkout conversion win that comes with +200ms latency and +0.5pp error rate may not be a net positive for the business; guardrails catch these regressions before shipping.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Reporting only the primary metric result and ignoring secondary and guardrail metrics.</description>
+        <reason>Optimization on a single metric often degrades others. Ship decisions require the full picture of what improved and what regressed.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive this with two cooperating agents: an experiment-impl agent that wires assignment, exposure, and conversion code into the service (and writes tests proving deterministic assignment + idempotent exposure), and an experiment-analyzer agent that runs the stats only on closed/locked datasets — never on live tables. Force a guardrail: the analyzer must refuse to compute p-values until (a) minimum runtime elapsed, (b) SRM check passes, (c) sample size &gt;= pre-registered minimum. Output is always a structured report (JSON), never a "the variant is better" sentence — humans decide ship/no-ship.</p>
+
+      <p>Recommended subagents: general-purpose — wiring assignment + tracking into the service, writing tests. faion-sdd-executor-agent — when the experiment is a feature with SDD tasks. A narrow srm-checker task agent — runs only the chi-square SRM check and aborts the analysis if traffic split deviates from configured. A separate stats-reviewer agent (Opus only) — sanity-checks the analyzer's choices: metric type, test choice, multiple-comparisons correction, peeking guard.</p>
+
+      <p>Prompt pattern: Read solo/dev/automation-tooling/ab-testing-implementation/README.md. Wire experiment "&lt;id&gt;" into &lt;service&gt; at &lt;surface&gt;. Use the existing ExperimentAssigner. Add: track_exposure on render, track_conversion on &lt;event&gt;. Write pytest cases that (1) prove identical user_id always gets the same variant, (2) exposures dedupe per (exp,user), (3) conversion is recorded with correct variant. And: Given a closed dataset for experiment &lt;id&gt;, run the analyzer. Refuse if SRM &gt; 1% (chi-square p&lt;0.01) or sample size &lt; pre-registered minimum. Emit JSON: {control, treatment, lift, p_value, ci, power, srm_p, duration_days, decision_ready: bool}.</p>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p>The z-test assumes independence + binomial conversions. Doesn't cover ratio metrics (revenue / user), continuous metrics (latency p95), or clustered observations.</p>
+
+      <p>"Wait for statistical significance" guidance ignores peeking; running the analyzer on a live dashboard inflates Type I error.</p>
+
+      <p>Sample-size calc uses a 80%-power normal approximation; for very small/large baseline rates the formula drifts.</p>
+
+      <p>ExperimentTracker._exposures is in-memory — won't dedupe across processes/replicas; an exposure is logged per pod restart.</p>
+
+      <p>No SRM (sample-ratio mismatch) check — agents will ship traffic-imbalanced experiments and read garbage.</p>
+
+      <p>No CUPED / variance reduction; results will appear underpowered vs what's possible.</p>
+
+      <p>Bot/duplicate-user filtering is a sentence in "Best Practices"; the code doesn't implement it.</p>
+
+      <p>Multiple-comparisons not handled (running 10 experiments in parallel without correction).</p>
+
+      <p>Agent-specific gotchas: Agents will happily compute a p-value on day 2 of a 14-day experiment. Block with a runtime/sample-size precondition. "Optimize the assigner" prompts can replace hash(user_id + exp_id) with a non-stable hash (hash() in Python 3 is salted per process). Use hashlib.sha256 explicitly. Multiple comparisons: agents will analyze 6 secondary metrics and report the one with p&lt;0.05 as a win. Force Bonferroni / Benjamini-Hochberg. Agents drop the SRM check when "the build is failing." Make it non-skippable. Lift formula: agents may flip control/treatment in (treatment_rate - control_rate) / control_rate after refactors. Add a property test. For revenue / continuous metrics, agents will reuse the binomial z-test pattern — wrong test. Force a typed metric registry: binary | continuous | ratio | count with a different analyzer per type. "Stop the experiment early because lift is huge" → almost always regression to mean from peeking. Agents must refuse early-stop without sequential method. Cross-experiment pollution: assigning the same user to two experiments touching the same surface invalidates both. Agents should detect overlapping experiments before launch.</p>
+    </section>
+
+    <section name="best-practices">
+      <p>Pre-register: hypothesis, primary metric, MDE, sample size, runtime, SRM threshold — store as YAML in repo before launch.</p>
+
+      <p>Hash assignment with a stable, namespaced salt: hash(f"{experiment_id}:{user_id}") so re-running an experiment doesn't re-bucket the same user.</p>
+
+      <p>Track exposures only when the variant is actually rendered/applied, not on assignment — otherwise lift dilutes.</p>
+
+      <p>Persist exposures in a durable store (warehouse, event bus), not in-process — _exposures set is dev-only.</p>
+
+      <p>Always check guardrail metrics (latency, error rate, churn) alongside the primary metric.</p>
+
+      <p>Never peek with naive z-tests; if you must monitor live, use sequential testing (mSPRT) or a Bayesian framework.</p>
+
+      <p>Bucket holdouts (5-10% never see any experiment) so long-term effects can be measured.</p>
+
+      <p>Quarantine bots, internal users, and replays before analysis.</p>
+
+      <p>Decision rule and stop date written down before launch — agents should refuse to compute "is it significant?" past arbitrary peeks.</p>
+    </section>
+
+    <section name="tools-and-services">
+      <p>CLI tools: pytest --cov + hypothesis (Property-test deterministic assignment, pip), pandas + scipy.stats (Local stats, sanity vs analyzer, pip), statsmodels (Robust two-proportion z, Welch's t, etc., pip), dbt test (Validate the experiment data model in the warehouse, docs.getdbt.com), growthbook CLI (Self-host experiment platform; agent-friendly, docs.growthbook.io), posthog-cli (Manage feature flags + experiments via CLI, posthog.com/docs/cli), statsig-cli (Statsig config-as-code, docs.statsig.com), expan (Experiment analysis Python lib, github.com/zalando/expan), evan / bayesian-testing (Bayesian A/B Python libs, pypi), srmcheck (homegrown chi-square script, n/a).</p>
+
+      <p>Services: GrowthBook (OSS, Yes, Config-as-code YAML, API + SDK; agents can author experiments in repo), PostHog (OSS + SaaS, Yes, Feature flags + experiments + event store; one stack), Statsig (SaaS, Yes, Strong API, automatic SRM, sequential testing), Optimizely Feature Experimentation (SaaS, Partial, Powerful but enterprise auth makes agent automation friction), LaunchDarkly Experimentation (SaaS, Yes, Pairs with existing LD flags; REST API), Eppo (SaaS, Yes, Warehouse-native BigQuery/Snowflake/Databricks — no client SDK needed), GrowthBook Cloud (SaaS, Yes, Hosted variant), Mixpanel / Amplitude (SaaS, Partial, Good event store, weaker built-in stats), Apache Druid / ClickHouse (OSS, Yes, Good event sinks for high-cardinality experiments), BigQuery / Snowflake / Databricks (SaaS, Yes, Warehouse-side analysis is the durable pattern).</p>
+    </section>
+
+    <templates>
+      <template path="templates/srm-check.py" purpose="Chi-square SRM guard — fail the analysis if traffic split deviates from configured allocation."/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.cambridge.org/core/books/trustworthy-online-controlled-experiments/D97B26382EB0EB2DC2019A7A7B518F59"/>
+      <link href="https://exp-platform.com/Documents/2017-08KDDFabijan-SRM.pdf"/>
+      <link href="https://docs.growthbook.io/statistics"/>
+      <link href="https://posthog.com/docs/experiments"/>
+      <ref slug="ab-testing-basics"/>
+      <ref slug="feature-flags-core-implementation"/>
+    </see-also>
+  </content>
+</methodology>
