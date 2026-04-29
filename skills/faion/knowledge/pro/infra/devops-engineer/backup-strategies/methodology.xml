@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="backup-strategies">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Modern backup strategy follows the 3-2-1-1-0 rule: 3 copies, 2 media types, 1 offsite, 1 immutable, 0 verified recovery errors.</summary>
+    <tags>
+      <tag>backup</tag>
+      <tag>disaster-recovery</tag>
+      <tag>3-2-1-1-0</tag>
+      <tag>immutable-storage</tag>
+      <tag>ransomware-protection</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Backup Strategies</title>
+
+    <summary>Modern backup strategy follows the 3-2-1-1-0 rule: 3 copies, 2 media types, 1 offsite, 1 immutable/air-gapped, 0 verified recovery errors. Implement automated restore verification after every backup job.</summary>
+
+    <why>
+      <p>The traditional 3-2-1 rule fails against ransomware because all three copies can be on network-reachable storage. The additional "1 immutable" copy (S3 Object Lock COMPLIANCE mode, Azure Immutable Blob, WORM tape) cannot be deleted or encrypted even by admin credentials. The "0 errors" component catches silent corruption and restores that fail only when needed most.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any production database, file system, or Kubernetes cluster requires DR capability</item>
+        <item>Compliance requirements mandate data retention (GDPR, HIPAA, SOC2, PCI-DSS)</item>
+        <item>RPO &lt; 24 hours is a business requirement</item>
+        <item>Ransomware protection is part of the security posture</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Ephemeral environments (CI runners, short-lived review apps) — backup overhead exceeds value; rely on infrastructure-as-code rebuild instead</item>
+        <item>Data that can be fully regenerated from source (build artifacts, CDN caches) — store source, not derivatives</item>
+        <item>Development databases with no production data — use database seeding scripts instead of backups</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="backup-strategy-3-2-1-1-0">
+      <rule>
+        <statement>Implement the 3-2-1-1-0 rule: 3 copies, 2 media types, 1 offsite, 1 immutable, 0 verified recovery errors.</statement>
+        <rationale>Traditional 3-2-1 does not protect against ransomware because all three copies can be on network-reachable storage. The immutable copy cannot be encrypted or deleted even by admin credentials. The zero-error component mandates automated restore verification — backups that have never been tested are not backups.</rationale>
+      </rule>
+      <example type="good" title="3-2-1-1-0 Layout for Production PostgreSQL">
+        <p>Copy 1 = local NAS (disk). Copy 2 = AWS S3 Standard-IA (cloud). Copy 3 = S3 bucket with Object Lock COMPLIANCE mode, 90-day retention (immutable). Zero errors = automated pg_restore to isolated test DB nightly.</p>
+      </example>
+    </section>
+
+    <section name="immutable-storage-options">
+      <rule>
+        <statement>Use COMPLIANCE mode (not GOVERNANCE) for S3 Object Lock when regulatory requirements apply — COMPLIANCE cannot be overridden even by the root account.</statement>
+        <rationale>GOVERNANCE mode allows users with s3:BypassGovernanceRetention permission to delete objects. COMPLIANCE mode is truly immutable for the retention period.</rationale>
+      </rule>
+      <list>
+        <item>AWS S3 Object Lock COMPLIANCE — cannot be deleted by any IAM principal during retention</item>
+        <item>Azure Immutable Blob Storage WORM policy — time-based or legal hold</item>
+        <item>GCP Bucket Lock retention policy — bucket-level immutability</item>
+        <item>Physical WORM tape — highest security, slowest recovery</item>
+      </list>
+    </section>
+
+    <section name="rpo-rto-tiers">
+      <rule>
+        <statement>Define RPO and RTO per data class before selecting backup frequency — the numbers drive tool choice, not the reverse.</statement>
+        <rationale>A team that chooses daily backups and then discovers their RPO is 1 hour must redesign the entire backup system. Start with business requirements.</rationale>
+      </rule>
+      <list>
+        <item>Critical (RPO &lt; 1h, RTO &lt; 1h): continuous replication or WAL streaming + frequent base backups</item>
+        <item>Important (RPO &lt; 4h, RTO &lt; 4h): hourly snapshots + incremental</item>
+        <item>Standard (RPO &lt; 24h, RTO &lt; 24h): daily full + transaction logs</item>
+        <item>Archive (RPO &lt; 1 week, RTO &lt; 1 week): weekly full to cold storage</item>
+      </list>
+    </section>
+
+    <section name="tool-selection-by-target">
+      <list>
+        <item>PostgreSQL: pg_basebackup + WAL archiving for PITR; pg_dump for logical backups</item>
+        <item>MySQL/MariaDB: XtraBackup for hot physical backups; mysqldump for logical</item>
+        <item>MongoDB: mongodump --oplog for PITR on replica sets</item>
+        <item>File systems: Restic (deduplication + encryption, multi-backend) or BorgBackup (space-efficient archives)</item>
+        <item>Kubernetes: Velero (cluster-level, PVC snapshots) or Kasten K10 (enterprise app-aware)</item>
+        <item>Cloud-native: AWS Backup, Azure Backup, GCP Cloud Backup for managed service integration</item>
+      </list>
+    </section>
+
+    <section name="postgresql-point-in-time-recovery">
+      <rule>
+        <statement>Configure WAL archiving in addition to base backups to enable point-in-time recovery; base backups alone only restore to backup completion time.</statement>
+        <rationale>A database corrupted at 14:30 with a base backup from 02:00 and 12 hours of WAL archives can be restored to 14:29 — 1 minute of data loss. Without WAL, the loss is 12.5 hours.</rationale>
+      </rule>
+      <example type="good" title="PostgreSQL WAL Archiving and Base Backup">
+        <code lang="bash"><![CDATA[
+# postgresql.conf settings for WAL archiving
+archive_mode = on
+archive_command = 'aws s3 cp %p s3://backup-bucket/wal/%f'
+archive_timeout = 300   # archive WAL at most every 5 minutes
+
+# Base backup (streaming WAL during backup)
+pg_basebackup \
+  -h localhost -U replication \
+  -D /backup/base_$(date +%Y%m%d_%H%M%S) \
+  -Ft -z -P -X stream --checkpoint=fast
+]]></code>
+      </example>
+    </section>
+
+    <section name="restic-file-backup">
+      <rule>
+        <statement>Always run restic check after backup to verify repository integrity; silent corruption is the failure mode Restic is designed to detect.</statement>
+        <rationale>Restic uses content-addressed storage with SHA-256 hashes. check verifies all data blobs are present and uncorrupted. Omitting it defeats the integrity guarantee.</rationale>
+      </rule>
+      <example type="good" title="Restic Backup with Integrity Verification">
+        <code lang="bash"><![CDATA[
+export RESTIC_REPOSITORY="s3:s3.amazonaws.com/backup-bucket/restic"
+export RESTIC_PASSWORD_FILE="/etc/restic/password"
+
+restic backup /var/www /etc /home \
+  --exclude="*.log" --exclude="node_modules" \
+  --tag production --tag "$(hostname)"
+
+restic forget \
+  --keep-daily 7 --keep-weekly 4 --keep-monthly 12 \
+  --prune
+
+restic check   # mandatory — verify integrity
+]]></code>
+      </example>
+    </section>
+
+    <section name="velero-kubernetes-backup">
+      <rule>
+        <statement>Use defaultVolumesToFsBackup: true in Velero schedules for PVCs without snapshot support; use volume snapshots for supported storage classes.</statement>
+        <rationale>File system backup (Restic/Kopia) works on any PVC but is slower. Volume snapshots are faster but require CSI driver support. Omitting both means PVC data is not backed up.</rationale>
+      </rule>
+      <example type="good" title="Velero Daily Backup Schedule">
+        <code lang="yaml"><![CDATA[
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-backup
+  namespace: velero
+spec:
+  schedule: "0 2 * * *"
+  template:
+    includedNamespaces: [production, staging]
+    excludedResources: [events, events.events.k8s.io]
+    ttl: 720h             # 30-day retention
+    snapshotVolumes: true
+    defaultVolumesToFsBackup: true
+]]></code>
+      </example>
+    </section>
+
+    <section name="automated-backup-verification">
+      <rule>
+        <statement>Automate restore verification after every backup job — restore to an isolated environment, check table counts and recent data, push a success metric to Prometheus.</statement>
+        <rationale>The 0 in 3-2-1-1-0 is not aspirational — it requires a concrete verification step. Manual restore tests happen rarely or never. Automation makes verification continuous.</rationale>
+      </rule>
+      <rule>
+        <statement>Alert when backup age exceeds 1.5x the scheduled interval — a 36-hour-old backup from a daily job indicates missed runs.</statement>
+        <rationale>Backup jobs fail silently (exit 0 on partial failure, disk full, network timeout). Age-based alerting catches these without requiring job-level monitoring hooks.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/postgres-backup.sh" purpose="PostgreSQL pg_dump with S3 + immutable upload + checksum"/>
+      <template path="templates/restic-backup.sh" purpose="Restic backup to S3 with retention pruning and integrity check"/>
+      <template path="templates/velero-schedule.yaml" purpose="Velero daily/weekly backup schedule with TTL"/>
+      <template path="templates/aws-backup.tf" purpose="Terraform AWS Backup vault + plan with vault lock + cross-region copy"/>
+      <template path="templates/verify-backup.sh" purpose="Automated PostgreSQL restore verification with alerting"/>
+      <template path="templates/backup-policy.md" purpose="Backup policy document template (RPO/RTO, schedule, contacts)"/>
+      <template path="templates/prometheus-alerts.yaml" purpose="Prometheus alerting rules for backup age, failure, size anomaly"/>
+    </templates>
+  </content>
+</methodology>
