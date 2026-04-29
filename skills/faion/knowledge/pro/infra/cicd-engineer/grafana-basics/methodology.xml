@@ -1,0 +1,1603 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="grafana-basics">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Grafana open-source observability platform for visualizing metrics, logs, and traces across Prometheus, Loki, Elasticsearch, and other data sources with alerting.</summary>
+    <tags>
+      <tag>grafana</tag>
+      <tag>observability</tag>
+      <tag>dashboards</tag>
+      <tag>prometheus</tag>
+      <tag>monitoring</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Grafana Basics</title>
+    <summary>Grafana is an open-source observability platform for visualizing metrics, logs, and traces. It supports multiple data sources (Prometheus, Loki, Elasticsearch, InfluxDB), provides rich visualization options, and enables alerting based on dashboard panels. Treat dashboards as code from day one: generate JSON, review via API or Grafonnet, never hand-click in the UI.</summary>
+    <why>
+      <p>Grafana turns silent time-series data into actionable dashboards for on-call engineers. It unifies metrics (Prometheus/Mimir), logs (Loki), and traces (Tempo) in a single pane, reducing context switches during incidents. Dashboard provisioning via JSON in Git means dashboards survive reinstalls, version-control changes, and multi-environment promotions. The RED/USE/Four Golden Signals frameworks give per-service observability a consistent structure that new team members can learn once and apply everywhere.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Visualizing Prometheus metrics</item>
+        <item>Creating operational dashboards</item>
+        <item>Building SLO/SLI dashboards</item>
+        <item>Log analysis with Loki</item>
+        <item>Unified observability across multiple data sources</item>
+        <item>Real-time monitoring and incident response</item>
+        <item>Surfacing Prometheus / Loki / Tempo data the team already collects but never looks at — turning silent metrics into a dashboard the on-call actually opens</item>
+        <item>Building per-service RED/USE/Golden-Signals dashboards as part of a service onboarding template, so every new service ships with the same five panels</item>
+        <item>SLO/error-budget visualization once recording rules exist (job:slo_burn:ratio_rate1h)</item>
+        <item>Incident-response timelines: combining annotations (deploys, releases) with metrics on a single graph</item>
+        <item>Loki log exploration with LogQL next to the metric panel that triggered an alert (split-pane view)</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>As the metrics store itself — Grafana is a rendering layer; a missing datasource or a slow Prometheus is the real failure</item>
+        <item>For long-term query performance audits — use pprof/Mimir directly, not the dashboard</item>
+        <item>When you need transactional accuracy (counts must match invoicing) — time-series + downsampling produces approximations</item>
+        <item>As a CMDB or service catalog — use Backstage / Cortex / Port; Grafana drops "soft" labels</item>
+        <item>Single-pane-of-glass for security events (SIEM) — use Grafana for ops; route auth/audit logs to a SIEM</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="key-concepts">
+      <list>
+        <item>Dashboard — Collection of panels organized in rows</item>
+        <item>Panel — Individual visualization (graph, table, stat, gauge)</item>
+        <item>Data Source — Backend providing data (Prometheus, Loki, InfluxDB)</item>
+        <item>Variable — Dynamic values for filtering dashboards</item>
+        <item>Alert — Condition-based notifications from panels</item>
+        <item>Annotation — Event markers on graphs</item>
+        <item>Folder — Organizational container for dashboards</item>
+        <item>Playlist — Auto-rotating dashboard slideshow</item>
+      </list>
+    </section>
+
+    <section name="visualization-types">
+      <list>
+        <item>Time series — Metrics over time — Best for: Trend analysis, rate monitoring</item>
+        <item>Stat — Single value display — Best for: KPIs, current values</item>
+        <item>Gauge — Value within range — Best for: SLO compliance, utilization</item>
+        <item>Bar gauge — Comparative values — Best for: Side-by-side comparisons</item>
+        <item>Table — Tabular data — Best for: Pod status, detailed metrics</item>
+        <item>Heatmap — Distribution over time — Best for: Request latency distribution</item>
+        <item>Logs — Log aggregation display — Best for: Loki integration</item>
+        <item>Pie chart — Proportional data — Best for: Resource distribution</item>
+        <item>Geomap — Location-based data — Best for: Geographic metrics</item>
+      </list>
+    </section>
+
+    <section name="observability-frameworks">
+      <p>RED Method (Request-driven): Rate — Requests per second — Time series panel; Errors — Error rate percentage — Stat + threshold; Duration — Request latency (p50, p95, p99) — Time series, heatmap.</p>
+      <p>USE Method (Resource-driven): Utilization — % time resource busy — Gauge; Saturation — Queue depth, wait time — Time series; Errors — Error counts — Stat.</p>
+      <p>Four Golden Signals: Latency — Time to serve request; Traffic — Demand on system; Errors — Rate of failed requests; Saturation — How "full" the service is.</p>
+    </section>
+
+    <section name="data-source-configuration">
+      <example type="good" title="Prometheus data source provisioning">
+        <code lang="yaml"><![CDATA[apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: "15s"
+      httpMethod: POST]]></code>
+      </example>
+      <example type="good" title="Loki data source provisioning">
+        <code lang="yaml"><![CDATA[apiVersion: 1
+datasources:
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      maxLines: 1000]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <rules>
+        <rule>
+          <statement>Every dashboard goes through provisioning. UI changes are a smell: export, diff, PR.</statement>
+          <rationale>Dashboards built ad-hoc in the UI drift away from JSON in Git and are lost on next provisioning sync.</rationale>
+        </rule>
+        <rule>
+          <statement>Variables use label_values() filtered by parent variables, never hand-typed lists.</statement>
+          <rationale>Hand-typed lists go stale; label_values() dynamically reflects what's actually scraped.</rationale>
+        </rule>
+        <rule>
+          <statement>Threshold colors: green / amber / red mapped to SLO bands, not arbitrary numbers; store the SLO target in a constant variable ($slo_target).</statement>
+          <rationale>Consistent threshold semantics across dashboards reduce cognitive overhead when triage-ing multiple services simultaneously.</rationale>
+        </rule>
+        <rule>
+          <statement>Always link related dashboards (Dashboard links): service → host → cluster → company-wide overview. Drill-down in three clicks.</statement>
+          <rationale>Without navigation links, engineers miss context that lives one level higher or lower in the hierarchy.</rationale>
+        </rule>
+        <rule>
+          <statement>Use recording rules (job:rate5m, job:errors:ratio_rate5m) — never compute heavy expressions inside a dashboard query.</statement>
+          <rationale>Complex PromQL evaluated at dashboard refresh time multiplies cost by concurrent user count; recording rules pre-compute once.</rationale>
+        </rule>
+        <rule>
+          <statement>Set the data-source as a variable ($datasource), so the same JSON works in dev/staging/prod.</statement>
+          <rationale>Hardcoded datasource UIDs break the same dashboard in other environments.</rationale>
+        </rule>
+        <rule>
+          <statement>Use variables to enable filtering by namespace, pod, environment.</statement>
+          <rationale>Static dashboards don't scale as services multiply; variables allow one dashboard to serve all instances.</rationale>
+        </rule>
+        <rule>
+          <statement>Set appropriate time ranges matched to dashboard purpose (real-time vs historical).</statement>
+          <rationale>Mismatch between refresh rate and data update frequency creates misleading "stale" or thrashing panels.</rationale>
+        </rule>
+        <rule>
+          <statement>Use consistent colors — red for errors, green for success across dashboards.</statement>
+          <rationale>Inconsistent color semantics force engineers to re-read legends under incident pressure, slowing triage.</rationale>
+        </rule>
+        <rule>
+          <statement>Add descriptions — panel descriptions explain what metrics mean.</statement>
+          <rationale>Context lost when original author moves on; descriptions are the only inline documentation visible during an incident.</rationale>
+        </rule>
+        <rule>
+          <statement>Include annotations — mark deployments, incidents on graphs.</statement>
+          <rationale>Annotations provide instant correlation between operational events and metric changes without manual cross-referencing.</rationale>
+        </rule>
+        <rule>
+          <statement>dashboard-linter in CI is non-negotiable — agents pass it once and forget it; pin the linter version so rule changes don't surprise.</statement>
+          <rationale>Linting catches panel configuration anti-patterns, missing units, and PromQL foot-guns before they reach production.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="common-pitfalls">
+      <list>
+        <item>Too many panels — Information overload — Solution: Focus on key metrics per dashboard</item>
+        <item>Missing variables — Static dashboards don't scale — Solution: Add namespace/pod filters</item>
+        <item>No thresholds — Requires mental calculation — Solution: Set visual thresholds</item>
+        <item>Inconsistent naming — Hard to find dashboards — Solution: Use naming conventions</item>
+        <item>Manual creation — Changes lost on reinstall — Solution: Use provisioning</item>
+        <item>Complex panel queries — Slow dashboards — Solution: Use recording rules</item>
+        <item>No documentation — Context lost — Solution: Add Text panels, descriptions</item>
+        <item>Alert fatigue — Ignored notifications — Solution: Symptom-based alerting</item>
+      </list>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <list>
+        <item>Dashboards built ad-hoc in the UI drift away from JSON in Git — agents that "just edit the dashboard" lose changes on next provisioning sync.</item>
+        <item>Variable misuse: $namespace defined as multi-value but the panel query uses =~"$namespace" without regex_replace_chars. A namespace named prod-eu becomes a regex that matches anywhere.</item>
+        <item>Heatmap panels need histogram metrics with le buckets — agents replace histogram_quantile with quantile (a different function) and the latency p95 silently misreports.</item>
+        <item>Stat panels with "Last (not null)" reducer cache stale values during scrape gaps; the dashboard looks healthy while the service is dead.</item>
+        <item>Time-zone confusion: dashboard default vs user override vs alert evaluation TZ — three different "now"s.</item>
+        <item>Alert rules defined inside dashboard panels (legacy "Dashboard alerts") are not the same surface as Grafana Alerting / Prometheus rules; they're fragile and easy to lose.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Treat dashboards as code from day one. One agent generates a dashboard JSON from a service spec (RED + golden signals + variables + thresholds), a reviewer agent (Opus) checks PromQL against actual metric names exposed by the service (/metrics curl) and rejects panels that reference non-existent metrics. A third agent diffs the new JSON against the existing provisioned file and produces a Grafana folder PR. Never let an agent click in the UI; always go through grafana-cli, the HTTP API, or Grafonnet.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent for driving spec → JSON → review → provision PR; custom dashboard-promql-validator (Opus, read-only) given dashboard JSON + a metric name list, linting every panel query, flagging missing labels, regex foot-guns, and quantile-vs-histogram_quantile confusion; password-scrubber-agent for datasource provisioning files that often inline basic-auth tokens.</p>
+    </section>
+
+    <section name="agent-selection">
+      <list>
+        <item>Set up GitHub Actions workflow from template — haiku: Pattern application, simple configuration</item>
+        <item>Design CI/CD pipeline architecture — opus: Complex system design with many variables</item>
+        <item>Write terraform code for infrastructure — sonnet: Implementation with moderate complexity</item>
+        <item>Debug failing pipeline step — sonnet: Debugging and problem-solving</item>
+        <item>Implement AIOps anomaly detection — opus: Novel ML approach, complex decision</item>
+        <item>Configure webhook and secret management — haiku: Mechanical setup using checklists</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents fabricate metric names that "sound right" (http_request_count vs the actual http_requests_total) — always validate against /metrics before merging.</item>
+        <item>LLMs reach for irate(...[1m]) because it appears in tutorials, then dashboards flicker on slow scrape intervals. Force rate(...[$__rate_interval]).</item>
+        <item>Multi-value variables expand to a regex; agents wire = instead of =~. The dashboard works for one selection and silently breaks for two.</item>
+        <item>LLMs recreate Prometheus metrics inside the dashboard ("calculate p95 from raw events") instead of using the existing _bucket series — produces wrong numbers and slow queries.</item>
+        <item>Dashboards generated from natural language tend to overfit the demo: hardcoded namespace="default", instance="localhost:9090". Force every panel to reference a variable.</item>
+        <item>Human-in-loop checkpoint: any new dashboard goes to a reviewer who sanity-checks SLO mapping and verifies the dashboard renders with empty/no-data series (not just the happy path).</item>
+      </list>
+    </section>
+
+    <section name="implementation-checklist-dashboard">
+      <checklist>
+        <check>Define dashboard purpose and audience</check>
+        <check>Choose appropriate time range default</check>
+        <check>Set refresh interval based on data update frequency</check>
+        <check>Create folder structure for organization</check>
+        <check>Add dashboard tags for searchability</check>
+        <check>Add namespace/environment variable</check>
+        <check>Add pod/service filter variable</check>
+        <check>Add time interval variable</check>
+        <check>Configure variable refresh settings</check>
+        <check>Test variable cascading dependencies</check>
+        <check>Group related panels into rows</check>
+        <check>Place most important metrics at top</check>
+        <check>Use consistent grid positioning</check>
+        <check>Add row titles for sections</check>
+        <check>Ensure logical flow (overview to details)</check>
+      </checklist>
+    </section>
+
+    <section name="implementation-checklist-panel">
+      <checklist>
+        <check>Use recording rules for complex queries</check>
+        <check>Set appropriate $__rate_interval or custom interval</check>
+        <check>Limit label cardinality in queries</check>
+        <check>Use instant queries for tables where appropriate</check>
+        <check>Test query performance with large time ranges</check>
+        <check>Select appropriate visualization type</check>
+        <check>Set correct unit (bytes, seconds, percent)</check>
+        <check>Configure legend display and placement</check>
+        <check>Set axis labels and ranges</check>
+        <check>Add value mappings where needed</check>
+        <check>Define green/yellow/red thresholds aligned with SLO targets</check>
+        <check>Use consistent threshold colors across dashboards</check>
+        <check>Set appropriate min/max for gauges</check>
+        <check>Test threshold visibility at different values</check>
+        <check>Add panel title (clear, concise)</check>
+        <check>Write panel description (hover info)</check>
+        <check>Add Text panel for dashboard instructions</check>
+        <check>Document data source requirements</check>
+        <check>Include query explanations in comments</check>
+      </checklist>
+    </section>
+
+    <section name="implementation-checklist-alerting">
+      <checklist>
+        <check>Define symptom-based alert conditions</check>
+        <check>Set evaluation interval</check>
+        <check>Configure pending period (avoid flapping)</check>
+        <check>Add meaningful alert name</check>
+        <check>Write actionable alert summary</check>
+        <check>Configure contact points (Slack, email, PagerDuty)</check>
+        <check>Set up notification policies</check>
+        <check>Define severity levels (critical, warning, info)</check>
+        <check>Configure silence and mute timings</check>
+        <check>Test notification delivery</check>
+        <check>Link alerts to relevant panels</check>
+        <check>Include runbook URLs in annotations</check>
+        <check>Set appropriate severity based on user impact</check>
+        <check>Avoid infrastructure-only alerts for paging</check>
+        <check>Group related alerts to reduce noise</check>
+      </checklist>
+    </section>
+
+    <section name="implementation-checklist-data-source">
+      <checklist>
+        <check>Configure scrape endpoint for Prometheus</check>
+        <check>Set HTTP method (POST recommended)</check>
+        <check>Configure default time interval</check>
+        <check>Test connectivity</check>
+        <check>Verify metrics availability</check>
+        <check>Configure Loki endpoint</check>
+        <check>Set max lines limit for Loki</check>
+        <check>Configure derived fields in Loki if needed</check>
+        <check>Test log queries</check>
+        <check>Verify label indexing</check>
+      </checklist>
+    </section>
+
+    <section name="maintenance-checklist">
+      <checklist>
+        <check>Export dashboard JSON</check>
+        <check>Store in Git repository</check>
+        <check>Use provisioning for deployment</check>
+        <check>Document schema version</check>
+        <check>Test import/export cycle</check>
+        <check>Review panel query load</check>
+        <check>Optimize expensive queries</check>
+        <check>Set appropriate caching</check>
+        <check>Monitor dashboard load time</check>
+        <check>Reduce unnecessary panels</check>
+        <check>Audit unused dashboards quarterly</check>
+        <check>Update deprecated queries</check>
+        <check>Review alert thresholds against actuals</check>
+        <check>Remove redundant panels</check>
+        <check>Update documentation</check>
+      </checklist>
+    </section>
+
+    <section name="quality-gates-checklist">
+      <checklist>
+        <check>All panels load without errors</check>
+        <check>Variables filter correctly</check>
+        <check>Thresholds display properly</check>
+        <check>Mobile responsiveness checked</check>
+        <check>Documentation complete</check>
+        <check>Share with team for feedback</check>
+        <check>Monitor usage in dashboard analytics</check>
+        <check>Track alert noise levels</check>
+        <check>Gather user improvement suggestions</check>
+        <check>Schedule periodic review</check>
+      </checklist>
+    </section>
+
+    <section name="examples-stat-panels">
+      <example type="good" title="Request Rate stat panel">
+        <code lang="json"><![CDATA[{
+  "type": "stat",
+  "title": "Request Rate",
+  "gridPos": {"h": 4, "w": 4, "x": 0, "y": 1},
+  "targets": [
+    {
+      "expr": "sum(rate(http_requests_total{namespace=\"$namespace\"}[$__rate_interval]))",
+      "legendFormat": "Requests/s"
+    }
+  ],
+  "options": {
+    "reduceOptions": {
+      "calcs": ["lastNotNull"],
+      "fields": "",
+      "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "justifyMode": "auto",
+    "textMode": "auto"
+  },
+  "fieldConfig": {
+    "defaults": {
+      "unit": "reqps",
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {"color": "green", "value": null},
+          {"color": "yellow", "value": 1000},
+          {"color": "red", "value": 5000}
+        ]
+      }
+    }
+  }
+}]]></code>
+      </example>
+      <example type="good" title="Error Rate Percentage stat panel">
+        <code lang="json"><![CDATA[{
+  "type": "stat",
+  "title": "Error Rate",
+  "gridPos": {"h": 4, "w": 4, "x": 4, "y": 1},
+  "targets": [
+    {
+      "expr": "sum(rate(http_requests_total{namespace=\"$namespace\",status=~\"5..\"}[$__rate_interval])) / sum(rate(http_requests_total{namespace=\"$namespace\"}[$__rate_interval])) * 100",
+      "legendFormat": "Error %"
+    }
+  ],
+  "fieldConfig": {
+    "defaults": {
+      "unit": "percent",
+      "decimals": 2,
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {"color": "green", "value": null},
+          {"color": "yellow", "value": 1},
+          {"color": "red", "value": 5}
+        ]
+      }
+    }
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="examples-time-series">
+      <example type="good" title="Request Rate by Status Code time series">
+        <code lang="json"><![CDATA[{
+  "type": "timeseries",
+  "title": "Request Rate by Status",
+  "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
+  "targets": [
+    {
+      "expr": "sum(rate(http_requests_total{namespace=\"$namespace\"}[$__rate_interval])) by (status)",
+      "legendFormat": "{{status}}"
+    }
+  ],
+  "options": {
+    "legend": {
+      "displayMode": "table",
+      "placement": "right",
+      "showLegend": true,
+      "calcs": ["mean", "max", "last"]
+    },
+    "tooltip": {
+      "mode": "multi",
+      "sort": "desc"
+    }
+  },
+  "fieldConfig": {
+    "defaults": {
+      "unit": "reqps",
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "smooth",
+        "lineWidth": 2,
+        "fillOpacity": 20,
+        "gradientMode": "opacity",
+        "spanNulls": false,
+        "showPoints": "never",
+        "stacking": {"mode": "none"}
+      }
+    },
+    "overrides": [
+      {
+        "matcher": {"id": "byRegexp", "options": "/5../"},
+        "properties": [
+          {"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}
+        ]
+      },
+      {
+        "matcher": {"id": "byRegexp", "options": "/2../"},
+        "properties": [
+          {"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}
+        ]
+      },
+      {
+        "matcher": {"id": "byRegexp", "options": "/4../"},
+        "properties": [
+          {"id": "color", "value": {"fixedColor": "yellow", "mode": "fixed"}}
+        ]
+      }
+    ]
+  }
+}]]></code>
+      </example>
+      <example type="good" title="Latency Percentiles p50/p95/p99">
+        <code lang="json"><![CDATA[{
+  "type": "timeseries",
+  "title": "Request Latency (p50, p95, p99)",
+  "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
+  "targets": [
+    {
+      "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$__rate_interval])) by (le))",
+      "legendFormat": "p50"
+    },
+    {
+      "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$__rate_interval])) by (le))",
+      "legendFormat": "p95"
+    },
+    {
+      "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$__rate_interval])) by (le))",
+      "legendFormat": "p99"
+    }
+  ],
+  "fieldConfig": {
+    "defaults": {
+      "unit": "s",
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "smooth",
+        "fillOpacity": 10
+      }
+    },
+    "overrides": [
+      {
+        "matcher": {"id": "byName", "options": "p99"},
+        "properties": [
+          {"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}
+        ]
+      },
+      {
+        "matcher": {"id": "byName", "options": "p95"},
+        "properties": [
+          {"id": "color", "value": {"fixedColor": "yellow", "mode": "fixed"}}
+        ]
+      },
+      {
+        "matcher": {"id": "byName", "options": "p50"},
+        "properties": [
+          {"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}
+        ]
+      }
+    ]
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="examples-gauge">
+      <example type="good" title="SLO Availability Gauge (99.9%)">
+        <code lang="json"><![CDATA[{
+  "type": "gauge",
+  "title": "Availability SLO (99.9%)",
+  "gridPos": {"h": 6, "w": 6, "x": 0, "y": 25},
+  "targets": [
+    {
+      "expr": "(1 - sum(rate(http_requests_total{namespace=\"$namespace\",status=~\"5..\"}[30d])) / sum(rate(http_requests_total{namespace=\"$namespace\"}[30d]))) * 100",
+      "legendFormat": "Availability"
+    }
+  ],
+  "options": {
+    "showThresholdLabels": false,
+    "showThresholdMarkers": true
+  },
+  "fieldConfig": {
+    "defaults": {
+      "unit": "percent",
+      "min": 99,
+      "max": 100,
+      "decimals": 3,
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {"color": "red", "value": null},
+          {"color": "yellow", "value": 99.5},
+          {"color": "green", "value": 99.9}
+        ]
+      }
+    }
+  }
+}]]></code>
+      </example>
+      <example type="good" title="CPU Utilization Gauge">
+        <code lang="json"><![CDATA[{
+  "type": "gauge",
+  "title": "CPU Utilization",
+  "gridPos": {"h": 6, "w": 6, "x": 6, "y": 25},
+  "targets": [
+    {
+      "expr": "avg(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",pod=~\"$pod\"}[$__rate_interval])) / avg(kube_pod_container_resource_limits{namespace=\"$namespace\",pod=~\"$pod\",resource=\"cpu\"}) * 100",
+      "legendFormat": "CPU %"
+    }
+  ],
+  "fieldConfig": {
+    "defaults": {
+      "unit": "percent",
+      "min": 0,
+      "max": 100,
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {"color": "green", "value": null},
+          {"color": "yellow", "value": 70},
+          {"color": "red", "value": 90}
+        ]
+      }
+    }
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="examples-table">
+      <example type="good" title="Pod Status Table">
+        <code lang="json"><![CDATA[{
+  "type": "table",
+  "title": "Pod Status",
+  "gridPos": {"h": 6, "w": 24, "x": 0, "y": 19},
+  "targets": [
+    {
+      "expr": "kube_pod_info{namespace=\"$namespace\"}",
+      "format": "table",
+      "instant": true
+    },
+    {
+      "expr": "kube_pod_status_phase{namespace=\"$namespace\"}",
+      "format": "table",
+      "instant": true
+    }
+  ],
+  "transformations": [
+    {"id": "merge"},
+    {
+      "id": "organize",
+      "options": {
+        "excludeByName": {
+          "Time": true,
+          "__name__": true,
+          "job": true,
+          "instance": true
+        },
+        "renameByName": {
+          "pod": "Pod",
+          "node": "Node",
+          "phase": "Status",
+          "container": "Container"
+        }
+      }
+    }
+  ],
+  "fieldConfig": {
+    "overrides": [
+      {
+        "matcher": {"id": "byName", "options": "Status"},
+        "properties": [
+          {
+            "id": "mappings",
+            "value": [
+              {"type": "value", "options": {"Running": {"color": "green", "text": "Running"}}},
+              {"type": "value", "options": {"Pending": {"color": "yellow", "text": "Pending"}}},
+              {"type": "value", "options": {"Failed": {"color": "red", "text": "Failed"}}},
+              {"type": "value", "options": {"Succeeded": {"color": "blue", "text": "Succeeded"}}}
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}]]></code>
+      </example>
+      <example type="good" title="Top 10 Endpoints by P99 Latency Table">
+        <code lang="json"><![CDATA[{
+  "type": "table",
+  "title": "Top 10 Endpoints by P99 Latency",
+  "gridPos": {"h": 8, "w": 12, "x": 0, "y": 31},
+  "targets": [
+    {
+      "expr": "topk(10, histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$__rate_interval])) by (le, handler)))",
+      "format": "table",
+      "instant": true
+    }
+  ],
+  "transformations": [
+    {
+      "id": "organize",
+      "options": {
+        "excludeByName": {"Time": true, "le": true},
+        "renameByName": {
+          "handler": "Endpoint",
+          "Value": "P99 Latency"
+        }
+      }
+    },
+    {
+      "id": "sortBy",
+      "options": {"fields": {}, "sort": [{"field": "P99 Latency", "desc": true}]}
+    }
+  ],
+  "fieldConfig": {
+    "defaults": {"unit": "s"},
+    "overrides": [
+      {
+        "matcher": {"id": "byName", "options": "P99 Latency"},
+        "properties": [
+          {
+            "id": "thresholds",
+            "value": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.5},
+                {"color": "red", "value": 1}
+              ]
+            }
+          },
+          {"id": "custom.displayMode", "value": "color-background"}
+        ]
+      }
+    ]
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="examples-logs-loki">
+      <example type="good" title="Application Logs panel (Loki)">
+        <code lang="json"><![CDATA[{
+  "type": "logs",
+  "title": "Application Logs",
+  "gridPos": {"h": 8, "w": 24, "x": 0, "y": 39},
+  "datasource": {
+    "type": "loki",
+    "uid": "loki"
+  },
+  "targets": [
+    {
+      "expr": "{namespace=\"$namespace\", pod=~\"$pod\"} |= \"\" | json | line_format \"{{.level}} {{.message}}\"",
+      "refId": "A"
+    }
+  ],
+  "options": {
+    "showTime": true,
+    "showLabels": false,
+    "showCommonLabels": false,
+    "wrapLogMessage": true,
+    "prettifyLogMessage": true,
+    "enableLogDetails": true,
+    "dedupStrategy": "none",
+    "sortOrder": "Descending"
+  }
+}]]></code>
+      </example>
+      <example type="good" title="Error Logs only panel (Loki)">
+        <code lang="json"><![CDATA[{
+  "type": "logs",
+  "title": "Error Logs",
+  "gridPos": {"h": 8, "w": 24, "x": 0, "y": 47},
+  "datasource": {"type": "loki", "uid": "loki"},
+  "targets": [
+    {
+      "expr": "{namespace=\"$namespace\"} |~ \"error|Error|ERROR|exception|Exception\" | json",
+      "refId": "A"
+    }
+  ],
+  "options": {
+    "showTime": true,
+    "wrapLogMessage": true,
+    "enableLogDetails": true,
+    "sortOrder": "Descending"
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="examples-heatmap">
+      <example type="good" title="Request Latency Distribution Heatmap">
+        <code lang="json"><![CDATA[{
+  "type": "heatmap",
+  "title": "Request Latency Distribution",
+  "gridPos": {"h": 8, "w": 12, "x": 12, "y": 31},
+  "targets": [
+    {
+      "expr": "sum(increase(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$__rate_interval])) by (le)",
+      "format": "heatmap",
+      "legendFormat": "{{le}}"
+    }
+  ],
+  "options": {
+    "calculate": false,
+    "cellGap": 1,
+    "color": {
+      "mode": "scheme",
+      "scheme": "Spectral",
+      "steps": 64
+    },
+    "yAxis": {
+      "unit": "s"
+    }
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="examples-annotations">
+      <example type="good" title="Deployment and Alert annotations">
+        <code lang="json"><![CDATA[{
+  "annotations": {
+    "list": [
+      {
+        "name": "Deployments",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "enable": true,
+        "expr": "changes(kube_deployment_status_observed_generation{namespace=\"$namespace\"}[5m]) > 0",
+        "titleFormat": "Deployment",
+        "textFormat": "{{ deployment }} updated",
+        "iconColor": "blue"
+      },
+      {
+        "name": "Alerts",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "enable": true,
+        "expr": "ALERTS{namespace=\"$namespace\",alertstate=\"firing\"}",
+        "titleFormat": "Alert: {{ alertname }}",
+        "textFormat": "{{ alertname }} - {{ severity }}",
+        "iconColor": "red"
+      }
+    ]
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="templates-complete-dashboard">
+      <example type="good" title="Complete Application Overview Dashboard (RED method)">
+        <code lang="json"><![CDATA[{
+  "dashboard": {
+    "id": null,
+    "uid": "app-overview",
+    "title": "Application Overview",
+    "description": "Application performance and health metrics using RED method",
+    "tags": ["application", "production", "red-method"],
+    "timezone": "browser",
+    "schemaVersion": 39,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "fiscalYearStartMonth": 0,
+    "liveNow": false,
+    "templating": {
+      "list": [
+        {
+          "name": "datasource",
+          "type": "datasource",
+          "query": "prometheus",
+          "current": {},
+          "hide": 0
+        },
+        {
+          "name": "namespace",
+          "type": "query",
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "query": "label_values(kube_pod_info, namespace)",
+          "refresh": 1,
+          "includeAll": false,
+          "current": {"text": "production", "value": "production"}
+        },
+        {
+          "name": "pod",
+          "type": "query",
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "query": "label_values(kube_pod_info{namespace=\"$namespace\"}, pod)",
+          "refresh": 2,
+          "includeAll": true,
+          "multi": true
+        },
+        {
+          "name": "interval",
+          "type": "interval",
+          "options": [
+            {"text": "1m", "value": "1m"},
+            {"text": "5m", "value": "5m"},
+            {"text": "15m", "value": "15m"},
+            {"text": "1h", "value": "1h"}
+          ],
+          "current": {"text": "5m", "value": "5m"}
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Deployments",
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "enable": true,
+          "expr": "changes(kube_deployment_status_observed_generation{namespace=\"$namespace\"}[5m]) > 0",
+          "titleFormat": "Deployment",
+          "textFormat": "{{ deployment }}"
+        }
+      ]
+    },
+    "panels": [
+      {
+        "type": "row",
+        "title": "Overview",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+        "collapsed": false
+      },
+      {
+        "type": "stat",
+        "title": "Request Rate",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 1},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{namespace=\"$namespace\"}[$interval]))",
+            "legendFormat": "req/s"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null}
+              ]
+            }
+          }
+        },
+        "options": {"colorMode": "value", "graphMode": "area"}
+      },
+      {
+        "type": "stat",
+        "title": "Error Rate",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 1},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{namespace=\"$namespace\",status=~\"5..\"}[$interval])) / sum(rate(http_requests_total{namespace=\"$namespace\"}[$interval])) * 100",
+            "legendFormat": "errors"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2,
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 5}
+              ]
+            }
+          }
+        },
+        "options": {"colorMode": "value", "graphMode": "area"}
+      },
+      {
+        "type": "stat",
+        "title": "P99 Latency",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 1},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$interval])) by (le))",
+            "legendFormat": "p99"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "decimals": 3,
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.5},
+                {"color": "red", "value": 1}
+              ]
+            }
+          }
+        },
+        "options": {"colorMode": "value", "graphMode": "area"}
+      },
+      {
+        "type": "stat",
+        "title": "Active Pods",
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 1},
+        "targets": [
+          {
+            "expr": "count(kube_pod_status_phase{namespace=\"$namespace\",phase=\"Running\"})",
+            "legendFormat": "pods"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "none",
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        },
+        "options": {"colorMode": "value", "graphMode": "none"}
+      },
+      {
+        "type": "row",
+        "title": "Traffic",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5},
+        "collapsed": false
+      },
+      {
+        "type": "timeseries",
+        "title": "Request Rate by Status",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{namespace=\"$namespace\"}[$interval])) by (status)",
+            "legendFormat": "{{status}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {"unit": "reqps"}
+        },
+        "options": {
+          "legend": {"displayMode": "table", "placement": "right", "calcs": ["mean", "max"]}
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Latency Percentiles",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$interval])) by (le))",
+            "legendFormat": "p50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$interval])) by (le))",
+            "legendFormat": "p95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$interval])) by (le))",
+            "legendFormat": "p99"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {"unit": "s"}
+        },
+        "options": {
+          "legend": {"displayMode": "table", "placement": "right", "calcs": ["mean", "max"]}
+        }
+      }
+    ]
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="templates-variables">
+      <example type="good" title="Variable templates: namespace, service (cascading), environment">
+        <code lang="json"><![CDATA[{
+  "namespace_variable": {
+    "name": "namespace",
+    "label": "Namespace",
+    "type": "query",
+    "datasource": {"type": "prometheus", "uid": "${datasource}"},
+    "query": "label_values(kube_namespace_labels, namespace)",
+    "refresh": 1,
+    "sort": 1,
+    "includeAll": false,
+    "multi": false,
+    "regex": "",
+    "hide": 0
+  },
+  "service_variable": {
+    "name": "service",
+    "label": "Service",
+    "type": "query",
+    "datasource": {"type": "prometheus", "uid": "${datasource}"},
+    "query": "label_values(kube_service_info{namespace=\"$namespace\"}, service)",
+    "refresh": 2,
+    "sort": 1,
+    "includeAll": true,
+    "multi": true,
+    "allValue": ".*"
+  },
+  "environment_variable": {
+    "name": "environment",
+    "label": "Environment",
+    "type": "custom",
+    "options": [
+      {"text": "Production", "value": "production", "selected": true},
+      {"text": "Staging", "value": "staging", "selected": false},
+      {"text": "Development", "value": "development", "selected": false}
+    ],
+    "includeAll": false,
+    "multi": false
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="templates-alert-rules">
+      <example type="good" title="High Error Rate Alert Rule">
+        <code lang="json"><![CDATA[{
+  "alert": {
+    "name": "High Error Rate",
+    "condition": "C",
+    "data": [
+      {
+        "refId": "A",
+        "datasourceUid": "prometheus",
+        "model": {
+          "expr": "sum(rate(http_requests_total{namespace=\"$namespace\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{namespace=\"$namespace\"}[5m])) * 100",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200
+        }
+      },
+      {
+        "refId": "B",
+        "datasourceUid": "-100",
+        "model": {
+          "conditions": [
+            {"evaluator": {"params": [5], "type": "gt"}, "reducer": {"type": "last"}}
+          ],
+          "type": "reduce"
+        }
+      },
+      {
+        "refId": "C",
+        "datasourceUid": "-100",
+        "model": {
+          "conditions": [
+            {"evaluator": {"params": [0], "type": "gt"}, "reducer": {"type": "last"}}
+          ],
+          "type": "threshold"
+        }
+      }
+    ],
+    "execErrState": "Error",
+    "noDataState": "NoData",
+    "for": "5m",
+    "annotations": {
+      "summary": "Error rate is above 5% for {{ $labels.namespace }}",
+      "description": "Current error rate: {{ $values.A | printf \"%.2f\" }}%",
+      "runbook_url": "https://runbooks.example.com/high-error-rate"
+    },
+    "labels": {
+      "severity": "critical",
+      "team": "platform"
+    }
+  }
+}]]></code>
+      </example>
+      <example type="good" title="High P99 Latency Alert Rule">
+        <code lang="json"><![CDATA[{
+  "alert": {
+    "name": "High P99 Latency",
+    "condition": "C",
+    "data": [
+      {
+        "refId": "A",
+        "datasourceUid": "prometheus",
+        "model": {
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[5m])) by (le))"
+        }
+      },
+      {
+        "refId": "B",
+        "model": {"type": "reduce", "conditions": [{"reducer": {"type": "last"}}]}
+      },
+      {
+        "refId": "C",
+        "model": {
+          "type": "threshold",
+          "conditions": [{"evaluator": {"params": [1], "type": "gt"}}]
+        }
+      }
+    ],
+    "for": "5m",
+    "annotations": {
+      "summary": "P99 latency is above 1s for {{ $labels.namespace }}",
+      "description": "Current P99: {{ $values.A | printf \"%.3f\" }}s"
+    },
+    "labels": {
+      "severity": "warning",
+      "team": "platform"
+    }
+  }
+}]]></code>
+      </example>
+      <example type="good" title="Pod Not Ready Alert Rule">
+        <code lang="json"><![CDATA[{
+  "alert": {
+    "name": "Pod Not Ready",
+    "condition": "C",
+    "data": [
+      {
+        "refId": "A",
+        "datasourceUid": "prometheus",
+        "model": {
+          "expr": "kube_pod_status_ready{namespace=\"$namespace\",condition=\"true\"} == 0"
+        }
+      }
+    ],
+    "for": "5m",
+    "annotations": {
+      "summary": "Pod {{ $labels.pod }} is not ready",
+      "description": "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been not ready for more than 5 minutes"
+    },
+    "labels": {
+      "severity": "warning"
+    }
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="templates-data-source-provisioning">
+      <example type="good" title="Prometheus with Prometheus type and alerting">
+        <code lang="yaml"><![CDATA[apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus-server:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: "15s"
+      httpMethod: POST
+      manageAlerts: true
+      prometheusType: Prometheus
+      prometheusVersion: "2.45.0"]]></code>
+      </example>
+      <example type="good" title="Loki with derived fields for trace correlation">
+        <code lang="yaml"><![CDATA[apiVersion: 1
+datasources:
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        - name: TraceID
+          matcherRegex: "traceID=(\\w+)"
+          url: "$${__value.raw}"
+          datasourceUid: tempo]]></code>
+      </example>
+      <example type="good" title="Tempo with trace-to-logs correlation">
+        <code lang="yaml"><![CDATA[apiVersion: 1
+datasources:
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: false
+    jsonData:
+      httpMethod: GET
+      tracesToLogs:
+        datasourceUid: loki
+        tags: ['job', 'instance', 'pod', 'namespace']
+        mappedTags: [{ key: 'service.name', value: 'service' }]
+        mapTagNamesEnabled: true
+        spanStartTimeShift: '-1h'
+        spanEndTimeShift: '1h'
+        filterByTraceID: true
+        filterBySpanID: false]]></code>
+      </example>
+    </section>
+
+    <section name="templates-provisioning">
+      <example type="good" title="Dashboard provider configuration">
+        <code lang="yaml"><![CDATA[apiVersion: 1
+providers:
+  - name: 'default'
+    orgId: 1
+    folder: 'Infrastructure'
+    folderUid: 'infrastructure'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true]]></code>
+      </example>
+      <example type="good" title="Slack and PagerDuty contact points">
+        <code lang="yaml"><![CDATA[apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: slack-alerts
+    receivers:
+      - uid: slack-critical
+        type: slack
+        settings:
+          url: ${SLACK_WEBHOOK_URL}
+          recipient: "#alerts-critical"
+          username: Grafana
+          icon_emoji: ":alert:"
+          mentionChannel: "here"
+        disableResolveMessage: false
+  - orgId: 1
+    name: pagerduty-critical
+    receivers:
+      - uid: pagerduty-1
+        type: pagerduty
+        settings:
+          integrationKey: ${PAGERDUTY_INTEGRATION_KEY}
+          severity: critical
+          class: "infrastructure"
+          component: "{{ .Labels.service }}"]]></code>
+      </example>
+    </section>
+
+    <section name="llm-prompts-dashboard">
+      <prompt purpose="create-application-dashboard"><![CDATA[Create a Grafana dashboard JSON for monitoring a {service_type} application with:
+
+Application: {app_name}
+Namespace variable: yes
+Data source: Prometheus
+
+Include panels for:
+1. Overview row with stat panels:
+   - Request rate (req/s)
+   - Error rate (%)
+   - P99 latency (seconds)
+   - Active pods count
+
+2. Traffic row with time series:
+   - Request rate by status code (2xx green, 4xx yellow, 5xx red)
+   - Request rate by endpoint
+
+3. Latency row:
+   - Latency percentiles (p50, p95, p99)
+   - Latency heatmap
+
+4. Resources row:
+   - CPU utilization by pod
+   - Memory utilization by pod
+
+5. Logs row (Loki):
+   - Application logs filtered by namespace
+
+Use these metrics:
+- HTTP: http_requests_total, http_request_duration_seconds_bucket
+- K8s: kube_pod_info, kube_pod_status_phase, container_cpu_usage_seconds_total, container_memory_usage_bytes
+
+Add deployment annotations.
+Set 30s refresh rate.
+Use $__rate_interval for rate() functions.]]></prompt>
+      <prompt purpose="create-slo-dashboard"><![CDATA[Create a Grafana SLO dashboard JSON for:
+
+Service: {service_name}
+SLO targets:
+- Availability: {availability_target}% (e.g., 99.9%)
+- Latency P99: {latency_target}ms
+- Error budget period: {period} (e.g., 30d)
+
+Include:
+1. Gauge panels showing current SLO compliance
+2. Error budget remaining (percentage and time)
+3. Burn rate indicators (1h, 6h, 24h windows)
+4. Time series showing SLI trends over the budget period
+5. Alert status panel
+
+Use Prometheus metrics:
+- http_requests_total for availability
+- http_request_duration_seconds_bucket for latency
+
+Color thresholds:
+- Green: meeting SLO
+- Yellow: within 10% of SLO breach
+- Red: SLO breached]]></prompt>
+    </section>
+
+    <section name="llm-prompts-panels">
+      <prompt purpose="create-time-series-panel"><![CDATA[Create a Grafana time series panel JSON for:
+
+Title: {panel_title}
+Metric: {prometheus_query}
+Breakdown by: {label} (e.g., status, pod, endpoint)
+
+Requirements:
+- Legend as table on right with mean, max, last values
+- Multi-tooltip sorted descending
+- Smooth line interpolation
+- 20% fill opacity
+- Color overrides for specific values (if applicable)
+- Unit: {unit} (e.g., reqps, bytes, seconds, percent)
+- Thresholds: green < {warn_value}, yellow < {critical_value}, red >= {critical_value}
+
+Grid position: {"h": 8, "w": 12, "x": {x}, "y": {y}}]]></prompt>
+      <prompt purpose="create-stat-panel"><![CDATA[Create a Grafana stat panel JSON for:
+
+Title: {panel_title}
+Metric: {prometheus_query}
+Unit: {unit}
+
+Requirements:
+- Show last non-null value
+- Color by value
+- Area sparkline graph
+- Thresholds: {threshold_config}
+- Grid position: {"h": 4, "w": 6, "x": {x}, "y": {y}}]]></prompt>
+      <prompt purpose="create-table-panel"><![CDATA[Create a Grafana table panel JSON for:
+
+Title: {panel_title}
+Data: {prometheus_query}
+Format: instant query, table format
+
+Columns to show: {columns}
+Columns to hide: Time, __name__, job, instance
+Column renames: {rename_map}
+
+Add status column with value mappings:
+- Running: green
+- Pending: yellow
+- Failed: red
+
+Sort by: {sort_column} descending
+Grid position: {"h": 6, "w": 24, "x": 0, "y": {y}}]]></prompt>
+    </section>
+
+    <section name="llm-prompts-alerts">
+      <prompt purpose="create-symptom-based-alert"><![CDATA[Create a Grafana alert rule for:
+
+Alert name: {alert_name}
+Condition: {condition_description}
+
+Prometheus query: {query}
+Threshold: {operator} {value} (e.g., > 5 for error rate > 5%)
+Duration: {for_duration} (e.g., 5m)
+
+Labels:
+- severity: {critical|warning|info}
+- team: {team_name}
+- service: {service_name}
+
+Annotations:
+- summary: {brief_description}
+- description: Include current value using {{ $values.A }}
+- runbook_url: {runbook_link}
+
+Focus on user-facing symptoms, not infrastructure events.]]></prompt>
+      <prompt purpose="create-multi-condition-alert"><![CDATA[Create a Grafana alert with multiple conditions:
+
+Alert name: {alert_name}
+
+Conditions (ALL must be true):
+1. {condition_1} (query, threshold)
+2. {condition_2} (query, threshold)
+
+OR conditions (ANY triggers):
+1. {condition_1}
+2. {condition_2}
+
+Evaluation interval: 1m
+For duration: {for_duration}
+
+Include proper no-data and error handling states.]]></prompt>
+    </section>
+
+    <section name="llm-prompts-variables-and-transforms">
+      <prompt purpose="create-cascading-variables"><![CDATA[Create Grafana variable definitions for cascading filters:
+
+1. datasource variable (prometheus type)
+2. namespace variable (query from kube_namespace_labels)
+3. service variable (filtered by $namespace)
+4. pod variable (filtered by $namespace and $service, multi-select, include all)
+
+All variables should:
+- Refresh on dashboard load or time range change as appropriate
+- Be sorted alphabetically
+- Have clear labels]]></prompt>
+      <prompt purpose="convert-dashboard-to-template"><![CDATA[Take this Grafana dashboard JSON and convert it to a reusable template:
+
+{dashboard_json}
+
+Requirements:
+1. Replace hardcoded values with variables
+2. Add datasource variable
+3. Add namespace/environment variable
+4. Parameterize thresholds where sensible
+5. Add documentation Text panel
+6. Ensure all panels use $__rate_interval
+7. Add deployment/incident annotations
+8. Output as provisioning-ready JSON]]></prompt>
+      <prompt purpose="optimize-dashboard-performance"><![CDATA[Analyze this Grafana dashboard and suggest optimizations:
+
+{dashboard_json}
+
+Check for:
+1. Queries that could use recording rules
+2. Panels with unnecessary high cardinality
+3. Excessive refresh rates
+4. Missing instant query flags on tables
+5. Redundant panels that could be combined
+6. Variables that refresh too frequently
+
+Provide:
+- List of issues found
+- Suggested recording rules (PromQL)
+- Optimized dashboard JSON]]></prompt>
+    </section>
+
+    <section name="llm-prompts-datasources">
+      <prompt purpose="configure-prometheus-with-exemplars"><![CDATA[Create Grafana data source provisioning YAML for Prometheus with:
+
+URL: {prometheus_url}
+Features:
+- Exemplars enabled, linked to Tempo
+- Custom scrape interval: {interval}
+- HTTP POST method
+- Alerting enabled
+
+Include correlations to Loki for logs.]]></prompt>
+      <prompt purpose="configure-loki-derived-fields"><![CDATA[Create Grafana data source provisioning YAML for Loki with:
+
+URL: {loki_url}
+Features:
+- Derived field to extract trace IDs
+- Link to Tempo for distributed tracing
+- Max lines: 1000
+
+Pattern: traceID=(\w+) or trace_id=(\w+)]]></prompt>
+    </section>
+
+    <section name="llm-prompts-troubleshooting">
+      <prompt purpose="debug-empty-panel"><![CDATA[My Grafana panel shows "No data". Help me debug:
+
+Panel config:
+{panel_json}
+
+Data source: {datasource_type}
+Query: {query}
+
+I've verified:
+- [ ] Data source connectivity
+- [ ] Metrics exist in Prometheus
+- [ ] Time range is correct
+- [ ] Variables resolve correctly
+
+What else should I check? Provide step-by-step debugging.]]></prompt>
+      <prompt purpose="fix-slow-dashboard"><![CDATA[My Grafana dashboard is slow to load. Current config:
+
+Dashboard: {dashboard_json}
+Load time: {current_load_time}
+Panel count: {panel_count}
+Time range: {time_range}
+
+Analyze and provide:
+1. Which queries are likely slow
+2. Recording rules to pre-compute
+3. Panels to optimize or remove
+4. Recommended refresh interval]]></prompt>
+      <prompt purpose="migrate-grafana-9-to-11"><![CDATA[Migrate this Grafana 9 dashboard to Grafana 11:
+
+{old_dashboard_json}
+
+Update:
+- Schema version to 39
+- Angular panels to React equivalents
+- Deprecated panel options
+- Alert rule format to unified alerting
+- Variable syntax if needed
+
+Output the updated JSON with migration notes.]]></prompt>
+    </section>
+
+    <section name="llm-prompt-patterns">
+      <prompt purpose="generate-red-dashboard"><![CDATA[Generate Grafana dashboard JSON for service <X>.
+Inputs: service name, metric prefix, owner team, SLO target, scrape interval.
+Output: (1) variables ($env, $namespace, $instance), (2) RED row (rate, errors%, latency p50/p95/p99), (3) USE row (CPU/mem/saturation), (4) deploy/incident annotations from `events` datasource, (5) thresholds wired to SLO.
+Forbid: dashboard-internal alerts, hardcoded namespaces, multi-value vars without `regex_replace_chars`, `quantile()` on `_bucket` metrics.]]></prompt>
+      <prompt purpose="validate-dashboard-promql"><![CDATA[Validate dashboard JSON against `curl http://svc/metrics`. For every panel, list (panel_id, query, missing_metrics[], missing_labels[]). Reject if any list non-empty.]]></prompt>
+    </section>
+
+    <section name="grafonnet-inline-skeleton">
+      <example type="good" title="Grafonnet RED dashboard skeleton (Jsonnet)">
+        <code lang="jsonnet"><![CDATA[local g = import 'grafonnet/main.libsonnet';
+local prom = g.query.prometheus;
+local var = g.dashboard.variable;
+
+g.dashboard.new('svc/%s' % std.extVar('service'))
++ g.dashboard.withVariables([
+    var.query.new('env', prom.new('Prometheus', 'label_values(up{job=~"$service"}, env)')),
+    var.query.new('instance', prom.new('Prometheus', 'label_values(up{job=~"$service",env=~"$env"}, instance)')),
+])
++ g.dashboard.withPanels([
+    g.panel.timeSeries.new('Rate (req/s)')
+    + g.panel.timeSeries.queryOptions.withTargets([
+        prom.new('Prometheus', 'sum by (route) (rate(http_requests_total{job=~"$service",env=~"$env"}[5m]))'),
+      ]),
+    g.panel.timeSeries.new('Errors %')
+    + g.panel.timeSeries.queryOptions.withTargets([
+        prom.new('Prometheus', '100 * sum(rate(http_requests_total{job=~"$service",status=~"5.."}[5m])) / sum(rate(http_requests_total{job=~"$service"}[5m]))'),
+      ]),
+    g.panel.timeSeries.new('Duration p95')
+    + g.panel.timeSeries.queryOptions.withTargets([
+        prom.new('Prometheus', 'histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=~"$service",env=~"$env"}[5m])))'),
+      ]),
+])]]></code>
+      </example>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>grafana-cli — Plugin install, admin reset, db migration — https://grafana.com/docs/grafana/latest/cli/</item>
+        <item>grizzly (grr) — Apply Grafana resources from YAML/Jsonnet (kubectl-like) — https://grafana.github.io/grizzly/</item>
+        <item>grafonnet — Jsonnet library for dashboard generation — https://grafana.github.io/grafonnet/</item>
+        <item>jsonnet / jb (jsonnet-bundler) — Build Grafonnet output — https://github.com/jsonnet-bundler/jsonnet-bundler</item>
+        <item>Grafana HTTP API — CRUD dashboards/folders/datasources via curl — https://grafana.com/docs/grafana/latest/developers/http_api/</item>
+        <item>promtool check rules — Validate PromQL in recording/alert rules used by panels — https://prometheus.io/docs/prometheus/latest/command-line/promtool/</item>
+        <item>dashboard-linter (Grafana Labs) — Lints JSON dashboards for best practices — https://github.com/grafana/dashboard-linter</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>Grafana OSS — OSS, agent-friendly — Provisioning + HTTP API + service accounts</item>
+        <item>Grafana Cloud — SaaS, agent-friendly — Free tier sufficient for solo projects; API tokens scoped per stack</item>
+        <item>Grafana Enterprise — SaaS/self-hosted, agent-friendly — Adds RBAC, reporting, data-source permissions</item>
+        <item>Mimir / Cortex / Thanos — OSS, agent-friendly — Long-term Prometheus storage; same PromQL surface</item>
+        <item>Loki — OSS / SaaS, agent-friendly — LogQL queries inside Grafana panels</item>
+        <item>Tempo — OSS / SaaS, agent-friendly — Trace links from logs/metrics via derivedFields</item>
+        <item>Pyroscope — OSS / SaaS, partial agent-friendly — Continuous profiling source; agent must understand flame-graph panel</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://grafana.com/docs/grafana/latest/">Grafana Documentation</link>
+      <link href="https://grafana.com/docs/grafana/latest/dashboards/build-dashboards/best-practices/">Dashboard Best Practices</link>
+      <link href="https://grafana.com/docs/grafana/latest/alerting/guides/best-practices/">Grafana Alerting Best Practices</link>
+      <link href="https://grafana.com/grafana/dashboards/">Grafana Dashboards Library</link>
+      <link href="https://grafana.github.io/grafonnet/">Grafonnet</link>
+      <link href="https://github.com/grafana/dashboard-linter">Dashboard linter</link>
+      <link href="https://grafana.github.io/grizzly/">Grizzly</link>
+      <link href="https://www.brendangregg.com/usemethod.html">USE method (Brendan Gregg)</link>
+      <link href="https://sre.google/sre-book/monitoring-distributed-systems/">Google SRE: Four Golden Signals</link>
+    </see-also>
+  </content>
+</methodology>
