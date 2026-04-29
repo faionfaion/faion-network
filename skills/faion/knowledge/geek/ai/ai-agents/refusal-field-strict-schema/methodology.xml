@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="refusal-field-strict-schema">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Add an explicit nullable refusal field at the top of strict-mode structured output schemas so the model can decline to answer safely without violating the grammar.</summary>
+    <tags>
+      <tag>structured-output</tag>
+      <tag>safety</tag>
+      <tag>strict-mode</tag>
+      <tag>extraction</tag>
+      <tag>openai</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Refusal Field for Safety-Aware Strict Extraction</title>
+    <summary>Add an explicit nullable refusal: str | None field at the TOP of every strict-mode SO schema in safety-sensitive domains. When the model declines to answer, it writes the explanation into refusal and leaves payload fields null — instead of corrupting the JSON with a free-form refusal that breaks parsing. OpenAI's strict-mode response already exposes a top-level refusal; mirroring that field inside your own schema unifies the contract across providers and lets a single downstream branch handle "I cannot answer" without try/except.</summary>
+    <why>
+      <p>Strict mode compiles the schema into a finite-state grammar; when the model refuses, it must still emit JSON that satisfies the grammar — otherwise the parser throws and downstream branches see a generic exception instead of a refusal signal. OpenAI's August 2024 SO release introduced a top-level refusal string for exactly this reason. Reproducing it inside your schema (a) gives you the refusal text on Anthropic and local backends that don't surface a top-level field, (b) keeps the rest of the schema null-safe under a refusal, (c) replaces brittle "try parse, on fail check for refusal text" code paths with a single if response.refusal: branch.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>PII / medical / legal / financial extraction with strict mode.</item>
+        <item>Content moderation outputs where "this content is abusive, refusing to score" must not throw.</item>
+        <item>Any pipeline that bills only on success and needs to log refusals separately from errors.</item>
+        <item>Multi-provider deployments where refusal handling must be uniform across OpenAI/Anthropic/local.</item>
+        <item>Long batch jobs where one item refusing must not abort the batch.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Trivial transformations (uppercase, regex extract) where refusal is not in the model's repertoire.</item>
+        <item>Pipelines where any refusal is upstream policy violation and should hard-fail anyway.</item>
+        <item>When the only consumer is a human reviewer who already reads free-form responses.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Mirror the OpenAI refusal contract">
+      <p>OpenAI's strict-mode response already includes a top-level refusal string when the model declines. Mirroring it inside your own schema gives the same contract on Anthropic and local backends and turns refusal handling from exception-driven into typed-branch code.</p>
+      <rule>
+        <statement>For any strict-mode SO schema in a safety-sensitive domain, add refusal: str | None = None as the FIRST field; mark every payload field nullable; check response.refusal in a single branch before reading the payload.</statement>
+        <rationale>Strict mode forbids missing required fields; without a refusal channel the model must either invent fake values or violate the grammar. The explicit field gives the model a legal path to decline.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[class MedicalExtract(BaseModel):
+    model_config = {"extra": "forbid"}
+    refusal: str | None = Field(
+        default=None,
+        description="If you cannot/should not answer, explain here. Else null.",
+    )
+    diagnoses: list[str] | None = None
+    medications: list[str] | None = None
+
+resp = client.responses.parse(model="gpt-5", input=msgs, text_format=MedicalExtract)
+if resp.output_parsed.refusal:
+    log_refusal(resp.output_parsed.refusal)
+    return None
+return resp.output_parsed]]></code>
+        <note>Single typed branch handles refusal; payload fields stay null-safe.</note>
+      </example>
+      <example type="bad">
+        <code lang="python"><![CDATA[class MedicalExtract(BaseModel):
+    diagnoses: list[str]   # required, no refusal channel
+    medications: list[str]
+
+# model invents [] or violates grammar → exception]]></code>
+        <note>Model has no legal way to refuse; you get fake empty lists or parser errors.</note>
+      </example>
+      <antipattern>
+        <description>Detecting refusals by string-matching the raw response text for "I cannot" / "Sorry".</description>
+        <reason>Locale- and model-dependent, breaks on every model upgrade, indistinguishable from legitimate content containing those words.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/refusal_schema.py" purpose="Pydantic model with refusal first and all payload fields nullable."/>
+    </templates>
+    <see-also>
+      <link href="https://openai.com/index/introducing-structured-outputs-in-the-api/">OpenAI Structured Outputs launch — native refusal field.</link>
+      <link href="https://developers.openai.com/api/docs/guides/structured-outputs">OpenAI SO guide — refusal handling section.</link>
+    </see-also>
+  </content>
+</methodology>
