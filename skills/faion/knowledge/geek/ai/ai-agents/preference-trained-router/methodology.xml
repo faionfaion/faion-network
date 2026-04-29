@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="preference-trained-router">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Train a tiny router on preference data to decide before inference whether each prompt should go to weak or strong model. One round-trip, no cascade.</summary>
+    <tags>
+      <tag>routing</tag>
+      <tag>cost-optimization</tag>
+      <tag>model-selection</tag>
+      <tag>preference-learning</tag>
+      <tag>routellm</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Preference-Trained Router (RouteLLM Pattern)</title>
+    <summary>Train a tiny router (matrix factorization, BERT classifier, or similarity ranker) on Chatbot-Arena-style preference data so it can decide BEFORE inference whether each prompt should go to the weak or strong model. One round-trip, one decision, no cascade. The router is a learned binary classifier on the prompt embedding, not a heuristic — and it must be retrained when traffic distribution drifts.</summary>
+    <why>
+      <p>Cascades (cheap→strong on low confidence) add a round-trip and rely on the cheap model's calibration, which is often poor. A preference-trained router shortcircuits this: published RouteLLM (Ong et al. 2024, ICLR 2025) reports 95% of GPT-4 quality while routing only 26% of queries to GPT-4 — roughly 48% cheaper than random baseline at matched quality. The mechanism is a learned rank between weak and strong outputs on existing preference data, not a confidence threshold on the cheap model. Cuts latency vs cascade and removes the dependence on cheap-model self-scoring, which Anthropic and Google have both shown to be unreliable for hard prompts.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Latency-sensitive production traffic where the cascade round-trip is unacceptable.</item>
+        <item>You have ≥10k logged (prompt, weak-output, strong-output) tuples to train on (or can use Arena public data + a few thousand of your own).</item>
+        <item>Mostly-stable task distribution — router quality decays under distribution shift.</item>
+        <item>Token spend on the strong model is the dominant line item AND the workload mixes easy and hard prompts.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Cold start with no preference data — train a cascade first, log Arena pairs, switch later.</item>
+        <item>Rapidly drifting traffic (new product, weekly feature changes) — the router goes stale faster than you can retrain it.</item>
+        <item>Adversarial or safety-critical paths where a wrong-but-confident route is unacceptable; use a cascade with explicit verification instead.</item>
+        <item>Single-model workloads where the strong model's marginal cost is already low (small prompts, cached prefix).</item>
+      </list>
+    </when-not-to-use>
+    <section name="Router architecture and the cost-quality knob">
+      <p>The router is a tiny model that maps a prompt to a routing score in [0,1]. Score above the operating threshold means "use the strong model"; below means "use the weak model". It is trained on triples (prompt, weak_output, strong_output) labelled by which output a human or a judge LLM preferred.</p>
+      <rule>
+        <statement>Train the router on at least 10k preference triples sampled from your real traffic (or augment with Chatbot Arena pairs covering the same task families); split 80/10/10 train/val/test and tune the operating threshold on val.</statement>
+        <rationale>RouteLLM reports the matrix-factorization router needs roughly 80k Arena pairs to hit 95% GPT-4 quality at 26% strong-model traffic. Below ~10k the router learns noise and falls behind random.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+from routellm.controller import Controller
+client = Controller(
+    routers=["mf"],                 # matrix factorization
+    strong_model="claude-opus-4",
+    weak_model="claude-haiku-4-5",
+)
+resp = client.chat.completions.create(
+    model="router-mf-0.11593",       # 0.11593 is the cost-quality knob
+    messages=[{"role": "user", "content": prompt}],
+)
+        ]]></code>
+        <note>Single call, one route, no cascade. The threshold (0.11593) was selected on the val set to hit 95% strong-model quality.</note>
+      </example>
+      <example type="bad">
+        <code lang="python"><![CDATA[
+# heuristic "router" — keyword on the prompt
+if any(w in prompt.lower() for w in ["explain", "code", "long"]):
+    model = STRONG
+else:
+    model = WEAK
+        ]]></code>
+        <note>Brittle and unrouted: keyword rules do not generalize, miss easy hard-looking prompts and route trivial questions to Opus.</note>
+      </example>
+      <p>Every preference router exposes one scalar threshold. Sweep it on the val set to produce a Pareto curve (strong-model fraction vs preserved quality) and ship the operating point your business wants.</p>
+      <rule>
+        <statement>Ship the threshold that preserves at least 95% of strong-only quality on the val set, then verify on the held-out test set before rollout.</statement>
+        <rationale>Tuning on test inflates measured quality; per ICLR-2025 reproductions, 5-10 pp regressions are routine when teams skip the held-out check.</rationale>
+      </rule>
+      <antipattern>
+        <description>One universal threshold across very different traffic slices (B2B chat vs internal code agents).</description>
+        <reason>Optimal threshold differs per slice; one global threshold under-routes one and over-routes another.</reason>
+      </antipattern>
+      <link href="https://arxiv.org/abs/2406.18665">RouteLLM: Learning to Route LLMs with Preference Data — Ong et al. 2024 (ICLR 2025).</link>
+      <link href="https://github.com/lm-sys/RouteLLM">Reference implementation (LMSYS).</link>
+      <reference path="templates/router_client.py">Minimal Controller wrapper that wires the threshold into a per-call route.</reference>
+    </section>
+    <section name="Four router families">
+      <list>
+        <item>Matrix factorization on (prompt-id, model-id, preference) — cheapest to train, strongest in the paper.</item>
+        <item>BERT classifier on prompt embedding → strong/weak — robust, ~2 ms per call.</item>
+        <item>Similarity ranker (kNN over labelled pairs) — works with very small datasets, no training step.</item>
+        <item>LLM-judge router (Haiku-as-judge picks weak vs strong from prompt only) — cheap baseline; lower quality than learned routers.</item>
+      </list>
+      <rule>
+        <statement>Pick the cheapest router family that hits your quality target on the val set; do not assume the largest router wins.</statement>
+        <rationale>RouteLLM ablations show matrix factorization beats BERT and LLM-judge on the public benchmark while being orders of magnitude cheaper to serve.</rationale>
+      </rule>
+    </section>
+    <section name="Deployment, drift detection, and fallback">
+      <p>What changes after rollout: monitoring, retraining cadence, and the cascade safety net for when the router clearly mis-routes.</p>
+      <list>
+        <item>Routing distribution: fraction of prompts going to strong vs weak; should be stable week over week.</item>
+        <item>Quality on a fixed canary set (50-200 labelled prompts) — replay daily, alert if win rate drops &gt;3 pp.</item>
+        <item>User-visible regressions (thumbs-down rate, retry rate, escalation-to-human rate).</item>
+        <item>Cost per resolved query — the actual headline metric the router exists to move.</item>
+      </list>
+      <rule>
+        <statement>Ship a canary suite of at least 50 labelled prompts and replay it nightly; halt the router and fall back to strong-only if canary win rate drops by 3 percentage points or more for two consecutive days.</statement>
+        <rationale>Production preference routers degrade silently under traffic shift. Without a canary the first signal is angry user feedback, weeks late.</rationale>
+      </rule>
+      <p>Schedule retraining on a fixed cadence; do not wait for drift. Continuously log (prompt, weak_output, strong_output, judge_label) into a labelling queue. Retrain when (a) the queue has 5k new triples or (b) a week has passed, whichever comes first.</p>
+      <rule>
+        <statement>Retrain the router on at least the last 4 weeks of preference data plus the original Arena seed; never train only on recent data — recency-only routers forget rare hard prompts.</statement>
+        <rationale>RouteLLM authors show that fine-tuning on a sliding 1-week window degrades on rare prompts; mixing in the static Arena seed preserves coverage.</rationale>
+      </rule>
+      <p>Pure routing decides the model BEFORE inference. For high-stakes paths, layer a tiny cascade on top: if the weak-routed answer fails a cheap verifier (regex, schema, judge LLM with score &lt; 0.6), escalate to strong.</p>
+      <example type="good">
+        <code lang="python"><![CDATA[
+choice = router.route(prompt)         # weak | strong
+ans = choice.client.chat.completions.create(...)
+if choice == "weak" and verifier.score(prompt, ans) < 0.6:
+    ans = strong_client.chat.completions.create(...)
+        ]]></code>
+        <note>Router-first decides cheaply; cascade only fires on a small minority of weak-routed answers, preserving the cost win.</note>
+      </example>
+      <antipattern>
+        <description>Always escalating on any verifier signal, regardless of magnitude.</description>
+        <reason>Erodes the cost saving the router exists for; verifier noise alone can push 30-50% of weak answers to strong.</reason>
+      </antipattern>
+      <reference path="templates/drift_check.py">Compute KL divergence between current-week routing distribution and a reference window; alert when above 0.1.</reference>
+      <link href="https://www.lmsys.org/blog/2024-07-01-routellm/">LMSYS deployment notes — drift, retraining, and cascade fallback in production.</link>
+      <link href="https://venturebeat.com/ai/why-accenture-and-martian-see-model-routing-as-key-to-enterprise-ai-success">Martian + Accenture enterprise router rollout case study.</link>
+    </section>
+    <templates>
+      <template path="templates/router_client.py" purpose="Minimal RouteLLM Controller wrapper: wrap your OpenAI-compatible client and route per call."/>
+      <template path="templates/drift_check.py" purpose="Compare current-week routing distribution against a reference window; emit drift alert."/>
+    </templates>
+  </content>
+</methodology>
