@@ -940,3 +940,7 @@
 
 ### Changed
 - chore: migrate scope-management to methodology.xml
+
+### [Unreleased]
+
+- chore: migrate ab-testing, accessibility, api-authentication to methodology.xml

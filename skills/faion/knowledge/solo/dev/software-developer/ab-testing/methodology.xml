@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ab-testing">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>A/B testing runtime with deterministic hashing, exposure/conversion tracking, statistical analysis, and SRM detection for reliable experimentation.</summary>
+    <tags>
+      <tag>a-b-testing</tag>
+      <tag>experimentation</tag>
+      <tag>statistics</tag>
+      <tag>feature-flags</tag>
+      <tag>hypothesis-testing</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>A/B Testing Implementation</title>
+
+    <summary>A/B testing runtime implementation covering deterministic variant assignment, exposure and conversion event tracking, statistical analysis (z-test for proportions, Wilson CI), and Sample Ratio Mismatch detection. Core rule: assignment must use deterministic hashing (hash(user_id || experiment_id) mod 100) — never random.choice — to ensure sticky bucketing across sessions, devices, and processes.</summary>
+
+    <why>
+      <p>Non-deterministic assignment produces different variants for the same user on repeat visits, contaminating results. Tracking conversions without exposures removes the denominator, making results meaningless. Peeking at p-values before the precomputed end date inflates false-positive rate from 5% to 20–30%. SRM (skewed traffic split) invalidates all results and is almost always caused by bucketing bugs or redirect asymmetries.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Experiment design is complete (hypothesis, primary metric, MDE, sample size) and runtime is needed.</item>
+        <item>Multi-platform consistency: same user must get same variant on web, iOS, app, and email.</item>
+        <item>Building an event pipeline joining exposure → conversion in a stats engine (Snowflake, ClickHouse).</item>
+        <item>Wiring a feature flag into a real experiment with stratified randomization.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Traffic too low to reach statistical power (under ~1k weekly users on the surface) — use qualitative methods.</item>
+        <item>Changes affecting every user equally and irreversibly (DB schema migrations).</item>
+        <item>Cosmetic tweaks where test cost exceeds shipping cost.</item>
+        <item>Multi-armed scenarios with strong network effects (marketplace pricing) — A/B is biased; use switchback or geo splits.</item>
+        <item>Compliance-bound flows (KYC, payments) where variant differences create audit problems.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="deterministic-variant-assignment">
+      <p>Hash-based variant assignment ensuring sticky bucketing across sessions, devices, and processes. Determinism Rule: Use hash(user_id || experiment_id) mod 100 for variant assignment. Never use random.choice() or any non-deterministic method. Non-deterministic assignment gives the same user different variants on repeat page loads, corrupting results. Deterministic hashing ensures the same user always receives the same variant, across processes, servers, and sessions.</p>
+
+      <rule testable="true">
+        <statement>Use `hash(user_id || experiment_id) mod 100` for variant assignment. Never use `random.choice()` or any non-deterministic method.</statement>
+        <rationale>Non-deterministic assignment gives the same user different variants on repeat page loads, corrupting results. Deterministic hashing ensures the same user always receives the same variant, across processes, servers, and sessions.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Salt each experiment with a unique experiment ID in the hash input. Successive experiments must not share buckets.</statement>
+        <rationale>Without per-experiment salting, users in variant A of experiment 1 will always be in variant A of experiment 2. This correlation biases results in experiments run on overlapping populations.</rationale>
+      </rule>
+
+      <example type="good" title="Deterministic assignment with SHA256 hashing">
+        <code lang="python"><![CDATA[
+import hashlib
+
+def assign_variant(user_id: str, experiment_id: str, weights: dict[str, float]) -> str:
+    """Deterministic assignment. weights = {"control": 0.5, "treatment": 0.5}"""
+    hash_input = f"{user_id}:{experiment_id}".encode()
+    hash_value = int(hashlib.sha256(hash_input).hexdigest(), 16) % 100
+
+    cumulative = 0
+    for variant, weight in weights.items():
+        cumulative += weight * 100
+        if hash_value < cumulative:
+            return variant
+    return list(weights.keys())[-1]  # fallback to last variant
+]]></code>
+        <note>SHA256 ensures uniform distribution across the 100 buckets; the deterministic hash survives process restarts and server boundaries.</note>
+      </example>
+    </section>
+
+    <section name="sample-ratio-mismatch">
+      <p>SRM detection and prevention. Sample Ratio Mismatch (SRM) occurs when observed exposure counts skew significantly from expected weights (e.g., 51/49 instead of 50/50), which almost always indicates a bucketing bug, redirect asymmetry, or bot filtering that hits one variant more. All results from an SRM experiment are invalid.</p>
+
+      <rule testable="true">
+        <statement>Run a daily SRM check: chi-square test on observed exposure counts versus expected weights. Pause the experiment if `p &lt; 0.001`.</statement>
+        <rationale>SRM (observed 51/49 instead of 50/50) almost always indicates a bucketing bug, redirect asymmetry, or bot filtering that hits one variant more. All results from an SRM experiment are invalid.</rationale>
+      </rule>
+
+      <note>SRM detection must happen before any p-value computation on the primary metric. Do not trust results from an SRM experiment under any circumstances.</note>
+    </section>
+
+    <section name="exposure-and-conversion-tracking">
+      <p>ExperimentTracker with exposure deduplication and conversion event logging. Tracking Rules: Log an exposure event every time a user is shown the variant. Deduplicate on (experiment_id, user_id) within a session or day to avoid inflating denominators. Without exposure logging, the readout only shows "users who converted while assigned to X" with no denominator. Conversion rate = conversions / exposures; without exposures, you have no rate.</p>
+
+      <rule testable="true">
+        <statement>Log an exposure event every time a user is shown the variant. Deduplicate on `(experiment_id, user_id)` within a session or day to avoid inflating denominators.</statement>
+        <rationale>Without exposure logging, the readout only shows "users who converted while assigned to X" with no denominator. Conversion rate = conversions / exposures; without exposures, you have no rate.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Track exposures and conversions as separate events. Never derive exposures from conversion events.</statement>
+        <rationale>Deriving exposures from conversions creates survivorship bias — users who did not convert are invisible. This inflates all conversion rates and produces false significance.</rationale>
+      </rule>
+
+      <example type="good" title="ExperimentTracker Implementation">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Optional
+
+@dataclass
+class ExperimentEvent:
+    experiment_id: str
+    variant: str
+    user_id: str
+    event_type: str  # "exposure" | "conversion"
+    metric_name: Optional[str] = None
+    metric_value: Optional[float] = None
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+    properties: dict = field(default_factory=dict)
+
+
+class ExperimentTracker:
+    def __init__(self, analytics_client, assigner):
+        self.analytics = analytics_client
+        self.assigner = assigner
+        self._exposures: set[tuple[str, str]] = set()  # (exp_id, user_id)
+
+    def track_exposure(self, experiment_id: str, user_id: str):
+        key = (experiment_id, user_id)
+        if key in self._exposures:
+            return  # deduplicate within session
+        variant = self.assigner.get_variant(experiment_id, user_id)
+        if not variant:
+            return
+        self._exposures.add(key)
+        self.analytics.track("experiment_exposure", ExperimentEvent(
+            experiment_id=experiment_id, variant=variant,
+            user_id=user_id, event_type="exposure"
+        ).__dict__)
+
+    def track_conversion(self, experiment_id: str, user_id: str,
+                         metric_name: str, value: float = 1.0):
+        variant = self.assigner.get_variant(experiment_id, user_id)
+        if not variant:
+            return
+        self.analytics.track("experiment_conversion", ExperimentEvent(
+            experiment_id=experiment_id, variant=variant,
+            user_id=user_id, event_type="conversion",
+            metric_name=metric_name, metric_value=value
+        ).__dict__)
+]]></code>
+        <note>Exposures deduped within session prevents inflating denominators; conversions logged separately allow any user to convert regardless of exposure dedup window.</note>
+      </example>
+
+      <note>Log exposure on every render, dedupe on (exp_id, user_id, day). Without exposure log you cannot filter to "actually saw it".</note>
+    </section>
+
+    <section name="statistical-analysis">
+      <p>Z-test for proportions, Wilson confidence interval, power calculation, and sample size formula. Test Selection Rule: Use a two-proportion z-test (or chi-square) for binary conversion metrics. Use a Welch t-test only for continuous metrics (revenue, time-on-page). Never use a t-test for binary outcome data. A t-test on binary (0/1) data violates the normality assumption for small samples and produces inflated false-positive rates. The z-test for proportions is exact for binomial outcomes.</p>
+
+      <rule testable="true">
+        <statement>Use a two-proportion z-test (or chi-square) for binary conversion metrics. Use a Welch t-test only for continuous metrics (revenue, time-on-page). Never use a t-test for binary outcome data.</statement>
+        <rationale>A t-test on binary (0/1) data violates the normality assumption for small samples and produces inflated false-positive rates. The z-test for proportions is exact for binomial outcomes.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Report effect size and confidence interval, not just p-value. Use Wilson score CI for proportions; bootstrap CI for long-tailed metrics like revenue.</statement>
+        <rationale>p-value alone gives no information about the size of the effect. A 0.001% lift can be statistically significant with enough users — the CI shows whether the effect is practically meaningful.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Pre-compute the experiment end date from sample size. Refuse to read out results before the end date unless using a sequential test method (mSPRT, always-valid CIs).</statement>
+        <rationale>Peeking at p-values on day 1 and stopping on the first "significant" result inflates the false-positive rate from 5% to 20–30%. The pre-registered end date prevents this.</rationale>
+      </rule>
+
+      <note>Sample-size code: from math import ceil; from statsmodels.stats.power import NormalIndPower. def sample_size_per_arm(p_baseline: float, mde_relative: float, alpha=0.05, power=0.8): p2 = p_baseline * (1 + mde_relative); effect = (p2 - p_baseline) / ((p_baseline * (1 - p_baseline)) ** 0.5); n = NormalIndPower().solve_power(effect_size=effect, alpha=alpha, power=power, ratio=1.0); return ceil(n). For baseline 5% conversion, want to detect +10% relative lift: sample_size_per_arm(0.05, 0.10).</note>
+    </section>
+
+    <section name="antipatterns">
+      <p>Common A/B testing failures: random assignment, missing exposures, peeking, wrong statistical test.</p>
+
+      <antipattern>
+        <description>Using `random.choice(["control", "treatment"])` for variant assignment.</description>
+        <reason>Produces a different variant on every page load, request, or process restart. The same user alternates between variants, cross-contaminating both groups and making results meaningless.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Running successive experiments on the same population without changing the hash salt (experiment ID).</description>
+        <reason>Correlated assignment: users in control for experiment 1 are always in control for experiment 2. This produces correlated bias that looks like real effects.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Stopping the experiment the moment the p-value crosses 0.05 (peeking).</description>
+        <reason>Multiple comparisons over time inflate the false-positive rate. Stopping on first significance yields a 20–30% false-positive rate instead of the intended 5%.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using `scipy.stats.ttest_ind` on a binary (0/1) conversion metric.</description>
+        <reason>The t-test assumes approximately normal data. Binary metrics violate this for small or imbalanced samples, producing incorrect p-values. Use chi-square or two-proportion z-test.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Logging conversions without logging exposures, then computing conversion rate as conversions / total_users.</description>
+        <reason>Users not exposed to the experiment are included in the denominator, diluting the conversion rate and obscuring real effects. Denominator must be unique exposed users per variant.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow-and-best-practices">
+      <p>Treat experimentation as a contract: agent reads experiment.yaml (id, variants, weights, eligibility, primary metric, MDE) and generates: (1) typed assigner with deterministic hash, (2) exposure + conversion event schema, (3) SQL or stats notebook for the readout. Separate agent runs SRM check before any p-value: if chi2(observed_split, expected_split) &gt; threshold, abort. A reviewer agent re-derives sample-size and refuses to "call" results before the precomputed end date unless using a sequential-test method (mSPRT, always-valid CIs).</p>
+
+      <p>Pre-register hypothesis, primary metric, MDE, sample size, and stop date. Treat any deviation as a new experiment.</p>
+
+      <p>Deterministic hashing only: hash(user_id || experiment_id) mod 100. Never random.choice — breaks stickiness across processes.</p>
+
+      <p>Salt per experiment so that successive experiments do not share buckets (correlated bias).</p>
+
+      <p>Log exposure on every render, dedupe on (exp_id, user_id, day). Without exposure log you cannot filter to "actually saw it".</p>
+
+      <p>Daily SRM check: chi-square exposure counts vs expected weights; pause experiment if p &lt; 0.001.</p>
+
+      <p>Report effect size + CI, not just p-value. Use Wilson CI for proportions, bootstrap for revenue per user (long-tailed).</p>
+
+      <p>One primary metric, ≤3 secondaries, all guardrails (latency, error rate, churn) tracked but not stop-gated unless degraded.</p>
+
+      <p>Run for full business cycles (≥1 week, often 2) to absorb day-of-week effects and novelty.</p>
+
+      <p>LLMs reach for random.choice([A, B]) — destroys stickiness and reproducibility. Force a deterministic hash with hashlib.sha256 mod weight buckets.</p>
+
+      <p>Agents log conversions but forget exposures; readout becomes "users who converted while assigned to X" without denominator. Demand both events.</p>
+
+      <p>Sample-size code generated by LLMs frequently confuses absolute and relative MDE; require explicit mde_relative=0.05 # 5% lift over baseline in the contract.</p>
+
+      <p>Agents will compute p-value with scipy.stats.ttest_ind on a binary metric — wrong test. Use chi-square / two-proportion z-test for binomial, t-test only for continuous.</p>
+
+      <p>"Stop the test, it's significant" pattern: peeking. Bake the stop date into the assigner config and refuse readouts before then unless using a sequential-test method (mSPRT, always-valid CIs).</p>
+
+      <p>Bot/crawler traffic skews to the variant served on cold cache → SRM. Agent must filter is_bot before computing exposure ratios.</p>
+
+      <p>Human-in-loop checkpoint: launch decision and shipping decision must be human; agent only produces readouts and recommendations, never auto-promotes a variant.</p>
+    </section>
+
+    <section name="tools-and-services">
+      <p>CLI tools and SaaS platforms for experimentation. GrowthBook CLI: Open-source experimentation platform; flag + analysis; npm i -g growthbook-cli · growthbook.io. Statsig CLI: Statsig flags, experiments, analytics; npm. Eppo CLI: Eppo experiment platform; npm. jupytext + papermill: Parametrised stats notebooks for readouts; pip install papermill. tea-tasting (Python): Pragmatic experiment statistics (Welch t-test, CI); pip install tea-tasting. stats-can / scipy.stats: Underlying statistical tests; pip install scipy.</p>
+
+      <p>GrowthBook: OSS + SaaS; Yes — REST + SDK + CLI; Self-host on Postgres/ClickHouse; agent can manage experiments via API.</p>
+
+      <p>Statsig: SaaS; Yes — REST + SDK; Strong CUPED + sequential testing.</p>
+
+      <p>Eppo: SaaS; Yes — Terraform + API; Warehouse-native (Snowflake/BigQuery), no event pipeline rebuild.</p>
+
+      <p>LaunchDarkly: SaaS; Yes — REST API; Flag-first; experimentation is a paid add-on.</p>
+
+      <p>PostHog: OSS + SaaS; Yes — REST API + SDK; Flags + product analytics + experiments in one.</p>
+
+      <p>Optimizely: SaaS; Partial; Heavier UI workflow; less agent-friendly.</p>
+
+      <p>Amplitude Experiment: SaaS; Yes; If you already use Amplitude analytics.</p>
+
+      <p>Segment + warehouse: SaaS; Yes; Useful as the event pipe feeding any of the above.</p>
+    </section>
+
+    <templates>
+      <template path="templates/analyzer.py" purpose="ExperimentAnalyzer with full statistical analysis and ExperimentResults dataclass."/>
+      <template path="templates/sample-size.py" purpose="Sample size calculator per arm using NormalIndPower."/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.amazon.com/Trustworthy-Online-Controlled-Experiments-Practical/dp/1108724264"/>
+      <link href="https://exp-platform.com/Documents/2018%20-%20DiagnosingSRM.pdf"/>
+      <link href="https://docs.growthbook.io/"/>
+      <link href="https://docs.statsig.com/"/>
+      <link href="https://docs.geteppo.com/statistics/"/>
+    </see-also>
+  </content>
+</methodology>
