@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="azure-architecture">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Azure enterprise architecture: Well-Architected Framework five pillars and Landing Zones eight design areas with AVM+Bicep IaC tooling. ESLZ Terraform deprecated August 2026.</summary>
+    <tags>
+      <tag>azure</tag>
+      <tag>cloud-architecture</tag>
+      <tag>landing-zones</tag>
+      <tag>well-architected</tag>
+      <tag>governance</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Azure Architecture</title>
+    <summary>Azure enterprise architecture is organized around the Well-Architected Framework (five pillars: Reliability, Security, Cost Optimization, Operational Excellence, Performance Efficiency) and Landing Zones (eight design areas). Use Azure Verified Modules (AVM) and Bicep for new deployments; the legacy ESLZ Terraform module is deprecated as of August 2026.</summary>
+    <why>
+      <p>Landing Zones establish governance guardrails before workloads arrive — management group hierarchy, Azure Policy, RBAC, and networking — preventing retrofitting compliance onto running systems. Policy-driven governance via Azure Policy Initiative enforces standards automatically across all subscriptions without per-team enforcement overhead.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing new Azure workload from scratch and need governance baseline</item>
+        <item>Organization is adopting Azure at scale (multiple subscriptions, multiple teams)</item>
+        <item>Evaluating Well-Architected Framework pillars against an existing Azure deployment</item>
+        <item>Setting up hub-spoke networking, Entra ID integration, or PIM-based privileged access</item>
+        <item>Migrating on-premises workloads following Cloud Adoption Framework patterns</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-subscription, single-team project without compliance requirements — Landing Zone overhead is not justified; use a simple resource group structure</item>
+        <item>Non-Azure cloud (AWS, GCP) — framework is Azure-specific; use respective cloud frameworks</item>
+        <item>Proof-of-concept or sandbox environment — apply minimal governance, not full Landing Zone</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="well-architected-framework">
+      <section name="reliability">
+        <rule>
+          <statement>Design for failure recovery at every scale: deploy across availability zones, implement circuit breakers and retry with exponential backoff, and plan explicit data recovery paths.</statement>
+          <rationale>Azure SLA for single-VM is 99.9%. Zone-redundant deployments achieve 99.99%. The difference is 8 hours vs 52 minutes of downtime per year.</rationale>
+        </rule>
+        <list>
+          <item>Use availability zones for critical VMs, databases, and load balancers</item>
+          <item>Configure geo-redundant storage (GRS/GZRS) for data with RTO &lt; 4h requirements</item>
+          <item>Implement health checks and auto-healing via VMSS or AKS readiness probes</item>
+          <item>Define and test recovery procedures for ransomware — Azure Backup immutable vaults</item>
+        </list>
+      </section>
+
+      <section name="security">
+        <rule>
+          <statement>Implement Zero Trust: never trust, always verify. Use Microsoft Entra ID for all identity, Managed Identity for service-to-service auth, and Private Endpoints for PaaS service access.</statement>
+          <rationale>Network perimeter security fails when an attacker is already inside the network. Zero Trust authenticates every request regardless of source, reducing lateral movement after initial compromise.</rationale>
+        </rule>
+        <list>
+          <item>Replace service principal keys with Managed Identity wherever possible</item>
+          <item>Use PIM (Privileged Identity Management) for just-in-time admin access</item>
+          <item>Enable Microsoft Defender for Cloud and respond to Secure Score recommendations</item>
+          <item>Use customer-managed keys (CMK) in Azure Key Vault for regulated data</item>
+          <item>Private Endpoints for Azure Storage, SQL, Key Vault — no public internet exposure</item>
+        </list>
+      </section>
+
+      <section name="cost-optimization">
+        <rule>
+          <statement>Right-size before committing: use Azure Monitor metrics to identify P95 CPU/memory usage, then apply Azure Reservations for a 1-3 year commitment at 40-72% discount.</statement>
+          <rationale>Reservations without right-sizing commits to overprovisioned resources. Right-sizing alone without reservations pays on-demand prices. Both steps together maximize savings.</rationale>
+        </rule>
+        <list>
+          <item>Azure Reservations: up to 72% savings on VMs, 40% on SQL</item>
+          <item>Azure Savings Plans: up to 65% across compute families</item>
+          <item>Spot VMs: up to 90% for interruptible workloads (CI, batch, dev)</item>
+          <item>Auto-shutdown dev VMs on schedule: 50%+ savings on dev environments</item>
+          <item>Use Azure Cost Management + budgets + alerts to prevent surprise bills</item>
+        </list>
+      </section>
+
+      <section name="operational-excellence">
+        <rule>
+          <statement>Deploy all infrastructure via IaC (Bicep or Terraform); never make manual changes in the portal for production resources.</statement>
+          <rationale>Manual portal changes create configuration drift that is invisible to code reviewers, cannot be rolled back, and is not reproducible for disaster recovery.</rationale>
+        </rule>
+        <list>
+          <item>Use Azure Verified Modules (AVM) for new deployments — maintained by Microsoft with security best practices baked in</item>
+          <item>Automate deployments through CI/CD pipelines with staging environment first</item>
+          <item>Use Azure Monitor + Log Analytics + Application Insights for unified observability</item>
+          <item>Define runbooks for all Tier 1 operations — no tribal knowledge</item>
+        </list>
+      </section>
+
+      <section name="performance-efficiency">
+        <rule>
+          <statement>Scale horizontally before vertically — add instances via VMSS or AKS HPA before increasing VM size.</statement>
+          <rationale>Vertical scaling requires downtime or live migration. Horizontal scaling is elastic and resilient. Azure VMSS supports autoscale based on CPU, memory, and custom metrics.</rationale>
+        </rule>
+        <list>
+          <item>Use Azure Cache for Redis to eliminate repeated database reads for hot data</item>
+          <item>Azure CDN / Front Door for static assets and global routing</item>
+          <item>Use Async processing (Service Bus, Event Grid) to decouple heavy operations from request path</item>
+          <item>Establish performance baselines in staging before production release</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="landing-zones">
+      <section name="design-areas">
+        <p>Eight design areas must be addressed before the first workload deploys. Retrofitting governance onto running workloads is exponentially harder.</p>
+        <list>
+          <item>1. Azure Billing and Entra Tenant — tenant structure, EA/MCA billing, cost management</item>
+          <item>2. Identity and Access Management — Entra ID, RBAC, PIM, Conditional Access</item>
+          <item>3. Management Groups and Subscriptions — resource hierarchy, subscription democratization</item>
+          <item>4. Network Topology and Connectivity — hub-spoke or vWAN, Private Link, DNS</item>
+          <item>5. Security — Microsoft Defender, security policies, threat protection</item>
+          <item>6. Management — monitoring, backup, patching, update management</item>
+          <item>7. Governance — Azure Policy, compliance, tagging standards</item>
+          <item>8. Platform Automation and DevOps — IaC, CI/CD for platform team</item>
+        </list>
+      </section>
+
+      <section name="management-group-hierarchy">
+        <rule>
+          <statement>Limit management group hierarchy depth to 3-4 levels; assign Azure Policy at management group level, not subscription level.</statement>
+          <rationale>Deep hierarchies are hard to reason about and debug policy inheritance. Management group assignment means policies apply automatically to all current and future subscriptions in the group.</rationale>
+        </rule>
+        <example type="good" title="Standard enterprise management group structure">
+          <code lang="text"><![CDATA[
+Tenant Root Group
+├── Platform
+│   ├── Identity       (Entra ID, certificate services)
+│   ├── Management     (monitoring, logging, automation)
+│   └── Connectivity   (hub VNet, firewalls, DNS)
+├── Landing Zones
+│   ├── Corp           (internal workloads, no internet ingress)
+│   └── Online         (internet-facing apps)
+├── Sandbox            (dev/test, relaxed policy)
+└── Decommissioned     (quarantine before deletion)
+]]></code>
+        </example>
+        <p>Extended enterprise structure with sub-environments:</p>
+        <code lang="text"><![CDATA[
+Tenant Root Group
+└── {{org-name}}-root  (Intermediate Root)
+    ├── platform
+    │   ├── management        ← Log Analytics, Defender, Automation
+    │   ├── connectivity      ← Hub VNet, Firewall, ExpressRoute/VPN
+    │   └── identity          ← AD DS, ADFS (if needed)
+    ├── landing-zones
+    │   ├── corp              ← Corpnet-connected workloads
+    │   │   ├── production
+    │   │   └── non-production
+    │   └── online            ← Internet-facing workloads
+    │       ├── production
+    │       └── non-production
+    ├── sandboxes             ← Dev/Explore — relaxed policy, auto-expire
+    └── decommissioned        ← Quarantine before deletion
+]]></code>
+      </section>
+
+      <section name="management-group-design-principles">
+        <list>
+          <item>Depth — Max 6 levels (Azure limit). Keep to 3-4 in practice.</item>
+          <item>Policy scope — Assign Azure Policy at MG level, never at subscription</item>
+          <item>RBAC scope — Prefer MG-level role assignments for platform team</item>
+          <item>Subscription purpose — One workload / one environment per subscription (isolation)</item>
+          <item>Naming — {{org}}-{{type}}-{{env}} e.g. contoso-corp-prod</item>
+        </list>
+      </section>
+
+      <section name="policy-assignment-points">
+        <list>
+          <item>Tenant Root — Deny classic resources, require tags</item>
+          <item>platform/connectivity — Deny VNet creation outside hub pattern</item>
+          <item>landing-zones/corp — Require private endpoints, deny public IP on NICs</item>
+          <item>landing-zones/online — Allow public IP (controlled), enforce WAF on App GW</item>
+          <item>sandboxes — Allow most, enforce spend budget alert</item>
+        </list>
+      </section>
+
+      <section name="subscription-vending-checklist">
+        <checklist>
+          <check>Subscription placed in correct MG (corp vs online)</check>
+          <check>Budget alert set (email + action group)</check>
+          <check>Defender for Cloud enabled (inherited from MG policy)</check>
+          <check>Diagnostic settings → central Log Analytics workspace</check>
+          <check>Tags: environment, team, cost-center, data-classification</check>
+          <check>Network: peer to hub VNet (corp) or stand-alone (online)</check>
+        </checklist>
+      </section>
+    </section>
+
+    <section name="policy-driven-governance">
+      <rule>
+        <statement>Use Azure Policy Initiatives (groups of policies) rather than individual policies for governance themes — easier to audit and assign.</statement>
+        <rationale>Individual policy assignment creates hundreds of separate assignments. An Initiative bundles related policies (e.g., all security hardening policies) into a single assignable unit with one compliance dashboard.</rationale>
+      </rule>
+      <list>
+        <item>Prefer built-in policies before writing custom — Microsoft maintains them for new resource types</item>
+        <item>Enable remediation tasks for policies with deployIfNotExists effect</item>
+        <item>Use exemptions sparingly; always set an expiration date on exemptions</item>
+        <item>Deploy policies via CI/CD pipeline — policy-as-code is auditable and reversible</item>
+      </list>
+    </section>
+
+    <section name="iac-tooling">
+      <rule>
+        <statement>Use Azure Verified Modules (AVM) for new Azure deployments; the ESLZ Terraform module is deprecated as of August 2026 and should not be used for new projects.</statement>
+        <rationale>AVM modules are authored and maintained by Microsoft with security best practices, semantic versioning, and compatibility guarantees. ESLZ is end-of-life and will not receive security updates.</rationale>
+      </rule>
+      <list>
+        <item>AVM + Bicep: preferred for Azure-only projects; native Azure toolchain, no state management</item>
+        <item>Terraform + AzureRM provider: use for multi-cloud IaC or teams with existing Terraform expertise</item>
+        <item>ALZ Accelerator: automated Landing Zone deployment via GitHub or Azure DevOps pipelines</item>
+        <item>Bicep vs ARM: Bicep is the abstraction layer over ARM; never write ARM JSON directly</item>
+      </list>
+      <section name="avm-example">
+        <p>Manage hierarchy via AVM (Azure Verified Modules):</p>
+        <code lang="bicep"><![CDATA[module "management_groups" {
+  source  = "Azure/avm-ptn-alz/azurerm"
+  version = "~> 0.10"
+  # ... ALZ pattern config
+}]]></code>
+        <note>ESLZ (Enterprise-Scale Landing Zone) deprecated August 2026 → migrate to AVM.</note>
+      </section>
+      <reference path="templates/management-group-hierarchy.md">Standard management group tree template</reference>
+    </section>
+
+    <templates>
+      <template path="templates/management-group-hierarchy.md" purpose="Standard management group tree (Platform/LandingZones/Sandbox/Decommissioned) with design principles and subscription vending checklist"/>
+      <template path="templates/prompt-design.txt" purpose="LLM prompt for Azure architecture design review across all five WAF pillars with landing zone fit assessment"/>
+    </templates>
+
+    <prompt purpose="architecture-design-review"><![CDATA[You are an Azure Well-Architected Framework expert. Review the architecture described below and provide structured recommendations.
+
+Context provided:
+- Architecture description: {{ARCHITECTURE_DESCRIPTION}}
+- Current Azure services used: {{SERVICES_LIST}}
+- Business requirements: {{BUSINESS_REQUIREMENTS}}
+- Compliance needs: {{COMPLIANCE_REQUIREMENTS}}
+
+Evaluate across all five WAF pillars:
+
+1. RELIABILITY
+   - Identify single points of failure
+   - Assess availability zone coverage
+   - Check for circuit breakers and retry logic
+   - Review SLA composite (all upstream SLAs multiply)
+   - Recommendations for geo-redundancy
+
+2. SECURITY
+   - Identity and access model (Entra ID, managed identities, RBAC)
+   - Network segmentation (private endpoints, NSG, Azure Firewall)
+   - Data encryption at rest and in transit
+   - Secret management (Key Vault usage)
+   - Defender for Cloud coverage
+
+3. COST OPTIMIZATION
+   - Right-sizing opportunities
+   - Reserved instances / Savings Plans candidates (>6 months stable workloads)
+   - Dev/test licensing benefits
+   - Autoscaling to reduce idle capacity
+   - Storage tier optimization (Hot/Cool/Archive)
+
+4. OPERATIONAL EXCELLENCE
+   - IaC coverage (AVM / Bicep / Terraform)
+   - Deployment automation and blue-green capability
+   - Monitoring and alerting (Azure Monitor, Log Analytics)
+   - Runbook automation
+   - Tag strategy for cost allocation
+
+5. PERFORMANCE EFFICIENCY
+   - Scaling strategy (horizontal vs vertical, VMSS, AKS)
+   - CDN / caching layers
+   - Database read replicas or caching (Redis)
+   - Network latency (proximity placement, Availability Zones)
+
+For each pillar, output:
+- Current state assessment (1 sentence)
+- Top 3 prioritized recommendations (with Azure service name)
+- Quick wins vs long-term investments
+
+Finally: Landing Zone fit assessment — is this workload correctly placed in corp vs online management group? What policy exceptions, if any, are needed?]]></prompt>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/en-us/azure/well-architected/">Azure Well-Architected Framework</link>
+      <link href="https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/landing-zone/">Azure Landing Zones</link>
+      <link href="https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/">Cloud Adoption Framework</link>
+      <link href="https://azure.github.io/Azure-Verified-Modules/">Azure Verified Modules (AVM)</link>
+    </see-also>
+  </content>
+</methodology>
