@@ -1,0 +1,1204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="k8s-basics">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Core kubectl operations, pods, services, namespaces, and fundamental Kubernetes concepts for running containers at scale with reliability and efficiency.</summary>
+    <tags>
+      <tag>kubernetes</tag>
+      <tag>kubectl</tag>
+      <tag>containers</tag>
+      <tag>k8s</tag>
+      <tag>orchestration</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Kubernetes Basics</title>
+    <summary>Core kubectl operations, pods, services, namespaces, and fundamental concepts for running containers at scale with reliability and efficiency. Kubernetes (K8s) is the bedrock of modern container orchestration. Version requirements: Kubernetes 1.29+ (prefer 1.31+), kubectl matching cluster version, Helm 3.14+, Kustomize built into kubectl 1.14+.</summary>
+    <why>
+      <p>Kubernetes solves the problem of running containerized applications reliably at scale. Without an orchestrator, each container must be scheduled, networked, health-checked, restarted on failure, and load-balanced manually. At dozens of services this is tractable; at hundreds it becomes operationally impossible.</p>
+      <p>K8s provides a declarative API for expressing what workloads should run, how many replicas, what resources they need, and how to route traffic. The control plane continuously reconciles actual cluster state toward the desired state, automatically restarting failed containers, rescheduling workloads from failed nodes, and scaling based on metrics.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Running multiple containerized services that need independent scaling, fault isolation, and rolling deployments.</item>
+        <item>Production workloads that require automatic failure recovery — pod restart, node replacement, and traffic rerouting.</item>
+        <item>Teams managing more than a handful of services where per-service deployment scripts become unmanageable.</item>
+        <item>Applications needing horizontal pod autoscaling based on CPU, memory, or custom metrics.</item>
+        <item>Multi-tenant platforms where namespace-level resource isolation and RBAC are required.</item>
+        <item>CI/CD pipelines that need ephemeral build and test environments on-demand.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-service applications where Docker Compose or a PaaS (Heroku, Render, Railway) is simpler to operate.</item>
+        <item>Batch or scheduled jobs with no concurrency requirements — a simple cron job on a VM may suffice.</item>
+        <item>Teams without K8s operational experience and no time to invest in the learning curve — managed container services (ECS Fargate, Cloud Run) offer a lower operational burden.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-concepts">
+      <p>Architecture components:</p>
+      <list>
+        <item>Control Plane: manages cluster state — API server, scheduler, controller manager, etcd.</item>
+        <item>Worker Nodes: run containerized workloads.</item>
+        <item>kubelet: node agent ensuring containers run in Pods.</item>
+        <item>kube-proxy: network proxy for Service implementation.</item>
+      </list>
+      <p>Workload resources:</p>
+      <list>
+        <item>Pod (po): Smallest deployable unit, runs containers.</item>
+        <item>Deployment (deploy): Manages ReplicaSets, declarative updates.</item>
+        <item>ReplicaSet (rs): Ensures specified number of pod replicas.</item>
+        <item>StatefulSet (sts): Manages stateful applications with stable identity.</item>
+        <item>DaemonSet (ds): Runs pod on every node (logging, monitoring agents).</item>
+        <item>Job: One-time task execution.</item>
+        <item>CronJob (cj): Scheduled task execution.</item>
+      </list>
+      <p>Service and networking resources:</p>
+      <list>
+        <item>Service (svc): Stable network endpoint for pods.</item>
+        <item>Ingress (ing): HTTP/HTTPS routing and load balancing.</item>
+        <item>NetworkPolicy (netpol): Pod network traffic rules.</item>
+        <item>Endpoints (ep): IP addresses backing a Service.</item>
+      </list>
+      <p>Configuration and storage resources:</p>
+      <list>
+        <item>ConfigMap (cm): Non-sensitive configuration data.</item>
+        <item>Secret: Sensitive data (credentials, keys).</item>
+        <item>PersistentVolumeClaim (pvc): Request for storage.</item>
+        <item>PersistentVolume (pv): Cluster storage resource.</item>
+      </list>
+      <p>Cluster organization resources:</p>
+      <list>
+        <item>Namespace (ns): Virtual cluster partitioning.</item>
+        <item>ResourceQuota (quota): Resource limits per namespace.</item>
+        <item>LimitRange (limits): Default resource constraints.</item>
+        <item>Node (no): Worker machine in the cluster.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <rule>
+        <statement>Always set CPU and memory requests and limits on every container. Use Vertical Pod Autoscaler (VPA) for automated right-sizing. Implement namespace quotas for fair resource allocation.</statement>
+        <rationale>Without requests, the scheduler cannot make informed placement decisions. Without limits, a misbehaving container can starve neighboring pods on the same node.</rationale>
+      </rule>
+      <rule>
+        <statement>Run all containers as non-root with read-only root filesystem, drop all capabilities, and use network policies to restrict pod-to-pod traffic. Scan container images before deployment.</statement>
+        <rationale>Defense-in-depth: even if a container is compromised, restricted security context limits what an attacker can do. Image scanning prevents deploying known-vulnerable base images.</rationale>
+      </rule>
+      <rule>
+        <statement>Configure liveness, readiness, and startup probes on every production workload. Use Pod Disruption Budgets to ensure availability during maintenance. Set minimum 2 replicas for production.</statement>
+        <rationale>Probes enable K8s to detect and recover from application-level failures that the container runtime cannot see. PDBs prevent rolling updates or node drains from taking down all replicas simultaneously.</rationale>
+      </rule>
+      <rule>
+        <statement>Use declarative YAML manifests version-controlled in Git. Separate configuration from code using ConfigMaps and Secrets. Use Kustomize or Helm for environment-specific overlays. Validate manifests with admission controllers and policy tools.</statement>
+        <rationale>Declarative manifests enable GitOps workflows, diff-based review, and reproducible deployments. Environment overlays prevent copy-paste sprawl between dev/staging/prod configurations.</rationale>
+      </rule>
+    </section>
+
+    <section name="kubectl-reference">
+      <example type="good" title="Core kubectl operations">
+        <code lang="bash"><![CDATA[
+# Context and namespace
+kubectl config current-context
+kubectl config set-context --current --namespace=<ns>
+
+# Resource operations
+kubectl get <resource> -o wide          # List with details
+kubectl describe <resource> <name>      # Detailed info
+kubectl apply -f manifest.yaml          # Apply configuration
+kubectl delete -f manifest.yaml         # Delete resources
+
+# Debugging
+kubectl logs <pod> [-c container]       # View logs
+kubectl exec -it <pod> -- /bin/sh       # Shell access
+kubectl port-forward <pod> 8080:80      # Local access
+]]></code>
+      </example>
+    </section>
+
+    <section name="kubectl-examples">
+      <example type="good" title="Resource management — get and filter">
+        <code lang="bash"><![CDATA[
+# Get resources
+kubectl get pods                          # List pods in current namespace
+kubectl get pods -o wide                  # Include node and IP info
+kubectl get pods -A                       # All namespaces
+kubectl get pods -l app=myapp             # Filter by label
+kubectl get pods -l 'env in (prod,staging)'  # Label selector
+kubectl get pods --field-selector=status.phase=Running
+kubectl get pods -o yaml                  # Full YAML output
+kubectl get pods -o jsonpath='{.items[*].metadata.name}'  # JSONPath
+
+# Describe (detailed info with events)
+kubectl describe pod <pod-name>
+kubectl describe deployment <deploy-name>
+kubectl describe service <svc-name>
+kubectl describe node <node-name>
+
+# Create/Apply resources
+kubectl apply -f manifest.yaml            # Apply single file
+kubectl apply -f ./manifests/             # Apply all in directory
+kubectl apply -f https://example.com/manifest.yaml  # From URL
+kubectl apply -k ./kustomize/             # Apply with Kustomize
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.25
+EOF
+
+# Delete resources
+kubectl delete -f manifest.yaml
+kubectl delete pod <pod-name>
+kubectl delete pods -l app=myapp          # Delete by label
+kubectl delete pod <pod-name> --grace-period=0 --force  # Force delete (use carefully)
+]]></code>
+      </example>
+      <example type="good" title="Namespace operations">
+        <code lang="bash"><![CDATA[
+# Create and use namespaces
+kubectl create namespace development
+kubectl create namespace staging
+kubectl create namespace production
+
+# Set default namespace for context
+kubectl config set-context --current --namespace=development
+
+# List resources across namespaces
+kubectl get pods -n production
+kubectl get all -A                        # All resources, all namespaces
+
+# View namespace details
+kubectl describe namespace development
+kubectl get resourcequotas -n development
+kubectl get limitranges -n development
+]]></code>
+      </example>
+      <example type="good" title="Context management">
+        <code lang="bash"><![CDATA[
+# View contexts
+kubectl config get-contexts
+kubectl config current-context
+
+# Switch context
+kubectl config use-context <context-name>
+
+# Create context alias
+kubectl config set-context dev --cluster=my-cluster --namespace=development
+kubectl config use-context dev
+]]></code>
+      </example>
+      <example type="good" title="Deployment operations and rollouts">
+        <code lang="bash"><![CDATA[
+# Create deployment imperatively
+kubectl create deployment nginx --image=nginx:1.25 --replicas=3
+
+# Scale deployment
+kubectl scale deployment nginx --replicas=5
+
+# Autoscale deployment
+kubectl autoscale deployment nginx --min=2 --max=10 --cpu-percent=80
+
+# Check HPA status
+kubectl get hpa
+kubectl describe hpa nginx
+
+# Update image (triggers rollout)
+kubectl set image deployment/myapp myapp=myapp:2.0.0
+
+# Monitor rollout
+kubectl rollout status deployment/myapp
+kubectl rollout history deployment/myapp
+kubectl rollout history deployment/myapp --revision=2
+
+# Rollback
+kubectl rollout undo deployment/myapp              # Previous revision
+kubectl rollout undo deployment/myapp --to-revision=1  # Specific revision
+
+# Pause/Resume rollout
+kubectl rollout pause deployment/myapp
+kubectl rollout resume deployment/myapp
+
+# Restart deployment (rolling restart)
+kubectl rollout restart deployment/myapp
+]]></code>
+      </example>
+      <example type="good" title="Service operations and discovery">
+        <code lang="bash"><![CDATA[
+# Expose deployment as ClusterIP
+kubectl expose deployment nginx --port=80 --target-port=8080
+
+# Expose as NodePort
+kubectl expose deployment nginx --type=NodePort --port=80 --target-port=8080
+
+# Expose as LoadBalancer
+kubectl expose deployment nginx --type=LoadBalancer --port=80 --target-port=8080
+
+# Create headless service (for StatefulSets)
+kubectl expose deployment nginx --port=80 --cluster-ip=None
+
+# DNS format: <service>.<namespace>.svc.cluster.local
+# Examples:
+#   myapp.default.svc.cluster.local
+#   postgres.database.svc.cluster.local
+
+# Get service endpoints
+kubectl get endpoints myapp-service
+kubectl describe endpoints myapp-service
+
+# Test service connectivity
+kubectl run curl --rm -it --image=curlimages/curl -- curl http://myapp-service:80
+kubectl run curl --rm -it --image=curlimages/curl -- curl http://myapp-service.default.svc.cluster.local:80
+
+# Test DNS resolution
+kubectl run dnsutils --rm -it --image=tutum/dnsutils -- nslookup myapp-service
+]]></code>
+      </example>
+      <example type="good" title="ConfigMaps and Secrets">
+        <code lang="bash"><![CDATA[
+# From literals
+kubectl create configmap myconfig \
+  --from-literal=DATABASE_HOST=postgres.db.svc.cluster.local \
+  --from-literal=LOG_LEVEL=info
+
+# From file
+kubectl create configmap myconfig --from-file=config.properties
+kubectl create configmap myconfig --from-file=app-config=config.properties  # Custom key
+
+# From env file
+kubectl create configmap myconfig --from-env-file=config.env
+
+# From directory (each file becomes a key)
+kubectl create configmap myconfig --from-file=./configs/
+
+# Generic secret from literals
+kubectl create secret generic mysecret \
+  --from-literal=username=admin \
+  --from-literal=password='s3cr3t!'
+
+# TLS secret
+kubectl create secret tls mytls-secret --cert=tls.crt --key=tls.key
+
+# Docker registry secret
+kubectl create secret docker-registry regcred \
+  --docker-server=https://index.docker.io/v1/ \
+  --docker-username=myuser \
+  --docker-password=mypassword \
+  --docker-email=myuser@example.com
+
+# View secret (base64 decoded)
+kubectl get secret mysecret -o jsonpath='{.data.password}' | base64 -d
+]]></code>
+      </example>
+      <example type="good" title="Pod debugging">
+        <code lang="bash"><![CDATA[
+# Get logs
+kubectl logs <pod-name>                   # Current logs
+kubectl logs <pod-name> -c <container>    # Specific container
+kubectl logs <pod-name> --previous        # Previous instance (after crash)
+kubectl logs <pod-name> -f                # Follow logs
+kubectl logs <pod-name> --tail=100        # Last 100 lines
+kubectl logs <pod-name> --since=1h        # Last hour
+kubectl logs -l app=myapp --all-containers  # All pods with label
+
+# Execute commands
+kubectl exec <pod-name> -- ls /app
+kubectl exec -it <pod-name> -- /bin/sh
+kubectl exec -it <pod-name> -c <container> -- /bin/bash
+
+# Copy files
+kubectl cp <pod-name>:/path/to/file ./local-file
+kubectl cp ./local-file <pod-name>:/path/to/file
+kubectl cp <pod-name>:/var/log/app.log ./app.log -c <container>
+
+# Port forwarding
+kubectl port-forward pod/<pod-name> 8080:80
+kubectl port-forward svc/<service-name> 8080:80
+kubectl port-forward deployment/<deploy-name> 8080:80
+
+# Debug with ephemeral container
+kubectl debug <pod-name> -it --image=busybox
+
+# Debug with specific container name
+kubectl debug <pod-name> -it --image=nicolaka/netshoot --target=<container>
+
+# Debug node
+kubectl debug node/<node-name> -it --image=ubuntu
+
+# Create debug copy of pod
+kubectl debug <pod-name> -it --copy-to=<pod-name>-debug --container=debugger --image=busybox
+]]></code>
+      </example>
+      <example type="good" title="Events, status and monitoring">
+        <code lang="bash"><![CDATA[
+# View cluster events
+kubectl get events --sort-by='.lastTimestamp'
+kubectl get events -A --field-selector type=Warning
+kubectl get events -w                     # Watch events
+
+# Resource status with custom columns
+kubectl get pods -o custom-columns=\
+NAME:.metadata.name,\
+STATUS:.status.phase,\
+RESTARTS:.status.containerStatuses[0].restartCount,\
+NODE:.spec.nodeName
+
+# API resources
+kubectl api-resources                     # List all resources
+kubectl api-resources --namespaced=true   # Only namespaced resources
+kubectl explain pod.spec.containers       # Explain field
+kubectl explain deployment.spec.strategy --recursive
+
+# Network debugging
+kubectl run dnsutils --rm -it --image=tutum/dnsutils -- nslookup kubernetes
+kubectl run curl --rm -it --image=curlimages/curl -- curl -v http://service:port
+kubectl run netshoot --rm -it --image=nicolaka/netshoot -- /bin/bash
+kubectl get networkpolicies -A
+kubectl describe networkpolicy <name>
+
+# Node resources
+kubectl top nodes
+kubectl describe node <node-name> | grep -A5 "Allocated resources"
+
+# Pod resources
+kubectl top pods
+kubectl top pods --containers
+kubectl top pods -l app=myapp
+
+# Resource quotas
+kubectl describe resourcequota -n <namespace>
+kubectl describe limitrange -n <namespace>
+
+# Useful one-liners
+# Delete all evicted pods
+kubectl get pods -A --field-selector=status.phase=Failed | grep Evicted | awk '{print $2 " -n " $1}' | xargs -L1 kubectl delete pod
+
+# Get all images in cluster
+kubectl get pods -A -o jsonpath='{.items[*].spec.containers[*].image}' | tr ' ' '\n' | sort -u
+
+# Find pods not running
+kubectl get pods -A --field-selector=status.phase!=Running
+
+# Get pods sorted by restart count
+kubectl get pods --sort-by='.status.containerStatuses[0].restartCount'
+
+# Watch pod status changes
+kubectl get pods -w
+
+# Get pod resource usage vs requests
+kubectl top pods --containers | sort -k3 -h
+]]></code>
+      </example>
+    </section>
+
+    <section name="checklists">
+      <checklist>
+        <check>Image tagged with specific version (not latest) and pulled from trusted registry.</check>
+        <check>Image vulnerability scan completed; multi-stage build for smaller image size.</check>
+        <check>Non-root user configured in Dockerfile.</check>
+        <check>Resource requests and limits defined (CPU, memory).</check>
+        <check>Liveness, readiness, and startup probes configured.</check>
+        <check>Security context set (runAsNonRoot, readOnlyRootFilesystem, capabilities drop ALL).</check>
+        <check>Replicas set to minimum 2 for production; rolling update strategy with maxSurge and maxUnavailable configured.</check>
+        <check>Labels applied for service selection; annotations for monitoring/observability.</check>
+        <check>Correct service type selected; port and targetPort correctly mapped; selector matches pod labels.</check>
+        <check>Namespace created with ResourceQuota, LimitRange, and NetworkPolicy.</check>
+        <check>Sensitive data in Secrets (not ConfigMaps); environment variables properly referenced.</check>
+        <check>No privileged containers; no host network/PID/IPC sharing.</check>
+        <check>Secrets not exposed in environment variables — prefer volume mounts.</check>
+        <check>RBAC configured with least privilege; Pod security admission enforced.</check>
+        <check>Network policies restrict unnecessary traffic.</check>
+        <check>Changes tested in staging/dev before rollout; manifests version-controlled.</check>
+        <check>PodDisruptionBudget in place; monitoring alerts configured.</check>
+        <check>Rollout monitored via kubectl rollout status; readiness probes verified to pass.</check>
+        <check>All pods running and ready after rollout; no increase in error rates.</check>
+      </checklist>
+      <p>Common issue resolution:</p>
+      <list>
+        <item>ImagePullBackOff: check registry auth, image name/tag.</item>
+        <item>CrashLoopBackOff: check logs, resource limits, startup probe configuration.</item>
+        <item>Pending: check node resources, node selector, PVC binding.</item>
+        <item>ContainerCreating: check PVC, ConfigMap, Secret availability.</item>
+        <item>OOMKilled: increase memory limits.</item>
+        <item>Evicted: node disk/memory pressure — investigate node health.</item>
+      </list>
+      <p>Quick validation commands:</p>
+      <example type="good" title="Cluster and namespace validation">
+        <code lang="bash"><![CDATA[
+# Cluster health
+kubectl cluster-info
+kubectl get nodes
+kubectl get componentstatuses
+
+# Namespace resources
+kubectl get all -n <namespace>
+kubectl get events -n <namespace> --sort-by='.lastTimestamp'
+
+# Pod health
+kubectl get pods -o wide
+kubectl top pods
+kubectl describe pod <name>
+
+# Service validation
+kubectl get endpoints <service>
+kubectl run curl --rm -it --image=curlimages/curl -- curl http://<service>:<port>
+
+# Namespace setup verification
+# Namespace:
+#   - [ ] Created with meaningful name
+#   - [ ] Labels for organization (team, environment)
+# ResourceQuota:
+#   - [ ] CPU requests/limits
+#   - [ ] Memory requests/limits
+#   - [ ] Pod count limit
+#   - [ ] PVC count limit
+# LimitRange:
+#   - [ ] Default CPU request/limit
+#   - [ ] Default memory request/limit
+#   - [ ] Min/max constraints
+# NetworkPolicy:
+#   - [ ] Default deny ingress (optional but recommended)
+#   - [ ] Allow required traffic explicitly
+]]></code>
+      </example>
+    </section>
+
+    <section name="templates">
+      <example type="good" title="Minimal Pod">
+        <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.25
+    ports:
+    - containerPort: 80
+]]></code>
+      </example>
+      <example type="good" title="Production-Ready Pod">
+        <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp
+  labels:
+    app: myapp
+    version: v1.0.0
+spec:
+  serviceAccountName: myapp-sa
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  containers:
+  - name: myapp
+    image: myapp:1.0.0
+    ports:
+    - containerPort: 8080
+      name: http
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+    securityContext:
+      readOnlyRootFilesystem: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: http
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: http
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
+    startupProbe:
+      httpGet:
+        path: /health
+        port: http
+      failureThreshold: 30
+      periodSeconds: 10
+    env:
+    - name: POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    envFrom:
+    - configMapRef:
+        name: myapp-config
+    volumeMounts:
+    - name: tmp
+      mountPath: /tmp
+    - name: secrets
+      mountPath: /etc/secrets
+      readOnly: true
+  volumes:
+  - name: tmp
+    emptyDir: {}
+  - name: secrets
+    secret:
+      secretName: myapp-secrets
+]]></code>
+      </example>
+      <example type="good" title="Production Deployment with Rolling Update">
+        <code lang="yaml"><![CDATA[
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+  labels:
+    app: myapp
+    environment: production
+  annotations:
+    kubernetes.io/change-cause: "Initial deployment"
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: myapp
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: myapp
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: myapp
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: myapp
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: myapp
+        image: myapp:1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        env:
+        - name: ENV
+          value: "production"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: myapp-secrets
+              key: db-password
+        envFrom:
+        - configMapRef:
+            name: myapp-config
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: myapp
+]]></code>
+      </example>
+      <example type="good" title="Service templates — ClusterIP, NodePort, LoadBalancer, Headless">
+        <code lang="yaml"><![CDATA[
+# ClusterIP (Internal)
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp
+  labels:
+    app: myapp
+spec:
+  type: ClusterIP
+  selector:
+    app: myapp
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+---
+# NodePort
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-nodeport
+  labels:
+    app: myapp
+spec:
+  type: NodePort
+  selector:
+    app: myapp
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    nodePort: 30080
+    protocol: TCP
+---
+# LoadBalancer
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-lb
+  labels:
+    app: myapp
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+spec:
+  type: LoadBalancer
+  selector:
+    app: myapp
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+---
+# Headless Service (for StatefulSets)
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-headless
+  labels:
+    app: myapp
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: myapp
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+]]></code>
+      </example>
+      <example type="good" title="Namespace with ResourceQuota and LimitRange">
+        <code lang="yaml"><![CDATA[
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: development
+  labels:
+    name: development
+    environment: dev
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: development-quota
+  namespace: development
+spec:
+  hard:
+    requests.cpu: "10"
+    requests.memory: "20Gi"
+    limits.cpu: "20"
+    limits.memory: "40Gi"
+    pods: "50"
+    persistentvolumeclaims: "10"
+    services.loadbalancers: "2"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: development-limits
+  namespace: development
+spec:
+  limits:
+  - default:
+      cpu: "500m"
+      memory: "512Mi"
+    defaultRequest:
+      cpu: "100m"
+      memory: "128Mi"
+    max:
+      cpu: "2"
+      memory: "4Gi"
+    min:
+      cpu: "50m"
+      memory: "64Mi"
+    type: Container
+]]></code>
+      </example>
+      <example type="good" title="ConfigMap and Secret templates">
+        <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myapp-config
+  labels:
+    app: myapp
+data:
+  DATABASE_HOST: "postgres.database.svc.cluster.local"
+  DATABASE_PORT: "5432"
+  LOG_LEVEL: "info"
+  FEATURE_FLAGS: "true"
+  config.json: |
+    {
+      "apiEndpoint": "https://api.example.com",
+      "timeout": 30,
+      "retries": 3
+    }
+  nginx.conf: |
+    server {
+      listen 80;
+      server_name localhost;
+      location / {
+        root /usr/share/nginx/html;
+        index index.html;
+      }
+    }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: myapp-secrets
+  labels:
+    app: myapp
+type: Opaque
+stringData:  # Use stringData for plain text (auto base64 encoded)
+  db-password: "supersecret123"
+  api-key: "ak_live_xxxxxxxxxxxxx"
+]]></code>
+      </example>
+      <example type="good" title="PodDisruptionBudget, HPA, NetworkPolicy, ServiceAccount+RBAC">
+        <code lang="yaml"><![CDATA[
+# Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: myapp-pdb
+spec:
+  minAvailable: 2  # Or use maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: myapp
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: myapp-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: myapp
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 4
+        periodSeconds: 15
+      selectPolicy: Max
+---
+# Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: myapp-network-policy
+  namespace: production
+spec:
+  podSelector:
+    matchLabels:
+      app: myapp
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: production
+    - podSelector:
+        matchLabels:
+          role: frontend
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: database
+    ports:
+    - protocol: TCP
+      port: 5432
+  - to:  # Allow DNS
+    - namespaceSelector: {}
+    ports:
+    - protocol: UDP
+      port: 53
+---
+# ServiceAccount with RBAC
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: myapp
+  namespace: production
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: myapp-role
+  namespace: production
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: myapp-rolebinding
+  namespace: production
+subjects:
+- kind: ServiceAccount
+  name: myapp
+  namespace: production
+roleRef:
+  kind: Role
+  name: myapp-role
+  apiGroup: rbac.authorization.k8s.io
+]]></code>
+      </example>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="troubleshoot-pod-not-starting"><![CDATA[
+I have a Kubernetes pod that won't start. Here's the output of `kubectl describe pod <name>`:
+
+[PASTE DESCRIBE OUTPUT]
+
+And here's the pod YAML:
+
+[PASTE POD YAML]
+
+Please:
+1. Identify the root cause from the events and status
+2. Explain what's happening
+3. Provide specific commands or YAML fixes
+4. Suggest preventive measures
+]]></prompt>
+      <prompt purpose="troubleshoot-crashloopbackoff"><![CDATA[
+My pod is in CrashLoopBackOff. Here's the information:
+
+Pod describe:
+[PASTE DESCRIBE OUTPUT]
+
+Container logs (kubectl logs --previous):
+[PASTE LOGS]
+
+Please diagnose:
+1. Why is the container crashing?
+2. What are possible fixes?
+3. How should I configure probes to handle this?
+]]></prompt>
+      <prompt purpose="troubleshoot-service-not-reaching-pods"><![CDATA[
+My Kubernetes service isn't reaching the pods. Here's my setup:
+
+Service YAML:
+[PASTE SERVICE YAML]
+
+Deployment YAML:
+[PASTE DEPLOYMENT YAML]
+
+kubectl get endpoints output:
+[PASTE ENDPOINTS]
+
+Please:
+1. Check if selector labels match
+2. Verify port configuration
+3. Identify networking issues
+4. Provide corrected YAML if needed
+]]></prompt>
+      <prompt purpose="troubleshoot-resource-exhaustion"><![CDATA[
+My pods are being evicted or OOMKilled. Current state:
+
+kubectl top nodes:
+[PASTE OUTPUT]
+
+kubectl top pods:
+[PASTE OUTPUT]
+
+kubectl describe node:
+[PASTE RELEVANT SECTIONS]
+
+Pod resource configuration:
+[PASTE RESOURCES SECTION]
+
+Please:
+1. Analyze resource usage vs limits
+2. Recommend appropriate resource values
+3. Suggest HPA configuration if applicable
+4. Identify if cluster needs scaling
+]]></prompt>
+      <prompt purpose="generate-deployment"><![CDATA[
+Generate a production-ready Kubernetes Deployment for:
+
+Application: [NAME]
+Image: [IMAGE:TAG]
+Port: [PORT]
+Environment: [dev/staging/production]
+
+Requirements:
+- Replicas: [NUMBER]
+- CPU: [REQUEST]/[LIMIT]
+- Memory: [REQUEST]/[LIMIT]
+- Health endpoint: [PATH]
+- Environment variables: [LIST]
+- ConfigMap: [NAME] (if applicable)
+- Secrets: [NAME] (if applicable)
+
+Include:
+- Resource requests and limits
+- Liveness and readiness probes
+- Security context (non-root, read-only fs)
+- Rolling update strategy
+- Pod anti-affinity for HA
+]]></prompt>
+      <prompt purpose="generate-namespace-setup"><![CDATA[
+Generate a complete namespace setup for environment: [NAME]
+
+Include:
+1. Namespace with labels
+2. ResourceQuota with:
+   - CPU: [TOTAL_REQUESTS]/[TOTAL_LIMITS]
+   - Memory: [TOTAL_REQUESTS]/[TOTAL_LIMITS]
+   - Max pods: [NUMBER]
+3. LimitRange with:
+   - Default CPU: [REQUEST]/[LIMIT]
+   - Default memory: [REQUEST]/[LIMIT]
+4. Default NetworkPolicy (deny all ingress, allow DNS egress)
+]]></prompt>
+      <prompt purpose="docker-compose-to-kubernetes"><![CDATA[
+Convert this Docker Compose file to Kubernetes manifests:
+
+[PASTE DOCKER-COMPOSE.YML]
+
+Requirements:
+- Generate separate files for each resource type
+- Use ConfigMaps for environment variables
+- Use Secrets for sensitive data
+- Include appropriate Services
+- Add resource limits
+- Configure health checks
+]]></prompt>
+      <prompt purpose="security-audit"><![CDATA[
+Audit this Kubernetes manifest for security issues:
+
+[PASTE YAML]
+
+Check for:
+1. Running as root
+2. Privileged containers
+3. Writable root filesystem
+4. Missing capabilities drop
+5. Host namespace sharing
+6. Missing network policies
+7. Secrets in environment variables
+8. Missing resource limits
+
+Provide:
+- List of issues by severity
+- Specific fixes for each issue
+- Corrected YAML
+]]></prompt>
+      <prompt purpose="resource-optimization"><![CDATA[
+Analyze these Kubernetes resource configurations:
+
+Current deployment:
+[PASTE DEPLOYMENT YAML]
+
+Metrics (kubectl top pods over time):
+[PASTE METRICS]
+
+HPA events (if any):
+[PASTE HPA DESCRIBE]
+
+Provide:
+1. Are resources over/under provisioned?
+2. Recommended request/limit values
+3. HPA configuration suggestions
+4. Cost optimization recommendations
+]]></prompt>
+      <prompt purpose="high-availability-review"><![CDATA[
+Review this Kubernetes setup for high availability:
+
+Deployment:
+[PASTE YAML]
+
+Service:
+[PASTE YAML]
+
+Current pod distribution:
+[kubectl get pods -o wide OUTPUT]
+
+Analyze:
+1. Replica count adequacy
+2. Pod anti-affinity configuration
+3. Topology spread constraints
+4. Pod disruption budget
+5. Multi-zone distribution
+6. Single points of failure
+
+Provide HA-improved configuration.
+]]></prompt>
+      <prompt purpose="debug-strategy"><![CDATA[
+Teach me how to debug [KUBERNETES ISSUE]:
+
+Issue type: [pod not starting/networking/performance/etc.]
+
+Provide:
+1. Diagnostic commands in order
+2. What to look for in output
+3. Common causes and solutions
+4. Decision tree for troubleshooting
+5. Prevention strategies
+]]></prompt>
+      <prompt purpose="scale-recommendation"><![CDATA[
+Based on this workload pattern, recommend scaling configuration:
+
+Current setup:
+- Replicas: [NUMBER]
+- CPU request/limit: [VALUES]
+- Memory request/limit: [VALUES]
+
+Traffic pattern:
+[DESCRIBE: steady/bursty/time-based/etc.]
+
+Peak load characteristics:
+[DESCRIBE]
+
+Recommend:
+1. Static replica count or HPA
+2. If HPA: min/max/metrics/behavior
+3. Resource adjustment if needed
+4. VPA consideration
+]]></prompt>
+    </section>
+
+    <see-also>
+      <link href="https://kubernetes.io/docs/"/>
+      <link href="https://komodor.com/learn/14-kubernetes-best-practices-you-must-know-in-2025/"/>
+      <link href="https://kubernetes.io/blog/2025/11/25/configuration-good-practices/"/>
+      <link href="https://www.cncf.io/blog/2026/01/19/top-28-kubernetes-resources-for-2026-learn-and-stay-up-to-date/"/>
+      <link href="https://learnkube.com/production-best-practices"/>
+      <link href="https://kodekloud.com/blog/kubernetes-best-practices-2025/"/>
+      <ref slug="kubernetes-deployment"/>
+      <ref slug="helm-basics"/>
+      <ref slug="k8s-resources"/>
+    </see-also>
+  </content>
+</methodology>
