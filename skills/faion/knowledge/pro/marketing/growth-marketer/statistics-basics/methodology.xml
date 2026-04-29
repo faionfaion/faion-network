@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="statistics-basics">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>growth-marketer</domain>
+    <summary>Statistical rigor for A/B tests: null hypothesis, p-value, alpha, power, confidence intervals, Type I/II errors. Set alpha=0.05 and sample size BEFORE launch; never peek early.</summary>
+    <tags>
+      <tag>statistics</tag>
+      <tag>ab-testing</tag>
+      <tag>hypothesis</tag>
+      <tag>p-value</tag>
+      <tag>power</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Statistical Significance: Basics</title>
+    <summary>Core statistical concepts for growth marketers running A/B tests: null hypothesis, p-value, significance level (alpha), statistical power, confidence intervals, and Type I/II errors. The rule: set alpha=0.05 and required sample size BEFORE the test; never peek early and never stop based on direction alone.</summary>
+    <why>
+      <p>Without statistical rigor, growth teams ship changes that do not work (Type I error) or kill changes that would have worked (Type II error). P-values quantify the probability that an observed difference is random noise. Confidence intervals reveal practical significance beyond the binary yes/no. Pre-calculated sample sizes prevent underpowered tests that are essentially useless (6% power = 94% chance of missing real effects).</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing an A/B test: you need sample size, duration, and a primary metric before launch.</item>
+        <item>Interpreting finished experiment results: deciding whether to ship, kill, or extend.</item>
+        <item>Evaluating whether a result is practically meaningful (lift is real but too small to matter).</item>
+        <item>Comparing frequentist vs Bayesian approaches for your team's reporting needs.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Exploratory analysis of observational data with no random assignment — p-values over-claim causality.</item>
+        <item>Fewer than ~30 events per variant — use Fisher's exact test instead.</item>
+        <item>Continuous metrics like revenue per user — proportions z-test does not apply; use bootstrapping.</item>
+        <item>Sequential/bandit experiments — standard z-tests inflate false positives; use SPRT or Bayesian.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Core Statistical Concepts for A/B Testing">
+      <section name="Hypothesis Framework">
+        <rule>
+          <statement>State H0 (no difference) and H1 (difference exists) before collecting any data.</statement>
+          <rationale>Post-hoc hypothesis selection inflates false positive rates; the null hypothesis is the default claim the test must disprove.</rationale>
+        </rule>
+        <example type="good">
+          <note>H0: conversion_rate_A = conversion_rate_B; H1: conversion_rate_A != conversion_rate_B (two-tailed)</note>
+        </example>
+      </section>
+      <section name="P-value and Alpha">
+        <rule>
+          <statement>Set alpha = 0.05 before launch; reject H0 only when p-value is strictly less than alpha.</statement>
+          <rationale>Alpha defines acceptable false positive rate. p-value is the probability of seeing this result (or more extreme) if H0 were true — not the probability that B is better.</rationale>
+        </rule>
+        <list>
+          <item>p &lt; 0.01: strong evidence of difference</item>
+          <item>0.01 &lt;= p &lt; 0.05: moderate evidence</item>
+          <item>0.05 &lt;= p &lt; 0.10: weak evidence, collect more data</item>
+          <item>p &gt;= 0.10: insufficient evidence to reject H0</item>
+        </list>
+      </section>
+      <section name="Statistical Power">
+        <rule>
+          <statement>Target 80% power; calculate required sample size from baseline rate, MDE, alpha, and power before starting.</statement>
+          <rationale>80% power means a 20% chance of missing a real effect (Type II error). Running underpowered tests wastes traffic and produces untrustworthy null results.</rationale>
+        </rule>
+        <example type="bad">
+          <note>Running with 500 per variant when 57,600 are needed gives ~6% power — essentially useless for detecting a 0.5% absolute lift from 10% baseline.</note>
+        </example>
+      </section>
+      <section name="Confidence Intervals">
+        <rule>
+          <statement>Report the 95% CI for the difference alongside p-value; do not ship a result where the CI lower bound is economically irrelevant.</statement>
+          <rationale>A significant p-value with CI [0.01%, 4%] is statistically real but the lower bound may not justify shipping costs. CI width reflects data quantity — wider = need more data.</rationale>
+        </rule>
+        <example type="good">
+          <note>Conversion A=5.0%, B=5.8%, difference=+0.8%, 95% CI=[0.2%, 1.4%] — zero not in interval, significant and economically meaningful.</note>
+        </example>
+      </section>
+      <section name="Error Types">
+        <rule>
+          <statement>Alpha controls Type I error (false positive); power controls Type II error (false negative) — tune both for the business cost of each mistake.</statement>
+          <rationale>Shipping a bad change (Type I) is costly in high-traffic funnels. Missing a real improvement (Type II) is costly when testing is expensive. High-stakes tests warrant alpha=0.01 or power=90%.</rationale>
+        </rule>
+      </section>
+      <section name="Bayesian vs Frequentist">
+        <p>Frequentist p-values say "if H0 is true, how likely is this data?" Bayesian posteriors say "given this data, how likely is B better?" For teams that want intuitive probability statements, Bayesian A/B testing is a valid alternative but requires prior assumptions.</p>
+      </section>
+    </section>
+    <section name="Z-test and Sample Size Formulas">
+      <section name="Two-Proportion Z-test">
+        <rule>
+          <statement>Use a two-proportion z-test for conversion rate comparisons; always two-tailed unless a regression would never be shipped.</statement>
+          <rationale>Two-tailed tests do not assume the direction of the effect, preventing directional bias that inflates Type I error for the expected direction.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="text"><![CDATA[
+Inputs:
+  n1 = 1000, x1 = 50  (A: 5.0%)
+  n2 = 1000, x2 = 62  (B: 6.2%)
+
+p_pooled = (50 + 62) / (1000 + 1000) = 0.056
+SE = sqrt(0.056 * 0.944 * (1/1000 + 1/1000)) = 0.0103
+z  = (0.062 - 0.050) / 0.0103 = 1.17
+p-value (two-tailed) ≈ 0.24
+
+Result: NOT significant (p > 0.05)
+        More data needed — difference may be real but unproven.]]></code>
+        </example>
+      </section>
+      <section name="Sample Size Formula">
+        <rule>
+          <statement>Calculate n per variant as ceil(16 * p * (1-p) / MDE^2) at 95% confidence / 80% power; use the exact statsmodels formula for asymmetric splits.</statement>
+          <rationale>The simplified formula (16 * p(1-p)/MDE^2) is accurate for 50/50 splits. Asymmetric traffic splits require the full formula via NormalIndPower().solve_power().</rationale>
+        </rule>
+        <example type="good">
+          <code lang="text"><![CDATA[
+Full formula:
+  n = 2 * [(Z_alpha/2 + Z_beta)^2 * p * (1-p)] / MDE^2
+  Z_alpha/2 = 1.96 (95% confidence)
+  Z_beta    = 0.84 (80% power)
+
+Simplified:
+  n per variant ≈ 16 * p * (1-p) / MDE^2
+
+Example: baseline=5%, MDE=10% relative (0.5% absolute)
+  n = 16 * 0.05 * 0.95 / 0.005^2 = 30,400 per variant]]></code>
+        </example>
+        <reference path="templates/sample-size-table.md">Pre-computed n values by baseline and MDE for quick planning</reference>
+      </section>
+      <section name="Sample Size by Baseline and MDE">
+        <p>Higher baseline rates and larger MDE targets both reduce required sample size. A 5% relative MDE at 1% baseline requires ~314,000 per variant; the same relative MDE at 50% baseline requires only ~3,200.</p>
+      </section>
+    </section>
+    <section name="Statistical Anti-patterns in Growth Experiments">
+      <antipattern>
+        <description>Peeking at results and stopping early when the desired direction appears.</description>
+        <reason>Each early look inflates the cumulative false positive rate above alpha. A test peeked 5 times at p=0.05 has a true false positive rate near 19%.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using one-tailed tests by default to get lower p-values.</description>
+        <reason>One-tailed tests assume you would never ship the variant if it regressed. This is rarely true and halves the threshold, doubling false positives in the expected direction.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Stopping the test as soon as p &lt; 0.05, regardless of pre-registered sample size.</description>
+        <reason>P-values fluctuate during data collection. The test is only valid at the pre-registered sample size or end date — not at any earlier random crossing of alpha.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Testing 10 metrics and reporting the one that reached significance.</description>
+        <reason>Multiple comparisons: with 10 independent tests at alpha=0.05, expected false positives = 0.5. Apply Bonferroni correction (alpha/k) or designate one primary metric before launch.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Treating "not significant" as proof that there is no effect.</description>
+        <reason>Absence of evidence is not evidence of absence. A non-significant result in an underpowered test is uninformative. Say "insufficient evidence" not "no effect".</reason>
+      </antipattern>
+      <antipattern>
+        <description>Ignoring practical significance when statistical significance is achieved.</description>
+        <reason>A +0.01% lift can be statistically significant at N=10M but economically irrelevant. Always check whether the CI lower bound justifies shipping cost and ongoing maintenance.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/sample-size-table.md" purpose="Pre-computed sample sizes by baseline rate and MDE for quick planning"/>
+    </templates>
+  </content>
+</methodology>
