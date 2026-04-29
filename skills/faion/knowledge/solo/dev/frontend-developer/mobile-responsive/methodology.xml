@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="mobile-responsive">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>frontend-developer</domain>
+    <summary>Mobile-first responsive design: base styles unconditional, min-width queries layer up. Breakpoints from content. clamp() for fluid typography. Container queries decouple components from viewport.</summary>
+    <tags>
+      <tag>responsive-design</tag>
+      <tag>mobile-first</tag>
+      <tag>css</tag>
+      <tag>container-queries</tag>
+      <tag>accessibility</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Mobile-First Responsive Design</title>
+
+    <summary>Mobile-first responsive design: base styles are unconditional (mobile), min-width queries layer up for larger screens. Breakpoints are derived from content, not device names. clamp() replaces stepwise media queries for typography and spacing. Container queries (@container) replace viewport queries inside components. Touch targets meet WCAG 2.5.8 minimum of 44x44 CSS px.</summary>
+
+    <why>
+      <p>Desktop-first CSS requires complex max-width overrides that accumulate bugs on every layout change. clamp() fluid typography eliminates 30-50% of media queries. Container queries decouple component layout from viewport size, making components portable across different page regions. Agents routinely break mobile by lifting breakpoint values from Bootstrap or omitting container-type: inline-size.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield site/app — set viewport meta, mobile-first base CSS, container queries from the first commit.</item>
+        <item>Auditing an existing layout for breakpoint regressions, touch-target sizes, and CLS on small screens.</item>
+        <item>Migrating from viewport-based to container-query-based responsive design.</item>
+        <item>Configuring Tailwind breakpoints to match real content breakpoints, not device widths.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>App is locked to a single device class (kiosk, tablet-only internal tool) — fixed layout is simpler.</item>
+        <item>Framework already enforces mobile-first and the site passes Lighthouse mobile — adding breakpoints is busywork.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="mobile-first-order">
+      <p>Write base (mobile) styles without any media query. Add min-width queries to layer desktop enhancements. Never use max-width first, as desktop-first CSS leaks desktop assumptions into the base.</p>
+      <rule>
+        <statement>Write base (mobile) styles without any media query. Add min-width queries to layer desktop enhancements. Never use max-width first.</statement>
+        <rationale>Desktop-first CSS leaks desktop assumptions into the base; every mobile breakpoint becomes an override that accumulates complexity.</rationale>
+      </rule>
+      <example type="good" title="Mobile-first grid with min-width enhancement">
+        <code lang="css"><![CDATA[
+/* Base: mobile, no query */
+.grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+
+/* Tablet enhancement */
+@media (min-width: 768px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* Desktop enhancement */
+@media (min-width: 1024px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+]]></code>
+      </example>
+    </section>
+
+    <section name="viewport-meta">
+      <p>Always set the viewport meta tag correctly. Never add maximum-scale=1 or user-scalable=no, as these violate WCAG 1.4.4.</p>
+      <rule>
+        <statement>Always set &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;. Never add maximum-scale=1 or user-scalable=no — this violates WCAG 1.4.4.</statement>
+        <rationale>user-scalable=no prevents users with low vision from zooming the page; it silently breaks a11y compliance.</rationale>
+      </rule>
+    </section>
+
+    <section name="fluid-typography-with-clamp">
+      <p>Use CSS clamp(min, fluid, max) for typography and spacing instead of breakpoint steps. This eliminates 30-50% of media queries and produces smooth scaling without discrete jumps.</p>
+      <rule>
+        <statement>Use CSS clamp(min, fluid, max) for typography and spacing instead of breakpoint steps. This eliminates 30-50% of media queries.</statement>
+        <rationale>clamp() produces a smooth scale between the min and max without discrete jumps; it works on any viewport without additional breakpoints.</rationale>
+      </rule>
+      <example type="good" title="Fluid typography and spacing with clamp">
+        <code lang="css"><![CDATA[
+:root {
+  --font-size-base: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
+  --font-size-xl:   clamp(1.25rem, 1rem + 1.25vw, 1.5rem);
+  --space-md:       clamp(1rem, 0.8rem + 1vw, 1.5rem);
+  --space-lg:       clamp(1.5rem, 1rem + 2.5vw, 2.5rem);
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="responsive-images">
+      <p>Provide srcset with multiple widths and a sizes attribute that matches the actual CSS layout. Never set sizes="100vw" for multi-column layouts.</p>
+      <rule>
+        <statement>Provide srcset with multiple widths and a sizes attribute that matches the actual CSS layout. Never set sizes="100vw" for multi-column layouts.</statement>
+        <rationale>Wrong sizes="100vw" on a 3-column layout causes the browser to download the largest image at every viewport, wasting mobile bandwidth.</rationale>
+      </rule>
+    </section>
+
+    <section name="container-queries">
+      <p>Container queries decouple component layout from viewport size. Set container-type: inline-size on the parent element before writing @container rules. Without it, queries silently never match.</p>
+      <rule>
+        <statement>Set container-type: inline-size on the parent element before writing @container rules. Without it, queries silently never match.</statement>
+        <rationale>Agents regularly write @container rules without the container-type declaration, mark the task done, and the styles never apply.</rationale>
+      </rule>
+      <example type="good" title="Container queries with inline-size type">
+        <code lang="css"><![CDATA[
+.card-wrapper {
+  container-type: inline-size;
+  container-name: card;
+}
+
+/* Respond to container width, not viewport */
+@container card (min-width: 400px) {
+  .card { grid-template-columns: 150px 1fr; }
+}
+@container card (min-width: 600px) {
+  .card { grid-template-columns: 200px 1fr auto; }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="touch-targets">
+      <p>Every interactive element (button, link, icon button) must have a minimum touch target of 44x44 CSS px per WCAG 2.5.8. This is the most common a11y regression on mobile.</p>
+      <rule>
+        <statement>Every interactive element (button, link, icon button) must have a minimum touch target of 44x44 CSS px per WCAG 2.5.8.</statement>
+        <rationale>Icon buttons with padding: 4px are visually compact but inaccessible on touch devices; this is the most common a11y regression on mobile.</rationale>
+      </rule>
+      <example type="good" title="Touch target floor for all interactive elements">
+        <code lang="css"><![CDATA[
+button, a, [role="button"], input[type="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="ios-safari-dvh-fix">
+      <p>Use 100dvh for full-height layouts with a 100vh fallback. iOS Safari's 100vh includes the URL bar, causing layout jumps when it hides.</p>
+      <rule>
+        <statement>Use 100dvh for full-height layouts with a 100vh fallback. iOS Safari's 100vh includes the URL bar, causing layout jumps when it hides.</statement>
+        <rationale>dvh accounts for the dynamic viewport height; older browsers fall back to vh without any styling breakage.</rationale>
+      </rule>
+      <example type="good" title="iOS-safe full-height with vh fallback">
+        <code lang="css"><![CDATA[
+.full-screen {
+  min-height: 100vh;   /* fallback */
+  min-height: 100dvh;  /* iOS-safe */
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <p>Common responsive design mistakes that agents introduce when making layouts responsive.</p>
+      <antipattern>
+        <description>Desktop-first CSS with max-width media queries as the primary pattern.</description>
+        <reason>max-width-first requires complex overrides for every mobile breakpoint; each override adds specificity that defeats future fixes.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Lifting breakpoint values from Bootstrap (576/768/992/1200px) without checking the project's design tokens.</description>
+        <reason>Bootstrap widths are device-sized; content-driven breakpoints (when the layout actually breaks) produce simpler CSS and fewer edge cases.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Adding container-query rules without container-type: inline-size on the parent element.</description>
+        <reason>Without container-type, @container rules are parsed but never match; agents check "rendered without error" and consider the task complete.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Adding flex-wrap: wrap to every flex container when asked to "make it responsive".</description>
+        <reason>flex-wrap on every container looks correct on phones and produces broken desktop layouts where items wrap prematurely.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Setting meta name="viewport" content="user-scalable=no" or maximum-scale=1.</description>
+        <reason>These attributes prevent zoom for users with low vision and fail WCAG 1.4.4. They are copied from legacy templates and are a silent a11y violation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Converting vh to dvh without keeping the vh fallback line.</description>
+        <reason>Older browsers (Safari &lt;15.4, Chrome &lt;108) do not support dvh; removing the vh fallback breaks full-height layouts on those browsers.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Run a subagent that inventories fixed-width and min-width values in CSS, regenerates them from a tokenized breakpoint set, and snapshots the page at mobile/tablet/desktop with Playwright plus visual diff. Use Lighthouse mobile and Chrome DevTools device emulation as oracles.</p>
+      <rule>
+        <statement>When responsive work ties into a larger redesign, use faion-feature-executor for page-by-page audit and fix loops with visual-test gates, or faion-sdd-executor-agent when explicit acceptance criteria exist. Do NOT pick breakpoints from device sizes; pin them to content (e.g., "two-column when card row exceeds 640px").</statement>
+        <rationale>Content-driven breakpoints produce maintainable CSS. Device breakpoints (iPhone 12 is 390px, iPad is 768px) become stale when devices change and force unnecessary refactoring.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Mobile-first: base styles unconditional, min-width queries layer up. Never max-width first — it leaks desktop assumptions.</item>
+        <item>Pick breakpoints from content, not device. Common content-driven set: 480 / 640 / 768 / 1024 / 1280.</item>
+        <item>Use clamp(min, fluid, max) for typography and spacing instead of stepwise breakpoints — drops 30-50% of media queries.</item>
+        <item>Always set &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt; and never maximum-scale=1 (a11y).</item>
+        <item>Ship srcset + sizes for hero images; verify the right candidate fires at each viewport via DevTools "Resources" panel.</item>
+        <item>Test on a real low-end Android (Moto G class) at least once per release — emulators hide jank.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/playwright-devices.ts" purpose="Playwright config extract with mobile-chrome, mobile-safari, tablet, desktop projects."/>
+    </templates>
+  </content>
+</methodology>
