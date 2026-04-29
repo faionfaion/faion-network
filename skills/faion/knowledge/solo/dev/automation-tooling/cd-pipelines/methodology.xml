@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cd-pipelines">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Automate deployment path from test suite to production. Structure as five jobs with stages, approvals, and strategies: rolling, blue/green, canary.</summary>
+    <tags>
+      <tag>ci-cd</tag>
+      <tag>github-actions</tag>
+      <tag>deployment-strategy</tag>
+      <tag>dora-metrics</tag>
+      <tag>rollback</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>CD Pipelines and Deployment Strategies</title>
+    <summary>Structure as discrete jobs: build → integration → staging → E2E → production. Choose a deployment strategy: rolling, blue/green, or canary. Always emit DORA events with version, sha, and duration for observability.</summary>
+    <why>
+      <p>Ad-hoc deploy.sh scripts lack observability, rollback, and approval gates. A structured pipeline makes every stage independently retry-able, captures DORA metrics automatically, and enforces human sign-off before production. Automatic rollback on smoke-test failure cuts mean time to restore from hours to minutes.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Authoring or refactoring .github/workflows/cd.yml (or GitLab CI / Buildkite equivalent) for a service.</item>
+        <item>Adding deployment-strategy primitives: blue/green, canary, rolling with proper readiness/liveness probes.</item>
+        <item>Wiring smoke tests, rollback triggers, deployment notifications, and DORA metric tracking.</item>
+        <item>Replacing ad-hoc deploy-gh.sh scripts with observable, gated pipelines.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure CI (build + test only) — this is CD-specific; see cd-basics for CI principles.</item>
+        <item>Full platform engineering (multi-cluster, cross-region, GitOps with Argo/Flux) — use pro/infra/cicd-engineer.</item>
+        <item>Serverless deploys managed by the vendor (Vercel, Netlify, Cloud Run) — those only need build config.</item>
+        <item>Monorepo selective deploys per package — requires Turborepo/Nx-aware pipelines not covered here.</item>
+      </list>
+    </when-not-to-use>
+    <section name="CD Pipeline Structure — Five Stages and Safety Gates">
+      <section name="Five-Stage Shape">
+        <rule>
+          <statement>Structure every CD pipeline as five independent jobs: build (unit tests + image), integration (service deps), staging deploy, E2E on staging, production deploy (manual approval).</statement>
+          <rationale>Each job is independently retry-able; failures are localized to a stage. Merged stages (e.g., build + staging deploy) make failure attribution ambiguous and rollback harder.</rationale>
+        </rule>
+      </section>
+      <section name="Concurrency and Image Tags">
+        <rule>
+          <statement>Set concurrency.group to deploy-${{ github.ref }} with cancel-in-progress: false so two concurrent pushes don't interleave deployments.</statement>
+          <rationale>cancel-in-progress: true would cancel an in-flight production deploy when a new push arrives, leaving the cluster in a partial state.</rationale>
+        </rule>
+        <rule>
+          <statement>Tag Docker images with the commit SHA — never latest; rollback must be deterministic by SHA.</statement>
+          <rationale>latest is mutable; if the image is rebuilt between deploy and rollback commands, kubectl rollout undo deploys a different image than expected.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="yaml"><![CDATA[
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}:${{ github.sha }}
+]]></code>
+        </example>
+      </section>
+      <section name="OIDC Authentication">
+        <rule>
+          <statement>Use OIDC federation (GitHub Actions → AWS/GCP/Azure) instead of long-lived secrets stored in repository variables.</statement>
+          <rationale>Long-lived secrets have indefinite validity; OIDC tokens are short-lived, scoped to the specific job, and automatically rotated. Leaked OIDC tokens expire in minutes.</rationale>
+        </rule>
+        <rule>
+          <statement>Pin every third-party action to its commit SHA, not a tag; treat supply-chain hygiene as a pipeline requirement.</statement>
+          <rationale>Tags can be force-pushed to point at malicious commits; SHA pinning guarantees the exact code that was reviewed is executed.</rationale>
+        </rule>
+      </section>
+      <section name="Production Approval Gate">
+        <rule>
+          <statement>Gate the production job behind a GitHub environment with required reviewers; never wire the production deploy to run automatically without human sign-off.</statement>
+          <rationale>Autonomous production deploys remove the human checkpoint that catches last-minute context the pipeline cannot verify (security announcements, customer commitments, rollback readiness).</rationale>
+        </rule>
+        <antipattern>
+          <description>Agent removes the manual approval from the production job to "make CI green".</description>
+          <reason>Approval gates exist to protect production; removing them silently ships untested changes to end users. Block this pattern in code review.</reason>
+        </antipattern>
+      </section>
+    </section>
+    <section name="Deployment Strategies: Rolling, Blue/Green, Canary">
+      <rule>
+        <statement>Choose a deployment strategy based on rollback speed (rolling) vs traffic-split precision (canary) vs zero-overlap guarantees (blue/green).</statement>
+        <rationale>Rolling trades safety for speed — new pods start before old pods drain. Blue/green trades resources for safety — two full clusters running. Canary trades graduality for safety — slow traffic migration with automatic analysis.</rationale>
+      </rule>
+      <section name="Rolling Deployment">
+        <rule>
+          <statement>Use rolling updates on Kubernetes: set maxUnavailable to 1, maxSurge to 2, and mandate readinessProbes and livenessProbes on the container.</statement>
+          <rationale>Without readiness probes, load balancers forward traffic to containers that are still booting. Without liveness probes, the cluster doesn't restart containers that hang.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="yaml"><![CDATA[
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 2
+  template:
+    spec:
+      containers:
+      - name: app
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 20
+]]></code>
+        </example>
+      </section>
+      <section name="Blue/Green Deployment">
+        <rule>
+          <statement>Blue/green via label swap: run two parallel deployments (blue + green), and switch traffic by updating the Service selector.</statement>
+          <rationale>Zero-overlap: old and new versions never coexist. Instant rollback: flip the selector back. Downside: 2x infrastructure cost during deployment.</rationale>
+        </rule>
+      </section>
+      <section name="Canary Deployment">
+        <rule>
+          <statement>Canary on Istio: shift traffic in stages (5% → 15% → 50% → 100%) and gate on SLO burn rate. Do not start with 50% on the first deploy.</statement>
+          <rationale>Canary trades gradual traffic migration for safety. SLO burn rate gating prevents cascading failures; HTTP 2xx alone is not sufficient.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="Automatic Rollback and DORA Metrics">
+      <section name="Smoke Tests and Auto-Rollback">
+        <rule>
+          <statement>Smoke tests must be the same script in staging and prod, parameterized only by base URL. Run them immediately after deployment; if they fail, automatically rollback.</statement>
+          <rationale>Smoke tests catch obvious breakage before end users see it. Automatic rollback cuts MTTR from "schedule a war room" to "the system recovered in 5 minutes."</rationale>
+        </rule>
+        <example type="good">
+          <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# scripts/deploy-with-rollback.sh
+set -euo pipefail
+NS="${1:?namespace}"
+DEP="${2:?deployment}"
+IMAGE="${3:?image:tag}"
+URL="${4:?smoke-url}"
+
+PREV=$(kubectl -n "$NS" get deploy "$DEP" -o jsonpath='{.spec.template.spec.containers[0].image}')
+kubectl -n "$NS" set image "deploy/$DEP" "$DEP=$IMAGE"
+if ! kubectl -n "$NS" rollout status "deploy/$DEP" --timeout=5m; then
+  kubectl -n "$NS" rollout undo "deploy/$DEP"
+  exit 1
+fi
+if ! curl -fsS --max-time 10 --retry 6 --retry-delay 5 "$URL/health/ready" >/dev/null; then
+  echo "Smoke failed — rolling back to $PREV"
+  kubectl -n "$NS" set image "deploy/$DEP" "$DEP=$PREV"
+  kubectl -n "$NS" rollout status "deploy/$DEP" --timeout=5m
+  exit 1
+fi
+echo "Deploy ok: $IMAGE"
+]]></code>
+        </example>
+      </section>
+      <section name="DORA Metric Emission">
+        <rule>
+          <statement>Emit DORA events (deploy_started, deploy_succeeded, deploy_failed) with version + SHA + duration to a single metrics sink before the pipeline changes tools.</statement>
+          <rationale>DORA metrics are only meaningful when instrumentation survives tool migrations. One event per deploy job, keyed by deployment ID, not per retry.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="Agent Integration and Gotchas">
+      <section name="Recommended Workflows">
+        <list>
+          <item>Use a planner agent that reads cd-basics first, then this file, then drafts the pipeline as discrete jobs (build, integ, staging, e2e, prod).</item>
+          <item>Each job becomes a small executor task: write YAML, validate with actionlint/gitlab-ci-lint, commit, watch the first run, fix failures.</item>
+          <item>Force a human approval gate before any production deploy job is wired up.</item>
+          <item>Capture the final pipeline run URL + DORA metric instrumentation as deliverables.</item>
+          <item>Never let an autonomous agent push to a production environment that lacks an approval rule.</item>
+        </list>
+      </section>
+      <section name="AI-Agent Gotchas">
+        <antipattern>
+          <description>Agents tend to copy the kubectl set image snippet verbatim, missing image digest pinning and namespace scoping.</description>
+          <reason>Require explicit --record, and use immutable image tags (commit SHA). Namespace isolation prevents cross-namespace pollution.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Don't let an agent generate --force or --grace-period=0 flags.</description>
+          <reason>They bypass safety nets and can orphan resources.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Agents misuse continue-on-error: true to hide a real failure to make the pipeline "pass".</description>
+          <reason>Review all uses of continue-on-error; most are masking real errors.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Secrets: agents will paste tokens into workflow YAML during debugging.</description>
+          <reason>Require a pre-commit secret scanner (gitleaks, trufflehop).</reason>
+        </antipattern>
+        <antipattern>
+          <description>Canary: agents will set weight: 50 on first deploy.</description>
+          <reason>Force a 5%/15min initial step, with SLO burn-rate gating before promotion.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Rollback: agents may rollback the K8s deployment but forget to roll back the schema.</description>
+          <reason>Couple them; run migrations in a dedicated job before the deploy job.</reason>
+        </antipattern>
+        <antipattern>
+          <description>DORA: agents will compute deploy frequency without de-duplicating retries.</description>
+          <reason>Instrument once at the gate, not per attempt.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Rolling: agents drop readiness probes when the app starts slow.</description>
+          <reason>Mandate initialDelaySeconds calibrated to real boot time.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Approval gates: agents will helpfully "remove the manual approval to make CI green".</description>
+          <reason>Block this in code review; approval gates protect production.</reason>
+        </antipattern>
+      </section>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Add concurrency: { group: deploy-${{ github.ref }}, cancel-in-progress: false } so two pushes don't deploy in parallel.</item>
+        <item>Use OIDC federation (GitHub → AWS/GCP/Azure) instead of long-lived secrets in repo.</item>
+        <item>Pin every action by SHA, not tag (actions/checkout@sha); supply-chain hygiene.</item>
+        <item>Image tag = commit SHA (immutable), not latest. Required for rollback determinism.</item>
+        <item>Smoke tests must be the same script in staging and prod, parameterized by base URL.</item>
+        <item>For canary, gate promotion on SLO burn rate (Honeycomb / Datadog / Prometheus alert), not just HTTP status.</item>
+        <item>Run schema migrations in a dedicated job before the deploy job, with its own rollback (or expand-contract pattern) — never inline in the app deploy.</item>
+        <item>Emit DORA events to a single sink so the metric pipeline survives tool changes.</item>
+        <item>Keep the prod job behind GitHub environment: production with required reviewers; agents cannot bypass.</item>
+      </list>
+    </section>
+    <section name="Limitations and Known Issues">
+      <list>
+        <item>GitHub Actions YAML in examples is illustrative: agents must add caching, concurrency control, OIDC for cloud auth, image-pull secrets.</item>
+        <item>Canary example uses Istio; if cluster runs Linkerd, NGINX-Ingress canary, or no service mesh, YAML must be rewritten.</item>
+        <item>Blue/green via label-swap is brittle for stateful services: db migrations + sticky sessions need extra orchestration.</item>
+        <item>Rolling-update example has single maxSurge: 2 / maxUnavailable: 1 — ignores PDBs, topology spread, zero-downtime requirements.</item>
+        <item>Smoke tests are referenced via ./scripts/smoke-tests.sh but script is undefined — agents must author and pin it.</item>
+        <item>Rollback strategy assumes kubectl rollout undo works; for canary/blue-green agents should swap traffic, not roll back deployment object.</item>
+        <item>Datadog DORA snippet is half-baked — change-failure-rate requires correlating to incidents, not just deploy outcome.</item>
+      </list>
+    </section>
+    <section name="CLI Tools for Pipeline Authoring">
+      <list>
+        <item>actionlint — static lint for GitHub Actions YAML (rhysd/actionlint)</item>
+        <item>gitlab-ci-lint (glab ci lint) — lint GitLab CI YAML (glab CLI)</item>
+        <item>gh workflow run / gh run watch — trigger + tail GHA runs from CLI (GitHub CLI)</item>
+        <item>kubectl rollout status / undo — wait/observe rollouts; manual rollback (kubernetes/kubectl)</item>
+        <item>kubeval / kubeconform — validate K8s manifests against schema (github.com/yannh/kubeconform)</item>
+        <item>helm template / helm lint / helm diff — render + diff charts before apply (helm.sh)</item>
+        <item>kustomize build — render overlays (kustomize.io)</item>
+        <item>argocd app sync / argocd app rollback — GitOps deploy/rollback (argo-cd CLI)</item>
+        <item>flagger — progressive delivery operator (canary, blue/green, A/B) (flagger.app)</item>
+        <item>kayenta / spinnaker — canary analysis (spinnaker.io)</item>
+        <item>dora-metrics (Google) / four-keys — compute DORA from event stream (github.com/dora-team/fourkeys)</item>
+        <item>cosign / syft / grype — sign images + SBOM + vuln scan in pipeline (sigstore.dev)</item>
+        <item>kubectl-tree / stern — inspect rollout tree + tail logs (krew)</item>
+      </list>
+    </section>
+    <section name="Services and Platforms">
+      <list>
+        <item>GitHub Actions (SaaS) — best agent ergonomics: gh CLI + actionlint + reusable workflows</item>
+        <item>GitLab CI/CD (SaaS + OSS) — pipeline-as-code; environments + manual approvals built-in</item>
+        <item>Argo CD (OSS) — GitOps; agents commit manifests, controller deploys</item>
+        <item>Flux CD (OSS) — GitOps alternative; image-policy auto-bumps tags</item>
+        <item>Argo Rollouts (OSS) — canary + blue/green CRDs; pairs cleanly with Argo CD</item>
+        <item>Flagger (OSS) — automated canary + analysis on Linkerd/Istio/NGINX</item>
+        <item>Spinnaker (OSS) — heavy install; powerful canary</item>
+        <item>AWS CodeDeploy (SaaS) — built-in blue/green for ECS/EC2/Lambda</item>
+        <item>Google Cloud Deploy (SaaS) — Skaffold-driven progressive delivery</item>
+        <item>Octopus Deploy (SaaS) — strong UI, less agent-friendly than YAML-first tools</item>
+        <item>LaunchDarkly / Unleash / Flagsmith (SaaS / OSS) — decouples deploy from release</item>
+        <item>Datadog / Honeycomb / Grafana (SaaS / OSS) — pipeline emits deploy markers; SLO burn-rate gates rollout</item>
+        <item>PagerDuty / Opsgenie (SaaS) — wire deploy_failed to incident; track time-to-restore</item>
+        <item>Slack / Discord / Telegram (SaaS) — notify channels via webhook in final pipeline step</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/deploy-with-rollback.sh" purpose="Bash script: set image → rollout-status → smoke → rollback on failure."/>
+    </templates>
+  </content>
+</methodology>

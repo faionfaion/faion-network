@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="nodejs-service-layer-implementation">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>javascript-developer</domain>
+    <summary>Practical TypeScript implementation of the Controller-Service-Repository pattern for Express APIs: controllers handle HTTP only, services own business logic, repositories own all database access.</summary>
+    <tags>
+      <tag>nodejs</tag>
+      <tag>typescript</tag>
+      <tag>express</tag>
+      <tag>architecture</tag>
+      <tag>prisma</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Node.js Service Layer Implementation</title>
+    <summary>Practical TypeScript implementation of the Controller-Service-Repository pattern for Express APIs: controllers handle HTTP only, services own business logic, repositories own all database access. The core rule: hash passwords in the service layer, never in the controller or repository; Prisma stays inside repositories only.</summary>
+    <why>
+      <p>Without layer boundaries, business logic accumulates in controllers (fat controllers), making it untestable without spinning up HTTP infrastructure. The repository interface abstraction (IUserRepository) enables Jest mocks that replace real database calls in unit tests, allowing service business rules to be tested in isolation at millisecond speed.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Scaffolding Controller-Service-Repository layers for a new Express/Fastify REST API</item>
+        <item>Generating typed DTO interfaces and Zod validation schemas for a route handler</item>
+        <item>Converting fat controller functions that mix HTTP and business logic into the 3-layer pattern</item>
+        <item>Writing unit tests for service classes with injected repository mocks</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Simple one-file scripts or CLI tools without persistent state</item>
+        <item>Lambda functions where request → DB → response fits inline with no shared business logic</item>
+        <item>Read-only proxy services that forward requests to another API without transformation</item>
+      </list>
+    </when-not-to-use>
+    <section name="Repository Layer: Interface and Prisma Implementation">
+      <summary>Defines the IUserRepository interface contract and the UserRepository Prisma implementation with paginated findAll.</summary>
+      <rule>
+        <statement>Define IUserRepository as a TypeScript interface before implementing it. All service classes depend on the interface, not the concrete class. This enables Jest mocks without touching the database.</statement>
+        <rationale>Interface-first design decouples services from the ORM. A service that takes IUserRepository can be unit-tested with jest.Mocked&lt;IUserRepository&gt; without starting Prisma or a real database.</rationale>
+      </rule>
+      <rule>
+        <statement>Keep Prisma inside repository classes only. Repository methods accept domain types (strings, primitive params) and return domain types (User, User[] with total). Prisma-generated types must not leak into service interfaces.</statement>
+        <rationale>Service code that imports from @prisma/client creates a direct ORM dependency. If the ORM changes, every service file must change. Repository-scoped Prisma means only repository files change.</rationale>
+      </rule>
+      <rule>
+        <statement>Use Promise.all for independent parallel queries inside repositories. The findAll pattern should run findMany and count simultaneously, not sequentially.</statement>
+        <rationale>Sequential findMany then count doubles the round-trip time for paginated queries. Promise.all reduces latency proportionally to the slower of the two queries, which is usually findMany.</rationale>
+      </rule>
+      <example type="good" title="Repository Interface and Implementation with Parallel Queries">
+        <code lang="typescript"><![CDATA[export interface IUserRepository {
+  findById(id: string): Promise<User | null>;
+  findByEmail(email: string): Promise<User | null>;
+  findAll(params: FindAllParams): Promise<{ users: User[]; total: number }>;
+  create(data: CreateUserData): Promise<User>;
+  update(id: string, data: UpdateUserData): Promise<User>;
+  delete(id: string): Promise<void>;
+}
+
+export class UserRepository implements IUserRepository {
+  constructor(private prisma: PrismaClient) {}
+
+  async findAll(params: FindAllParams) {
+    const { page, limit, search } = params;
+    const skip = (page - 1) * limit;
+    const where = search
+      ? { OR: [
+          { name: { contains: search, mode: 'insensitive' as const } },
+          { email: { contains: search, mode: 'insensitive' as const } },
+        ]}
+      : {};
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' } }),
+      this.prisma.user.count({ where }),
+    ]);
+    return { users, total };
+  }
+}]]></code>
+      </example>
+    </section>
+    <section name="Service Layer: Business Rules and Error Handling">
+      <summary>Defines the UserService pattern: interface, constructor injection, business rule implementation, and domain error usage.</summary>
+      <rule>
+        <statement>Hash passwords in the service layer, never in the controller or repository. The controller does not know about hashing; the repository does not know about passwords as a concept.</statement>
+        <rationale>Password hashing is a business rule ("before storing a user, hash their password"). Business rules belong in services. Controllers handle HTTP; repositories handle data storage. Hashing in either layer is a layer violation.</rationale>
+      </rule>
+      <rule>
+        <statement>Throw domain errors from service methods: NotFoundError when a resource is not found, ConflictError on uniqueness violations. Never return null or undefined from a service method that expects a result — throw instead.</statement>
+        <rationale>Domain errors carry HTTP status codes and error codes. Controllers catch them and delegate to the error handler. Returning null forces every caller to check for null, distributing the error-handling logic across all callers.</rationale>
+      </rule>
+      <rule>
+        <statement>Verify entity existence before update or delete. Call this.getUser(id) at the top of updateUser and deleteUser. If the entity does not exist, throw NotFoundError immediately.</statement>
+        <rationale>Prisma's update and delete throw a Prisma-specific error on missing records, not a domain NotFoundError. Normalizing to domain errors in the service layer keeps the error contract consistent regardless of ORM.</rationale>
+      </rule>
+      <example type="good" title="Service with Business Rules and Domain Errors">
+        <code lang="typescript"><![CDATA[export class UserService implements IUserService {
+  constructor(private userRepository: IUserRepository) {}
+
+  async createUser(data: CreateUserDto): Promise<User> {
+    const existing = await this.userRepository.findByEmail(data.email);
+    if (existing) throw new ConflictError('User with this email already exists');
+
+    const hashedPassword = await hashPassword(data.password);
+    return this.userRepository.create({
+      email: data.email,
+      name: data.name,
+      hashedPassword,
+    });
+  }
+
+  async updateUser(id: string, data: UpdateUserDto): Promise<User> {
+    await this.getUser(id); // throws NotFoundError if missing
+    if (data.email) {
+      const existing = await this.userRepository.findByEmail(data.email);
+      if (existing && existing.id !== id) throw new ConflictError('Email already in use');
+    }
+    return this.userRepository.update(id, data);
+  }
+}]]></code>
+      </example>
+    </section>
+    <section name="Controller Layer: HTTP Handling and Error Delegation">
+      <summary>Defines the UserController pattern: thin HTTP handling, Zod validation, and always delegating errors to next().</summary>
+      <rule>
+        <statement>Controllers handle HTTP only: parse request params and query strings, validate input with Zod schemas, call one service method, return the result. No business logic, no direct database access.</statement>
+        <rationale>A controller that contains business logic cannot be tested without an HTTP layer. When business logic is in the service, the controller becomes a trivially thin adapter that rarely needs unit tests.</rationale>
+      </rule>
+      <rule>
+        <statement>Always pass errors to next(error) in every async controller method's catch block. Never call res.status(500).json({error}) directly in a controller — that bypasses the error handler middleware.</statement>
+        <rationale>The Express error handler middleware (4-parameter form) is the single place where errors are translated to HTTP responses. Direct error responses in controllers produce inconsistent error formats and bypass logging.</rationale>
+      </rule>
+      <rule>
+        <statement>Use class-based controllers with arrow function methods to preserve `this` binding when methods are passed as route handlers. Do not bind in the route file.</statement>
+        <rationale>Arrow function class methods capture `this` at definition time. Regular methods would require `.bind(this)` at every route registration, which is easy to forget and produces runtime errors that pass TypeScript compilation.</rationale>
+      </rule>
+      <example type="good" title="Thin Controller with Zod Validation and Error Delegation">
+        <code lang="typescript"><![CDATA[export class UserController {
+  constructor(private userService: IUserService) {}
+
+  createUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const data = CreateUserSchema.parse(req.body); // throws ZodError on invalid
+      const user = await this.userService.createUser(data);
+      res.status(201).json({ data: user });
+    } catch (error) {
+      next(error); // delegates to error handler middleware
+    }
+  };
+
+  getUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const user = await this.userService.getUser(id);
+      res.json({ data: user });
+    } catch (error) {
+      next(error);
+    }
+  };
+}]]></code>
+      </example>
+    </section>
+    <section name="Limitations and Failure Modes">
+      <p>Dependency injection wired by hand (as in this methodology) breaks down at 30+ services; use a DI container (tsyringe, InversifyJS) instead.</p>
+      <p>Repository interfaces defined against Prisma-specific types leak ORM concerns into the contract; using ORM-neutral types requires extra mapping boilerplate.</p>
+      <p>Circular dependencies between services (e.g. UserService needs OrderService and vice versa) cause runtime issues with manual DI — requires restructuring or lazy injection.</p>
+      <p>Domain errors thrown in services must be caught consistently in all controller catch blocks; missing one causes 500 leaks.</p>
+    </section>
+    <section name="Agentic Workflow">
+      <p>An agent receives a feature spec (entity name + CRUD endpoints) and executes the implementation in three sequential steps: generate repository interface and implementation, generate service with business rules, then generate controller and route registration. Each step can be verified by running the TypeScript compiler before moving to the next. A separate test-writing step uses the service interfaces to generate Jest mocks without touching the database.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent — executes task files sequentially, suitable for driving multi-step code generation with quality gates between layers.</p>
+      <p>Prompt pattern:</p>
+      <code lang="text"><![CDATA[Generate a Node.js service layer for entity "<EntityName>".
+Requirements:
+- Repository: IUserRepository interface + UserRepository class (Prisma)
+- Service: IUserService interface + UserService class with business rules: <rules>
+- Controller: UserController class (Express)
+- Error types: NotFoundError, ConflictError from utils/errors.ts
+- Output each file separately with path comments.]]></code>
+      <code lang="text"><![CDATA[Write Jest unit tests for UserService. Mock IUserRepository using jest.Mocked<>.
+Cover: happy path for each method, ConflictError on duplicate email, NotFoundError on missing id.]]></code>
+    </section>
+    <templates>
+      <template path="templates/user-repository.ts" purpose="Full IUserRepository interface + UserRepository class (Prisma)"/>
+      <template path="templates/user-service.ts" purpose="Full IUserService interface + UserService class with business rules"/>
+      <template path="templates/user-controller.ts" purpose="Full UserController class (Express, Zod schemas)"/>
+      <template path="templates/errors.ts" purpose="AppError hierarchy: NotFoundError, ConflictError, UnauthorizedError, ValidationError"/>
+      <template path="templates/container.ts" purpose="Manual DI wiring: Prisma → Repository → Service → Controller"/>
+    </templates>
+    <see-also>
+      <link href="https://martinfowler.com/eaaCatalog/serviceLayer.html"/>
+      <link href="https://martinfowler.com/eaaCatalog/repository.html"/>
+      <link href="https://www.prisma.io/docs"/>
+      <link href="https://github.com/goldbergyoni/javascript-testing-best-practices"/>
+      <link href="https://khalilstemmler.com/articles/software-design-architecture/dependency-injection/"/>
+    </see-also>
+  </content>
+</methodology>
