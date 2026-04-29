@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="pwa-core">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>frontend-developer</domain>
+    <summary>Progressive Web App requires Web App Manifest with stable id and maskable icons, Service Worker from origin root, and update notification on controllerchange. Use Workbox for caching strategies.</summary>
+    <tags>
+      <tag>pwa</tag>
+      <tag>service-worker</tag>
+      <tag>offline</tag>
+      <tag>web-app-manifest</tag>
+      <tag>workbox</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>PWA Core Architecture</title>
+
+    <summary>A Progressive Web App requires three components: a Web App Manifest (manifest.json with stable id, maskable icons, display: standalone), a Service Worker served from the origin root (not /static/), and a registration module that defers the install prompt and shows an update notification on controllerchange. Use Workbox for caching strategy — NetworkFirst for navigation and API routes, CacheFirst for images and fonts, StaleWhileRevalidate for JS/CSS.</summary>
+
+    <why>
+      <p>PWAs close the gap between web and native: offline tolerance, installability, push notifications, and LCP gains from precaching the app shell — without an app store. NetworkFirst with a 3-second timeout prevents the spinner-of-death on flaky networks while keeping data fresh. Workbox handles service worker lifecycle (install, activate, update) so manual cache management is not needed.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Web app needs offline tolerance, install prompt, push notifications, or "add to home screen."</item>
+        <item>One codebase targeting desktop, Android, and iOS without an app store.</item>
+        <item>Caching layer must survive flaky networks (transit, kiosk, captive Wi-Fi).</item>
+        <item>Content/marketing site needing LCP/INP wins from precaching critical assets.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>iOS-first product where push, background sync, and persistent storage limits block the use case.</item>
+        <item>Hard real-time apps (live trading, video conferencing) — SW cache-coherence headaches, no upside.</item>
+        <item>Highly regulated UI (banking transactions) where stale cache is a compliance risk.</item>
+        <item>App requiring deep OS integration (Bluetooth, full camera, contacts) unreachable on iOS PWA.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="service-worker-location">
+      <p>Service worker scope is tied to its path. Origin-root placement controls the entire app.</p>
+      <rule>
+        <statement>Serve sw.js and manifest.json from the origin root (/) with Cache-Control: no-cache. Never serve the service worker from /static/ or any subdirectory.</statement>
+        <rationale>Service worker scope is tied to its path. A SW at /static/sw.js can only control resources under /static/. Origin-root placement controls the entire app.</rationale>
+      </rule>
+    </section>
+
+    <section name="manifest-stability">
+      <p>Keep the manifest id field stable across deploys. Changing it forces browsers to treat the PWA as a new app.</p>
+      <rule>
+        <statement>Keep the manifest id field stable across deploys. Never change it after the first release.</statement>
+        <rationale>Changing id forces browsers to treat the PWA as a new app, breaking existing shortcuts and triggering re-installation prompts.</rationale>
+      </rule>
+    </section>
+
+    <section name="icons">
+      <p>Android crops non-maskable icons into unexpected shapes on home screen. Always use the maskable purpose.</p>
+      <rule>
+        <statement>Ship all icon entries with purpose: "maskable any". Never ship icons with only purpose: "any".</statement>
+        <rationale>Android crops non-maskable icons into unexpected shapes on home screen. maskable ensures the safe-zone guarantee.</rationale>
+      </rule>
+    </section>
+
+    <section name="caching-strategy">
+      <p>Different asset types need different caching strategies. NetworkFirst with timeout avoids spinner-of-death on flaky networks.</p>
+      <rule>
+        <statement>Use NetworkFirst with networkTimeoutSeconds: 3 for /api/* and navigation routes. Use CacheFirst for images and fonts. Use StaleWhileRevalidate for JS/CSS static assets. Never precache personalised HTML or API responses.</statement>
+        <rationale>NetworkFirst with timeout avoids spinner-of-death on flaky networks. CacheFirst for immutable assets (images, fonts) reduces redundant fetches.</rationale>
+      </rule>
+    </section>
+
+    <section name="update-ux">
+      <p>Auto-reload discards in-flight form data and violates user expectations. The controllerchange event fires when the new SW takes control.</p>
+      <rule>
+        <statement>Show an update prompt on the controllerchange event. Never auto-reload mid-form. Present a user-initiated reload action.</statement>
+        <rationale>Auto-reload discards in-flight form data and violates user expectations. The controllerchange event fires when the new SW takes control.</rationale>
+      </rule>
+    </section>
+
+    <section name="ios-limitations">
+      <p>These gaps make offline-first PWAs unreliable for iOS. Agents never surface this in code review; humans must sign off on any iOS PWA claim.</p>
+      <rule testable="false">
+        <statement>Document iOS Safari PWA limitations before promising any PWA feature to iOS users: storage evicted after ~7 days of non-use, no background sync, no periodic sync, no push on older iOS.</statement>
+        <rationale>These gaps make offline-first PWAs unreliable for iOS. Agents never surface this in code review; humans must sign off on any iOS PWA claim.</rationale>
+      </rule>
+    </section>
+
+    <section name="service-worker-registration">
+      <p>Register the service worker once from a single bootstrap module. Do not register inside React effects, as StrictMode double-invokes effects in development.</p>
+      <rule>
+        <statement>Register the service worker once from a single bootstrap module (index.html or main.ts). Do not register inside React effects — StrictMode double-invokes effects in development, causing double registration.</statement>
+        <rationale>Double registration causes confusing lifecycle events and makes debugging SW updates harder.</rationale>
+      </rule>
+      <example type="good" title="Service worker registration with update prompt">
+        <code lang="typescript"><![CDATA[
+// lib/pwa.ts — call once from main.ts
+export async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+
+  const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+
+  registration.addEventListener('updatefound', () => {
+    const newWorker = registration.installing;
+    if (!newWorker) return;
+    newWorker.addEventListener('statechange', () => {
+      if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+        showUpdatePrompt();
+      }
+    });
+  });
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="workbox-caching-strategies">
+      <p>Workbox provides precaching, routing, and strategy helpers. Register routes for pages, API, images, and fonts with appropriate strategies.</p>
+      <example type="good" title="Minimal Workbox strategy registration">
+        <code lang="typescript"><![CDATA[
+// Minimal strategy registration
+import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies';
+import { registerRoute, NavigationRoute } from 'workbox-routing';
+import { ExpirationPlugin } from 'workbox-expiration';
+
+// Pages: network-first with timeout
+registerRoute(
+  new NavigationRoute(new NetworkFirst({
+    cacheName: 'pages',
+    networkTimeoutSeconds: 3,
+  }))
+);
+
+// API: network-first, cache as fallback
+registerRoute(
+  ({ url }) => url.pathname.startsWith('/api/'),
+  new NetworkFirst({
+    cacheName: 'api',
+    networkTimeoutSeconds: 3,
+    plugins: [new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 3600 })],
+  })
+);
+
+// Images: cache-first, 30-day expiry
+registerRoute(
+  ({ request }) => request.destination === 'image',
+  new CacheFirst({
+    cacheName: 'images',
+    plugins: [new ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: 2592000 })],
+  })
+);
+]]></code>
+      </example>
+    </section>
+
+    <section name="install-prompt">
+      <p>The beforeinstallprompt event fires once per session. Store it at module scope or in a singleton hook to avoid losing it on re-mount.</p>
+      <example type="good" title="useInstallPrompt hook for install UI">
+        <code lang="typescript"><![CDATA[
+// hooks/useInstallPrompt.ts
+export function useInstallPrompt() {
+  const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installed, setInstalled] = useState(
+    window.matchMedia('(display-mode: standalone)').matches
+  );
+
+  useEffect(() => {
+    const handler = (e: Event) => { e.preventDefault(); setPrompt(e as BeforeInstallPromptEvent); };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => { setInstalled(true); setPrompt(null); });
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const promptInstall = async () => {
+    if (!prompt) return;
+    await prompt.prompt();
+    const { outcome } = await prompt.userChoice;
+    if (outcome === 'accepted') setPrompt(null);
+  };
+
+  return { canInstall: !!prompt && !installed, installed, promptInstall };
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>LLMs hallucinate Workbox import names across versions (NetworkFirst vs networkFirst, CacheFirst vs cacheFirst).</description>
+        <reason>Pin the Workbox major version and feed agent the exact import surface from the pinned package's types.</reason>
+      </antipattern>
+      <antipattern>
+        <description>SW code that reaches for window or document properties.</description>
+        <reason>SW runs in ServiceWorkerGlobalScope, not window. Lint with eslint-plugin-workbox or a SW-specific tsconfig that excludes lib: ["dom"].</reason>
+      </antipattern>
+      <antipattern>
+        <description>beforeinstallprompt is captured inside a component that re-mounts.</description>
+        <reason>The event fires once per session. Re-mounting loses the deferred prompt. Store it at module scope or in a singleton hook.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/manifest.json" purpose="Full manifest with icons (all sizes), shortcuts, screenshots, stable id."/>
+      <template path="templates/service-worker.ts" purpose="Workbox SW: precache, NavigationRoute, API/image/font/static strategies, offline fallback."/>
+      <template path="templates/pwa-smoke.ts" purpose="Playwright smoke test: SW registration + offline navigation + manifest reachability."/>
+    </templates>
+  </content>
+</methodology>
