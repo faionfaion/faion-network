@@ -5,6 +5,7 @@
 - migrate: 3/3 pro/infra/devops-engineer methodologies → methodology.xml (backup-strategies, docker, dora-metrics; feature-045 batch AR)
 - migrate: 3/3 pro/infra methodologies → methodology.xml (load-balancing-concepts, nginx-configuration, azure-architecture; feature-045 batch AQ)
 - migrate: 3/3 pro/infra methodologies → methodology.xml (platform-engineering, aiops, argocd-gitops; feature-045 batch AP)
+- migrate: 3/3 pro/infra/cicd-engineer methodologies → methodology.xml (elk-stack-logging, github-actions-basics, grafana-basics; feature-045 batch AN-retry)
 - migrate: 3/3 pro/infra/cicd-engineer methodologies → methodology.xml (aiops, backup-basics, docker-optimization; feature-045 batch AM)
 - migrate: 3/3 pro/dev/software-developer methodologies → methodology.xml (php-laravel, php-laravel-patterns, php-laravel-queues; feature-045 batch AL)
 - migrate: 3/3 pro/dev/software-developer methodologies → methodology.xml (continuous-delivery, cqrs-pattern, csharp-dotnet-patterns; feature-045 batch AK)

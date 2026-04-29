@@ -1,0 +1,2156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="elk-stack-logging">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>ELK Stack (Elasticsearch, Logstash, Kibana) + Beats: centralized log management, search, and visualization for production environments.</summary>
+    <tags>
+      <tag>elasticsearch</tag>
+      <tag>logstash</tag>
+      <tag>kibana</tag>
+      <tag>logging</tag>
+      <tag>observability</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>ELK Stack Logging</title>
+    <summary>The ELK Stack (Elasticsearch, Logstash, Kibana) with Beats is the industry-standard solution for centralized log management, search, and visualization. This methodology covers architecture design, deployment patterns, and operational best practices for production environments.</summary>
+    <why>
+      <p>Centralizing logs from multiple applications and services into a searchable, indexed store eliminates the need for brittle grep-on-prod workflows. Elasticsearch provides distributed search and analytics; Logstash handles complex parsing and enrichment pipelines; Kibana surfaces dashboards for SRE and compliance teams; Beats provide lightweight, low-overhead log collection at the edge. Together they enable root-cause analysis, compliance archiving, alerting on log patterns, and security analytics (SIEM use cases) at scale.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Centralizing logs from multiple applications/services</item>
+        <item>Building searchable log archives</item>
+        <item>Creating operational dashboards for troubleshooting</item>
+        <item>Implementing compliance logging requirements</item>
+        <item>Setting up alerting based on log patterns</item>
+        <item>Security analytics (SIEM use cases)</item>
+        <item>Real-time monitoring and observability</item>
+        <item>Centralizing logs from a heterogeneous fleet (apps, hosts, containers, network gear) into a searchable store with dashboards</item>
+        <item>Building compliance / audit log archives with retention tiers (hot-warm-cold or frozen)</item>
+        <item>Setting up SIEM-lite use cases — alerting on log patterns, correlating security signals</item>
+        <item>Kubernetes log aggregation with Filebeat or Fluent Bit → Logstash/Elastic</item>
+        <item>Replacing brittle grep-on-prod workflows for SREs</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure metrics workloads — use Prometheus/Mimir/Datadog metrics, not Elasticsearch</item>
+        <item>Distributed tracing — use Tempo/Jaeger; Elastic APM is fine but a different methodology</item>
+        <item>Tiny single-node apps — journalctl + lnav or Loki is cheaper</item>
+        <item>Cost-sensitive cloud-native shops — Loki + Grafana is dramatically cheaper at petabyte scale</item>
+        <item>Hard-real-time queries (sub-100ms log lookup) — Elasticsearch refresh interval and shard cost make this expensive</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="components">
+      <list>
+        <item>Elasticsearch — Distributed search and analytics engine (Storage and Search)</item>
+        <item>Logstash — Data ingestion pipeline with parsing/transformation (Processing)</item>
+        <item>Kibana — Dashboards, charts, and interactive queries (Visualization)</item>
+        <item>Beats — Lightweight shippers: Filebeat, Metricbeat, etc. (Collection)</item>
+      </list>
+    </section>
+
+    <section name="stack-variants">
+      <list>
+        <item>ELK — Elasticsearch, Logstash, Kibana: Traditional, heavy processing</item>
+        <item>EFK — Elasticsearch, Fluentd, Kibana: Kubernetes-native</item>
+        <item>Elastic Stack — Elasticsearch, Beats, Kibana: Lightweight collection</item>
+      </list>
+    </section>
+
+    <section name="architecture">
+      <p>Data flow: Applications/Servers/Containers → Beats (Filebeat, Metricbeat) — lightweight collection → Logstash (Optional: parsing, enrichment) → Elasticsearch Cluster (Storage, indexing, search) → Kibana (Visualization, dashboards). Treat ELK as two layers: ingestion (Beats/Fluent Bit/Logstash) and storage/UX (Elasticsearch/Kibana).</p>
+    </section>
+
+    <section name="best-practices-cluster-design">
+      <rules>
+        <rule>
+          <statement>Separate node roles: master, data, ingest, coordinating. In tiny clusters combine but never under load.</statement>
+          <rationale>Role separation prevents master nodes from being overwhelmed by data operations, improving cluster stability.</rationale>
+        </rule>
+        <rule>
+          <statement>Right-size shards: 20-40GB per shard optimal.</statement>
+          <rationale>Over-sharding wastes heap on shard metadata; under-sharding limits parallelism. 20-40GB is the Elastic recommended sweet spot.</rationale>
+        </rule>
+        <rule>
+          <statement>Replica planning: at least 1 replica for HA.</statement>
+          <rationale>Without replicas, a single node failure causes data loss and red cluster health.</rationale>
+        </rule>
+        <rule>
+          <statement>Use hot-warm-cold architecture for cost-effective retention.</statement>
+          <rationale>Hot tier on SSD for recent data, warm on HDD, frozen on object storage dramatically cuts storage costs at scale.</rationale>
+        </rule>
+        <rule>
+          <statement>JVM heap = 50% of node RAM, max ~31GB (compressed oops boundary).</statement>
+          <rationale>Exceeding ~31GB disables compressed object pointers, doubling heap pointer size and causing OOMs.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="best-practices-index-management">
+      <rules>
+        <rule>
+          <statement>Use ILM policies for automated lifecycle management with rollover at size + age.</statement>
+          <rationale>Manual index management is error-prone; ILM automates hot-to-warm-to-cold-to-delete transitions.</rationale>
+        </rule>
+        <rule>
+          <statement>Use time-based indices with daily or weekly rollover and index templates for consistent mappings.</statement>
+          <rationale>Consistent mappings prevent field type conflicts and ensure predictable query behavior.</rationale>
+        </rule>
+        <rule>
+          <statement>ECS (Elastic Common Schema) field names everywhere; reject pipelines that ship raw app fields.</statement>
+          <rationale>ECS alignment enables cross-index queries, prebuilt dashboards, and detection rules to work without remapping.</rationale>
+        </rule>
+        <rule>
+          <statement>Index templates with explicit mappings — never auto-detect on production indices.</statement>
+          <rationale>Auto-detect stores high-cardinality fields as both text and keyword, causing cardinality explosions on fields like pod_name, request_id.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="best-practices-performance">
+      <rules>
+        <rule>
+          <statement>Bulk indexing with batched requests; increase refresh interval for write-heavy workloads.</statement>
+          <rationale>Reducing refresh frequency from 1s to 5s or 30s significantly reduces I/O and improves indexing throughput.</rationale>
+        </rule>
+        <rule>
+          <statement>Beats → Elasticsearch direct when possible; introduce Logstash/Vector only when you need parsing/enrichment beyond Beat modules.</statement>
+          <rationale>Logstash JVM is heavy — most pipelines should use Beats directly or Fluent Bit, saving RAM and reducing pipeline hops.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="best-practices-security">
+      <rules>
+        <rule>
+          <statement>Enable TLS for node-to-node and client communication; use X-Pack security with RBAC.</statement>
+          <rationale>Unencrypted inter-node traffic exposes index data and cluster credentials on the network.</rationale>
+        </rule>
+        <rule>
+          <statement>Implement RBAC with role mappings tied to SSO; avoid local users.</statement>
+          <rationale>Local users are hard to rotate and audit; SSO integration provides centralized access control.</rationale>
+        </rule>
+        <rule>
+          <statement>Snapshot to S3/GCS via SLM (snapshot lifecycle management) — not just relying on replicas.</statement>
+          <rationale>Replicas protect against node failure, not against accidental deletion or cluster-level failure.</rationale>
+        </rule>
+        <rule>
+          <statement>TLS on all transport + HTTP; certificates rotated via cert-manager or Elastic Cloud.</statement>
+          <rationale>Certificate expiry on a cluster causes immediate connectivity failure; automation prevents this.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="best-practices-observability-integration">
+      <list>
+        <item>Correlate metrics and logs for root cause analysis</item>
+        <item>Combine with Prometheus/Grafana for full observability</item>
+        <item>Use structured logging with consistent schemas</item>
+        <item>Implement distributed tracing with trace_id/span_id</item>
+        <item>Loki/Vector pilot before committing to ELK at high volume — cost difference is order-of-magnitude</item>
+      </list>
+    </section>
+
+    <section name="key-decisions">
+      <list>
+        <item>Beats vs Logstash: Use Beats direct for simple cases; Logstash for complex parsing</item>
+        <item>Managed vs Self-hosted: Managed for reduced ops; self-hosted for full control</item>
+        <item>Data retention: Use ILM with hot-warm-cold tiers</item>
+        <item>Kubernetes: ECK (Elastic Cloud on Kubernetes) preferred over Helm</item>
+      </list>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <list>
+        <item>Cluster ops are non-trivial: shard sizing, JVM heap (50% RAM, max ~31GB), cold-warm-hot tiering. Operators get surprised by node OOMs.</item>
+        <item>License/distro split: post-2021 Elastic license vs OpenSearch (AWS fork). Tooling diverges; templates that assume one may break the other.</item>
+        <item>Cardinality explosions in fields like pod_name, request_id blow up index size; mapping discipline matters.</item>
+        <item>Logstash JVM is heavy — most pipelines should use Beats → Elasticsearch directly, or Fluent Bit → Elasticsearch.</item>
+        <item>Kibana RBAC and saved-objects management is fiddly across spaces and roles.</item>
+        <item>Upgrades across major versions (7→8→9) require breaking-change reviews; agents that auto-bump versions break dashboards.</item>
+      </list>
+    </section>
+
+    <section name="agent-workflow">
+      <p>Treat ELK as two layers: ingestion (Beats/Fluent Bit/Logstash) and storage/UX (Elasticsearch/Kibana). Agents are most useful authoring (1) ingestion configs (Filebeat inputs, Logstash pipelines, ECS-compliant field mappings), (2) index templates + ILM policies, (3) Kibana saved searches/dashboards as JSON. Never let an agent run cluster-mutating APIs (_close, _delete_by_query, _reindex) without a human approval and a tested rollback plan. Use Elastic Cloud or ECK in production; agents work better against a managed control plane.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent for pipeline + dashboard changes with quality gates; custom ecs-mapping-author converting unstructured log samples into ECS-compliant index mappings; custom kibana-dashboard-builder generating Kibana saved-objects JSON; password-scrubber-agent stripping secrets from sample logs before sharing with LLM context.</p>
+    </section>
+
+    <section name="agent-selection">
+      <list>
+        <item>Set up GitHub Actions workflow from template — haiku: Pattern application, simple configuration</item>
+        <item>Design CI/CD pipeline architecture — opus: Complex system design with many variables</item>
+        <item>Write terraform code for infrastructure — sonnet: Implementation with moderate complexity</item>
+        <item>Debug failing pipeline step — sonnet: Debugging and problem-solving</item>
+        <item>Implement AIOps anomaly detection — opus: Novel ML approach, complex decision</item>
+        <item>Configure webhook and secret management — haiku: Mechanical setup using checklists</item>
+      </list>
+    </section>
+
+    <section name="prompt-patterns">
+      <prompt purpose="ecs-mapping-author"><![CDATA[You are an ECS-compliant log-pipeline author. Input: 5-line sample of `nginx access logs`. Output: (1) Filebeat module config or `parsers` stanza, (2) Logstash filter using `dissect` or `grok` with named captures mapped to ECS fields (`url.path`, `http.response.status_code`, `client.ip`), (3) Elasticsearch index template with appropriate `keyword` vs `text` typing. Do NOT use `grok %{COMBINEDAPACHELOG}` — explicit ECS mapping required.]]></prompt>
+      <prompt purpose="ilm-policy-author"><![CDATA[You are an ILM policy author. Input: `{retention_days: 90, hot_days: 7, warm_days: 30, frozen: true}`. Output ILM JSON for hot-warm-cold-delete with `min_age` and `actions.rollover` at 50GB or 1d, whichever first.]]></prompt>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>LLMs emit grok patterns that look right but match too greedily; require dissect first or test against samples in CI.</item>
+        <item>Mapping suggestions tend to use text everywhere — search aggregations need keyword subfields; force multi_fields.</item>
+        <item>ILM hot/warm/cold templates copy-paste from outdated docs (pre-7.x); pin Elastic version in prompt.</item>
+        <item>Auto-detected timezones: agents default to UTC but app logs may be local — assert @timestamp is ISO-8601 with offset.</item>
+        <item>Wildcard queries (*foo*) destroy performance; agent-suggested Kibana searches need linting.</item>
+        <item>Re-indexing prompts: LLMs propose _reindex for trivial schema changes — ILM rollover with new template is usually cleaner.</item>
+        <item>Sample-log leakage: developers paste raw logs (with tokens, emails) into agent context; route through scrubber.</item>
+        <item>License confusion: agent recommends Elastic-only feature on an OpenSearch cluster (Watcher → use OpenSearch Alerting).</item>
+      </list>
+    </section>
+
+    <section name="pre-deployment-checklist">
+      <checklist>
+        <check>Hardware sizing calculated: Elasticsearch min 4GB RAM per node SSD storage; Logstash min 2GB RAM CPU-bound for parsing; Kibana min 1GB RAM; Calculate storage: daily log volume x retention days x 1.1 overhead</check>
+        <check>Network ports configured: 9200 (Elasticsearch HTTP), 9300 (Elasticsearch transport), 5044 (Beats input), 5601 (Kibana), 9600 (Logstash monitoring)</check>
+        <check>Security prerequisites: TLS certificates generated, CA certificate available, passwords for built-in users defined, network firewall rules configured</check>
+        <check>Cluster topology defined: number of master nodes (3 for HA), data nodes, ingest node requirements, coordinating node requirements</check>
+        <check>Node configuration: cluster.name set consistently, node.name unique per node, node.roles assigned appropriately, discovery.seed_hosts configured, cluster.initial_master_nodes set</check>
+        <check>Memory settings: JVM heap 50% of available RAM (max 32GB), bootstrap.memory_lock: true enabled, swap disabled or minimized</check>
+        <check>Storage configuration: path.data on fast storage (SSD/NVMe), path.logs configured, sufficient disk space for retention</check>
+        <check>X-Pack security enabled: xpack.security.enabled: true, transport layer SSL/TLS, HTTP layer SSL/TLS</check>
+        <check>Authentication configured: built-in users passwords set, service accounts created, API keys generated</check>
+        <check>Authorization configured: roles defined, role mappings created, field-level security if needed</check>
+        <check>Index templates created with mapping definitions, settings (shards, replicas), ILM policy attached</check>
+        <check>ILM policies defined: hot phase (rollover criteria), warm phase (shrink, force merge), cold phase (freeze), delete phase (retention)</check>
+        <check>Aliases configured: write alias for ingestion, read alias for queries</check>
+      </checklist>
+    </section>
+
+    <section name="logstash-checklist">
+      <checklist>
+        <check>Pipeline configuration: input plugins configured, filter plugins for parsing, output to Elasticsearch</check>
+        <check>Performance tuning: pipeline.workers set, pipeline.batch.size optimized, pipeline.batch.delay configured</check>
+        <check>Error handling: dead letter queue enabled, failed event logging, retry policies defined</check>
+        <check>Security: SSL for Beats input, Elasticsearch credentials secured, sensitive data masking in filters</check>
+      </checklist>
+    </section>
+
+    <section name="filebeat-checklist">
+      <checklist>
+        <check>Input configuration: log paths defined, multiline patterns if needed, fields and tags added</check>
+        <check>Processors configured: add_host_metadata, add_cloud_metadata, add_docker_metadata (if applicable), add_kubernetes_metadata (if applicable)</check>
+        <check>Output configured: Elasticsearch or Logstash target, SSL/TLS settings, credentials secured</check>
+        <check>Modules enabled if using: system module, nginx module, application-specific modules</check>
+      </checklist>
+    </section>
+
+    <section name="kibana-checklist">
+      <checklist>
+        <check>Server configuration: server.host and server.port set, server.name defined, base path configured if reverse proxy</check>
+        <check>Elasticsearch connection: hosts configured, credentials set, SSL/TLS enabled</check>
+        <check>Security: xpack.security.enabled: true, encryption key set, session timeout configured</check>
+        <check>Spaces and roles if multi-tenant: spaces created, role-based access configured</check>
+      </checklist>
+    </section>
+
+    <section name="kubernetes-eck-checklist">
+      <checklist>
+        <check>ECK operator deployed: CRDs installed, operator running</check>
+        <check>Elasticsearch CR configured: node sets defined, resources (CPU, memory) set, volume claims configured, pod disruption budgets</check>
+        <check>Kibana CR configured: Elasticsearch reference set, ingress/service configured</check>
+        <check>Beats/Agents deployed: DaemonSet for Filebeat, autodiscover configured, RBAC for Kubernetes metadata</check>
+      </checklist>
+    </section>
+
+    <section name="post-deployment-checklist">
+      <checklist>
+        <check>Cluster health green: GET _cluster/health, all shards allocated, no unassigned shards</check>
+        <check>Indices receiving data: data streams active, rollover working</check>
+        <check>Kibana accessible: login working, index patterns created, dashboards loading</check>
+        <check>Alerts configured: error rate alerts, disk space alerts, cluster health alerts</check>
+        <check>Runbooks created: common troubleshooting steps, scaling procedures, backup/restore procedures</check>
+        <check>Dashboards documented: purpose of each dashboard, key metrics explained</check>
+        <check>On-call procedures: alert escalation paths, contact information</check>
+      </checklist>
+    </section>
+
+    <section name="operational-checklist">
+      <checklist>
+        <check>Daily: check cluster health, review error dashboards, verify data ingestion rates, check disk space usage</check>
+        <check>Weekly: review ILM policy execution, check for slow queries, review resource utilization, validate backup completion</check>
+        <check>Monthly: capacity planning review, security audit (access logs), index template review, performance tuning assessment</check>
+      </checklist>
+    </section>
+
+    <section name="troubleshooting-checklist">
+      <checklist>
+        <check>Cluster issues: check Elasticsearch logs for errors, verify node connectivity, check shard allocation, review JVM heap usage, check disk watermarks</check>
+        <check>Ingestion issues: verify Beats/Logstash connectivity, check for parsing errors, review dead letter queue, validate index permissions</check>
+        <check>Query performance: check slow log, review query patterns, analyze shard sizes, consider index optimization</check>
+      </checklist>
+    </section>
+
+    <section name="examples-elasticsearch-config">
+      <example type="good" title="Production Elasticsearch cluster configuration">
+        <code lang="yaml"><![CDATA[# elasticsearch.yml - Production cluster
+cluster.name: production-logs
+node.name: es-node-1
+
+# Node roles (separate in production)
+node.roles: [master, data, ingest]
+
+# Network
+network.host: 0.0.0.0
+http.port: 9200
+transport.port: 9300
+
+# Discovery (3-node cluster)
+discovery.seed_hosts: ["es-node-1", "es-node-2", "es-node-3"]
+cluster.initial_master_nodes: ["es-node-1", "es-node-2", "es-node-3"]
+
+# Memory
+bootstrap.memory_lock: true
+
+# Paths
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+
+# Security (X-Pack)
+xpack.security.enabled: true
+xpack.security.transport.ssl.enabled: true
+xpack.security.transport.ssl.verification_mode: certificate
+xpack.security.transport.ssl.keystore.path: /etc/elasticsearch/certs/elastic-certificates.p12
+xpack.security.transport.ssl.truststore.path: /etc/elasticsearch/certs/elastic-certificates.p12
+
+xpack.security.http.ssl.enabled: true
+xpack.security.http.ssl.keystore.path: /etc/elasticsearch/certs/http.p12]]></code>
+      </example>
+      <example type="good" title="Index template with strict mappings">
+        <code lang="json"><![CDATA[PUT _index_template/logs-template
+{
+  "index_patterns": ["logs-*"],
+  "priority": 100,
+  "template": {
+    "settings": {
+      "number_of_shards": 3,
+      "number_of_replicas": 1,
+      "index.lifecycle.name": "logs-policy",
+      "index.lifecycle.rollover_alias": "logs",
+      "index.refresh_interval": "5s",
+      "index.translog.durability": "async"
+    },
+    "mappings": {
+      "dynamic": "strict",
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "message": { "type": "text" },
+        "level": { "type": "keyword" },
+        "logger": { "type": "keyword" },
+        "service": { "type": "keyword" },
+        "version": { "type": "keyword" },
+        "environment": { "type": "keyword" },
+        "host": {
+          "properties": {
+            "name": { "type": "keyword" },
+            "ip": { "type": "ip" }
+          }
+        },
+        "trace_id": { "type": "keyword" },
+        "span_id": { "type": "keyword" },
+        "request_id": { "type": "keyword" },
+        "user_id": { "type": "keyword" },
+        "duration_ms": { "type": "long" },
+        "error": {
+          "properties": {
+            "type": { "type": "keyword" },
+            "message": { "type": "text" },
+            "stack_trace": { "type": "text", "index": false }
+          }
+        },
+        "http": {
+          "properties": {
+            "method": { "type": "keyword" },
+            "path": { "type": "keyword" },
+            "status_code": { "type": "short" }
+          }
+        }
+      }
+    }
+  }
+}]]></code>
+      </example>
+      <example type="good" title="ILM Policy Hot-Warm-Cold-Delete">
+        <code lang="json"><![CDATA[PUT _ilm/policy/logs-policy
+{
+  "policy": {
+    "phases": {
+      "hot": {
+        "min_age": "0ms",
+        "actions": {
+          "rollover": {
+            "max_primary_shard_size": "50gb",
+            "max_age": "1d",
+            "max_docs": 100000000
+          },
+          "set_priority": { "priority": 100 }
+        }
+      },
+      "warm": {
+        "min_age": "7d",
+        "actions": {
+          "shrink": { "number_of_shards": 1 },
+          "forcemerge": { "max_num_segments": 1 },
+          "set_priority": { "priority": 50 },
+          "readonly": {}
+        }
+      },
+      "cold": {
+        "min_age": "30d",
+        "actions": {
+          "searchable_snapshot": {
+            "snapshot_repository": "logs-snapshots"
+          },
+          "set_priority": { "priority": 0 }
+        }
+      },
+      "delete": {
+        "min_age": "90d",
+        "actions": {
+          "delete": {}
+        }
+      }
+    }
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="examples-logstash">
+      <example type="good" title="Complete Logstash pipeline with JSON parsing, GeoIP, and masking">
+        <code lang="ruby"><![CDATA[# /etc/logstash/conf.d/main.conf
+input {
+  beats {
+    port => 5044
+    ssl => true
+    ssl_certificate => "/etc/logstash/certs/logstash.crt"
+    ssl_key => "/etc/logstash/certs/logstash.key"
+    ssl_certificate_authorities => ["/etc/logstash/certs/ca.crt"]
+  }
+
+  kafka {
+    bootstrap_servers => "kafka:9092"
+    topics => ["app-logs"]
+    codec => json
+    group_id => "logstash-consumer"
+    auto_offset_reset => "latest"
+  }
+}
+
+filter {
+  # Parse JSON logs
+  if [message] =~ /^\{/ {
+    json {
+      source => "message"
+      skip_on_invalid_json => true
+    }
+  }
+
+  # Parse common log formats
+  if "_jsonparsefailure" in [tags] or ![level] {
+    grok {
+      match => {
+        "message" => [
+          "%{TIMESTAMP_ISO8601:timestamp} \[%{LOGLEVEL:level}\] %{DATA:logger} - %{GREEDYDATA:log_message}",
+          "%{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:level} %{GREEDYDATA:log_message}",
+          "%{COMBINEDAPACHELOG}"
+        ]
+      }
+      tag_on_failure => ["_grokparsefailure"]
+    }
+  }
+
+  # Parse dates
+  if [timestamp] {
+    date {
+      match => ["timestamp", "ISO8601", "yyyy-MM-dd HH:mm:ss,SSS", "yyyy-MM-dd HH:mm:ss"]
+      target => "@timestamp"
+      remove_field => ["timestamp"]
+    }
+  }
+
+  # Add GeoIP for client IPs
+  if [client_ip] {
+    geoip {
+      source => "client_ip"
+      target => "geo"
+      database => "/etc/logstash/GeoLite2-City.mmdb"
+    }
+  }
+
+  # Normalize log levels
+  if [level] {
+    mutate {
+      uppercase => ["level"]
+    }
+  }
+
+  # Add environment and service tags
+  mutate {
+    add_field => {
+      "[@metadata][index_prefix]" => "logs"
+    }
+  }
+
+  # Extract service name from Kubernetes metadata
+  if [kubernetes][labels][app] {
+    mutate {
+      add_field => { "service" => "%{[kubernetes][labels][app]}" }
+    }
+  }
+
+  # Mask sensitive data
+  mutate {
+    gsub => [
+      "message", "password[=:]\s*\S+", "password=[REDACTED]",
+      "message", "api[_-]?key[=:]\s*\S+", "api_key=[REDACTED]",
+      "message", "\b\d{16}\b", "[CARD_NUMBER_REDACTED]",
+      "message", "\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", "[EMAIL_REDACTED]"
+    ]
+  }
+
+  # Remove unnecessary fields
+  mutate {
+    remove_field => ["agent", "ecs", "input", "log", "host.os"]
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["https://elasticsearch:9200"]
+    index => "%{[@metadata][index_prefix]}-%{[service]}-%{+YYYY.MM.dd}"
+    user => "logstash_writer"
+    password => "${LOGSTASH_PASSWORD}"
+    ssl => true
+    ssl_certificate_verification => true
+    cacert => "/etc/logstash/certs/ca.crt"
+    action => "create"
+  }
+
+  # Dead letter queue for failed events
+  if "_grokparsefailure" in [tags] or "_jsonparsefailure" in [tags] {
+    file {
+      path => "/var/log/logstash/failed-%{+YYYY-MM-dd}.json"
+      codec => json_lines
+    }
+  }
+
+  # Debug output (disable in production)
+  # stdout { codec => rubydebug }
+}]]></code>
+      </example>
+      <example type="good" title="Logstash pipeline settings">
+        <code lang="yaml"><![CDATA[# /etc/logstash/pipelines.yml
+- pipeline.id: main
+  path.config: "/etc/logstash/conf.d/*.conf"
+  pipeline.workers: 4
+  pipeline.batch.size: 250
+  pipeline.batch.delay: 50
+  queue.type: persisted
+  queue.max_bytes: 4gb]]></code>
+      </example>
+    </section>
+
+    <section name="examples-filebeat">
+      <example type="good" title="Filebeat standard configuration">
+        <code lang="yaml"><![CDATA[# /etc/filebeat/filebeat.yml
+filebeat.inputs:
+  # Application logs
+  - type: log
+    id: app-logs
+    enabled: true
+    paths:
+      - /var/log/app/*.log
+      - /var/log/app/**/*.log
+    fields:
+      service: my-application
+      environment: production
+    fields_under_root: true
+    multiline:
+      type: pattern
+      pattern: '^\d{4}-\d{2}-\d{2}'
+      negate: true
+      match: after
+      max_lines: 100
+    processors:
+      - add_host_metadata: ~
+      - add_cloud_metadata: ~
+
+  # Container logs
+  - type: container
+    id: container-logs
+    enabled: true
+    paths:
+      - /var/lib/docker/containers/*/*.log
+    processors:
+      - add_docker_metadata: ~
+
+  # Syslog
+  - type: log
+    id: syslog
+    enabled: true
+    paths:
+      - /var/log/syslog
+      - /var/log/messages
+    fields:
+      log_type: system
+
+# Modules
+filebeat.modules:
+  - module: nginx
+    access:
+      enabled: true
+      var.paths: ["/var/log/nginx/access.log*"]
+    error:
+      enabled: true
+      var.paths: ["/var/log/nginx/error.log*"]
+
+# Output to Elasticsearch
+output.elasticsearch:
+  hosts: ["https://elasticsearch:9200"]
+  protocol: "https"
+  username: "${FILEBEAT_USER}"
+  password: "${FILEBEAT_PASSWORD}"
+  ssl:
+    enabled: true
+    certificate_authorities: ["/etc/filebeat/certs/ca.crt"]
+  index: "filebeat-%{[agent.version]}-%{+yyyy.MM.dd}"
+  bulk_max_size: 2048
+
+# Output to Logstash (alternative)
+# output.logstash:
+#   hosts: ["logstash:5044"]
+#   ssl.enabled: true
+#   ssl.certificate_authorities: ["/etc/filebeat/certs/ca.crt"]
+
+# Kibana setup
+setup.kibana:
+  host: "https://kibana:5601"
+  ssl:
+    enabled: true
+    certificate_authorities: ["/etc/filebeat/certs/ca.crt"]
+
+# Index lifecycle management
+setup.ilm.enabled: true
+setup.ilm.rollover_alias: "filebeat"
+setup.ilm.pattern: "{now/d}-000001"
+
+# Logging
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0640
+
+# Monitoring
+monitoring.enabled: true
+monitoring.elasticsearch:
+  hosts: ["https://elasticsearch:9200"]
+  username: "${FILEBEAT_USER}"
+  password: "${FILEBEAT_PASSWORD}"]]></code>
+      </example>
+      <example type="good" title="Kubernetes Autodiscover for Filebeat">
+        <code lang="yaml"><![CDATA[# Kubernetes Filebeat DaemonSet configuration
+filebeat.autodiscover:
+  providers:
+    - type: kubernetes
+      node: ${NODE_NAME}
+      hints.enabled: true
+      hints.default_config:
+        type: container
+        paths:
+          - /var/log/containers/*${data.kubernetes.container.id}.log
+      templates:
+        # Application with JSON logging
+        - condition:
+            contains:
+              kubernetes.labels.log-format: "json"
+          config:
+            - type: container
+              paths:
+                - /var/log/containers/*${data.kubernetes.container.id}.log
+              json.keys_under_root: true
+              json.add_error_key: true
+
+        # Java applications with multiline stack traces
+        - condition:
+            contains:
+              kubernetes.labels.app-type: "java"
+          config:
+            - type: container
+              paths:
+                - /var/log/containers/*${data.kubernetes.container.id}.log
+              multiline:
+                type: pattern
+                pattern: '^\d{4}-\d{2}-\d{2}|^[A-Z][a-z]{2} \d{2}'
+                negate: true
+                match: after
+
+# Required RBAC for Kubernetes metadata
+# Apply via kubectl before deploying Filebeat]]></code>
+      </example>
+    </section>
+
+    <section name="examples-kibana-config">
+      <example type="good" title="Kibana production configuration">
+        <code lang="yaml"><![CDATA[# Server
+server.host: "0.0.0.0"
+server.port: 5601
+server.name: "kibana-prod"
+server.basePath: ""
+server.publicBaseUrl: "https://kibana.example.com"
+
+# Elasticsearch connection
+elasticsearch.hosts: ["https://elasticsearch:9200"]
+elasticsearch.username: "kibana_system"
+elasticsearch.password: "${KIBANA_SYSTEM_PASSWORD}"
+elasticsearch.ssl.certificateAuthorities: ["/etc/kibana/certs/ca.crt"]
+elasticsearch.ssl.verificationMode: certificate
+
+# Security
+xpack.security.enabled: true
+xpack.security.encryptionKey: "your-32-character-encryption-key-here"
+xpack.security.session.idleTimeout: "1h"
+xpack.security.session.lifespan: "24h"
+
+# Saved objects encryption
+xpack.encryptedSavedObjects.encryptionKey: "another-32-character-key-here"
+
+# Reporting (optional)
+xpack.reporting.encryptionKey: "yet-another-32-character-key"
+
+# Logging
+logging.dest: /var/log/kibana/kibana.log
+logging.root.level: info]]></code>
+      </example>
+    </section>
+
+    <section name="examples-kql-queries">
+      <example type="good" title="KQL query patterns">
+        <code lang="text"><![CDATA[# Find errors in specific service
+level: ERROR AND service: "user-service"
+
+# Time range with multiple log levels
+@timestamp >= "2024-01-15" AND level: (ERROR OR WARN)
+
+# Full text search in message
+message: "connection timeout" OR message: "database error"
+
+# Exists check (find logs with trace_id)
+trace_id: *
+
+# Range query for slow requests
+duration_ms > 1000 AND http.method: "GET"
+
+# Complex query with wildcards
+(level: ERROR OR level: WARN) AND service: "api-*" AND NOT host.name: "test-*"
+
+# Find specific HTTP errors
+http.status_code >= 500 AND http.status_code < 600
+
+# User activity
+user_id: "user-12345" AND @timestamp >= now-24h
+
+# Stack trace search
+error.type: "NullPointerException" OR error.message: *null*]]></code>
+      </example>
+    </section>
+
+    <section name="examples-watcher-alert">
+      <example type="good" title="Watcher alert for high error rate">
+        <code lang="json"><![CDATA[PUT _watcher/watch/high_error_rate
+{
+  "trigger": {
+    "schedule": { "interval": "5m" }
+  },
+  "input": {
+    "search": {
+      "request": {
+        "search_type": "query_then_fetch",
+        "indices": ["logs-*"],
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "filter": [
+                { "range": { "@timestamp": { "gte": "now-5m" } } },
+                { "term": { "level": "ERROR" } }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "condition": {
+    "compare": { "ctx.payload.hits.total.value": { "gt": 100 } }
+  },
+  "throttle_period": "15m",
+  "actions": {
+    "slack_notification": {
+      "slack": {
+        "account": "monitoring",
+        "message": {
+          "to": ["#alerts"],
+          "text": "High error rate detected: {{ctx.payload.hits.total.value}} errors in last 5 minutes"
+        }
+      }
+    },
+    "email_notification": {
+      "email": {
+        "to": ["ops-team@example.com"],
+        "subject": "ELK Alert: High Error Rate",
+        "body": {
+          "text": "Detected {{ctx.payload.hits.total.value}} errors in the last 5 minutes. Please investigate."
+        }
+      }
+    }
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="examples-structured-log">
+      <example type="good" title="Structured log format">
+        <code lang="json"><![CDATA[{
+  "@timestamp": "2024-01-15T10:30:00.000Z",
+  "level": "ERROR",
+  "logger": "com.example.service.UserService",
+  "message": "Failed to process user request",
+  "service": "user-service",
+  "version": "1.2.3",
+  "environment": "production",
+  "host": {
+    "name": "pod-abc123",
+    "ip": "10.0.1.42"
+  },
+  "trace_id": "abc123def456",
+  "span_id": "span789",
+  "request_id": "req-67890",
+  "user_id": "user-12345",
+  "duration_ms": 1523,
+  "error": {
+    "type": "ValidationException",
+    "message": "Invalid email format",
+    "stack_trace": "com.example.ValidationException: Invalid email format\n\tat com.example.UserService.validate(UserService.java:42)..."
+  },
+  "http": {
+    "method": "POST",
+    "path": "/api/users",
+    "status_code": 400
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="cluster-design-prompts">
+      <prompt purpose="initial-architecture-design"><![CDATA[Design an ELK Stack architecture for the following requirements:
+
+Environment: [production/staging/development]
+Expected log volume: [X GB/day]
+Retention requirement: [X days/months]
+Number of applications: [X]
+Deployment platform: [Docker/Kubernetes/VMs/Cloud]
+Budget constraints: [high/medium/low]
+
+Consider:
+1. Node topology (master, data, ingest, coordinating)
+2. Sharding strategy
+3. Replica configuration
+4. Hot-warm-cold tiers
+5. Resource sizing (CPU, memory, storage)
+6. High availability requirements
+7. Disaster recovery approach
+
+Output:
+- Architecture diagram description
+- Node specifications
+- Estimated resource costs
+- Scaling recommendations]]></prompt>
+      <prompt purpose="capacity-planning"><![CDATA[Calculate ELK Stack capacity requirements:
+
+Current metrics:
+- Daily log volume: [X GB]
+- Number of log sources: [X]
+- Average log size: [X KB]
+- Peak ingestion rate: [X events/second]
+- Query patterns: [dashboard refresh rate, concurrent users]
+- Retention period: [X days]
+
+Growth projections:
+- Expected growth rate: [X% per month]
+- Planning horizon: [X months]
+
+Calculate:
+1. Total storage needed
+2. Number of data nodes required
+3. Shard count and sizing
+4. Memory requirements
+5. CPU requirements
+6. Network bandwidth needs
+7. ILM policy thresholds]]></prompt>
+    </section>
+
+    <section name="configuration-prompts">
+      <prompt purpose="index-template-generation"><![CDATA[Generate an Elasticsearch index template for:
+
+Log type: [application/access/audit/metrics]
+Fields to index:
+- [field1]: [type, analyzed/keyword]
+- [field2]: [type, analyzed/keyword]
+- [field3]: [type, analyzed/keyword]
+
+Requirements:
+- Shard count: [X]
+- Replica count: [X]
+- Refresh interval: [X seconds]
+- ILM policy: [policy name]
+
+Generate:
+1. Index template JSON
+2. Mapping definitions with appropriate types
+3. Settings for performance
+4. Aliases configuration]]></prompt>
+      <prompt purpose="logstash-pipeline-design"><![CDATA[Design a Logstash pipeline for:
+
+Input sources:
+- [Source 1]: [format, protocol]
+- [Source 2]: [format, protocol]
+
+Log format examples:
+[paste example log lines]
+
+Processing requirements:
+- Parse [specific fields]
+- Enrich with [GeoIP, DNS, etc.]
+- Mask sensitive data: [patterns]
+- Transform: [specific transformations]
+
+Output targets:
+- Primary: [Elasticsearch/Kafka]
+- Secondary: [optional]
+
+Generate:
+1. Complete pipeline configuration
+2. Grok patterns for parsing
+3. Filter chain logic
+4. Error handling with DLQ
+5. Performance tuning settings]]></prompt>
+      <prompt purpose="filebeat-configuration"><![CDATA[Generate Filebeat configuration for:
+
+Log sources:
+- [Path 1]: [log type, multiline?]
+- [Path 2]: [log type, multiline?]
+
+Deployment: [bare metal/Docker/Kubernetes]
+
+Requirements:
+- Multiline patterns: [yes/no, pattern]
+- Additional fields: [service, environment]
+- Processors needed: [list]
+- Output: [Elasticsearch direct/Logstash]
+
+Security:
+- TLS: [yes/no]
+- Authentication: [basic/API key]
+
+Generate complete filebeat.yml with:
+1. Input definitions
+2. Multiline configuration
+3. Processors
+4. Output configuration
+5. Logging settings]]></prompt>
+    </section>
+
+    <section name="query-prompts">
+      <prompt purpose="kql-query-generation"><![CDATA[Generate KQL queries for the following use cases:
+
+Index pattern: [logs-*]
+
+Use cases:
+1. [Find all errors in service X in the last hour]
+2. [Find slow requests (>1s) with specific user]
+3. [Count logs by level for each service]
+4. [Find authentication failures by IP]
+
+For each query, provide:
+1. KQL query syntax
+2. Equivalent Elasticsearch DSL
+3. Suggested visualization type
+4. Performance considerations]]></prompt>
+      <prompt purpose="dashboard-query-optimization"><![CDATA[Optimize these Kibana dashboard queries for better performance:
+
+Current queries:
+[paste current queries]
+
+Dashboard refresh rate: [X seconds]
+Index size: [X GB]
+Concurrent users: [X]
+
+Analyze and suggest:
+1. Query rewrites for efficiency
+2. Aggregation optimizations
+3. Index/shard recommendations
+4. Caching strategies
+5. Pre-computed rollups if applicable]]></prompt>
+    </section>
+
+    <section name="troubleshooting-prompts">
+      <prompt purpose="cluster-health-diagnosis"><![CDATA[Diagnose ELK Stack cluster issue:
+
+Symptoms:
+- [Describe symptoms: slow queries, unassigned shards, etc.]
+
+Cluster status:
+[paste _cluster/health output]
+
+Node stats:
+[paste relevant _nodes/stats output]
+
+Recent changes:
+- [List any recent changes]
+
+Analyze:
+1. Root cause identification
+2. Immediate remediation steps
+3. Long-term fixes
+4. Prevention measures]]></prompt>
+      <prompt purpose="ingestion-troubleshooting"><![CDATA[Troubleshoot log ingestion issues:
+
+Problem:
+- [Describe: logs not appearing, delays, parsing failures]
+
+Components involved:
+- Beats version: [X]
+- Logstash version: [X]
+- Elasticsearch version: [X]
+
+Error messages:
+[paste relevant error logs]
+
+Configuration snippets:
+[paste relevant config]
+
+Diagnose:
+1. Likely cause
+2. Verification steps
+3. Fix recommendations
+4. Monitoring suggestions]]></prompt>
+      <prompt purpose="performance-tuning"><![CDATA[Optimize ELK Stack performance:
+
+Current metrics:
+- Indexing rate: [X docs/sec, target: Y]
+- Search latency: [X ms, target: Y]
+- CPU usage: [X%]
+- Heap usage: [X%]
+- GC frequency: [X]
+
+Cluster configuration:
+- Nodes: [count, specs]
+- Indices: [count, avg size, shard count]
+- Queries: [describe query patterns]
+
+Identify:
+1. Performance bottlenecks
+2. Configuration improvements
+3. Scaling recommendations
+4. Query optimizations
+5. Index optimizations]]></prompt>
+    </section>
+
+    <section name="migration-prompts">
+      <prompt purpose="version-upgrade-planning"><![CDATA[Plan ELK Stack upgrade:
+
+Current version: [X.Y.Z]
+Target version: [A.B.C]
+
+Cluster details:
+- Node count: [X]
+- Data size: [X TB]
+- Criticality: [high/medium/low]
+
+Generate:
+1. Pre-upgrade checklist
+2. Breaking changes to address
+3. Upgrade procedure (rolling/full restart)
+4. Rollback plan
+5. Validation tests
+6. Downtime estimation]]></prompt>
+      <prompt purpose="cloud-migration"><![CDATA[Plan migration to Elastic Cloud/AWS OpenSearch:
+
+Current setup:
+- Self-hosted: [Docker/K8s/VMs]
+- Version: [X.Y.Z]
+- Data size: [X TB]
+- Ingestion rate: [X GB/day]
+
+Target:
+- Platform: [Elastic Cloud/AWS OpenSearch/Azure]
+- Requirements: [HA, DR, compliance]
+
+Generate:
+1. Target architecture
+2. Migration strategy (snapshot/reindex)
+3. Network requirements
+4. Cost estimation approach
+5. Cutover procedure
+6. Validation checklist]]></prompt>
+    </section>
+
+    <section name="security-prompts">
+      <prompt purpose="rbac-design"><![CDATA[Design Elasticsearch RBAC for:
+
+User groups:
+- [Group 1]: [access needs]
+- [Group 2]: [access needs]
+- [Group 3]: [access needs]
+
+Index patterns:
+- [Pattern 1]: [sensitivity level]
+- [Pattern 2]: [sensitivity level]
+
+Requirements:
+- Field-level security: [yes/no]
+- Document-level security: [yes/no]
+- Anonymous access: [yes/no]
+
+Generate:
+1. Role definitions
+2. Role mappings
+3. User creation scripts
+4. API key policies
+5. Audit logging config]]></prompt>
+      <prompt purpose="security-hardening"><![CDATA[Harden ELK Stack security:
+
+Current state:
+- TLS: [enabled/disabled]
+- Authentication: [type]
+- Authorization: [configured/not]
+- Network: [public/private]
+
+Compliance requirements:
+- [SOC2/HIPAA/PCI-DSS/etc.]
+
+Generate:
+1. Security configuration changes
+2. TLS setup steps
+3. Network isolation recommendations
+4. Audit logging configuration
+5. Secrets management approach
+6. Security monitoring rules]]></prompt>
+    </section>
+
+    <section name="monitoring-alerting-prompts">
+      <prompt purpose="alert-rule-creation"><![CDATA[Create alerting rules for ELK Stack monitoring:
+
+Priority alerts needed:
+1. [Alert type]: [threshold]
+2. [Alert type]: [threshold]
+3. [Alert type]: [threshold]
+
+Notification channels:
+- [Slack/Email/PagerDuty]
+
+Generate:
+1. Watcher/Alerting rule JSON
+2. Condition logic
+3. Action configuration
+4. Throttling settings
+5. Escalation rules]]></prompt>
+      <prompt purpose="dashboard-design"><![CDATA[Design Kibana dashboard for:
+
+Purpose: [Operations/Security/Business]
+
+Key metrics:
+- [Metric 1]
+- [Metric 2]
+- [Metric 3]
+
+Visualizations needed:
+- [Type 1]: [data]
+- [Type 2]: [data]
+- [Type 3]: [data]
+
+Filters:
+- [Filter 1]
+- [Filter 2]
+
+Generate:
+1. Dashboard layout description
+2. Visualization configurations
+3. Filter setup
+4. Drill-down suggestions
+5. Saved search definitions]]></prompt>
+    </section>
+
+    <section name="integration-prompts">
+      <prompt purpose="application-logging-setup"><![CDATA[Configure structured logging for:
+
+Application: [language/framework]
+Current logging: [describe current approach]
+
+Target fields:
+- Standard: [@timestamp, level, message, service]
+- Custom: [list custom fields]
+
+Requirements:
+- Correlation IDs: [trace_id, span_id]
+- Sensitive data masking: [patterns]
+- Performance impact: [minimal/acceptable]
+
+Generate:
+1. Logging library configuration
+2. JSON format specification
+3. Correlation ID implementation
+4. Masking patterns
+5. Filebeat input configuration]]></prompt>
+      <prompt purpose="cicd-integration"><![CDATA[Integrate ELK Stack into CI/CD pipeline:
+
+CI/CD tool: [GitHub Actions/GitLab CI/Jenkins]
+
+Stages to add:
+1. [Log configuration validation]
+2. [Dashboard deployment]
+3. [Alert rule deployment]
+4. [Index template updates]
+
+Generate:
+1. Pipeline stage definitions
+2. Validation scripts
+3. Deployment scripts
+4. Rollback procedures
+5. Testing approach]]></prompt>
+    </section>
+
+    <section name="templates-docker-compose">
+      <example type="good" title="Docker Compose single-node development">
+        <code lang="yaml"><![CDATA[# docker-compose.dev.yml
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: elasticsearch
+    environment:
+      - node.name=es01
+      - cluster.name=dev-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - elk
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - elk
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.12.0
+    container_name: filebeat
+    user: root
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - elk
+
+volumes:
+  elasticsearch-data:
+
+networks:
+  elk:
+    driver: bridge]]></code>
+      </example>
+      <example type="good" title="Docker Compose production cluster with security">
+        <code lang="yaml"><![CDATA[# docker-compose.prod.yml
+version: '3.8'
+
+services:
+  setup:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: es-setup
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs
+    user: "0"
+    command: >
+      bash -c '
+        if [ ! -f config/certs/ca.zip ]; then
+          echo "Creating CA";
+          bin/elasticsearch-certutil ca --silent --pem -out config/certs/ca.zip;
+          unzip config/certs/ca.zip -d config/certs;
+        fi;
+        if [ ! -f config/certs/certs.zip ]; then
+          echo "Creating certs";
+          echo -ne \
+          "instances:\n"\
+          "  - name: es01\n"\
+          "    dns:\n"\
+          "      - es01\n"\
+          "      - localhost\n"\
+          "    ip:\n"\
+          "      - 127.0.0.1\n"\
+          "  - name: kibana\n"\
+          "    dns:\n"\
+          "      - kibana\n"\
+          "      - localhost\n"\
+          "    ip:\n"\
+          "      - 127.0.0.1\n"\
+          > config/certs/instances.yml;
+          bin/elasticsearch-certutil cert --silent --pem -out config/certs/certs.zip --in config/certs/instances.yml --ca-cert config/certs/ca/ca.crt --ca-key config/certs/ca/ca.key;
+          unzip config/certs/certs.zip -d config/certs;
+        fi;
+        echo "Setting file permissions"
+        chown -R root:root config/certs;
+        find . -type d -exec chmod 750 \{\} \;;
+        find . -type f -exec chmod 640 \{\} \;;
+        echo "All done!";
+      '
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f config/certs/es01/es01.crt ]"]
+      interval: 1s
+      timeout: 5s
+      retries: 120
+
+  es01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: es01
+    depends_on:
+      setup:
+        condition: service_healthy
+    environment:
+      - node.name=es01
+      - cluster.name=production-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms4g -Xmx4g"
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=certs/es01/es01.key
+      - xpack.security.http.ssl.certificate=certs/es01/es01.crt
+      - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.key=certs/es01/es01.key
+      - xpack.security.transport.ssl.certificate=certs/es01/es01.crt
+      - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.verification_mode=certificate
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs
+      - esdata01:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - elk
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s --cacert config/certs/ca/ca.crt https://localhost:9200 | grep -q 'missing authentication credentials'"]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: kibana
+    depends_on:
+      es01:
+        condition: service_healthy
+    environment:
+      - SERVERNAME=kibana
+      - ELASTICSEARCH_HOSTS=https://es01:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=config/certs/ca/ca.crt
+      - XPACK_SECURITY_ENCRYPTIONKEY=${ENCRYPTION_KEY}
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=${ENCRYPTION_KEY}
+      - XPACK_REPORTING_ENCRYPTIONKEY=${ENCRYPTION_KEY}
+    volumes:
+      - certs:/usr/share/kibana/config/certs
+    ports:
+      - "5601:5601"
+    networks:
+      - elk
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -I http://localhost:5601 | grep -q 'HTTP/1.1 302 Found'"]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.12.0
+    container_name: logstash
+    depends_on:
+      es01:
+        condition: service_healthy
+    volumes:
+      - certs:/usr/share/logstash/config/certs
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+    environment:
+      - "LS_JAVA_OPTS=-Xms1g -Xmx1g"
+      - LOGSTASH_PASSWORD=${LOGSTASH_PASSWORD}
+    ports:
+      - "5044:5044"
+      - "9600:9600"
+    networks:
+      - elk
+
+volumes:
+  certs:
+  esdata01:
+
+networks:
+  elk:
+    driver: bridge]]></code>
+      </example>
+      <example type="good" title="Environment file for ELK production">
+        <code lang="bash"><![CDATA[# .env
+ELASTIC_PASSWORD=changeme_elastic_password
+KIBANA_PASSWORD=changeme_kibana_password
+LOGSTASH_PASSWORD=changeme_logstash_password
+ENCRYPTION_KEY=32-character-encryption-key-here
+STACK_VERSION=8.12.0
+CLUSTER_NAME=production-cluster]]></code>
+      </example>
+    </section>
+
+    <section name="templates-kubernetes-eck">
+      <example type="good" title="ECK Elasticsearch cluster with hot-warm tiers">
+        <code lang="yaml"><![CDATA[# elasticsearch.yaml
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: production-logs
+  namespace: elastic-system
+spec:
+  version: 8.12.0
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: false
+  nodeSets:
+    # Master nodes
+    - name: master
+      count: 3
+      config:
+        node.roles: ["master"]
+        xpack.ml.enabled: false
+      podTemplate:
+        spec:
+          containers:
+            - name: elasticsearch
+              resources:
+                requests:
+                  memory: 4Gi
+                  cpu: 1
+                limits:
+                  memory: 4Gi
+                  cpu: 2
+              env:
+                - name: ES_JAVA_OPTS
+                  value: "-Xms2g -Xmx2g"
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      elasticsearch.k8s.elastic.co/cluster-name: production-logs
+                      elasticsearch.k8s.elastic.co/node-master: "true"
+                  topologyKey: kubernetes.io/hostname
+      volumeClaimTemplates:
+        - metadata:
+            name: elasticsearch-data
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            storageClassName: fast-ssd
+            resources:
+              requests:
+                storage: 50Gi
+
+    # Data nodes (Hot tier)
+    - name: data-hot
+      count: 3
+      config:
+        node.roles: ["data_hot", "data_content", "ingest"]
+        node.attr.data_tier: hot
+      podTemplate:
+        spec:
+          containers:
+            - name: elasticsearch
+              resources:
+                requests:
+                  memory: 16Gi
+                  cpu: 4
+                limits:
+                  memory: 16Gi
+                  cpu: 8
+              env:
+                - name: ES_JAVA_OPTS
+                  value: "-Xms8g -Xmx8g"
+          affinity:
+            podAntiAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  podAffinityTerm:
+                    labelSelector:
+                      matchLabels:
+                        elasticsearch.k8s.elastic.co/cluster-name: production-logs
+                    topologyKey: kubernetes.io/hostname
+      volumeClaimTemplates:
+        - metadata:
+            name: elasticsearch-data
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            storageClassName: fast-ssd
+            resources:
+              requests:
+                storage: 500Gi
+
+    # Data nodes (Warm tier)
+    - name: data-warm
+      count: 2
+      config:
+        node.roles: ["data_warm"]
+        node.attr.data_tier: warm
+      podTemplate:
+        spec:
+          containers:
+            - name: elasticsearch
+              resources:
+                requests:
+                  memory: 8Gi
+                  cpu: 2
+                limits:
+                  memory: 8Gi
+                  cpu: 4
+              env:
+                - name: ES_JAVA_OPTS
+                  value: "-Xms4g -Xmx4g"
+      volumeClaimTemplates:
+        - metadata:
+            name: elasticsearch-data
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            storageClassName: standard-hdd
+            resources:
+              requests:
+                storage: 1Ti]]></code>
+      </example>
+      <example type="good" title="ECK Kibana with Ingress">
+        <code lang="yaml"><![CDATA[# kibana.yaml
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: production-kibana
+  namespace: elastic-system
+spec:
+  version: 8.12.0
+  count: 2
+  elasticsearchRef:
+    name: production-logs
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+  podTemplate:
+    spec:
+      containers:
+        - name: kibana
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+            limits:
+              memory: 2Gi
+              cpu: 1
+          env:
+            - name: XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY
+              valueFrom:
+                secretKeyRef:
+                  name: kibana-encryption-key
+                  key: key
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kibana-ingress
+  namespace: elastic-system
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - kibana.example.com
+      secretName: kibana-tls
+  rules:
+    - host: kibana.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: production-kibana-kb-http
+                port:
+                  number: 5601]]></code>
+      </example>
+      <example type="good" title="ECK Filebeat DaemonSet">
+        <code lang="yaml"><![CDATA[# filebeat.yaml
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: filebeat
+  namespace: elastic-system
+spec:
+  type: filebeat
+  version: 8.12.0
+  elasticsearchRef:
+    name: production-logs
+  kibanaRef:
+    name: production-kibana
+  config:
+    filebeat.autodiscover:
+      providers:
+        - type: kubernetes
+          node: ${NODE_NAME}
+          hints.enabled: true
+          hints.default_config:
+            type: container
+            paths:
+              - /var/log/containers/*${data.kubernetes.container.id}.log
+          templates:
+            - condition:
+                contains:
+                  kubernetes.namespace: "production"
+              config:
+                - type: container
+                  paths:
+                    - /var/log/containers/*${data.kubernetes.container.id}.log
+                  processors:
+                    - add_kubernetes_metadata:
+                        host: ${NODE_NAME}
+                        matchers:
+                          - logs_path:
+                              logs_path: "/var/log/containers/"
+    processors:
+      - add_cloud_metadata: {}
+      - add_host_metadata: {}
+      - add_kubernetes_metadata:
+          host: ${NODE_NAME}
+          matchers:
+            - logs_path:
+                logs_path: "/var/log/containers/"
+  daemonSet:
+    podTemplate:
+      spec:
+        serviceAccountName: filebeat
+        automountServiceAccountToken: true
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true
+        containers:
+          - name: filebeat
+            securityContext:
+              runAsUser: 0
+            volumeMounts:
+              - name: varlogcontainers
+                mountPath: /var/log/containers
+              - name: varlogpods
+                mountPath: /var/log/pods
+              - name: varlibdockercontainers
+                mountPath: /var/lib/docker/containers
+            env:
+              - name: NODE_NAME
+                valueFrom:
+                  fieldRef:
+                    fieldPath: spec.nodeName
+            resources:
+              requests:
+                memory: 100Mi
+                cpu: 100m
+              limits:
+                memory: 200Mi
+                cpu: 200m
+        volumes:
+          - name: varlogcontainers
+            hostPath:
+              path: /var/log/containers
+          - name: varlogpods
+            hostPath:
+              path: /var/log/pods
+          - name: varlibdockercontainers
+            hostPath:
+              path: /var/lib/docker/containers
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: filebeat
+  namespace: elastic-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: filebeat
+rules:
+  - apiGroups: [""]
+    resources:
+      - namespaces
+      - pods
+      - nodes
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["apps"]
+    resources:
+      - replicasets
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: filebeat
+subjects:
+  - kind: ServiceAccount
+    name: filebeat
+    namespace: elastic-system
+roleRef:
+  kind: ClusterRole
+  name: filebeat
+  apiGroup: rbac.authorization.k8s.io]]></code>
+      </example>
+    </section>
+
+    <section name="templates-terraform-aws">
+      <example type="good" title="Terraform AWS Elasticsearch domain">
+        <code lang="hcl"><![CDATA[# main.tf
+resource "aws_elasticsearch_domain" "logs" {
+  domain_name           = var.domain_name
+  elasticsearch_version = "OpenSearch_2.11"
+
+  cluster_config {
+    instance_type            = var.instance_type
+    instance_count           = var.instance_count
+    dedicated_master_enabled = var.dedicated_master_enabled
+    dedicated_master_type    = var.dedicated_master_type
+    dedicated_master_count   = var.dedicated_master_count
+    zone_awareness_enabled   = var.zone_awareness_enabled
+
+    zone_awareness_config {
+      availability_zone_count = var.availability_zone_count
+    }
+  }
+
+  ebs_options {
+    ebs_enabled = true
+    volume_type = "gp3"
+    volume_size = var.volume_size
+    iops        = var.volume_iops
+    throughput  = var.volume_throughput
+  }
+
+  vpc_options {
+    subnet_ids         = var.subnet_ids
+    security_group_ids = [aws_security_group.elasticsearch.id]
+  }
+
+  encrypt_at_rest {
+    enabled = true
+  }
+
+  node_to_node_encryption {
+    enabled = true
+  }
+
+  domain_endpoint_options {
+    enforce_https       = true
+    tls_security_policy = "Policy-Min-TLS-1-2-2019-07"
+  }
+
+  advanced_security_options {
+    enabled                        = true
+    internal_user_database_enabled = true
+    master_user_options {
+      master_user_name     = var.master_user_name
+      master_user_password = var.master_user_password
+    }
+  }
+
+  log_publishing_options {
+    cloudwatch_log_group_arn = aws_cloudwatch_log_group.elasticsearch.arn
+    log_type                 = "INDEX_SLOW_LOGS"
+  }
+
+  log_publishing_options {
+    cloudwatch_log_group_arn = aws_cloudwatch_log_group.elasticsearch.arn
+    log_type                 = "SEARCH_SLOW_LOGS"
+  }
+
+  log_publishing_options {
+    cloudwatch_log_group_arn = aws_cloudwatch_log_group.elasticsearch.arn
+    log_type                 = "ES_APPLICATION_LOGS"
+  }
+
+  tags = var.tags
+}
+
+resource "aws_security_group" "elasticsearch" {
+  name        = "${var.domain_name}-elasticsearch-sg"
+  description = "Security group for Elasticsearch domain"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    security_groups = var.allowed_security_groups
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = var.tags
+}
+
+resource "aws_cloudwatch_log_group" "elasticsearch" {
+  name              = "/aws/elasticsearch/${var.domain_name}"
+  retention_in_days = 30
+  tags              = var.tags
+}
+
+resource "aws_cloudwatch_log_resource_policy" "elasticsearch" {
+  policy_name = "${var.domain_name}-elasticsearch-log-policy"
+  policy_document = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "es.amazonaws.com"
+        }
+        Action = [
+          "logs:PutLogEvents",
+          "logs:CreateLogStream"
+        ]
+        Resource = "${aws_cloudwatch_log_group.elasticsearch.arn}:*"
+      }
+    ]
+  })
+}
+
+# variables.tf
+variable "domain_name" {
+  description = "Name of the Elasticsearch domain"
+  type        = string
+}
+
+variable "instance_type" {
+  description = "Instance type for data nodes"
+  type        = string
+  default     = "r6g.large.elasticsearch"
+}
+
+variable "instance_count" {
+  description = "Number of data nodes"
+  type        = number
+  default     = 3
+}
+
+variable "dedicated_master_enabled" {
+  description = "Enable dedicated master nodes"
+  type        = bool
+  default     = true
+}
+
+variable "dedicated_master_type" {
+  description = "Instance type for master nodes"
+  type        = string
+  default     = "r6g.large.elasticsearch"
+}
+
+variable "dedicated_master_count" {
+  description = "Number of master nodes"
+  type        = number
+  default     = 3
+}
+
+variable "zone_awareness_enabled" {
+  description = "Enable zone awareness"
+  type        = bool
+  default     = true
+}
+
+variable "availability_zone_count" {
+  description = "Number of availability zones"
+  type        = number
+  default     = 3
+}
+
+variable "volume_size" {
+  description = "EBS volume size in GB"
+  type        = number
+  default     = 500
+}
+
+variable "volume_iops" {
+  description = "EBS volume IOPS"
+  type        = number
+  default     = 3000
+}
+
+variable "volume_throughput" {
+  description = "EBS volume throughput in MiB/s"
+  type        = number
+  default     = 125
+}
+
+variable "vpc_id" {
+  description = "VPC ID"
+  type        = string
+}
+
+variable "subnet_ids" {
+  description = "Subnet IDs for the domain"
+  type        = list(string)
+}
+
+variable "allowed_security_groups" {
+  description = "Security groups allowed to access Elasticsearch"
+  type        = list(string)
+}
+
+variable "master_user_name" {
+  description = "Master username"
+  type        = string
+  sensitive   = true
+}
+
+variable "master_user_password" {
+  description = "Master password"
+  type        = string
+  sensitive   = true
+}
+
+variable "tags" {
+  description = "Tags to apply to resources"
+  type        = map(string)
+  default     = {}
+}
+
+# outputs.tf
+output "domain_endpoint" {
+  description = "Elasticsearch domain endpoint"
+  value       = aws_elasticsearch_domain.logs.endpoint
+}
+
+output "kibana_endpoint" {
+  description = "Kibana endpoint"
+  value       = aws_elasticsearch_domain.logs.kibana_endpoint
+}
+
+output "domain_arn" {
+  description = "Elasticsearch domain ARN"
+  value       = aws_elasticsearch_domain.logs.arn
+}]]></code>
+      </example>
+    </section>
+
+    <section name="templates-helm-values">
+      <example type="good" title="Helm values for Elastic charts">
+        <code lang="yaml"><![CDATA[# values.yaml for Elastic Helm charts
+elasticsearch:
+  enabled: true
+  replicas: 3
+  minimumMasterNodes: 2
+
+  resources:
+    requests:
+      cpu: "1000m"
+      memory: "4Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+
+  volumeClaimTemplate:
+    accessModes: ["ReadWriteOnce"]
+    resources:
+      requests:
+        storage: 100Gi
+    storageClassName: fast-ssd
+
+  esJavaOpts: "-Xmx2g -Xms2g"
+
+  esConfig:
+    elasticsearch.yml: |
+      xpack.security.enabled: true
+      xpack.security.transport.ssl.enabled: true
+      xpack.security.http.ssl.enabled: false
+
+kibana:
+  enabled: true
+  replicas: 2
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
+  elasticsearchHosts: "http://elasticsearch-master:9200"
+
+  kibanaConfig:
+    kibana.yml: |
+      server.basePath: ""
+      xpack.security.enabled: true
+
+filebeat:
+  enabled: true
+  daemonset:
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "100Mi"
+      limits:
+        cpu: "200m"
+        memory: "200Mi"
+
+  filebeatConfig:
+    filebeat.yml: |
+      filebeat.autodiscover:
+        providers:
+          - type: kubernetes
+            node: ${NODE_NAME}
+            hints.enabled: true
+      output.elasticsearch:
+        hosts: ["http://elasticsearch-master:9200"]
+
+logstash:
+  enabled: false  # Enable if complex processing needed
+  replicas: 2
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"]]></code>
+      </example>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>elasticsearch-curl / curl to _cat, _cluster, _ilm APIs — Cluster ops — https://www.elastic.co/guide/en/elasticsearch/reference/current/cat.html</item>
+        <item>eck-diagnostics — Snapshot ECK state for support — https://github.com/elastic/eck-diagnostics</item>
+        <item>filebeat, metricbeat, auditbeat — Beats CLI tests, modules — https://www.elastic.co/beats/</item>
+        <item>fluent-bit — Lightweight ingestion — https://docs.fluentbit.io/</item>
+        <item>vector — Modern log/metric/trace pipeline (often replaces Logstash) — https://vector.dev/</item>
+        <item>elastdump / multielasticdump — Index export/import — https://github.com/elasticsearch-dump/elasticsearch-dump</item>
+        <item>esrally — Benchmarking ES clusters — https://esrally.readthedocs.io/</item>
+        <item>kbn (saved-objects API) — Kibana saved-object import/export — https://www.elastic.co/guide/en/kibana/current/saved-objects-api.html</item>
+        <item>drain3 — Log clustering for high-cardinality logs — https://github.com/IBM/Drain3</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>Elastic Cloud — SaaS, agent-friendly via REST API — Easiest production path</item>
+        <item>Elastic Cloud on Kubernetes (ECK) — OSS operator, agent-friendly via CRDs — Self-managed K8s-native</item>
+        <item>OpenSearch (AWS) — OSS / SaaS, agent-friendly via REST API — Apache 2 fork; tooling slightly diverges from Elastic 8/9</item>
+        <item>Amazon OpenSearch Service — SaaS, agent-friendly via REST + IAM — AWS-managed</item>
+        <item>Logstash / Vector — OSS, agent-friendly config-as-code — Vector recommended for new pipelines</item>
+        <item>Filebeat / Fluent Bit — OSS, agent-friendly — Beats simpler, Fluent Bit lighter footprint</item>
+        <item>Grafana Loki — OSS / SaaS, agent-friendly — Cheaper alternative; LogQL not Lucene</item>
+        <item>Datadog Logs — SaaS, agent-friendly via API — Drop-in replacement; expensive at scale</item>
+        <item>Splunk — SaaS, agent-friendly via REST — Enterprise standard, costly</item>
+        <item>Sematext / Logz.io / Logit.io — SaaS, agent-friendly — Hosted ELK/OpenSearch, lower ops burden</item>
+      </list>
+    </section>
+
+    <section name="inline-cluster-health-gate">
+      <example type="good" title="Pre-deploy cluster health gate script">
+        <code lang="bash"><![CDATA[#!/usr/bin/env bash
+# es-pre-deploy.sh — refuse risky deploys when cluster isn't green
+set -euo pipefail
+ES=${ES_URL:?https://es.example:9200}
+AUTH=${ES_AUTH:?user:pass}
+HEALTH=$(curl -sSu "$AUTH" "$ES/_cluster/health" | jq -r '.status')
+[[ "$HEALTH" == "green" ]] || { echo "ES status: $HEALTH (refuse)"; exit 2; }
+PENDING=$(curl -sSu "$AUTH" "$ES/_cluster/pending_tasks" | jq '.tasks | length')
+[[ "$PENDING" -lt 5 ]] || { echo "Pending tasks: $PENDING"; exit 3; }
+JVM=$(curl -sSu "$AUTH" "$ES/_nodes/stats/jvm" | jq '[.nodes[].jvm.mem.heap_used_percent] | max')
+[[ "$JVM" -lt 80 ]] || { echo "Heap pressure: ${JVM}%"; exit 4; }
+echo "ES ready (status=$HEALTH heap=${JVM}%)"]]></code>
+      </example>
+    </section>
+
+    <see-also>
+      <link href="https://www.elastic.co/guide/index.html">Elastic Stack Documentation</link>
+      <link href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html">Elasticsearch Guide</link>
+      <link href="https://www.elastic.co/guide/en/logstash/current/index.html">Logstash Reference</link>
+      <link href="https://www.elastic.co/guide/en/kibana/current/index.html">Kibana Guide</link>
+      <link href="https://www.elastic.co/guide/en/beats/filebeat/current/index.html">Filebeat Documentation</link>
+      <link href="https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html">Elastic Cloud on Kubernetes</link>
+      <link href="https://www.elastic.co/guide/en/ecs/current/index.html">ECS schema</link>
+      <link href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index-lifecycle-management.html">ILM concepts</link>
+      <link href="https://opensearch.org/docs/latest/">OpenSearch</link>
+      <link href="https://vector.dev/docs/">Vector</link>
+      <link href="https://docs.fluentbit.io/">Fluent Bit</link>
+      <link href="https://github.com/IBM/Drain3">Drain3 (log clustering)</link>
+      <link href="https://www.shadecoder.com/topics/elk-stack-a-comprehensive-guide-for-2025">ELK Stack: A Comprehensive Guide for 2025</link>
+      <link href="https://logz.io/learn/complete-guide-elk-stack/">The Complete Guide to the ELK Stack</link>
+      <link href="https://logit.io/blog/post/kubernetes-logging-best-practices-elk-stack/">Kubernetes Logging Best Practices with ELK Stack</link>
+      <link href="https://sematext.com/guides/elk-stack/">What Is ELK Stack: Tutorial on How to Use It</link>
+      <link href="https://medium.com/@jeromedecinco/real-time-monitoring-with-elk-stack-solutions-and-best-practices-cc7b85ef0469">Real-time monitoring with ELK Stack</link>
+    </see-also>
+  </content>
+</methodology>
