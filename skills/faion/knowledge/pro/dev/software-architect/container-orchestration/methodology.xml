@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="container-orchestration">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Kubernetes architecture patterns, pod design, deployment strategies, autoscaling, persistent storage, RBAC, and security best practices for production workloads.</summary>
+    <tags>
+      <tag>kubernetes</tag>
+      <tag>container</tag>
+      <tag>orchestration</tag>
+      <tag>pod</tag>
+      <tag>deployment</tag>
+      <tag>autoscaling</tag>
+      <tag>security</tag>
+      <tag>storage</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Container Orchestration</title>
+    <summary>Kubernetes declarative model (desired state reconciliation) enables self-healing, horizontal scaling, and zero-downtime deployments — but misconfigured resource requests cause OOM kills and poor scheduling, missing liveness/readiness probes cause traffic to reach broken pods, and over-privileged service accounts create security blast radius. Each pattern addresses a specific operational failure mode.</summary>
+    <why>
+      <p>Kubernetes declarative model (desired state reconciliation) enables self-healing, horizontal scaling, and zero-downtime deployments — but misconfigured resource requests cause OOM kills and poor scheduling, missing liveness/readiness probes cause traffic to reach broken pods, and over-privileged service accounts create security blast radius. Each pattern addresses a specific operational failure mode.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Deploying a new service to a Kubernetes cluster (select pod pattern, set probes, set resource limits)</item>
+        <item>Choosing a deployment strategy for a high-risk release (canary vs blue-green)</item>
+        <item>Configuring autoscaling for queue-backed or event-driven workloads (KEDA)</item>
+        <item>Hardening a Kubernetes workload: RBAC, network policies, pod security standards</item>
+        <item>Migrating Docker Compose to Kubernetes manifests</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-VM or bare-metal deployment without container runtime — use systemd/supervisor instead</item>
+        <item>Serverless function with sub-second invocation pattern — K8s cold-start overhead is not justified</item>
+        <item>Development environment where Docker Compose is sufficient — K8s adds operational overhead with no benefit</item>
+        <item>Stateful workloads requiring POSIX file locking across nodes — ReadWriteMany volumes add complexity</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="kubernetes-architecture">
+      <p>Control plane components: API Server (front door for all cluster operations, validates and processes requests), etcd (distributed key-value store for cluster state), Scheduler (assigns pods to nodes based on resources, affinity, taints), Controller Manager (runs replication/node/endpoint/service-account controllers), Cloud Controller (integrates with cloud provider APIs).</p>
+      <p>Worker node components: kubelet (agent ensuring containers run in pods), kube-proxy (network proxy maintaining network rules), container runtime (containerd or other CRI-compliant runtime).</p>
+      <p>Resource hierarchy: Cluster → Namespace (isolation boundary) → Deployment/StatefulSet/DaemonSet → ReplicaSet → Pod → Container(s).</p>
+      <rule>
+        <statement>Always set both resource requests and resource limits on every container; never deploy to production with only limits or only requests.</statement>
+        <rationale>Requests determine scheduling: without them, the scheduler cannot place pods correctly, leading to node overcommit and OOM kills. Limits prevent noisy-neighbour CPU starvation and memory exhaustion. Missing either half breaks the Guaranteed or Burstable QoS contract the pod needs.</rationale>
+      </rule>
+    </section>
+
+    <section name="pod-design-patterns">
+      <list>
+        <item>Sidecar: deploy helper container alongside main application in the same pod. Shares localhost and pod volumes. Use for: log collection (Fluentd/Fluent Bit), service mesh proxy (Envoy/Linkerd-proxy), secrets injection (Vault Agent), file sync (git-sync). K8s 1.33+: init containers with restartPolicy: Always are native sidecars that start before main containers and terminate after them.</item>
+        <item>Ambassador: proxy container that hides external service complexity from the main container. Use for: database connection pooling, API gateway to external services, protocol translation, rate limiting to external APIs.</item>
+        <item>Adapter: standardises the output format of the main container for the rest of the cluster. Use for: log format normalisation (different apps to unified JSON), metrics conversion (custom format to Prometheus exposition format), protocol adaptation.</item>
+        <item>Init container: runs to completion before app containers start; if it fails, pod restart policy applies. Use for: database schema migration, configuration file generation, waiting for dependencies (pg_isready), downloading startup assets.</item>
+      </list>
+      <rule>
+        <statement>Use init containers for startup dependencies (database readiness, config download) rather than sleep loops or liveness probe workarounds in the main container.</statement>
+        <rationale>Sleep loops in main containers make startup time variable and unreliable. Init containers model the dependency explicitly: the pod does not start until every init container exits 0. This is visible in pod status and does not require custom logic in the application.</rationale>
+      </rule>
+    </section>
+
+    <section name="deployment-strategies">
+      <list>
+        <item>Rolling update (default): gradual replacement of old pods. Parameters: maxSurge (extra pods during update, absolute or %) and maxUnavailable (pods that can be offline). Best for standard deployments with minimal resource overhead.</item>
+        <item>Blue-green: two identical environments, instant traffic switch. Pros: instant rollback, no mixed versions, full pre-switch testing. Cons: double infrastructure cost during deployment, database schema changes need careful handling. Best for critical applications requiring zero-risk instant rollback.</item>
+        <item>Canary: gradual traffic shift to new version (2% → 25% → 75% → 100%). Pros: lowest risk, real production testing, metrics-based progression. Cons: requires sophisticated traffic management (Argo Rollouts, Flagger, Istio, Linkerd), application must tolerate multiple live versions. Best for risk-sensitive applications.</item>
+        <item>Recreate: terminate all pods, then create new. Best for development environments, non-critical workloads, and cases where old and new versions cannot coexist (incompatible schema).</item>
+      </list>
+      <rule>
+        <statement>Use canary deployment for any production change with high risk; validate success metrics (error rate, p99 latency) before advancing each traffic step.</statement>
+        <rationale>Canary limits blast radius to the percentage of traffic on the new version. If the new version degrades error rate above SLO, the rollback affects only that slice of traffic and can be automated via Flagger's metric analysis.</rationale>
+      </rule>
+    </section>
+
+    <section name="autoscaling-selection">
+      <rule>
+        <statement>Use KEDA for queue-backed or event-driven workloads that need scale-to-zero; use HPA for CPU/memory-driven scaling of always-on services.</statement>
+        <rationale>HPA requires a minimum of 1 replica and cannot scale to zero. KEDA's 60+ scalers (Kafka, RabbitMQ, SQS, PostgreSQL, Prometheus) allow precise scaling to consumer demand, including zero when queues are empty. For always-on HTTP services where CPU utilisation is the primary signal, HPA is simpler and sufficient.</rationale>
+      </rule>
+      <list>
+        <item>HPA: scale based on CPU, memory, or custom metrics. Requires metrics-server. Minimum replica count: 1. Best for HTTP services scaling on CPU/memory.</item>
+        <item>KEDA: scale based on external events (queue depth, Kafka consumer lag, HTTP requests). Scale to zero supported. 60+ scalers. Cron-based scaling. Best for batch, event-driven, and queue-consumer workloads.</item>
+        <item>VPA: automatically adjust resource requests/limits. Modes: Off (recommendations only), Initial (set at pod creation), Auto (update running pods, requires restart). Best for right-sizing workloads with unpredictable resource profiles.</item>
+      </list>
+      <p>QoS classes determine eviction priority under node pressure: Guaranteed (requests = limits for all containers) — evicted last; Burstable (requests &lt; limits) — medium priority; BestEffort (no requests or limits set) — evicted first. Production workloads should target Guaranteed or Burstable.</p>
+    </section>
+
+    <section name="rbac-and-network-security">
+      <rule>
+        <statement>Create a dedicated ServiceAccount per workload and bind only the minimum required verbs and resources; never use the default ServiceAccount for application pods.</statement>
+        <rationale>The default ServiceAccount is shared across all pods in a namespace. If one pod is compromised, its token allows access to every API resource the default SA can reach. Dedicated per-workload SAs limit blast radius: compromising one pod's SA grants access only to that workload's API permissions.</rationale>
+      </rule>
+      <list>
+        <item>RBAC design: use Role (namespace-scoped) for workload-specific access; ClusterRole only when cross-namespace or cluster-wide access is genuinely required. Audit ClusterRoleBindings regularly — they are the highest-risk RBAC objects.</item>
+        <item>Network policies: default Kubernetes allows all pod-to-pod communication. Apply deny-all ingress/egress as the baseline, then allowlist specific pod-to-pod flows. Require a CNI that enforces NetworkPolicy (Calico, Cilium, WeaveNet).</item>
+        <item>Pod security standards: Privileged (unrestricted, avoid in production), Baseline (minimal restrictions, prevents known privilege escalation), Restricted (hardened, requires non-root, drops all capabilities, read-only root filesystem). Apply Restricted for all new workloads.</item>
+      </list>
+      <rule>
+        <statement>Use distroless or minimal base images; never use root as the container user in production workloads.</statement>
+        <rationale>Distroless images contain only the application binary and runtime libraries — no shell, no package manager, no debugging tools. This eliminates the entire class of container breakout attacks that rely on shell access and reduces the CVE surface by removing unused OS packages.</rationale>
+      </rule>
+    </section>
+
+    <section name="secrets-management">
+      <list>
+        <item>External Secrets Operator: sync secrets from AWS Secrets Manager, GCP Secret Manager, HashiCorp Vault, or Azure Key Vault into Kubernetes Secrets. Rotation is automatic when the upstream secret changes.</item>
+        <item>Sealed Secrets: encrypt Kubernetes Secret manifests with a cluster-specific key, safe to commit to Git. Useful for GitOps workflows where all resources are stored in version control.</item>
+        <item>HashiCorp Vault with Vault Agent sidecar or CSI driver: dynamic secrets, fine-grained lease management, audit log of every secret access. Best for high-compliance environments.</item>
+        <item>Never commit raw secrets to Git. Enable etcd encryption at rest. Rotate secrets regularly.</item>
+      </list>
+      <p>2025 security practices: scan images with Trivy or Grype in CI pipeline; sign images with cosign/Sigstore and enforce signature verification at admission; generate and publish SBOM per image; use eBPF-based runtime security (Falco, Tetragon) for kernel-level syscall monitoring; implement zero-trust with service mesh mTLS for all pod-to-pod traffic.</p>
+    </section>
+
+    <section name="persistent-storage">
+      <rule>
+        <statement>Use CSI (Container Storage Interface) drivers for all persistent volume provisioning; do not use deprecated in-tree volume plugins or FlexVolume.</statement>
+        <rationale>In-tree volume plugins are deprecated and being removed from Kubernetes. CSI provides a stable interface for cloud storage (AWS EBS, GCP Persistent Disk, Azure Disk) and enables volume snapshots, expansion, and cloning without cluster-level changes.</rationale>
+      </rule>
+      <list>
+        <item>ReadWriteOnce (RWO): single node read-write. Suitable for databases and stateful apps where only one pod writes at a time.</item>
+        <item>ReadOnlyMany (ROX): multiple nodes read-only. Suitable for shared configuration or reference data volumes.</item>
+        <item>ReadWriteMany (RWX): multiple nodes read-write. Requires NFS-compatible storage (EFS, Filestore, Azure Files). Adds latency and complexity — avoid unless shared writes are a genuine requirement.</item>
+        <item>ReadWriteOncePod (RWOP, K8s 1.27+): single pod read-write. Stronger guarantee than RWO: prevents two pods on the same node sharing the volume.</item>
+      </list>
+      <p>Storage best practices: use dynamic provisioning over static PersistentVolumes; set volumeBindingMode: WaitForFirstConsumer for multi-zone clusters to avoid cross-zone volume attachment; enable allowVolumeExpansion on StorageClass; use VolumeSnapshots for backup; use Velero for disaster recovery of persistent volumes.</p>
+    </section>
+
+    <templates>
+      <template path="templates/deployment.yaml" purpose="Production Deployment with liveness/readiness/startup probes, resource limits, non-root security context"/>
+      <template path="templates/hpa.yaml" purpose="HPA with CPU + custom metric (requests_per_second) targets"/>
+      <template path="templates/keda-scaledobject.yaml" purpose="KEDA ScaledObject for Kafka consumer lag scaling with scale-to-zero"/>
+    </templates>
+
+    <see-also>
+      <link href="https://kubernetes.io/docs/concepts/architecture/"/>
+      <link href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/"/>
+      <link href="https://kubernetes.io/docs/concepts/configuration/overview/"/>
+      <link href="https://keda.sh/"/>
+    </see-also>
+  </content>
+</methodology>
