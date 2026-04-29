@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-rate-limiting">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Request throttling with sliding-window, token-bucket, or fixed-window algorithms via Redis. Every public endpoint needs per-identity limit with RateLimit-* headers per IETF draft.</summary>
+    <tags>
+      <tag>rate-limiting</tag>
+      <tag>api</tag>
+      <tag>throttling</tag>
+      <tag>anti-abuse</tag>
+      <tag>redis</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>API Rate Limiting</title>
+    <summary>Server-side request throttling using sliding-window, token-bucket, or fixed-window algorithms backed by a shared store (Redis/Valkey). Every public endpoint must have a per-identity limit; responses include `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`, and `Retry-After` headers per the IETF draft. In-process counters are forbidden for multi-replica deployments.</summary>
+    <why>
+      <p>Without shared-store rate limiting, a single client can exhaust server resources or bias billing. The IETF headers let well-behaved clients self-throttle, preventing retry storms. Sliding-window avoids the 2x burst at window boundaries that fixed-window allows.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Public APIs exposed to untrusted callers (free/paid tiers, third-party integrations)</item>
+        <item>Single-server deployments where one client can DoS the box</item>
+        <item>Expensive endpoints: search, exports, AI calls, OAuth token mint, mailers</item>
+        <item>Per-tenant fairness in multi-tenant SaaS</item>
+        <item>Abuse protection on `/login`, `/register`, `/forgot-password`</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure internal RPC behind a private network or service mesh — use mTLS quotas instead</item>
+        <item>Latency-critical hot paths where a Redis round-trip would double response cost — push limiting to nginx/envoy</item>
+        <item>Single-user CLI tools or scripts on developer laptops</item>
+        <item>Idempotent webhooks from trusted partners with their own backpressure (Stripe, GitHub)</item>
+      </list>
+    </when-not-to-use>
+    <section name="algorithms">
+      <note>Fixed-window, sliding-window, and token-bucket algorithms — when to pick each and Python implementations.</note>
+      <rule>
+        <statement>Use sliding-window for most API endpoints; use token-bucket for burst-tolerant endpoints (uploads, batch APIs); use fixed-window only for billing/quota where exact counts matter.</statement>
+        <rationale>Fixed-window allows 2x burst at window boundary (199 req at 10:59:59 + 100 at 11:00:00). Sliding-window distributes requests fairly. Token-bucket absorbs legitimate bursts.</rationale>
+      </rule>
+      <rule>
+        <statement>Use a shared store (Redis/Valkey) for all rate-limit counters; in-process counters (dict, lru_cache) are forbidden for any deployment with more than one replica.</statement>
+        <rationale>In-process counters diverge across replicas: each server independently allows the full limit, multiplying effective throughput by the replica count.</rationale>
+      </rule>
+      <section name="sliding-window">
+        <example type="good" title="Redis sliding-window implementation">
+          <code lang="python"><![CDATA[
+import time
+import redis.asyncio as redis
+
+class SlidingWindowRateLimiter:
+    def __init__(self, limit: int, window_seconds: int, redis_client):
+        self.limit = limit
+        self.window = window_seconds
+        self.redis = redis_client
+
+    async def is_allowed(self, key: str) -> bool:
+        now = time.time()
+        pipe = self.redis.pipeline()
+        pipe.zremrangebyscore(key, 0, now - self.window)
+        pipe.zadd(key, {str(now): now})
+        pipe.zcard(key)
+        pipe.expire(key, self.window)
+        _, _, count, _ = await pipe.execute()
+        return count <= self.limit
+]]></code>
+        </example>
+        <reference path="templates/sliding_window.py">Full FastAPI middleware using Redis sliding window</reference>
+      </section>
+      <section name="token-bucket">
+        <example type="good" title="Token bucket algorithm">
+          <code lang="python"><![CDATA[
+class TokenBucketRateLimiter:
+    def __init__(self, bucket_size: int, refill_rate: float):
+        self.bucket_size = bucket_size
+        self.refill_rate = refill_rate  # tokens per second
+        self.buckets: dict = {}
+
+    def is_allowed(self, key: str, tokens: int = 1) -> bool:
+        now = time.time()
+        bucket = self.buckets.get(key, {"tokens": self.bucket_size, "last_refill": now})
+        elapsed = now - bucket["last_refill"]
+        bucket["tokens"] = min(self.bucket_size, bucket["tokens"] + elapsed * self.refill_rate)
+        bucket["last_refill"] = now
+        if bucket["tokens"] >= tokens:
+            bucket["tokens"] -= tokens
+            self.buckets[key] = bucket
+            return True
+        return False
+]]></code>
+      </example>
+      </section>
+      <section name="key-selection">
+        <rule>
+          <statement>Key on the most expensive identity available: api_key &gt; user_id &gt; session &gt; device_id &gt; ip. Never key solely on IP.</statement>
+          <rationale>IP-based limiting punishes mobile carriers and corporate NATs sharing a single egress IP; api_key or user_id provides per-account fairness.</rationale>
+        </rule>
+        <rule>
+          <statement>Use Redis TIME command (not time.time()) for the sliding-window timestamp to avoid clock skew between app servers.</statement>
+          <rationale>App servers' clocks can diverge by seconds; using a central Redis timestamp ensures consistent window boundaries.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="headers-and-responses">
+      <note>IETF header names, 429 response shape, Retry-After semantics, and tiered limit examples.</note>
+      <rule>
+        <statement>Every rate-limited response (including 200s) must include RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After on 429 responses per the IETF draft.</statement>
+        <rationale>Well-behaved clients (Stripe SDK, axios-retry) auto-honor these headers and back off; without them clients hammer in tight retry loops.</rationale>
+      </rule>
+      <example type="good" title="RateLimit headers in 200 response">
+        <code lang="http"><![CDATA[
+HTTP/1.1 200 OK
+RateLimit-Limit: 100
+RateLimit-Remaining: 95
+RateLimit-Reset: 1735689600
+]]></code>
+      </example>
+      <example type="good" title="429 Too Many Requests with Retry-After">
+        <code lang="http"><![CDATA[
+HTTP/1.1 429 Too Many Requests
+Retry-After: 60
+RateLimit-Limit: 100
+RateLimit-Remaining: 0
+RateLimit-Reset: 1735689600
+Content-Type: application/json
+
+{"error": {"code": "RATE_LIMIT_EXCEEDED", "message": "Too many requests", "retryAfter": 60, "limit": 100, "window": "1h"}}
+]]></code>
+      </example>
+      <section name="tiered-limits">
+        <rule>
+          <statement>Tier limit values are business decisions; agents must not finalize them — surface as a question to the human before implementing.</statement>
+          <rationale>Limit values affect pricing, conversion, and abuse surface. Wrong limits damage revenue or allow DoS.</rationale>
+        </rule>
+        <p>Example tiered limit table (values are illustrative, not defaults):</p>
+        <list>
+          <item>Free: 100 req/hour, burst 10</item>
+          <item>Plus: 1000 req/hour, burst 50</item>
+          <item>Pro: 10000 req/hour, burst 200</item>
+          <item>Enterprise: negotiated / unlimited</item>
+        </list>
+      </section>
+      <section name="endpoint-specific-limits">
+        <rule>
+          <statement>Apply stricter limits to expensive endpoints (search, export, AI calls, OAuth mint) than to cheap read endpoints; document per-endpoint limits in the OpenAPI spec via x-rate-limit extensions.</statement>
+          <rationale>A single export call may consume 100x the resources of a status check; uniform limits either over-restrict cheap endpoints or under-protect expensive ones.</rationale>
+        </rule>
+        <rule>
+          <statement>Whitelist monitoring and health-check IPs/keys; otherwise Pingdom and your own synthetic monitors will trip rate limits.</statement>
+          <rationale>Monitoring traffic is trusted and predictable; rate-limiting it causes false alerts and disguises real attacks.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="antipatterns">
+      <note>In-process counters, proxy IP misuse, missing Retry-After, and clock skew errors.</note>
+      <antipattern>
+        <description>In-process dict or lru_cache counters for rate limiting in multi-replica deployments.</description>
+        <reason>Each replica allows its own full quota; a client hitting N replicas gets N times the intended limit.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Keying the rate limiter on request.client.host which returns 127.0.0.1 behind a reverse proxy.</description>
+        <reason>Every client appears as the same IP; the first caller trips the global limit, blocking all users simultaneously.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Returning 429 without a Retry-After header.</description>
+        <reason>Well-behaved clients without Retry-After retry immediately in tight loops, amplifying load during the overload event.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Sliding-window test that asserts count &lt; limit instead of count &lt;= limit.</description>
+        <reason>Off-by-one allows one extra request beyond the stated limit; boundary tests must include the exact-limit case.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using time.time() on app servers for sliding-window timestamps instead of Redis TIME command.</description>
+        <reason>Servers' clocks drift by seconds; requests get counted in wrong windows, allowing bursts at clock-divergence boundaries.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Allowing the agent to finalize tier limit values (100/hour, 1000/hour) without human approval.</description>
+        <reason>Tier limits are pricing and trust decisions; wrong values create revenue impact or DoS exposure that is hard to walk back.</reason>
+      </antipattern>
+      <rule>
+        <statement>Separate abuse limits (low, IP-based, short window, returns 429) from quota limits (high, key-based, long window, returns 402 or custom) and document the choice per route.</statement>
+        <rationale>Conflating abuse protection with billing quotas causes either over-restriction of legitimate users or inadequate abuse prevention.</rationale>
+      </rule>
+      <reference path="templates/k6-rate-limit-check.js">k6 script to verify limit headers and 429 boundary behavior</reference>
+    </section>
+    <section name="agentic-workflow">
+      <p>Drive rate-limit work as: (1) classify endpoints by cost/abuse-risk, (2) pick algorithm per class, (3) implement with shared store, (4) generate load test that hits the limit and verifies headers + 429 body. Subagent reads the existing API surface (OpenAPI or route table), proposes a tier table, generates middleware + tests in one pass. Human reviews tier numbers before deploy — those are business decisions, not code decisions.</p>
+    </section>
+    <section name="recommended-subagents">
+      <list>
+        <item>`faion-api-agent` — owns API contracts, can derive limits from OpenAPI `x-rate-limit` extensions.</item>
+        <item>`faion-sdd-executor-agent` — implements middleware + tests under SDD quality gates.</item>
+        <item>`faion-browser-agent` — drives k6/Locust to verify limits work end-to-end (via shell, not browser).</item>
+      </list>
+    </section>
+    <section name="cli-tools">
+      <list>
+        <item>`redis-cli` — Inspect counters, debug stuck keys. apt install redis-tools</item>
+        <item>`k6` — Generate sustained load to validate limits. https://k6.io/docs</item>
+        <item>`locust` — Python-based load gen, scriptable scenarios. pip install locust</item>
+        <item>`wrk` — Quick burst tests. apt install wrk</item>
+        <item>`hey` — Lightweight HTTP load tool. go install github.com/rakyll/hey</item>
+        <item>`nginx -t` — Validate `limit_req_zone` syntax. bundled</item>
+      </list>
+    </section>
+    <section name="services-and-platforms">
+      <list>
+        <item>Cloudflare Rate Limiting (SaaS) — Edge layer; pair with origin limiter. faion-net already uses CF DNS. Agent-friendly via API + Terraform.</item>
+        <item>AWS API Gateway throttling (SaaS) — Per-stage + per-method limits. Agent-friendly via boto3.</item>
+        <item>Kong Gateway (OSS) — Pluggable; sliding-window, response-rate-limit plugins. Agent-friendly via Admin API.</item>
+        <item>Envoy `local_ratelimit` / `ratelimit` (OSS) — Sidecar pattern; pairs with Redis service. Agent-friendly via config.</item>
+        <item>nginx `limit_req`/`limit_conn` (OSS) — Built-in, leaky bucket. Already in faion-net stack. Agent-friendly via text cfg.</item>
+        <item>Redis / Valkey (OSS) — Shared store for distributed counters; valkey-server already on faion-net. Agent-friendly.</item>
+        <item>Upstash Redis (SaaS) — Serverless-friendly when no persistent Redis. Agent-friendly via REST.</item>
+        <item>`slowapi` (Python) (OSS) — FastAPI/Flask wrapper around `limits` library. Agent-friendly.</item>
+      </list>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Key on the **most expensive identity available**: `api_key > user_id > session > device_id > ip`.</item>
+        <item>Use sliding-window log only when limits are small (&lt;1k/window). Otherwise sliding-window counter (two buckets, weighted).</item>
+        <item>Token bucket for burst-tolerant endpoints (uploads, batch APIs); fixed-window for billing/quota where exact counts matter.</item>
+        <item>Always emit `RateLimit-Policy`, `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` per IETF draft — clients (Stripe SDK, axios-retry) auto-honor them.</item>
+        <item>Fail-open if Redis is down on read endpoints; fail-closed on writes/auth — choose per route, document the choice.</item>
+        <item>Separate **abuse limits** (low, IP-based, short window, returns 429) from **quota limits** (high, key-based, long window, returns 402 or custom).</item>
+        <item>Run a "pressure test" in staging weekly; sustained load reveals leaky-bucket misconfigurations before customers do.</item>
+        <item>Whitelist your monitoring + health-check IPs/keys; otherwise Pingdom will trip your own limits.</item>
+      </list>
+    </section>
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents asked to "add rate limiting" love in-memory dict implementations — explicitly forbid; require shared store.</item>
+        <item>LLMs hallucinate `redis.set_with_ttl()` API — use `setex` or `set(..., ex=...)`. Pin to `redis>=5` and ask for type-checked code.</item>
+        <item>When an agent runs load tests against its own limited backend, it can lock itself out for hours; always provision a bypass header (`X-Internal-Token`) for the agent's own probes and rotate it.</item>
+        <item>Code-gen often forgets the **clock skew** between app servers — sliding-window math must use Redis `TIME` cmd, not `time.time()`.</item>
+        <item>Agents writing tests sometimes assert `&lt; limit` instead of `&lt;= limit` — off-by-one drift; always include a boundary test.</item>
+        <item>LLMs default to keying on `request.client.host` which behind a proxy is `127.0.0.1` — require `X-Forwarded-For` parsing with trusted-proxy list.</item>
+        <item>Human-in-loop checkpoint: tier numbers (limit values) are pricing decisions — never let the agent finalize them; surface as a question.</item>
+      </list>
+    </section>
+    <section name="references">
+      <list>
+        <item>IETF draft "RateLimit Headers" — https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/</item>
+        <item>Stripe rate limits — https://stripe.com/docs/rate-limits</item>
+        <item>Cloudflare Rate Limiting docs — https://developers.cloudflare.com/waf/rate-limiting-rules/</item>
+        <item>Rate limiting at scale (Figma engineering) — https://www.figma.com/blog/an-alternative-approach-to-rate-limiting/</item>
+        <item>Redis rate-limiting glossary — https://redis.io/glossary/rate-limiting/</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/sliding_window.py" purpose="Redis sorted-set sliding-window implementation for FastAPI middleware"/>
+      <template path="templates/k6-rate-limit-check.js" purpose="k6 load script verifying rate-limit headers and 429 boundary behavior"/>
+    </templates>
+  </content>
+</methodology>

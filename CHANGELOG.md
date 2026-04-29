@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 solo/dev methodologies → methodology.xml (xp-extreme-programming, accessibility, css-in-js-advanced; feature-045 batch DR)
+- migrate: 3/3 solo/dev/software-developer API methodologies → methodology.xml (api-graphql, api-openapi-spec, api-rate-limiting; feature-045 batch DT)
 - migrate: 3/3 paths to methodology.xml (ui-lib-patterns, nextjs-app-router, nodejs-service-layer-architecture; feature-045 batch DJ)
 - migrate: 3/3 frontend-developer methodologies → methodology.xml (shadcn-ui, shadcn-ui-architecture, storybook-setup; feature-045 batch DF)
 - migrate: 3/3 batch DA methodologies → methodology.xml (trunk-based-dev-patterns, trunk-based-dev-principles, framework-decomposition-patterns; feature-045 batch DA)
