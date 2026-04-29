@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tool-use-function-calling">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>LLMs generate tool calls as structured JSON. Keep catalogues ≤20 per call; validate arguments before execution to prevent hallucination.</summary>
+    <tags>
+      <tag>function-calling</tag>
+      <tag>tool-use</tag>
+      <tag>agents</tag>
+      <tag>structured-output</tag>
+      <tag>openai</tag>
+      <tag>claude</tag>
+      <tag>gemini</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Tool Use and Function Calling</title>
+
+    <summary>Function calling enables LLMs to interact with external systems by generating structured JSON specifying which tool to call and with what parameters. The LLM does not execute functions — it produces the call specification; your code executes it. Keep the tool catalogue per call to ≤20; use RAG-over-tools to select the relevant subset for larger catalogues. Always validate LLM-generated arguments before execution.</summary>
+
+    <why>
+      <p>Tool calling is the foundation of agentic AI systems. Without it, agents cannot fetch live data, write records, or trigger external workflows. The key risk is argument hallucination — the LLM invents plausible but wrong parameter values (e.g., wrong user IDs). Explicit parameter names and structured error returns mitigate this; raw string passing does not.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Agent needs to fetch live data (weather, prices, user records) the LLM does not know.</item>
+        <item>Workflow requires state changes: writing files, sending messages, creating DB records.</item>
+        <item>Output must be structured JSON consumed downstream — tools enforce the schema.</item>
+        <item>Building multi-step agentic loops where each step depends on real execution results.</item>
+        <item>Connecting an LLM to internal APIs or microservices.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Query is pure text reasoning with no external dependency (summarize, translate, brainstorm).</item>
+        <item>Tool roundtrip latency is unacceptable and pre-fetched context would suffice.</item>
+        <item>LLM tool-selection accuracy is low (&lt;70%) — use structured output or hardcoded routing instead.</item>
+        <item>Single, fully deterministic function is always called — skip LLM selection, call it directly.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="function-calling-flow">
+      <p>The function calling lifecycle consists of five steps:</p>
+      <list>
+        <item>Context Assembly: system message + tool definitions + user message → LLM input</item>
+        <item>Intent Analysis: LLM decides if a tool call is needed</item>
+        <item>Tool Selection: LLM picks tool(s) and extracts parameters as JSON</item>
+        <item>Execution: your code runs the actual function with validated arguments</item>
+        <item>Result Processing: function result appended to context → LLM generates final response</item>
+      </list>
+      <rule>
+        <statement>Never pass raw LLM-generated arguments directly to functions without validation.</statement>
+        <rationale>LLMs hallucinate parameter values (e.g., wrong IDs, invented enums). Structured error returns with field-level messages let the model self-correct on retry.</rationale>
+      </rule>
+    </section>
+
+    <section name="tool-choice-modes">
+      <p>LLM providers support multiple tool choice modes to control when and how function calls are made:</p>
+      <list>
+        <item>auto — LLM decides whether to call tools; use for general conversations</item>
+        <item>required (OpenAI) / any (Claude) — LLM must call at least one tool; use for extraction tasks</item>
+        <item>none — tools disabled for this call; use for follow-up questions</item>
+        <item>specific tool name — force a named tool; use for deterministic workflows</item>
+      </list>
+      <rule>
+        <statement>Keep the tool catalogue to ≤20 per call. Use RAG-over-tools to select the relevant subset for larger catalogues.</statement>
+        <rationale>Each tool definition consumes input tokens on every call. Beyond ~20 tools, selection accuracy degrades. Dynamic selection scales to 100+ tools without accuracy loss.</rationale>
+      </rule>
+    </section>
+
+    <section name="provider-format-differences">
+      <p>Each LLM provider (OpenAI, Claude, Gemini, Ollama) uses different field names and message structures for tool definitions and responses, but the underlying concept is identical. An abstraction layer or provider-specific branches are required when targeting multiple providers.</p>
+      <rule>
+        <statement>OpenAI uses tools/tool_calls; Claude uses tools/tool_use content blocks; Gemini uses function_declarations/function_call.</statement>
+        <rationale>Providers share the concept but differ in field names and message structure. Use an abstraction layer or provider-specific branches when targeting multiple providers.</rationale>
+      </rule>
+      <example type="good" title="OpenAI tool definition and response handling">
+        <code lang="python"><![CDATA[
+# OpenAI: define tool
+tool = {
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "Get current weather for a location",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {"type": "string", "description": "City and country"},
+                "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+            },
+            "required": ["location"],
+            "additionalProperties": False
+        },
+        "strict": True
+    }
+}
+
+# OpenAI: handle response
+for tool_call in response.choices[0].message.tool_calls:
+    name = tool_call.function.name
+    args = json.loads(tool_call.function.arguments)
+    result = dispatch(name, args)
+    messages.append({
+        "role": "tool",
+        "tool_call_id": tool_call.id,
+        "content": json.dumps(result)
+    })
+]]></code>
+      </example>
+      <example type="good" title="Claude tool definition and response handling">
+        <code lang="python"><![CDATA[
+# Claude: define tool
+tool = {
+    "name": "get_weather",
+    "description": "Get current weather for a location",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "location": {"type": "string"},
+            "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+        },
+        "required": ["location"]
+    }
+}
+
+# Claude: handle response (tool_use content blocks)
+for block in response.content:
+    if block.type == "tool_use":
+        result = dispatch(block.name, block.input)
+        tool_results.append({
+            "type": "tool_result",
+            "tool_use_id": block.id,
+            "content": json.dumps(result)
+        })
+]]></code>
+      </example>
+    </section>
+
+    <section name="agentic-loop">
+      <p>Agentic loops orchestrate multiple function calls and LLM reasoning cycles. Four patterns are common:</p>
+      <list>
+        <item>Single tool call: User → LLM → one tool → execute → response</item>
+        <item>Parallel calls: LLM returns multiple tool_calls simultaneously → execute all → aggregate results → response</item>
+        <item>Sequential (agentic): LLM → tool A → result → LLM → tool B → result → … → response</item>
+        <item>Tool router: router LLM selects tool subset → specialist LLM executes → response; best for &gt;20 tools</item>
+      </list>
+      <rule>
+        <statement>Always set a max_iterations guard (10–20) on every agentic loop to prevent infinite execution.</statement>
+        <rationale>Without an iteration cap, a malformed tool result or persistent LLM confusion causes unbounded token spend and external API calls.</rationale>
+      </rule>
+    </section>
+
+    <section name="provider-feature-matrix">
+      <p>LLM providers differ in their tool-calling capabilities. Understand your target provider's constraints before implementing:</p>
+      <list>
+        <item>Parallel tool calls: OpenAI Yes, Claude Yes, Gemini Yes, Local (Ollama) model-dependent</item>
+        <item>Streaming tool calls: OpenAI Yes, Claude Yes, Gemini Yes, Local limited</item>
+        <item>Max tools per call: OpenAI 128, Claude 64, Gemini 128, Local model-dependent</item>
+        <item>Interleaved thinking: Claude only (extended thinking mode)</item>
+        <item>Structured output: OpenAI JSON mode + tools, Claude tools only, Gemini JSON mode + tools</item>
+      </list>
+    </section>
+
+    <section name="tool-naming-and-description-rules">
+      <rule>
+        <statement>Use snake_case action-verb names: get_user_orders, create_ticket, send_email — never generic nouns like orders or data.</statement>
+        <rationale>The LLM selects tools by name+description similarity to user intent. Action-verb names reduce ambiguity and improve selection accuracy, especially in dense catalogues.</rationale>
+      </rule>
+      <rule>
+        <statement>Write descriptions that state the trigger condition, not just what the tool does: "Use when user asks about weather for a location" beats "Gets weather data".</statement>
+        <rationale>LLM tool selection is driven by the description. Explicit trigger phrases reduce false positives (wrong tool called) and false negatives (tool not called when needed).</rationale>
+      </rule>
+      <list>
+        <item>One tool, one responsibility — never multiplex unrelated actions into a single tool</item>
+        <item>Consistent patterns across related tools: similar tools should have similar parameter shapes</item>
+        <item>Minimize required parameters — sensible defaults reduce LLM argument errors</item>
+        <item>Include examples in parameter descriptions for enum values and format expectations</item>
+      </list>
+    </section>
+
+    <section name="parameter-schema-rules">
+      <rule>
+        <statement>Every parameter must have a description field. Never rely on the name alone to communicate meaning.</statement>
+        <rationale>LLMs infer parameter intent from the description. Unnamed enum values like ["v1","v2"] are opaque; a description saying "API version: v1=legacy, v2=current" eliminates guessing.</rationale>
+      </rule>
+      <rule>
+        <statement>Use additionalProperties: false and strict: true (OpenAI) in production schemas to prevent hallucinated fields.</statement>
+        <rationale>Without strict mode, the LLM may add plausible-sounding fields that your code ignores silently, masking errors. Strict mode causes an explicit error instead.</rationale>
+      </rule>
+      <list>
+        <item>Use enum for all bounded string values — do not rely on free-text for controlled vocabularies</item>
+        <item>Use format annotations: "date-time", "date", "email", "uri" where applicable</item>
+        <item>Never put secrets, connection strings, or credentials in tool definitions — they are sent to the LLM</item>
+        <item>Keep total tool definitions under 4k tokens to avoid context pressure at high tool-count</item>
+      </list>
+    </section>
+
+    <section name="error-handling">
+      <rule>
+        <statement>Return structured error objects with error_code and message fields — never raise Python exceptions back to the LLM.</statement>
+        <rationale>The LLM cannot catch exceptions. A structured {"error": "USER_NOT_FOUND", "message": "..."} lets the model explain the failure and optionally retry with corrected arguments.</rationale>
+      </rule>
+      <example type="good" title="Structured error return pattern">
+        <code lang="python"><![CDATA[
+def get_user(user_id: str) -> dict:
+    user = db.find(user_id)
+    if user is None:
+        return {
+            "error": "USER_NOT_FOUND",
+            "message": f"No user with id={user_id!r}. Check the ID or use list_users first."
+        }
+    return {"id": user.id, "name": user.name, "email": user.email}
+]]></code>
+      </example>
+      <example type="bad" title="Exception propagation reaches the LLM as an opaque error">
+        <code lang="python"><![CDATA[
+def get_user(user_id: str) -> dict:
+    return db.find(user_id).to_dict()  # raises AttributeError on None
+]]></code>
+      </example>
+    </section>
+
+    <section name="security-rules">
+      <rule>
+        <statement>Require explicit human confirmation for any destructive or irreversible operation before execution.</statement>
+        <rationale>LLMs can be prompted to trigger deletions, payments, or sends through injection attacks or misinterpretation. An out-of-band confirmation gate blocks accidental or malicious execution.</rationale>
+      </rule>
+      <list>
+        <item>Validate all LLM-generated arguments against expected types, ranges, and allowed values before execution</item>
+        <item>Sandbox tool execution environments where possible (no file system access, no shell commands)</item>
+        <item>Log all tool calls with full arguments and results for audit — include user ID and session ID</item>
+        <item>Apply rate limiting per tool, per user to protect external APIs</item>
+        <item>Never expose internal IDs, schema names, or system paths in tool definitions or error messages</item>
+      </list>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Passing all 50+ available tools to every LLM call.</description>
+        <reason>Token cost grows linearly with tool count. At 50 tools, selection accuracy drops significantly. Use RAG-over-tools: embed all tool descriptions, retrieve the top 5–10 by cosine similarity to the user query.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Accepting free-text from LLM for parameters that should be typed (e.g., user_id as unvalidated string).</description>
+        <reason>LLMs hallucinate IDs and enum values. Always validate against a known set or fetch from a prior tool call result; never trust a naked identifier generated from thin air.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Silent success on tool failure — returning {} or None instead of an error object.</description>
+        <reason>The LLM interprets an empty result as success and continues reasoning on missing data, producing confident but wrong answers. Explicit error codes allow the model to stop and report the problem.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agentic loop without max_iterations guard.</description>
+        <reason>A tool returning unexpected output or an LLM stuck in a reasoning loop causes unbounded API calls and cost. Cap at 10–20 iterations and surface a max-iterations error.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/tool-dispatch.py" purpose="Registry-based dispatcher implementing validation, error handling, and all rules above"/>
+      <template path="templates/tool-definitions.json" purpose="Example tool definitions in OpenAI and Claude format"/>
+    </templates>
+
+  </content>
+</methodology>
