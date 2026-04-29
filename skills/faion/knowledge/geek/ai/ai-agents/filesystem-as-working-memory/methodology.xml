@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="filesystem-as-working-memory">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Offload large tool results to filesystem working memory, pass back only paths. Summarize context only when utilization hits 85% AND no offloadable blobs remain.</summary>
+    <tags>
+      <tag>agent-architecture</tag>
+      <tag>working-memory</tag>
+      <tag>context-management</tag>
+      <tag>long-running-agents</tag>
+      <tag>state-persistence</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Filesystem as Working Memory — Offload Before Summarize</title>
+    <summary>Give every long-running agent a write_file / read_file / ls tool surface backed by real disk, S3, or a state-dict virtual FS. Whenever a tool produces a large blob (search dump, full document, raw API response), write it to the FS and pass back only a filename plus a short snippet. Reserve LLM-based context summarization for the moment context hits ~85% AND there is nothing left to offload — file offload preserves information losslessly, summarization does not.</summary>
+    <why>
+      <p>LangChain's "Deep Agents" pattern and the "Anatomy of an Agent Harness" report converge on a single observation: agents that summarize prematurely lose facts they will need three turns later, while agents that offload to a filesystem keep every fact recoverable on demand. Treating the FS as working memory turns every tool result into a referenceable artifact: cheap to keep, cheap to skip, cheap to re-read at the precision the next step actually needs. The result is a hard upper bound on context size that does not require lossy compression.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Research agents reading more than 5 documents per task.</item>
+        <item>Codegen across many files (Claude Code, Aider, OpenHands, Cursor agents).</item>
+        <item>Any task expected to run more than ~20 turns.</item>
+        <item>Pipelines where step N's output is consumed by step N+1 — paths flow, not blobs.</item>
+        <item>Agents that must survive process restart (FS persists, conversation does not).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Short chat sessions under ~10 turns — the FS abstraction adds ceremony with no payoff.</item>
+        <item>Single-document QA — the document already fits in context once.</item>
+        <item>Hard real-time loops where every disk write adds unacceptable latency.</item>
+        <item>Untrusted code execution where a writable FS is itself a security problem.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Offload before summarize">
+      <rule>
+        <statement>Any tool whose output exceeds ~2000 tokens MUST write the full output to the agent's filesystem and return only a path plus a short snippet (first ~200 tokens or a structured digest). Summarization of conversation history runs only after context utilization crosses 85% AND no offloadable blobs remain in context.</statement>
+        <rationale>File offload is lossless and reversible — the agent can re-read the original at any precision later. Summarization is lossy and one-way; doing it first throws away information the agent might need to recover.</rationale>
+      </rule>
+    </section>
+    <section name="Why two thresholds">
+      <p>Two thresholds keep behaviour predictable across short and long runs:</p>
+      <list>
+        <item>Per-tool-result threshold (~2000 tokens) — applies on every tool call, prevents single oversized blobs from dominating the window.</item>
+        <item>Conversation threshold (~85% of context window) — applies once per turn, triggers summarization only when offload alone is no longer enough.</item>
+      </list>
+      <example type="good">
+        <code lang="python"><![CDATA[# Tool wrapper offloads when its output is large.
+def web_search(query: str) -> dict:
+    raw = provider.search(query)            # full HTML/JSON response
+    if token_count(raw) > 2000:
+        path = fs.write(f"search/{slug(query)}.json", raw)
+        return {"path": path, "head": raw[:600], "kind": "offloaded"}
+    return {"inline": raw, "kind": "inline"}]]></code>
+        <note>Result envelope is small and uniform; agent can choose to re-read.</note>
+      </example>
+      <example type="bad">
+        <code lang="python"><![CDATA[def web_search(query: str) -> str:
+    return provider.search(query)           # 30k tokens straight into context]]></code>
+        <note>One call eats a quarter of the window; chains of these force premature summarization.</note>
+      </example>
+      <antipattern>
+        <description>Summarizing the conversation at the first sign of pressure (50-60% utilization) instead of offloading the next tool result.</description>
+        <reason>Lossy compression applied while reversible space-savings are still available — the agent loses recoverable facts to save tokens it didn't need to save yet.</reason>
+      </antipattern>
+    </section>
+    <section name="Minimum FS tool surface">
+      <p>Four tools — write_file, read_file, ls, grep — are sufficient; avoid wrapping every operation in its own tool.</p>
+      <rule>
+        <statement>Expose exactly four FS tools to the agent — write_file(path, content), read_file(path, offset?, limit?), ls(path?), grep(pattern, path?) — and route every offload/recall through them.</statement>
+        <rationale>Four primitives compose like Unix utilities; adding move/copy/append separately bloats the tool list and makes the agent pick wrong tools (see bundle-vs-split-tools at ~25 tools).</rationale>
+      </rule>
+      <example type="good">
+        <code lang="json"><![CDATA[{
+  "name": "read_file",
+  "description": "Read a file from agent working memory. Use offset+limit to stream large files in chunks.",
+  "input_schema": {
+    "type": "object",
+    "required": ["path"],
+    "properties": {
+      "path": {"type": "string"},
+      "offset": {"type": "integer", "default": 0},
+      "limit": {"type": "integer", "default": 2000}
+    }
+  }
+}]]></code>
+        <note>Default limit forces streaming — the agent never accidentally re-loads a 50k-token file in full.</note>
+      </example>
+    </section>
+    <section name="Path conventions">
+      <rule>
+        <statement>Use a stable directory taxonomy — search/, docs/, plan/, scratch/ — and let SKILL or system prompt list it; never let the agent invent ad-hoc top-level folders per call.</statement>
+        <rationale>A predictable taxonomy makes ls a useful navigation aid; ad-hoc paths force the agent to remember names instead of discovering them.</rationale>
+      </rule>
+      <list>
+        <item>search/ — raw search results (one file per query).</item>
+        <item>docs/ — fetched URLs and document downloads.</item>
+        <item>plan/ — TODO files, task graphs, intermediate plans.</item>
+        <item>scratch/ — agent's own notes between turns.</item>
+      </list>
+    </section>
+    <section name="Persistence">
+      <rule>
+        <statement>The FS backing store MUST persist into the same checkpointer as conversation state, so resume-after-failure recovers files alongside messages.</statement>
+        <rationale>If files survive but messages don't (or vice versa) the agent wakes up with dangling references — pointers to artifacts it can no longer interpret, or summaries of files that no longer exist.</rationale>
+      </rule>
+      <antipattern>
+        <description>FS in tmpfs / per-process RAM, conversation in Postgres — process restart leaves the agent with file paths that 404.</description>
+        <reason>Memory model splits across two persistence boundaries; agent's references decay independently of its own awareness of them.</reason>
+      </antipattern>
+    </section>
+    <section name="Working-memory anti-patterns">
+      <p>Three failures: summarizing too early, round-tripping blobs through the model, and losing files on restart.</p>
+      <antipattern>
+        <description>Compaction routine fires whenever context utilization crosses ~50%, replacing the conversation with a summary while large tool outputs are still inline.</description>
+        <reason>The lossless lever (offload to FS) was still available; the agent burned facts it could have kept.</reason>
+      </antipattern>
+      <rule>
+        <statement>Compaction must be the LAST resort: only fire when no inline tool result above ~2000 tokens remains AND utilization is past 85%.</statement>
+        <rationale>Order of operations matters — offload first, summarize second; reversing the order causes information loss without need.</rationale>
+      </rule>
+      <antipattern>
+        <description>Tool reads a file, returns the full content to the model, model emits a tool call to write the same content to a different file.</description>
+        <reason>The blob crosses the model boundary twice for no reason — pay the input + output token cost on data the model never needed to "see".</reason>
+      </antipattern>
+      <example type="good">
+        <code lang="python"><![CDATA[# Server-side copy primitive — content never enters the model.
+@tool
+def copy_file(src: str, dst: str) -> dict:
+    fs.copy(src, dst)
+    return {"copied_from": src, "to": dst}]]></code>
+        <note>Operation completes without round-tripping the file content.</note>
+      </example>
+      <antipattern>
+        <description>Agent stores files in /tmp or in-memory dict, conversation in durable store; restart leaves dangling paths.</description>
+        <reason>Two persistence boundaries — agent's mental model assumes the file still exists because the message that mentions it does.</reason>
+      </antipattern>
+      <rule>
+        <statement>Conversation checkpoint and FS snapshot must commit atomically (same store, same transaction, or paired with a write-ahead reconciliation step) so resume is consistent.</statement>
+        <rationale>An agent recovering with one half of its memory missing produces silent data corruption — paths point to nothing, summaries describe artifacts that never existed.</rationale>
+      </rule>
+    </section>
+    <templates>
+      <template path="templates/fs-tools.json" purpose="OpenAI/Anthropic tool definitions for the four FS primitives."/>
+    </templates>
+    <see-also>
+      <link href="https://docs.langchain.com/oss/python/deepagents/overview">LangChain Deep Agents overview.</link>
+      <link href="https://github.com/langchain-ai/deepagents">deepagents repository — reference implementation.</link>
+      <link href="https://blog.dailydoseofds.com/p/the-anatomy-of-an-agent-harness">Anatomy of an Agent Harness — Daily Dose of DS.</link>
+    </see-also>
+  </content>
+</methodology>
