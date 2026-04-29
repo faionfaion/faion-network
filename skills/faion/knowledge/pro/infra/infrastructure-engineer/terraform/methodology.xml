@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="terraform">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Production-grade Terraform covers state architecture, module design, workspace strategies, CI/CD integration, security scanning, and compliance governance.</summary>
+    <tags>
+      <tag>terraform</tag>
+      <tag>iac</tag>
+      <tag>infrastructure</tag>
+      <tag>state-management</tag>
+      <tag>cicd</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Terraform (Advanced)</title>
+    <summary>Production-grade Terraform covers state architecture, module design, workspace strategies, CI/CD integration, security scanning, and compliance governance. The concrete rule: always save plan to file (-out=tfplan) and apply the exact saved plan in CI; always run tfsec/checkov before apply; separate state by environment AND component for minimal blast radius; use directory-per-environment over workspaces for true isolation.</summary>
+    <why>
+      <p>Applying a re-generated plan (not the saved plan) in CI allows race conditions where infrastructure changes between plan and apply. Without policy-as-code scanning, insecure defaults (public S3, unencrypted RDS) reach production. Workspace-based isolation shares backend config and is insufficient for production blast-radius separation. Production Terraform requires discipline around state management, pipeline controls, and security scanning to prevent incidents.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing multi-environment Terraform project layout (environments/dev|staging|prod + modules/)</item>
+        <item>Setting up CI/CD pipelines (GitHub Actions, GitLab CI, Atlantis) with plan-then-apply gates</item>
+        <item>Implementing security scanning (tfsec, Checkov) in the pipeline</item>
+        <item>Using workspaces vs directory isolation — deciding and implementing</item>
+        <item>Running native terraform test or Terratest for infrastructure testing</item>
+        <item>Drift detection and compliance (tagging policy, audit logging)</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>HCL syntax basics or first Terraform project — use terraform-basics</item>
+        <item>State backend configuration and import operations — use terraform-state</item>
+        <item>Module development and versioning patterns — use terraform-modules</item>
+      </list>
+    </when-not-to-use>
+    <section name="Directory Layout and Project Structure">
+      <p>Directory organization determines blast radius and team scalability. Monolithic configurations scale poorly; component separation enables parallel development.</p>
+      <rule>
+        <statement>Organize Terraform projects as environments/dev|staging|prod (each with own backend) plus modules/ for reusable components and global/ for account-wide resources (IAM, DNS).</statement>
+        <rationale>Environment directories with separate backends provide full blast-radius isolation. A destroy in dev cannot affect prod state. Shared backend workspaces do not provide this isolation.</rationale>
+      </rule>
+      <rule>
+        <statement>Within each environment directory, further split by component: networking/, compute/, database/. Each component has own backend key and state file.</statement>
+        <rationale>Monolithic per-environment state files mean a change to a single security group requires locking all compute and database resources. Component separation limits apply scope.</rationale>
+      </rule>
+      <rule>
+        <statement>Use standard file set: versions.tf (version constraints), providers.tf (provider config), main.tf (primary resources), variables.tf, outputs.tf, locals.tf, data.tf, backend.tf.</statement>
+        <rationale>Consistent file layout allows any team member to navigate unfamiliar modules. main.tf is where engineers look first for resource definitions.</rationale>
+      </rule>
+      <example type="good" title="Component-Separated Directory Layout">
+        <code lang="text"><![CDATA[infrastructure/
+├── global/                  # Account-wide resources
+│   ├── iam/                 # Roles, policies
+│   ├── dns/                 # Route 53 hosted zones
+│   └── backend.tf           # Global backend
+├── environments/
+│   ├── dev/
+│   │   ├── networking/      # VPC, subnets, NAT
+│   │   │   ├── versions.tf
+│   │   │   ├── providers.tf
+│   │   │   ├── main.tf
+│   │   │   ├── variables.tf
+│   │   │   ├── outputs.tf
+│   │   │   └── backend.tf
+│   │   ├── compute/         # ECS, EC2, Lambda
+│   │   │   ├── versions.tf
+│   │   │   ├── ...
+│   │   │   └── backend.tf   # Separate state
+│   │   └── database/        # RDS, DynamoDB
+│   │       ├── versions.tf
+│   │       ├── ...
+│   │       └── backend.tf   # Separate state
+│   ├── staging/
+│   │   └── [same structure as dev]
+│   └── prod/
+│       └── [same structure as dev]
+├── modules/
+│   ├── vpc/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   ├── versions.tf
+│   │   └── README.md
+│   ├── compute/
+│   ├── database/
+│   └── [other reusable modules]
+└── .pre-commit-config.yaml]]></code>
+      </example>
+      <antipattern>
+        <description>Single monolithic Terraform configuration for all environments and components.</description>
+        <reason>A single state file covering all environments means terraform plan locks all environments simultaneously. A single plan error blocks deployments to all environments. Limits parallelism and increases blast radius.</reason>
+      </antipattern>
+    </section>
+    <section name="Workspace Strategy">
+      <p>Terraform workspaces share backend config and provider credentials. Environments require full isolation for production systems.</p>
+      <rule>
+        <statement>Use directory-per-environment over CLI workspaces for production systems; use workspaces only for lightweight variations of same infrastructure (e.g., feature branch ephemeral environments).</statement>
+        <rationale>Workspaces share backend configuration and provider credentials. A misconfigured workspace apply can target wrong environment. Directory isolation uses separate backend keys making cross-env accidents structurally impossible.</rationale>
+      </rule>
+      <rule>
+        <statement>Workspace limitations: share backend config, share provider configuration, not suitable for system decomposition across components, insufficient blast-radius isolation for critical production.</statement>
+        <rationale>For multi-team companies, directory isolation enables different teams to own different environment directories with different IAM permissions.</rationale>
+      </rule>
+      <example type="good" title="Directory Isolation for Prod Safety">
+        <code lang="text"><![CDATA[# Safe: separate backend configs prevent cross-env mistakes
+environments/dev/networking/backend.tf     # backend key: "dev/networking/terraform.tfstate"
+environments/prod/networking/backend.tf    # backend key: "prod/networking/terraform.tfstate"
+
+# Risk: shared backend with workspace
+# Single backend.tf with workspace config
+terraform {
+  backend "s3" {
+    bucket = "company-state"
+    key    = "terraform.tfstate"  # Shared!
+    # Workspace adds .tfstate.d/prod/ or .tfstate.d/dev/
+    # But provider config is shared — credentials are shared
+  }
+}]]></code>
+      </example>
+    </section>
+    <section name="Module Design Principles">
+      <p>Modules are reusable abstractions. Well-designed modules enable sharing across teams and projects.</p>
+      <rule>
+        <statement>Modules must follow single responsibility: one logical component per module; no hardcoded values; parameterize everything via variables with sensible defaults; version modules with semantic versioning.</statement>
+        <rationale>Single-responsibility modules are reusable without modification. Hardcoded values (AMI IDs, CIDR blocks, account IDs) make modules non-portable across environments and regions.</rationale>
+      </rule>
+      <rule>
+        <statement>Module file structure: main.tf, variables.tf (with validation), outputs.tf, versions.tf, README.md, examples/.</statement>
+        <rationale>Standard structure enables predictable module navigation. README.md shows usage. examples/ proves module works.</rationale>
+      </rule>
+      <rule>
+        <statement>Module versioning: tag releases with semver (1.0.0, 1.1.0, 2.0.0). Publish to Terraform Registry.</statement>
+        <rationale>Enables version pinning in consuming modules. Breaking changes bumped to major version. Registry enables sharing.</rationale>
+      </rule>
+    </section>
+    <section name="Pipeline Stages and Controls">
+      <p>CI/CD pipeline stages catch different error classes. Each missing stage is a production risk.</p>
+      <rule>
+        <statement>Full pipeline order: terraform fmt -check, terraform validate, tflint, tfsec/checkov, terraform plan -out=tfplan, human review, terraform apply tfplan.</statement>
+        <rationale>Each stage catches different errors: fmt (style), validate (syntax), tflint (provider-specific), tfsec (security), and saved plan ensures apply matches reviewed output.</rationale>
+      </rule>
+      <rule>
+        <statement>Always save plan to file with -out=tfplan and apply that exact file. Never re-run terraform plan between review and apply in CI.</statement>
+        <rationale>Re-planning between review and apply allows infrastructure to change state, meaning applied plan differs from reviewed plan. Common cause of production incidents.</rationale>
+      </rule>
+      <rule>
+        <statement>Run tfsec and checkov on every PR. Fail pipeline on CRITICAL or HIGH severity findings without approved exception. Run Infracost for cost impact.</statement>
+        <rationale>Security scanners catch default-insecure configurations (unencrypted S3, public RDS, wildcard IAM) before production. Cost estimation prevents unexpected bill increases.</rationale>
+      </rule>
+      <rule>
+        <statement>Use OIDC-based authentication (GitHub Actions, GitLab CI) to assume cloud provider roles. Never store static access keys as CI secrets.</statement>
+        <rationale>OIDC tokens are short-lived (15 min), scoped to specific workflow run, auto-expire. Static keys frequently leaked in logs, artifacts, or public repos.</rationale>
+      </rule>
+      <example type="good" title="Saved Plan Rule in GitHub Actions">
+        <code lang="yaml"><![CDATA[- name: Terraform Plan
+  id: plan
+  run: terraform plan -out=tfplan
+
+- name: Comment PR with Plan
+  if: github.event_name == 'pull_request'
+  uses: actions/github-script@v7
+  with:
+    script: |
+      const plan = fs.readFileSync('tfplan.txt', 'utf-8');
+      github.rest.issues.createComment({
+        issue_number: context.issue.number,
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        body: `## Terraform Plan\n\`\`\`\n${plan}\n\`\`\``
+      });
+
+- name: Terraform Apply (apply SAVED plan, not re-plan)
+  if: github.ref == 'refs/heads/main'
+  run: terraform apply -auto-approve tfplan  # NOT: terraform apply (which re-plans)]]></code>
+      </example>
+      <antipattern>
+        <description>Applying a re-generated plan (not the saved plan file) in CI after human review.</description>
+        <reason>Infrastructure can change between plan review and apply. Re-planning may produce different plan than reviewed, allowing unreviewed changes to reach production.</reason>
+      </antipattern>
+    </section>
+    <section name="Atlantis Configuration">
+      <p>Atlantis automates plan-in-PR workflow for teams preferring GitHub/GitLab integration over separate CI stages.</p>
+      <rule>
+        <statement>Configure Atlantis with per-project autoplan and apply_requirements: approved, mergeable; use for teams favoring plan-in-PR over separate CI apply stages.</statement>
+        <rationale>Atlantis runs plan automatically on PR, posts output as comment. apply_requirements ensure human review before apply. Built-in safeguards reduce error risk.</rationale>
+      </rule>
+      <rule>
+        <statement>Atlantis workflow: PR comment "atlantis plan", autoplans all affected projects, engineers review plan comments, "atlantis approve" + merge → applies.</statement>
+        <rationale>Tighter feedback loop than separate CI stages. Plan and code review happen together. Eliminates time gap between plan and apply.</rationale>
+      </rule>
+      <example type="good" title="Atlantis Configuration">
+        <code lang="yaml"><![CDATA[# atlantis.yaml
+version: 3
+projects:
+  - name: dev-networking
+    dir: environments/dev/networking
+    workspace: default
+    terraform_version: v1.6.0
+    autoplan:
+      when_modified: ["*.tf", "../../modules/**/*.tf"]
+      enabled: true
+    apply_requirements: [approved, mergeable]
+    workflow: custom
+
+workflows:
+  custom:
+    plan:
+      steps:
+        - init
+        - run: tflint
+        - run: tfsec . --soft-fail
+        - plan
+    apply:
+      steps:
+        - apply]]></code>
+      </example>
+    </section>
+    <section name="State Architecture and Blast Radius">
+      <p>State management controls are the most critical Terraform safety mechanism. Blast radius is directly tied to state structure.</p>
+      <rule>
+        <statement>Verify: separate state files per environment AND per component; remote backend with locking and encryption; .terraform.lock.hcl committed; no state files in git; provider versions pinned.</statement>
+        <rationale>These five checks eliminate most common Terraform production incidents: state corruption, credential leaks, provider version drift, blast radius from monolithic state.</rationale>
+      </rule>
+      <rule>
+        <statement>Confirm blast-radius isolation: terraform destroy in one environment's state cannot affect another; component-level states minimize resources affected per apply.</statement>
+        <rationale>Without isolation, terraform destroy on networking state of prod takes down entire production network. Component isolation limits each operation's scope.</rationale>
+      </rule>
+      <rule>
+        <statement>Remote state backends must have encryption at-rest, state locking, and versioning enabled.</statement>
+        <rationale>Encryption protects secrets in state. Locking prevents concurrent applies corrupting state. Versioning enables recovery from accidents.</rationale>
+      </rule>
+      <example type="good" title="Separate Backends per Environment and Component">
+        <code lang="hcl"><![CDATA[# environments/dev/networking/backend.tf
+terraform {
+  backend "s3" {
+    bucket         = "company-terraform-state"
+    key            = "dev/networking/terraform.tfstate"  # Unique key
+    region         = "eu-central-1"
+    encrypt        = true
+    dynamodb_table = "terraform-state-lock"
+  }
+}
+
+# environments/prod/networking/backend.tf
+terraform {
+  backend "s3" {
+    bucket         = "company-terraform-state"
+    key            = "prod/networking/terraform.tfstate"  # Different key
+    region         = "eu-central-1"
+    encrypt        = true
+    dynamodb_table = "terraform-state-lock"
+  }
+}
+# Result: two separate state files, two separate locks, independent applies]]></code>
+      </example>
+    </section>
+    <section name="Security Hardening Checklist">
+      <p>Production Terraform requires explicit security hardening. Scanners catch common misconfigurations; manual review handles business logic.</p>
+      <rule>
+        <statement>Verify: no hardcoded secrets in .tf files, all sensitive variables marked sensitive = true, all storage resources have encryption enabled, no 0.0.0.0/0 security group rules, IAM follows least privilege.</statement>
+        <rationale>tfsec/checkov catch common cases, but manual review needed for business-logic-specific IAM that scanners cannot evaluate.</rationale>
+      </rule>
+      <rule>
+        <statement>Enable provider-level encryption for all data at-rest resources: S3 bucket encryption, RDS encryption, EBS encryption, Secrets Manager encryption.</statement>
+        <rationale>Compliance requirement (HIPAA, PCI-DSS). Reduces breach impact if data access compromised.</rationale>
+      </rule>
+      <rule>
+        <statement>Use IAM least privilege: no wildcard resource ARNs, no *:* actions, service principals scoped to account ID.</statement>
+        <rationale>Limits blast radius if credentials compromised. Audit tools flag overly permissive policies.</rationale>
+      </rule>
+    </section>
+    <section name="Production Deployment Checklist">
+      <p>Pre-apply and post-apply checks reduce production incidents. Reviewed plans with no surprises are the primary safety control.</p>
+      <rule>
+        <statement>Before prod apply: review plan for unexpected destroys or replacements; assess cost impact (Infracost); create change ticket; document rollback; notify team.</statement>
+        <rationale>Unexpected destroys in plan output are most common sign of unintended infrastructure change. Reviewed plan with no surprises is primary safety control.</rationale>
+      </rule>
+      <rule>
+        <statement>After prod apply: run health checks and smoke tests; verify monitoring alerts active; run terraform plan again to confirm clean state (no drift).</statement>
+        <rationale>Second clean plan after apply confirms deployed state matches configuration exactly. Drift indicates out-of-band change or Terraform bug.</rationale>
+      </rule>
+      <rule>
+        <statement>CI/CD pipeline verification: verify fmt, validate, tflint, tfsec/checkov, plan artifact stored, apply uses saved plan, OIDC auth enabled, TF_IN_AUTOMATION=true.</statement>
+        <rationale>Each missing stage is class of error reaching production. Saved-plan requirement most commonly missing critical control.</rationale>
+      </rule>
+    </section>
+    <section name="Drift Detection and Compliance">
+      <p>Drift (configuration changes outside Terraform) indicates out-of-band changes or external systems modifying infrastructure.</p>
+      <rule>
+        <statement>Run terraform plan on schedule (daily/weekly) to detect drift. Alert on non-empty plans indicating changes not made via Terraform.</statement>
+        <rationale>Detects manual changes or external systems modifying infrastructure. Enables remediation before drift causes issues.</rationale>
+      </rule>
+      <rule>
+        <statement>Implement tagging compliance: all resources tagged with Environment, Project, Team, CostCenter. Enforce via OPA/Sentinel policies.</statement>
+        <rationale>Enables cost allocation and chargeback. Compliance requirement. Terraform enforcement prevents untagged resources.</rationale>
+      </rule>
+      <rule>
+        <statement>Document and enforce account-level policies: no public S3 buckets, no unencrypted RDS, no wildcard security groups, regional restrictions.</statement>
+        <rationale>Organizational standards. Policy-as-code prevents misconfigurations systematically rather than relying on reviews.</rationale>
+      </rule>
+    </section>
+    <checklist>
+      <check>Separate state files per environment (dev, staging, prod)</check>
+      <check>Separate state files per component (networking, compute, database)</check>
+      <check>Remote backend with encryption at-rest and in-transit</check>
+      <check>State locking enabled (DynamoDB for S3)</check>
+      <check>State versioning enabled for rollback</check>
+      <check>.terraform.lock.hcl committed to git</check>
+      <check>Provider versions pinned (>= X, ~> X.Y)</check>
+      <check>No state files in git (.gitignore configured)</check>
+      <check>Standard file structure (versions.tf, providers.tf, main.tf, variables.tf, outputs.tf)</check>
+      <check>Modules follow single responsibility principle</check>
+      <check>Module variables include validation rules</check>
+      <check>Module README.md with usage examples</check>
+      <check>CI/CD pipeline with all stages (fmt, validate, tflint, tfsec, plan, apply)</check>
+      <check>Plans saved to file (-out=tfplan) and applied exactly</check>
+      <check>OIDC authentication configured (no static keys)</check>
+      <check>tfsec and checkov integration in pipeline</check>
+      <check>Infracost integration for cost estimation on PRs</check>
+      <check>No hardcoded secrets in .tf files</check>
+      <check>Sensitive variables marked sensitive = true</check>
+      <check>Storage resources have encryption enabled</check>
+      <check>No 0.0.0.0/0 security group rules without justification</check>
+      <check>IAM policies follow least privilege</check>
+      <check>Atlantis configured with autoplan and apply_requirements</check>
+      <check>Drift detection scheduled (daily/weekly)</check>
+      <check>Tagging compliance enforced via policy</check>
+      <check>Rollback procedure documented</check>
+      <check>Change management process followed for prod deploys</check>
+    </checklist>
+    <see-also>
+      <link href="https://developer.hashicorp.com/terraform/docs">Terraform Documentation</link>
+      <link href="https://github.com/runatlantis/atlantis">Atlantis GitHub</link>
+      <link href="https://aquasecurity.github.io/tfsec/">tfsec Documentation</link>
+      <link href="https://www.checkov.io/">Checkov Documentation</link>
+      <link href="https://www.infracost.io/">Infracost Documentation</link>
+    </see-also>
+  </content>
+</methodology>
