@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-poetry-setup">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Poetry is the standard for Python dependency management: deterministic builds via poetry.lock, isolated virtual environments, and streamlined PyPI publishing.</summary>
+    <tags>
+      <tag>python</tag>
+      <tag>poetry</tag>
+      <tag>dependencies</tag>
+      <tag>lockfile</tag>
+      <tag>reproducible-builds</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Poetry Project Setup</title>
+    <summary>Poetry is the standard for Python dependency management: deterministic builds via poetry.lock, isolated virtual environments, and streamlined PyPI publishing. Always commit poetry.lock; always use --sync in CI; never mix pip and poetry in the same project.</summary>
+    <why>
+      <p>Without a lockfile, two agents on different machines resolve different dependency trees and produce non-reproducible builds. Poetry's solver generates a lockfile that pins every transitive dependency. The lock must be committed and treated as a reviewable artifact — the lockfile diff is the visible record of what changed.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Starting any new Python project (service, library, CLI).</item>
+        <item>Managing complex dependency trees requiring reproducible builds.</item>
+        <item>Publishing packages to PyPI or private registries.</item>
+        <item>Agent-managed repos where dependency changes must go through --dry-run + human approval.</item>
+        <item>Bootstrapping a new Python service or library that will be agent-managed (Claude Code as primary contributor).</item>
+        <item>Locking dependency closures so a CI agent and a local agent produce byte-identical environments.</item>
+        <item>Wrapping a Django/FastAPI repo where you want poetry add / poetry remove to be the only mutation surface for pyproject.toml.</item>
+        <item>Publishing a wheel to PyPI/private index with token-based auth (Poetry handles upload state without manual twine).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Throwaway scripts or notebooks — uv pip install or pipx run is faster.</item>
+        <item>Projects already standardized on pip-tools, uv, or pdm — don't migrate for novelty.</item>
+        <item>Docker images built from requirements.txt with no solver runtime needed — export from Poetry at build time and use pip in the final stage.</item>
+        <item>Monorepos with Pants/Bazel workspace tooling — Poetry has no first-class workspace concept.</item>
+        <item>Containers built from requirements.txt with no need for solver runtime — keep pip; export from Poetry only at build time.</item>
+        <item>Monorepos with native workspace tooling (Pants, Bazel) — Poetry has no first-class workspace concept (until 2.0 plugins).</item>
+      </list>
+    </when-not-to-use>
+    <section name="lockfile-policy">
+      <rule>
+        <statement>Always commit poetry.lock. There is no situation where a service or library should omit it from version control.</statement>
+        <rationale>Without the lock, two agents on different machines resolve different transitive dependency trees, producing non-reproducible builds and subtle environment bugs.</rationale>
+      </rule>
+      <rule>
+        <statement>Run poetry install --sync --no-interaction in CI. The --sync flag removes packages that left the lockfile, preventing zombie dependencies.</statement>
+        <rationale>Without --sync, deleted dependencies accumulate in CI environments across runs and cause false-positive test passes.</rationale>
+      </rule>
+      <rule>
+        <statement>Never run poetry update without arguments in a shared repo. It rewrites the entire lockfile, overwriting another developer's or agent's staged resolver result. Use poetry update &lt;package&gt; to bump a single package.</statement>
+        <rationale>Full lockfile rewrites are destructive to concurrent work and produce unreviewed dependency changes.</rationale>
+      </rule>
+    </section>
+    <section name="dependency-groups">
+      <rule>
+        <statement>Split dependencies into groups: main, dev, test, docs. Mark docs as optional = true so production installs don't pull mkdocs. Keep production deps minimal.</statement>
+        <rationale>Smaller production dependency trees mean smaller Docker images, fewer CVE surface area, and faster pip install in the final stage.</rationale>
+      </rule>
+      <example type="good" title="Dependency Group Organization">
+        <code lang="bash"><![CDATA[
+# Production
+poetry add fastapi uvicorn sqlalchemy
+
+# Dev tools
+poetry add --group dev ruff mypy black pytest
+
+# Optional docs
+poetry add --group docs --optional mkdocs mkdocs-material
+
+# Install specific groups in CI
+poetry install --only main
+poetry install --with dev,test
+        ]]></code>
+      </example>
+      <reference path="templates/pyproject.toml">Full pyproject.toml with groups and tool configs</reference>
+    </section>
+    <section name="version-constraints">
+      <rule>
+        <statement>Use tight Python version constraints (python = "^3.11", not ">=3.8"). Broad ranges slow the solver and produce hostile error messages for conflicting extras.</statement>
+        <rationale>The Poetry solver has quadratic complexity in constraint width. Tight Python pins halve the search space.</rationale>
+      </rule>
+      <rule>
+        <statement>Before any poetry add or poetry remove, run poetry check --lock. If the lockfile is dirty, resolve that first before adding new dependencies.</statement>
+        <rationale>Adding a package when the lockfile is dirty silently merges the dirty state into the new lock, creating an unreviewed dependency change.</rationale>
+      </rule>
+    </section>
+    <section name="docker-multi-stage-pattern">
+      <rule>
+        <statement>In Docker builds, use a builder stage to run poetry export, then a final stage with pip install -r requirements.txt. Never run poetry install in the final production stage — it brings the Poetry runtime into the image.</statement>
+        <rationale>Poetry adds ~100MB to the image and is not needed at runtime. The export + pip pattern produces minimal images.</rationale>
+      </rule>
+      <example type="good" title="Multi-Stage Docker Build">
+        <code lang="dockerfile"><![CDATA[
+FROM python:3.11-slim AS builder
+WORKDIR /app
+RUN pip install poetry==1.8.5
+COPY pyproject.toml poetry.lock ./
+RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
+
+FROM python:3.11-slim
+WORKDIR /app
+COPY --from=builder /app/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY src/ ./src/
+CMD ["python", "-m", "my_project.main"]
+        ]]></code>
+        <note>Pin the poetry version in the builder stage. poetry shell is removed in Poetry 2.0 — never call it in Dockerfiles.</note>
+      </example>
+      <reference path="templates/Dockerfile">Full multi-stage Dockerfile for Poetry projects</reference>
+    </section>
+    <section name="github-actions-ci">
+      <rule>
+        <statement>Use snok/install-poetry@v1 in CI and cache the .venv directory keyed by OS + Python version + poetry.lock hash. This reduces install time from minutes to seconds on cache hit.</statement>
+        <rationale>Poetry's dependency resolution is the slowest CI step. Caching the resolved environment avoids re-running the solver on every push.</rationale>
+      </rule>
+      <example type="good" title="GitHub Actions Poetry Setup with Cache">
+        <code lang="yaml"><![CDATA[
+- name: Install Poetry
+  uses: snok/install-poetry@v1
+  with:
+    version: 1.8.5
+    virtualenvs-create: true
+    virtualenvs-in-project: true
+
+- name: Load cached venv
+  uses: actions/cache@v4
+  with:
+    path: .venv
+    key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
+- name: Install dependencies
+  run: poetry install --no-interaction --sync
+        ]]></code>
+      </example>
+    </section>
+    <section name="publishing-to-pypi">
+      <rule>
+        <statement>Use the POETRY_PYPI_TOKEN_PYPI environment variable in CI, not poetry config pypi-token.pypi $TOKEN. The env var is process-scoped; the config command writes to ~/.config/pypoetry/auth.toml which persists across runs in shared sandboxes.</statement>
+        <rationale>Token written to auth.toml in a shared CI environment is accessible to other jobs. Process-scoped env var leaks nothing beyond the current step.</rationale>
+      </rule>
+    </section>
+    <section name="cli-reference">
+      <list>
+        <item>poetry new my-project — create new project with standard layout</item>
+        <item>poetry init — initialize in existing directory</item>
+        <item>poetry install --sync --no-interaction — install from lock, prune zombies</item>
+        <item>poetry add --group dev pytest ruff — add dev dependency</item>
+        <item>poetry update &lt;package&gt; — bump single package only</item>
+        <item>poetry export -f requirements.txt --output requirements.txt — export for Docker</item>
+        <item>poetry check --lock — verify lockfile is current</item>
+        <item>poetry env info --path — show virtual environment path</item>
+      </list>
+    </section>
+    <section name="critical-agent-failures">
+      <antipattern>
+        <description>Agent calls poetry shell in headless CI or Docker.</description>
+        <reason>poetry shell hangs forever waiting for a TTY. Poetry 2.0 removed it entirely. Always use poetry run &lt;cmd&gt; from agents, never poetry shell.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent uses pip install to add a package to a Poetry-managed project.</description>
+        <reason>pip install bypasses Poetry's solver and does not update pyproject.toml or poetry.lock. The next poetry install will remove the package.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent writes "^0.1" expecting it to mean &lt;1.0.0.</description>
+        <reason>In Poetry, ^0.1 means >=0.1.0,&lt;0.2.0 (not &lt;1.0.0). The caret rule applies to the leftmost non-zero digit. Always run poetry add --dry-run and read back the resolved range before committing.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent calls poetry add X when the lockfile is dirty (uncommitted local changes).</description>
+        <reason>Poetry silently merges the dirty state into the new lock. Run poetry check --lock before any add/remove.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent uses poetry self add instead of pip install to install a Poetry plugin.</description>
+        <reason>Actually reversed: pip install into the Poetry interpreter corrupts Poetry's own deps. Use poetry self add for plugins. The antipattern is using pip for Poetry's own environment.</reason>
+      </antipattern>
+    </section>
+    <section name="solver-limitations">
+      <note>Solver can hang on large constraint sets (e.g., many numpy/scipy/torch extras); poetry lock --no-update is mandatory for partial bumps.</note>
+      <note>poetry install in Docker is ~2-3x slower than pip install -r requirements.txt; production images should poetry export at build time and use plain pip.</note>
+      <note>poetry shell was removed in Poetry 2.0 (replaced by poetry env activate echo + manual source); older docs and many agent scripts still call poetry shell and break.</note>
+      <note>poetry update without arguments rewrites the entire lockfile — destructive when a teammate has staged a different solver result.</note>
+      <note>Hash mismatch errors from a partially populated cache (~/.cache/pypoetry) require poetry cache clear --all pypi to recover.</note>
+    </section>
+    <section name="agentic-workflow">
+      <p>A code-writing subagent proposes the dependency change, then a separate command executor runs poetry add ... --dry-run, parses the diff, and only after human/coordinator approval runs the real command. The lockfile diff is treated as a reviewable artifact (committed alongside pyproject.toml). For CI, agents should call poetry install --sync --no-interaction --no-root so removed deps get pruned and the run is reproducible.</p>
+      <section name="recommended-subagents">
+        <list>
+          <item>faion-sdd-executor-agent — drives task-level changes; can own a TASK that says "add httpx and pin to ^0.27".</item>
+          <item>password-scrubber-agent — sanity-check before publishing; ensures no pypi-token, repo URLs with creds, or private index credentials slipped into pyproject.toml.</item>
+          <item>A purpose-built dependency-bumper subagent (not yet in repo) for routine poetry update --dry-run → PR loop.</item>
+        </list>
+      </section>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Pin Python with a tight constraint (python = "^3.11", not ">=3.8"); broader ranges slow the solver and produce hostile error messages.</item>
+        <item>Always use --sync in CI install — it removes packages that left the lockfile, preventing zombie deps.</item>
+        <item>Split dev, test, docs groups; mark docs as optional = true so production installs don't pull mkdocs.</item>
+        <item>Commit poetry.lock. Period. There is no situation where a library should omit it.</item>
+        <item>When publishing a library, set [tool.poetry.dependencies] ranges loosely (^x.y) but keep poetry.lock for the dev workflow. Don't ship the lock to PyPI.</item>
+        <item>Use poetry self add for plugins, never pip install into the Poetry interpreter — pip will silently corrupt Poetry's own deps.</item>
+        <item>Combine with pre-commit running ruff check --fix, ruff format, and a poetry check --lock hook that fails on dirty lockfile.</item>
+        <item>For Docker: multi-stage build, run poetry export --without-hashes -o requirements.txt --with main, install via pip in final stage, keep image small and free of Poetry runtime.</item>
+      </list>
+    </section>
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>An agent calling poetry add X when the lockfile is dirty (someone added Y locally and didn't commit) will silently lock Y too. Always run poetry check --lock before any add/remove.</item>
+        <item>poetry shell in headless CI hangs forever waiting for a tty. Use poetry run &lt;cmd&gt; from agents — never shell.</item>
+        <item>Network blips during poetry lock corrupt the cache; agent retries should poetry cache clear --all pypi --no-interaction between attempts.</item>
+        <item>Some plugins write absolute paths into poetry.lock (develop = true editable installs). Agents that copy lockfiles between machines will produce non-reproducible installs — use --no-editable when it matters.</item>
+        <item>Version-string mistakes are the #1 agent error: ^0.1 means >=0.1.0,&lt;0.2.0 (NOT &lt;1.0.0). Have the agent always run poetry add --dry-run and read back the resolved range before commit.</item>
+        <item>Token leak risk: poetry config pypi-token.pypi $TOKEN writes to ~/.config/pypoetry/auth.toml. Agents in shared sandboxes must use POETRY_PYPI_TOKEN_PYPI env var instead, which is process-scoped.</item>
+        <item>poetry install without --no-root will try to install the current project as a package; for service repos (no setup.py install needed) always pass --no-root to avoid spurious failures.</item>
+        <item>Poetry 2.0 changed plugin and command behavior (e.g., removed shell, changed lock --no-update to default). Pin Poetry version (pipx install 'poetry==1.8.5' or 2.x explicitly) in CI to avoid drift.</item>
+      </list>
+    </section>
+    <section name="tools-and-services">
+      <list>
+        <item>poetry — Solver, env mgmt, build, publish. Install: curl -sSL https://install.python-poetry.org | python3 -</item>
+        <item>poetry-plugin-export — Emit requirements.txt for Docker. Install: poetry self add poetry-plugin-export</item>
+        <item>poetry-plugin-bundle — Bundle env into a venv directory. Install: poetry self add poetry-plugin-bundle</item>
+        <item>pipx — Isolate Poetry itself from project venvs. Install: apt install pipx</item>
+        <item>tomlq / dasel — Read/edit pyproject.toml from scripts. https://github.com/TomWright/dasel</item>
+        <item>pip-audit — CVE scan against the lockfile. Install: pipx install pip-audit then poetry export | pip-audit -r /dev/stdin</item>
+        <item>deptry — Detect unused/missing imports vs declared deps. Install: pipx install deptry</item>
+        <item>uv — Drop-in faster resolver/installer; can read Poetry projects. https://github.com/astral-sh/uv</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/pyproject.toml" purpose="Full pyproject.toml with dependency groups, tool configs (ruff, mypy, pytest)" />
+      <template path="templates/Dockerfile" purpose="Multi-stage Docker build: poetry export in builder, pip install in final stage" />
+    </templates>
+    <see-also>
+      <link href="https://python-poetry.org/docs/" />
+      <link href="https://python-poetry.org/docs/dependency-specification/" />
+      <link href="https://python-poetry.org/docs/cli/#add" />
+      <link href="https://github.com/python-poetry/poetry/blob/master/CHANGELOG.md" />
+      <link href="https://snarky.ca/what-the-heck-is-pyproject-toml/" />
+      <link href="https://docs.astral.sh/uv/" />
+    </see-also>
+  </content>
+</methodology>

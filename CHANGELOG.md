@@ -1,8 +1,7 @@
 # Changelog
 
 ## [Unreleased]
-- migrate: 3/3 free/dev/software-developer methodologies → methodology.xml (pnpm-package-management, python, python-fastapi; feature-045 batch E)
-- migrate: 3/3 free/dev/software-developer methodologies → methodology.xml (mocking-strategies, nodejs-express-fastify, pair-programming; feature-045 batch D)
+- migrate: 3/3 free/dev/software-developer methodologies → methodology.xml (python-poetry-setup, python-type-hints, react-hooks; feature-045 batch F)
 - migrate: 3/3 free/dev python/software-developer methodologies → methodology.xml (python-poetry-setup, python-type-hints, mobile-responsive; feature-045 batch C)
 - migrate: 3/3 free/dev/javascript-developer methodologies → methodology.xml (react-patterns, typescript-patterns, typescript-strict-mode; feature-045 batch B)
 - migrate: 3/3 free/dev/javascript-developer methodologies → methodology.xml (bun-runtime-simple, javascript-modern, react-hooks; feature-045 batch A)
