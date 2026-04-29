@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="array-items-wrapper-extraction">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>When extracting N entities from a document, never make the top-level structured-output response a bare array. Always wrap with items plus metadata like total_found and truncated.</summary>
+    <tags>
+      <tag>structured-output</tag>
+      <tag>extraction</tag>
+      <tag>schema-design</tag>
+      <tag>strict-mode</tag>
+      <tag>cardinality</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Array Items Wrapper for Extraction</title>
+
+    <summary>When extracting N entities from a document, never make the top-level structured-output response a bare array. Always wrap with {items: [...]} plus metadata fields like total_found and truncated. Strict-mode validators reject top-level arrays because schema-level controls like additionalProperties are object-only; wrapping standardises the shape across zero/one/many cases and lets you add count and truncation diagnostics without reshaping consumers.</summary>
+
+    <why>
+      <p>OpenAI strict mode and Azure structured outputs require the top-level schema to be an object — bare arrays are not allowed. Even on providers that permit it, asking the model for list[Entity] collapses three cases (zero, one, many) into shapes that downstream parsers handle inconsistently: zero entities sometimes returns [], sometimes null, sometimes a single dict; a single entity sometimes returns [ent], sometimes ent. Wrapping in {items: [...], total_found, truncated} removes the ambiguity, lets the model report "I found 0" or "I truncated at 50" explicitly, and keeps the consumer code single-shape. Simon Willison's --schema-multi pattern in llm formalises the same wrapper for batch extraction CLIs.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any extraction with variable cardinality (entities, citations, line items, search hits).</item>
+        <item>Document-level summarisation that yields a list of facts/claims.</item>
+        <item>Batch classification where N inputs map to N outputs.</item>
+        <item>Any strict-mode SO call (OpenAI, Azure) — the top-level array is forbidden there anyway.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Hard-coded N (always exactly 3 suggestions) — use a fixed-length tuple type or named fields instead.</item>
+        <item>Single-entity extraction with no list semantics — wrap is overhead for a one-shot field.</item>
+        <item>Streaming UIs that render items as they arrive — items at top level can stream natively; wrap blocks streaming until the wrapper closes.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="wrap-variable-cardinality-extraction">
+      <p>For any extraction with variable N, the top-level schema is an object containing items: list[Entity] plus total_found and truncated metadata. The bare list[Entity] return shape is forbidden because (a) strict mode requires top-level objects, (b) downstream code has to special-case zero/one/many.</p>
+
+      <rule testable="true">
+        <statement>For variable-cardinality extraction, declare the top-level schema as an object with at least items: list[Entity], total_found: int, and truncated: bool. Never return a bare list as the top-level structured-output type.</statement>
+        <rationale>OpenAI/Azure strict mode rejects top-level arrays because additionalProperties only applies to objects. On other providers, list[Entity] collapses zero/one/many into inconsistent shapes ([], null, single dict, [ent], ent). The wrapper standardises the shape and exposes hooks for count and truncation diagnostics.</rationale>
+      </rule>
+
+      <example type="good" title="Entity wrapper with metadata">
+        <code lang="python"><![CDATA[
+from pydantic import BaseModel, Field
+
+class Entity(BaseModel):
+    name: str
+    kind: str
+    span_start: int
+    span_end: int
+
+class EntityList(BaseModel):
+    model_config = {"extra": "forbid"}
+    total_found: int = Field(description="Count of entities; 0 if none.")
+    truncated: bool = Field(description="True if more entities exist beyond the limit.")
+    items: list[Entity]
+        ]]></code>
+        <note>One stable shape for zero, one, or many. total_found lets the consumer detect "no entities" without inspecting len(items); truncated flags incomplete extraction.</note>
+      </example>
+
+      <example type="bad" title="Bare array and optional list anti-patterns">
+        <code lang="python"><![CDATA[
+# Bare list — fails strict mode and ambiguous for zero/one cases.
+EntityList = list[Entity]
+
+# Or worse: optional list with no metadata.
+class EntityListBad(BaseModel):
+    items: list[Entity] | None = None
+        ]]></code>
+        <note>Strict-mode endpoints reject the top-level array. Optional-list shape forces every consumer to write if items is None or len(items) == 0.</note>
+      </example>
+
+      <antipattern>
+        <description>Asking for "extract all entities" and accepting the model's reply as either a dict (single entity) or a list (many entities).</description>
+        <reason>The same prompt yields different top-level shapes depending on how many entities the model thinks it found. Production code ends up branching on isinstance(result, list) everywhere — a known source of crashes when an empty result returns null or {}.</reason>
+      </antipattern>
+
+      <templates>
+        <template path="templates/items_wrapper.py" purpose="Pydantic batch-entity-extraction schema with items plus total_found plus truncated"/>
+      </templates>
+
+      <see-also>
+        <link href="https://simonwillison.net/2025/Feb/28/llm-schemas/">Simon Willison — llm --schema-multi pattern (the wrapper formalised in a CLI)</link>
+        <link href="https://medium.com/@AI-on-Databricks/end-to-end-structured-extraction-with-llm-part-1-batch-entity-extraction-876ce17b290f">Databricks — end-to-end structured extraction with LLM, batch entity wrapper</link>
+      </see-also>
+    </section>
+  </content>
+</methodology>

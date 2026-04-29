@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="auto-evict-tool-results">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Wrap the agent's tool-execution runtime so any single tool result exceeding a fixed token threshold is automatically written to disk and substituted with a manifest before the LLM observes the body.</summary>
+    <tags>
+      <tag>context-management</tag>
+      <tag>tool-results</tag>
+      <tag>token-accounting</tag>
+      <tag>middleware</tag>
+      <tag>long-horizon-agents</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Auto-Evict Tool Results at Token Threshold</title>
+
+    <summary>Wrap the agent's tool-execution runtime so any single tool result whose token count exceeds a fixed threshold N (typically 20,000) is automatically written to disk and substituted with {path, preview, evicted: true} BEFORE the LLM ever observes the body. This is a deterministic middleware policy, not an LLM-discretion choice — the agent literally cannot leak the oversized payload because the runtime never feeds it in. It is the enforced sibling of voluntary filesystem-as-memory: same compression, but applied by code.</summary>
+
+    <why>
+      <p>LLMs do not self-restrain. When a tool call returns a 35k-token npm log or a 200-row SQL dump, the model will dutifully ingest the whole thing, blow the effective context window, lose track of the goal, and rack up cost. LangChain's Deep Agents observed this empirically and shipped filesystemMiddleware with a toolTokenLimitBeforeEvict knob (default 20k) that intercepts the result and stores it on disk. The agent then reads only the slice it needs via read_file(path, lines=...). This preserves recoverability (the body is one read away) while keeping per-step effective context bounded — the precondition for accuracy on long-horizon tasks.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any tool that talks to a remote service with high payload variance (web fetch, SQL, API search, log retrieval).</item>
+        <item>Long-running agents (50+ tool calls) where a single overflow corrupts the rest of the loop.</item>
+        <item>Multi-tenant agents where prompt-injection via large tool output is a threat.</item>
+        <item>CI/build/log-tail tools that occasionally emit megabytes of output.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Streaming/realtime tools where the agent must act on each chunk immediately and never re-reads — eviction adds latency without benefit.</item>
+        <item>Tools whose every result is small (&lt;1k tokens) — the manifest dance is pure overhead.</item>
+        <item>Single-shot stateless agents that exit before context bloat matters.</item>
+        <item>Environments without a writable filesystem (browser sandbox, edge runtime) — use M-PL-02 manifest-then-fetch with a content store instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="threshold-based-tool-result-eviction">
+      <p>The runtime — not the model — decides whether a tool result enters context. A token counter sits between the tool and the message history; oversized results are persisted to a scratch directory and the message is replaced with a tiny manifest.</p>
+
+      <rule testable="true">
+        <statement>Configure the agent runtime so any tool result whose token count exceeds a fixed threshold N (default 20,000) is written to disk at a unique path and substituted with a JSON object containing at minimum {path, preview_first_n_chars, total_tokens, evicted: true} before being added to the message history.</statement>
+        <rationale>LLMs cannot reliably self-truncate large outputs; LangChain Deep Agents shipped this exact policy (toolTokenLimitBeforeEvict, default 20k) after observing context corruption from oversized tool returns on long-horizon agents.</rationale>
+      </rule>
+
+      <example type="good" title="Eviction with recovery manifest">
+        <code lang="text"><![CDATA[
+# Tool returns 35k tokens of npm install log
+# Middleware detects size > 20k, writes /tmp/agent/logs/npm_3491.log
+# Message added to history:
+{
+  "tool": "shell",
+  "result": {
+    "path": "/tmp/agent/logs/npm_3491.log",
+    "preview": "added 1247 packages, audited 1248 packages in 47s\n12 vulnerabilities (3 moderate...",
+    "total_tokens": 34812,
+    "evicted": true
+  }
+}
+# Agent reads only what it needs:
+read_file("/tmp/agent/logs/npm_3491.log", lines=[1200, 1260])  # the lines with the error
+        ]]></code>
+        <note>Context grows by ~80 tokens instead of 34,812; the body is one Read away if needed.</note>
+      </example>
+
+      <example type="bad" title="No middleware protection">
+        <code lang="text"><![CDATA[
+# No middleware — tool result goes straight to history
+{
+  "tool": "shell",
+  "result": "&lt;35k tokens of npm log verbatim&gt;"
+}
+# Now the model is "lost in the middle"; subsequent decisions degrade.
+        ]]></code>
+        <note>One overflow corrupts the rest of the loop because effective context is dominated by noise.</note>
+      </example>
+
+      <antipattern>
+        <description>Asking the LLM, in the system prompt, to "summarize tool outputs longer than 20k tokens before continuing".</description>
+        <reason>The model has already seen the 35k tokens by the time it can summarize — context damage is done. Eviction must happen before the message reaches the model.</reason>
+      </antipattern>
+
+      <see-also>
+        <link href="https://deepwiki.com/langchain-ai/deepagentsjs/5.2-filesystem-middleware">LangChain Deep Agents filesystem middleware — the canonical implementation</link>
+        <link href="https://www.langchain.com/blog/context-management-for-deepagents">LangChain — Context Management for Deep Agents (rationale and toolTokenLimitBeforeEvict knob)</link>
+      </see-also>
+    </section>
+
+    <section name="middleware-shape">
+      <p>The eviction policy is a thin layer between tool dispatch and message append. It needs three pieces: a token counter, a persistent scratch path, and a recovery tool. None of the three involve the model.</p>
+
+      <rule testable="true">
+        <statement>Implement eviction as a runtime decorator with three components: (1) tokeniser-based size check on every tool return value, (2) deterministic write to a scratch directory keyed by tool-call-id, (3) a paired read_file(path, lines) tool the agent can call to recover slices on demand.</statement>
+        <rationale>Splitting these concerns mirrors LangChain Deep Agents' filesystemMiddleware and Manus's context-engineering write-up: the decision (evict or not) is deterministic, the storage is recoverable, and the agent only ever sees pointers — so the same architecture works whether the storage backend is local disk, S3, or an in-process content store.</rationale>
+      </rule>
+
+      <example type="good" title="Eviction wrapper pseudocode">
+        <code lang="python"><![CDATA[
+# Pseudocode of the wrapper applied to every tool
+def run_tool_with_eviction(tool, args, *, threshold=20_000, scratch="/tmp/agent"):
+    raw = tool(**args)
+    n = count_tokens(raw)
+    if n <= threshold:
+        return raw                       # small — pass through
+    path = f"{scratch}/{tool.__name__}_{uuid4().hex}.txt"
+    Path(path).write_text(raw)
+    return {
+        "path": path,
+        "preview": raw[:400],
+        "total_tokens": n,
+        "evicted": True,
+    }
+        ]]></code>
+        <note>Threshold and scratch directory are config — knob lives in the runtime, not in the prompt.</note>
+      </example>
+
+      <example type="bad" title="LLM-driven eviction in system prompt">
+        <code lang="python"><![CDATA[
+# Eviction performed by the agent inside its own reasoning
+system_prompt = "If a tool result is huge, save it and remember the path."
+# The model still receives the full payload first, then decides.
+        ]]></code>
+        <note>Defeats the purpose — context damage occurs before the LLM can act.</note>
+      </example>
+
+      <antipattern>
+        <description>Hard-coding the threshold equal to the model's max context window.</description>
+        <reason>Effective context (where accuracy holds) is far smaller than advertised — see the MECW paper. Set the threshold to a fraction of the working budget per step (e.g. 10–20% of the per-turn budget), not the model's nominal limit.</reason>
+      </antipattern>
+
+      <templates>
+        <template path="templates/evict-middleware.py" purpose="Minimal Python middleware showing the wrapper, scratch layout, and recovery tool"/>
+      </templates>
+
+      <see-also>
+        <link href="https://manus.im/blog/Context-Engineering-for-AI-Agents-Lessons-from-Building-Manus">Manus — Context Engineering for AI Agents (filesystem-as-memory in production)</link>
+        <link href="https://arxiv.org/abs/2509.21361">"Context Is What You Need" — empirical Maximum Effective Context Window measurements</link>
+      </see-also>
+    </section>
+
+    <section name="trust-model-to-summarize">
+      <p>The most common failure is configuring nothing in the runtime and writing a system-prompt clause asking the agent to compress its own tool outputs.</p>
+
+      <antipattern>
+        <description>System prompt instructs: "If a tool returns more than ~10k tokens, summarize and continue." No middleware enforces it.</description>
+        <reason>The full payload is in context the moment the tool returns; the summary that comes after cannot un-pollute earlier turns. Compaction must be a runtime guarantee, not a prompt request.</reason>
+      </antipattern>
+
+      <see-also>
+        <link href="https://lethain.com/agents-context-compaction/">lethain — Building an internal agent: context window compaction (why programmatic enforcement beats prompts)</link>
+      </see-also>
+    </section>
+
+    <section name="lossy-eviction-no-recovery">
+      <p>Some implementations replace the oversized result with a flat [truncated] marker and discard the body.</p>
+
+      <antipattern>
+        <description>Middleware truncates tool output to first 500 chars and drops the remainder. No path, no scratch file.</description>
+        <reason>The agent later realises it needs line 4,200 of the log and has no way to retrieve it — task fails or burns turns re-running the tool. Eviction without a path is just truncation.</reason>
+      </antipattern>
+    </section>
+
+    <section name="over-eviction-starves-agent">
+      <p>Setting the threshold too low makes the agent constantly call read_file for trivial results.</p>
+
+      <antipattern>
+        <description>Threshold set to 500 tokens "to be safe". Every tool result becomes a manifest the agent must dereference.</description>
+        <reason>Doubles tool calls, wastes turns, raises latency. The threshold must be tuned to median tool result size; LangChain's empirical default of 20,000 is a sane starting point. Measure your own distribution and pick the 90th percentile.</reason>
+      </antipattern>
+
+      <see-also>
+        <link href="https://blog.langchain.com/how-agents-can-use-filesystems-for-context-engineering">LangChain — How agents can use filesystems for context engineering (threshold tuning guidance)</link>
+      </see-also>
+    </section>
+  </content>
+</methodology>

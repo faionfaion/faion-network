@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="unit-testing">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>testing-developer</domain>
+    <summary>Core unit test principles: FIRST, AAA pattern, naming conventions, coverage strategies, and anti-patterns.</summary>
+    <tags>
+      <tag>unit-testing</tag>
+      <tag>test-quality</tag>
+      <tag>first-properties</tag>
+      <tag>code-coverage</tag>
+      <tag>anti-patterns</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Unit Testing</title>
+
+    <summary>Covers the FIRST properties (Fast/Isolated/Repeatable/Self-validating/Timely), Arrange-Act-Assert structure, test naming conventions (method-scenario-expected, should-when, given-when-then), coverage strategies (line vs branch vs mutation), test categories, and the most damaging anti-patterns (testing implementation, not behavior).</summary>
+
+    <why>
+      <p>Unit tests are the foundation of every test pyramid. Without consistent structure and naming, suites become maintenance burdens: tests that pass for wrong reasons, fail for infrastructure reasons, or describe nothing useful in their names. FIRST + AAA enforces a minimal discipline that scales.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Writing the first unit tests for a function, method, or class</item>
+        <item>Reviewing unit test quality (FIRST compliance, AAA structure, naming)</item>
+        <item>Choosing a coverage strategy for a new module</item>
+        <item>Identifying test anti-patterns: testing internals, slow unit tests, non-isolated fixtures</item>
+        <item>Onboarding new developers to the project test style</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>pytest-specific features (fixtures, parametrize) — use testing-pytest</item>
+        <item>Mocking strategy decisions — use mocking-strategies</item>
+        <item>E2E tests — use e2e-testing</item>
+        <item>Test fixture design — use test-fixtures</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="first-properties">
+      <list>
+        <item>Fast — unit tests must run in milliseconds. No I/O, no network, no sleep.</item>
+        <item>Isolated — each test sets up its own state and does not depend on other tests or global state.</item>
+        <item>Repeatable — produces identical results on any machine, any time, any order.</item>
+        <item>Self-validating — has a binary pass/fail outcome. No manual inspection of logs.</item>
+        <item>Timely — written at the same time as (or before) the production code they test.</item>
+      </list>
+      <rule>
+        <statement>If a test violates any FIRST property, it is not a unit test — it is an integration or system test.</statement>
+      </rule>
+    </section>
+
+    <section name="arrange-act-assert">
+      <rule>
+        <statement>Structure every test with a blank line separating Arrange, Act, and Assert sections.</statement>
+      </rule>
+      <rule>
+        <statement>One test = one Act. Multiple assertions on the result of a single Act are acceptable.</statement>
+      </rule>
+      <example type="good" title="AAA structure example">
+        <code lang="python"><![CDATA[
+def test_cart_applies_percentage_discount():
+    # Arrange
+    cart = ShoppingCart()
+    cart.add_item(price=100.0)
+    cart.add_item(price=50.0)
+
+    # Act
+    total = cart.total(discount_percent=20)
+
+    # Assert
+    assert total == 120.0
+        ]]></code>
+      </example>
+      <example type="bad" title="Multiple acts in one test">
+        <description>Multiple acts in one test — splits into two separate tests</description>
+        <code lang="python"><![CDATA[
+def test_cart():
+    cart = ShoppingCart()
+    cart.add_item(price=100.0)
+    assert len(cart.items) == 1  # act + assert 1
+    cart.add_item(price=50.0)
+    assert len(cart.items) == 2  # act + assert 2 — should be a separate test
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="naming-conventions">
+      <rule>
+        <statement>Name tests to describe what they test, not how they implement it.</statement>
+      </rule>
+      <rule>
+        <statement>Preferred formats:</statement>
+        <list>
+          <item>method_scenario_expected: add_item_when_duplicate_increments_quantity</item>
+          <item>should_behavior_when_condition: should_raise_when_price_is_negative</item>
+          <item>given_when_then: given_premium_user_when_checkout_then_discount_applied</item>
+        </list>
+      </rule>
+      <rule>
+        <statement>Test class names: TestClassName (groups tests for the same class).</statement>
+      </rule>
+      <rule>
+        <statement>Test function names must start with test_ for pytest discovery.</statement>
+      </rule>
+    </section>
+
+    <section name="what-is-a-unit">
+      <rule>
+        <statement>A unit is the smallest piece of behavior that can be tested in isolation.</statement>
+      </rule>
+      <rule>
+        <statement>A unit is NOT always a single function — it can be a cluster of collaborating classes if they form a coherent behavior.</statement>
+      </rule>
+      <rule>
+        <statement>Replace external dependencies (I/O, time, randomness) with test doubles. Keep internal collaborators real.</statement>
+      </rule>
+    </section>
+
+    <section name="coverage-types">
+      <list>
+        <item>Line coverage — measures whether each line was executed. Lowest bar, easiest to game.</item>
+        <item>Branch coverage — measures whether each branch (if/else, switch) was taken in both directions. More meaningful.</item>
+        <item>Mutation coverage — measures whether tests detect deliberate code mutations. Highest confidence, most expensive.</item>
+      </list>
+      <rule>
+        <statement>Aim for branch coverage, not line coverage. A function with 100% line coverage but untested edge cases is still fragile.</statement>
+      </rule>
+    </section>
+
+    <section name="target-thresholds">
+      <list>
+        <item>Business logic / domain layer: 90%+ branch coverage.</item>
+        <item>API handlers / controllers: 80%+ line coverage.</item>
+        <item>Infrastructure / adapters: 60%+ (often tested at integration level).</item>
+        <item>Generated code / migrations: exclude from coverage entirely.</item>
+      </list>
+      <rule>
+        <statement>Set cov-fail-under in CI — enforce minimums, but do not treat high coverage as a goal in itself.</statement>
+      </rule>
+    </section>
+
+    <section name="when-coverage-misleads">
+      <antipattern>
+        <description>100% coverage with no assertions</description>
+        <code lang="python"><![CDATA[
+def test_process_order(make_order):
+    order = make_order()
+    process_order(order)  # covered but never asserted — meaningless
+        ]]></code>
+        <reason>Coverage measures execution, not correctness. Always assert observable outcomes.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Testing internals to reach coverage targets</description>
+        <reason>Private methods and implementation details should be tested through public API. If a private method is complex enough to need direct testing, extract it to a separate class.</reason>
+      </antipattern>
+      <rule>
+        <statement>Use mutation testing (mutmut, pitest) on critical business logic to validate that your tests actually catch errors.</statement>
+      </rule>
+    </section>
+
+    <section name="testing-implementation-details">
+      <antipattern>
+        <description>Asserting on private methods or internal state</description>
+        <code lang="python"><![CDATA[
+def test_bad():
+    svc = OrderService()
+    svc.process(order)
+    assert svc._internal_cache["order_123"] == order  # tests internal detail
+
+def test_good():
+    svc = OrderService()
+    result = svc.process(order)
+    assert result.status == "confirmed"  # tests observable behavior
+        ]]></code>
+        <reason>Tests tied to implementation break on every refactor, even when behavior is correct.</reason>
+      </antipattern>
+    </section>
+
+    <section name="non-deterministic-assertions">
+      <antipattern>
+        <description>Asserting on floating-point equality without tolerance</description>
+        <code lang="python"><![CDATA[
+assert total == 0.1 + 0.2  # fails: 0.30000000000000004
+assert abs(total - 0.3) < 1e-9  # correct
+        ]]></code>
+        <reason>Floating-point arithmetic is not exact — use pytest.approx() or math.isclose().</reason>
+      </antipattern>
+      <antipattern>
+        <description>Asserting on dictionary ordering or set iteration order</description>
+        <reason>Python dicts are ordered by insertion since 3.7, but set ordering is undefined. Use sorted() for sets, explicit key lookups for dicts.</reason>
+      </antipattern>
+    </section>
+
+    <section name="excessive-mocking">
+      <antipattern>
+        <description>Mocking every dependency in a unit test, including simple value objects</description>
+        <reason>When the test mocks everything, it proves nothing. Use real collaborators within your own codebase; only mock external boundaries (I/O, time, network).</reason>
+      </antipattern>
+    </section>
+
+    <section name="slow-unit-tests">
+      <antipattern>
+        <description>Unit test touches the filesystem, database, or network</description>
+        <reason>Unit tests must run in milliseconds. Use tmp_path for files, in-memory SQLite for DB, mocks for network. Slow unit tests → developers skip running them locally.</reason>
+      </antipattern>
+    </section>
+
+    <section name="shared-mutable-state">
+      <antipattern>
+        <description>Tests share a mutable object created once in conftest or setUp</description>
+        <code lang="python"><![CDATA[
+# Bad: all tests share one cart, order of execution matters
+@pytest.fixture(scope="module")
+def cart():
+    c = ShoppingCart()
+    c.add_item(price=100.0)
+    return c
+
+# Good: fresh cart per test
+@pytest.fixture
+def cart():
+    return ShoppingCart()
+        ]]></code>
+        <reason>Shared mutable state makes tests order-dependent and non-repeatable.</reason>
+      </antipattern>
+    </section>
+  </content>
+</methodology>

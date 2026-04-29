@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="testing-javascript">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>testing-developer</domain>
+    <summary>JavaScript/TypeScript testing stack: Vitest vs Jest decision, component testing, MSW for API mocking, and ESM/CJS pitfalls.</summary>
+    <tags>
+      <tag>vitest</tag>
+      <tag>jest</tag>
+      <tag>testing</tag>
+      <tag>react-testing-library</tag>
+      <tag>msw</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Testing in JavaScript</title>
+
+    <summary>Covers the Vitest vs Jest decision tree (2025), unit and component testing patterns, React Testing Library integration, MSW v2 for API mocking, fake timers, coverage configuration, and common pitfalls (ESM/CJS confusion, jsdom layout limitations, MSW v1→v2 migration, fake timer leaks).</summary>
+
+    <why>
+      <p>The JS testing ecosystem fragmented between Jest (CommonJS-native) and Vitest (ESM-native, Vite-integrated). Choosing the wrong runner or misconfiguring the environment causes non-deterministic test results and hard-to-debug import errors.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up a new JavaScript/TypeScript test suite (Vitest or Jest)</item>
+        <item>Writing unit tests for React components with React Testing Library</item>
+        <item>Mocking HTTP calls with MSW (v2 API)</item>
+        <item>Debugging ESM/CJS import resolution errors in tests</item>
+        <item>Configuring fake timers without leaking state</item>
+        <item>Migrating from Jest to Vitest</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>E2E browser tests — use e2e-testing</item>
+        <item>Go tests — use testing-go</item>
+        <item>Python tests — use testing-pytest</item>
+        <item>General mocking strategy decisions — use mocking-strategies</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="runner-selection">
+      <title>Vitest vs Jest: Runner Selection</title>
+
+      <p>Decision tree for choosing Vitest or Jest, ESM/CJS handling differences, config comparison, and migration guide.</p>
+
+      <section name="decision-tree">
+        <rule>
+          <statement>Use Vitest when: project uses Vite, Vue, Svelte, or modern ESM-first setup.</statement>
+        </rule>
+        <rule>
+          <statement>Use Jest when: project uses Create React App, Next.js (without Vitest plugin), or has deep Jest ecosystem dependencies.</statement>
+        </rule>
+        <rule>
+          <statement>For new TypeScript projects with no existing setup: default to Vitest.</statement>
+        </rule>
+        <list>
+          <item>Vitest: native ESM, Vite config reuse, 10-20x faster HMR, vi.mock() API</item>
+          <item>Jest: battle-tested, jsdom by default, broader plugin ecosystem, CRA/Next.js built-in</item>
+        </list>
+      </section>
+
+      <section name="esm-cjs-handling">
+        <rule>
+          <statement>Vitest handles ESM natively — no transform config needed for modern packages.</statement>
+        </rule>
+        <rule>
+          <statement>Jest requires transform configuration for ESM packages — add to transformIgnorePatterns.</statement>
+        </rule>
+        <antipattern>
+          <description>Jest fails on ESM-only package (e.g., chalk v5, node-fetch v3)</description>
+          <code lang="javascript"><![CDATA[
+// jest.config.js — add ESM packages to transform list
+module.exports = {
+  transformIgnorePatterns: [
+    "/node_modules/(?!(chalk|node-fetch|other-esm-pkg)/)"
+  ]
+};
+          ]]></code>
+          <reason>Jest uses CommonJS by default. ESM-only packages must be transformed. Vitest avoids this entirely.</reason>
+        </antipattern>
+      </section>
+
+      <section name="config-comparison">
+        <example type="good" title="Vitest config (vitest.config.ts)">
+          <code lang="typescript"><![CDATA[
+import { defineConfig } from 'vitest/config';
+export default defineConfig({
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./tests/setup.ts'],
+    coverage: { provider: 'v8', reporter: ['text', 'html'] },
+  },
+});
+          ]]></code>
+        </example>
+        <example type="good" title="Jest config (jest.config.ts)">
+          <code lang="typescript"><![CDATA[
+import type { Config } from 'jest';
+const config: Config = {
+  preset: 'ts-jest',
+  testEnvironment: 'jsdom',
+  setupFilesAfterFramework: ['./tests/setup.ts'],
+  collectCoverageFrom: ['src/**/*.{ts,tsx}'],
+};
+export default config;
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="migration-from-jest-to-vitest">
+        <list>
+          <item>Replace jest.fn() with vi.fn()</item>
+          <item>Replace jest.mock() with vi.mock()</item>
+          <item>Replace jest.spyOn() with vi.spyOn()</item>
+          <item>Replace jest.useFakeTimers() with vi.useFakeTimers()</item>
+          <item>Update jest.config.js to vitest.config.ts</item>
+          <item>Remove babel-jest if using Vite — Vitest uses Vite's transform pipeline</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="test-patterns">
+      <title>JavaScript/TypeScript Test Patterns</title>
+
+      <p>AAA for JS, async patterns (waitFor, findBy), hooks testing (useState, useEffect), fake timers, and coverage configuration.</p>
+
+      <section name="arrange-act-assert">
+        <rule>
+          <statement>Use blank lines to separate the three sections, same as Python.</statement>
+        </rule>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+it('formats price with currency symbol', () => {
+  // Arrange
+  const price = 1234.56;
+
+  // Act
+  const result = formatPrice(price, 'USD');
+
+  // Assert
+  expect(result).toBe('$1,234.56');
+});
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="async-testing">
+        <rule>
+          <statement>Always return or await async test functions — silent unhandled rejections mask failures.</statement>
+        </rule>
+        <rule>
+          <statement>Use findBy* queries (async) instead of getBy* + waitFor for elements that appear after async operations.</statement>
+        </rule>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+it('loads user profile on mount', async () => {
+  vi.mocked(fetchUser).mockResolvedValue({ id: 1, name: 'Alice' });
+
+  render(<UserProfile userId={1} />);
+
+  // findBy* waits automatically — no manual waitFor needed
+  const name = await screen.findByText('Alice');
+  expect(name).toBeInTheDocument();
+});
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="fake-timers">
+        <rule>
+          <statement>Use vi.useFakeTimers() / jest.useFakeTimers() for time-dependent code. Always restore in afterEach.</statement>
+        </rule>
+        <rule>
+          <statement>Call vi.runAllTimers() or vi.advanceTimersByTime() to trigger scheduled callbacks.</statement>
+        </rule>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+describe('debounced search', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('delays the search call by 300ms', () => {
+    const onSearch = vi.fn();
+    render(<SearchInput onSearch={onSearch} debounceMs={300} />);
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'test' } });
+    expect(onSearch).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(300);
+    expect(onSearch).toHaveBeenCalledWith('test');
+  });
+});
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="coverage-configuration">
+        <rule>
+          <statement>Use v8 provider for Vitest (native, fast). Use istanbul for Jest (more detailed branch coverage).</statement>
+        </rule>
+        <rule>
+          <statement>Set thresholds for lines, functions, branches in config — fail CI if they drop.</statement>
+        </rule>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+// vitest.config.ts
+coverage: {
+  provider: 'v8',
+  reporter: ['text', 'html', 'lcov'],
+  thresholds: {
+    lines: 80,
+    functions: 80,
+    branches: 75,
+  },
+  exclude: ['**/*.stories.ts', '**/*.d.ts', 'src/index.ts'],
+},
+          ]]></code>
+        </example>
+      </section>
+    </section>
+
+    <section name="msw-and-components">
+      <title>MSW v2 and Component Testing</title>
+
+      <p>MSW v2 setup for Node (tests) and browser (dev), React Testing Library query priority, component test structure, and jsdom limitations.</p>
+
+      <section name="msw-v2-node-setup">
+        <rule>
+          <statement>MSW v2 changed the API significantly from v1 — use http.get() not rest.get(), and HttpResponse not res(ctx...).</statement>
+        </rule>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+// tests/mocks/handlers.ts (MSW v2)
+import { http, HttpResponse } from 'msw';
+
+export const handlers = [
+  http.get('/api/users/:id', ({ params }) => {
+    return HttpResponse.json({ id: params.id, name: 'Alice' });
+  }),
+  http.post('/api/users', async ({ request }) => {
+    const body = await request.json();
+    return HttpResponse.json({ id: '123', ...body }, { status: 201 });
+  }),
+];
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="msw-v2-test-server-setup">
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+// tests/setup.ts
+import { setupServer } from 'msw/node';
+import { handlers } from './mocks/handlers';
+
+export const server = setupServer(...handlers);
+
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+          ]]></code>
+        </example>
+        <rule>
+          <statement>Use onUnhandledRequest: 'error' to surface missed mock configurations early.</statement>
+        </rule>
+      </section>
+
+      <section name="react-testing-library-query-priority">
+        <rule>
+          <statement>Query priority (most to least preferred): getByRole → getByLabelText → getByPlaceholderText → getByText → getByTestId.</statement>
+        </rule>
+        <rule>
+          <statement>Only use getByTestId as a last resort — it couples tests to implementation details.</statement>
+        </rule>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+// Good: accessible query
+const button = screen.getByRole('button', { name: /submit/i });
+const emailInput = screen.getByLabelText('Email address');
+
+// Acceptable: visible text
+const heading = screen.getByText('Welcome back');
+
+// Last resort: test ID
+const widget = screen.getByTestId('complex-widget');
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="component-test-structure">
+        <rule>
+          <statement>Test user behavior, not implementation details — do not test state, refs, or component methods directly.</statement>
+        </rule>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+describe('LoginForm', () => {
+  it('calls onSuccess with user data after successful login', async () => {
+    const onSuccess = vi.fn();
+    render(<LoginForm onSuccess={onSuccess} />);
+
+    await userEvent.type(screen.getByLabelText('Email'), 'user@example.com');
+    await userEvent.type(screen.getByLabelText('Password'), 'secret123');
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    await waitFor(() => {
+      expect(onSuccess).toHaveBeenCalledWith(expect.objectContaining({
+        email: 'user@example.com',
+      }));
+    });
+  });
+});
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="jsdom-limitations">
+        <rule>
+          <statement>jsdom does not support layout (offsetWidth, getBoundingClientRect always returns 0). Use Playwright for visual/layout tests.</statement>
+        </rule>
+        <rule>
+          <statement>jsdom does not support window.matchMedia — mock it in setup.ts if your code uses it.</statement>
+        </rule>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+// tests/setup.ts — mock matchMedia for jsdom
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
+          ]]></code>
+        </example>
+      </section>
+    </section>
+
+    <templates>
+      <template path="templates/vitest.config.ts" purpose="Vitest config with coverage, jsdom, path aliases"/>
+      <template path="templates/msw-setup.ts" purpose="MSW v2 server setup for Node (tests) and browser (dev)"/>
+    </templates>
+
+    <see-also>
+      <ref slug="testing-patterns"/>
+      <ref slug="mocking-strategies"/>
+      <ref slug="e2e-testing"/>
+      <link href="https://vitest.dev/"/>
+      <link href="https://jestjs.io/"/>
+      <link href="https://mswjs.io/"/>
+      <link href="https://testing-library.com/docs/react-testing-library/intro/"/>
+    </see-also>
+  </content>
+</methodology>
