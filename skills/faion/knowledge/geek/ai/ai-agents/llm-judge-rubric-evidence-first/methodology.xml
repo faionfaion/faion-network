@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="llm-judge-rubric-evidence-first">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>When evaluating open-ended outputs, use another LLM as a judge with a structured rubric, JSON output, evidence cited before scores, per-criterion scoring, and bias mitigation.</summary>
+    <tags>
+      <tag>evaluation</tag>
+      <tag>llm-judge</tag>
+      <tag>rubric</tag>
+      <tag>bias-mitigation</tag>
+      <tag>evals</tag>
+    </tags>
+    <category>eval</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>LLM-as-Judge — Rubric, Evidence-First, Bias-Mitigated</title>
+    <summary>When you cannot use exact-match or unit-test checks (open-ended outputs: summaries, code review, plans, agent transcripts), use another LLM as a judge — but only with a structured rubric, JSON output, evidence cited BEFORE the score, per-criterion scoring, and explicit mitigation of position/verbosity/self-preference/authority bias. "Rate 1-10" prompts are not evals; they are noise generators.</summary>
+    <why>
+      <p>Galileo's 2026 review of 12 production judge stacks plus Anthropic's eval guidance both show that vanilla "score this 1-10" judges have inter-rater reliability below Cronbach's alpha 0.5, which is worse than coin-flip on borderline cases. Adding a named rubric, requiring evidence quotes from the candidate output before scoring, and randomising candidate order pushes alpha to 0.8+ and removes the four canonical biases. Without this discipline, you ship a judge that simply prefers longer, GPT-4-flavoured responses regardless of correctness.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Evaluating open-ended agent outputs where exact-match is impossible (summaries, plans, multi-turn dialogue).</item>
+        <item>Grading code review comments, refactor plans, or other reasoning artifacts.</item>
+        <item>Pairwise comparison of two agent variants on the same task set.</item>
+        <item>Building a regression suite for prompt or model changes that touch generation quality.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Output is verifiable deterministically (compiles, passes tests, matches schema) — judges add cost and noise; use the deterministic check first.</item>
+        <item>Single-LLM stack on borderline cases — self-preference bias is unfixable; bring in a second model family for cross-judging.</item>
+        <item>Privacy-sensitive outputs you cannot send to a third-party judge — keep evals local or skip.</item>
+        <item>Throwaway prototypes — overhead of rubric design is not justified before the agent is real.</item>
+      </list>
+    </when-not-to-use>
+    <section name="required-rubric-shape">
+      <p>A judge prompt is only useful when it forces named criteria, evidence quotes from the candidate output, and per-criterion scoring inside a strict JSON schema.</p>
+      <p>A rubric has four moving parts: named criteria with weights, scale definition with anchors, output schema that requires evidence before scoring, and a per-criterion rationale.</p>
+      <rule testable="true">
+        <statement>Every judge prompt must require structured JSON output with: per-criterion evidence (verbatim quote from candidate), per-criterion score on a fixed scale, per-criterion rationale, and a final weighted total — in that order.</statement>
+        <rationale>Forcing the judge to quote evidence BEFORE emitting a score binds the score to specific text, which is what raises Cronbach's alpha from ~0.45 (1-10 prompts) to ~0.85 across studies summarised by Adnan Masood (2024) and Langfuse's 2026 evaluation guide.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="json"><![CDATA[{
+  "evidence": {
+    "correctness": "Returned `null` on missing key (line 7)",
+    "completeness": "All four required fields present"
+  },
+  "scores": {"correctness": 4, "completeness": 5, "safety": 5},
+  "rationale": {"correctness": "Logic correct but error path swallows exception"},
+  "weighted_total": 4.6
+}]]></code>
+        <note>Evidence is quoted from the candidate, scores reference fixed criteria, total is computed not guessed.</note>
+      </example>
+      <example type="bad">
+        <code lang="json"><![CDATA[{"score": 8, "comment": "Looks good overall"}]]></code>
+        <note>No criteria, no evidence, no rationale — judge has nothing to anchor on, so output is pure narrative drift.</note>
+      </example>
+      <antipattern>
+        <description>"Rate this response 1-10" with no rubric, no evidence requirement, no JSON.</description>
+        <reason>Output becomes a function of judge mood, candidate length, and surface fluency rather than the criteria you actually care about.</reason>
+      </antipattern>
+    </section>
+    <section name="validating-the-judge">
+      <rule testable="true">
+        <statement>Run the judge prompt on the same candidate set 3-5 times with shuffled candidate order; compute Cronbach's alpha across runs. Reject the judge if alpha &lt; 0.7.</statement>
+        <rationale>An unstable judge can never be a reliable eval signal. Stability is a precondition, not a nice-to-have, per Galileo's 2026 framework.</rationale>
+      </rule>
+    </section>
+    <section name="mitigating-the-four-canonical-biases">
+      <p>Position, verbosity, self-preference, and authority biases each have a known mechanism and a known counter; ship none of the counters and your judge becomes a length-and-style detector.</p>
+      <list>
+        <item>Position bias: judge prefers whichever candidate is shown first (or last) in pairwise prompts.</item>
+        <item>Verbosity bias: longer answers score higher regardless of correctness.</item>
+        <item>Self-preference: a model judging its own family's outputs scores them ~5-15% higher.</item>
+        <item>Authority bias: the judge defers to confident-sounding language even when factually wrong.</item>
+      </list>
+      <rule testable="true">
+        <statement>For pairwise judging, randomise candidate order per task AND run each pair twice with positions swapped; final verdict requires agreement across both orderings — disagreements count as ties.</statement>
+        <rationale>Direct measurement by Arize (2024-2026) shows position-swap reduces Order Bias by 60-90%; tie-on-disagree prevents the judge from breaking arbitrary ties as if they were meaningful.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[def judge_pair(a, b, judge):
+    s1 = judge(a, b)        # candidate A first
+    s2 = judge(b, a)        # candidate B first
+    if s1.winner == s2.winner:
+        return s1.winner
+    return "tie"            # disagree -> tie, never break arbitrarily]]></code>
+        <note>Two orderings, agreement required — kills position bias on the metric you actually report.</note>
+      </example>
+      <example type="bad">
+        <code lang="python"><![CDATA[def judge_pair(a, b, judge):
+    return judge(a, b).winner   # one ordering, no swap]]></code>
+        <note>Whichever candidate sits first wins ~57% of borderline cases regardless of merit.</note>
+      </example>
+      <rule testable="true">
+        <statement>Normalise candidate length before judging: truncate to a common token cap, OR add explicit instruction "ignore length differences; longer is not better".</statement>
+        <rationale>Verbosity bias is consistently 10-30% on raw prompts (Arize 2026 LLM-judge writeup); normalisation drops it to under 5%.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Cross-judge: never use a single model family as the only judge for outputs from that same family. Use at least two different families (e.g., Claude judges GPT outputs, GPT judges Claude outputs) and compare.</statement>
+        <rationale>Self-preference is well-documented (Zheng et al. MT-bench, replicated across 2024-2026 evaluations). Cross-family judging exposes the bias and lets you flag tasks where only the in-family judge "agrees".</rationale>
+      </rule>
+      <antipattern>
+        <description>Single-judge production setup with no order swap, no length normalisation, no cross-model verification.</description>
+        <reason>Looks rigorous because there is JSON output and a rubric, but the four biases combine to make the metric a measurement of style, not quality.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/rubric.json" purpose="Reusable rubric template with criteria, weights, output schema, and judge-prompt slots."/>
+      <template path="templates/judge-prompt.txt" purpose="Plain-text judge prompt with bias-mitigation instructions and evidence-first ordering."/>
+    </templates>
+    <see-also>
+      <link href="https://medium.com/@adnanmasood/rubric-based-evals-llm-as-a-judge-methodologies-and-empirical-validation-in-domain-context-71936b989e80">Empirical validation of rubric-based evals.</link>
+      <link href="https://langfuse.com/docs/evaluation/evaluation-methods/llm-as-a-judge">Langfuse 2026 LLM-as-judge methodology guide.</link>
+      <link href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Anthropic eval guidance — outcome plus rubric for open-ended outputs.</link>
+      <link href="https://arize.com/llm-as-a-judge/">Arize 2026 catalog of LLM-judge biases and counters.</link>
+      <link href="https://galileo.ai/blog/agent-evaluation-framework-metrics-rubrics-benchmarks">Galileo 2026 — bias mitigation as part of judge readiness.</link>
+    </see-also>
+  </content>
+</methodology>
