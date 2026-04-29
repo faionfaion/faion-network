@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-documentation">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Document APIs with OpenAPI specs including overview, auth, code examples, errors, and changelog. Host interactive docs via Swagger UI and readable reference via Redoc.</summary>
+    <tags>
+      <tag>api-docs</tag>
+      <tag>openapi</tag>
+      <tag>swagger-ui</tag>
+      <tag>redoc</tag>
+      <tag>documentation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>API Documentation</title>
+    <summary>Document every API with an OpenAPI spec that includes: overview, authentication instructions, working code examples (curl + at least one SDK), all error codes with resolution hints, and a changelog. Host interactive docs via Swagger UI (`/docs`) and readable reference via Redoc (`/redoc`).</summary>
+    <why>
+      <p>Developers abandon APIs that lack copy-paste examples or do not document errors. OpenAPI as source of truth enables auto-generated client SDKs, test stubs, and Swagger UI with zero extra work. A changelog prevents breaking-change surprises for existing consumers.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Publishing any API consumed by external developers or third-party integrations.</item>
+        <item>Setting up a new FastAPI or Django project where OpenAPI is auto-generated.</item>
+        <item>Adding examples and error tables to an existing, poorly documented API.</item>
+        <item>Preparing an API for SDK generation.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Internal micro-services with no external consumers — a brief AGENTS.md is enough.</item>
+        <item>Prototypes that will be redesigned before any consumer integrates.</item>
+        <item>CLI tools — man pages and --help flags are the right format.</item>
+      </list>
+    </when-not-to-use>
+    <section name="required-sections">
+      <rule testable="true">
+        <statement>Every API reference must include: Overview, Authentication, Quick Start (with copy-paste curl), Endpoints, Error Codes table, and Changelog.</statement>
+        <rationale>Developers evaluate APIs in under 5 minutes. Missing any of these six sections causes abandonment before integration begins.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Quick Start must include a working curl command that produces a visible result with no setup beyond an API key.</statement>
+        <rationale>A runnable first call is the fastest proof of value. SDKs and full docs can wait; a curl example cannot.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Error Codes table must include: code, meaning, and a resolution hint for every non-2xx response the API can return.</statement>
+        <rationale>Clients debug by error code. An error code with no resolution hint requires reading source code or filing a support ticket.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Changelog must record breaking changes, new endpoints, and bug fixes per version with a date.</statement>
+        <rationale>Consumers must know when to update their integrations. Undocumented breaking changes cause production outages.</rationale>
+      </rule>
+    </section>
+    <section name="code-examples">
+      <rule testable="true">
+        <statement>Provide code examples in at least two languages (curl + one SDK); keep them synchronized with tests so they do not go stale.</statement>
+        <rationale>Most consumers copy-paste the example closest to their stack. Stale examples that do not work destroy trust faster than missing docs.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Include rate limit information (requests per window, headers returned, behavior on breach) in the Authentication or Overview section.</statement>
+        <rationale>Clients that hit rate limits without prior knowledge implement incorrect retry logic, causing cascading failures.</rationale>
+      </rule>
+    </section>
+    <section name="fastapi-app-metadata">
+      <rule testable="true">
+        <statement>Set title, description (with auth instructions and rate limits), and version in the FastAPI app constructor to populate Swagger UI and Redoc automatically.</statement>
+        <rationale>FastAPI generates OpenAPI from app metadata. Setting it once populates both /docs and /redoc with no extra work.</rationale>
+      </rule>
+      <example type="good" title="FastAPI with full metadata">
+        <code lang="python"><![CDATA[from fastapi import FastAPI
+
+app = FastAPI(
+    title="User Management API",
+    description=(
+        "## Authentication\n"
+        "All endpoints require `Authorization: Bearer <token>`.\n\n"
+        "## Rate Limits\n"
+        "Free tier: 100 req/hour. Pro tier: 10,000 req/hour."
+    ),
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+)]]></code>
+      </example>
+    </section>
+    <section name="inline-examples-in-openapi">
+      <rule testable="true">
+        <statement>Add named examples under requestBody and responses for every endpoint that has non-trivial input or output variants.</statement>
+        <rationale>Named examples appear in Swagger UI's dropdown, letting developers try each scenario without constructing the body manually.</rationale>
+      </rule>
+      <antipattern>
+        <description>No examples in the OpenAPI spec — only schema definitions.</description>
+        <reason>Schemas describe shape; examples demonstrate real values. Without examples, Swagger UI generates synthetic data that may not reflect valid inputs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Examples that are not tested against the actual API.</description>
+        <reason>Untested examples drift from implementation. A consumer who follows the example and gets an error loses trust in all docs.</reason>
+      </antipattern>
+    </section>
+    <section name="agentic-workflow">
+      <p>Drive doc generation as a four-stage pipeline. (1) A spec-extractor agent parses OpenAPI + source code into a normalized doc model (per endpoint: summary, params, request, responses, errors, auth, rate-limit). (2) An example-generator agent emits curl + Python + JS + Go snippets per endpoint. (3) A runner stage actually executes each curl/Python snippet against a Prism mock or staging env; failed snippets are rejected. (4) A narrative agent (sonnet) writes overview + quickstart + auth + changelog. Render with Redocly or Mintlify, deploy on every spec merge.</p>
+    </section>
+    <section name="recommended-subagents">
+      <p>faion-sdd-executor-agent — gates merges on "every public endpoint has a working code sample in at least 3 languages". A purpose-built example-runner subagent (worth creating): given a code block, executes it against a sandbox; writes pass | fail + diff. Crucial for keeping docs honest. faion-feature-executor (skill) — sequences spec → docs → SDK update → changelog as one feature task chain. password-scrubber-agent — strip real tokens, customer IDs, internal hostnames before publishing.</p>
+    </section>
+    <section name="prompt-pattern-endpoint-reference">
+      <p>Endpoint reference generation prompt template:</p>
+      <code lang="text"><![CDATA[You are a technical writer. Given the OpenAPI operation in <op>, write a Markdown reference page with sections: Description (≤2 sentences), Path & Method, Authentication, Path Params, Query Params, Request Body (schema + JSON example), Responses (200/4xx/5xx + bodies), Rate Limit, Error Codes (table), Code Samples (curl, Python, JS, Go). No prose filler. Every example must be runnable as-is.]]></code>
+    </section>
+    <section name="prompt-pattern-quickstart">
+      <p>Quickstart synthesis prompt template:</p>
+      <code lang="text"><![CDATA[Given the spec at <spec> and SDK at <sdk_repo>, produce a 5-step quickstart: signup → key creation → first request → error handling → next steps. Each step is ≤8 lines. Use real placeholder env vars (API_KEY, BASE_URL). Verify each command actually runs against the sandbox.]]></code>
+    </section>
+    <section name="cli-tools-ecosystem">
+      <p>redocly — lint + bundle + render OpenAPI to static site. swagger-cli — validate + bundle multi-file OpenAPI. widdershins — OpenAPI → Slate / Markdown. mintlify — docs site from MDX + OpenAPI. docusaurus — static docs site (with OpenAPI plugin). prism — mock server for example execution. httpie / xh — lightweight curl alternative for sample testing. vale — prose linter for docs (style rules per repo). markdownlint-cli — lint Markdown structure / heading levels.</p>
+    </section>
+    <section name="saas-platforms-for-api-docs">
+      <p>ReadMe.com (SaaS) offers hosted docs, recipes, "Try It" against live APIs with REST API + CLI. Mintlify (SaaS + OSS CLI) provides MDX + OpenAPI with AI search and agent-driven publishing. Stoplight (SaaS + OSS) offers Spectral CLI integration. Bump.sh (SaaS) provides versioned spec hosting + diff. Redocly Workflows (SaaS) offers spec governance + hosted reference. GitBook (SaaS) has strong narrative but weaker spec-driven reference. Docusaurus + redocusaurus (OSS) are self-hosted; agents can PR new pages. Slate (OSS) features three-column docs (description / sample / response) and pairs well with widdershins. Postman (SaaS) auto-publishes collections as docs and supports examples. Theneo (SaaS) is an AI-first API doc generator.</p>
+    </section>
+    <section name="best-practices">
+      <p>Treat the spec as the source of truth and generate reference docs from it on every merge — never hand-edit reference pages. Run every code sample in CI. Examples that don't execute are worse than no examples. Show errors prominently. Document 429 retry-after, 409 conflict resolution, idempotency keys, and pagination boundaries. Provide a "first 5 minutes" quickstart that produces a real, observable side effect (e.g., a SMS sent, a webhook delivered) — abstract examples lose users. Keep a curated, hand-written narrative layer (overview, concepts, auth flow) on top of generated reference. Generated-only docs read like catalogs. Version docs with the API. URL like /docs/v2/... Deprecated endpoints stay visible with a banner pointing to the replacement. Maintain a machine-readable changelog (changelog.json or Keep a Changelog format). LLM clients use it to migrate. Include rate limits, quotas, and SLOs on every endpoint — clients code retry behavior off this.</p>
+    </section>
+    <section name="failures-and-limitations">
+      <p>Drift: hand-written docs lag the spec by days; the gap is invisible until users complain. Examples that don't compile / pass: agents and humans both write idealized snippets that never get executed; CI catches none of it unless explicitly enforced. Tone collapse: LLMs produce uniform marketing-grade prose that obscures gotchas; engineers stop reading. Versioning: maintaining v1 + v2 docs simultaneously is rarely automated; one version goes stale. Error coverage: docs document the happy path; 4xx/5xx scenarios and rate-limit behavior are skipped. Auth flows are reduced to a single Bearer line; OAuth, refresh, scopes, and rotation are under-documented. Search / discoverability: long flat pages (Swagger UI defaults) hide endpoints; users can't find what they need. SDK examples lag the SDK release; Python sample uses old client signature, etc.</p>
+    </section>
+    <section name="ai-agent-gotchas">
+      <p>LLMs hallucinate fields that don't exist in the spec; they invent plausible response bodies. Always derive examples from the spec schema, not from the prompt. Agents copy stale curl examples between endpoints (same payload across /users and /orders). Force per-operation example generation, not template fill-in. Tone homogeneity: LLM-written docs all sound the same; users skim and miss warnings. Inject explicit "Caution:" / "Pitfall:" blocks during generation and require ≥1 per high-risk endpoint. Examples leak real data: agents copy from staging traces and expose tokens. Run scrubber after generation. Versioning collapse: agents merge v1 and v2 examples into one page. Lock the agent context to a single version per run. Auth flows under-documented: agents stop at "send Bearer header"; never explain refresh/scope/rotation. Mandate a dedicated Authentication page section with sequence diagram (Mermaid) per flow. Stale SDK references: agents cite old method names. Pin the SDK commit hash in the prompt and re-render docs whenever the SDK ships a new release. Human-in-loop checkpoint: any breaking-change note in the changelog must be human-approved before publishing — agents are too eager to declare "minor". Agents skip the Errors section because spec lacks examples; require error examples in the spec itself, then docs follow automatically.</p>
+    </section>
+    <templates>
+      <template path="templates/openapi-examples.yaml" purpose="OpenAPI path with request/response examples and error refs"/>
+      <template path="templates/doc-structure.md" purpose="Markdown template for a complete API reference page"/>
+    </templates>
+    <see-also>
+      <link href="https://diataxis.fr">Diátaxis framework (tutorial / how-to / reference / explanation)</link>
+      <link href="https://www.docslikecode.com">Docs Like Code — Anne Gentle</link>
+      <link href="https://stripe.com/docs/api">Stripe API docs (gold standard reference)</link>
+      <link href="https://www.twilio.com/docs">Twilio docs structure (quickstart pattern)</link>
+      <link href="https://spec.openapis.org/oas/latest.html">OpenAPI Specification 3.1</link>
+      <link href="https://www.writethedocs.org">Write the Docs community</link>
+      <link href="https://redocly.com/docs/style-guides/">Redocly style guide</link>
+    </see-also>
+  </content>
+</methodology>
