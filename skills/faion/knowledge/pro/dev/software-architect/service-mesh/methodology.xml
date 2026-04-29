@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="service-mesh">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Infrastructure layer for secure, observable service-to-service communication in microservices: mesh selection, sidecar vs sidecarless, mTLS, traffic management, and 2025 benchmarks.</summary>
+    <tags>
+      <tag>microservices</tag>
+      <tag>service-mesh</tag>
+      <tag>mtls</tag>
+      <tag>istio</tag>
+      <tag>linkerd</tag>
+      <tag>traffic-management</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Service Mesh</title>
+    <summary>Infrastructure layer for secure, observable service-to-service communication in microservices. Covers mesh selection (Istio vs Linkerd vs Cilium vs Istio Ambient), sidecar vs sidecarless architectures, mTLS configuration, traffic management patterns (canary, blue-green, circuit breaking, retries, mirroring), and 2025 performance benchmarks per mesh.</summary>
+    <why>
+      <p>Without a service mesh, each service team must implement mTLS, retries, circuit breaking, and distributed tracing independently — leading to inconsistency and gaps. A mesh provides these uniformly via the proxy layer without application code changes. The 2025 shift to sidecarless (Ambient, Cilium eBPF) reduces latency overhead from ~166% to under 8% compared to traditional Envoy sidecars.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>10+ microservices requiring uniform mTLS (zero-trust) between all pods</item>
+        <item>Canary or blue-green deployments requiring fine-grained traffic splitting</item>
+        <item>Multi-cluster communication with cross-cluster service discovery</item>
+        <item>Compliance requirements (SOC2, HIPAA) needing encryption audit trails</item>
+        <item>Uniform distributed tracing and RED metrics across all services</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Fewer than 5 services — direct HTTP/gRPC with cert-manager manual TLS is simpler</item>
+        <item>Monolith or near-monolith — no inter-service traffic to manage</item>
+        <item>Latency requirements under 1ms — any proxy layer adds overhead</item>
+        <item>Team not yet comfortable with Kubernetes — master K8s basics before adding mesh complexity</item>
+        <item>Resource-constrained environment where proxy memory per pod (20-70 MB) is prohibitive</item>
+      </list>
+    </when-not-to-use>
+    <section name="service-mesh-architecture-and-selection">
+      <p>A service mesh is an infrastructure layer that handles service-to-service communication: service discovery, load balancing, mTLS encryption, observability (metrics/tracing/logs), traffic management (routing, retries, circuit breaking), and access control — without requiring application code changes.</p>
+      <p>Components: Data Plane (proxies alongside or shared between services) and Control Plane (centralized management: configuration distribution, certificate management, policy enforcement, telemetry aggregation).</p>
+      <section name="architecture-approaches">
+        <list>
+          <item>Sidecar model (traditional): proxy container per pod (Envoy for Istio, Linkerd-proxy for Linkerd). Full L7 features, complete isolation between pods. Higher resource overhead: 50-70 MB per pod (Istio) or 20-30 MB (Linkerd). Latency overhead: +166% for Istio sidecar, +33% for Linkerd at 3200 RPS.</item>
+          <item>Sidecarless — Istio Ambient: ztunnel (L4, per node) + waypoint proxy (L7, per namespace). Lower overhead: ~12 MB shared per node for ztunnel, ~0.06 vCPU per 1000 RPS. Latency overhead: +8% at 3200 RPS. Simpler operations: no per-pod sidecar injection.</item>
+          <item>Sidecarless — Cilium eBPF: network policies and basic mesh in Linux kernel via eBPF, optional Envoy for L7. Minimal per-pod memory (per-node only), kernel-level CPU usage. Best for network-heavy workloads and environments where CNI and mesh should be the same tool.</item>
+        </list>
+        <rule>
+          <statement>Prefer sidecarless architectures (Istio Ambient or Cilium) for new deployments in 2025; use traditional Envoy sidecars only when full per-pod L7 isolation is a hard requirement.</statement>
+          <rationale>Ambient mode reduces latency overhead from +166% to +8% and eliminates per-pod sidecar memory. For most production use cases (mTLS, canary routing, basic observability), the ztunnel + waypoint architecture delivers equivalent security and functionality with significantly lower resource cost.</rationale>
+        </rule>
+      </section>
+      <section name="mesh-selection">
+        <list>
+          <item>Istio: full features, enterprise-grade, advanced traffic management (header-based routing, fault injection, traffic mirroring), multi-cluster, full Gateway API support. High learning curve. Best for complex enterprise deployments requiring all L7 features.</item>
+          <item>Linkerd: simplicity, low latency (+33%), Rust-based proxy with low memory (~20 MB), mTLS on by default, good observability. Limited multi-cluster (paid). Best for teams prioritising simplicity and operational ease over advanced features.</item>
+          <item>Cilium: eBPF-based, combines CNI and service mesh, best performance for network-heavy workloads, strong network policy support. Requires kernel 5.4+. Best for platforms where CNI consolidation is desirable and eBPF expertise exists.</item>
+          <item>Istio Ambient: minimal overhead (ztunnel per node), mTLS only at L4, optional L7 via waypoint proxies. Best for mTLS-only use cases or large clusters where per-pod sidecar memory cost is prohibitive.</item>
+        </list>
+        <p>Decision framework: need mTLS only → Istio Ambient or cert-manager + manual config. Need advanced L7 (traffic mirroring, fault injection) → Istio or Linkerd. Resource-constrained → Linkerd or Istio Ambient. Need multi-cluster → Istio or Cilium. Value simplicity → Linkerd. eBPF / network policy consolidation → Cilium.</p>
+      </section>
+    </section>
+    <section name="mtls-and-traffic-management">
+      <p>mTLS permissive-to-strict migration, SPIFFE identity, certificate rotation best practices, and traffic management patterns: canary, blue-green, A/B testing, traffic mirroring, circuit breaking, retries, and timeouts.</p>
+      <section name="mtls-configuration">
+        <rule>
+          <statement>Start mTLS in permissive mode to establish baseline metrics, then migrate to strict mode namespace-by-namespace after validating all service-to-service paths are covered by certificates.</statement>
+          <rationale>Switching to strict mode without permissive validation silently breaks services that are not enrolled in the mesh (external services, legacy apps, services with annotation exceptions). Permissive mode allows both plaintext and mTLS, making it safe to verify coverage before enforcing.</rationale>
+        </rule>
+        <list>
+          <item>SPIFFE (Secure Production Identity Framework for Everyone): standard identity format for workloads, encoded in X.509 certificates as SPIFFE IDs (spiffe://trust-domain/path). Enables cross-cluster and cross-mesh identity without shared CA.</item>
+          <item>Certificate rotation: use short-lived certificates (24h or less) with automatic rotation. Long-lived certs increase the window for credential theft. Mesh control planes (Istiod, Linkerd) rotate certificates automatically; configure the rotation period explicitly.</item>
+          <item>Certificate authority: do not use self-signed CA roots in production. Use an intermediate CA signed by your organisation's PKI, or an external CA (cert-manager with Let's Encrypt or Vault PKI). This ensures revocation and audit trail.</item>
+          <item>Multi-cluster identity: use SPIFFE/SPIRE for cross-cluster certificate federation. Without it, each cluster's trust domain is isolated and inter-cluster mTLS requires manual trust bundle exchange.</item>
+        </list>
+        <p>mTLS best practice checklist: permissive → strict migration per namespace; certificate TTL ≤ 24h; organisation-signed CA (not self-signed); monitor certificate expiry as a service-level metric; SPIFFE IDs for service identity verification in audit logs.</p>
+      </section>
+      <section name="traffic-management-patterns">
+        <list>
+          <item>Canary: route a percentage of traffic to the new version (1% → 10% → 50% → 100%). Progress based on SLO metrics (error rate, p99 latency). Rollback by shifting weight back to stable version. Tools: Argo Rollouts, Flagger, Istio VirtualService weights.</item>
+          <item>Blue-green: two identical environments (stable and new). Instant switch via traffic weight (0/100 → 100/0). Instant rollback available. Requires double compute during deployment window.</item>
+          <item>A/B testing: route by request headers, cookies, or user identity. Use for feature flag validation with specific user segments. Requires stateful routing or consistent hashing.</item>
+          <item>Traffic mirroring (shadow traffic): send a copy of production requests to the new version without affecting production responses. The mirrored traffic responses are discarded. Use for load testing new versions with real traffic before canary starts.</item>
+          <item>Circuit breaking: configure outlier detection (consecutive 5xx errors) to eject unhealthy upstream endpoints from the load balancing pool for a defined interval. Meshes implement this at the proxy layer without application code changes.</item>
+          <item>Retries: configure per-route retry policy (retryOn: gateway-error,connect-failure,retriable-4xx; numRetries: 3; perTryTimeout: 2s). Set retryOn carefully — 503 is retryable, 400 is not (client error, retry is wasteful).</item>
+          <item>Timeouts: configure per-route timeout independent of application-level timeouts. Mesh-level timeouts enforce end-to-end limits even when application timeout configuration is inconsistent across services.</item>
+        </list>
+        <rule>
+          <statement>Configure outlier detection on all service VirtualDestinations; eject endpoints that return consecutive 5xx errors for a minimum ejection period of 30s before re-admitting.</statement>
+          <rationale>Without outlier detection, a degraded upstream pod that returns 5xx for every request continues to receive traffic proportional to its weight. The mesh's outlier detection passively monitors health based on response codes and temporarily removes unhealthy endpoints without requiring explicit health check infrastructure.</rationale>
+        </rule>
+      </section>
+    </section>
+    <templates>
+      <template path="templates/istio-virtualservice.yaml" purpose="VirtualService + DestinationRule for canary traffic splitting with header-based routing"/>
+      <template path="templates/linkerd-trafficsplit.yaml" purpose="Linkerd SMI TrafficSplit for weighted canary"/>
+    </templates>
+  </content>
+</methodology>
