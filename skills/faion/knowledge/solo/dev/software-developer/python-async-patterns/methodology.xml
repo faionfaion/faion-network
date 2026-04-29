@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-async-patterns">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Async/await patterns for Python 3.11+ I/O-bound services using TaskGroup, Semaphore, and app-scoped clients. Prevents blocking calls, resource exhaustion, and zombie tasks.</summary>
+    <category>async</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>async</tag>
+      <tag>asyncio</tag>
+      <tag>concurrency</tag>
+      <tag>python</tag>
+      <tag>fastapi</tag>
+    </tags>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>fastapi</framework>
+      <framework>aiohttp</framework>
+      <framework>litestar</framework>
+    </frameworks>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Python Async Patterns for I/O-Bound Services</title>
+
+    <summary>Async/await patterns for Python 3.11+ I/O-bound services. Uses asyncio.TaskGroup for structured concurrency, asyncio.Semaphore to bound fan-out, and app-scoped httpx.AsyncClient / DB pools. CPU-bound work goes to run_in_executor or ProcessPoolExecutor. Blocking calls inside async def (requests, time.sleep, psycopg2) are a hard violation.</summary>
+
+    <why>
+      <p>A single blocking call inside an async function freezes the entire event loop for all concurrent requests. TaskGroup propagates cancellation and exceptions automatically, closing the zombie-task leak that plagues asyncio.gather. Bounding concurrency with Semaphore prevents resource exhaustion on downstreams.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>FastAPI, Starlette, aiohttp, or Litestar services with high concurrent I/O (HTTP, DB, Redis, S3).</item>
+        <item>Fan-out/fan-in: dozens-to-thousands of concurrent external calls per request.</item>
+        <item>Long-lived connections: WebSocket, SSE, gRPC streaming, MQTT.</item>
+        <item>Background workers consuming Redis Streams / NATS / RabbitMQ.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>CPU-bound workloads (ML inference, image processing) — async adds overhead without benefit.</item>
+        <item>One-off scripts where requests + threads is simpler and equivalent.</item>
+        <item>Codebases with deep sync dependencies (legacy ORMs, blocking SDKs) requiring run_in_executor everywhere.</item>
+        <item>Django request handlers without ASGI deployment — partial async serializes everything.</item>
+        <item>Python &lt; 3.11 — TaskGroup and improved cancellation are the practical baseline.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="taskgroup-concurrency-primitives">
+      <rule testable="true">
+        <statement>Use asyncio.TaskGroup for any set of concurrent coroutines; prefer it over gather for new code on Python 3.11+.</statement>
+        <rationale>TaskGroup propagates cancellation automatically — if one task raises, all siblings are cancelled, preventing zombie tasks that gather leaves running.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+async def process_all(items: list[str]) -> list[str]:
+    results = []
+    async with asyncio.TaskGroup() as tg:
+        tasks = [tg.create_task(process_item(item)) for item in items]
+    # All tasks completed here; any exception cancels siblings
+    return [t.result() for t in tasks]
+]]></code>
+      </example>
+    </section>
+
+    <section name="semaphore-for-fan-out">
+      <rule testable="true">
+        <statement>Wrap every external-call fan-out with asyncio.Semaphore; derive the limit from downstream capacity, not an arbitrary number.</statement>
+        <rationale>Unbounded gather over a queue can spawn 100k tasks, consuming all RAM and crushing downstream services.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+async def fetch_all(urls: list[str], max_concurrent: int = 10) -> list[dict]:
+    semaphore = asyncio.Semaphore(max_concurrent)
+
+    async def fetch_one(url: str) -> dict | None:
+        async with semaphore:
+            async with httpx.AsyncClient() as client:
+                r = await client.get(url, timeout=30.0)
+                r.raise_for_status()
+                return r.json()
+
+    results = await asyncio.gather(*[fetch_one(u) for u in urls], return_exceptions=True)
+    return [r for r in results if not isinstance(r, Exception)]
+]]></code>
+      </example>
+    </section>
+
+    <section name="timeouts">
+      <rule testable="true">
+        <statement>Pair every await with a timeout using asyncio.timeout() (3.11+) or asyncio.wait_for(); never await without a deadline.</statement>
+        <rationale>Awaiting without a timeout means a stalled downstream silently hangs the event loop task indefinitely.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+async def with_timeout():
+    try:
+        async with asyncio.timeout(2.0):
+            result = await slow_operation()
+            return result
+    except asyncio.TimeoutError:
+        return None
+]]></code>
+      </example>
+    </section>
+
+    <section name="async-generators">
+      <rule testable="true">
+        <statement>Use async generators for paginated data streams to avoid loading all pages into memory.</statement>
+        <rationale>Loading all pages first wastes memory and delays first-item processing; generators yield items as they arrive.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+from typing import AsyncIterator
+
+async def fetch_pages(base_url: str) -> AsyncIterator[dict]:
+    page = 1
+    async with httpx.AsyncClient() as client:
+        while True:
+            r = await client.get(f"{base_url}?page={page}")
+            data = r.json()
+            if not data["items"]:
+                break
+            for item in data["items"]:
+                yield item
+            page += 1
+
+async def process_stream():
+    async for item in fetch_pages("https://api.example.com/items"):
+        await handle(item)
+]]></code>
+      </example>
+    </section>
+
+    <section name="app-scoped-clients">
+      <rule testable="true">
+        <statement>Create httpx.AsyncClient, DB pools, and Redis clients once at application startup; never instantiate them per request or inside loops.</statement>
+        <rationale>Creating a client per request leaks sockets, breaks HTTP/2 connection reuse, and exhausts file descriptors under load.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+# FastAPI app-scoped client
+from contextlib import asynccontextmanager
+import httpx
+
+@asynccontextmanager
+async def lifespan(app):
+    app.state.http = httpx.AsyncClient(timeout=30.0)
+    yield
+    await app.state.http.aclose()
+
+app = FastAPI(lifespan=lifespan)
+
+@app.get("/proxy")
+async def proxy(request: Request):
+    r = await request.app.state.http.get("https://upstream.example.com/data")
+    return r.json()
+]]></code>
+      </example>
+    </section>
+
+    <section name="async-context-managers">
+      <rule testable="true">
+        <statement>Implement resource cleanup via async context managers (asynccontextmanager or __aenter__/__aexit__); never rely on garbage collection for async resources.</statement>
+        <rationale>GC does not call async close() methods; connections and file handles leak silently without explicit context management.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def get_db_session():
+    session = await create_session()
+    try:
+        yield session
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
+]]></code>
+      </example>
+    </section>
+
+    <section name="background-task-tracking">
+      <rule testable="true">
+        <statement>Store all fire-and-forget tasks in a set and register a done callback to remove them; never discard the task reference immediately after create_task().</statement>
+        <rationale>Unreferenced tasks may be garbage-collected before completion; exceptions are silently swallowed.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+class BackgroundTasks:
+    def __init__(self):
+        self.tasks: set[asyncio.Task] = set()
+
+    def add(self, coro, *, name: str | None = None) -> asyncio.Task:
+        task = asyncio.create_task(coro, name=name)
+        self.tasks.add(task)
+        task.add_done_callback(self.tasks.discard)
+        return task
+
+    async def shutdown(self, timeout: float = 5.0):
+        for task in self.tasks:
+            task.cancel()
+        if self.tasks:
+            await asyncio.wait(self.tasks, timeout=timeout)
+]]></code>
+      </example>
+    </section>
+
+    <section name="cpu-offload">
+      <rule testable="true">
+        <statement>Run CPU-bound operations in loop.run_in_executor(None, fn) for tasks under ~50ms; use ProcessPoolExecutor for longer tasks.</statement>
+        <rationale>A CPU-bound synchronous call inside async def blocks the event loop for all concurrent tasks for its full duration.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+from concurrent.futures import ProcessPoolExecutor
+
+_pool = ProcessPoolExecutor(max_workers=4)
+
+async def process_image(data: bytes) -> bytes:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(_pool, cpu_transform, data)
+]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Calling sync I/O (requests.get, time.sleep, psycopg2.connect) inside async def.</description>
+        <reason>Blocks the entire event loop for all concurrent tasks for the full duration of the call.</reason>
+      </antipattern>
+      <example type="bad">
+        <code lang="python"><![CDATA[
+# BAD: blocks event loop
+async def fetch_data():
+    response = requests.get(URL)  # sync HTTP call
+    return response.json()
+]]></code>
+      </example>
+      <example type="good">
+        <code lang="python"><![CDATA[
+# GOOD: async client
+async def fetch_data():
+    async with httpx.AsyncClient() as client:
+        response = await client.get(URL)
+        return response.json()
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Calling a coroutine without await: result = fetch_data() instead of result = await fetch_data().</description>
+        <reason>The coroutine is created but never executed; the call silently does nothing and returns a coroutine object.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Fire-and-forget with asyncio.create_task() without storing the reference.</description>
+        <reason>Tasks without strong references may be garbage-collected mid-execution; exceptions are silently swallowed.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Catching Exception (or bare except) in async code, which includes CancelledError on Python 3.7; swallowing it prevents graceful shutdown.</description>
+        <reason>CancelledError must propagate for TaskGroup and timeout() to cancel correctly. On 3.8+ CancelledError no longer inherits Exception, but agents use old patterns.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Creating httpx.AsyncClient() inside a request handler or loop iteration.</description>
+        <reason>Each instantiation opens a new connection pool; leaks sockets and breaks HTTP/2 keep-alive. App-scoped singleton is required.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Treat CancelledError as control flow: catch only to perform cleanup, then re-raise unconditionally.</statement>
+        <rationale>Swallowing CancelledError prevents TaskGroup and timeout() from completing cancellation, leaving zombie tasks.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A four-stage pattern. (1) Boundary check: an agent classifies each new function as I/O-bound, CPU-bound, or mixed; CPU work goes to run_in_executor / concurrent.futures.ProcessPoolExecutor. (2) Concurrency primitive: agent picks TaskGroup for structured concurrency, gather only when fire-and-forget, with mandatory asyncio.Semaphore to bound concurrency on any external call. (3) Resource lifecycle: agent ensures shared httpx.AsyncClient / DB pool / Redis client are app-scoped, not request-scoped. (4) Test gate: an agent emits both happy-path and cancellation tests (asyncio.timeout, task.cancel()); coverage tool flags any async function without a cancel path.</p>
+
+      <p>Recommended subagents: faion-sdd-executor-agent gates no requests, time.sleep, or psycopg2 in async modules; every external call has a semaphore; every TaskGroup has a timeout. A sync-leak detector subagent (worth creating) scans async modules with AST for blocking calls (requests.*, time.sleep, open() without aiofiles, psycopg2.*, boto3 without aiobotocore); returns line numbers + remediation. A TaskGroup converter rewrites legacy gather patterns into TaskGroup for Python 3.11+, preserving semantics. faion-feature-executor (skill) sequences design → boundary check → impl → cancellation test → load test.</p>
+    </section>
+
+    <section name="best-practices">
+      <p>Standardize on Python 3.11+ and use asyncio.TaskGroup for any concurrent set; it propagates cancellation and exceptions correctly. Bound every external-call fan-out with asyncio.Semaphore. Unbounded gather is an outage waiting to happen. Reuse a single httpx.AsyncClient per app (or per host pool); creating a client per request leaks sockets and breaks HTTP/2. Use asyncpg over psycopg2; for SQLAlchemy pick create_async_engine and async sessions, never mix sync + async sessions. Run CPU work in loop.run_in_executor(None, fn) (default thread pool) for short tasks; use ProcessPoolExecutor for tasks &gt; ~50ms. Always pair await calls with timeouts: asyncio.timeout(5) (3.11+) wraps any block. Propagate context with contextvars. Logging libraries (structlog, loguru) and OTel use this; ad-hoc globals don't survive await. Use anyio if you need to support both asyncio and trio, or if you want better cancellation semantics. Add --debug event-loop in dev (PYTHONASYNCIODEBUG=1); it surfaces forgotten awaits and slow callbacks. Profile with py-spy --idle or aiomonitor; standard sampling profilers under-attribute event-loop time. Treat CancelledError as control flow: catch only to clean up, then re-raise.</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Agents add async def everywhere even in CPU code, expecting performance — all that gives you is overhead and event-loop blocking. Force the I/O-vs-CPU classification step. LLMs love asyncio.run inside library code; this breaks composition (only the entry script should call it). Lint for it. Agents create httpx.AsyncClient() per call inside loops; require an app-scoped fixture/dep. They mix requests and httpx in the same async function; reject unconditionally in async modules. Agents forget to cancel children on parent timeout → "shielded zombies". Prefer TaskGroup so cancellation is automatic. Trio / anyio confusion: agents import trio.sleep while using asyncio. Pin the runtime in the system prompt. Tests pass under pytest-asyncio mode auto but break under strict; agents don't surface this. Pin mode and CI. Concurrency limits hallucinated: agents pick Semaphore(100) arbitrarily. Require the limit to be derived from downstream capacity (max conns / max QPS) and documented. Logging context lost: agents use print or non-context-aware loggers in async code; require structlog with contextvars integration. Cancellation mishandling: agents catch Exception (which includes CancelledError on 3.7) and swallow shutdowns. On 3.8+ CancelledError no longer inherits Exception; some agents are still using older patterns. Human-in-loop checkpoint: any change to global semaphores, pool sizes, or the event-loop policy must be human-approved with a load-test result.</p>
+    </section>
+
+    <section name="cli-tools-services">
+      <p>pytest-asyncio: Async test support (pip install pytest-asyncio). anyio: Cross-runtime async (asyncio + trio) (pip install anyio). httpx: Async HTTP client (request/response parity with requests) (pip install httpx). aiohttp: Async HTTP server + client (pip install aiohttp). aiofiles: Async filesystem access (pip install aiofiles). aiobotocore / aioboto3: Async AWS SDK (pip install aioboto3). aiocache: Async caching primitives (pip install aiocache). aiomonitor: Inspect running event loop (pip install aiomonitor). asyncpg: Postgres async driver (fastest) (pip install asyncpg). aiosqlite: SQLite async wrapper (pip install aiosqlite). uvloop: Fast event loop replacement (Linux/macOS) (pip install uvloop). arq / dramatiq (with asyncio backend): Async background workers (pip install arq). faulthandler / tracemalloc: Diagnose hangs and leaks (stdlib).</p>
+
+      <p>FastAPI: OSS framework — code-first, standard async API stack. Litestar: OSS framework — faster than FastAPI for some workloads, similar API. Starlette: OSS framework — the toolkit FastAPI is built on. Uvicorn / Hypercorn / Granian: OSS ASGI servers — production runners; pick one and stick. Sentry: SaaS SDK — Sentry's async SDK propagates trace context. Datadog APM: SaaS SDK — auto-instruments asyncio + FastAPI. OpenTelemetry Python (auto-instrument): OSS CLI — opentelemetry-instrument uvicorn.... Grafana Tempo / Jaeger: OSS trace backends; pair with OTel. RabbitMQ / NATS / Kafka: OSS async clients — all have asyncio-native clients.</p>
+    </section>
+
+    <templates>
+      <template path="templates/detect_sync_leaks.py">AST scanner — finds blocking calls (requests, time.sleep, psycopg2) inside async def.</template>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.python.org/3/library/asyncio.html">Python asyncio docs</link>
+      <link href="https://anyio.readthedocs.io">AnyIO docs</link>
+      <link href="https://fastapi.tiangolo.com/async/">FastAPI async docs</link>
+      <link href="https://github.com/MagicStack/uvloop">uvloop repository</link>
+      <link href="https://vorpus.org/blog/notes-on-structured-concurrency/">Notes on structured concurrency</link>
+    </see-also>
+  </content>
+</methodology>

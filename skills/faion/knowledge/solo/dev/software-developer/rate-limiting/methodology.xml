@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rate-limiting">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Redis-backed rate limiters with X-RateLimit-* and Retry-After headers. Prevents abuse, credential stuffing, and cost amplification on public APIs.</summary>
+    <category>api</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>rate-limiting</tag>
+      <tag>api-security</tag>
+      <tag>fastapi</tag>
+      <tag>redis</tag>
+      <tag>throttling</tag>
+    </tags>
+    <languages>
+      <language>python</language>
+      <language>javascript</language>
+    </languages>
+    <frameworks>
+      <framework>fastapi</framework>
+      <framework>express</framework>
+      <framework>django</framework>
+    </frameworks>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Rate Limiting with Redis and Standard Headers</title>
+
+    <summary>API protection via configurable per-key rate limiters (fixed window, sliding window, token bucket) backed by Redis/Valkey, with standard X-RateLimit-* / Retry-After response headers and a 429 JSON error body. Every deployment must use Redis — in-memory limiters break at greater than 1 replica. Sliding window or GCRA is the default for user-facing endpoints; fixed window only for low-stakes counters.</summary>
+
+    <why>
+      <p>Unthrottled public APIs are trivially abused (credential stuffing, scraping, cost amplification). Rate limiting is the first line of defense, but only when limiters are distributed (Redis, not per-process dicts) and keys are composed (ip + user + apikey + tenant). A single key type lets a CGNAT block punish thousands of legitimate users.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Public APIs hit by anonymous or semi-trusted users (sign-up, OTP, search, password-reset).</item>
+        <item>Tiered SaaS where plan = limit (free/plus/pro/enterprise).</item>
+        <item>Expensive endpoints (export, report generation, LLM proxy, image upload).</item>
+        <item>Auth endpoints to mitigate credential stuffing (per-IP + per-account limits).</item>
+        <item>Edge layer protection in front of slow upstreams to shed load.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Internal service-to-service traffic with mTLS or service mesh — use authz + circuit breakers instead.</item>
+        <item>Single-user CLI / desktop apps talking to a private backend — limits add no security value.</item>
+        <item>Background workers reading from a queue — backpressure is queue depth, not rate.</item>
+        <item>Quota / billing accounting — those need a metering system (Stripe Meter, OpenMeter), not a rate limiter.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="algorithm-selection">
+      <rule testable="true">
+        <statement>Use sliding window (ZSET-based) or GCRA (redis-cell) for user-facing endpoints. Use fixed window only for low-stakes counters (e.g., internal admin polling). Never default to fixed window without explicit justification.</statement>
+        <rationale>Fixed window allows 2x the limit in a burst at the window boundary (end of old + start of new window). Sliding window distributes evenly. For public APIs, the burst behavior is exploitable.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>All rate limiters in production must be backed by Redis or Valkey. In-memory (dict-based) limiters have independent state per replica and provide no protection once there is more than one process.</statement>
+        <rationale>A fleet of N app replicas with in-memory limiters allows N times the configured limit. Redis provides shared atomic state across all replicas.</rationale>
+      </rule>
+    </section>
+
+    <section name="fixed-window">
+      <p>Simplest implementation. Counts requests per key within a fixed time window. Vulnerable to 2x burst at window boundary. Suitable only for low-stakes admin counters.</p>
+      <example type="bad">
+        <note>Fixed window has burst at boundary</note>
+        <code lang="python"><![CDATA[
+# At second 59 of window: allow 100 requests
+# At second 0 of next window: allow 100 more
+# = 200 requests in 2 seconds, despite a 100/min limit
+]]></code>
+      </example>
+    </section>
+
+    <section name="sliding-window-redis-zset">
+      <p>Stores timestamps of recent requests in a sorted set. On each request: remove entries older than window, add current timestamp, count entries. Smooth distribution, no boundary burst.</p>
+      <rule testable="true">
+        <statement>In the sliding window Redis ZSET implementation, compare the count AFTER the zadd, not before. The count must include the current request. Use a Lua script to make the check-and-add atomic.</statement>
+        <rationale>A race condition exists if count is checked before zadd: two concurrent requests both see count less than limit, both add, both succeed despite exceeding the limit. Atomicity via Lua eliminates the race.</rationale>
+      </rule>
+    </section>
+
+    <section name="token-bucket">
+      <p>Tokens accumulate at refill_rate per second up to bucket_size. Each request consumes tokens. Allows burst up to bucket_size, then throttles. Good for APIs with occasional heavy users.</p>
+      <rule testable="true">
+        <statement>Always clamp refilled tokens to min(bucket_size, current + elapsed * rate). Without the clamp, long idle periods accumulate unlimited tokens and allow unbounded bursts.</statement>
+        <rationale>A user idle for 1 hour against a 100 req/s bucket would accumulate 360,000 tokens without the clamp. The min() limits burst to the designed maximum regardless of idle time.</rationale>
+      </rule>
+    </section>
+
+    <section name="response-headers">
+      <rule testable="true">
+        <statement>Always emit X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, and Retry-After (on 429) on every rate-limited response. Also support the IETF draft RateLimit-* headers for modern clients.</statement>
+        <rationale>Standard headers allow clients to implement backoff without parsing error bodies. Missing Retry-After causes clients to retry immediately, generating more 429s and increasing load.</rationale>
+      </rule>
+      <example type="good">
+        <note>FastAPI middleware emitting standard headers</note>
+        <code lang="python"><![CDATA[
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+
+app = FastAPI()
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    user_id = request.headers.get("X-User-Id", request.client.host)
+    key = f"rl:user:{user_id}"
+
+    allowed, remaining, reset_at = await rate_limiter.check(key)
+    if not allowed:
+        return JSONResponse(
+            status_code=429,
+            content={"error": {"code": "RATE_LIMIT_EXCEEDED",
+                               "message": "Too many requests",
+                               "retryAfter": 60}},
+            headers={
+                "X-RateLimit-Limit": "100",
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": str(reset_at),
+                "Retry-After": "60",
+            },
+        )
+
+    response = await call_next(request)
+    response.headers["X-RateLimit-Limit"] = "100"
+    response.headers["X-RateLimit-Remaining"] = str(remaining)
+    response.headers["X-RateLimit-Reset"] = str(reset_at)
+    return response
+]]></code>
+      </example>
+    </section>
+
+    <section name="key-composition">
+      <rule testable="true">
+        <statement>Compose multiple keys per request: ip + user + apikey + tenant. Apply the limit on any one key being exceeded. This prevents a single compromised API key from bypassing IP limits and vice versa.</statement>
+        <rationale>Single-key limiters have blind spots. A CGNAT IP behind many users penalizes all of them. A leaked API key with IP rotation bypasses IP limits. Composing keys closes both gaps.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Apply X-Forwarded-For parsing with a trusted-proxy allowlist when the app is behind a CDN. Never use request.client.host directly — it will be the CDN's IP, limiting all traffic as one entity.</statement>
+        <rationale>Behind a CDN, request.client.host is always the CDN edge IP. All users share one rate limit counter, causing all traffic to be throttled simultaneously when any user hits the limit.</rationale>
+      </rule>
+    </section>
+
+    <section name="tiered-limits">
+      <p>Different plans have different limits. Store limits in a config file or DB keyed by plan name. The limiter reads the applicable limit for the authenticated user's plan.</p>
+      <example type="good">
+        <note>Endpoint-specific limits config</note>
+        <code lang="python"><![CDATA[
+RATE_LIMITS = {
+    "/api/search":  {"limit": 10,  "window": 60},
+    "/api/export":  {"limit": 5,   "window": 3600},
+    "/api/users":   {"limit": 100, "window": 60},
+}
+
+PLAN_MULTIPLIERS = {
+    "free":       1,
+    "plus":       10,
+    "pro":        100,
+    "enterprise": float("inf"),
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>In-memory (dict-based) rate limiter deployed with more than one replica.</description>
+        <reason>Each replica has independent state. A user can hit N replicas sequentially and send N times the configured limit before any single replica records a violation. Always use Redis/Valkey for distributed state.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Per-IP rate limiter behind a CDN using request.client.host for the key.</description>
+        <reason>Behind a CDN, request.client.host is the CDN edge IP. All users share one counter; when any user hits the limit, all users are throttled. Parse X-Forwarded-For with a trusted-proxy list.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>IPv6 per-IP limiting without /64 aggregation.</description>
+        <reason>IPv6 users can rotate IPs within their /64 subnet trivially. Per-address limits allow effectively unlimited requests by rotating through the /64 address space.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Double-limiting: edge (Cloudflare/Kong) AND application-layer limiters on the same route without coordination.</description>
+        <reason>Edge and app limits may have different windows and counts, causing confusing 429s that don't match the documented limits. Designate one canonical layer per route and document it.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Token bucket without min(bucket_size, ...) clamp on refill.</description>
+        <reason>Without the clamp, long idle periods accumulate unlimited tokens. A user idle for 1 hour against a 100/s bucket can burst 360,000 requests, defeating the bucket size limit entirely.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent silently raises a limit because a load test failed.</description>
+        <reason>Limits encode security and cost decisions, not just performance ones. Raising a limit because a load test hit it may open an abuse vector. Human review is required for any limit change on auth and billing endpoints.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Missing integration test for the 429 path.</description>
+        <reason>The happy path is always tested; the 429 path is usually not. Broken Retry-After parsing in clients is a common source of retry storms. Always test the 429 response and its headers in integration tests.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A planner subagent inventories endpoints, classifies each by cost (cheap / medium / expensive / abuse-target) and key (anonymous-IP / authed-user / API-key / tenant). An implementer subagent generates middleware/decorator code in the right framework (FastAPI, Express, Axum, NestJS) and wires Redis/Valkey. A test subagent generates load tests (k6 / vegeta) that probe limits, headers, and Retry-After correctness. A reviewer subagent audits for missing limits on auth + abuse-prone endpoints.</p>
+
+      <p>Recommended subagents: faion-sdd-executor-agent drives planner → implementer → test loop. A user-defined loadtest-runner (model: haiku) generates and runs k6 scripts, reports p99. A user-defined endpoint-auditor (model: sonnet) scans routes file, flags any unrate-limited login/signup/forgot-password.</p>
+    </section>
+
+    <section name="best-practices">
+      <p>Always emit standard headers (X-RateLimit-Limit/Remaining/Reset, Retry-After); also support draft IETF RateLimit-* if your clients are recent. Compose multiple keys per request: ip + user + apikey + tenant; deny if any one is over. For auth endpoints, use two limiters: per-IP (block bots) AND per-account (block targeted attacks). Per-account limits triggered ⇒ alert, not just 429. Use sliding window or GCRA in production; reserve fixed window for low-stakes counters. Store Redis keys with explicit TTL (EXPIRE) greater than or equal to window; never rely on LRU eviction for correctness. Whitelist internal CIDRs / service accounts at the outermost layer, not inside the limiter (avoids bypass via spoofed headers). Log limit-exceeded events at WARN with key, route, limit; create a dashboard for top offenders. For LLM proxies: limit by both RPM and TPM (token estimate). Estimate tokens with tiktoken before forwarding. For multi-tenant SaaS, separate tenant and user keys; one tenant flooding shouldn't poison another. Always test the 429 path in integration tests — broken Retry-After parsing is a common client bug.</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>LLMs default to in-memory limiters that are useless past 1 replica. Force Redis/Valkey backing. Agents implement fixed window first because it's the simplest example in the README — review and ask for sliding window for any user-facing endpoint. Sliding-window-with-ZSET as written has a race in the README (count includes the just-added entry); double-check that the count compare uses the value after zadd or use Lua to make it atomic. Token-bucket implementations frequently miss the min(bucket_size, …) clamp on refill — this lets bursts grow unbounded after long idle. Per-IP limiters in front of a CDN need X-Forwarded-For parsing with a trusted-proxy list; agents often grab request.remote_addr and limit the CDN's IP, killing all traffic together. Agents forget IPv6 /64 aggregation; one user can rotate IPs in their /64 and bypass. When wiring Cloudflare/Kong, agents may double-limit (edge + app); decide one canonical layer per route and document it. Human-in-loop checkpoint: changes to limits on /login, /signup, /forgot-password, billing, and webhook endpoints should never be merged unreviewed. Don't let an agent silently raise a limit because a load test failed — first verify the load test isn't measuring the limiter itself.</p>
+    </section>
+
+    <section name="cli-tools-services">
+      <p>redis-cli / valkey-cli: Inspect counters, ZSETs, TTL during debug (bundled with Redis/Valkey). redis-cell: Generic Cell Rate Algorithm module (precise, low overhead) (https://github.com/brandur/redis-cell). k6: Scripted load tests, can probe 429s (https://k6.io). vegeta: Constant-rate HTTP attacker for replication tests (https://github.com/tsenart/vegeta). slowloris.py / goloris: Test slow-request shedding (OSS scripts). wrk2: Constant-throughput latency probe (https://github.com/giltene/wrk2). hey: Quick burst-traffic generator (go install github.com/rakyll/hey@latest).</p>
+
+      <p>Cloudflare Rate Limiting: Edge enforcement; cheap to wire, opaque to debug (SaaS, API/Terraform). AWS WAF rate-based rules: Per-IP only, 5-min minimum window (SaaS, Terraform). Kong: Plugin-based; rate-limiting-advanced for sliding window + Redis (OSS / SaaS, Admin API). Tyk: Per-key, per-endpoint, quota + rate (OSS / SaaS). Envoy local_ratelimit + ratelimit service: Service mesh native; complex setup (OSS). Upstash Ratelimit: Redis-as-a-service; stock sliding window/token bucket; ideal for serverless (SaaS, TS SDK). slowapi (FastAPI): Drop-in middleware backed by Redis or memory (OSS). express-rate-limit + rate-limit-redis: Standard Node setup (OSS). Redis / Valkey: The substrate; redis-cell for GCRA (OSS).</p>
+    </section>
+
+    <templates>
+      <template path="templates/sliding-window.py">Redis-backed sliding window limiter class, ready to drop into FastAPI middleware.</template>
+      <template path="templates/k6-rl-probe.js">k6 script that verifies 429 response, Retry-After header, and rate limit headers.</template>
+    </templates>
+
+    <see-also>
+      <link href="https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/">IETF draft RateLimit headers</link>
+      <link href="https://blog.cloudflare.com/counting-things-a-lot-of-different-things/">Cloudflare blog: counting at scale</link>
+      <link href="https://stripe.com/docs/rate-limits">Stripe API rate limits</link>
+      <link href="https://github.com/brandur/redis-cell">GCRA / redis-cell</link>
+      <link href="https://upstash.com/docs/oss/sdks/ts/ratelimit/overview">Upstash Ratelimit</link>
+      <link href="https://en.wikipedia.org/wiki/Token_bucket">Token-bucket vs leaky-bucket</link>
+    </see-also>
+  </content>
+</methodology>

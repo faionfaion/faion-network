@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="feature-flags">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Use feature flags to gate incomplete code behind runtime toggles, enabling trunk-based development and progressive rollouts without redeployment.</summary>
+    <category>release</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+    <tags>
+      <tag>feature-flags</tag>
+      <tag>release-management</tag>
+      <tag>trunk-based-dev</tag>
+      <tag>progressive-rollout</tag>
+      <tag>kill-switch</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>python</language>
+      <language>javascript</language>
+      <language>typescript</language>
+    </languages>
+    <related>
+      <ref slug="trunk-based-development"/>
+      <ref slug="a-b-testing-implementation"/>
+      <ref slug="cd-pipelines"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Feature Flags</title>
+
+    <summary>Feature flags gate incomplete or experimental code behind runtime toggles, decoupling deployment from release. Flags enable trunk-based development (no long feature branches), progressive rollouts (1% → 10% → 50% → 100%), and instant rollback without redeployment. Flags must be short-lived (except ops/kill-switch types) and removed after full rollout to prevent flag debt.</summary>
+
+    <why>
+      <p>Feature flags decouple deployment from release: code ships to production but stays inactive until deliberately enabled. This eliminates the need for long-running feature branches, makes canary rollouts trivial, and provides a kill switch for production incidents. Without flags, shipping unfinished code to production requires either keeping it hidden on a separate branch or using feature gates embedded in the business logic layer (which become hard to find and remove).</p>
+      <p>The main failure mode is flag debt: flags left in code long after full rollout, raising cyclomatic complexity and creating combinatorial test burden (10 flags create up to 2^10 theoretical state combinations). Industry surveys show ~80% of projects have flags older than six months still in code, creating technical debt. Aggressive cleanup policies (quarterly or per-release audits, automated enforcement of expiry dates) are the only reliable mitigation.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Trunk-based development: hide unfinished features behind release flags so main is always shippable.</item>
+        <item>Progressive rollouts (1% → 10% → 50% → 100%) with auto-rollback on error/latency regression.</item>
+        <item>A/B tests where the experiment platform reads the same flag store as the application.</item>
+        <item>Kill switches for risky external dependencies (payments, AI inference, third-party APIs).</item>
+        <item>Per-tenant or per-plan features (premium tier, beta access) gated by attribute targeting.</item>
+        <item>Operational toggles (maintenance mode, circuit breaker, queue draining) flipped without redeploy.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Static configuration that never changes per request — environment variables suffice.</item>
+        <item>Schema migrations or storage shape changes — flags cannot gate ALTER TABLE safely; use migration tooling.</item>
+        <item>Permanent business rules that belong in domain logic, not toggles (flags are temporary by definition).</item>
+        <item>Pre-product prototypes where the abstraction cost outstrips the rollout value.</item>
+        <item>Hot paths where every microsecond matters — compile flags out for those modules instead of evaluating at runtime.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="flag-types-and-categories">
+      <p>Classify every flag as one of five categories. Category determines expected lifespan and cleanup policy. Mixing types leads to flags that live indefinitely without a plan for removal.</p>
+
+      <rule>
+        <statement>Classify every flag as one of: release (hide incomplete code), experiment (A/B test), ops (operational control), permission (access gating), or kill-switch (emergency disable).</statement>
+        <rationale>Category determines expected lifespan and cleanup policy. Mixing types leads to flags that live indefinitely without a plan for removal.</rationale>
+      </rule>
+
+      <list>
+        <item>Release — lifespan days to weeks; removed after full rollout; example: new checkout flow.</item>
+        <item>Experiment — lifespan weeks to months; removed after statistical significance reached; example: pricing page A/B test.</item>
+        <item>Ops — lifespan medium to long; controls circuit breakers, maintenance mode; example: disable background jobs during incident.</item>
+        <item>Permission — lifespan permanent (by design); gates premium or beta features per user/group; example: beta access tier.</item>
+        <item>Kill-switch — lifespan permanent; always available for emergency disable; example: disable payment processing.</item>
+      </list>
+
+      <rule>
+        <statement>Every release and experiment flag must have an owner and an expected_cleanup date recorded in the flag registry at creation time.</statement>
+        <rationale>Flags without ownership become orphaned. Without a cleanup date, they accumulate indefinitely — each adds a branch to every affected code path.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Run a stale-flag audit in CI: fail the build (or emit a warning) when a flag's expected_cleanup date has passed.</statement>
+        <rationale>Automated enforcement is the only reliable way to prevent flag debt. Manual audits are consistently skipped under delivery pressure.</rationale>
+      </rule>
+    </section>
+
+    <section name="implementation-patterns">
+      <p>Feature flag implementations follow a consistent pattern of override layers, percentage rollout via deterministic hashing, and decorator/context-manager patterns for visibility and consistency.</p>
+
+      <rule>
+        <statement>Support three override layers in order: explicit env var (FF_&lt;NAME&gt;=true), config file, then flag default.</statement>
+        <rationale>Env vars allow per-environment overrides in CI/staging without code changes. Config file enables operator changes without redeploy.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use deterministic hash bucketing (MD5 of flag_name:user_id modulo 100) for percentage rollouts; never use random().</statement>
+        <rationale>random() produces different results per request — a user would get inconsistent experiences. Hash bucketing gives the same user the same bucket on every evaluation.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use a @feature_flag(name, fallback=fn) decorator to gate functions; always provide a fallback for disabled state.</statement>
+        <rationale>A decorator makes the flag visible at the call site. Without a fallback, disabling the flag silently returns None instead of the legacy behavior.</rationale>
+      </rule>
+
+      <example type="good" title="Decorator pattern with fallback">
+        <code lang="python"><![CDATA[
+@feature_flag("new_recommendation_engine", fallback=get_recommendations_v1)
+def get_recommendations_v2(user_id: str, limit: int = 10):
+    return ml_service.get_recommendations(user_id, limit)
+]]></code>
+      </example>
+
+      <rule>
+        <statement>Evaluate all flags once per request in middleware and store in a ContextVar; never re-evaluate mid-request.</statement>
+        <rationale>Re-evaluation mid-request can produce different results if a flag changes during the request, causing inconsistent behavior within one user action.</rationale>
+      </rule>
+
+      <templates>
+        <template path="templates/flag-manager.py" purpose="FeatureFlagManager with env overrides and percentage bucketing via MD5 hash"/>
+      </templates>
+    </section>
+
+    <section name="lifecycle-and-cleanup">
+      <p>Feature flags follow a five-phase lifecycle: planning, development, rollout, full rollout, and cleanup. Each phase has specific testing and validation requirements. Antipatterns like flag debt, nested flags, and using flags for configuration are the primary failure modes.</p>
+
+      <list>
+        <item>Planning: define name, type, owner, expected lifespan; add to registry before writing any code.</item>
+        <item>Development: implement flag check; write tests for BOTH enabled and disabled paths; deploy with flag OFF.</item>
+        <item>Rollout: enable for internal users first; increase percentage gradually; monitor error rates and latency.</item>
+        <item>Full rollout: enable for 100% of users; continue monitoring for at least one full traffic cycle.</item>
+        <item>Cleanup: remove flag checks from code; delete flag configuration; deploy clean code; mark registry entry as done.</item>
+      </list>
+
+      <rule>
+        <statement>Every feature-flagged code path must have at least one test with the flag enabled and one with it disabled.</statement>
+        <rationale>Testing only the happy (enabled) path leaves the disabled path untested. When the flag is cleaned up, the deleted code may have regressions that were never caught.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Flag debt: releasing flags that are never removed after full rollout.</description>
+        <reason>Each permanent flag multiplies code paths. 10 flags create up to 2^10 theoretical combinations; testing all of them is impossible.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Nested flags: checking flag A inside a block already gated by flag B.</description>
+        <reason>Nested flags create an exponential state space. Combinations quickly become untestable and the interaction behavior is unpredictable.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using feature flags for configuration values (timeouts, limits, feature counts).</description>
+        <reason>Flags are boolean or variant gates. Configuration values belong in environment variables or config files with typed schemas, not flag systems.</reason>
+      </antipattern>
+
+      <templates>
+        <template path="templates/flag-registry.json" purpose="Registry schema for tracking flag metadata and cleanup dates"/>
+      </templates>
+    </section>
+
+    <section name="failure-modes-and-limitations">
+      <p>Feature flags introduce several failure modes when not managed carefully. Common issues include flag debt accumulation, cross-service drift in flag semantics, missing defaults, authentication-coupled flag evaluation, A/B leakage across tabs, provider outages, PII leakage, and insufficient test coverage of the disabled branch.</p>
+
+      <antipattern>
+        <description>Flag debt: ~80% of projects have flags older than six months still in code, raising cyclomatic complexity and obscuring intent.</description>
+        <reason>Without aggressive cleanup policies and CI enforcement, flags accumulate indefinitely.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Cross-service drift: same flag key, different semantics in service A vs service B, leading to user-visible split states.</description>
+        <reason>Flags must be evaluated consistently across all services touching a user session. Use a centralized flag service or strict documentation.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Missing default in config: undefined flag → is_enabled returns False → feature stays dark in prod indefinitely.</description>
+        <reason>Every flag must have an explicit default value recorded in the registry. Config loading must fail loudly if a flag is referenced but not defined.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Auth-coupled flags: gating premium features off user.role lookup — when the role lookup fails, paying users get blocked.</description>
+        <reason>Separate flag evaluation from authentication. If auth fails, fall back to the previous state, do not flip all permission flags to OFF.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>A/B leakage: user opens two tabs and gets two variants; analytics treats it as one user with conflicting events.</description>
+        <reason>Bucketing is deterministic per user, but a single user in two tabs should get the same variant. Store bucket assignment server-side or enforce session-level consistency.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Provider outage = your outage if no fail-safe default per call (LaunchDarkly / Statsig down → all flags evaluate to OFF, breaking premium customers).</description>
+        <reason>Always have a local cache and fallback default. Evaluate flags against stale cached data rather than failing open or closed.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>PII leakage: passing entire user objects to the flag service is common; it's a hidden compliance risk (GDPR, HIPAA).</description>
+        <reason>Only pass user ID and a small set of targeting attributes (plan, region, cohort). Never pass email, name, or raw user objects.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Test coverage usually stops at the ON branch; OFF branch rots and causes ghost bugs when the flag is removed.</description>
+        <reason>Treat both branches as equally important. Enforce test coverage gates that require both ON and OFF tests.</reason>
+      </antipattern>
+    </section>
+
+    <section name="tools-and-services">
+      <p>Feature flag platforms range from self-hosted open-source solutions to SaaS with full SDKs, APIs, and targeting UIs. Choose based on scale, compliance, and whether you want a vendor lock-in or multi-provider abstraction via OpenFeature.</p>
+
+      <rule>
+        <statement>Use OpenFeature SDK so you can swap provider without rewriting call sites.</statement>
+        <rationale>OpenFeature is a vendor-neutral API (CNCF spec) that decouples your code from a specific flag platform. Switching from LaunchDarkly to Flagsmith is a config change, not a code refactor.</rationale>
+      </rule>
+
+      <list>
+        <item>LaunchDarkly (SaaS, REST + CLI) — industry default; pricey at scale.</item>
+        <item>Flagsmith (SaaS + OSS) — good solo-tier and on-prem story.</item>
+        <item>Unleash (SaaS + OSS, REST) — strong gradual-rollout strategies.</item>
+        <item>GrowthBook (SaaS + OSS, REST + SDK) — combines flags + experiments + warehouse.</item>
+        <item>ConfigCat (SaaS, REST) — solo-friendly; simple model.</item>
+        <item>PostHog (SaaS + OSS, REST) — bundled with product analytics, free tier.</item>
+        <item>Statsig (SaaS, REST) — strong on experimentation + cohorts.</item>
+        <item>Split.io (SaaS, REST) — enterprise; deep experimentation.</item>
+        <item>OpenFeature (OSS spec, CNCF) — provider-neutral API, avoids lock-in.</item>
+        <item>Cloudflare Workers KV (SaaS) — DIY edge flags; no targeting UI.</item>
+      </list>
+
+      <list>
+        <item>ldcli (LaunchDarkly CLI): brew install launchdarkly/tap/ldcli</item>
+        <item>unleash-cli (Unleash): npm i -g unleash-cli</item>
+        <item>flagsmith-cli (Flagsmith): npm i -g flagsmith-cli</item>
+        <item>growthbook (OSS A/B + flags CLI): npm i -g growthbook</item>
+        <item>openfeature SDK (vendor-neutral): pip install openfeature-sdk or npm i @openfeature/sdk</item>
+        <item>piranha (Uber, auto-removal of stale flags): https://github.com/uber/piranha</item>
+        <item>posthog CLI (PostHog feature flags + analytics): https://posthog.com/docs</item>
+        <item>statsig CLI (Statsig flags + experiments): https://docs.statsig.com</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A flag-management agent owns the lifecycle: generating flag definitions, wrapping code paths, writing both ON and OFF tests, orchestrating rollouts by observing dashboards, and cleaning up expired flags. Human oversight checkpoints are required for kill-switch flips and rollouts above 25%.</p>
+
+      <list>
+        <item>For new features: agent generates the flag definition (key, type, default, owner, expiry), wraps the new code path in is_enabled(...), and writes both ON and OFF tests.</item>
+        <item>For rollouts: agent observes error-rate and latency dashboards, advancing the percentage when SLOs hold, rolling back on regression.</item>
+        <item>For cleanup: a scheduled audit agent finds expired flags and opens cleanup PRs (delete the flag, drop the OFF branch, simplify the surrounding code with piranha-style transforms).</item>
+      </list>
+
+      <prompt purpose="new flag scaffold">
+New flag: &lt;key&gt;. Type: release|experiment|ops|permission|kill-switch.
+Owner: &lt;handle&gt;. Expiry: &lt;YYYY-MM-DD&gt; (mandatory unless type=permission).
+Default: false (release/experiment) or true (kill-switch).
+Generate:
+1. Flag entry in flags.py / flags.ts registry.
+2. Wrap NEW code path with is_enabled(&lt;key&gt;, user_id, attrs).
+3. Tests: tests/&lt;feature&gt;_on_test.py and tests/&lt;feature&gt;_off_test.py.
+4. SDD cleanup task in todo/ titled "remove flag &lt;key&gt; by &lt;expiry&gt;".
+Reject the change if any of (1)-(4) is missing.
+      </prompt>
+
+      <prompt purpose="audit pass">
+List all flags with (expiry &lt; today) OR (last_changed &gt; 90d ago) OR
+(rollout=100% for 30d). For each, propose REMOVE / ROLLBACK / EXTEND.
+EXTEND requires a justification ≤2 sentences and a new expiry. Output
+as a markdown table; do not auto-execute REMOVE on permission flags.
+      </prompt>
+    </section>
+
+    <section name="best-practices">
+      <p>The following practices prevent most common flag-related failures and ensure flags remain manageable as their number grows.</p>
+
+      <list>
+        <item>Every flag must carry: key, type, default, owner, expiry. CI fails the PR if any field is missing.</item>
+        <item>Default OFF for new code paths; default ON for kill switches (so the safe state during outage is "feature off").</item>
+        <item>Test both branches. Treat untested OFF branch as a coverage failure, not a warning.</item>
+        <item>Log flag evaluations with low sample-rate; you'll need this during incidents.</item>
+        <item>Couple rollout to error-rate alerts: &gt; 0.5% spike vs 24h baseline → automatic flip back to OFF.</item>
+        <item>Keep is_enabled pure and &lt; 1ms — cache locally, refresh in background. Async network calls in hot paths are an anti-pattern.</item>
+        <item>Use OpenFeature SDK so you can swap provider without rewriting call sites.</item>
+        <item>Quarterly cleanup ritual: every flag past expiry must be removed or formally extended with a new expiry.</item>
+        <item>Concentrate flag checks at decision boundaries (entry of feature module), not scattered across functions — fewer branches to test and remove.</item>
+      </list>
+
+      <rule>
+        <statement>Human-in-loop checkpoint: any new permission/kill-switch flag and any rollout &gt; 10% must be human-approved.</statement>
+        <rationale>Permission and kill-switch flags have high blast radius. Rollouts above 10% affect a material portion of the user base and warrant review before proceeding.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>LLMs commonly make predictable mistakes when generating flag code. Pre-commit gates and prompt patterns can catch most of them.</p>
+
+      <antipattern>
+        <description>Agents add if flag_enabled("foo") everywhere instead of at one decision point — multiplies branches and makes cleanup hard.</description>
+        <reason>Concentrate flag checks at decision boundaries. Use a decorator or context manager, not scattered conditionals.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LLMs forget the OFF-branch tests. Force the gate at PR-review time.</description>
+        <reason>Treat untested OFF branches as coverage gaps, not acceptable. Require both _on_test.py and _off_test.py.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>When generating an eval client, agents often hardcode default=True so tests pass locally — leaks features to prod.</description>
+        <reason>Always set default=False unless the flag is explicitly a kill-switch. Fail loudly if no default is defined.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Removal asymmetry: agents may delete the if check but leave the now-dead OFF branch (or vice versa). Use piranha or strict review.</description>
+        <reason>Pair the removal with both-branch cleanup or use automated tools like piranha that handle the full transformation.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Targeting attribute leak: agents pass entire user objects to the flag service. Whitelist attributes (id + plan + region) at the SDK boundary.</description>
+        <reason>Only pass the minimum required attributes. Create a DTO or whitelist that prevents full object serialization to the flag service.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Flag-name drift: agents create new_checkout_v2 then new_checkout_v3 instead of editing the existing flag. Lock the registry; agents must rename, not duplicate.</description>
+        <reason>Enforce a naming convention and require human approval for new flag definitions. Prevent agent-driven proliferation of similar flags.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Incident response: agents asked to disable feature X sometimes flip the wrong flag. Require explicit flag key + dry-run + diff before applying in prod.</description>
+        <reason>Always ask for the exact flag key and show the dry-run (which flags will flip and their current values) before executing.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Rollback ambiguity: when an agent flips a flag back, it may not record the reason in the audit log — make the reason field mandatory on every flag change.</description>
+        <reason>Every flag change (enable, disable, rollout percentage) must have a reason recorded. Use this for post-incident reviews.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <ref slug="trunk-based-development"/>
+      <ref slug="a-b-testing-implementation"/>
+      <ref slug="cd-pipelines"/>
+      <link href="https://martinfowler.com/articles/feature-toggles.html">Pete Hodgson — Feature Toggles (aka Feature Flags)</link>
+      <link href="https://docs.launchdarkly.com/">LaunchDarkly Documentation</link>
+      <link href="https://openfeature.dev/">OpenFeature specification</link>
+      <link href="https://docs.getunleash.io/">Unleash documentation</link>
+      <link href="https://github.com/uber/piranha">Uber Piranha (stale flag cleanup)</link>
+      <link href="https://posthog.com/docs">PostHog feature flags + analytics</link>
+      <link href="https://docs.statsig.com">Statsig flags + experiments</link>
+    </see-also>
+  </content>
+</methodology>
