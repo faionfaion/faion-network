@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-type-hints">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Modern Python typing (3.9+, PEP 604 unions, TypedDict, Protocol) plus mypy strict config. Type public interfaces first; use Protocol for contracts and TypedDict for payloads.</summary>
+    <tags>
+      <tag>python</tag>
+      <tag>typing</tag>
+      <tag>mypy</tag>
+      <tag>type-safety</tag>
+      <tag>static-analysis</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Python Type Hints</title>
+    <summary>Modern Python typing (3.9+ generics, PEP 604 unions, TypedDict, Protocol) plus mypy strict configuration. Type public interfaces first.</summary>
+    <why>
+      <p>Type hints enable static analysis, IDE completions, and self-documenting APIs without runtime cost. mypy --strict on changed files (not the whole repo) catches regressions early. Using the wrong union syntax or mixing Optional[X] with X | None in one codebase degrades readability and triggers ruff UP007 failures. Protocol avoids ABC inheritance coupling across package boundaries.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Adding types to an untyped file — annotate public signatures first, then service-layer seams.</item>
+        <item>Public API surfaces: route handlers, service functions, library exports.</item>
+        <item>Complex data shapes crossing boundaries: request/response bodies, queue payloads, cache values.</item>
+        <item>Defining structural contracts between modules without inheritance (Protocol).</item>
+        <item>CI gate to prevent type regressions on PRs touching typed modules.</item>
+        <item>Adding type hints to an untyped Python codebase, file-by-file (mypy strict on touched files only).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>One-off scripts under ~100 lines where mypy setup costs more than it saves.</item>
+        <item>Dynamic metaprogramming (decorators that mutate signatures, __getattr__ proxies) — types fight you.</item>
+        <item>Hot import paths where typing.get_type_hints() resolution at import time matters.</item>
+        <item>Code that must run on Python 3.8 — methodology assumes 3.9+ (list[int]) and 3.10+ (X | Y).</item>
+        <item>Codebases standardized on Pydantic models — avoid parallel TypedDict definitions.</item>
+        <item>Migrating dynamic metaprogramming (decorators that mutate signatures, __getattr__ proxies) — types fight you; use # type: ignore[attr-defined] sparingly or skip.</item>
+      </list>
+    </when-not-to-use>
+    <section name="syntax-rules">
+      <rule>
+        <statement>Use X | None instead of Optional[X] and list[T] instead of typing.List[T] for all new Python 3.9+ code. Enforce via ruff rule UP007.</statement>
+        <rationale>Modern syntax is more readable. Mixing Optional[X] with X | None in one codebase triggers ruff warnings and degrades readability. Pick one and enforce it project-wide.</rationale>
+      </rule>
+      <rule>
+        <statement>Always annotate public function parameters and return types. Internal helpers: annotate args + return; annotate locals only if mypy complains.</statement>
+        <rationale>Public interfaces are the primary value of type hints. Over-annotating every local variable adds noise without proportional benefit.</rationale>
+      </rule>
+    </section>
+    <section name="basic-examples">
+      <example type="good" title="Modern Python Type Syntax (3.9+)">
+        <code lang="python"><![CDATA[
+# Variables (Python 3.9+)
+name: str = "John"
+score: float = 95.5
+names: list[str] = ["Alice", "Bob"]
+scores: dict[str, int] = {"Alice": 95, "Bob": 87}
+coordinates: tuple[float, float] = (10.5, 20.3)
+
+# Function signatures
+def greet(name: str) -> str:
+    return f"Hello, {name}"
+
+def get_user(user_id: int) -> "User | None":
+    return User.objects.filter(id=user_id).first()
+
+def create_user(
+    email: str,
+    name: str,
+    *,
+    age: int | None = None,
+    role: str | None = None,
+) -> "User":
+    ...
+        ]]></code>
+      </example>
+      <example type="bad" title="Old Syntax and Patterns to Avoid">
+        <code lang="python"><![CDATA[
+# Wrong: old syntax, Optional import, no return type
+from typing import Optional, List
+
+def get_user(user_id: int) -> Optional["User"]:  # use User | None
+    ...
+
+def get_names() -> List[str]:  # use list[str]
+    ...
+        ]]></code>
+      </example>
+    </section>
+    <section name="type-aliases">
+      <example type="good" title="Type Aliases">
+        <code lang="python"><![CDATA[
+from typing import TypeAlias
+
+UserId: TypeAlias = int
+Handler: TypeAlias = Callable[["Request"], "Response"]
+        ]]></code>
+      </example>
+    </section>
+    <section name="generic-with-bound">
+      <rule>
+        <statement>Always add bound= to TypeVar when the generic class has meaningful constraints. TypeVar without bound accepts any type and provides no protection.</statement>
+        <rationale>Repository[int] and Repository[str] are the same class object at runtime. bound=Model restricts usage and enables useful type narrowing in the body.</rationale>
+      </rule>
+      <example type="good" title="Generic with Bounds">
+        <code lang="python"><![CDATA[
+from typing import TypeVar, Generic
+
+T = TypeVar("T", bound="BaseModel")
+
+class Repository(Generic[T]):
+    def get(self, id: int) -> T | None: ...
+    def list(self) -> list[T]: ...
+    def create(self, data: dict) -> T: ...
+
+class UserRepository(Repository["User"]):
+    def get(self, id: int) -> "User | None":
+        return User.objects.filter(id=id).first()
+        ]]></code>
+      </example>
+    </section>
+    <section name="protocol-for-structural-typing">
+      <rule>
+        <statement>Use Protocol instead of ABC when you do not control all implementers. Add @runtime_checkable only if you actually call isinstance(x, Proto) at runtime.</statement>
+        <rationale>Protocol avoids ABC inheritance coupling. Without @runtime_checkable, isinstance raises TypeError at runtime even though type-checking passes silently.</rationale>
+      </rule>
+      <example type="good" title="Protocol for Structural Contracts">
+        <code lang="python"><![CDATA[
+from typing import Protocol, runtime_checkable
+
+@runtime_checkable
+class Sendable(Protocol):
+    def send(self, message: str) -> bool: ...
+
+class EmailClient:
+    def send(self, message: str) -> bool:
+        return True  # no inheritance needed
+
+def notify(client: Sendable, message: str) -> bool:
+    return client.send(message)
+
+# Both work without inheriting Sendable
+notify(EmailClient(), "Hello")
+        ]]></code>
+      </example>
+    </section>
+    <section name="typeddict-for-payloads">
+      <example type="good" title="TypedDict for Structured Data">
+        <code lang="python"><![CDATA[
+from typing import TypedDict, NotRequired
+
+class UserData(TypedDict):
+    id: int
+    email: str
+    name: str
+    is_active: NotRequired[bool]  # optional field
+
+def process_user(data: UserData) -> None:
+    print(data["email"])  # type-safe: required field
+        ]]></code>
+        <note>Use TypedDict for cache payloads and queue messages; use Pydantic for HTTP bodies. Avoid maintaining both for the same data shape.</note>
+      </example>
+    </section>
+    <section name="typeguard-for-narrowing">
+      <example type="good" title="TypeGuard for Type Narrowing">
+        <code lang="python"><![CDATA[
+from typing import TypeGuard
+
+def is_string_list(val: list[object]) -> TypeGuard[list[str]]:
+    return all(isinstance(x, str) for x in val)
+
+def process(items: list[object]) -> None:
+    if is_string_list(items):
+        for item in items:
+            print(item.upper())  # str method OK after narrowing
+        ]]></code>
+      </example>
+    </section>
+    <section name="strict-configuration">
+      <example type="good" title="mypy Strict Configuration">
+        <code lang="toml"><![CDATA[
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+
+# Relax for tests (fixtures often don't need full annotations)
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+strict = false
+
+# Ignore migration files
+[[tool.mypy.overrides]]
+module = "migrations.*"
+ignore_errors = true
+
+# Third-party packages without stubs
+[[tool.mypy.overrides]]
+module = "some_untyped_package.*"
+ignore_missing_imports = true
+        ]]></code>
+      </example>
+      <reference path="templates/mypy.toml">Ready-to-paste [tool.mypy] block</reference>
+    </section>
+    <section name="incremental-adoption">
+      <rule>
+        <statement>Never run mypy --strict on the full repo on day 1. Run it on one changed file at a time. Fix one error class per pass: start with no-untyped-def, then var-annotated, then arg-type.</statement>
+        <rationale>Running strict on an untyped repo produces 1000+ errors and freezes progress. Incremental adoption lets the team make continuous progress without a big-bang migration.</rationale>
+      </rule>
+      <example type="good" title="Incremental CI Gating">
+        <code lang="bash"><![CDATA[
+# CI: run mypy --strict only on files changed in this PR
+git diff --name-only --diff-filter=AM origin/main -- '*.py' \
+  | grep -v -E '^(migrations/|tests/fixtures/)' \
+  | xargs mypy --strict
+        ]]></code>
+      </example>
+      <reference path="templates/typecheck-touched.sh">Shell script for CI incremental mypy gate</reference>
+    </section>
+    <section name="key-gotchas">
+      <rule>
+        <statement>Never use bare # type: ignore without a code. Always write # type: ignore[attr-defined] with the specific error code.</statement>
+        <rationale>Bare type: ignore masks future bugs silently. Specific codes document the reason and allow ruff to flag when the ignore is no longer needed.</rationale>
+      </rule>
+      <rule>
+        <statement>Do not use from __future__ import annotations in projects using Pydantic v1 or FastAPI with older body parsing — it breaks runtime type resolution.</statement>
+        <rationale>from __future__ import annotations converts all annotations to strings at runtime. Pydantic v1 and FastAPI body param resolution use runtime type inspection and break silently.</rationale>
+      </rule>
+    </section>
+    <section name="workflow-file-by-file-mode">
+      <p>File-by-file mode: (1) pick one module, (2) add types to every public signature + module-level vars, (3) run mypy --strict &lt;file&gt; and fix one error class at a time (start with no-untyped-def, then var-annotated, then assignment, then arg-type), (4) add to mypy files=[...] once green, (5) commit. Never run --strict repo-wide on day 1; you'll get 1000+ errors and freeze. CI gate: mypy --strict $(git diff --name-only --diff-filter=AM origin/main -- '*.py').</p>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>One union syntax per project. Pick X | None (modern) and ban Optional via ruff UP007.</item>
+        <item>Type the boundary, then the seams. Annotate I/O (HTTP handlers, queue consumers, DB models), then services, then internals.</item>
+        <item>Avoid Any in production code. Use object (no operations allowed) when you really mean "anything"; reach for Any only at FFI / dynamic boundaries with a # type: ignore reason.</item>
+        <item>TypedDict for cache / queue payloads, Pydantic for HTTP. Don't run both in the same path.</item>
+        <item>Protocol over ABC when you don't control all implementers (third-party libs). Add @runtime_checkable only if you actually call isinstance.</item>
+        <item>TypeVar with bound= to constrain generics to a useful upper bound: T = TypeVar("T", bound=Model).</item>
+        <item>Use Self (3.11+) for fluent / builder return types instead of TForward = TypeVar("TForward", bound="Foo") gymnastics.</item>
+        <item>Sealed unions via Literal for finite states: Status = Literal["pending", "active", "deleted"]. mypy exhaustiveness via assert_never.</item>
+        <item>Per-module mypy override: relax disallow_untyped_defs for tests, ignore migrations, strict everything else.</item>
+        <item>Run mypy AND ruff ANN — mypy catches type errors, ruff ANN catches missing annotations entirely. Different signal.</item>
+        <item>Cache .mypy_cache in CI keyed on Python version + lockfile hash.</item>
+      </list>
+    </section>
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Optional[X] vs X | None mixing in one PR confuses readers and ruff. Auto-fix with ruff --select UP007 --fix.</item>
+        <item>Forward references: def f() -> "Foo": strings are still required when Foo is defined below. Or use from __future__ import annotations (then everything is a string at runtime, breaks Pydantic v1 / FastAPI body parsing!).</item>
+        <item>from __future__ import annotations + Pydantic v1 → "field type is undefined" runtime errors. Pydantic v2 handles it. FastAPI was sensitive — check your version.</item>
+        <item>Generic[T] at runtime doesn't enforce anything. Repository[int]() and Repository[str]() are the same class object.</item>
+        <item>Protocol without @runtime_checkable + isinstance(x, Proto) raises TypeError at runtime. Quiet at type-check time.</item>
+        <item>TypedDict total=False vs NotRequired[X] per-field: different versions of typing handle them differently. Stick with NotRequired (3.11+ via typing_extensions).</item>
+        <item>Callable[..., T] types accept any args — silently allows misuse. Be specific where possible.</item>
+        <item>mypy_django_plugin type-narrows Manager.get() etc. but requires settings module config: [tool.django-stubs] django_settings_module = "config.settings.test". Without it, errors are spurious.</item>
+        <item>Type narrowing through assert works in mypy but not at runtime if python -O. Don't rely on assert isinstance(x, Foo) for branching.</item>
+        <item>reveal_type(x) is mypy-only; leaving it in code raises NameError at runtime. Strip via pre-commit.</item>
+        <item>from typing import Optional unused after migration — ruff F401 catches; otherwise stale imports linger.</item>
+        <item>Generators: Generator[YieldT, SendT, ReturnT] vs Iterator[YieldT] vs Iterable[YieldT] — agents pick the wrong one half the time. Prefer Iterator for read-only sequences.</item>
+        <item>Async: Coroutine[Any, Any, T] vs Awaitable[T] — return annotate T directly on async def f() -> T; mypy unwraps automatically.</item>
+      </list>
+    </section>
+    <section name="tools-and-services">
+      <list>
+        <item>mypy — Reference type checker. https://mypy.readthedocs.io</item>
+        <item>pyright — Microsoft type checker, ~10x faster, basic + strict modes. https://microsoft.github.io/pyright</item>
+        <item>pytype — Google type checker, infers types. https://github.com/google/pytype</item>
+        <item>pyre — Meta's type checker. https://pyre-check.org</item>
+        <item>ruff (rule UP) — pyupgrade — converts old syntax (Optional[X] → X | None). https://docs.astral.sh/ruff</item>
+        <item>ruff (rule ANN) — Flag missing annotations on public funcs. https://docs.astral.sh/ruff/rules/#flake8-annotations-ann</item>
+        <item>monkeytype — Record types from runtime traces, emit stubs. https://monkeytype.readthedocs.io</item>
+        <item>pyannotate — Similar runtime-trace stub generator. https://github.com/dropbox/pyannotate</item>
+        <item>stubgen (mypy bundled) — Generate .pyi for an untyped third-party lib.</item>
+        <item>mypy --html-report — HTML coverage of typed % per module.</item>
+        <item>mypy_django_plugin — mypy plugin for Django ORM type narrowing. https://github.com/typeddjango/django-stubs</item>
+        <item>typeshed — OSS stubs registry. Auto-loaded by mypy. https://github.com/python/typeshed</item>
+        <item>typing-extensions — Backport newer typing features to older Python. https://pypi.org/project/typing-extensions/</item>
+      </list>
+    </section>
+    <section name="recommended-subagents">
+      <list>
+        <item>faion-code-agent — Default for adding annotations.</item>
+        <item>faion-test-agent — Owns test fixture types; uses mypy override for tests.</item>
+        <item>faion-software-architect — Decides Protocol vs ABC vs Pydantic for cross-module contracts.</item>
+        <item>faion-devtools-developer — Owns mypy / pyright config, pre-commit integration.</item>
+        <item>faion-sdd-execution — Runs the gradual-typing rollout as a feature with milestones.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/mypy.toml" purpose="[tool.mypy] strict block with test + migration overrides" />
+      <template path="templates/typecheck-touched.sh" purpose="Run mypy --strict on git-diff changed files only (CI incremental gate)" />
+    </templates>
+    <see-also>
+      <link href="https://mypy.readthedocs.io/en/stable/getting_started.html#strict-mode" />
+      <link href="https://microsoft.github.io/pyright/" />
+      <link href="https://github.com/python/typeshed" />
+      <link href="https://pypi.org/project/typing-extensions/" />
+      <link href="https://peps.python.org/pep-0604/" />
+      <link href="https://peps.python.org/pep-0695/" />
+      <link href="https://peps.python.org/pep-0692/" />
+      <link href="https://github.com/typeddjango/django-stubs" />
+      <link href="https://docs.astral.sh/ruff/rules/#flake8-annotations-ann" />
+    </see-also>
+  </content>
+</methodology>
