@@ -1,0 +1,1801 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gcp-networking">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Comprehensive GCP networking reference: VPC design, subnets, firewall rules, Cloud NAT, load balancing, and security best practices for production workloads.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>vpc</tag>
+      <tag>networking</tag>
+      <tag>firewall</tag>
+      <tag>load-balancing</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>GCP Networking</title>
+
+    <summary>Comprehensive reference for Google Cloud Platform networking: VPC design, subnets, firewall rules, Cloud NAT, load balancing, and security best practices. Focus Areas: VPC, subnets, firewall rules, Cloud NAT, load balancing.</summary>
+
+    <why>
+      <p>GCP networking differs fundamentally from AWS and Azure: VPCs are global (not regional), subnets are regional, firewalls operate at the VPC level (not subnet level), and IP ranges can be expanded after creation. This global-first design enables routing traffic across regions without complex peering, but requires understanding how subnet-level and VPC-level controls interact.</p>
+      <p>Custom mode VPCs give full control over subnet design, CIDR planning, and routing — critical for production workloads that need GKE secondary ranges, VPC peering, and Private Google Access. Auto mode creates subnets in every region automatically, which is only suitable for prototyping and has overlapping address space issues when VPC peering is needed.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Designing or deploying VPC networks for GCP workloads (GKE, Cloud Run, Compute Engine, Cloud SQL).</item>
+        <item>Configuring firewall rules with service-account-based filtering for production security.</item>
+        <item>Setting up Cloud NAT for private instances to reach the internet without public IPs.</item>
+        <item>Implementing global HTTPS load balancers with Cloud Armor, SSL certificates, and CDN.</item>
+        <item>Planning Shared VPC architecture for multi-project organizations.</item>
+        <item>Troubleshooting GCP connectivity issues (firewall denies, NAT port exhaustion, routing).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-VM prototypes where the default VPC is sufficient and network isolation is not required.</item>
+        <item>Workloads fully on Cloud Run with no VPC ingress/egress requirements — Cloud Run handles networking at the service level.</item>
+        <item>AWS or Azure environments — networking concepts and commands are specific to GCP.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="key-concepts">
+      <p>GCP VPC Characteristics compared to other clouds:</p>
+      <list>
+        <item>VPC Scope: GCP is Global (vs AWS/Azure which are Regional).</item>
+        <item>Subnets: GCP is Regional (vs AWS Zonal/Regional).</item>
+        <item>Firewall: GCP is VPC-level (vs AWS/Azure Subnet-level).</item>
+        <item>IP Ranges: GCP supports flexible expansion (vs AWS Fixed at creation).</item>
+      </list>
+      <p>VPC Modes:</p>
+      <list>
+        <item>Auto mode — auto-creates subnets in all regions. Use case: quick prototyping only.</item>
+        <item>Custom mode — manual subnet creation. Use case: production workloads.</item>
+      </list>
+      <p>Best Practice: Always use custom mode for production environments.</p>
+      <p>Network Hierarchy: Organization → Folder (optional) → Project → VPC Network (global) → Subnet (regional) in each region (us-central1, europe-west1, asia-east1).</p>
+    </section>
+
+    <section name="vpc-operations">
+      <example type="good" title="VPC and subnet operations">
+        <code lang="bash"><![CDATA[
+# Create custom VPC
+gcloud compute networks create my-vpc --subnet-mode=custom
+
+# Create subnet with secondary ranges (GKE)
+gcloud compute networks subnets create my-subnet \
+    --network=my-vpc \
+    --region=us-central1 \
+    --range=10.0.0.0/24 \
+    --secondary-range=pods=10.1.0.0/16,services=10.2.0.0/20
+
+# Enable Private Google Access
+gcloud compute networks subnets update my-subnet \
+    --region=us-central1 \
+    --enable-private-ip-google-access
+
+# Enable VPC Flow Logs
+gcloud compute networks subnets update my-subnet \
+    --region=us-central1 \
+    --enable-flow-logs \
+    --logging-aggregation-interval=interval-5-sec \
+    --logging-flow-sampling=0.5
+]]></code>
+      </example>
+      <example type="good" title="Firewall rules operations">
+        <code lang="bash"><![CDATA[
+# Allow internal traffic
+gcloud compute firewall-rules create allow-internal \
+    --network=my-vpc \
+    --allow=tcp,udp,icmp \
+    --source-ranges=10.0.0.0/8 \
+    --priority=1000
+
+# Allow SSH with service account
+gcloud compute firewall-rules create allow-ssh-sa \
+    --network=my-vpc \
+    --allow=tcp:22 \
+    --source-ranges=35.235.240.0/20 \
+    --target-service-accounts=my-sa@project.iam.gserviceaccount.com
+
+# Deny all egress (then allow specific)
+gcloud compute firewall-rules create deny-all-egress \
+    --network=my-vpc \
+    --direction=EGRESS \
+    --action=DENY \
+    --rules=all \
+    --priority=65534
+]]></code>
+      </example>
+      <example type="good" title="Cloud NAT setup">
+        <code lang="bash"><![CDATA[
+# Create router
+gcloud compute routers create nat-router \
+    --network=my-vpc \
+    --region=us-central1
+
+# Create Cloud NAT
+gcloud compute routers nats create my-nat \
+    --router=nat-router \
+    --region=us-central1 \
+    --nat-all-subnet-ip-ranges \
+    --auto-allocate-nat-external-ips
+]]></code>
+      </example>
+      <example type="good" title="Load balancing setup">
+        <code lang="bash"><![CDATA[
+# Create health check
+gcloud compute health-checks create http my-hc --port=80
+
+# Create backend service
+gcloud compute backend-services create my-backend \
+    --protocol=HTTP \
+    --health-checks=my-hc \
+    --global
+
+# Create URL map and forwarding rule
+gcloud compute url-maps create my-url-map --default-service=my-backend
+gcloud compute target-http-proxies create my-proxy --url-map=my-url-map
+gcloud compute forwarding-rules create my-lb \
+    --global --target-http-proxy=my-proxy --ports=80
+]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices-summary">
+      <list>
+        <item>VPC Mode — Use custom mode, not auto.</item>
+        <item>Default VPC — Delete or don't use default VPC.</item>
+        <item>Legacy Networks — Never use legacy networks.</item>
+        <item>Firewall — Service account filtering over network tags.</item>
+        <item>IP Ranges — Plan ahead, use RFC 1918.</item>
+        <item>Logging — Enable VPC Flow Logs and firewall logging.</item>
+        <item>Private Access — Enable Private Google Access.</item>
+        <item>Egress — Use Cloud NAT for private instances.</item>
+        <item>Security — VPC Service Controls for sensitive data.</item>
+        <item>DDoS — Cloud Armor at load balancer edge.</item>
+      </list>
+    </section>
+
+    <section name="checklist-vpc-design">
+      <p>VPC Design — Planning Phase checklist:</p>
+      <list>
+        <item>Identify all regions where workloads will run.</item>
+        <item>Document IP address requirements (current + growth).</item>
+        <item>Plan non-overlapping CIDR ranges for VPC peering.</item>
+        <item>Define network segmentation strategy.</item>
+        <item>Determine Shared VPC vs standalone VPC architecture.</item>
+        <item>Document connectivity requirements (on-prem, other clouds).</item>
+      </list>
+      <p>VPC Configuration checklist:</p>
+      <list>
+        <item>Create VPC with custom mode (not auto).</item>
+        <item>Delete or isolate default VPC.</item>
+        <item>Verify no legacy networks exist in project.</item>
+        <item>Use clear naming conventions ({env}-{region}-{purpose}).</item>
+        <item>Document VPC in architecture diagrams.</item>
+      </list>
+      <p>Subnet Configuration checklist:</p>
+      <list>
+        <item>Create regional subnets with appropriate CIDR ranges.</item>
+        <item>Reserve secondary ranges for GKE (pods/services).</item>
+        <item>Enable Private Google Access on all subnets.</item>
+        <item>Enable VPC Flow Logs for visibility.</item>
+        <item>Configure flow log sampling rate (cost vs visibility).</item>
+        <item>Plan for subnet expansion (leave room).</item>
+      </list>
+    </section>
+
+    <section name="checklist-firewall">
+      <p>Firewall Rules — Security Baseline checklist:</p>
+      <list>
+        <item>Remove or restrict default allow-* rules.</item>
+        <item>Create deny-all default rule (lowest priority).</item>
+        <item>Document all firewall rules with descriptions.</item>
+        <item>Use service accounts for filtering (not network tags).</item>
+        <item>Enable firewall rule logging for security rules.</item>
+      </list>
+      <p>Rule Categories checklist:</p>
+      <list>
+        <item>Internal: Allow traffic between subnets.</item>
+        <item>Ingress: Define allowed external access points.</item>
+        <item>Egress: Restrict outbound traffic where needed.</item>
+        <item>Health checks: Allow GCP health check ranges.</item>
+        <item>IAP: Allow IAP ranges for SSH/RDP (35.235.240.0/20).</item>
+      </list>
+      <p>Firewall Best Practices checklist:</p>
+      <list>
+        <item>Use hierarchical firewall policies for org-wide rules.</item>
+        <item>Limit 0.0.0.0/0 source ranges to essential services.</item>
+        <item>Group related rules with consistent naming.</item>
+        <item>Review firewall rules quarterly.</item>
+        <item>Test firewall rules before production deployment.</item>
+      </list>
+    </section>
+
+    <section name="checklist-nat">
+      <p>Cloud NAT Configuration checklist:</p>
+      <list>
+        <item>Create Cloud Router in each region.</item>
+        <item>Configure Cloud NAT for private instances.</item>
+        <item>Choose NAT IP allocation strategy (auto-allocate for simple, manual for predictable IPs).</item>
+        <item>Configure minimum ports per VM.</item>
+        <item>Set appropriate timeouts.</item>
+      </list>
+      <p>Cloud NAT Monitoring checklist:</p>
+      <list>
+        <item>Enable Cloud NAT logging.</item>
+        <item>Set up alerts for port exhaustion.</item>
+        <item>Monitor NAT gateway utilization.</item>
+        <item>Review egress patterns regularly.</item>
+      </list>
+    </section>
+
+    <section name="checklist-load-balancing">
+      <p>Load Balancing — Architecture Decision checklist (choose type based on requirements):</p>
+      <list>
+        <item>Global HTTP(S) LB — web applications.</item>
+        <item>Regional TCP/UDP LB — non-HTTP traffic.</item>
+        <item>Internal TCP/UDP LB — internal services.</item>
+        <item>Internal HTTP(S) LB — internal web services.</item>
+      </list>
+      <p>Load Balancing Configuration checklist:</p>
+      <list>
+        <item>Create health checks with appropriate intervals.</item>
+        <item>Configure backend services with proper timeout.</item>
+        <item>Set up SSL certificates (managed or self-managed).</item>
+        <item>Configure URL maps for path-based routing.</item>
+        <item>Enable Cloud CDN if serving static content.</item>
+        <item>Configure session affinity if needed.</item>
+      </list>
+      <p>Load Balancing Security checklist:</p>
+      <list>
+        <item>Enable Cloud Armor for DDoS protection.</item>
+        <item>Configure WAF rules for OWASP threats.</item>
+        <item>Set up rate limiting policies.</item>
+        <item>Enable access logging.</item>
+        <item>Configure SSL policies (TLS 1.2+ only).</item>
+      </list>
+    </section>
+
+    <section name="checklist-security">
+      <p>VPC Service Controls checklist:</p>
+      <list>
+        <item>Define service perimeters for sensitive projects.</item>
+        <item>Configure access levels for allowed identities.</item>
+        <item>Set up ingress/egress policies.</item>
+        <item>Test perimeter before enforcing.</item>
+        <item>Monitor VPC SC audit logs.</item>
+      </list>
+      <p>Private Connectivity checklist:</p>
+      <list>
+        <item>Enable Private Google Access.</item>
+        <item>Configure Private Service Connect for Google APIs.</item>
+        <item>Set up VPC peering where needed.</item>
+        <item>Configure Cloud VPN or Interconnect for hybrid.</item>
+      </list>
+      <p>DNS Security checklist:</p>
+      <list>
+        <item>Enable Cloud DNS logging for all VPC networks.</item>
+        <item>Configure DNS policies for internal resolution.</item>
+        <item>Set up private DNS zones for internal services.</item>
+        <item>Use Cloud DNS Security Extensions (DNSSEC) for public zones.</item>
+      </list>
+    </section>
+
+    <section name="checklist-monitoring">
+      <p>Enable Logging checklist:</p>
+      <list>
+        <item>VPC Flow Logs on all subnets.</item>
+        <item>Firewall rule logging on security-relevant rules.</item>
+        <item>Cloud NAT logging.</item>
+        <item>Load balancer access logs.</item>
+        <item>Cloud DNS query logging.</item>
+      </list>
+      <p>Alerting checklist:</p>
+      <list>
+        <item>High firewall deny rates.</item>
+        <item>NAT port exhaustion warnings.</item>
+        <item>Unusual egress traffic patterns.</item>
+        <item>Load balancer error rates.</item>
+        <item>Backend health check failures.</item>
+      </list>
+      <p>Review Cadence: Daily (check security alerts), Weekly (review traffic patterns), Monthly (audit firewall rules), Quarterly (full networking review).</p>
+    </section>
+
+    <section name="checklist-compliance">
+      <p>Documentation checklist:</p>
+      <list>
+        <item>Network architecture diagrams updated.</item>
+        <item>IP address inventory maintained.</item>
+        <item>Firewall rule documentation current.</item>
+        <item>Change management records complete.</item>
+      </list>
+      <p>Audit checklist:</p>
+      <list>
+        <item>No public IPs on sensitive workloads.</item>
+        <item>All subnets have flow logs enabled.</item>
+        <item>No overly permissive firewall rules.</item>
+        <item>VPC Service Controls enforced where required.</item>
+        <item>Private Google Access enabled everywhere.</item>
+      </list>
+    </section>
+
+    <section name="example-production-vpc-gke">
+      <p>Example 1: Production VPC with GKE — Multi-region VPC optimized for Kubernetes workloads.</p>
+      <p>Architecture: production-vpc (global) with prod-us-central1 (10.0.0.0/20, pods: 10.4.0.0/14, services: 10.8.0.0/20), prod-europe-west1 (10.1.0.0/20, pods: 10.12.0.0/14, services: 10.16.0.0/20), prod-asia-east1 (10.2.0.0/20, pods: 10.20.0.0/14, services: 10.24.0.0/20).</p>
+      <example type="good" title="Production VPC with GKE ranges">
+        <code lang="bash"><![CDATA[
+# Create VPC
+gcloud compute networks create production-vpc \
+    --subnet-mode=custom \
+    --bgp-routing-mode=global
+
+# US Central subnet with GKE ranges
+gcloud compute networks subnets create prod-us-central1 \
+    --network=production-vpc \
+    --region=us-central1 \
+    --range=10.0.0.0/20 \
+    --secondary-range=pods=10.4.0.0/14,services=10.8.0.0/20 \
+    --enable-private-ip-google-access \
+    --enable-flow-logs \
+    --logging-aggregation-interval=interval-5-sec \
+    --logging-flow-sampling=0.5
+
+# Europe West subnet
+gcloud compute networks subnets create prod-europe-west1 \
+    --network=production-vpc \
+    --region=europe-west1 \
+    --range=10.1.0.0/20 \
+    --secondary-range=pods=10.12.0.0/14,services=10.16.0.0/20 \
+    --enable-private-ip-google-access \
+    --enable-flow-logs
+
+# Asia East subnet
+gcloud compute networks subnets create prod-asia-east1 \
+    --network=production-vpc \
+    --region=asia-east1 \
+    --range=10.2.0.0/20 \
+    --secondary-range=pods=10.20.0.0/14,services=10.24.0.0/20 \
+    --enable-private-ip-google-access \
+    --enable-flow-logs
+]]></code>
+      </example>
+    </section>
+
+    <section name="example-firewall">
+      <p>Example 2: Secure Firewall Configuration — Defense-in-depth firewall strategy with logging.</p>
+      <p>Rule Hierarchy: Priority 100 (allow-iap-ssh: IAP tunnel access), Priority 200 (allow-health-checks: GCP health checks), Priority 500 (allow-internal: Inter-subnet traffic), Priority 1000 (allow-https-ingress: Public HTTPS), Priority 65534 (deny-all-ingress: Default deny).</p>
+      <example type="good" title="Defense-in-depth firewall rules">
+        <code lang="bash"><![CDATA[
+# Allow IAP SSH (most restrictive source)
+gcloud compute firewall-rules create allow-iap-ssh \
+    --network=production-vpc \
+    --direction=INGRESS \
+    --action=ALLOW \
+    --rules=tcp:22 \
+    --source-ranges=35.235.240.0/20 \
+    --target-service-accounts=bastion@project.iam.gserviceaccount.com \
+    --priority=100 \
+    --enable-logging \
+    --description="Allow SSH via IAP to bastion hosts"
+
+# Allow GCP health checks
+gcloud compute firewall-rules create allow-health-checks \
+    --network=production-vpc \
+    --direction=INGRESS \
+    --action=ALLOW \
+    --rules=tcp:80,tcp:443,tcp:8080 \
+    --source-ranges=130.211.0.0/22,35.191.0.0/16 \
+    --target-tags=lb-backend \
+    --priority=200 \
+    --description="Allow GCP load balancer health checks"
+
+# Allow internal traffic
+gcloud compute firewall-rules create allow-internal \
+    --network=production-vpc \
+    --direction=INGRESS \
+    --action=ALLOW \
+    --rules=tcp,udp,icmp \
+    --source-ranges=10.0.0.0/8 \
+    --priority=500 \
+    --description="Allow internal RFC1918 traffic"
+
+# Allow HTTPS ingress
+gcloud compute firewall-rules create allow-https-ingress \
+    --network=production-vpc \
+    --direction=INGRESS \
+    --action=ALLOW \
+    --rules=tcp:443 \
+    --source-ranges=0.0.0.0/0 \
+    --target-tags=https-server \
+    --priority=1000 \
+    --enable-logging \
+    --description="Allow public HTTPS traffic"
+
+# Default deny all ingress
+gcloud compute firewall-rules create deny-all-ingress \
+    --network=production-vpc \
+    --direction=INGRESS \
+    --action=DENY \
+    --rules=all \
+    --source-ranges=0.0.0.0/0 \
+    --priority=65534 \
+    --enable-logging \
+    --description="Default deny all ingress"
+]]></code>
+      </example>
+    </section>
+
+    <section name="example-cloud-nat">
+      <p>Example 3: Cloud NAT for Private GKE — NAT configuration for clusters without public IPs.</p>
+      <p>Architecture: Private GKE Cluster with Nodes (no external IPs), Cloud NAT (outbound internet), and Private Google Access (GCP APIs).</p>
+      <example type="good" title="Cloud NAT for private GKE cluster">
+        <code lang="bash"><![CDATA[
+# Create Cloud Router
+gcloud compute routers create gke-nat-router \
+    --network=production-vpc \
+    --region=us-central1
+
+# Create Cloud NAT with manual IP allocation
+gcloud compute addresses create nat-ip-1 nat-ip-2 \
+    --region=us-central1
+
+gcloud compute routers nats create gke-nat \
+    --router=gke-nat-router \
+    --region=us-central1 \
+    --nat-custom-subnet-ip-ranges=prod-us-central1 \
+    --nat-external-ip-pool=nat-ip-1,nat-ip-2 \
+    --min-ports-per-vm=64 \
+    --max-ports-per-vm=4096 \
+    --tcp-established-idle-timeout=1200s \
+    --enable-logging
+
+# Verify NAT status
+gcloud compute routers get-nat-mapping-info gke-nat-router \
+    --region=us-central1
+]]></code>
+      </example>
+    </section>
+
+    <section name="example-global-https-lb">
+      <p>Example 4: Global HTTPS Load Balancer — Production load balancer with Cloud Armor and CDN.</p>
+      <p>Components: Internet → Global Forwarding Rule (External IP) → HTTPS Proxy (SSL Certificate) → URL Map (Path routing) → /api/* routes to API Backend Service (us-central1-a MIG + europe-west1-b MIG), /* routes to Web Backend Service (CDN enabled, us-central1-a MIG + europe-west1-b MIG).</p>
+      <example type="good" title="Global HTTPS load balancer setup">
+        <code lang="bash"><![CDATA[
+# Reserve global IP
+gcloud compute addresses create web-lb-ip --global
+
+# Create health checks
+gcloud compute health-checks create http api-health \
+    --port=8080 \
+    --request-path=/health \
+    --check-interval=10s \
+    --timeout=5s \
+    --healthy-threshold=2 \
+    --unhealthy-threshold=3
+
+gcloud compute health-checks create http web-health \
+    --port=80 \
+    --request-path=/ \
+    --check-interval=10s
+
+# Create backend services
+gcloud compute backend-services create api-backend \
+    --protocol=HTTP \
+    --port-name=api \
+    --health-checks=api-health \
+    --timeout=30s \
+    --global
+
+gcloud compute backend-services create web-backend \
+    --protocol=HTTP \
+    --port-name=http \
+    --health-checks=web-health \
+    --enable-cdn \
+    --cache-mode=CACHE_ALL_STATIC \
+    --default-ttl=3600 \
+    --global
+
+# Add backends (MIGs must exist)
+gcloud compute backend-services add-backend api-backend \
+    --instance-group=api-mig-us \
+    --instance-group-zone=us-central1-a \
+    --balancing-mode=UTILIZATION \
+    --max-utilization=0.8 \
+    --global
+
+gcloud compute backend-services add-backend web-backend \
+    --instance-group=web-mig-us \
+    --instance-group-zone=us-central1-a \
+    --balancing-mode=UTILIZATION \
+    --max-utilization=0.8 \
+    --global
+
+# Create URL map with path rules
+gcloud compute url-maps create web-url-map \
+    --default-service=web-backend
+
+gcloud compute url-maps add-path-matcher web-url-map \
+    --path-matcher-name=api-matcher \
+    --default-service=api-backend \
+    --path-rules="/api/*=api-backend"
+
+# Create managed SSL certificate
+gcloud compute ssl-certificates create web-cert \
+    --domains=example.com,www.example.com \
+    --global
+
+# Create HTTPS proxy
+gcloud compute target-https-proxies create web-https-proxy \
+    --url-map=web-url-map \
+    --ssl-certificates=web-cert
+
+# Create forwarding rule
+gcloud compute forwarding-rules create web-https-lb \
+    --global \
+    --address=web-lb-ip \
+    --target-https-proxy=web-https-proxy \
+    --ports=443
+]]></code>
+      </example>
+      <example type="good" title="Cloud Armor security policy">
+        <code lang="bash"><![CDATA[
+# Create security policy
+gcloud compute security-policies create web-security-policy \
+    --description="Web application security policy"
+
+# Add OWASP rules
+gcloud compute security-policies rules create 1000 \
+    --security-policy=web-security-policy \
+    --expression="evaluatePreconfiguredExpr('xss-v33-stable')" \
+    --action=deny-403
+
+gcloud compute security-policies rules create 1001 \
+    --security-policy=web-security-policy \
+    --expression="evaluatePreconfiguredExpr('sqli-v33-stable')" \
+    --action=deny-403
+
+# Rate limiting
+gcloud compute security-policies rules create 2000 \
+    --security-policy=web-security-policy \
+    --src-ip-ranges="*" \
+    --action=throttle \
+    --rate-limit-threshold-count=100 \
+    --rate-limit-threshold-interval-sec=60 \
+    --conform-action=allow \
+    --exceed-action=deny-429
+
+# Attach to backend
+gcloud compute backend-services update web-backend \
+    --security-policy=web-security-policy \
+    --global
+]]></code>
+      </example>
+    </section>
+
+    <section name="example-shared-vpc">
+      <p>Example 5: Shared VPC Architecture — Centralized networking for multi-project organization.</p>
+      <p>Architecture: Organization → networking-host-project (Host Project) with shared-vpc containing prod-subnet-us (10.0.0.0/20), prod-subnet-eu (10.1.0.0/20), dev-subnet-us (10.10.0.0/20); team-a-prod (Service Project, uses prod-subnet-us); team-b-prod (Service Project, uses prod-subnet-eu); team-a-dev (Service Project, uses dev-subnet-us).</p>
+      <example type="good" title="Shared VPC setup">
+        <code lang="bash"><![CDATA[
+# Enable Shared VPC (run as org admin)
+gcloud compute shared-vpc enable networking-host-project
+
+# Create VPC and subnets in host project
+gcloud compute networks create shared-vpc \
+    --project=networking-host-project \
+    --subnet-mode=custom
+
+gcloud compute networks subnets create prod-subnet-us \
+    --project=networking-host-project \
+    --network=shared-vpc \
+    --region=us-central1 \
+    --range=10.0.0.0/20 \
+    --enable-private-ip-google-access
+
+# Associate service projects
+gcloud compute shared-vpc associated-projects add team-a-prod \
+    --host-project=networking-host-project
+
+gcloud compute shared-vpc associated-projects add team-b-prod \
+    --host-project=networking-host-project
+
+# Grant subnet access to service project
+gcloud projects add-iam-policy-binding networking-host-project \
+    --member="serviceAccount:team-a-sa@team-a-prod.iam.gserviceaccount.com" \
+    --role="roles/compute.networkUser" \
+    --condition="expression=resource.name.startsWith('projects/networking-host-project/regions/us-central1/subnetworks/prod-subnet-us'),title=subnet-access"
+]]></code>
+      </example>
+    </section>
+
+    <section name="example-vpc-peering">
+      <p>Example 6: VPC Peering Configuration — Connect two VPCs for private communication.</p>
+      <p>Architecture: production-vpc (10.0.0.0/16) peered bidirectionally with shared-services-vpc (10.100.0.0/16) which contains DNS server, Monitoring, and CI/CD runners.</p>
+      <example type="good" title="VPC peering setup">
+        <code lang="bash"><![CDATA[
+# Create peering from production to shared-services
+gcloud compute networks peerings create prod-to-shared \
+    --network=production-vpc \
+    --peer-project=shared-services-project \
+    --peer-network=shared-services-vpc \
+    --export-custom-routes \
+    --import-custom-routes
+
+# Create peering from shared-services to production
+gcloud compute networks peerings create shared-to-prod \
+    --network=shared-services-vpc \
+    --peer-project=production-project \
+    --peer-network=production-vpc \
+    --export-custom-routes \
+    --import-custom-routes
+
+# Verify peering status
+gcloud compute networks peerings list --network=production-vpc
+]]></code>
+      </example>
+    </section>
+
+    <section name="terraform-templates">
+      <example type="good" title="Complete VPC Terraform module">
+        <code lang="hcl"><![CDATA[
+# modules/vpc/main.tf
+
+variable "project_id" {
+  description = "GCP project ID"
+  type        = string
+}
+
+variable "vpc_name" {
+  description = "Name of the VPC"
+  type        = string
+}
+
+variable "subnets" {
+  description = "List of subnets to create"
+  type = list(object({
+    name                  = string
+    region                = string
+    ip_cidr_range         = string
+    secondary_ip_ranges   = optional(list(object({
+      range_name    = string
+      ip_cidr_range = string
+    })), [])
+  }))
+}
+
+variable "enable_flow_logs" {
+  description = "Enable VPC flow logs"
+  type        = bool
+  default     = true
+}
+
+# VPC Network
+resource "google_compute_network" "vpc" {
+  project                 = var.project_id
+  name                    = var.vpc_name
+  auto_create_subnetworks = false
+  routing_mode            = "GLOBAL"
+}
+
+# Subnets
+resource "google_compute_subnetwork" "subnets" {
+  for_each = { for s in var.subnets : s.name => s }
+
+  project       = var.project_id
+  name          = each.value.name
+  network       = google_compute_network.vpc.id
+  region        = each.value.region
+  ip_cidr_range = each.value.ip_cidr_range
+
+  private_ip_google_access = true
+
+  dynamic "secondary_ip_range" {
+    for_each = each.value.secondary_ip_ranges
+    content {
+      range_name    = secondary_ip_range.value.range_name
+      ip_cidr_range = secondary_ip_range.value.ip_cidr_range
+    }
+  }
+
+  dynamic "log_config" {
+    for_each = var.enable_flow_logs ? [1] : []
+    content {
+      aggregation_interval = "INTERVAL_5_SEC"
+      flow_sampling        = 0.5
+      metadata             = "INCLUDE_ALL_METADATA"
+    }
+  }
+}
+
+# Outputs
+output "vpc_id" {
+  value = google_compute_network.vpc.id
+}
+
+output "vpc_self_link" {
+  value = google_compute_network.vpc.self_link
+}
+
+output "subnet_ids" {
+  value = { for k, v in google_compute_subnetwork.subnets : k => v.id }
+}
+]]></code>
+      </example>
+      <example type="good" title="Firewall rules Terraform module">
+        <code lang="hcl"><![CDATA[
+# modules/firewall/main.tf
+
+variable "project_id" {
+  type = string
+}
+
+variable "network" {
+  type = string
+}
+
+variable "enable_iap" {
+  type    = bool
+  default = true
+}
+
+variable "internal_ranges" {
+  type    = list(string)
+  default = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+}
+
+# Allow IAP SSH
+resource "google_compute_firewall" "allow_iap_ssh" {
+  count   = var.enable_iap ? 1 : 0
+  project = var.project_id
+  name    = "${var.network}-allow-iap-ssh"
+  network = var.network
+
+  direction = "INGRESS"
+  priority  = 100
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+
+  source_ranges = ["35.235.240.0/20"]
+  target_tags   = ["ssh-iap"]
+
+  log_config {
+    metadata = "INCLUDE_ALL_METADATA"
+  }
+}
+
+# Allow health checks
+resource "google_compute_firewall" "allow_health_checks" {
+  project = var.project_id
+  name    = "${var.network}-allow-health-checks"
+  network = var.network
+
+  direction = "INGRESS"
+  priority  = 200
+
+  allow {
+    protocol = "tcp"
+    ports    = ["80", "443", "8080"]
+  }
+
+  source_ranges = [
+    "130.211.0.0/22",
+    "35.191.0.0/16"
+  ]
+  target_tags = ["lb-backend"]
+}
+
+# Allow internal traffic
+resource "google_compute_firewall" "allow_internal" {
+  project = var.project_id
+  name    = "${var.network}-allow-internal"
+  network = var.network
+
+  direction = "INGRESS"
+  priority  = 500
+
+  allow {
+    protocol = "tcp"
+  }
+  allow {
+    protocol = "udp"
+  }
+  allow {
+    protocol = "icmp"
+  }
+
+  source_ranges = var.internal_ranges
+}
+
+# Default deny ingress
+resource "google_compute_firewall" "deny_all_ingress" {
+  project = var.project_id
+  name    = "${var.network}-deny-all-ingress"
+  network = var.network
+
+  direction = "INGRESS"
+  priority  = 65534
+
+  deny {
+    protocol = "all"
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+
+  log_config {
+    metadata = "INCLUDE_ALL_METADATA"
+  }
+}
+]]></code>
+      </example>
+      <example type="good" title="Cloud NAT Terraform module">
+        <code lang="hcl"><![CDATA[
+# modules/cloud-nat/main.tf
+
+variable "project_id" {
+  type = string
+}
+
+variable "region" {
+  type = string
+}
+
+variable "network" {
+  type = string
+}
+
+variable "name" {
+  type = string
+}
+
+variable "subnetworks" {
+  description = "Subnets to enable NAT for"
+  type        = list(string)
+  default     = []
+}
+
+variable "nat_ip_allocate_option" {
+  description = "AUTO_ONLY or MANUAL_ONLY"
+  type        = string
+  default     = "AUTO_ONLY"
+}
+
+variable "nat_ips" {
+  description = "List of self_links of external IPs (for MANUAL_ONLY)"
+  type        = list(string)
+  default     = []
+}
+
+# Cloud Router
+resource "google_compute_router" "router" {
+  project = var.project_id
+  name    = "${var.name}-router"
+  region  = var.region
+  network = var.network
+
+  bgp {
+    asn = 64514
+  }
+}
+
+# Cloud NAT
+resource "google_compute_router_nat" "nat" {
+  project = var.project_id
+  name    = var.name
+  router  = google_compute_router.router.name
+  region  = var.region
+
+  nat_ip_allocate_option = var.nat_ip_allocate_option
+  nat_ips                = var.nat_ip_allocate_option == "MANUAL_ONLY" ? var.nat_ips : null
+
+  source_subnetwork_ip_ranges_to_nat = length(var.subnetworks) > 0 ? "LIST_OF_SUBNETWORKS" : "ALL_SUBNETWORKS_ALL_IP_RANGES"
+
+  dynamic "subnetwork" {
+    for_each = var.subnetworks
+    content {
+      name                    = subnetwork.value
+      source_ip_ranges_to_nat = ["ALL_IP_RANGES"]
+    }
+  }
+
+  min_ports_per_vm                 = 64
+  max_ports_per_vm                 = 4096
+  enable_endpoint_independent_mapping = false
+
+  tcp_established_idle_timeout_sec = 1200
+  tcp_transitory_idle_timeout_sec  = 30
+  udp_idle_timeout_sec             = 30
+
+  log_config {
+    enable = true
+    filter = "ERRORS_ONLY"
+  }
+}
+
+output "router_name" {
+  value = google_compute_router.router.name
+}
+
+output "nat_name" {
+  value = google_compute_router_nat.nat.name
+}
+]]></code>
+      </example>
+      <example type="good" title="Global HTTPS Load Balancer Terraform module">
+        <code lang="hcl"><![CDATA[
+# modules/https-lb/main.tf
+
+variable "project_id" {
+  type = string
+}
+
+variable "name" {
+  type = string
+}
+
+variable "domains" {
+  type = list(string)
+}
+
+variable "backend_service_name" {
+  type = string
+}
+
+variable "health_check_path" {
+  type    = string
+  default = "/health"
+}
+
+variable "enable_cdn" {
+  type    = bool
+  default = false
+}
+
+variable "enable_cloud_armor" {
+  type    = bool
+  default = true
+}
+
+# Global IP
+resource "google_compute_global_address" "lb_ip" {
+  project = var.project_id
+  name    = "${var.name}-ip"
+}
+
+# Health Check
+resource "google_compute_health_check" "default" {
+  project = var.project_id
+  name    = "${var.name}-health-check"
+
+  timeout_sec         = 5
+  check_interval_sec  = 10
+  healthy_threshold   = 2
+  unhealthy_threshold = 3
+
+  http_health_check {
+    port         = 80
+    request_path = var.health_check_path
+  }
+}
+
+# Backend Service
+resource "google_compute_backend_service" "default" {
+  project = var.project_id
+  name    = var.backend_service_name
+
+  protocol    = "HTTP"
+  port_name   = "http"
+  timeout_sec = 30
+
+  health_checks = [google_compute_health_check.default.id]
+
+  enable_cdn = var.enable_cdn
+
+  dynamic "cdn_policy" {
+    for_each = var.enable_cdn ? [1] : []
+    content {
+      cache_mode                   = "CACHE_ALL_STATIC"
+      default_ttl                  = 3600
+      client_ttl                   = 3600
+      max_ttl                      = 86400
+      negative_caching             = true
+      serve_while_stale            = 86400
+    }
+  }
+
+  security_policy = var.enable_cloud_armor ? google_compute_security_policy.default[0].id : null
+
+  log_config {
+    enable      = true
+    sample_rate = 1.0
+  }
+}
+
+# Cloud Armor Security Policy
+resource "google_compute_security_policy" "default" {
+  count   = var.enable_cloud_armor ? 1 : 0
+  project = var.project_id
+  name    = "${var.name}-security-policy"
+
+  # XSS Protection
+  rule {
+    action   = "deny(403)"
+    priority = 1000
+    match {
+      expr {
+        expression = "evaluatePreconfiguredExpr('xss-v33-stable')"
+      }
+    }
+    description = "Block XSS attacks"
+  }
+
+  # SQL Injection Protection
+  rule {
+    action   = "deny(403)"
+    priority = 1001
+    match {
+      expr {
+        expression = "evaluatePreconfiguredExpr('sqli-v33-stable')"
+      }
+    }
+    description = "Block SQL injection attacks"
+  }
+
+  # Rate Limiting
+  rule {
+    action   = "throttle"
+    priority = 2000
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+    rate_limit_options {
+      conform_action = "allow"
+      exceed_action  = "deny(429)"
+      rate_limit_threshold {
+        count        = 100
+        interval_sec = 60
+      }
+    }
+    description = "Rate limit to 100 requests per minute"
+  }
+
+  # Default allow
+  rule {
+    action   = "allow"
+    priority = 2147483647
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+    description = "Default allow rule"
+  }
+}
+
+# Managed SSL Certificate
+resource "google_compute_managed_ssl_certificate" "default" {
+  project = var.project_id
+  name    = "${var.name}-cert"
+
+  managed {
+    domains = var.domains
+  }
+}
+
+# URL Map
+resource "google_compute_url_map" "default" {
+  project         = var.project_id
+  name            = "${var.name}-url-map"
+  default_service = google_compute_backend_service.default.id
+}
+
+# HTTPS Proxy
+resource "google_compute_target_https_proxy" "default" {
+  project          = var.project_id
+  name             = "${var.name}-https-proxy"
+  url_map          = google_compute_url_map.default.id
+  ssl_certificates = [google_compute_managed_ssl_certificate.default.id]
+}
+
+# Forwarding Rule
+resource "google_compute_global_forwarding_rule" "default" {
+  project    = var.project_id
+  name       = "${var.name}-https-rule"
+  target     = google_compute_target_https_proxy.default.id
+  ip_address = google_compute_global_address.lb_ip.address
+  port_range = "443"
+}
+
+# HTTP to HTTPS Redirect
+resource "google_compute_url_map" "http_redirect" {
+  project = var.project_id
+  name    = "${var.name}-http-redirect"
+
+  default_url_redirect {
+    https_redirect = true
+    strip_query    = false
+  }
+}
+
+resource "google_compute_target_http_proxy" "http_redirect" {
+  project = var.project_id
+  name    = "${var.name}-http-proxy"
+  url_map = google_compute_url_map.http_redirect.id
+}
+
+resource "google_compute_global_forwarding_rule" "http_redirect" {
+  project    = var.project_id
+  name       = "${var.name}-http-rule"
+  target     = google_compute_target_http_proxy.http_redirect.id
+  ip_address = google_compute_global_address.lb_ip.address
+  port_range = "80"
+}
+
+output "lb_ip" {
+  value = google_compute_global_address.lb_ip.address
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="gcloud-script-templates">
+      <example type="good" title="VPC setup script">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# setup-vpc.sh - Create production VPC with subnets
+
+set -euo pipefail
+
+# Configuration
+PROJECT_ID="${PROJECT_ID:-my-project}"
+VPC_NAME="${VPC_NAME:-production-vpc}"
+REGIONS=("us-central1" "europe-west1" "asia-east1")
+
+# Set project
+gcloud config set project "$PROJECT_ID"
+
+# Create VPC
+echo "Creating VPC: $VPC_NAME"
+gcloud compute networks create "$VPC_NAME" \
+    --subnet-mode=custom \
+    --bgp-routing-mode=global
+
+# Create subnets
+CIDR_BASE=0
+for REGION in "${REGIONS[@]}"; do
+    SUBNET_NAME="${VPC_NAME}-${REGION}"
+    CIDR="10.${CIDR_BASE}.0.0/20"
+    POD_CIDR="10.$((CIDR_BASE + 4)).0.0/14"
+    SVC_CIDR="10.$((CIDR_BASE + 8)).0.0/20"
+
+    echo "Creating subnet: $SUBNET_NAME ($CIDR)"
+    gcloud compute networks subnets create "$SUBNET_NAME" \
+        --network="$VPC_NAME" \
+        --region="$REGION" \
+        --range="$CIDR" \
+        --secondary-range="pods=$POD_CIDR,services=$SVC_CIDR" \
+        --enable-private-ip-google-access \
+        --enable-flow-logs \
+        --logging-aggregation-interval=interval-5-sec \
+        --logging-flow-sampling=0.5
+
+    CIDR_BASE=$((CIDR_BASE + 16))
+done
+
+echo "VPC setup complete!"
+]]></code>
+      </example>
+      <example type="good" title="Firewall setup script">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# setup-firewall.sh - Configure secure firewall rules
+
+set -euo pipefail
+
+PROJECT_ID="${PROJECT_ID:-my-project}"
+VPC_NAME="${VPC_NAME:-production-vpc}"
+
+gcloud config set project "$PROJECT_ID"
+
+echo "Creating firewall rules for $VPC_NAME"
+
+# IAP SSH
+gcloud compute firewall-rules create "${VPC_NAME}-allow-iap-ssh" \
+    --network="$VPC_NAME" \
+    --direction=INGRESS \
+    --action=ALLOW \
+    --rules=tcp:22 \
+    --source-ranges=35.235.240.0/20 \
+    --target-tags=ssh-iap \
+    --priority=100 \
+    --enable-logging \
+    --description="Allow SSH via IAP"
+
+# Health checks
+gcloud compute firewall-rules create "${VPC_NAME}-allow-health-checks" \
+    --network="$VPC_NAME" \
+    --direction=INGRESS \
+    --action=ALLOW \
+    --rules=tcp:80,tcp:443,tcp:8080 \
+    --source-ranges=130.211.0.0/22,35.191.0.0/16 \
+    --target-tags=lb-backend \
+    --priority=200 \
+    --description="Allow GCP health checks"
+
+# Internal
+gcloud compute firewall-rules create "${VPC_NAME}-allow-internal" \
+    --network="$VPC_NAME" \
+    --direction=INGRESS \
+    --action=ALLOW \
+    --rules=tcp,udp,icmp \
+    --source-ranges=10.0.0.0/8 \
+    --priority=500 \
+    --description="Allow internal traffic"
+
+# Default deny
+gcloud compute firewall-rules create "${VPC_NAME}-deny-all-ingress" \
+    --network="$VPC_NAME" \
+    --direction=INGRESS \
+    --action=DENY \
+    --rules=all \
+    --source-ranges=0.0.0.0/0 \
+    --priority=65534 \
+    --enable-logging \
+    --description="Default deny all"
+
+echo "Firewall rules created!"
+]]></code>
+      </example>
+      <example type="good" title="Cloud NAT setup script">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# setup-nat.sh - Configure Cloud NAT for private instances
+
+set -euo pipefail
+
+PROJECT_ID="${PROJECT_ID:-my-project}"
+VPC_NAME="${VPC_NAME:-production-vpc}"
+REGIONS=("us-central1" "europe-west1")
+
+gcloud config set project "$PROJECT_ID"
+
+for REGION in "${REGIONS[@]}"; do
+    ROUTER_NAME="${VPC_NAME}-nat-router-${REGION}"
+    NAT_NAME="${VPC_NAME}-nat-${REGION}"
+
+    echo "Creating Cloud Router: $ROUTER_NAME"
+    gcloud compute routers create "$ROUTER_NAME" \
+        --network="$VPC_NAME" \
+        --region="$REGION"
+
+    echo "Creating Cloud NAT: $NAT_NAME"
+    gcloud compute routers nats create "$NAT_NAME" \
+        --router="$ROUTER_NAME" \
+        --region="$REGION" \
+        --nat-all-subnet-ip-ranges \
+        --auto-allocate-nat-external-ips \
+        --min-ports-per-vm=64 \
+        --enable-logging
+done
+
+echo "Cloud NAT setup complete!"
+]]></code>
+      </example>
+      <example type="good" title="VPC configuration YAML reference">
+        <code lang="yaml"><![CDATA[
+# vpc-config.yaml - VPC configuration for reference/automation
+
+vpc:
+  name: production-vpc
+  project: my-project-id
+  routing_mode: GLOBAL
+
+subnets:
+  - name: prod-us-central1
+    region: us-central1
+    ip_cidr_range: 10.0.0.0/20
+    private_ip_google_access: true
+    flow_logs:
+      enabled: true
+      aggregation_interval: INTERVAL_5_SEC
+      flow_sampling: 0.5
+    secondary_ranges:
+      - name: pods
+        ip_cidr_range: 10.4.0.0/14
+      - name: services
+        ip_cidr_range: 10.8.0.0/20
+
+  - name: prod-europe-west1
+    region: europe-west1
+    ip_cidr_range: 10.16.0.0/20
+    private_ip_google_access: true
+    flow_logs:
+      enabled: true
+    secondary_ranges:
+      - name: pods
+        ip_cidr_range: 10.20.0.0/14
+      - name: services
+        ip_cidr_range: 10.24.0.0/20
+
+firewall_rules:
+  - name: allow-iap-ssh
+    direction: INGRESS
+    priority: 100
+    action: ALLOW
+    rules:
+      - protocol: tcp
+        ports: ["22"]
+    source_ranges: ["35.235.240.0/20"]
+    target_tags: ["ssh-iap"]
+    logging: true
+
+  - name: allow-health-checks
+    direction: INGRESS
+    priority: 200
+    action: ALLOW
+    rules:
+      - protocol: tcp
+        ports: ["80", "443", "8080"]
+    source_ranges:
+      - 130.211.0.0/22
+      - 35.191.0.0/16
+    target_tags: ["lb-backend"]
+
+  - name: allow-internal
+    direction: INGRESS
+    priority: 500
+    action: ALLOW
+    rules:
+      - protocol: tcp
+      - protocol: udp
+      - protocol: icmp
+    source_ranges: ["10.0.0.0/8"]
+
+  - name: deny-all-ingress
+    direction: INGRESS
+    priority: 65534
+    action: DENY
+    rules:
+      - protocol: all
+    source_ranges: ["0.0.0.0/0"]
+    logging: true
+
+cloud_nat:
+  - name: nat-us-central1
+    region: us-central1
+    router: nat-router-us-central1
+    nat_ip_allocate_option: AUTO_ONLY
+    source_subnetwork_ip_ranges_to_nat: ALL_SUBNETWORKS_ALL_IP_RANGES
+    min_ports_per_vm: 64
+    max_ports_per_vm: 4096
+    logging: true
+]]></code>
+      </example>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="vpc-architecture-design"><![CDATA[
+Design a GCP VPC architecture for the following requirements:
+
+Application: [describe application]
+Regions: [list regions]
+Environments: [prod/staging/dev]
+Workloads: [VMs/GKE/Cloud Run/etc.]
+Connectivity: [on-prem/other clouds/internet only]
+Compliance: [HIPAA/PCI/SOC2/none]
+
+Please provide:
+1. VPC topology (single vs multiple VPCs, Shared VPC consideration)
+2. Subnet design with CIDR ranges
+3. Secondary ranges for GKE if applicable
+4. Firewall strategy
+5. NAT configuration
+6. Private connectivity options
+7. Terraform module structure
+
+Consider GCP best practices:
+- Custom mode VPCs (not auto)
+- Global VPC with regional subnets
+- Private Google Access enabled
+- VPC Flow Logs for visibility
+- Service account-based firewall filtering
+]]></prompt>
+      <prompt purpose="subnet-cidr-planning"><![CDATA[
+Plan IP address ranges for a GCP VPC with the following requirements:
+
+VPC peering targets: [list CIDRs that must not overlap]
+Regions: [list regions]
+Per-region resources:
+- VMs: [estimated count]
+- GKE nodes: [estimated count]
+- GKE pods: [estimated count]
+- GKE services: [estimated count]
+
+Growth factor: [2x/3x/5x]
+
+Provide:
+1. Primary subnet ranges per region
+2. Secondary ranges for GKE pods and services
+3. Reserved ranges for future expansion
+4. Documentation table showing all allocations
+5. Validation that ranges don't overlap with peering targets
+
+Use RFC 1918 ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16).
+Ensure pods get /14 or larger for GKE autopilot.
+]]></prompt>
+      <prompt purpose="multi-environment-vpc"><![CDATA[
+Design a multi-environment networking strategy for GCP:
+
+Environments: production, staging, development
+Teams: [list teams that need access]
+Shared services: [CI/CD, monitoring, DNS, etc.]
+Isolation requirements: [describe]
+
+Options to evaluate:
+1. Single VPC with subnet-based isolation
+2. Separate VPCs with peering
+3. Shared VPC architecture
+4. Combination approach
+
+For each viable option, provide:
+- Architecture diagram (text-based)
+- Pros and cons
+- Cost implications
+- Management complexity
+- Security considerations
+- Recommendation with justification
+]]></prompt>
+      <prompt purpose="firewall-rules-design"><![CDATA[
+Design firewall rules for a GCP VPC with these workloads:
+
+Workloads:
+- Web servers: ports [list], public access [yes/no]
+- API servers: ports [list], sources [list]
+- Databases: ports [list], internal only
+- GKE cluster: [describe connectivity needs]
+
+Requirements:
+- IAP access for SSH administration
+- Health check support for load balancers
+- Internal communication between workloads
+- Default deny with logging
+
+Provide:
+1. Complete firewall rule set with:
+   - Name, priority, direction
+   - Source/target (prefer service accounts)
+   - Ports and protocols
+   - Logging configuration
+2. gcloud commands to create rules
+3. Terraform code
+4. Verification steps
+]]></prompt>
+      <prompt purpose="firewall-audit"><![CDATA[
+Audit the following GCP firewall rules for security issues:
+
+[paste firewall rules list or gcloud output]
+
+Check for:
+1. Overly permissive rules (0.0.0.0/0 sources)
+2. Unused rules (no traffic in logs)
+3. Rules without logging
+4. Network tags vs service accounts
+5. Missing default deny rule
+6. Deprecated or legacy patterns
+7. Priority conflicts
+8. Compliance violations
+
+Provide:
+- Risk assessment for each finding
+- Remediation steps
+- Recommended firewall policy
+- gcloud commands to fix issues
+]]></prompt>
+      <prompt purpose="hierarchical-firewall-policies"><![CDATA[
+Design a hierarchical firewall policy for this GCP organization:
+
+Organization structure:
+- org-id: [ID]
+- Folders: [list folders]
+- Projects: [list projects per folder]
+
+Security requirements:
+- Block known malicious IPs org-wide
+- Allow GCP health checks org-wide
+- Environment-specific rules (prod more restrictive)
+- Project-level exceptions for specific apps
+
+Provide:
+1. Organization-level policy
+2. Folder-level policies
+3. Project-level rules
+4. Delegation model (who manages what)
+5. Terraform code
+6. Testing approach
+]]></prompt>
+      <prompt purpose="cloud-nat-configuration"><![CDATA[
+Configure Cloud NAT for the following scenario:
+
+VPC: [name]
+Regions: [list]
+Private instances: [count per region]
+Outbound traffic:
+- Expected connections per VM: [number]
+- Destinations: [internet/specific IPs]
+- Protocol mix: [TCP/UDP percentages]
+
+Requirements:
+- [Static IPs for allowlisting / auto-allocated IPs]
+- Port allocation strategy
+- Logging requirements
+- Cost optimization
+
+Provide:
+1. Cloud Router configuration
+2. Cloud NAT configuration with optimal settings
+3. Port allocation calculation
+4. Monitoring and alerting setup
+5. gcloud commands
+6. Terraform code
+7. Cost estimate
+]]></prompt>
+      <prompt purpose="nat-port-exhaustion-troubleshooting"><![CDATA[
+Troubleshoot Cloud NAT port exhaustion with these symptoms:
+
+Current configuration:
+- NAT name: [name]
+- Region: [region]
+- Min ports per VM: [current]
+- Max ports per VM: [current]
+- Number of VMs: [count]
+
+Symptoms:
+- [describe errors/logs]
+- Connection timeouts to: [destinations]
+- Time of day pattern: [if any]
+
+Provide:
+1. Diagnostic commands to run
+2. Root cause analysis approach
+3. Recommended configuration changes
+4. gcloud commands to apply fixes
+5. Monitoring dashboard queries
+6. Long-term scaling recommendations
+]]></prompt>
+      <prompt purpose="load-balancer-selection"><![CDATA[
+Recommend the appropriate GCP load balancer for:
+
+Application type: [web app/API/gRPC/TCP service/UDP]
+Traffic source: [global users/regional/internal]
+Backend type: [VMs/GKE/Cloud Run/Cloud Functions]
+Protocol: [HTTP/HTTPS/TCP/UDP]
+SSL termination: [at LB/at backend/both]
+Session affinity: [required/not required]
+WebSocket support: [yes/no]
+Health check type: [HTTP/HTTPS/TCP/gRPC]
+
+Additional requirements:
+- [list any special requirements]
+
+Provide:
+1. Recommended load balancer type with justification
+2. Alternative options and when to use them
+3. Architecture diagram
+4. Component list (forwarding rule, proxy, backend service, etc.)
+5. gcloud commands to create
+6. Terraform code
+7. Estimated cost
+]]></prompt>
+      <prompt purpose="global-https-lb-setup"><![CDATA[
+Set up a global HTTPS load balancer with these specifications:
+
+Domains: [list domains]
+SSL: [managed certificate/bring your own]
+Backend regions: [list]
+Backend type: [MIGs/NEGs/serverless]
+
+Routing requirements:
+- /api/* -> API backend
+- /static/* -> CDN-enabled backend
+- /* -> Web backend
+
+Security requirements:
+- Cloud Armor: [yes/no]
+- Rate limiting: [requests per minute]
+- WAF rules: [OWASP/custom]
+
+Provide:
+1. Complete architecture
+2. Health check configuration
+3. Backend service configuration
+4. URL map with path matchers
+5. SSL certificate setup
+6. Cloud Armor policy
+7. gcloud commands (in order)
+8. Terraform code
+9. DNS configuration steps
+10. Verification checklist
+]]></prompt>
+      <prompt purpose="internal-lb-microservices"><![CDATA[
+Design internal load balancing for microservices:
+
+Services:
+[list service name, port, protocol, replicas]
+
+Requirements:
+- Service discovery method: [DNS/service mesh/direct]
+- Health check: [per service requirements]
+- Session affinity: [per service]
+- Failover: [regional/zonal]
+
+VPC: [name]
+Regions: [list]
+GKE: [yes/no, if yes describe setup]
+
+Provide:
+1. Load balancer type for each service
+2. Network endpoint groups configuration
+3. Health check per service
+4. Backend service configuration
+5. Forwarding rules
+6. DNS setup for service discovery
+7. Terraform code
+8. Testing approach
+]]></prompt>
+      <prompt purpose="vpc-service-controls"><![CDATA[
+Implement VPC Service Controls for sensitive data:
+
+Sensitive projects: [list]
+Services to protect: [BigQuery/Cloud Storage/etc.]
+Allowed access:
+- Users: [list]
+- Service accounts: [list]
+- IP ranges: [list]
+- VPCs: [list]
+
+Ingress requirements: [describe]
+Egress requirements: [describe]
+
+Provide:
+1. Access level definitions
+2. Service perimeter configuration
+3. Ingress/egress policies
+4. Dry-run configuration for testing
+5. gcloud commands
+6. Terraform code
+7. Testing procedure
+8. Monitoring setup for violations
+]]></prompt>
+      <prompt purpose="private-connectivity-design"><![CDATA[
+Design private connectivity for:
+
+Scenario: [choose one]
+a) Private access to Google APIs only
+b) Hybrid connectivity to on-premises
+c) Multi-cloud connectivity
+d) All of the above
+
+Current state:
+- VPC: [name and CIDR]
+- On-prem network: [CIDR if applicable]
+- Other cloud: [provider and CIDR if applicable]
+
+Requirements:
+- Bandwidth: [Gbps]
+- Latency: [ms requirements]
+- Redundancy: [HA requirements]
+- Budget: [if relevant]
+
+Provide:
+1. Recommended connectivity options
+2. Private Google Access configuration
+3. Private Service Connect setup
+4. VPN or Interconnect design (if applicable)
+5. Routing configuration
+6. DNS setup for private zones
+7. Architecture diagram
+8. Implementation steps
+9. Cost estimate
+]]></prompt>
+      <prompt purpose="network-monitoring-setup"><![CDATA[
+Set up comprehensive network monitoring for GCP VPC:
+
+VPC: [name]
+Critical workloads: [list]
+Compliance requirements: [list]
+
+Monitor for:
+- Firewall denies
+- NAT port exhaustion
+- Load balancer errors
+- Latency issues
+- Traffic anomalies
+
+Provide:
+1. VPC Flow Logs configuration
+2. Firewall rules logging
+3. Cloud Monitoring dashboard definition
+4. Alert policies with thresholds
+5. Log-based metrics
+6. BigQuery export for long-term analysis
+7. Terraform code for monitoring resources
+8. Sample queries for common issues
+]]></prompt>
+      <prompt purpose="network-troubleshooting"><![CDATA[
+Troubleshoot this GCP networking issue:
+
+Symptom: [describe]
+Source: [VM/GKE pod/Cloud Run/external]
+Destination: [VM/service/internet/Google API]
+Error message: [if any]
+When it started: [time/change that preceded]
+
+Environment:
+- VPC: [name]
+- Firewall rules: [relevant rules]
+- Routes: [custom routes if any]
+- NAT: [yes/no, config if yes]
+- Load balancer: [yes/no, type if yes]
+
+Provide:
+1. Diagnostic steps in order
+2. gcloud commands to gather information
+3. Connectivity test commands
+4. Log queries to run
+5. Most likely causes ranked by probability
+6. Resolution steps for each cause
+7. Prevention recommendations
+]]></prompt>
+      <prompt purpose="vpc-migration-planning"><![CDATA[
+Plan VPC migration/restructuring:
+
+Current state:
+- VPC: [describe current setup]
+- Workloads: [what's running]
+- Issues: [why migrating]
+
+Target state:
+- New VPC design: [describe]
+- Goals: [list]
+
+Constraints:
+- Downtime tolerance: [minutes/hours/zero]
+- Change windows: [when]
+- Dependencies: [list]
+
+Provide:
+1. Migration strategy options
+2. Recommended approach with justification
+3. Detailed migration steps
+4. Rollback plan
+5. Testing checklist
+6. Communication plan
+7. Timeline with milestones
+8. Risk assessment
+]]></prompt>
+      <p>Usage Tips for prompts: Be specific (include actual values, not placeholders), provide context (current state helps generate accurate solutions), state constraints (budget, compliance, existing infrastructure), request format (specify if you need gcloud, Terraform, or both), follow up (ask for clarification or alternatives).</p>
+    </section>
+
+    <see-also>
+      <link href="https://docs.cloud.google.com/architecture/best-practices-vpc-design"/>
+      <link href="https://fidelissecurity.com/cybersecurity-101/best-practices/google-cloud-platform-gcp-security/"/>
+      <link href="https://quabyt.com/blog/gcp-networking-best-practices"/>
+      <link href="https://medium.com/@pbijjala/vpc-design-considerations-for-google-cloud-71ce67427256"/>
+      <link href="https://www.trendmicro.com/cloudoneconformity/knowledge-base/gcp/CloudVPC/"/>
+      <link href="https://docs.cloud.google.com/vpc/docs/release-notes"/>
+    </see-also>
+  </content>
+</methodology>

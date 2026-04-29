@@ -1,0 +1,384 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="terraform-basics">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Core Terraform reference: HCL syntax, providers, resources, data sources, variables, outputs, locals, and standard project file layout.</summary>
+  </metadata>
+
+  <content>
+    <title>Terraform Basics</title>
+    <summary>Core Terraform reference covering HCL syntax, provider configuration, resources, data sources, variables, outputs, locals, and the standard project file layout. The concrete rule: always use for_each over count when resources need unique identifiers; always store state remotely with locking enabled; never commit *.tfstate* or actual terraform.tfvars files.</summary>
+
+    <why>
+      Terraform is the dominant IaC tool for multi-cloud infrastructure. Correct use of lifecycle rules, meta-arguments, and file structure prevents state corruption, accidental resource destruction, and security leaks. Data sources eliminate hardcoded AMI IDs and account details, keeping configurations portable.
+
+      The standard 8-block structure (terraform, provider, resource, data, variable, output, locals, module) gives each concern a distinct home. Mixing responsibilities — embedding logic in resource blocks that belongs in locals — makes configurations hard to refactor and test.
+    </why>
+
+    <when-to-use>
+      <item>Starting a new Terraform project and scaffolding the file structure</item>
+      <item>Configuring providers (AWS, GCP, Azure) with version constraints and default tags</item>
+      <item>Writing resources with proper meta-arguments (count, for_each, lifecycle, depends_on)</item>
+      <item>Looking up built-in function syntax (string, collection, encoding, date functions)</item>
+      <item>Setting up remote state backends (S3+DynamoDB, GCS, Azure Blob, Terraform Cloud)</item>
+    </when-to-use>
+
+    <when-not-to-use>
+      <item>Advanced state operations (import, mv, rm, moved blocks) — use terraform-state methodology</item>
+      <item>Production CI/CD pipeline patterns — use the advanced terraform methodology</item>
+      <item>Module design and versioning — use terraform-modules methodology</item>
+      <item>AWS/GCP-specific resource patterns — use the respective cloud methodology</item>
+    </when-not-to-use>
+
+    <section name="hcl-building-blocks">
+      <rule>Use the standard 8-block structure: terraform, provider, resource, data, variable, output, locals, module — each with a distinct responsibility. Mixing responsibilities (e.g., embedding logic in resource blocks that belongs in locals) makes configurations hard to refactor and test.</rule>
+      <rule>Always use pessimistic version constraints (~&gt; major.minor) for providers; pin Terraform itself to &gt;= 1.5.0 minimum. Pessimistic constraints allow patch updates automatically while blocking breaking major changes. TF 1.5+ is required for import blocks.</rule>
+    </section>
+
+    <section name="terraform-workflow">
+      <rule>Follow the four-step workflow in order: init → plan → apply → destroy (never skip plan before apply in automation). Skipping plan in CI allows unexpected destroys or replacements to reach production without review.</rule>
+      <rule>Commands: terraform init (initialize + download providers), terraform plan (dry run), terraform apply (execute), terraform destroy (teardown). Run terraform fmt -recursive and terraform validate before every commit.</rule>
+    </section>
+
+    <section name="meta-arguments">
+      <rule>Use for_each over count when resources need unique identifiers or will be addressed individually; use count only for identical, index-based resources. count creates resources addressed by index — removing an item from the middle shifts indexes and causes unexpected replacements. for_each uses stable keys.</rule>
+      <rule>Add explicit depends_on only when implicit dependency graphs are insufficient; avoid overuse as it disables parallel operations. Terraform builds dependency graphs from references automatically. Explicit depends_on is a last resort that serializes operations unnecessarily.</rule>
+    </section>
+
+    <section name="lifecycle-rules">
+      <rule>Set create_before_destroy on resources where downtime is unacceptable; set prevent_destroy on production databases and state backends. Default destroy-then-create causes downtime. prevent_destroy adds a guardrail against accidental terraform destroy on critical data stores.</rule>
+      <rule>Use precondition and postcondition blocks to validate assumptions before and after resource creation rather than relying on cloud API errors. Conditions surface misconfigurations at plan time with clear error messages, before any resources are created or modified.</rule>
+    </section>
+
+    <section name="state-management">
+      <rule>Always configure a remote backend with locking; add *.tfstate* to .gitignore; commit .terraform.lock.hcl for provider version consistency. Local state blocks team collaboration and has no locking. State files contain sensitive data and must never be committed to git.</rule>
+    </section>
+
+    <section name="provider-configuration">
+      <rule>Configure default_tags on the AWS provider to apply Project, Environment, and ManagedBy=terraform tags to all resources automatically. Default tags eliminate manual tag repetition and ensure every resource is tagged for cost allocation without per-resource configuration.</rule>
+      <rule>Use provider aliases for multi-region or multi-account deployments; reference them with provider = aws.alias_name on specific resources. Alias providers allow a single configuration to manage resources across multiple regions or accounts without separate configurations.</rule>
+      <example name="aws-provider-with-default-tags">
+        <code lang="hcl"><![CDATA[
+provider "aws" {
+  region = var.aws_region
+
+  default_tags {
+    tags = {
+      Project     = var.project_name
+      Environment = var.environment
+      ManagedBy   = "terraform"
+    }
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="expressions-and-for-each">
+      <rule>Use for expressions to transform lists and maps; use dynamic blocks for repeated nested blocks driven by a variable. Inline for expressions and dynamic blocks keep configurations DRY without requiring module extraction for simple transformations.</rule>
+      <example name="for-each-and-dynamic-block">
+        <code lang="hcl"><![CDATA[
+# for_each from a set
+resource "aws_iam_user" "users" {
+  for_each = toset(var.user_names)
+  name     = each.value
+}
+
+# Dynamic block
+resource "aws_security_group" "app" {
+  name   = "${local.name_prefix}-app-sg"
+  vpc_id = var.vpc_id
+
+  dynamic "ingress" {
+    for_each = var.ingress_rules
+    content {
+      from_port   = ingress.value.from_port
+      to_port     = ingress.value.to_port
+      protocol    = ingress.value.protocol
+      cidr_blocks = ingress.value.cidr_blocks
+    }
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="built-in-functions">
+      <rule>Use cidrsubnet for CIDR calculations, slice for AZ selection, merge for combining tags, and jsonencode/jsondecode for IAM policies. Built-in functions keep numeric and structural logic in Terraform rather than requiring external scripting or hardcoded values.</rule>
+      <rule>Key functions: cidrsubnet(cidr, bits, index), slice(list, start, end), merge(map1, map2), length(list), lookup(map, key, default), toset(list). Use toset() when converting a list to a set for for_each to ensure stable, unique keys.</rule>
+    </section>
+
+    <section name="variables-and-validation">
+      <rule>Add validation blocks to variables for constrained inputs (environment names, instance families); use sensitive = true for secrets. Validation surfaces misconfigurations at plan time before any API calls. sensitive = true prevents secrets from appearing in plan output and logs.</rule>
+      <example name="variable-with-validation">
+        <code lang="hcl"><![CDATA[
+variable "environment" {
+  description = "Environment (dev, staging, prod)"
+  type        = string
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be dev, staging, or prod."
+  }
+}
+
+variable "db_password" {
+  description = "Database password"
+  type        = string
+  sensitive   = true
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="locals">
+      <rule>Use locals for the name_prefix pattern, CIDR calculations, and common_tags — compute once, reference everywhere. Locals avoid repeating the same interpolation logic across many resources and make global renames a single-line change.</rule>
+      <example name="locals-name-prefix-pattern">
+        <code lang="hcl"><![CDATA[
+locals {
+  name_prefix = "${var.project_name}-${var.environment}"
+  common_tags = {
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+  azs = slice(data.aws_availability_zones.available.names, 0, 3)
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="project-setup-checklist">
+      <rule>Use the standard file layout: versions.tf, providers.tf, variables.tf, main.tf, outputs.tf, locals.tf, data.tf, terraform.tfvars.example; add .terraform/ and *.tfstate* to .gitignore; commit .terraform.lock.hcl. Consistent layout makes code navigable for any team member. .terraform.lock.hcl ensures reproducible provider versions across machines and CI.</rule>
+      <rule>Configure pre-commit hooks to run terraform fmt and terraform validate on every commit. Automated format and validation checks prevent style drift and syntax errors from reaching code review.</rule>
+    </section>
+
+    <section name="variables-and-outputs-checklist">
+      <rule>Add description and type to every variable; add validation blocks for constrained inputs; never commit actual terraform.tfvars with secrets. Descriptions serve as self-documentation. Validation catches invalid values at plan time. Committing tfvars leaks credentials to version history.</rule>
+      <rule>Mark sensitive outputs with sensitive = true; add descriptions to all outputs; use consistent snake_case naming. Sensitive outputs are redacted in plan output and logs. Descriptive outputs serve as API contracts for downstream configurations.</rule>
+    </section>
+
+    <section name="security-checklist">
+      <rule>Never store secrets in .tf files or state; use AWS Secrets Manager or HashiCorp Vault as data sources; mark all credential variables with sensitive = true. Terraform state is stored in plaintext in S3 by default. Secrets-Manager data sources ensure secrets are fetched at runtime, not embedded in state.</rule>
+      <rule>Apply least-privilege IAM policies; restrict network access (no 0.0.0.0/0 unless explicitly required for ALB); enable encryption on all storage resources. Overly permissive IAM and open security groups are the two most common causes of AWS breaches. Encryption at rest protects data if access controls fail.</rule>
+    </section>
+
+    <section name="code-quality-checklist">
+      <rule>Run terraform fmt -recursive before committing; run terraform validate to check syntax; use consistent naming {project}-{env}-{resource}. Consistent formatting reduces diff noise. Validate catches syntax errors before CI runs, saving build time.</rule>
+      <rule>Use for_each over count when resources need unique identifiers; use count only for truly identical resources; configure lifecycle.prevent_destroy for critical resources. for_each creates stable resource addresses. count creates index-based addresses that shift on deletion, causing unexpected replacements.</rule>
+    </section>
+
+    <section name="cicd-integration-checklist">
+      <rule>Run terraform fmt -check, terraform validate, and terraform plan on every pull request; apply only from CI with human approval for production. Running plan on PRs makes infrastructure changes visible before merge. CI-only apply prevents local state divergence and untested manual changes.</rule>
+      <antipattern>Provisioners (remote-exec, local-exec) for configuration management. Provisioners run outside Terraform's state model, have no idempotency guarantees, and fail silently. Use cloud-init or user_data instead.</antipattern>
+    </section>
+
+    <section name="templates">
+      <example name="versions.tf">
+        <code lang="hcl"><![CDATA[
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+
+  # Uncomment and configure for remote state
+  # backend "s3" {
+  #   bucket         = "company-terraform-state"
+  #   key            = "project/env/terraform.tfstate"
+  #   region         = "us-east-1"
+  #   dynamodb_table = "terraform-locks"
+  #   encrypt        = true
+  # }
+}
+]]></code>
+      </example>
+
+      <example name="providers.tf">
+        <code lang="hcl"><![CDATA[
+provider "aws" {
+  region = var.aws_region
+
+  default_tags {
+    tags = {
+      Project     = var.project_name
+      Environment = var.environment
+      ManagedBy   = "terraform"
+    }
+  }
+}
+
+# Optional: Multi-region secondary provider
+# provider "aws" {
+#   alias  = "secondary"
+#   region = var.secondary_region
+# }
+]]></code>
+      </example>
+
+      <example name="variables.tf">
+        <code lang="hcl"><![CDATA[
+variable "project_name" {
+  description = "Project name for resource naming and tagging"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment (dev, staging, prod)"
+  type        = string
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be dev, staging, or prod."
+  }
+}
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "vpc_cidr" {
+  description = "CIDR block for VPC"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "instance_type" {
+  description = "EC2 instance type"
+  type        = string
+  default     = "t3.micro"
+}
+
+variable "instance_count" {
+  description = "Number of instances"
+  type        = number
+  default     = 1
+}
+
+variable "db_password" {
+  description = "Database password"
+  type        = string
+  sensitive   = true
+}
+]]></code>
+      </example>
+
+      <example name="outputs.tf">
+        <code lang="hcl"><![CDATA[
+output "vpc_id" {
+  description = "VPC ID"
+  value       = aws_vpc.main.id
+}
+
+output "vpc_cidr" {
+  description = "VPC CIDR block"
+  value       = aws_vpc.main.cidr_block
+}
+
+output "public_subnet_ids" {
+  description = "List of public subnet IDs"
+  value       = aws_subnet.public[*].id
+}
+
+output "private_subnet_ids" {
+  description = "List of private subnet IDs"
+  value       = aws_subnet.private[*].id
+}
+
+output "db_endpoint" {
+  description = "RDS instance endpoint"
+  value       = aws_db_instance.main.endpoint
+  sensitive   = true
+}
+]]></code>
+      </example>
+
+      <example name="locals.tf">
+        <code lang="hcl"><![CDATA[
+locals {
+  name_prefix = "${var.project_name}-${var.environment}"
+
+  common_tags = {
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+
+  azs = slice(data.aws_availability_zones.available.names, 0, 3)
+
+  public_subnets = [
+    for i, az in local.azs : cidrsubnet(var.vpc_cidr, 8, i)
+  ]
+  private_subnets = [
+    for i, az in local.azs : cidrsubnet(var.vpc_cidr, 8, i + 10)
+  ]
+}
+
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+]]></code>
+      </example>
+
+      <example name="gitignore">
+        <code lang="text"><![CDATA[
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform.tfvars.example
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# IDE
+.idea/
+*.swp
+*.swo
+.vscode/
+
+# OS
+.DS_Store
+]]></code>
+      </example>
+
+      <example name="tfvars-example.tf">
+        <code lang="hcl"><![CDATA[
+# terraform.tfvars.example — copy to terraform.tfvars and fill in real values
+# DO NOT commit terraform.tfvars with actual secrets
+
+project_name = "myapp"
+environment  = "dev"
+aws_region   = "us-east-1"
+vpc_cidr     = "10.0.0.0/16"
+instance_type  = "t3.micro"
+instance_count = 2
+
+# Database password — set via env var: TF_VAR_db_password=...
+# db_password = "change-me-in-real-tfvars"
+]]></code>
+      </example>
+    </section>
+
+    <see-also>
+      <item>terraform-modules — module development, versioning, composition</item>
+      <item>terraform-state — remote state, locking, import, state manipulation</item>
+      <item>terraform — advanced production patterns and CI/CD integration</item>
+      <item>iac-basics — IaC principles, tools comparison, GitOps integration</item>
+      <item>iac-patterns — module patterns, composition, DRY, testing</item>
+      <item>aws — AWS-specific resource patterns and best practices</item>
+      <item>gcp — GCP-specific resource patterns and best practices</item>
+    </see-also>
+  </content>
+</methodology>

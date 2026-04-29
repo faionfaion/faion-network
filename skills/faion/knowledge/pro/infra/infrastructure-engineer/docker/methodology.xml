@@ -1,0 +1,2574 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="docker">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Production-grade Docker containerization: image building, optimization, networking, storage, security hardening, and deployment best practices for 2025-2026.</summary>
+    <tags>
+      <tag>docker</tag>
+      <tag>containers</tag>
+      <tag>dockerfile</tag>
+      <tag>security</tag>
+      <tag>devops</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Docker Infrastructure</title>
+
+    <summary>Production-Grade Container Development and Deployment (2025-2026). Docker containerization packages applications with dependencies into portable units. This methodology covers production-grade Docker infrastructure: image building, optimization, networking, storage, security hardening, and deployment best practices.</summary>
+
+    <why>
+      <p>Docker containerization packages applications with dependencies into portable units that run consistently across environments. Images are read-only templates; containers are running instances. Each Dockerfile instruction creates a layer, enabling efficient caching. Registries (Docker Hub, ECR, GCR, GHCR) store and distribute images. Volumes provide persistent data outside the container lifecycle. Networks provide container communication layers.</p>
+      <p>The 2025-2026 landscape emphasizes security-by-default, supply chain security (SBOM, Cosign), and AI-enhanced operations. BuildKit is now default and enables advanced features like cache mounts and secret mounts. The modern compose.yaml format replaces the deprecated docker-compose.yaml with inline v2 semantics.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Packaging applications with all dependencies into portable, reproducible units.</item>
+        <item>Building multi-stage CI/CD pipelines where images are built, scanned, signed, and promoted.</item>
+        <item>Running multi-service stacks locally with Docker Compose during development.</item>
+        <item>Deploying stateless workloads to any container-compatible runtime (ECS, Cloud Run, K8s).</item>
+        <item>Enforcing security baselines: non-root users, read-only filesystems, capability dropping.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Stateful workloads that require direct hardware access or kernel-level features incompatible with container isolation.</item>
+        <item>Production orchestration at scale — use Kubernetes or managed container services instead of raw Docker Swarm.</item>
+        <item>Legacy applications that cannot be containerized without significant refactoring (e.g., apps requiring GUI, complex COM/DCOM on Windows).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-concepts">
+      <p>Core concepts: Image (read-only template with app + dependencies), Container (running instance of an image), Layer (each Dockerfile instruction creates a layer), Registry (image storage: Docker Hub, ECR, GCR, GHCR), Volume (persistent data outside container), Network (container communication layer).</p>
+    </section>
+
+    <section name="image-selection-guide">
+      <p>Image Selection Guide (2025-2026):</p>
+      <list>
+        <item>Full (python:3.12, ~900MB, Low security) — Development, debugging.</item>
+        <item>Slim (python:3.12-slim, ~150MB, Medium security) — Production balance.</item>
+        <item>Alpine (python:3.12-alpine, ~50MB, Medium security) — Minimal footprint.</item>
+        <item>Distroless (gcr.io/distroless/python3, ~30MB, High security) — Maximum security.</item>
+        <item>Chainguard (cgr.dev/chainguard/python, ~25MB, High security) — Supply chain security.</item>
+      </list>
+      <p>2025-2026 Recommendation: Start with -slim for development, move to Distroless or Chainguard for production.</p>
+    </section>
+
+    <section name="key-principles">
+      <rule>
+        <statement>Treat images as immutable artifacts: never modify running containers, rebuild rather than patch, tag images with semantic versions + git SHA.</statement>
+        <rationale>Immutable infrastructure ensures reproducibility and prevents configuration drift. Tagged versions enable rollback and audit trails.</rationale>
+      </rule>
+      <rule>
+        <statement>Order Dockerfile instructions from least to most frequently changing: FROM (rarely changes), COPY requirements.txt (sometimes), RUN pip install (sometimes), COPY . . (frequently).</statement>
+        <rationale>Docker caches layers; placing stable instructions first maximizes cache hits and minimizes rebuild time.</rationale>
+      </rule>
+      <rule>
+        <statement>Run containers as non-root user (UID 1000+), with read-only filesystems, dropping all capabilities, applying seccomp and AppArmor profiles, and never embedding secrets in images.</statement>
+        <rationale>Zero-trust container security: every privilege must be explicitly granted. Running as root is the single largest container security vulnerability.</rationale>
+      </rule>
+      <rule>
+        <statement>Add HEALTHCHECK to every production container; configure structured JSON logging; set resource limits (memory, CPU); expose metrics endpoint in Prometheus format.</statement>
+        <rationale>Without health checks, container orchestrators cannot route traffic away from unhealthy instances. Resource limits prevent noisy-neighbor problems.</rationale>
+      </rule>
+    </section>
+
+    <section name="production-best-practices">
+      <p>Image Building best practices:</p>
+      <list>
+        <item>Pin versions — use python:3.12.1-slim@sha256:..., not python:latest.</item>
+        <item>Multi-stage builds — separate build and runtime stages.</item>
+        <item>BuildKit caching — use --mount=type=cache for dependencies.</item>
+        <item>Scan before push — integrate Trivy/Scout in CI/CD.</item>
+        <item>Sign images — use Docker Content Trust or Cosign.</item>
+        <item>Generate SBOM — track software bill of materials.</item>
+      </list>
+      <p>Networking best practices:</p>
+      <list>
+        <item>Custom networks — never use default bridge network.</item>
+        <item>Internal networks — mark backend networks as internal: true.</item>
+        <item>No exposed DB ports — database ports only via internal network.</item>
+        <item>TLS everywhere — encrypt all external traffic.</item>
+        <item>Network segmentation — isolate frontend, backend, database tiers.</item>
+        <item>DNS names — use container/service names, not IPs.</item>
+      </list>
+      <p>Storage best practices:</p>
+      <list>
+        <item>Named volumes — use for persistent data (databases).</item>
+        <item>Read-only mounts — use :ro for configs and secrets.</item>
+        <item>tmpfs for temp data — use --tmpfs /tmp for temporary files.</item>
+        <item>Backup volumes — regular backup of named volumes.</item>
+        <item>No bind mounts in prod — bind mounts only for development.</item>
+        <item>Encryption at rest — encrypt volumes with KMS/secrets.</item>
+      </list>
+      <p>Security best practices:</p>
+      <list>
+        <item>Non-root user — always use USER appuser (UID 1000+).</item>
+        <item>Read-only root — run with --read-only flag.</item>
+        <item>Drop capabilities — --cap-drop ALL, add only needed.</item>
+        <item>Seccomp profile — use default or custom seccomp profile.</item>
+        <item>AppArmor/SELinux — apply mandatory access controls.</item>
+        <item>Secrets management — use Docker secrets or external vault.</item>
+        <item>No privileged mode — never use --privileged in production.</item>
+        <item>Keep updated — regular host and Docker updates.</item>
+      </list>
+    </section>
+
+    <section name="modern-practices">
+      <p>Compose File Naming (2025-2026 updates):</p>
+      <example type="good" title="Modern compose format">
+        <code lang="bash"><![CDATA[
+# New (modern)
+compose.yaml
+docker compose up
+]]></code>
+      </example>
+      <example type="bad" title="Deprecated compose format">
+        <code lang="bash"><![CDATA[
+# Old (deprecated)
+docker-compose.yaml
+docker-compose up
+]]></code>
+      </example>
+      <p>The version: field in compose files is obsolete. Start directly with services:.</p>
+      <p>BuildKit is now default. Use advanced features:</p>
+      <example type="good" title="BuildKit cache and secret mounts">
+        <code lang="dockerfile"><![CDATA[
+# syntax=docker/dockerfile:1
+FROM python:3.12-slim
+
+# Mount cache for faster rebuilds
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
+
+# Mount secrets securely (not exposed in layer)
+RUN --mount=type=secret,id=github_token \
+    pip install git+https://$(cat /run/secrets/github_token)@github.com/...
+]]></code>
+      </example>
+      <p>Built-in vulnerability scanning:</p>
+      <example type="good" title="Security scanning commands">
+        <code lang="bash"><![CDATA[
+# Docker Scout (built-in)
+docker scout cves myapp:latest
+docker scout recommendations myapp:latest
+
+# Trivy (comprehensive)
+trivy image --severity HIGH,CRITICAL myapp:latest
+]]></code>
+      </example>
+    </section>
+
+    <section name="essential-dockerfile">
+      <example type="good" title="Essential Dockerfile instructions">
+        <code lang="dockerfile"><![CDATA[
+# Base image - always pin version with digest
+FROM python:3.12-slim@sha256:abc123...
+
+# Labels for metadata
+LABEL maintainer="team@example.com"
+LABEL version="1.0.0"
+LABEL description="Production API service"
+
+# Set working directory
+WORKDIR /app
+
+# Environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Install system dependencies (combine RUN commands)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency files first (for layer caching)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash --uid 1000 appuser
+USER appuser
+
+# Expose port (documentation only)
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Entry point and command (exec form)
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "app:application"]
+]]></code>
+      </example>
+    </section>
+
+    <section name="cmd-vs-entrypoint">
+      <p>CMD vs ENTRYPOINT: ENTRYPOINT defines the executable (override with --entrypoint flag); CMD provides default arguments (override with command line args).</p>
+      <example type="good" title="CMD and ENTRYPOINT patterns">
+        <code lang="dockerfile"><![CDATA[
+# Pattern 1: ENTRYPOINT for fixed command
+ENTRYPOINT ["python", "app.py"]
+CMD ["--port", "8000"]  # docker run myapp --port 9000
+
+# Pattern 2: CMD for flexible command
+CMD ["python", "app.py"]  # docker run myapp sh (replaces entirely)
+
+# Pattern 3: Combined (recommended)
+ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["gunicorn", "app:app"]
+]]></code>
+        <note>Always use exec form (JSON array) for proper signal handling.</note>
+      </example>
+    </section>
+
+    <section name="quick-commands">
+      <example type="good" title="Essential Docker commands">
+        <code lang="bash"><![CDATA[
+# Build with BuildKit
+DOCKER_BUILDKIT=1 docker build -t myapp:1.0.0 .
+
+# Build with specific tag and SHA
+docker build -t myapp:v1.2.3 -t myapp:$(git rev-parse --short HEAD) .
+
+# Run with security hardening
+docker run -d --name myapp \
+    --user 1000:1000 \
+    --read-only \
+    --cap-drop ALL \
+    --security-opt no-new-privileges:true \
+    --memory=512m \
+    --cpus=0.5 \
+    --tmpfs /tmp \
+    -p 8080:80 \
+    myapp:1.0.0
+
+# Compose
+docker compose up -d
+docker compose logs -f app
+docker compose down
+
+# Security scan
+docker scout cves myapp:latest
+trivy image --severity HIGH,CRITICAL myapp:latest
+
+# Inspect
+docker stats myapp
+docker inspect myapp
+docker exec -it myapp sh
+
+# Clean up
+docker system prune -a --volumes
+]]></code>
+      </example>
+    </section>
+
+    <section name="networking">
+      <p>Network Types:</p>
+      <list>
+        <item>bridge (default) — Container-to-container on same host. docker network create mynet</item>
+        <item>host — Container uses host network. --network host</item>
+        <item>none — No networking. --network none</item>
+        <item>overlay — Multi-host communication (Swarm). docker network create -d overlay mynet</item>
+      </list>
+      <p>Network Architecture: Internet → Load Balancer → Frontend Network (nginx, reverse proxy) → Application Network (app, worker, api) → Backend Network (internal: true) (db, redis, queue).</p>
+    </section>
+
+    <section name="volume-management">
+      <p>Volume Types:</p>
+      <list>
+        <item>Named volume (mydata:/app/data) — Persistent data.</item>
+        <item>Bind mount (./src:/app/src) — Development, configs.</item>
+        <item>tmpfs (--tmpfs /tmp) — Temporary, sensitive data.</item>
+      </list>
+      <p>Storage Architecture: Container Layer (ephemeral, read-only in prod) includes: tmpfs:/tmp (temporary data), Named Volume:/app/data (persistent), Named Volume:/var/lib/postgresql/data (database), Bind Mount (dev only):./src:/app/src, Secret Mount:/run/secrets/* (secrets).</p>
+    </section>
+
+    <section name="health-checks">
+      <p>Health Check Options: --interval (time between checks, default 30s), --timeout (maximum time to wait, default 30s), --start-period (grace period for startup), --retries (consecutive failures before unhealthy).</p>
+      <example type="good" title="Health check patterns">
+        <code lang="dockerfile"><![CDATA[
+# HTTP health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# TCP health check
+HEALTHCHECK CMD nc -z localhost 8000 || exit 1
+
+# Script health check
+HEALTHCHECK CMD /app/healthcheck.sh
+]]></code>
+      </example>
+    </section>
+
+    <section name="debugging">
+      <example type="good" title="Container inspection commands">
+        <code lang="bash"><![CDATA[
+# Inspect container
+docker inspect container_name
+
+# View processes
+docker top container_name
+
+# Resource usage
+docker stats container_name
+
+# View logs with timestamps
+docker logs --timestamps container_name
+
+# Follow logs
+docker logs -f --tail 100 container_name
+]]></code>
+      </example>
+      <example type="good" title="Network debugging commands">
+        <code lang="bash"><![CDATA[
+# List networks
+docker network ls
+
+# Inspect network
+docker network inspect bridge
+
+# Test connectivity from container
+docker exec -it app ping db
+docker exec -it app nslookup db
+]]></code>
+      </example>
+      <example type="good" title="Build debugging commands">
+        <code lang="bash"><![CDATA[
+# Build with verbose output
+docker build --progress=plain -t myapp .
+
+# Build specific stage
+docker build --target builder -t myapp:debug .
+
+# Analyze layers
+dive myapp:latest
+]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Using latest tag in production deployments.</description>
+        <reason>Unpredictable deployments — pin specific versions with digest instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Running containers as root user.</description>
+        <reason>Security vulnerability — create non-root user (UID 1000+) instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Storing secrets in ENV or Dockerfile.</description>
+        <reason>Visible in docker inspect and logs — use Docker secrets or vault instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Large monolithic images without multi-stage builds.</description>
+        <reason>Slow deploys and more vulnerabilities — use multi-stage builds and distroless base images.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using the default bridge network.</description>
+        <reason>No isolation — use custom networks with segmentation instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>No health checks on production containers.</description>
+        <reason>Silent failures — add HEALTHCHECK to every production image.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hardcoding config values directly in images.</description>
+        <reason>Inflexible containers — use ENV variables and secrets instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Single RUN instruction per dependency installation line.</description>
+        <reason>Creates many layers and large images — combine RUN commands with &amp;&amp;.</reason>
+      </antipattern>
+    </section>
+
+    <section name="tools">
+      <p>Essential tools (2025-2026):</p>
+      <list>
+        <item>Docker Scout — Built-in vulnerability scanning (https://docs.docker.com/scout/).</item>
+        <item>Trivy — Comprehensive security scanner (https://github.com/aquasecurity/trivy).</item>
+        <item>Cosign — Container signing and verification (https://github.com/sigstore/cosign).</item>
+        <item>Hadolint — Dockerfile linter (https://github.com/hadolint/hadolint).</item>
+        <item>Dive — Image layer analysis (https://github.com/wagoodman/dive).</item>
+        <item>Dagger — Programmable CI/CD engine (https://dagger.io/).</item>
+        <item>Lazydocker — Terminal UI (https://github.com/jesseduffield/lazydocker).</item>
+        <item>Buildpacks — Auto-build images from source (https://buildpacks.io/).</item>
+      </list>
+    </section>
+
+    <section name="checklists">
+      <p>Dockerfile Checklist — Base Image: Pin version with digest, use slim/Alpine/Distroless variant for production, use official image from trusted source, image regularly updated (check CVEs weekly), no latest tag in production.</p>
+      <p>Dockerfile Checklist — Build Optimization: Multi-stage build implemented, .dockerignore present and complete, layer order optimized (deps before code), RUN commands combined with &amp;&amp;, BuildKit cache mounts used (--mount=type=cache), COPY preferred over ADD, # syntax=docker/dockerfile:1 at top.</p>
+      <p>Dockerfile Checklist — Security (2025-2026): Non-root user created and used (UID 1000+), no secrets in Dockerfile or ENV, no sensitive data in build args, minimal packages installed, rm -rf /var/lib/apt/lists/* after apt-get, no curl/wget piped to shell, package verification enabled (checksums), BuildKit secrets used for build-time credentials.</p>
+      <p>Dockerfile Checklist — Runtime: HEALTHCHECK defined, EXPOSE documented, exec form for CMD/ENTRYPOINT (JSON array), labels for metadata (version, maintainer, git-sha), WORKDIR set.</p>
+      <p>Docker Compose Checklist — Configuration: No version: field (modern compose), file named compose.yaml, environment variables via .env file, .env not committed to git, .env.example provided, sensitive values use Docker secrets.</p>
+      <p>Docker Compose Checklist — Services: Health checks for ALL services, depends_on with condition: service_healthy, restart: unless-stopped, resource limits (memory, cpus) defined, logging configured with rotation, container names defined.</p>
+      <p>Docker Compose Checklist — Networking: Custom networks defined (not default bridge), backend network marked internal: true, database ports NOT exposed in production, only necessary ports mapped, frontend/backend/database tier separation.</p>
+      <p>Production Deployment Checklist — Pre-deployment: Image tagged with semantic version + git SHA, image pushed to private registry, vulnerability scan passed (no CRITICAL), no HIGH CVEs (or approved exceptions), image signed (Docker Content Trust or Cosign), SBOM generated and stored.</p>
+      <p>Production Deployment Checklist — Runtime: Resource limits enforced, read-only root filesystem enabled, tmpfs for /tmp, health checks responding, logging to external system, metrics endpoint exposed.</p>
+      <p>Production Deployment Checklist — Security: Container runs as non-root (UID 1000+), secrets via Docker secrets or vault, no privileged mode, capabilities dropped (--cap-drop ALL), seccomp profile applied, AppArmor/SELinux profile applied, no-new-privileges set.</p>
+      <p>Security Hardening Checklist — Container Runtime (2025-2026): Seccomp (default profile enabled, custom profile for restricted workloads, syscalls minimized, profile audited and tested); AppArmor/SELinux (profile applied, mandatory access controls enforced); Capabilities (--cap-drop ALL applied, only needed capabilities added, NET_BIND_SERVICE only if binding port less than 1024, no CAP_SYS_ADMIN, no CAP_NET_RAW unless required); Resource Limits (memory, CPU, PID limits, ulimits, storage quota).</p>
+      <p>Supply Chain Security Checklist (2025-2026): Base images from trusted registries only, SBOM generated for all images, image signatures verified (Cosign), vulnerability scanning in CI/CD, dependency scanning enabled, license compliance checked, provenance attestation (SLSA).</p>
+      <p>CI/CD Pipeline Checklist: Build (Dockerfile linted with Hadolint, build uses --no-cache for releases, multi-platform builds configured amd64/arm64, BuildKit caching enabled); Test (unit tests in container, integration tests with compose, security scan, image size checked, healthcheck verified); Scan (CVE scan completed, SBOM generated, license compliance checked, secret scanning performed, fail on CRITICAL/HIGH CVEs); Push (tagged with version and SHA, pushed to private registry, image signed with Cosign, old images cleaned up); Deploy (health checks verified, rollback plan ready, monitoring alerts configured, post-deploy verification, canary deployment if applicable).</p>
+      <p>Compliance Mapping: CIS Docker Benchmark (non-root, capabilities, seccomp, AppArmor), NIST 800-190 (image scanning, runtime security, network segmentation), PCI-DSS (network segmentation, encryption, access control), SOC 2 (access control, logging, monitoring, change management), HIPAA (encryption, audit logs, access control, data integrity), GDPR (data protection, encryption, audit trails).</p>
+      <p>DoS Protection Checklist: Memory limits set, CPU limits set, PID limits configured, restart policy with backoff, rate limiting on ingress, connection limits configured, file descriptor limits set.</p>
+      <p>Debugging Checklist — Container Issues: Check logs (docker logs -f container), check health (docker inspect --format='{{.State.Health}}' container), check resources (docker stats container), check processes (docker top container), exec into container (docker exec -it container sh).</p>
+      <p>Debugging Checklist — Network Issues: Check DNS (docker exec container nslookup service), check connectivity (docker exec container ping service), inspect network (docker network inspect networkname), check port bindings (docker port container), check iptables rules.</p>
+      <p>Debugging Checklist — Build Issues: Build with --progress=plain, check build context size, verify .dockerignore, test intermediate stages, check for layer caching issues.</p>
+      <p>Debugging Checklist — Volume Issues: Check volume exists (docker volume ls), inspect volume (docker volume inspect volumename), check permissions inside container, verify mount paths.</p>
+      <p>Image Size Optimization Checklist: Multi-stage build used, Alpine/slim/distroless base, unnecessary packages removed, cache cleared after installs, .dockerignore complete, build artifacts excluded, single layer for static assets, Dive analysis reviewed, target size less than 200MB for most apps.</p>
+      <p>Host Security Checklist: Docker daemon socket protected, no mounting of /var/run/docker.sock (except where required), user namespace remapping enabled, regular host and Docker updates, audit logging enabled.</p>
+      <p>Network Architecture Checklist: Custom bridge networks created, internal network for backend services, database network isolated, service mesh for microservices (if needed). Network Configuration: DNS names used (not IPs), container names match service names, network aliases configured, IPv6 disabled if not needed. Network Security: default bridge network not used, inter-container communication controlled, ingress traffic filtered, egress traffic limited (if possible), network encryption for sensitive data.</p>
+      <p>Storage Checklist: Volume Configuration (named volumes for persistent data, volume drivers appropriate for environment, backup strategy defined, recovery tested); Mount Security (read-only mounts for configs :ro, no host path mounts in production, sensitive directories protected, tmpfs for sensitive temporary data); Data Management (data retention policy defined, volume cleanup automated, orphaned volumes cleaned, storage quotas configured).</p>
+      <p>Secret Management Checklist: No secrets in Dockerfile, no secrets in environment variables (in images), Docker secrets or external vault used, secrets rotated regularly, build-time secrets via --mount=type=secret, runtime secrets via volumes/env at deploy time.</p>
+      <p>Quick Verification Commands:</p>
+      <example type="good" title="Verification commands">
+        <code lang="bash"><![CDATA[
+# Check image vulnerabilities
+docker scout cves myapp:latest
+trivy image --severity HIGH,CRITICAL myapp:latest
+
+# Lint Dockerfile
+docker run --rm -i hadolint/hadolint < Dockerfile
+
+# Analyze layers
+dive myapp:latest
+
+# Check running as non-root
+docker run --rm myapp:latest id
+docker run --rm myapp:latest whoami
+
+# Verify health check
+docker inspect --format='{{json .Config.Healthcheck}}' myapp:latest
+
+# Check image size
+docker images myapp:latest --format "{{.Size}}"
+
+# Check security options
+docker inspect --format='{{json .HostConfig.SecurityOpt}}' container
+
+# Check capabilities
+docker inspect --format='{{json .HostConfig.CapDrop}}' container
+docker inspect --format='{{json .HostConfig.CapAdd}}' container
+
+# Check read-only
+docker inspect --format='{{.HostConfig.ReadonlyRootfs}}' container
+
+# Verify no secrets in image
+docker history --no-trunc myapp:latest | grep -i secret
+docker history --no-trunc myapp:latest | grep -i password
+
+# Check resource limits
+docker inspect --format='{{.HostConfig.Memory}}' container
+docker inspect --format='{{.HostConfig.NanoCpus}}' container
+
+# Verify seccomp profile
+docker inspect --format='{{.HostConfig.SecurityOpt}}' container
+]]></code>
+      </example>
+    </section>
+
+    <section name="examples">
+      <p>Multi-stage Build Examples:</p>
+      <example type="good" title="Python FastAPI/Django multi-stage build">
+        <code lang="dockerfile"><![CDATA[
+# syntax=docker/dockerfile:1
+
+# Stage 1: Build dependencies
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir -r requirements.txt
+
+# Stage 2: Production
+FROM python:3.12-slim AS production
+
+LABEL maintainer="team@example.com"
+LABEL version="1.0.0"
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /bin/bash --uid 1000 appuser
+
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY --chown=appuser:appuser . .
+
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "app.main:app"]
+]]></code>
+      </example>
+      <example type="good" title="Go minimal binary with distroless">
+        <code lang="dockerfile"><![CDATA[
+# syntax=docker/dockerfile:1
+
+# Stage 1: Build
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -ldflags="-w -s" -o /app/server ./cmd/server
+
+# Stage 2: Production (distroless for maximum security)
+FROM gcr.io/distroless/static:nonroot AS production
+
+COPY --from=builder /app/server /server
+
+USER nonroot:nonroot
+
+EXPOSE 8080
+
+ENTRYPOINT ["/server"]
+]]></code>
+        <note>Final image ~10-20MB, no shell, minimal attack surface.</note>
+      </example>
+      <example type="good" title="Node.js Next.js with standalone">
+        <code lang="dockerfile"><![CDATA[
+# syntax=docker/dockerfile:1
+
+# Stage 1: Dependencies
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+
+# Stage 2: Build
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+# Stage 3: Production deps
+FROM node:20-alpine AS prod-deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Stage 4: Production
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+
+CMD ["node", "server.js"]
+]]></code>
+      </example>
+      <example type="good" title="Rust minimal binary">
+        <code lang="dockerfile"><![CDATA[
+# syntax=docker/dockerfile:1
+
+# Stage 1: Build
+FROM rust:1.75-alpine AS builder
+
+RUN apk add --no-cache musl-dev
+
+WORKDIR /app
+
+# Cache dependencies
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release
+RUN rm -rf src
+
+# Build application
+COPY src ./src
+RUN touch src/main.rs
+RUN cargo build --release
+
+# Stage 2: Production (scratch = 0 bytes base)
+FROM scratch AS production
+
+COPY --from=builder /app/target/release/myapp /myapp
+
+EXPOSE 8080
+
+ENTRYPOINT ["/myapp"]
+]]></code>
+        <note>Final image ~5-15MB</note>
+      </example>
+      <example type="good" title="Three-tier network architecture (compose.yaml)">
+        <code lang="yaml"><![CDATA[
+# compose.yaml
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: myapp-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+    networks:
+      - frontend
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  app:
+    build:
+      context: .
+      target: production
+    image: myapp:${VERSION:-latest}
+    container_name: myapp
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgres://app:${DB_PASSWORD}@db:5432/appdb
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  db:
+    image: postgres:16-alpine
+    container_name: myapp-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=appdb
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: myapp-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 100mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  frontend:
+    driver: bridge
+    # External access allowed
+  backend:
+    driver: bridge
+    internal: true  # No external access - database isolation
+
+volumes:
+  postgres-data:
+  redis-data:
+]]></code>
+      </example>
+      <example type="good" title="Custom network with subnet">
+        <code lang="yaml"><![CDATA[
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+]]></code>
+      </example>
+      <example type="good" title="Service mesh pattern for microservices">
+        <code lang="yaml"><![CDATA[
+services:
+  api-gateway:
+    image: kong:latest
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+    networks:
+      - public
+      - services
+
+  user-service:
+    build: ./services/user
+    networks:
+      - services
+      - user-db
+    # No ports exposed externally
+
+  order-service:
+    build: ./services/order
+    networks:
+      - services
+      - order-db
+    # No ports exposed externally
+
+  payment-service:
+    build: ./services/payment
+    networks:
+      - services
+      - payment-db
+    # No ports exposed externally
+
+networks:
+  public:
+    driver: bridge
+  services:
+    driver: bridge
+    internal: false  # Services can reach each other
+  user-db:
+    driver: bridge
+    internal: true  # User database isolated
+  order-db:
+    driver: bridge
+    internal: true  # Order database isolated
+  payment-db:
+    driver: bridge
+    internal: true  # Payment database isolated
+]]></code>
+      </example>
+      <example type="good" title="Network segmentation with WAF (2025-2026)">
+        <code lang="yaml"><![CDATA[
+services:
+  waf:
+    image: owasp/modsecurity:nginx-alpine
+    ports:
+      - "443:443"
+    networks:
+      - dmz
+    volumes:
+      - ./waf/rules:/etc/modsecurity.d:ro
+
+  app:
+    build: .
+    networks:
+      - dmz
+      - app-network
+    # No direct external access
+
+  db:
+    image: postgres:16-alpine
+    networks:
+      - app-network
+    # Isolated from DMZ
+
+networks:
+  dmz:
+    driver: bridge
+  app-network:
+    driver: bridge
+    internal: true
+]]></code>
+      </example>
+      <example type="good" title="Named volumes for persistence">
+        <code lang="yaml"><![CDATA[
+services:
+  app:
+    volumes:
+      - app-data:/app/data           # Named volume for app data
+      - app-uploads:/app/uploads     # Named volume for uploads
+
+  db:
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  app-data:
+    driver: local
+  app-uploads:
+    driver: local
+  postgres-data:
+    driver: local
+]]></code>
+      </example>
+      <example type="good" title="Read-only and tmpfs mounts">
+        <code lang="yaml"><![CDATA[
+services:
+  app:
+    read_only: true  # Root filesystem is read-only
+    tmpfs:
+      - /tmp:size=100M,mode=1777
+      - /var/run:size=10M,mode=755
+    volumes:
+      - ./config:/app/config:ro              # Config read-only
+      - app-data:/app/data                   # Persistent data writable
+      - type: tmpfs                          # Alternative tmpfs syntax
+        target: /app/cache
+        tmpfs:
+          size: 50000000  # 50MB
+]]></code>
+      </example>
+      <example type="good" title="Volume backup pattern">
+        <code lang="bash"><![CDATA[
+# Backup volume
+docker run --rm \
+    -v postgres-data:/data \
+    -v $(pwd)/backups:/backup \
+    alpine tar czf /backup/postgres-backup-$(date +%Y%m%d).tar.gz -C /data .
+
+# Restore volume
+docker run --rm \
+    -v postgres-data:/data \
+    -v $(pwd)/backups:/backup \
+    alpine tar xzf /backup/postgres-backup-20260126.tar.gz -C /data
+]]></code>
+      </example>
+      <example type="good" title="Hardened container configuration">
+        <code lang="yaml"><![CDATA[
+services:
+  app:
+    image: myapp:1.0.0
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE  # Only if binding to port < 1024
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:./seccomp-profile.json  # Custom seccomp
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+          pids: 100
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+]]></code>
+      </example>
+      <example type="good" title="Docker secrets (Swarm mode)">
+        <code lang="yaml"><![CDATA[
+services:
+  app:
+    image: myapp:1.0.0
+    secrets:
+      - db_password
+      - api_key
+    environment:
+      - DB_PASSWORD_FILE=/run/secrets/db_password
+      - API_KEY_FILE=/run/secrets/api_key
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  api_key:
+    external: true  # Pre-created secret
+]]></code>
+      </example>
+      <example type="good" title="BuildKit secrets (build-time)">
+        <code lang="dockerfile"><![CDATA[
+# syntax=docker/dockerfile:1
+
+FROM python:3.12-slim
+
+# Secret not visible in image layers
+RUN --mount=type=secret,id=github_token \
+    pip install git+https://$(cat /run/secrets/github_token)@github.com/org/private-repo.git
+
+# Build with:
+# docker build --secret id=github_token,src=./github_token.txt -t myapp .
+]]></code>
+      </example>
+      <example type="good" title="Database health checks">
+        <code lang="yaml"><![CDATA[
+# PostgreSQL
+healthcheck:
+  test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+
+# MySQL
+healthcheck:
+  test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+
+# MongoDB
+healthcheck:
+  test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+
+# Redis
+healthcheck:
+  test: ["CMD", "redis-cli", "ping"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+]]></code>
+      </example>
+      <example type="good" title="Resource limits sizing guidelines">
+        <code lang="yaml"><![CDATA[
+# API (low traffic): cpu 0.5-1.0, memory 256-512M, pids 50
+# API (high traffic): cpu 1.0-2.0, memory 512M-1G, pids 100
+# Worker: cpu 0.5-1.0, memory 256-512M, pids 50
+# Database: cpu 1.0-4.0, memory 1-4G, pids 200
+# Redis: cpu 0.25-0.5, memory 64-256M, pids 50
+
+deploy:
+  resources:
+    limits:
+      cpus: "2.0"
+      memory: 1G
+    reservations:
+      cpus: "0.5"
+      memory: 256M
+]]></code>
+      </example>
+      <example type="good" title="Logging drivers">
+        <code lang="yaml"><![CDATA[
+# JSON file with rotation
+logging:
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "5"
+    compress: "true"
+
+# Syslog
+logging:
+  driver: "syslog"
+  options:
+    syslog-address: "tcp://192.168.1.100:514"
+    syslog-facility: "daemon"
+    tag: "myapp/{{.Name}}"
+
+# Fluentd/Fluent Bit
+logging:
+  driver: "fluentd"
+  options:
+    fluentd-address: "localhost:24224"
+    tag: "docker.{{.Name}}"
+    fluentd-async: "true"
+
+# Loki
+logging:
+  driver: "loki"
+  options:
+    loki-url: "http://loki:3100/loki/api/v1/push"
+    loki-batch-size: "400"
+    loki-retries: "3"
+]]></code>
+      </example>
+      <example type="good" title="GitHub Actions with security scanning">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/docker.yml
+
+name: Docker Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+
+      - name: Build image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: myapp:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: myapp:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: myapp:${{ github.sha }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Sign image with Cosign
+        if: github.ref == 'refs/heads/main'
+        uses: sigstore/cosign-installer@v3
+
+      - name: Push to registry
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ghcr.io/${{ github.repository }}:latest
+]]></code>
+      </example>
+      <example type="good" title="Seccomp profile example (2025-2026)">
+        <code lang="json"><![CDATA[
+{
+  "defaultAction": "SCMP_ACT_ERRNO",
+  "architectures": ["SCMP_ARCH_X86_64", "SCMP_ARCH_AARCH64"],
+  "syscalls": [
+    {
+      "names": [
+        "accept", "accept4", "access", "arch_prctl", "bind",
+        "brk", "capget", "capset", "chdir", "chmod", "chown",
+        "clone", "close", "connect", "dup", "dup2", "dup3",
+        "epoll_create", "epoll_create1", "epoll_ctl", "epoll_wait",
+        "epoll_pwait", "execve", "exit", "exit_group", "fchmod",
+        "fchown", "fcntl", "fstat", "fstatfs", "futex", "getcwd",
+        "getdents64", "geteuid", "getgid", "getpeername", "getpid",
+        "getppid", "getrandom", "getsockname", "getsockopt", "getuid",
+        "ioctl", "listen", "lseek", "lstat", "madvise", "memfd_create",
+        "mkdir", "mmap", "mprotect", "munmap", "nanosleep", "newfstatat",
+        "open", "openat", "pipe", "pipe2", "poll", "prctl", "pread64",
+        "prlimit64", "pwrite64", "read", "readlink", "recvfrom", "recvmsg",
+        "rename", "rt_sigaction", "rt_sigprocmask", "rt_sigreturn",
+        "sched_getaffinity", "sched_yield", "select", "sendmsg", "sendto",
+        "set_robust_list", "set_tid_address", "setgid", "setgroups",
+        "setsockopt", "setuid", "shutdown", "sigaltstack", "socket",
+        "stat", "statfs", "tgkill", "umask", "uname", "unlink", "wait4",
+        "write", "writev"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    }
+  ]
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="create-production-dockerfile"><![CDATA[
+Create a production-ready Dockerfile for a [LANGUAGE/FRAMEWORK] application with:
+
+Context:
+- Application type: [web API / CLI / worker / etc.]
+- Framework: [FastAPI/Django/Express/Next.js/etc.]
+- Dependencies: [list key dependencies]
+- Port: [application port]
+- Health endpoint: [/health or similar]
+
+Requirements:
+1. Multi-stage build (builder + production)
+2. Non-root user (uid 1000)
+3. Layer caching optimization
+4. HEALTHCHECK instruction
+5. Security best practices (2025-2026):
+   - Pinned base image version with digest
+   - Minimal base (slim/distroless)
+   - No secrets in image
+   - Read-only filesystem support
+   - BuildKit syntax header
+6. Labels for metadata (maintainer, version, git-sha)
+
+Output: Complete Dockerfile with comments explaining each section.
+]]></prompt>
+      <prompt purpose="create-distroless-dockerfile"><![CDATA[
+Create a maximum-security Dockerfile using distroless or Chainguard base for:
+
+Application: [LANGUAGE/TYPE]
+Binary type: [static/dynamic linked]
+Needs: [list any runtime requirements]
+
+Requirements:
+1. Build stage with full toolchain
+2. Production stage with distroless/chainguard
+3. No shell in final image
+4. nonroot user
+5. Minimal attack surface
+
+Provide:
+- Complete Dockerfile
+- Expected image size
+- Security benefits explained
+]]></prompt>
+      <prompt purpose="optimize-dockerfile"><![CDATA[
+Optimize this Dockerfile for production:
+
+[PASTE EXISTING DOCKERFILE]
+
+Analyze and improve:
+1. Image size reduction (target: <200MB)
+2. Build time optimization (layer caching)
+3. Security hardening (2025-2026 standards)
+4. Best practices alignment
+
+Provide:
+- Optimized Dockerfile
+- Size/security improvements summary
+- Explanation of changes
+- Before/after comparison
+]]></prompt>
+      <prompt purpose="debug-dockerfile-build"><![CDATA[
+Debug this Dockerfile build failure:
+
+Dockerfile:
+[PASTE DOCKERFILE]
+
+Error:
+[PASTE ERROR MESSAGE]
+
+Context:
+- Base image: [image name]
+- Build command: [docker build command]
+- Platform: [linux/amd64 or linux/arm64]
+
+Analyze the error and provide:
+1. Root cause
+2. Fix
+3. Prevention tips
+]]></prompt>
+      <prompt purpose="create-fullstack-compose"><![CDATA[
+Create a Docker Compose configuration for:
+
+Application Stack:
+- Application: [language/framework] on port [PORT]
+- Database: [PostgreSQL/MySQL/MongoDB]
+- Cache: [Redis/Memcached] (if needed)
+- Reverse proxy: [nginx/traefik] (if needed)
+
+Requirements:
+1. Modern compose format (no version field)
+2. Health checks with depends_on conditions
+3. Named volumes for persistence
+4. Network isolation (frontend/backend)
+5. Resource limits
+6. Environment via .env file
+7. Logging with rotation
+8. Security hardening:
+   - Non-root users
+   - Read-only where possible
+   - cap_drop ALL
+   - no-new-privileges
+
+Include:
+- compose.yaml (production base)
+- compose.override.yaml (development)
+- .env.example
+- .dockerignore
+]]></prompt>
+      <prompt purpose="security-audit-dockerfile"><![CDATA[
+Perform a security audit on this Dockerfile:
+
+[PASTE DOCKERFILE]
+
+Check for (2025-2026 standards):
+1. Root user usage
+2. Hardcoded secrets
+3. Unpinned versions (no digest)
+4. Unnecessary packages
+5. Missing health checks
+6. Excessive capabilities
+7. Build-time secrets exposure
+8. Missing seccomp/AppArmor considerations
+9. Shell in production images (distroless recommended)
+
+Provide:
+- Risk assessment (Critical/High/Medium/Low)
+- Specific vulnerabilities found
+- Remediation steps
+- Hardened Dockerfile
+]]></prompt>
+      <prompt purpose="design-network-architecture"><![CDATA[
+Design Docker network architecture for:
+
+Application: [DESCRIPTION]
+Components:
+- [LIST SERVICES]
+
+Requirements:
+- External access: [which services]
+- Internal only: [which services]
+- Database isolation: [yes/no]
+- Compliance: [requirements if any]
+
+Provide:
+1. Network diagram (text-based)
+2. Compose network configuration
+3. Security considerations
+4. Traffic flow explanation
+]]></prompt>
+      <prompt purpose="create-cicd-pipeline"><![CDATA[
+Create Docker CI/CD pipeline for:
+
+Platform: [GitHub Actions / GitLab CI / etc.]
+Registry: [Docker Hub / ECR / GCR / GHCR]
+
+Pipeline stages:
+1. Lint Dockerfile (Hadolint)
+2. Build image
+3. Security scan (Trivy/Scout)
+4. SBOM generation
+5. Test
+6. Push to registry
+7. Sign image (Cosign)
+8. Deploy [optional]
+
+Requirements:
+- Multi-platform builds (amd64, arm64)
+- Semantic versioning tags
+- Cache optimization
+- Fail on HIGH/CRITICAL CVEs
+
+Provide:
+- Complete pipeline file
+- Explanation of each stage
+]]></prompt>
+      <prompt purpose="create-microservices-compose"><![CDATA[
+Create a Docker Compose for microservices architecture:
+
+Services:
+[LIST SERVICES AND THEIR RELATIONSHIPS]
+
+Requirements:
+1. Network segmentation per service
+2. Internal networks for databases
+3. API gateway for external access
+4. Health checks for all services
+5. Service discovery via DNS
+6. Centralized logging
+
+Provide:
+- Complete compose.yaml
+- Network diagram (text)
+- Service communication patterns
+]]></prompt>
+      <prompt purpose="migrate-compose-to-modern"><![CDATA[
+Migrate this legacy docker-compose.yml to modern 2025-2026 format:
+
+[PASTE OLD DOCKER-COMPOSE.YML]
+
+Changes needed:
+1. Remove version field
+2. Rename to compose.yaml
+3. Add health checks
+4. Add depends_on with conditions
+5. Add resource limits
+6. Configure logging
+7. Add security options
+8. Use modern command format (docker compose)
+
+Provide:
+- Updated compose.yaml
+- List of breaking changes
+- Migration commands
+]]></prompt>
+      <prompt purpose="analyze-container-security"><![CDATA[
+Analyze security posture of this container deployment:
+
+compose.yaml:
+[PASTE COMPOSE FILE]
+
+Check:
+1. Privileged mode usage
+2. Capability settings
+3. User namespace
+4. Network exposure
+5. Volume permissions
+6. Secret management
+7. Resource limits (DoS protection)
+8. Seccomp/AppArmor profiles
+
+Provide:
+- Security score (1-10)
+- Critical issues
+- Recommendations
+- Hardened compose.yaml
+]]></prompt>
+      <prompt purpose="create-security-baseline"><![CDATA[
+Create a security baseline configuration for:
+
+Environment: [development/staging/production]
+Compliance: [CIS/NIST/PCI-DSS/SOC2/HIPAA] (if applicable)
+
+Include:
+1. Docker daemon configuration
+2. Container runtime settings
+3. Network policies
+4. Resource limits
+5. Logging requirements
+6. Image scanning policies
+7. Seccomp profile
+8. AppArmor profile
+
+Output:
+- daemon.json configuration
+- Compose security settings
+- Seccomp profile JSON
+- Compliance checklist
+]]></prompt>
+      <prompt purpose="debug-container-networking"><![CDATA[
+Debug container networking issue:
+
+Setup:
+[DESCRIBE CONTAINER SETUP]
+
+Problem:
+[DESCRIBE THE ISSUE - e.g., "container A cannot reach container B"]
+
+compose.yaml:
+[PASTE COMPOSE FILE]
+
+Error messages:
+[PASTE RELEVANT ERRORS]
+
+Provide:
+1. Diagnostic commands to run
+2. Likely root cause
+3. Solution
+4. Prevention tips
+]]></prompt>
+      <prompt purpose="configure-network-segmentation"><![CDATA[
+Configure network segmentation for:
+
+Architecture:
+- Frontend tier: [services]
+- Application tier: [services]
+- Database tier: [services]
+- External integrations: [services]
+
+Requirements:
+- Zero trust between tiers
+- Minimal port exposure
+- Encrypted communication
+
+Provide:
+1. Network definitions
+2. Service assignments
+3. Firewall rules (iptables or network policies)
+4. TLS configuration
+]]></prompt>
+      <prompt purpose="design-volume-strategy"><![CDATA[
+Design volume strategy for:
+
+Application: [DESCRIPTION]
+Data types:
+- [Persistent data - e.g., database]
+- [Temporary data - e.g., cache]
+- [Config data - e.g., settings]
+- [Secrets - e.g., certificates]
+
+Requirements:
+- Backup frequency: [daily/weekly/etc.]
+- Retention: [period]
+- Encryption: [yes/no]
+
+Provide:
+1. Volume configuration
+2. Mount strategy (named/bind/tmpfs)
+3. Backup script
+4. Recovery procedure
+]]></prompt>
+      <prompt purpose="debug-volume-permissions"><![CDATA[
+Debug volume permission issue:
+
+Problem:
+[DESCRIBE - e.g., "container cannot write to mounted volume"]
+
+Container user: [UID:GID]
+Host volume path: [PATH]
+Host permissions: [ls -la output]
+
+Provide:
+1. Root cause
+2. Fix options (Dockerfile vs runtime)
+3. Best practice recommendation
+]]></prompt>
+      <prompt purpose="reduce-image-size"><![CDATA[
+Help reduce this Docker image size:
+
+Current Dockerfile:
+[PASTE DOCKERFILE]
+
+Current size: [SIZE]
+Target size: [TARGET SIZE or "as small as possible"]
+
+Techniques to consider:
+1. Multi-stage builds
+2. Alpine/slim/distroless base
+3. Layer optimization
+4. Dependency pruning
+5. .dockerignore improvements
+
+Provide:
+- Optimized Dockerfile
+- Expected size reduction
+- Trade-offs (if any)
+]]></prompt>
+      <prompt purpose="improve-build-speed"><![CDATA[
+Optimize Docker build speed:
+
+Dockerfile:
+[PASTE DOCKERFILE]
+
+Current build time: [TIME]
+CI/CD context: [GitHub Actions / GitLab CI / etc.]
+
+Optimize for:
+1. Layer caching
+2. BuildKit features
+3. Dependency caching
+4. Parallel builds
+5. Cache mounts
+
+Provide:
+- Optimized Dockerfile
+- CI/CD cache configuration
+- Expected improvement
+]]></prompt>
+      <prompt purpose="optimize-multi-platform"><![CDATA[
+Optimize Dockerfile for multi-platform builds:
+
+Target platforms: [linux/amd64, linux/arm64, etc.]
+
+Current Dockerfile:
+[PASTE DOCKERFILE]
+
+Requirements:
+- Same functionality on all platforms
+- Minimal platform-specific code
+- Efficient cross-compilation
+
+Provide:
+- Multi-platform Dockerfile
+- Build command
+- Platform-specific considerations
+]]></prompt>
+      <prompt purpose="debug-health-check"><![CDATA[
+Debug failing health check:
+
+Container: [NAME]
+Health check status: [unhealthy]
+
+Dockerfile HEALTHCHECK:
+[PASTE HEALTHCHECK]
+
+Logs:
+[PASTE RELEVANT LOGS]
+
+Provide:
+1. Diagnostic steps
+2. Root cause analysis
+3. Fixed HEALTHCHECK
+4. Verification commands
+]]></prompt>
+      <prompt purpose="debug-crash-loop"><![CDATA[
+Debug container crash loop:
+
+Container: [NAME]
+Exit code: [CODE]
+
+Docker logs:
+[PASTE LOGS]
+
+Dockerfile:
+[PASTE DOCKERFILE]
+
+Compose configuration:
+[PASTE RELEVANT CONFIG]
+
+Provide:
+1. Root cause analysis
+2. Solution
+3. Prevention tips
+]]></prompt>
+      <prompt purpose="debug-resource-issues"><![CDATA[
+Debug container resource issues:
+
+Symptoms:
+[DESCRIBE - OOM killed, CPU throttling, etc.]
+
+Current limits:
+[PASTE RESOURCE CONFIG]
+
+Container stats:
+[docker stats output]
+
+Application type: [DESCRIPTION]
+
+Provide:
+1. Analysis of resource usage
+2. Recommended limits
+3. Application optimization tips
+]]></prompt>
+      <prompt purpose="create-production-deployment"><![CDATA[
+Create production deployment configuration:
+
+Application: [DESCRIPTION]
+Scale: [instances/replicas]
+Infrastructure: [docker-compose/swarm/kubernetes]
+
+Requirements:
+- Zero-downtime deployment
+- Health-based routing
+- Resource limits
+- Logging and monitoring
+- Backup strategy
+- Rollback capability
+
+Provide:
+- Complete deployment configuration
+- Deployment script
+- Rollback script
+- Monitoring setup
+]]></prompt>
+      <prompt purpose="design-disaster-recovery"><![CDATA[
+Design Docker disaster recovery plan:
+
+Infrastructure:
+[DESCRIBE CURRENT SETUP]
+
+Critical services: [LIST]
+RPO: [Recovery Point Objective]
+RTO: [Recovery Time Objective]
+
+Provide:
+1. Backup strategy
+2. Recovery procedures
+3. Testing plan
+4. Automation scripts
+]]></prompt>
+      <prompt purpose="generate-dockerignore"><![CDATA[
+Generate a comprehensive .dockerignore for:
+
+Project type: [Python/Node.js/Go/etc.]
+Framework: [Django/Next.js/etc.]
+Additional patterns to exclude: [list any specific files/folders]
+]]></prompt>
+      <prompt purpose="create-health-check"><![CDATA[
+Create a health check for:
+
+Application: [TYPE]
+Health endpoint: [URL/PORT]
+Expected response: [STATUS CODE/BODY]
+Startup time: [APPROXIMATE]
+
+Include:
+- Dockerfile HEALTHCHECK
+- Docker Compose healthcheck
+- Verification command
+]]></prompt>
+      <prompt purpose="generate-resource-limits"><![CDATA[
+Recommend resource limits for:
+
+Service: [DESCRIPTION]
+Expected load: [CONCURRENT USERS/REQUESTS]
+Available resources: [TOTAL CPU/MEMORY]
+Other services on same host: [LIST]
+
+Provide:
+- CPU limits and reservations
+- Memory limits and reservations
+- PID limits
+- Justification
+]]></prompt>
+      <prompt purpose="create-seccomp-profile"><![CDATA[
+Create a custom seccomp profile for:
+
+Application type: [web server/database/etc.]
+Required syscalls: [list any known requirements]
+Security level: [restrictive/moderate/permissive]
+
+Provide:
+- Seccomp profile JSON
+- Testing instructions
+- Explanation of allowed syscalls
+]]></prompt>
+      <prompt purpose="integrate-vulnerability-scanning"><![CDATA[
+Integrate vulnerability scanning into CI/CD:
+
+CI Platform: [PLATFORM]
+Scanner: [Trivy/Scout/Snyk]
+
+Requirements:
+- Scan on every PR
+- Fail build on CRITICAL
+- Generate reports
+- Track over time
+
+Provide:
+- Pipeline configuration
+- Policy configuration
+- Reporting setup
+]]></prompt>
+      <p>Prompt Template Variables:</p>
+      <list>
+        <item>[LANGUAGE] — Python, Node.js, Go, Rust, Java</item>
+        <item>[FRAMEWORK] — FastAPI, Django, Express, Next.js, Gin</item>
+        <item>[PORT] — Application port number</item>
+        <item>[IMAGE] — Base image name</item>
+        <item>[VERSION] — Version tag</item>
+        <item>[SIZE] — Image size in MB</item>
+        <item>[TIME] — Build time</item>
+        <item>[PATH] — File or directory path</item>
+        <item>[ERROR] — Error message</item>
+        <item>[PLATFORM] — CI/CD platform</item>
+        <item>[REGISTRY] — Container registry</item>
+      </list>
+    </section>
+
+    <section name="templates">
+      <example type="good" title="Python FastAPI/Django full template">
+        <code lang="dockerfile"><![CDATA[
+# syntax=docker/dockerfile:1
+
+#############################################
+# Stage 1: Build dependencies
+#############################################
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install Python dependencies with cache mount
+COPY requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir -r requirements.txt
+
+#############################################
+# Stage 2: Development
+#############################################
+FROM python:3.12-slim AS development
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /bin/bash --uid 1000 appuser
+
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+USER appuser
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+#############################################
+# Stage 3: Production
+#############################################
+FROM python:3.12-slim AS production
+
+LABEL maintainer="team@example.com"
+LABEL version="1.0.0"
+
+WORKDIR /app
+
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /bin/bash --uid 1000 appuser
+
+# Copy virtual environment
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy application code
+COPY --chown=appuser:appuser . .
+
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "app.main:app"]
+]]></code>
+      </example>
+      <example type="good" title="Node.js/Next.js full template">
+        <code lang="dockerfile"><![CDATA[
+# syntax=docker/dockerfile:1
+
+#############################################
+# Stage 1: Dependencies
+#############################################
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+
+#############################################
+# Stage 2: Build
+#############################################
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+#############################################
+# Stage 3: Production dependencies
+#############################################
+FROM node:20-alpine AS prod-deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+#############################################
+# Stage 4: Development
+#############################################
+FROM node:20-alpine AS development
+WORKDIR /app
+
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 appuser
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+USER appuser
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]
+
+#############################################
+# Stage 5: Production
+#############################################
+FROM node:20-alpine AS production
+
+LABEL maintainer="team@example.com"
+LABEL version="1.0.0"
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 appuser
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=appuser:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=appuser:nodejs /app/.next/static ./.next/static
+COPY --from=prod-deps /app/node_modules ./node_modules
+
+USER appuser
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+
+CMD ["node", "server.js"]
+]]></code>
+      </example>
+      <example type="good" title="Go API template (distroless)">
+        <code lang="dockerfile"><![CDATA[
+# syntax=docker/dockerfile:1
+
+#############################################
+# Stage 1: Build
+#############################################
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source and build
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -ldflags="-w -s" -o /app/server ./cmd/server
+
+#############################################
+# Stage 2: Production (distroless)
+#############################################
+FROM gcr.io/distroless/static:nonroot AS production
+
+LABEL maintainer="team@example.com"
+LABEL version="1.0.0"
+
+COPY --from=builder /app/server /server
+
+USER nonroot:nonroot
+
+EXPOSE 8080
+
+ENTRYPOINT ["/server"]
+]]></code>
+      </example>
+      <example type="good" title="Rust API template (scratch base)">
+        <code lang="dockerfile"><![CDATA[
+# syntax=docker/dockerfile:1
+
+#############################################
+# Stage 1: Build
+#############################################
+FROM rust:1.75-alpine AS builder
+
+RUN apk add --no-cache musl-dev
+
+WORKDIR /app
+
+# Cache dependencies
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release
+RUN rm -rf src
+
+# Build application
+COPY src ./src
+RUN touch src/main.rs
+RUN cargo build --release
+
+#############################################
+# Stage 2: Production
+#############################################
+FROM scratch AS production
+
+COPY --from=builder /app/target/release/myapp /myapp
+
+EXPOSE 8080
+
+ENTRYPOINT ["/myapp"]
+]]></code>
+      </example>
+      <example type="good" title="Java Spring Boot template">
+        <code lang="dockerfile"><![CDATA[
+# syntax=docker/dockerfile:1
+
+#############################################
+# Stage 1: Build
+#############################################
+FROM eclipse-temurin:21-jdk-alpine AS builder
+
+WORKDIR /app
+
+COPY mvnw pom.xml ./
+COPY .mvn .mvn
+RUN ./mvnw dependency:go-offline
+
+COPY src ./src
+RUN ./mvnw package -DskipTests
+
+#############################################
+# Stage 2: Production
+#############################################
+FROM eclipse-temurin:21-jre-alpine AS production
+
+LABEL maintainer="team@example.com"
+LABEL version="1.0.0"
+
+WORKDIR /app
+
+RUN addgroup --system --gid 1001 javauser \
+    && adduser --system --uid 1001 javauser
+
+COPY --from=builder /app/target/*.jar app.jar
+
+USER javauser
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD wget -q --spider http://localhost:8080/actuator/health || exit 1
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
+]]></code>
+      </example>
+      <example type="good" title="Full stack compose template">
+        <code lang="yaml"><![CDATA[
+# compose.yaml
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: ${REGISTRY:-localhost}/myapp:${VERSION:-latest}
+    container_name: myapp
+    restart: unless-stopped
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-app}:${DB_PASSWORD}@db:5432/${DB_NAME:-appdb}
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: "${APP_CPU_LIMIT:-1.0}"
+          memory: ${APP_MEMORY_LIMIT:-512M}
+          pids: 100
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    networks:
+      - frontend
+      - backend
+    volumes:
+      - app-data:/app/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  db:
+    image: postgres:16-alpine
+    container_name: myapp-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${DB_USER:-app}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME:-appdb}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-app} -d ${DB_NAME:-appdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  redis:
+    image: redis:7-alpine
+    container_name: myapp-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 100mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true
+
+volumes:
+  postgres-data:
+  redis-data:
+  app-data:
+]]></code>
+      </example>
+      <example type="good" title="Development override template">
+        <code lang="yaml"><![CDATA[
+# compose.override.yaml
+
+services:
+  app:
+    build:
+      target: development
+    volumes:
+      - .:/app
+      - /app/node_modules  # Exclude node_modules
+      - /app/.venv         # Exclude venv
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=debug
+    command: ["npm", "run", "dev"]  # Or uvicorn with --reload
+    ports:
+      - "${APP_PORT:-8000}:8000"
+      - "9229:9229"  # Debug port
+
+  db:
+    ports:
+      - "${DB_PORT:-5432}:5432"
+
+  redis:
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: myapp-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - backend
+    profiles:
+      - dev
+]]></code>
+      </example>
+      <example type="good" title="Production override template">
+        <code lang="yaml"><![CDATA[
+# compose.prod.yaml
+
+services:
+  app:
+    image: ${REGISTRY}/myapp:${VERSION}
+    build: null
+    restart: always
+    deploy:
+      mode: replicated
+      replicas: ${APP_REPLICAS:-2}
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+
+  db:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  redis:
+    restart: always
+]]></code>
+      </example>
+      <example type="good" title=".dockerignore template">
+        <code lang="text"><![CDATA[
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Dependencies
+node_modules
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+.eggs
+*.egg-info
+
+# Build outputs
+dist
+build
+target
+*.egg
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Testing
+.coverage
+htmlcov
+.pytest_cache
+.tox
+coverage.xml
+*.cover
+.hypothesis
+
+# Environment
+.env
+.env.*
+*.local
+.envrc
+
+# Docker
+Dockerfile*
+docker-compose*
+compose*.yaml
+compose*.yml
+.docker
+.dockerignore
+
+# Documentation
+docs
+*.md
+!README.md
+
+# CI/CD
+.github
+.gitlab-ci.yml
+Jenkinsfile
+.circleci
+.travis.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs
+
+# Temporary
+tmp
+temp
+*.tmp
+*.temp
+]]></code>
+      </example>
+      <example type="good" title=".env.example template">
+        <code lang="bash"><![CDATA[
+# Application
+APP_NAME=myapp
+VERSION=1.0.0
+SECRET_KEY=change-me-in-production
+LOG_LEVEL=info
+DEBUG=false
+
+# Server
+APP_PORT=8000
+APP_HOST=0.0.0.0
+APP_REPLICAS=2
+
+# Resource Limits
+APP_CPU_LIMIT=1.0
+APP_MEMORY_LIMIT=512M
+
+# Database
+DB_USER=app
+DB_PASSWORD=secure-password-here
+DB_NAME=appdb
+DB_HOST=db
+DB_PORT=5432
+
+# Redis
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+# Registry
+REGISTRY=registry.example.com
+
+# External Services (optional)
+# SMTP_HOST=smtp.example.com
+# SMTP_PORT=587
+# SMTP_USER=noreply@example.com
+# SMTP_PASSWORD=smtp-password
+
+# Feature Flags
+# ENABLE_FEATURE_X=false
+]]></code>
+      </example>
+      <example type="good" title="Nginx configuration template">
+        <code lang="nginx"><![CDATA[
+# nginx/nginx.conf
+
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log warn;
+pid        /var/run/nginx.pid;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    keepalive_timeout  65;
+    gzip  on;
+
+    upstream app {
+        server app:8000;
+    }
+
+    server {
+        listen 80;
+        server_name _;
+
+        location /health {
+            access_log off;
+            return 200 "OK\n";
+            add_header Content-Type text/plain;
+        }
+
+        location /static/ {
+            alias /var/www/static/;
+            expires 30d;
+            add_header Cache-Control "public, immutable";
+        }
+
+        location / {
+            proxy_pass http://app;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 86400;
+        }
+    }
+}
+]]></code>
+      </example>
+      <example type="good" title="Makefile for Docker operations">
+        <code lang="makefile"><![CDATA[
+# Makefile for Docker operations
+
+.PHONY: build up down logs shell test lint scan
+
+# Variables
+COMPOSE := docker compose
+IMAGE := myapp
+VERSION := $(shell git describe --tags --always --dirty)
+
+# Build
+build:
+	$(COMPOSE) build --no-cache
+
+build-dev:
+	$(COMPOSE) build
+
+# Run
+up:
+	$(COMPOSE) up -d
+
+up-dev:
+	$(COMPOSE) up
+
+down:
+	$(COMPOSE) down
+
+down-volumes:
+	$(COMPOSE) down -v
+
+# Logs
+logs:
+	$(COMPOSE) logs -f
+
+logs-app:
+	$(COMPOSE) logs -f app
+
+# Shell access
+shell:
+	$(COMPOSE) exec app sh
+
+shell-db:
+	$(COMPOSE) exec db psql -U app -d appdb
+
+# Testing
+test:
+	$(COMPOSE) exec app pytest
+
+lint:
+	docker run --rm -i hadolint/hadolint < Dockerfile
+
+# Security
+scan:
+	docker scout cves $(IMAGE):$(VERSION)
+
+scan-trivy:
+	docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+		aquasec/trivy:latest image $(IMAGE):$(VERSION)
+
+# Cleanup
+prune:
+	docker system prune -af --volumes
+
+# Production
+prod-up:
+	$(COMPOSE) -f compose.yaml -f compose.prod.yaml up -d
+
+prod-down:
+	$(COMPOSE) -f compose.yaml -f compose.prod.yaml down
+]]></code>
+      </example>
+      <example type="good" title="Docker entrypoint script template">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# docker-entrypoint.sh
+
+set -e
+
+# Wait for database
+if [ -n "$DATABASE_URL" ]; then
+    echo "Waiting for database..."
+    until pg_isready -h db -U app 2>/dev/null; do
+        sleep 1
+    done
+    echo "Database is ready!"
+fi
+
+# Run migrations (if applicable)
+if [ "$RUN_MIGRATIONS" = "true" ]; then
+    echo "Running migrations..."
+    python manage.py migrate --noinput
+fi
+
+# Collect static files (if applicable)
+if [ "$COLLECT_STATIC" = "true" ]; then
+    echo "Collecting static files..."
+    python manage.py collectstatic --noinput
+fi
+
+# Execute main command
+exec "$@"
+]]></code>
+      </example>
+      <example type="good" title="GitHub Actions Docker workflow template">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/docker.yml
+
+name: Docker Build & Push
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+
+      - name: Log in to registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha
+
+      - name: Build image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Push image
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+]]></code>
+      </example>
+    </section>
+
+    <see-also>
+      <link href="https://docs.docker.com/"/>
+      <link href="https://docs.docker.com/develop/develop-images/dockerfile_best-practices/"/>
+      <link href="https://docs.docker.com/engine/security/"/>
+      <link href="https://docs.docker.com/compose/compose-file/"/>
+      <link href="https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html"/>
+      <link href="https://betterstack.com/community/guides/scaling-docker/docker-security-best-practices/"/>
+      <link href="https://blog.gitguardian.com/how-to-improve-your-docker-containers-security-cheat-sheet/"/>
+    </see-also>
+  </content>
+</methodology>

@@ -6,6 +6,7 @@
 - migrate: 3/3 pro/infra/infrastructure-engineer methodologies → methodology.xml (gcp-storage, helm-basics, helm-advanced; feature-045 batch BB)
 - migrate: 3/3 pro/infra/infrastructure-engineer methodologies → methodology.xml (iac-basics, k8s-basics, terraform-state; feature-045 batch BE)
 - migrate: 3/3 pro/infra/infrastructure-engineer methodologies → methodology.xml (iac-basics, k8s-basics, terraform; feature-045 batch BC)
+- migrate: 3/3 pro/infra/infrastructure-engineer methodologies → methodology.xml (docker, gcp-networking, terraform-basics; feature-045 batch BD)
 - migrate: 3/3 pro/infra methodologies → methodology.xml (terraform, terraform-iac, aws-architecture-services; feature-045 batch AX)
 - cleanup: remove leftover AGENTS.md/CLAUDE.md/content/ from helm-charts; migrate kubernetes + aws-ec2-ecs to methodology.xml (feature-045 batch AY)
 - migrate: 2/2 pro/infra/devops-engineer methodologies → methodology.xml (helm-charts, jenkins-pipelines; feature-045 batch AU-local)
