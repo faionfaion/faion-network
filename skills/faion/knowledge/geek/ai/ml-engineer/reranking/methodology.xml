@@ -1,0 +1,4227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="reranking">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Two-stage retrieval technique using cross-encoders to refine initial search results; improves RAG accuracy by 20-35% at the cost of 200-500ms latency.</summary>
+    <tags>
+      <tag>reranking</tag>
+      <tag>rag</tag>
+      <tag>cross-encoder</tag>
+      <tag>retrieval</tag>
+      <tag>information-retrieval</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Reranking for RAG Systems</title>
+    <summary>Reranking is a second-stage retrieval technique that refines initial search results using more sophisticated models. While first-stage retrieval prioritizes speed (bi-encoders), reranking uses slower but more accurate cross-encoders to improve result quality. Cross-encoder reranking improves RAG accuracy by 20-35% while adding 200-500ms latency per query.</summary>
+
+    <why>
+      <p>First-stage retrieval using bi-encoders is fast but limited in accuracy. Bi-encoders compress both query and document into independent vectors, losing nuanced relevance signals. Cross-encoders jointly encode query-document pairs, allowing full attention across all tokens, no compression loss, context-aware matching, and token-level relevance signals. This produces significantly higher relevance quality at the cost of speed.</p>
+      <p>Key benefit: Cross-encoder reranking improves RAG accuracy by 20-35% while adding 200-500ms latency per query.</p>
+    </why>
+
+    <when-to-use>
+      <p>High-Value Use Cases — Legal document search: precision critical, mistakes costly. Medical Q&amp;A systems: wrong answer can harm patients. Enterprise RAG: domain-specific relevance needed. Customer support: accurate answers reduce escalation. Code search: semantic matching greater than keyword matching. E-commerce search: better relevance drives conversions.</p>
+      <p>Decision Matrix — Initial retrieval quality poor: Yes, reranker refines noisy results. Hybrid search fusion: Yes, balance BM25 and dense scores. Latency budget less than 100ms: No, reranking adds 100-500ms. Fewer than 10 documents retrieved: Maybe, limited improvement potential. Multi-hop reasoning: Yes, quality matters more than speed. Real-time autocomplete: No, too slow for interactive use.</p>
+      <p>Prerequisites for Effective Reranking:</p>
+      <list>
+        <item>Sufficient candidate pool — retrieve 3-10x more candidates than final top-k</item>
+        <item>Reasonable first-stage recall — reranker cannot recover missing documents</item>
+        <item>Latency budget — allow 100-500ms additional processing time</item>
+        <item>Quality-sensitive application — improvement justifies added complexity</item>
+        <item>RAG pipeline where initial vector retrieval produces noisy or inconsistent top results</item>
+        <item>First-stage retrieval uses a fast bi-encoder and you have a latency budget of 200ms+ beyond it</item>
+        <item>Hybrid search (BM25 + dense) needs a single score for final ranking</item>
+        <item>Domain-critical applications: legal, medical, enterprise knowledge bases where precision matters</item>
+        <item>Corpus size greater than 10K documents where bi-encoder recall starts to degrade</item>
+        <item>Multi-hop reasoning — quality matters more than speed</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Real-time autocomplete or sub-100ms latency requirements — cross-encoder overhead is prohibitive</item>
+        <item>Fewer than 10 candidate documents retrieved — marginal improvement does not justify cost</item>
+        <item>Simple keyword-match use cases with deterministic answer lookup</item>
+        <item>High-volume low-value queries where API cost exceeds quality benefit</item>
+        <item>Latency budget less than 100ms — reranking adds 100-500ms</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="key-concepts">
+      <p>Two-Stage Retrieval Architecture:</p>
+      <p>Stage 1: RETRIEVAL (Fast, ~10ms) — Query goes through Bi-Encoder to Vector Search to Top 50-100 candidates.</p>
+      <p>Stage 2: RERANKING (Slow, ~100-500ms) — (Query, Doc) pairs go through Cross-Encoder to Top 5-10 reranked results.</p>
+
+      <section name="bi-encoder-vs-cross-encoder">
+        <p>Bi-Encoder: Separate encoders for Q and D. Fast (~10ms for 1M docs). Good accuracy (70-80% nDCG). Precomputation possible (store doc embeddings). Excellent scalability (ANN search). Use case: First-stage retrieval.</p>
+        <p>Cross-Encoder: Joint encoder for (Q, D) pair. Slow (~100-500ms for 50 docs). Excellent accuracy (85-95% nDCG). No precomputation (compute at query time). Poor scalability (O(n) pairs). Use case: Second-stage reranking.</p>
+      </section>
+
+      <section name="why-cross-encoders-accurate">
+        <p>Why Cross-Encoders Are More Accurate:</p>
+        <list>
+          <item>Full attention — Query and document tokens attend to each other</item>
+          <item>No compression loss — Bi-encoders compress meaning into single vector</item>
+          <item>Context-aware — Can match query terms in document context</item>
+          <item>Fine-grained matching — Token-level relevance signals</item>
+        </list>
+      </section>
+
+      <section name="reranking-architectures">
+        <p>Reranking architecture types:</p>
+        <p>Pointwise: Score each (Q, D) pair independently. Medium latency. Good accuracy.</p>
+        <p>Pairwise: Compare document pairs for ranking. High latency. Better accuracy.</p>
+        <p>Listwise: Consider all documents together. High latency. Best accuracy.</p>
+        <p>Late Interaction: Token-level scoring (ColBERT). Low latency. Good accuracy.</p>
+      </section>
+    </section>
+
+    <section name="model-comparison">
+      <p>Top Reranking Models (2025-2026):</p>
+      <p>Jina Reranker v3: 0.6B parameters, BEIR nDCG@10 of 61.94, 100+ languages, Apache 2.0 license. Architecture: Novel "Last but Not Late Interaction" (LBNL). 10x smaller than generative listwise rerankers. SOTA BEIR performance (61.94 nDCG@10). Excellent multi-hop retrieval (78.56 on HotpotQA). Outstanding fact verification (93.95 on FEVER). Best for: Multilingual production, complex reasoning queries.</p>
+      <p>Cohere Rerank 3: Unknown parameters, ~60 nDCG@10, 100+ languages, Proprietary. Variants: Standard (accurate) and Nimble (fast). 100+ languages, easy API integration, no infrastructure management, production-ready with SLA. Best for: Quick deployment, managed solution.</p>
+      <p>Cohere Rerank 3 Nimble: Unknown parameters, ~58 nDCG@10, 100+ languages, Proprietary.</p>
+      <p>BGE Reranker v2-M3: 0.6B parameters, ~59 nDCG@10, 100+ languages, Apache 2.0. Variants: bge-reranker-v2-m3 (0.6B params, multilingual), bge-reranker-large (Larger English model), bge-layerwise-gemma/minicpm (LLM-based, SOTA accuracy). Open source (Apache 2.0), self-hostable, multiple size options. Best for: Self-hosted production, cost control.</p>
+      <p>BGE Layerwise (Gemma): 2B+ parameters, ~62 nDCG@10, Multiple languages, Apache 2.0.</p>
+      <p>Mixedbread mxbai-rerank-large: 0.4B parameters, ~58 nDCG@10, English, Apache 2.0.</p>
+      <p>MS MARCO MiniLM-L12: 33M parameters, ~52 nDCG@10, English, MIT. Variants: ms-marco-MiniLM-L-6-v2 (22M params, fastest), ms-marco-MiniLM-L-12-v2 (33M params, balanced), ms-marco-electra-base (110M params, most accurate). Tiny, fast, well-tested baseline, MIT license. Best for: Development, low-resource environments.</p>
+      <p>Pinecone Rerank V0: Unknown parameters, ~57 nDCG@10, English, Proprietary.</p>
+      <p>ZeroEntropy zerank-1: Unknown parameters, +28% vs baseline, Multiple languages, Proprietary.</p>
+
+      <section name="model-selection-guide">
+        <p>By Use Case:</p>
+        <p>Production RAG (English): Cohere Rerank 3 Nimble — Fast, accurate, managed.</p>
+        <p>Multilingual production: Jina Reranker v3 — Best multilingual, SOTA.</p>
+        <p>Self-hosted (open source): BGE Reranker v2-M3 — Apache 2.0, excellent quality.</p>
+        <p>Low latency required: MS MARCO MiniLM-L6 — Smallest, fastest.</p>
+        <p>Maximum accuracy: BGE Layerwise (Gemma) — SOTA but slow.</p>
+        <p>Cost-sensitive: FlashRank — Lightweight, free.</p>
+
+        <p>By Infrastructure:</p>
+        <p>GPU available: BGE Reranker v2-M3, Jina v3.</p>
+        <p>CPU only: MS MARCO MiniLM, FlashRank.</p>
+        <p>Serverless / no infra: Cohere, Pinecone APIs.</p>
+        <p>Air-gapped environment: Any open-source model.</p>
+      </section>
+    </section>
+
+    <section name="architecture-patterns">
+      <p>Pattern 1: Simple Two-Stage Retrieval. Flow: Query to Bi-Encoder to embed query, then Vector DB to retrieve top-50, then Cross-Encoder to rerank to top-5, then LLM to generate answer. When to use: Standard RAG applications. This is the baseline pattern for most RAG systems that want to improve precision without complex infrastructure.</p>
+
+      <p>Pattern 2: Hybrid Search + Reranking. Flow: Query goes simultaneously to BM25 (sparse retrieval), Dense (vector retrieval), and Sparse retrieval in parallel. All results are fused via RRF (Reciprocal Rank Fusion) to a combined Top-100 pool, then Cross-Encoder reranks to Top-10, then LLM generates the final answer. When to use: Documents have keyword-heavy content such as code or technical documentation where BM25 captures exact-match signals that dense retrieval misses. The RRF fusion ensures both keyword and semantic signals contribute to the final ranking before expensive cross-encoder reranking.</p>
+
+      <p>Pattern 3: Multi-Stage Reranking. Flow: Query to First Stage retrieving Top-1000 candidates (via BM25 or vector), then Light Reranker (MiniLM-L6, fast) reduces to Top-100, then Heavy Reranker (BGE v2-M3 or Cohere) produces final Top-10, then LLM generates. When to use: Large corpus (over 100K documents), need both speed and accuracy. The light reranker acts as a fast pre-filter to make the expensive heavy reranker practical.</p>
+
+      <p>Pattern 4: Diverse Reranking (MMR). Flow: Query to Cross-Encoder to score all candidates, then MMR (Maximal Marginal Relevance) Selection balances relevance against diversity in the candidate set, producing Top-k diverse results. When to use: Results too similar or redundant, need coverage across different subtopics. MMR penalizes documents that are too similar to already-selected documents, trading some relevance for diversity.</p>
+    </section>
+
+    <section name="performance-benchmarks">
+      <p>Latency Expectations:</p>
+      <p>MiniLM-L6 on CPU with 50 documents: 50-100ms.</p>
+      <p>MiniLM-L12 on CPU with 50 documents: 100-200ms.</p>
+      <p>BGE v2-M3 on GPU with 50 documents: 50-100ms.</p>
+      <p>Jina v3 on GPU with 50 documents: 100-150ms.</p>
+      <p>Cohere API with 50 documents: 200-400ms.</p>
+
+      <p>Quality Improvements:</p>
+      <p>Generic RAG: Without reranking 65% nDCG@10, with reranking 82% nDCG@10, improvement +26%.</p>
+      <p>Legal search: Without reranking 58% recall@5, with reranking 78% recall@5, improvement +34%.</p>
+      <p>Code search: Without reranking 52% MRR, with reranking 71% MRR, improvement +37%.</p>
+
+      <p>Optimal Candidate Pool Sizes:</p>
+      <p>Chat/RAG: Retrieve 50, rerank to 5-10. Speed matters.</p>
+      <p>Document search: Retrieve 100-200, rerank to 10-20. Comprehensive results.</p>
+      <p>Legal/medical: Retrieve 100-200, rerank to 5. Precision critical.</p>
+      <p>E-commerce: Retrieve 50-75, rerank to 10-15. Balance quality/speed.</p>
+    </section>
+
+    <section name="integration-considerations">
+      <p>API-Based Rerankers — Pros: No infrastructure management, automatic updates, production SLAs. Cons: Per-request costs, network latency, data leaves your infrastructure. Providers: Cohere Rerank API, Jina AI API, Pinecone Rerank, ZeroEntropy. API-based rerankers are ideal for teams that want to get started quickly without managing GPU infrastructure. The managed SLA means you do not have to worry about model serving.</p>
+
+      <p>Self-Hosted Rerankers — Pros: No per-request costs, data stays in-house, full control over model version and updates. Cons: Infrastructure management overhead, GPU costs for production-grade latency, manual model update workflow required. Options: Sentence Transformers (Python) — easiest to use, best for cross-encoder models; Hugging Face Transformers — direct model access, maximum flexibility; AnswerDotAI rerankers library — unified API across multiple backends including ColBERT. Self-hosted is preferred for high-volume applications (over 1M requests per month), sensitive data that cannot leave your network, or cost optimization at scale.</p>
+
+      <p>Hybrid Approach — Use API for: Production traffic at moderate volume, spiky workloads where auto-scaling is needed, quick deployment where time to production matters. Use self-hosted for: High-volume applications exceeding API cost thresholds, sensitive data that must remain in-house, cost optimization once usage patterns are established. A common migration pattern is to start with API rerankers to validate the quality improvement, then migrate to self-hosted once the ROI justifies the infrastructure investment.</p>
+
+      <p>Framework Integration — LangChain: Use ContextualCompressionRetriever with CrossEncoderReranker as the compressor. LlamaIndex: Use SentenceTransformerRerank or CohereRerank as a node postprocessor in the query engine. Custom: Implement the Reranker protocol and inject into any two-stage pipeline.</p>
+    </section>
+
+    <section name="agent-integration">
+      <p>When to use in agentic workflows:</p>
+      <list>
+        <item>RAG pipeline where initial vector retrieval produces noisy or inconsistent top results</item>
+        <item>First-stage retrieval uses a fast bi-encoder and you have a latency budget of 200ms+ beyond it</item>
+        <item>Hybrid search (BM25 + dense) needs a single score for final ranking</item>
+        <item>Domain-critical applications: legal, medical, enterprise knowledge bases where precision matters</item>
+        <item>Corpus size greater than 10K documents where bi-encoder recall starts to degrade</item>
+      </list>
+
+      <p>Where it fails / limitations:</p>
+      <list>
+        <item>Reranker cannot recover documents that first-stage retrieval missed — bad recall at stage 1 is not fixed</item>
+        <item>Cross-encoders score (query, doc) pairs independently — they cannot reason about diversity or de-duplicate</item>
+        <item>Self-hosted rerankers on CPU are slow (100-400ms for 50 docs with MiniLM-L12); GPU required for production throughput</item>
+        <item>Cohere/Jina API rerankers add 200-400ms network latency and per-request cost that compounds at scale</item>
+        <item>Listwise rerankers (BGE Layerwise/Gemma) are accurate but slow — unsuitable for interactive response time</item>
+      </list>
+
+      <p>Agentic workflow: A Claude subagent drives reranking by first emitting a retrieval call to the vector database, receiving the top-50 to top-100 candidates, then calling the reranker API or local model with the (query, candidates) batch. The agent inspects the reranked scores, applies a cutoff threshold (e.g., discard below 0.3), and passes the refined top-5 to the answer-generation step. For self-hosted models the agent invokes a Python subprocess or FastAPI endpoint wrapping sentence-transformers.</p>
+
+      <p>Recommended subagents: faion-sdd-executor-agent when reranking pipeline setup is a tracked SDD task. General Claude subagent with tool access — drives retrieval then reranking then generation as a sequential tool-call chain.</p>
+
+      <p>Prompt pattern:</p>
+      <code lang="text"><![CDATA[Given the query: <query>
+And these candidate passages (indexed 0–N):
+<passages>
+
+Score each passage for relevance to the query on a 0–1 scale.
+Return a JSON array: [{"index": i, "score": f}, ...]
+Rank by score descending.]]></code>
+
+      <example type="good" title="Self-hosted reranking with sentence-transformers">
+        <code lang="python"><![CDATA[# Using sentence-transformers cross-encoder
+from sentence_transformers import CrossEncoder
+model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-12-v2")
+pairs = [(query, doc) for doc in candidates]
+scores = model.predict(pairs)
+ranked = sorted(zip(scores, candidates), reverse=True)
+top_k = [doc for _, doc in ranked[:5]]]]></code>
+      </example>
+
+      <p>CLI tools:</p>
+      <p>sentence-transformers: Local cross-encoder reranking. Install: pip install sentence-transformers. Docs: sbert.net.</p>
+      <p>rerankers (AnswerDotAI): Unified API for multiple rerankers. Install: pip install rerankers. Docs: github.com/AnswerDotAI/rerankers.</p>
+      <p>flashrank: Lightweight CPU-friendly reranker. Install: pip install flashrank. Docs: github.com/PrithivirajDamodaran/FlashRank.</p>
+      <p>llama-index: Reranking nodes built-in. Install: pip install llama-index. Docs: docs.llamaindex.ai.</p>
+      <p>langchain: RerankerDocumentCompressor. Install: pip install langchain. Docs: python.langchain.com.</p>
+
+      <p>Services and apps:</p>
+      <p>Cohere Rerank API (SaaS): Agent-friendly via REST JSON. Models: rerank-v3.5 and rerank-v3.5-nimble; 100+ languages; simple HTTP call.</p>
+      <p>Jina AI Reranker API (SaaS): Agent-friendly via REST JSON. Model: jina-reranker-v3; SOTA multilingual BEIR 61.94; free tier available.</p>
+      <p>Pinecone Rerank (SaaS): Agent-friendly via Pinecone client. Integrated with Pinecone index; no separate infra.</p>
+      <p>ZeroEntropy (SaaS): Agent-friendly via REST. Proprietary reranker; claims +28% vs baseline.</p>
+      <p>Hugging Face Inference API (SaaS/OSS): Agent-friendly via REST. Serve BGE or MiniLM via HF endpoints.</p>
+      <p>Qdrant built-in re-score (OSS): Agent-friendly via REST/gRPC. Vector re-score pass using quantized + full vectors.</p>
+
+      <p>Inline script — self-hosted reranking endpoint (less than 50 lines):</p>
+      <example type="good" title="FastAPI wrapper around sentence-transformers">
+        <code lang="python"><![CDATA[# reranker_server.py — FastAPI wrapper around sentence-transformers
+from fastapi import FastAPI
+from pydantic import BaseModel
+from sentence_transformers import CrossEncoder
+import torch
+
+app = FastAPI()
+MODEL = CrossEncoder("BAAI/bge-reranker-v2-m3", device="cuda" if torch.cuda.is_available() else "cpu")
+
+class RerankRequest(BaseModel):
+    query: str
+    documents: list[str]
+    top_k: int = 10
+
+@app.post("/rerank")
+def rerank(req: RerankRequest):
+    pairs = [(req.query, doc) for doc in req.documents]
+    scores = MODEL.predict(pairs).tolist()
+    ranked = sorted(
+        [{"index": i, "document": doc, "score": scores[i]} for i, doc in enumerate(req.documents)],
+        key=lambda x: x["score"],
+        reverse=True,
+    )
+    return {"results": ranked[: req.top_k]}]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <rule>
+        <statement>Always retrieve 5-10x more candidates than the final top-k you send to the LLM (retrieve 50, rerank to 5-10).</statement>
+        <rationale>Sufficient candidate pool is a prerequisite for effective reranking. Reranker cannot recover missing documents.</rationale>
+      </rule>
+      <rule>
+        <statement>Use the AnswerDotAI/rerankers library as an abstraction layer — swap models without changing pipeline code.</statement>
+        <rationale>Decouples model choice from pipeline logic, enabling easy A/B testing and model migration.</rationale>
+      </rule>
+      <rule>
+        <statement>For multilingual corpora use Jina Reranker v3 or BGE-M3 — MiniLM is English-only.</statement>
+        <rationale>Using English-only models on multilingual content produces unreliable scores.</rationale>
+      </rule>
+      <rule>
+        <statement>Apply a score threshold (typically 0.25-0.4) to hard-filter low-confidence candidates before passing to LLM.</statement>
+        <rationale>Low-confidence documents pollute context and degrade generation quality.</rationale>
+      </rule>
+      <rule>
+        <statement>Cache reranker results by (query_hash, doc_hash) for repeated queries — saves latency and cost.</statement>
+        <rationale>Reranking is deterministic for same inputs; caching eliminates redundant computation.</rationale>
+      </rule>
+      <rule>
+        <statement>Run A/B test comparing bi-encoder-only vs bi-encoder+reranker on your actual queries before committing to reranker overhead.</statement>
+        <rationale>Quality improvement varies by domain; empirical validation prevents premature optimization.</rationale>
+      </rule>
+      <rule>
+        <statement>In hybrid BM25 + dense pipelines, always rerank after RRF fusion — the fused ranks are not calibrated scores.</statement>
+        <rationale>RRF scores are not comparable to relevance scores; reranking produces proper calibrated relevance.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Agents must cap the candidate list sent to a cross-encoder: feeding 200+ documents will exceed latency or API limits — cap at 100 with a hard coded guard.</p>
+      <p>Cohere and Jina APIs have per-document token limits (512-4096 tokens); agents must chunk long documents before reranking.</p>
+      <p>LLM-as-reranker (asking Claude to rank passages) is an option but adds 1-2s and significant cost per query — only use if no dedicated reranker is available.</p>
+      <p>Cross-encoder scores are not calibrated probabilities across different models — do not compare raw scores between BGE and MiniLM.</p>
+      <p>When the agent runs reranking inside a multi-turn conversation, re-run reranking per turn; cached results from prior turns may no longer match the refined query.</p>
+    </section>
+
+    <section name="checklist-model-selection">
+      <checklist>
+        <check>Define accuracy requirements: target nDCG@k, MRR, or recall metric</check>
+        <check>Define acceptable false positive/negative rates</check>
+        <check>Establish comparison baseline (no reranking)</check>
+        <check>Define latency requirements: maximum acceptable p50 latency</check>
+        <check>Define latency requirements: maximum acceptable p99 latency</check>
+        <check>Specify user-facing vs. background processing</check>
+        <check>Define scale requirements: expected queries per second (QPS)</check>
+        <check>Define peak traffic multiplier</check>
+        <check>Specify documents per rerank call (candidate pool size)</check>
+        <check>Define infrastructure constraints: GPU availability (type, count)</check>
+        <check>Determine if CPU-only deployment needed</check>
+        <check>Identify cloud provider restrictions</check>
+        <check>Identify air-gapped environment requirements</check>
+        <check>Define language support requirements (single vs. multilingual)</check>
+        <check>Determine domain (general vs. specialized)</check>
+        <check>Assess document length (short passages vs. long docs)</check>
+        <check>Define cost constraints: budget for API calls (if applicable)</check>
+        <check>Estimate infrastructure budget (GPU hours)</check>
+        <check>Calculate total cost per 1M rerank operations</check>
+        <check>For API-based: evaluate Cohere Rerank 3 / Nimble</check>
+        <check>For API-based: evaluate Jina AI API</check>
+        <check>For API-based: evaluate Pinecone Rerank</check>
+        <check>For API-based: evaluate ZeroEntropy zerank-1</check>
+        <check>For self-hosted: evaluate BGE Reranker v2-M3</check>
+        <check>For self-hosted: evaluate Jina Reranker v3</check>
+        <check>For self-hosted: evaluate MS MARCO MiniLM variants</check>
+        <check>For self-hosted: evaluate FlashRank</check>
+        <check>Benchmark on representative sample of your data</check>
+        <check>Verify latency meets requirements under load</check>
+        <check>Confirm cost projections are acceptable</check>
+        <check>Verify license terms allow your use case</check>
+        <check>Test multilingual performance (if needed)</check>
+        <check>Validate long document handling (if needed)</check>
+      </checklist>
+    </section>
+
+    <section name="checklist-implementation">
+      <checklist>
+        <check>Define two-stage vs. multi-stage pipeline architecture</check>
+        <check>Determine candidate pool size (typically 50-100)</check>
+        <check>Define final top-k for LLM context</check>
+        <check>Plan fallback strategy if reranker fails</check>
+        <check>Provision GPU instances (if self-hosted)</check>
+        <check>Configure model serving (Triton, vLLM, etc.)</check>
+        <check>Set up API credentials (if using service)</check>
+        <check>Configure load balancing</check>
+        <check>Install required packages with pinned versions</check>
+        <check>Test in isolated environment and document dependencies</check>
+        <check>Model loading with proper device placement and warm-up</check>
+        <check>Connection pooling for API clients with timeout configuration</check>
+        <check>Define document truncation strategy</check>
+        <check>Implement input validation</check>
+        <check>Implement batch processing for efficiency</check>
+        <check>Define score normalization (if combining with other signals)</check>
+        <check>Define tie-breaking strategy and null/empty input handling</check>
+        <check>Ensure consistent output schema with original metadata preserved</check>
+        <check>Implement fallback to first-stage results if reranker fails</check>
+        <check>Implement partial failure handling and timeout handling</check>
+        <check>Implement rate limit handling for APIs</check>
+        <check>Implement exponential backoff with maximum retry count</check>
+        <check>Enable error logging with context and latency logging per request</check>
+        <check>Configure alerting on error rate and latency thresholds</check>
+        <check>Determine optimal batch size</check>
+        <check>Design cache key (query + candidates hash) and define cache TTL</check>
+        <check>Enable async inference (if supported)</check>
+        <check>Configure candidate pool size as configurable parameter</check>
+        <check>Format reranked results for LLM context</check>
+        <check>Document API endpoint naming, request/response schema, versioning</check>
+      </checklist>
+    </section>
+
+    <section name="checklist-evaluation">
+      <checklist>
+        <check>Create representative sample of production queries</check>
+        <check>Establish ground truth relevance labels</check>
+        <check>Include multiple difficulty levels and edge cases</check>
+        <check>Include simple factual queries, multi-hop reasoning, ambiguous queries</check>
+        <check>Include negative/no-answer queries and multilingual queries (if applicable)</check>
+        <check>Measure nDCG@k (k = 1, 5, 10)</check>
+        <check>Measure MRR (Mean Reciprocal Rank)</check>
+        <check>Measure MAP (Mean Average Precision)</check>
+        <check>Measure Precision@k / Recall@k</check>
+        <check>Compare improvement over no-reranking baseline</check>
+        <check>Test statistical significance</check>
+        <check>Profile p50, p90, p99 latency</check>
+        <check>Measure cold start latency</check>
+        <check>Analyze batch size and candidate pool size impact</check>
+        <check>Measure CPU/GPU/memory/network utilization under load</check>
+        <check>Identify QPS limits and auto-scaling triggers</check>
+        <check>Calculate API cost per 1M requests and infrastructure cost per 1M requests</check>
+        <check>Measure caching effectiveness and batching efficiency</check>
+        <check>Set up A/B test with control (no reranking) and treatment (with reranking)</check>
+        <check>Configure proper randomization and sufficient sample size</check>
+        <check>Track user satisfaction, RAG answer quality, hallucination rate</check>
+        <check>Track success rate, timeout rate, error rate, P95 latency in production</check>
+      </checklist>
+    </section>
+
+    <section name="checklist-production-readiness">
+      <checklist>
+        <check>Architecture diagram complete</check>
+        <check>API documentation complete</check>
+        <check>Runbook for common issues</check>
+        <check>Troubleshooting guide</check>
+        <check>Latency dashboards configured</check>
+        <check>Error rate dashboards configured</check>
+        <check>Cost tracking dashboards configured</check>
+        <check>Alerting rules defined</check>
+        <check>API keys stored securely</check>
+        <check>Input validation implemented</check>
+        <check>Rate limiting configured</check>
+        <check>Audit logging enabled</check>
+        <check>Fallback mechanism tested</check>
+        <check>Disaster recovery plan documented</check>
+        <check>Backup model configured (if critical)</check>
+        <check>Health check endpoint implemented</check>
+        <check>Deployment automation complete</check>
+        <check>Rollback procedure documented</check>
+        <check>On-call documentation ready</check>
+        <check>Capacity planning documented</check>
+      </checklist>
+    </section>
+
+    <section name="quick-decision-checklist">
+      <checklist>
+        <check>First-stage retrieval quality less than 80% of acceptable threshold</check>
+        <check>High-stakes application (legal, medical, financial)</check>
+        <check>Hybrid search fusion needed</check>
+        <check>Can tolerate 100-500ms additional latency</check>
+        <check>Quality improvement justifies complexity</check>
+      </checklist>
+      <note>If 3 or more checked: Yes, implement reranking.</note>
+
+      <p>Quick decision tree for model selection:</p>
+      <p>Need managed service? Yes: Use Cohere Rerank 3 (or Nimble for speed). No: Continue.</p>
+      <p>Need multilingual? Yes: Use Jina Reranker v3 or BGE v2-M3. No: Continue.</p>
+      <p>Need maximum accuracy? Yes: Use BGE Layerwise (Gemma). No: Continue.</p>
+      <p>Need minimum latency? Yes: Use MS MARCO MiniLM-L6 or FlashRank. No: Use BGE Reranker v2-M3 (best balance).</p>
+
+      <p>Implementation readiness must-haves: Error handling with fallback, latency monitoring, cost tracking (if API), documented candidate pool size.</p>
+      <p>Implementation readiness should-haves: Caching strategy, batch optimization, A/B testing capability, evaluation metrics tracking.</p>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="analyze-reranking-requirements"><![CDATA[# Prompt: Analyze Reranking Requirements
+
+Analyze my reranking requirements and recommend the best model.
+
+## My Use Case
+- Application type: [e.g., RAG chatbot, document search, e-commerce]
+- Domain: [e.g., legal, medical, general, technical documentation]
+- Query types: [e.g., questions, keywords, natural language]
+
+## Technical Constraints
+- Infrastructure: [e.g., GPU available, CPU only, serverless]
+- Latency budget: [e.g., < 200ms p99]
+- Throughput: [e.g., 100 QPS]
+- Deployment: [e.g., self-hosted, API OK, air-gapped]
+
+## Data Characteristics
+- Languages: [e.g., English only, multilingual]
+- Document length: [e.g., short passages, long documents]
+- Candidate pool size: [e.g., 50-100 documents per query]
+
+## Budget
+- API budget: [e.g., $X per 1M requests]
+- Infrastructure budget: [e.g., $X per month]
+
+---
+
+Based on these requirements, recommend:
+1. Primary model choice with justification
+2. Alternative options for different trade-offs
+3. Configuration recommendations (batch size, top-k, etc.)
+4. Estimated costs and performance expectations]]></prompt>
+
+      <prompt purpose="compare-reranking-models"><![CDATA[# Prompt: Compare Reranking Models
+
+Compare these reranking models for my use case:
+
+## Models to Compare
+1. [Model A, e.g., Cohere Rerank 3]
+2. [Model B, e.g., BGE Reranker v2-M3]
+3. [Model C, e.g., Jina Reranker v3]
+
+## Evaluation Criteria
+- Accuracy (BEIR benchmark scores)
+- Latency (p50, p99)
+- Cost (per 1M requests)
+- Language support
+- Ease of integration
+- License/terms of use
+
+## My Priorities (rank 1-5)
+- Accuracy: [X]
+- Speed: [X]
+- Cost: [X]
+- Multilingual: [X]
+- Self-hosting: [X]
+
+---
+
+Provide a detailed comparison table and final recommendation with reasoning.]]></prompt>
+
+      <prompt purpose="migration-assessment"><![CDATA[# Prompt: Assess Reranker Migration
+
+I want to migrate from [Current Model] to [New Model].
+
+## Current Setup
+- Model: [e.g., cross-encoder/ms-marco-MiniLM-L-12-v2]
+- Integration: [e.g., sentence-transformers, custom API]
+- Performance: [e.g., 150ms p50, 85% nDCG@5]
+- Daily volume: [e.g., 100K requests]
+
+## Target Model
+- Model: [e.g., BAAI/bge-reranker-v2-m3]
+- Expected benefits: [e.g., better multilingual support]
+
+---
+
+Analyze:
+1. Expected performance changes (latency, accuracy)
+2. Code changes required
+3. Migration risks and mitigation
+4. A/B testing strategy
+5. Rollback plan]]></prompt>
+
+      <prompt purpose="design-pipeline"><![CDATA[# Prompt: Design Reranking Pipeline
+
+Design a reranking pipeline for my RAG system.
+
+## Current Architecture
+[Describe your current retrieval flow]
+
+## Requirements
+- First stage: [e.g., Qdrant vector search]
+- Reranking model: [e.g., BGE Reranker v2-M3]
+- Final top-k: [e.g., 5 documents for LLM context]
+- Additional features needed:
+  - [ ] Diversity (MMR)
+  - [ ] Hybrid search fusion
+  - [ ] Multi-stage reranking
+  - [ ] Caching
+  - [ ] Fallback handling
+
+## Constraints
+- Language: [e.g., Python]
+- Framework: [e.g., LangChain, LlamaIndex, custom]
+- Async required: [yes/no]
+
+---
+
+Provide:
+1. Architecture diagram (text-based)
+2. Component responsibilities
+3. Data flow description
+4. Error handling strategy
+5. Sample code structure]]></prompt>
+
+      <prompt purpose="generate-integration-code"><![CDATA[# Prompt: Generate Reranking Integration Code
+
+Generate production-ready code for reranking integration.
+
+## Specifications
+- Reranker: [e.g., Cohere Rerank API]
+- Retriever: [e.g., Pinecone]
+- Framework: [e.g., FastAPI]
+- Language: Python 3.11
+
+## Features Required
+- [ ] Retry logic with exponential backoff
+- [ ] Timeout handling
+- [ ] Error fallback to initial results
+- [ ] Metrics collection
+- [ ] Async support
+- [ ] Batch processing
+- [ ] Result caching
+
+---
+
+Generate complete, documented, type-annotated Python code.]]></prompt>
+
+      <prompt purpose="optimize-latency"><![CDATA[# Prompt: Optimize Reranking Latency
+
+My reranking is too slow. Help me optimize.
+
+## Current Performance
+- Model: [e.g., BGE Reranker v2-M3]
+- Hardware: [e.g., NVIDIA T4 GPU]
+- Current latency:
+  - p50: [e.g., 250ms]
+  - p99: [e.g., 800ms]
+- Batch size: [e.g., 32]
+- Documents per request: [e.g., 50]
+- Document length: [e.g., avg 500 tokens]
+
+## Target
+- p50: [e.g., < 100ms]
+- p99: [e.g., < 300ms]
+
+## Constraints
+- Cannot change model
+- Cannot reduce document count significantly
+- Budget for additional hardware: [e.g., $X/month]
+
+---
+
+Provide optimization strategies with expected impact:
+1. Inference optimizations (batching, precision, etc.)
+2. Caching strategies
+3. Architectural changes
+4. Hardware recommendations
+5. Code-level optimizations]]></prompt>
+
+      <prompt purpose="reduce-costs"><![CDATA[# Prompt: Reduce Reranking Costs
+
+Help me reduce reranking costs while maintaining quality.
+
+## Current State
+- Model: [e.g., Cohere Rerank 3]
+- Monthly volume: [e.g., 10M requests]
+- Current cost: [e.g., $X/month]
+- Documents per request: [e.g., 100]
+- Quality metrics: [e.g., 85% nDCG@5]
+
+## Quality Threshold
+- Minimum acceptable: [e.g., 80% nDCG@5]
+- Critical use cases that need full quality: [describe]
+
+---
+
+Provide cost reduction strategies with trade-offs:
+1. Immediate optimizations (no quality loss)
+2. Trade-off optimizations (some quality loss)
+3. Architecture changes for long-term savings
+4. Expected cost after each optimization]]></prompt>
+
+      <prompt purpose="debug-quality"><![CDATA[# Prompt: Debug Reranking Quality Issues
+
+My reranking isn't improving results as expected.
+
+## Symptoms
+- [e.g., Relevant documents ranked lower than irrelevant ones]
+- [e.g., Quality worse than without reranking]
+- [e.g., Inconsistent results for similar queries]
+
+## Current Setup
+- Model: [model name]
+- First stage retrieval: [method]
+- Candidate pool size: [N]
+- Document preprocessing: [describe]
+
+## Sample Failing Case
+Query: "[example query]"
+
+Retrieved documents (before reranking):
+1. [doc 1 - relevant/irrelevant]
+2. [doc 2 - relevant/irrelevant]
+
+After reranking:
+1. [doc X - should be lower]
+2. [doc Y - should be higher]
+
+Expected ranking:
+1. [what should be first]
+
+---
+
+Diagnose the issue and provide:
+1. Likely root causes
+2. Diagnostic steps to confirm
+3. Fixes for each potential cause
+4. How to verify the fix worked]]></prompt>
+
+      <prompt purpose="llm-as-reranker"><![CDATA[You are a document relevance expert. Given a query and a list of documents, score each document's relevance to the query.
+
+## Instructions
+1. Read the query carefully to understand the user's information need
+2. For each document, assess:
+   - Does it directly answer the query?
+   - Does it contain relevant information?
+   - How specific and accurate is the information?
+3. Assign a relevance score from 0-10:
+   - 0-2: Irrelevant
+   - 3-4: Marginally relevant
+   - 5-6: Somewhat relevant
+   - 7-8: Relevant
+   - 9-10: Highly relevant, directly answers query
+
+## Query
+{query}
+
+## Documents
+{documents_formatted}
+
+## Output Format
+Return a JSON object:
+{
+  "rankings": [
+    {"index": 0, "score": 8.5, "reasoning": "brief explanation"},
+    {"index": 2, "score": 7.0, "reasoning": "brief explanation"},
+    ...
+  ]
+}
+
+Return only the top {top_k} most relevant documents, sorted by score descending.]]></prompt>
+
+      <prompt purpose="listwise-reranker"><![CDATA[Rank these documents by relevance to the query. Consider all documents together and compare them.
+
+Query: {query}
+
+Documents:
+[0] {doc_0}
+[1] {doc_1}
+[2] {doc_2}
+...
+
+Return ONLY a JSON object with the indices of the {top_k} most relevant documents in order from most to least relevant:
+
+{"ranking": [index1, index2, ...]}
+
+The first index is most relevant.]]></prompt>
+
+      <prompt purpose="pairwise-comparison"><![CDATA[Compare these two documents for relevance to the query.
+
+Query: {query}
+
+Document A:
+{doc_a}
+
+Document B:
+{doc_b}
+
+Which document is MORE relevant to answering the query?
+
+Return ONLY: "A" if Document A is more relevant, "B" if Document B is more relevant, or "EQUAL" if equally relevant.]]></prompt>
+
+      <prompt purpose="domain-specific-legal"><![CDATA[You are a legal document relevance expert. Rank documents for a legal research query.
+
+## Special Considerations
+- Prioritize binding authority over persuasive authority
+- Consider jurisdiction relevance
+- Weight recent cases higher for evolving areas of law
+- Distinguish between holdings and dicta
+
+## Query
+{query}
+
+## Jurisdiction (if specified)
+{jurisdiction}
+
+## Documents
+{documents}
+
+## Scoring Criteria
+- 10: Directly on point, binding authority, recent
+- 8-9: Highly relevant, may be persuasive authority
+- 6-7: Relevant legal principle, different jurisdiction
+- 4-5: Tangentially related
+- 1-3: Marginally relevant
+- 0: Irrelevant
+
+Return JSON with rankings and legal reasoning.]]></prompt>
+
+      <prompt purpose="design-evaluation"><![CDATA[# Prompt: Design Reranking Evaluation
+
+Help me design a comprehensive evaluation for my reranking system.
+
+## Application Context
+- Domain: [e.g., legal document search]
+- Query types: [e.g., natural language questions]
+- Success criteria: [e.g., users find answer in top 3]
+
+## Available Data
+- Existing relevance judgments: [yes/no, how many]
+- Query logs: [yes/no]
+- Click data: [yes/no]
+- Expert annotators: [yes/no]
+
+## Evaluation Goals
+- Compare models: [list models]
+- Measure production impact: [yes/no]
+- Track over time: [yes/no]
+
+---
+
+Provide:
+1. Evaluation dataset design
+2. Metrics to track (with justification)
+3. Baseline definitions
+4. Statistical significance approach
+5. Evaluation pipeline code
+6. Reporting template]]></prompt>
+
+      <prompt purpose="ab-test-design"><![CDATA[# Prompt: Design Reranking A/B Test
+
+Design an A/B test for comparing reranking approaches.
+
+## Variants
+- Control: [current approach]
+- Treatment: [new approach]
+
+## Hypothesis
+[What improvement do you expect and why]
+
+## Metrics
+- Primary: [e.g., click-through rate on top result]
+- Secondary: [e.g., time to find answer]
+- Guardrails: [e.g., latency p99]
+
+## Traffic
+- Daily users: [N]
+- Queries per day: [N]
+- Test duration flexibility: [min/max days]
+
+## Constraints
+- Minimum detectable effect: [e.g., 5% improvement]
+- Statistical significance: [e.g., 95%]
+- Cannot show to [any user segments]
+
+---
+
+Provide:
+1. Sample size calculation
+2. Randomization strategy
+3. Test duration recommendation
+4. Analysis plan
+5. Success/failure criteria
+6. Rollout plan if successful]]></prompt>
+
+      <prompt purpose="scale-throughput"><![CDATA[# Prompt: Scale Reranking Throughput
+
+I need to scale reranking to handle more traffic.
+
+## Current State
+- Model: [e.g., self-hosted cross-encoder]
+- Infrastructure: [e.g., 2x NVIDIA T4]
+- Current throughput: [e.g., 50 QPS]
+- Latency at current load: [e.g., 100ms p50]
+
+## Target
+- Required throughput: [e.g., 500 QPS]
+- Latency requirement: [e.g., < 200ms p99]
+- Budget: [e.g., $X/month additional]
+
+## Constraints
+- Must maintain current accuracy
+- Prefer horizontal scaling
+- [Any other constraints]
+
+---
+
+Provide scaling strategy:
+1. Immediate changes (software optimization)
+2. Horizontal scaling plan
+3. Load balancing configuration
+4. Auto-scaling rules
+5. Cost projections at target scale]]></prompt>
+
+      <prompt purpose="debug-latency-spike"><![CDATA[# Prompt: Debug Reranking Latency Spike
+
+Reranking latency is spiking unexpectedly.
+
+## Normal Performance
+- p50: [e.g., 100ms]
+- p99: [e.g., 200ms]
+
+## Current Performance (during issues)
+- p50: [e.g., 500ms]
+- p99: [e.g., 2000ms]
+
+## Context
+- When did it start: [time/event]
+- Any recent changes: [describe]
+- Traffic pattern: [normal/spike/changed]
+- Infrastructure changes: [any]
+
+## Observations
+- CPU usage: [%]
+- GPU usage: [%]
+- Memory usage: [%]
+- Request queue depth: [N]
+- Error rate: [%]
+
+---
+
+Provide:
+1. Diagnostic checklist
+2. Most likely causes
+3. Immediate mitigation steps
+4. Long-term fixes
+5. Monitoring to prevent recurrence]]></prompt>
+
+      <prompt purpose="debug-integration"><![CDATA[# Prompt: Debug Reranking Integration
+
+Reranking integration isn't working correctly.
+
+## Error/Symptom
+[paste error message or describe unexpected behavior]
+
+## Code
+[paste relevant code]
+
+## Environment
+- Python version: [X.X]
+- Package versions:
+  - sentence-transformers: [X.X.X]
+  - torch: [X.X.X]
+  - [other relevant packages]
+- OS: [e.g., Ubuntu 22.04]
+- Hardware: [e.g., CPU only, GPU model]
+
+## What I've Tried
+1. [attempt 1]
+2. [attempt 2]
+
+---
+
+Diagnose the issue and provide:
+1. Root cause explanation
+2. Step-by-step fix
+3. Verification steps
+4. How to prevent similar issues]]></prompt>
+
+      <prompt purpose="debug-memory"><![CDATA[# Prompt: Debug Reranking Memory Issues
+
+Reranking service is experiencing memory problems.
+
+## Symptoms
+- [e.g., OOM errors]
+- [e.g., Memory gradually increasing]
+- [e.g., Slow garbage collection]
+
+## Environment
+- Model: [model name]
+- Model size: [e.g., 600M params]
+- Available memory: [e.g., 8GB]
+- GPU memory: [e.g., 16GB]
+- Batch size: [N]
+- Max documents: [N]
+- Max document length: [N tokens]
+
+## Memory Usage Pattern
+- Startup: [X GB]
+- After warmup: [X GB]
+- Under load: [X GB]
+- Peak: [X GB]
+
+---
+
+Provide:
+1. Memory analysis
+2. Optimization strategies
+3. Configuration changes
+4. Code changes if needed
+5. Monitoring setup]]></prompt>
+
+      <prompt purpose="quality-assessment"><![CDATA[# Prompt: Assess Reranking Quality
+
+Assess the quality of my reranking system.
+
+## Current Metrics
+- nDCG@5: [X]
+- MRR: [X]
+- Precision@3: [X]
+
+## Evaluation Dataset
+- Size: [N queries]
+- Domain: [describe]
+- Relevance scale: [binary / graded]
+
+## Comparison
+- Without reranking: [metrics]
+- With reranking: [metrics]
+- Improvement: [%]
+
+## Sample Results (5 queries)
+[Provide 5 example queries with retrieved and reranked results]
+
+---
+
+Assess:
+1. Are the metrics appropriate for this use case?
+2. Is the improvement statistically significant?
+3. Are there concerning patterns in the examples?
+4. What additional evaluation would you recommend?
+5. Where might the system be failing?]]></prompt>
+
+      <prompt purpose="technical-documentation"><![CDATA[# Prompt: Generate Reranking Documentation
+
+Generate technical documentation for our reranking system.
+
+## System Overview
+- Purpose: [describe]
+- Architecture: [describe]
+- Model: [name and version]
+- Integration points: [list]
+
+## Target Audience
+- [ ] New developers onboarding
+- [ ] Operations team
+- [ ] ML engineers
+- [ ] External API consumers
+
+## Documentation Sections Needed
+- [ ] Architecture overview
+- [ ] API reference
+- [ ] Configuration guide
+- [ ] Deployment guide
+- [ ] Troubleshooting guide
+- [ ] Performance tuning guide
+
+---
+
+Generate comprehensive documentation with:
+1. Clear structure and navigation
+2. Code examples
+3. Configuration examples
+4. Common issues and solutions
+5. Performance expectations]]></prompt>
+
+      <prompt purpose="create-runbook"><![CDATA[# Prompt: Create Reranking Runbook
+
+Create an operational runbook for the reranking service.
+
+## Service Details
+- Service name: [name]
+- Owner team: [team]
+- On-call rotation: [details]
+- Dependencies: [list]
+
+## SLOs
+- Availability: [e.g., 99.9%]
+- Latency p99: [e.g., < 500ms]
+- Error rate: [e.g., < 0.1%]
+
+## Common Incidents
+1. [Incident type 1]
+2. [Incident type 2]
+3. [Incident type 3]
+
+## Monitoring
+- Dashboard URL: [URL]
+- Alert channels: [list]
+- Logs location: [location]
+
+---
+
+Generate runbook with:
+1. Service overview
+2. Architecture diagram
+3. Dependency map
+4. Alert response procedures
+5. Common issue resolution
+6. Escalation paths
+7. Recovery procedures
+8. Post-incident checklist]]></prompt>
+
+      <prompt purpose="create-adr"><![CDATA[# Prompt: Create Reranking ADR
+
+Create an Architecture Decision Record for reranking choice.
+
+## Decision
+[What decision was made]
+
+## Context
+- Problem: [what problem are we solving]
+- Constraints: [technical, business, time]
+- Options considered: [list]
+
+## Evaluation
+[How were options evaluated]
+
+## Consequences
+- Positive: [list]
+- Negative: [list]
+- Risks: [list]
+
+---
+
+Generate ADR with:
+1. Title
+2. Status (proposed/accepted/deprecated)
+3. Context
+4. Decision
+5. Consequences
+6. Alternatives considered with trade-offs
+7. Related decisions]]></prompt>
+    </section>
+
+    <section name="examples-basic">
+      <example type="good" title="Sentence Transformers Cross-Encoder basic reranking">
+        <code lang="python"><![CDATA["""
+Basic cross-encoder reranking with sentence-transformers.
+Fast setup, good for development and small-scale production.
+"""
+from sentence_transformers import CrossEncoder
+import numpy as np
+from typing import List, Dict, Any
+
+# Available models (speed vs accuracy trade-off)
+MODELS = {
+    "fast": "cross-encoder/ms-marco-MiniLM-L-6-v2",     # 22M params
+    "balanced": "cross-encoder/ms-marco-MiniLM-L-12-v2", # 33M params
+    "accurate": "cross-encoder/ms-marco-electra-base",   # 110M params
+    "multilingual": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
+}
+
+
+class BasicReranker:
+    """Simple reranker using sentence-transformers CrossEncoder."""
+
+    def __init__(self, model_name: str = "balanced", device: str = None):
+        model_path = MODELS.get(model_name, model_name)
+        self.model = CrossEncoder(model_path, device=device)
+        self.model_name = model_name
+
+    def rerank(
+        self,
+        query: str,
+        documents: List[str],
+        top_k: int = 5,
+        return_scores: bool = True
+    ) -> List[Dict[str, Any]]:
+        """
+        Rerank documents by relevance to query.
+
+        Args:
+            query: Search query
+            documents: List of document texts
+            top_k: Number of results to return
+            return_scores: Include relevance scores
+
+        Returns:
+            List of dicts with document, score, and original index
+        """
+        if not documents:
+            return []
+
+        # Create query-document pairs
+        pairs = [[query, doc] for doc in documents]
+
+        # Get relevance scores
+        scores = self.model.predict(pairs)
+
+        # Sort by score descending
+        sorted_indices = np.argsort(scores)[::-1][:top_k]
+
+        results = []
+        for idx in sorted_indices:
+            result = {
+                "document": documents[idx],
+                "original_index": int(idx)
+            }
+            if return_scores:
+                result["score"] = float(scores[idx])
+            results.append(result)
+
+        return results
+
+
+# Usage example
+if __name__ == "__main__":
+    reranker = BasicReranker(model_name="balanced")
+
+    query = "What is the capital of France?"
+    documents = [
+        "Paris is the capital and largest city of France.",
+        "France is a country in Western Europe.",
+        "The Eiffel Tower is located in Paris, France.",
+        "Berlin is the capital of Germany.",
+        "French cuisine is world-renowned."
+    ]
+
+    results = reranker.rerank(query, documents, top_k=3)
+
+    for i, r in enumerate(results):
+        print(f"{i+1}. [Score: {r['score']:.4f}] {r['document'][:50]}...")]]></code>
+      </example>
+
+      <example type="good" title="AnswerDotAI Rerankers unified library">
+        <code lang="python"><![CDATA["""
+Unified reranker interface using the rerankers library.
+Supports multiple backends with consistent API.
+"""
+from rerankers import Reranker
+from typing import List, Dict, Any, Optional
+
+
+class UnifiedReranker:
+    """
+    Unified reranker supporting multiple backends:
+    - cross-encoder (sentence-transformers)
+    - colbert
+    - flashrank
+    - cohere
+    - jina
+    """
+
+    SUPPORTED_MODELS = {
+        # Cross-encoder models
+        "cross-encoder/ms-marco-MiniLM-L-6-v2": "cross-encoder",
+        "cross-encoder/ms-marco-MiniLM-L-12-v2": "cross-encoder",
+        "BAAI/bge-reranker-v2-m3": "cross-encoder",
+        "jinaai/jina-reranker-v2-base-multilingual": "cross-encoder",
+
+        # FlashRank (lightweight)
+        "ms-marco-MiniLM-L-12-v2": "flashrank",
+        "ms-marco-MultiBERT-L-12": "flashrank",
+
+        # ColBERT (late interaction)
+        "colbert-ir/colbertv2.0": "colbert",
+
+        # API-based
+        "cohere": "api",
+        "jina-reranker-v2-base-multilingual": "api"
+    }
+
+    def __init__(
+        self,
+        model_name: str = "cross-encoder/ms-marco-MiniLM-L-12-v2",
+        api_key: Optional[str] = None
+    ):
+        self.model_name = model_name
+        self.ranker = Reranker(model_name, api_key=api_key)
+
+    def rerank(
+        self,
+        query: str,
+        documents: List[str],
+        top_k: int = 5,
+        doc_ids: Optional[List[str]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Rerank documents using the configured model.
+        """
+        if not documents:
+            return []
+
+        results = self.ranker.rank(
+            query=query,
+            docs=documents,
+            doc_ids=doc_ids
+        )
+
+        output = []
+        for result in results.top_k(top_k):
+            output.append({
+                "document": result.document.text,
+                "score": result.score,
+                "original_index": result.document.doc_id or result.rank,
+                "rank": result.rank
+            })
+
+        return output]]></code>
+      </example>
+    </section>
+
+    <section name="examples-api">
+      <example type="good" title="Cohere Rerank API production-ready integration">
+        <code lang="python"><![CDATA["""
+Production-ready Cohere reranking integration.
+Supports both standard and Nimble models.
+"""
+import cohere
+from typing import List, Dict, Any, Optional
+import os
+from dataclasses import dataclass
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+
+@dataclass
+class CohereConfig:
+    api_key: str
+    model: str = "rerank-english-v3.0"  # or "rerank-multilingual-v3.0", "rerank-english-v3.0-nimble"
+    timeout: int = 30
+    max_documents: int = 1000
+
+
+class CohereReranker:
+    """Production Cohere reranker with retry logic and error handling."""
+
+    MODELS = {
+        "english": "rerank-english-v3.0",
+        "multilingual": "rerank-multilingual-v3.0",
+        "english-nimble": "rerank-english-v3.0-nimble",  # Faster, slightly less accurate
+        "multilingual-nimble": "rerank-multilingual-v3.0-nimble"
+    }
+
+    def __init__(self, config: Optional[CohereConfig] = None):
+        self.config = config or CohereConfig(
+            api_key=os.getenv("COHERE_API_KEY")
+        )
+        self.client = cohere.Client(
+            api_key=self.config.api_key,
+            timeout=self.config.timeout
+        )
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10)
+    )
+    def rerank(
+        self,
+        query: str,
+        documents: List[str],
+        top_n: int = 5,
+        return_documents: bool = True
+    ) -> List[Dict[str, Any]]:
+        if not documents:
+            return []
+
+        docs_to_rank = documents[:self.config.max_documents]
+
+        response = self.client.rerank(
+            query=query,
+            documents=docs_to_rank,
+            top_n=top_n,
+            model=self.config.model,
+            return_documents=return_documents
+        )
+
+        results = []
+        for r in response.results:
+            result = {
+                "score": r.relevance_score,
+                "original_index": r.index
+            }
+            if return_documents:
+                result["document"] = documents[r.index]
+            results.append(result)
+
+        return results
+
+    def rerank_with_metadata(
+        self,
+        query: str,
+        documents: List[Dict[str, Any]],
+        text_field: str = "content",
+        top_n: int = 5
+    ) -> List[Dict[str, Any]]:
+        texts = [doc[text_field] for doc in documents]
+
+        reranked = self.rerank(
+            query=query,
+            documents=texts,
+            top_n=top_n,
+            return_documents=False
+        )
+
+        results = []
+        for r in reranked:
+            original_doc = documents[r["original_index"]].copy()
+            original_doc["rerank_score"] = r["score"]
+            results.append(original_doc)
+
+        return results]]></code>
+      </example>
+
+      <example type="good" title="Jina AI Reranker API with async support">
+        <code lang="python"><![CDATA["""
+Jina AI Reranker API integration.
+Supports Jina Reranker v2 and v3 models.
+"""
+import httpx
+from typing import List, Dict, Any, Optional
+import os
+from dataclasses import dataclass
+
+
+@dataclass
+class JinaConfig:
+    api_key: str
+    model: str = "jina-reranker-v2-base-multilingual"
+    base_url: str = "https://api.jina.ai/v1/rerank"
+    timeout: int = 30
+
+
+class JinaReranker:
+    """Jina AI reranker with async support."""
+
+    MODELS = {
+        "v2-base": "jina-reranker-v2-base-multilingual",
+        "v2-turbo": "jina-reranker-v2-turbo-multilingual",  # Faster
+        "v3": "jina-reranker-v3"  # Latest, SOTA
+    }
+
+    def __init__(self, config: Optional[JinaConfig] = None):
+        self.config = config or JinaConfig(
+            api_key=os.getenv("JINA_API_KEY")
+        )
+        self.headers = {
+            "Authorization": f"Bearer {self.config.api_key}",
+            "Content-Type": "application/json"
+        }
+
+    def rerank(
+        self,
+        query: str,
+        documents: List[str],
+        top_n: int = 5
+    ) -> List[Dict[str, Any]]:
+        payload = {
+            "model": self.config.model,
+            "query": query,
+            "documents": documents,
+            "top_n": top_n
+        }
+
+        with httpx.Client(timeout=self.config.timeout) as client:
+            response = client.post(
+                self.config.base_url,
+                headers=self.headers,
+                json=payload
+            )
+            response.raise_for_status()
+
+        data = response.json()
+
+        results = []
+        for r in data.get("results", []):
+            results.append({
+                "document": documents[r["index"]],
+                "score": r["relevance_score"],
+                "original_index": r["index"]
+            })
+
+        return results
+
+    async def arerank(
+        self,
+        query: str,
+        documents: List[str],
+        top_n: int = 5
+    ) -> List[Dict[str, Any]]:
+        payload = {
+            "model": self.config.model,
+            "query": query,
+            "documents": documents,
+            "top_n": top_n
+        }
+
+        async with httpx.AsyncClient(timeout=self.config.timeout) as client:
+            response = await client.post(
+                self.config.base_url,
+                headers=self.headers,
+                json=payload
+            )
+            response.raise_for_status()
+
+        data = response.json()
+
+        results = []
+        for r in data.get("results", []):
+            results.append({
+                "document": documents[r["index"]],
+                "score": r["relevance_score"],
+                "original_index": r["index"]
+            })
+
+        return results]]></code>
+      </example>
+    </section>
+
+    <section name="examples-self-hosted">
+      <example type="good" title="BGE Reranker with Hugging Face Transformers">
+        <code lang="python"><![CDATA["""
+Self-hosted BGE Reranker using Hugging Face Transformers.
+Best open-source option for production.
+"""
+import torch
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from typing import List, Dict, Any, Optional
+import numpy as np
+
+
+class BGEReranker:
+    """
+    BGE Reranker for self-hosted deployment.
+
+    Models:
+    - BAAI/bge-reranker-v2-m3: Multilingual, 568M params
+    - BAAI/bge-reranker-large: English, larger
+    - BAAI/bge-reranker-base: English, base
+    """
+
+    def __init__(
+        self,
+        model_name: str = "BAAI/bge-reranker-v2-m3",
+        device: Optional[str] = None,
+        max_length: int = 512
+    ):
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.max_length = max_length
+
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
+        self.model.to(self.device)
+        self.model.eval()
+
+    @torch.no_grad()
+    def rerank(
+        self,
+        query: str,
+        documents: List[str],
+        top_k: int = 5,
+        batch_size: int = 32
+    ) -> List[Dict[str, Any]]:
+        if not documents:
+            return []
+
+        pairs = [[query, doc] for doc in documents]
+
+        all_scores = []
+        for i in range(0, len(pairs), batch_size):
+            batch = pairs[i:i + batch_size]
+
+            inputs = self.tokenizer(
+                batch,
+                padding=True,
+                truncation=True,
+                max_length=self.max_length,
+                return_tensors="pt"
+            ).to(self.device)
+
+            outputs = self.model(**inputs)
+            scores = outputs.logits.squeeze(-1).cpu().numpy()
+
+            if scores.ndim == 0:
+                scores = np.array([scores])
+
+            all_scores.extend(scores.tolist())
+
+        scores_array = np.array(all_scores)
+        sorted_indices = np.argsort(scores_array)[::-1][:top_k]
+
+        results = []
+        for idx in sorted_indices:
+            results.append({
+                "document": documents[idx],
+                "score": float(scores_array[idx]),
+                "original_index": int(idx)
+            })
+
+        return results
+
+    def compute_scores(
+        self,
+        query: str,
+        documents: List[str],
+        batch_size: int = 32
+    ) -> List[float]:
+        """Compute relevance scores without sorting. Useful when combining with other signals."""
+        pairs = [[query, doc] for doc in documents]
+        all_scores = []
+
+        with torch.no_grad():
+            for i in range(0, len(pairs), batch_size):
+                batch = pairs[i:i + batch_size]
+
+                inputs = self.tokenizer(
+                    batch,
+                    padding=True,
+                    truncation=True,
+                    max_length=self.max_length,
+                    return_tensors="pt"
+                ).to(self.device)
+
+                outputs = self.model(**inputs)
+                scores = outputs.logits.squeeze(-1).cpu().numpy()
+
+                if scores.ndim == 0:
+                    scores = np.array([scores])
+
+                all_scores.extend(scores.tolist())
+
+        return all_scores]]></code>
+      </example>
+
+      <example type="good" title="FlashRank lightweight CPU reranking">
+        <code lang="python"><![CDATA["""
+FlashRank: Ultra-lightweight reranking for resource-constrained environments.
+Great for CPU-only deployment and edge devices.
+"""
+from flashrank import Ranker, RerankRequest
+from typing import List, Dict, Any, Optional
+
+
+class FlashReranker:
+    """
+    FlashRank reranker for minimal overhead.
+
+    Models:
+    - ms-marco-MiniLM-L-12-v2 (default, best quality)
+    - ms-marco-TinyBERT-L-2-v2 (smallest)
+    - rank-T5-flan (T5-based)
+    """
+
+    MODELS = {
+        "default": "ms-marco-MiniLM-L-12-v2",
+        "tiny": "ms-marco-TinyBERT-L-2-v2",
+        "t5": "rank-T5-flan"
+    }
+
+    def __init__(
+        self,
+        model_name: str = "default",
+        cache_dir: Optional[str] = None
+    ):
+        model = self.MODELS.get(model_name, model_name)
+        self.ranker = Ranker(model_name=model, cache_dir=cache_dir)
+
+    def rerank(
+        self,
+        query: str,
+        documents: List[str],
+        top_k: int = 5
+    ) -> List[Dict[str, Any]]:
+        if not documents:
+            return []
+
+        passages = [{"id": i, "text": doc} for i, doc in enumerate(documents)]
+        request = RerankRequest(query=query, passages=passages)
+        results = self.ranker.rerank(request)
+
+        output = []
+        for r in results[:top_k]:
+            output.append({
+                "document": r["text"],
+                "score": r["score"],
+                "original_index": r["id"]
+            })
+
+        return output]]></code>
+      </example>
+    </section>
+
+    <section name="examples-rag-integration">
+      <example type="good" title="LangChain RAG pipeline with reranking">
+        <code lang="python"><![CDATA["""
+Reranking integration with LangChain RAG pipeline.
+"""
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import CrossEncoderReranker
+from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+from langchain_community.vectorstores import Chroma
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain.chains import RetrievalQA
+from typing import List, Optional
+
+
+class LangChainRerankingRAG:
+    """RAG pipeline with reranking using LangChain."""
+
+    def __init__(
+        self,
+        collection_name: str = "documents",
+        reranker_model: str = "BAAI/bge-reranker-v2-m3",
+        initial_k: int = 20,
+        final_k: int = 5
+    ):
+        self.embeddings = OpenAIEmbeddings()
+        self.vectorstore = Chroma(
+            collection_name=collection_name,
+            embedding_function=self.embeddings
+        )
+        self.base_retriever = self.vectorstore.as_retriever(
+            search_kwargs={"k": initial_k}
+        )
+        cross_encoder = HuggingFaceCrossEncoder(model_name=reranker_model)
+        reranker = CrossEncoderReranker(
+            model=cross_encoder,
+            top_n=final_k
+        )
+        self.retriever = ContextualCompressionRetriever(
+            base_compressor=reranker,
+            base_retriever=self.base_retriever
+        )
+        self.llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+
+    def add_documents(self, texts: List[str], metadatas: Optional[List[dict]] = None):
+        self.vectorstore.add_texts(texts, metadatas=metadatas)
+
+    def query(self, question: str) -> str:
+        qa_chain = RetrievalQA.from_chain_type(
+            llm=self.llm,
+            retriever=self.retriever,
+            return_source_documents=True
+        )
+        result = qa_chain({"query": question})
+        return result["result"]
+
+    def retrieve(self, query: str) -> List[dict]:
+        docs = self.retriever.get_relevant_documents(query)
+        return [{"content": d.page_content, "metadata": d.metadata} for d in docs]]]></code>
+      </example>
+
+      <example type="good" title="LlamaIndex RAG pipeline with reranking">
+        <code lang="python"><![CDATA["""
+Reranking integration with LlamaIndex.
+"""
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
+from llama_index.core.postprocessor import SentenceTransformerRerank
+from llama_index.postprocessor.cohere_rerank import CohereRerank
+from llama_index.core.retrievers import VectorIndexRetriever
+from llama_index.core.query_engine import RetrieverQueryEngine
+import os
+
+
+class LlamaIndexRerankingRAG:
+    """RAG pipeline with reranking using LlamaIndex."""
+
+    def __init__(
+        self,
+        reranker_type: str = "sentence-transformer",  # or "cohere"
+        reranker_model: str = "BAAI/bge-reranker-v2-m3",
+        initial_k: int = 20,
+        final_k: int = 5
+    ):
+        self.initial_k = initial_k
+        self.final_k = final_k
+        self.index = None
+
+        if reranker_type == "sentence-transformer":
+            self.reranker = SentenceTransformerRerank(
+                model=reranker_model,
+                top_n=final_k
+            )
+        elif reranker_type == "cohere":
+            self.reranker = CohereRerank(
+                api_key=os.getenv("COHERE_API_KEY"),
+                top_n=final_k
+            )
+        else:
+            raise ValueError(f"Unknown reranker type: {reranker_type}")
+
+    def load_documents(self, directory: str):
+        documents = SimpleDirectoryReader(directory).load_data()
+        self.index = VectorStoreIndex.from_documents(documents)
+
+    def create_index_from_texts(self, texts: list[str]):
+        from llama_index.core import Document
+        documents = [Document(text=t) for t in texts]
+        self.index = VectorStoreIndex.from_documents(documents)
+
+    def query(self, question: str) -> str:
+        if self.index is None:
+            raise ValueError("Index not initialized. Load documents first.")
+
+        retriever = VectorIndexRetriever(
+            index=self.index,
+            similarity_top_k=self.initial_k
+        )
+        query_engine = RetrieverQueryEngine(
+            retriever=retriever,
+            node_postprocessors=[self.reranker]
+        )
+        response = query_engine.query(question)
+        return str(response)]]></code>
+      </example>
+
+      <example type="good" title="Custom RAG pipeline with MMR diversity">
+        <code lang="python"><![CDATA["""
+Custom RAG pipeline with reranking and MMR diversity.
+Full control over each component.
+"""
+from typing import List, Dict, Any, Optional, Protocol
+from dataclasses import dataclass
+import numpy as np
+
+
+class EmbeddingService(Protocol):
+    def embed(self, text: str) -> np.ndarray: ...
+    def embed_batch(self, texts: List[str]) -> np.ndarray: ...
+
+
+class VectorStore(Protocol):
+    def search(self, embedding: np.ndarray, top_k: int, filter: Optional[Dict] = None) -> List[Dict]: ...
+
+
+class Reranker(Protocol):
+    def rerank(self, query: str, documents: List[str], top_k: int) -> List[Dict]: ...
+
+
+class LLMService(Protocol):
+    def generate(self, prompt: str) -> str: ...
+
+
+@dataclass
+class RAGConfig:
+    initial_top_k: int = 50
+    rerank_top_k: int = 5
+    use_reranking: bool = True
+    use_diversity: bool = False
+    diversity_lambda: float = 0.5
+
+
+class CustomRerankingRAG:
+    """Flexible RAG pipeline with configurable reranking."""
+
+    def __init__(
+        self,
+        vector_store: VectorStore,
+        embedding_service: EmbeddingService,
+        reranker: Optional[Reranker] = None,
+        llm_service: Optional[LLMService] = None,
+        config: Optional[RAGConfig] = None
+    ):
+        self.vector_store = vector_store
+        self.embedding_service = embedding_service
+        self.reranker = reranker
+        self.llm_service = llm_service
+        self.config = config or RAGConfig()
+
+    def retrieve(
+        self,
+        query: str,
+        filter: Optional[Dict] = None
+    ) -> List[Dict[str, Any]]:
+        query_embedding = self.embedding_service.embed(query)
+        initial_results = self.vector_store.search(
+            embedding=query_embedding,
+            top_k=self.config.initial_top_k,
+            filter=filter
+        )
+
+        documents = [r["content"] for r in initial_results]
+
+        if self.config.use_reranking and self.reranker and len(documents) > 0:
+            reranked = self.reranker.rerank(
+                query=query,
+                documents=documents,
+                top_k=self.config.rerank_top_k
+            )
+
+            final_results = []
+            for r in reranked:
+                original_idx = r["original_index"]
+                result = initial_results[original_idx].copy()
+                result["rerank_score"] = r["score"]
+                final_results.append(result)
+
+            if self.config.use_diversity:
+                final_results = self._apply_diversity(
+                    query, final_results, self.config.diversity_lambda
+                )
+
+            return final_results
+
+        return initial_results[:self.config.rerank_top_k]
+
+    def _apply_diversity(
+        self,
+        query: str,
+        results: List[Dict],
+        lambda_param: float
+    ) -> List[Dict]:
+        """Apply Maximal Marginal Relevance for diversity."""
+        if len(results) <= 1:
+            return results
+
+        query_emb = self.embedding_service.embed(query)
+        doc_embs = self.embedding_service.embed_batch([r["content"] for r in results])
+
+        query_emb = query_emb / np.linalg.norm(query_emb)
+        doc_embs = doc_embs / np.linalg.norm(doc_embs, axis=1, keepdims=True)
+
+        selected = []
+        remaining = list(range(len(results)))
+        scores = np.array([r.get("rerank_score", 0.5) for r in results])
+
+        while len(selected) < len(results) and remaining:
+            mmr_scores = []
+
+            for idx in remaining:
+                relevance = scores[idx]
+
+                if selected:
+                    similarities = np.dot(doc_embs[selected], doc_embs[idx])
+                    max_sim = np.max(similarities)
+                else:
+                    max_sim = 0
+
+                mmr = lambda_param * relevance - (1 - lambda_param) * max_sim
+                mmr_scores.append((idx, mmr))
+
+            best_idx = max(mmr_scores, key=lambda x: x[1])[0]
+            selected.append(best_idx)
+            remaining.remove(best_idx)
+
+        return [results[i] for i in selected]]]></code>
+      </example>
+    </section>
+
+    <section name="examples-advanced">
+      <example type="good" title="Multi-stage reranking pipeline">
+        <code lang="python"><![CDATA["""
+Multi-stage reranking: fast filter -> accurate rerank.
+Handles large candidate pools efficiently.
+"""
+from typing import List, Dict, Any
+from sentence_transformers import CrossEncoder
+import numpy as np
+
+
+class MultiStageReranker:
+    """
+    Two-stage reranking pipeline:
+    1. Light reranker for coarse filtering (fast)
+    2. Heavy reranker for fine ranking (accurate)
+    """
+
+    def __init__(
+        self,
+        light_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        heavy_model: str = "BAAI/bge-reranker-v2-m3",
+        device: str = None
+    ):
+        self.light_reranker = CrossEncoder(light_model, device=device)
+        self.heavy_reranker = CrossEncoder(heavy_model, device=device)
+
+    def rerank(
+        self,
+        query: str,
+        documents: List[str],
+        intermediate_k: int = 20,
+        final_k: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Multi-stage reranking.
+        Stage 1: Light reranker reduces 100+ docs to 20
+        Stage 2: Heavy reranker refines 20 docs to 5
+        """
+        if len(documents) <= final_k:
+            return self._single_stage_rerank(
+                query, documents, final_k, self.heavy_reranker
+            )
+
+        # Stage 1: Light reranking
+        pairs = [[query, doc] for doc in documents]
+        light_scores = self.light_reranker.predict(pairs)
+
+        intermediate_indices = np.argsort(light_scores)[::-1][:intermediate_k]
+        intermediate_docs = [documents[i] for i in intermediate_indices]
+
+        # Stage 2: Heavy reranking on reduced set
+        heavy_pairs = [[query, doc] for doc in intermediate_docs]
+        heavy_scores = self.heavy_reranker.predict(heavy_pairs)
+
+        final_local_indices = np.argsort(heavy_scores)[::-1][:final_k]
+
+        results = []
+        for local_idx in final_local_indices:
+            global_idx = intermediate_indices[local_idx]
+            results.append({
+                "document": documents[global_idx],
+                "score": float(heavy_scores[local_idx]),
+                "light_score": float(light_scores[global_idx]),
+                "original_index": int(global_idx)
+            })
+
+        return results
+
+    def _single_stage_rerank(
+        self,
+        query: str,
+        documents: List[str],
+        top_k: int,
+        reranker: CrossEncoder
+    ) -> List[Dict[str, Any]]:
+        pairs = [[query, doc] for doc in documents]
+        scores = reranker.predict(pairs)
+        sorted_indices = np.argsort(scores)[::-1][:top_k]
+
+        return [
+            {
+                "document": documents[i],
+                "score": float(scores[i]),
+                "original_index": i
+            }
+            for i in sorted_indices
+        ]]]></code>
+      </example>
+
+      <example type="good" title="Hybrid BM25 + dense with RRF fusion and reranking">
+        <code lang="python"><![CDATA["""
+Hybrid search with RRF fusion and reranking.
+Combines BM25 and dense retrieval before reranking.
+"""
+from typing import List, Dict, Any, Optional
+import numpy as np
+
+
+def reciprocal_rank_fusion(
+    rankings: List[List[int]],
+    k: int = 60
+) -> List[tuple[int, float]]:
+    """
+    Reciprocal Rank Fusion for combining multiple rankings.
+
+    Args:
+        rankings: List of ranked doc indices from different retrievers
+        k: RRF constant (default 60)
+
+    Returns:
+        Fused ranking as (doc_id, score) tuples
+    """
+    scores = {}
+
+    for ranking in rankings:
+        for rank, doc_id in enumerate(ranking):
+            if doc_id not in scores:
+                scores[doc_id] = 0
+            scores[doc_id] += 1 / (k + rank + 1)
+
+    sorted_docs = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    return sorted_docs
+
+
+class HybridRerankingPipeline:
+    """Hybrid retrieval with RRF fusion and reranking."""
+
+    def __init__(
+        self,
+        bm25_retriever,
+        dense_retriever,
+        reranker,
+        rrf_k: int = 60
+    ):
+        self.bm25 = bm25_retriever
+        self.dense = dense_retriever
+        self.reranker = reranker
+        self.rrf_k = rrf_k
+
+    def retrieve(
+        self,
+        query: str,
+        documents: List[str],
+        initial_k: int = 100,
+        fusion_k: int = 50,
+        final_k: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Three-stage retrieval:
+        1. BM25 and dense retrieval in parallel
+        2. RRF fusion to combine rankings
+        3. Cross-encoder reranking for final results
+        """
+        bm25_results = self.bm25.search(query, documents, top_k=initial_k)
+        bm25_ranking = [r["index"] for r in bm25_results]
+
+        dense_results = self.dense.search(query, documents, top_k=initial_k)
+        dense_ranking = [r["index"] for r in dense_results]
+
+        fused = reciprocal_rank_fusion(
+            [bm25_ranking, dense_ranking],
+            k=self.rrf_k
+        )
+
+        fusion_indices = [doc_id for doc_id, _ in fused[:fusion_k]]
+        fusion_docs = [documents[i] for i in fusion_indices]
+
+        reranked = self.reranker.rerank(
+            query=query,
+            documents=fusion_docs,
+            top_k=final_k
+        )
+
+        results = []
+        for r in reranked:
+            local_idx = r["original_index"]
+            global_idx = fusion_indices[local_idx]
+
+            results.append({
+                "document": documents[global_idx],
+                "rerank_score": r["score"],
+                "rrf_score": fused[local_idx][1],
+                "original_index": global_idx
+            })
+
+        return results]]></code>
+      </example>
+
+      <example type="good" title="LLM-based reranking with explanations">
+        <code lang="python"><![CDATA["""
+LLM-based reranking for complex reasoning queries.
+Uses LLM to score relevance with explanations.
+"""
+from typing import List, Dict, Any, Optional
+from openai import OpenAI
+import json
+
+
+class LLMReranker:
+    """
+    LLM-based reranker using GPT-4 or similar models.
+    Best for complex queries requiring reasoning.
+    """
+
+    def __init__(
+        self,
+        model: str = "gpt-4o-mini",
+        api_key: Optional[str] = None
+    ):
+        self.client = OpenAI(api_key=api_key)
+        self.model = model
+
+    def rerank(
+        self,
+        query: str,
+        documents: List[str],
+        top_k: int = 5,
+        explain: bool = False
+    ) -> List[Dict[str, Any]]:
+        if not documents:
+            return []
+
+        docs_text = "\n".join([
+            f"[{i}] {doc[:500]}"
+            for i, doc in enumerate(documents)
+        ])
+
+        if explain:
+            prompt = self._build_explain_prompt(query, docs_text, top_k)
+        else:
+            prompt = self._build_score_prompt(query, docs_text, top_k)
+
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": "You are a document relevance expert."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0,
+            response_format={"type": "json_object"}
+        )
+
+        result = json.loads(response.choices[0].message.content)
+
+        rankings = result.get("rankings", [])
+        output = []
+        for r in rankings[:top_k]:
+            idx = r["index"]
+            output.append({
+                "document": documents[idx],
+                "score": r["score"],
+                "original_index": idx,
+                "explanation": r.get("explanation", "") if explain else None
+            })
+
+        return output
+
+    def _build_score_prompt(self, query: str, docs_text: str, top_k: int) -> str:
+        return f"""Rate the relevance of each document to the query on a scale of 0-10.
+
+Query: {query}
+
+Documents:
+{docs_text}
+
+Return a JSON object with this structure:
+{{
+  "rankings": [
+    {{"index": 0, "score": 8.5}},
+    {{"index": 1, "score": 3.2}},
+    ...
+  ]
+}}
+
+Sort by score descending. Include top {top_k} most relevant documents."""
+
+    def _build_explain_prompt(self, query: str, docs_text: str, top_k: int) -> str:
+        return f"""Rate the relevance of each document to the query on a scale of 0-10.
+Explain why each document is or isn't relevant.
+
+Query: {query}
+
+Documents:
+{docs_text}
+
+Return a JSON object with this structure:
+{{
+  "rankings": [
+    {{"index": 0, "score": 8.5, "explanation": "Directly answers the question about..."}},
+    {{"index": 1, "score": 3.2, "explanation": "Mentions related topic but..."}},
+    ...
+  ]
+}}
+
+Sort by score descending. Include top {top_k} most relevant documents."""]]></code>
+      </example>
+    </section>
+
+    <section name="examples-performance">
+      <example type="good" title="Batch-optimized reranker with caching">
+        <code lang="python"><![CDATA["""
+Optimized batch reranking for high-throughput scenarios.
+"""
+from typing import List, Dict, Any, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from sentence_transformers import CrossEncoder
+import numpy as np
+import time
+
+
+class BatchOptimizedReranker:
+    """Batch-optimized reranker with parallel processing."""
+
+    def __init__(
+        self,
+        model_name: str = "cross-encoder/ms-marco-MiniLM-L-12-v2",
+        batch_size: int = 32,
+        max_workers: int = 4
+    ):
+        self.model = CrossEncoder(model_name)
+        self.batch_size = batch_size
+        self.max_workers = max_workers
+
+    def rerank_single(
+        self,
+        query: str,
+        documents: List[str],
+        top_k: int = 5
+    ) -> List[Dict[str, Any]]:
+        pairs = [[query, doc] for doc in documents]
+
+        all_scores = []
+        for i in range(0, len(pairs), self.batch_size):
+            batch = pairs[i:i + self.batch_size]
+            scores = self.model.predict(batch)
+            if scores.ndim == 0:
+                scores = np.array([scores])
+            all_scores.extend(scores.tolist())
+
+        scores_array = np.array(all_scores)
+        sorted_indices = np.argsort(scores_array)[::-1][:top_k]
+
+        return [
+            {
+                "document": documents[i],
+                "score": float(scores_array[i]),
+                "original_index": i
+            }
+            for i in sorted_indices
+        ]
+
+    def rerank_batch(
+        self,
+        queries: List[str],
+        document_lists: List[List[str]],
+        top_k: int = 5
+    ) -> List[List[Dict[str, Any]]]:
+        results = [None] * len(queries)
+
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = {
+                executor.submit(self.rerank_single, q, docs, top_k): i
+                for i, (q, docs) in enumerate(zip(queries, document_lists))
+            }
+
+            for future in as_completed(futures):
+                idx = futures[future]
+                try:
+                    results[idx] = future.result()
+                except Exception as e:
+                    results[idx] = [{"error": str(e)}]
+
+        return results
+
+
+class CachedReranker:
+    """Reranker with result caching for repeated queries."""
+
+    def __init__(
+        self,
+        reranker,
+        cache_size: int = 1000,
+        ttl_seconds: int = 3600
+    ):
+        self.reranker = reranker
+        self.cache = {}
+        self.cache_timestamps = {}
+        self.cache_size = cache_size
+        self.ttl_seconds = ttl_seconds
+
+    def _cache_key(self, query: str, documents: Tuple[str, ...], top_k: int) -> str:
+        import hashlib
+        doc_hash = hashlib.md5(str(documents).encode()).hexdigest()
+        return f"{query}:{doc_hash}:{top_k}"
+
+    def _evict_expired(self):
+        current_time = time.time()
+        expired = [
+            key for key, ts in self.cache_timestamps.items()
+            if current_time - ts > self.ttl_seconds
+        ]
+        for key in expired:
+            del self.cache[key]
+            del self.cache_timestamps[key]
+
+    def _evict_oldest(self):
+        while len(self.cache) >= self.cache_size:
+            oldest_key = min(self.cache_timestamps, key=self.cache_timestamps.get)
+            del self.cache[oldest_key]
+            del self.cache_timestamps[oldest_key]
+
+    def rerank(
+        self,
+        query: str,
+        documents: List[str],
+        top_k: int = 5
+    ) -> List[Dict[str, Any]]:
+        docs_tuple = tuple(documents)
+        cache_key = self._cache_key(query, docs_tuple, top_k)
+
+        if cache_key in self.cache:
+            if time.time() - self.cache_timestamps[cache_key] < self.ttl_seconds:
+                return self.cache[cache_key]
+
+        self._evict_expired()
+        self._evict_oldest()
+
+        result = self.reranker.rerank(query, documents, top_k)
+
+        self.cache[cache_key] = result
+        self.cache_timestamps[cache_key] = time.time()
+
+        return result]]></code>
+      </example>
+
+      <example type="good" title="GPU-optimized reranker with FP16">
+        <code lang="python"><![CDATA["""
+GPU-optimized reranking with mixed precision and batching.
+"""
+import torch
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from typing import List, Dict, Any, Optional
+import numpy as np
+
+
+class GPUOptimizedReranker:
+    """
+    GPU-optimized reranker with:
+    - Half precision (FP16) inference
+    - Optimal batch sizing
+    - CUDA graph optimization
+    """
+
+    def __init__(
+        self,
+        model_name: str = "BAAI/bge-reranker-v2-m3",
+        device: str = "cuda",
+        use_fp16: bool = True,
+        max_length: int = 512,
+        optimal_batch_size: int = 32
+    ):
+        self.device = device
+        self.max_length = max_length
+        self.optimal_batch_size = optimal_batch_size
+
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
+
+        self.model.to(device)
+
+        if use_fp16 and device == "cuda":
+            self.model = self.model.half()
+
+        self.model.eval()
+        self._warmup()
+
+    def _warmup(self):
+        dummy_input = self.tokenizer(
+            [["query", "document"]],
+            padding=True,
+            truncation=True,
+            max_length=self.max_length,
+            return_tensors="pt"
+        ).to(self.device)
+
+        with torch.no_grad():
+            _ = self.model(**dummy_input)
+
+    @torch.inference_mode()
+    def rerank(
+        self,
+        query: str,
+        documents: List[str],
+        top_k: int = 5
+    ) -> List[Dict[str, Any]]:
+        if not documents:
+            return []
+
+        pairs = [[query, doc] for doc in documents]
+        all_scores = []
+
+        for i in range(0, len(pairs), self.optimal_batch_size):
+            batch = pairs[i:i + self.optimal_batch_size]
+
+            inputs = self.tokenizer(
+                batch,
+                padding=True,
+                truncation=True,
+                max_length=self.max_length,
+                return_tensors="pt"
+            ).to(self.device)
+
+            outputs = self.model(**inputs)
+            scores = outputs.logits.squeeze(-1).cpu().numpy()
+
+            if scores.ndim == 0:
+                scores = np.array([scores])
+
+            all_scores.extend(scores.tolist())
+
+        scores_array = np.array(all_scores)
+        sorted_indices = np.argsort(scores_array)[::-1][:top_k]
+
+        return [
+            {
+                "document": documents[i],
+                "score": float(scores_array[i]),
+                "original_index": int(i)
+            }
+            for i in sorted_indices
+        ]
+
+    def find_optimal_batch_size(
+        self,
+        sample_query: str,
+        sample_doc_length: int = 200
+    ) -> int:
+        sample_doc = "a " * sample_doc_length
+
+        for batch_size in [8, 16, 32, 64, 128, 256]:
+            try:
+                pairs = [[sample_query, sample_doc]] * batch_size
+                inputs = self.tokenizer(
+                    pairs,
+                    padding=True,
+                    truncation=True,
+                    max_length=self.max_length,
+                    return_tensors="pt"
+                ).to(self.device)
+
+                with torch.no_grad():
+                    _ = self.model(**inputs)
+
+                optimal = batch_size
+            except RuntimeError:  # Out of memory
+                break
+
+        return optimal]]></code>
+      </example>
+    </section>
+
+    <section name="templates-pipeline">
+      <p>Basic Reranking Pipeline Template — production-ready two-stage retrieval with factory pattern:</p>
+      <example type="good" title="RerankingPipeline with factory and fallback">
+        <code lang="python"><![CDATA["""
+Template: Basic two-stage retrieval pipeline with reranking.
+Copy and customize for your use case.
+"""
+from typing import List, Dict, Any, Optional, Protocol
+from dataclasses import dataclass, field
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class RerankerConfig:
+    model_type: str = "cross-encoder"  # cross-encoder, cohere, jina, llm
+    model_name: str = "cross-encoder/ms-marco-MiniLM-L-12-v2"
+    api_key: Optional[str] = None
+    device: str = "cpu"
+    max_length: int = 512
+    batch_size: int = 32
+    timeout: int = 30
+
+
+@dataclass
+class RetrievalConfig:
+    initial_top_k: int = 50
+    rerank_top_k: int = 5
+    enable_reranking: bool = True
+    fallback_on_error: bool = True
+    cache_enabled: bool = True
+    cache_ttl: int = 3600
+
+
+class Retriever(Protocol):
+    def retrieve(self, query: str, top_k: int) -> List[Dict[str, Any]]: ...
+
+
+class Reranker(Protocol):
+    def rerank(
+        self,
+        query: str,
+        documents: List[str],
+        top_k: int
+    ) -> List[Dict[str, Any]]: ...
+
+
+class RerankerFactory:
+    """Factory for creating rerankers based on config."""
+
+    @staticmethod
+    def create(config: RerankerConfig) -> Reranker:
+        if config.model_type == "cross-encoder":
+            return CrossEncoderReranker(config)
+        elif config.model_type == "cohere":
+            return CohereReranker(config)
+        elif config.model_type == "jina":
+            return JinaReranker(config)
+        elif config.model_type == "llm":
+            return LLMReranker(config)
+        else:
+            raise ValueError(f"Unknown reranker type: {config.model_type}")
+
+
+class RerankingPipeline:
+    """Two-stage retrieval pipeline with reranking."""
+
+    def __init__(
+        self,
+        retriever: Retriever,
+        reranker_config: RerankerConfig,
+        config: RetrievalConfig = None
+    ):
+        self.retriever = retriever
+        self.config = config or RetrievalConfig()
+        self.reranker = RerankerFactory.create(reranker_config)
+        self._cache: Dict[str, Any] = {}
+
+    def retrieve(
+        self,
+        query: str,
+        filter: Optional[Dict] = None
+    ) -> List[Dict[str, Any]]:
+        try:
+            if self.config.cache_enabled:
+                cache_key = f"{query}:{filter}"
+                if cache_key in self._cache:
+                    return self._cache[cache_key]
+
+            initial_results = self.retriever.retrieve(
+                query=query,
+                top_k=self.config.initial_top_k
+            )
+
+            if not initial_results:
+                return []
+
+            if self.config.enable_reranking:
+                documents = [r.get("content", r.get("text", "")) for r in initial_results]
+
+                reranked = self.reranker.rerank(
+                    query=query,
+                    documents=documents,
+                    top_k=self.config.rerank_top_k
+                )
+
+                results = []
+                for r in reranked:
+                    original = initial_results[r["original_index"]].copy()
+                    original["rerank_score"] = r["score"]
+                    results.append(original)
+            else:
+                results = initial_results[:self.config.rerank_top_k]
+
+            if self.config.cache_enabled:
+                self._cache[cache_key] = results
+
+            return results
+
+        except Exception as e:
+            logger.error(f"Reranking failed: {e}")
+            if self.config.fallback_on_error:
+                return initial_results[:self.config.rerank_top_k]
+            raise]]></code>
+      </example>
+
+      <p>YAML Configuration Template:</p>
+      <example type="good" title="reranking-config.yaml">
+        <code lang="yaml"><![CDATA[# reranking-config.yaml
+# Production configuration for reranking pipeline
+
+reranker:
+  # Type: cross-encoder, cohere, jina, llm
+  type: cross-encoder
+
+  # Model configuration
+  model:
+    name: BAAI/bge-reranker-v2-m3
+    device: cuda  # cuda, cpu, mps
+    max_length: 512
+    batch_size: 32
+
+  # API configuration (for cohere, jina)
+  api:
+    key: ${RERANKER_API_KEY}  # Environment variable
+    timeout: 30
+    max_retries: 3
+
+retrieval:
+  initial_top_k: 50
+  rerank_top_k: 5
+  enabled: true
+  fallback_on_error: true
+
+performance:
+  cache:
+    enabled: true
+    ttl_seconds: 3600
+    max_size: 10000
+
+  batch:
+    max_batch_size: 100
+    batch_timeout_ms: 50
+
+  max_concurrent_requests: 10
+
+monitoring:
+  metrics:
+    enabled: true
+    prefix: reranker
+
+  logging:
+    level: INFO
+    format: json
+
+  alerts:
+    latency_p99_ms: 500
+    error_rate_percent: 1.0]]></code>
+      </example>
+
+      <p>FastAPI Service Template:</p>
+      <example type="good" title="FastAPI reranking service with health check">
+        <code lang="python"><![CDATA["""
+Template: FastAPI service for reranking.
+"""
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
+import logging
+from contextlib import asynccontextmanager
+import time
+
+logger = logging.getLogger(__name__)
+
+
+class Document(BaseModel):
+    text: str
+    id: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class RerankRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=10000)
+    documents: List[Document] = Field(..., min_items=1, max_items=1000)
+    top_k: int = Field(default=5, ge=1, le=100)
+    return_documents: bool = True
+
+
+class RerankResult(BaseModel):
+    index: int
+    score: float
+    document: Optional[Document] = None
+
+
+class RerankResponse(BaseModel):
+    results: List[RerankResult]
+    model: str
+    latency_ms: float
+
+
+class HealthResponse(BaseModel):
+    status: str
+    model_loaded: bool
+    version: str
+
+
+class RerankingService:
+    def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-12-v2"):
+        self.model_name = model_name
+        self.reranker = None
+        self._load_model()
+
+    def _load_model(self):
+        from sentence_transformers import CrossEncoder
+        logger.info(f"Loading model: {self.model_name}")
+        self.reranker = CrossEncoder(self.model_name)
+        logger.info("Model loaded successfully")
+
+    def rerank(
+        self,
+        query: str,
+        documents: List[str],
+        top_k: int = 5
+    ) -> List[Dict[str, Any]]:
+        import numpy as np
+        pairs = [[query, doc] for doc in documents]
+        scores = self.reranker.predict(pairs)
+        sorted_indices = np.argsort(scores)[::-1][:top_k]
+        return [
+            {"index": int(idx), "score": float(scores[idx])}
+            for idx in sorted_indices
+        ]
+
+    @property
+    def is_ready(self) -> bool:
+        return self.reranker is not None
+
+
+service: Optional[RerankingService] = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global service
+    service = RerankingService()
+    yield
+    service = None
+
+
+app = FastAPI(
+    title="Reranking Service",
+    description="Cross-encoder reranking API",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+
+@app.get("/health", response_model=HealthResponse)
+async def health_check():
+    return HealthResponse(
+        status="healthy" if service and service.is_ready else "unhealthy",
+        model_loaded=service.is_ready if service else False,
+        version="1.0.0"
+    )
+
+
+@app.post("/rerank", response_model=RerankResponse)
+async def rerank(request: RerankRequest):
+    if not service or not service.is_ready:
+        raise HTTPException(status_code=503, detail="Service not ready")
+
+    start_time = time.time()
+
+    try:
+        documents = [doc.text for doc in request.documents]
+        results = service.rerank(
+            query=request.query,
+            documents=documents,
+            top_k=request.top_k
+        )
+
+        response_results = []
+        for r in results:
+            result = RerankResult(
+                index=r["index"],
+                score=r["score"],
+                document=request.documents[r["index"]] if request.return_documents else None
+            )
+            response_results.append(result)
+
+        latency_ms = (time.time() - start_time) * 1000
+
+        return RerankResponse(
+            results=response_results,
+            model=service.model_name,
+            latency_ms=latency_ms
+        )
+
+    except Exception as e:
+        logger.error(f"Reranking failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))]]></code>
+      </example>
+
+      <p>Docker Template:</p>
+      <example type="good" title="Dockerfile and docker-compose for reranking service">
+        <code lang="dockerfile"><![CDATA[# Dockerfile for reranking service
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY . .
+
+# Download model at build time (optional)
+RUN python -c "from sentence_transformers import CrossEncoder; CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2')"
+
+# Run service
+EXPOSE 8000
+CMD ["uvicorn", "reranking_service:app", "--host", "0.0.0.0", "--port", "8000"]]]></code>
+        <code lang="yaml"><![CDATA[# docker-compose.yaml
+version: '3.8'
+
+services:
+  reranker:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L-12-v2
+      - RERANKER_DEVICE=cpu
+    volumes:
+      - model-cache:/root/.cache
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+volumes:
+  model-cache:]]></code>
+      </example>
+
+      <p>Prometheus Metrics Template:</p>
+      <example type="good" title="Prometheus instrumented reranker">
+        <code lang="python"><![CDATA["""
+Template: Prometheus metrics for reranking service.
+"""
+from prometheus_client import Counter, Histogram, Gauge, Info
+import time
+
+
+RERANK_REQUESTS_TOTAL = Counter(
+    "reranker_requests_total",
+    "Total reranking requests",
+    ["model", "status"]
+)
+
+RERANK_LATENCY = Histogram(
+    "reranker_latency_seconds",
+    "Reranking latency in seconds",
+    ["model"],
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+)
+
+RERANK_DOCUMENT_COUNT = Histogram(
+    "reranker_document_count",
+    "Number of documents per rerank request",
+    ["model"],
+    buckets=[1, 5, 10, 25, 50, 100, 250, 500, 1000]
+)
+
+RERANK_MODEL_LOADED = Gauge(
+    "reranker_model_loaded",
+    "Whether the model is loaded",
+    ["model"]
+)
+
+
+class InstrumentedReranker:
+    """Reranker with Prometheus metrics instrumentation."""
+
+    def __init__(self, reranker, model_name: str):
+        self.reranker = reranker
+        self.model_name = model_name
+        RERANK_MODEL_LOADED.labels(model=model_name).set(1)
+
+    def rerank(self, query: str, documents: list, top_k: int = 5) -> list:
+        doc_count = len(documents)
+        RERANK_DOCUMENT_COUNT.labels(model=self.model_name).observe(doc_count)
+
+        start_time = time.time()
+        try:
+            results = self.reranker.rerank(query, documents, top_k)
+            RERANK_REQUESTS_TOTAL.labels(
+                model=self.model_name, status="success"
+            ).inc()
+            return results
+        except Exception as e:
+            RERANK_REQUESTS_TOTAL.labels(
+                model=self.model_name, status="error"
+            ).inc()
+            raise
+        finally:
+            latency = time.time() - start_time
+            RERANK_LATENCY.labels(model=self.model_name).observe(latency)]]></code>
+      </example>
+
+      <p>Quality Evaluation Template:</p>
+      <example type="good" title="RerankingEvaluator with NDCG, MRR, MAP">
+        <code lang="python"><![CDATA["""
+Template: Quality evaluation for reranking.
+"""
+from typing import List, Dict, Tuple
+import numpy as np
+from dataclasses import dataclass
+
+
+@dataclass
+class EvaluationResult:
+    ndcg_at_k: Dict[int, float]
+    mrr: float
+    precision_at_k: Dict[int, float]
+    recall_at_k: Dict[int, float]
+    map_score: float
+
+
+class RerankingEvaluator:
+    """Evaluate reranking quality."""
+
+    def __init__(self, reranker):
+        self.reranker = reranker
+
+    def evaluate(
+        self,
+        queries: List[str],
+        documents_per_query: List[List[str]],
+        relevance_labels: List[List[int]],
+        k_values: List[int] = [1, 3, 5, 10]
+    ) -> EvaluationResult:
+        ndcg_scores = {k: [] for k in k_values}
+        mrr_scores = []
+        precision_scores = {k: [] for k in k_values}
+        recall_scores = {k: [] for k in k_values}
+        ap_scores = []
+
+        for query, docs, labels in zip(queries, documents_per_query, relevance_labels):
+            results = self.reranker.rerank(query, docs, top_k=max(k_values))
+            reranked_indices = [r["original_index"] for r in results]
+
+            for k in k_values:
+                ndcg_scores[k].append(self._ndcg_at_k(labels, reranked_indices, k))
+                precision_scores[k].append(self._precision_at_k(labels, reranked_indices, k))
+                recall_scores[k].append(self._recall_at_k(labels, reranked_indices, k))
+
+            mrr_scores.append(self._mrr(labels, reranked_indices))
+            ap_scores.append(self._average_precision(labels, reranked_indices))
+
+        return EvaluationResult(
+            ndcg_at_k={k: np.mean(scores) for k, scores in ndcg_scores.items()},
+            mrr=np.mean(mrr_scores),
+            precision_at_k={k: np.mean(scores) for k, scores in precision_scores.items()},
+            recall_at_k={k: np.mean(scores) for k, scores in recall_scores.items()},
+            map_score=np.mean(ap_scores)
+        )
+
+    def _ndcg_at_k(self, relevance: List[int], ranking: List[int], k: int) -> float:
+        dcg = 0.0
+        for i, idx in enumerate(ranking[:k]):
+            rel = relevance[idx]
+            dcg += (2 ** rel - 1) / np.log2(i + 2)
+        sorted_rel = sorted(relevance, reverse=True)
+        idcg = sum(
+            (2 ** rel - 1) / np.log2(i + 2)
+            for i, rel in enumerate(sorted_rel[:k])
+        )
+        return dcg / idcg if idcg > 0 else 0.0
+
+    def _mrr(self, relevance: List[int], ranking: List[int]) -> float:
+        for i, idx in enumerate(ranking):
+            if relevance[idx] > 0:
+                return 1.0 / (i + 1)
+        return 0.0
+
+    def _precision_at_k(self, relevance: List[int], ranking: List[int], k: int) -> float:
+        relevant_in_top_k = sum(1 for idx in ranking[:k] if relevance[idx] > 0)
+        return relevant_in_top_k / k
+
+    def _recall_at_k(self, relevance: List[int], ranking: List[int], k: int) -> float:
+        total_relevant = sum(1 for r in relevance if r > 0)
+        if total_relevant == 0:
+            return 0.0
+        relevant_in_top_k = sum(1 for idx in ranking[:k] if relevance[idx] > 0)
+        return relevant_in_top_k / total_relevant
+
+    def _average_precision(self, relevance: List[int], ranking: List[int]) -> float:
+        relevant_count = 0
+        precision_sum = 0.0
+        for i, idx in enumerate(ranking):
+            if relevance[idx] > 0:
+                relevant_count += 1
+                precision_sum += relevant_count / (i + 1)
+        total_relevant = sum(1 for r in relevance if r > 0)
+        return precision_sum / total_relevant if total_relevant > 0 else 0.0]]></code>
+      </example>
+    </section>
+
+    <section name="templates-hybrid-async">
+      <p>Hybrid Search Pipeline Template — combines BM25 and dense retrieval with RRF fusion before cross-encoder reranking. Use when keyword and semantic signals complement each other.</p>
+      <example type="good" title="HybridRerankingPipeline with RRF fusion">
+        <code lang="python"><![CDATA["""
+Template: Hybrid search (BM25 + Dense) with RRF fusion and reranking.
+"""
+from typing import List, Dict, Any, Optional, Tuple
+from dataclasses import dataclass
+import numpy as np
+
+
+@dataclass
+class HybridConfig:
+    """Hybrid search configuration."""
+    bm25_weight: float = 0.5
+    dense_weight: float = 0.5
+    rrf_k: int = 60
+    initial_top_k: int = 100
+    fusion_top_k: int = 50
+    rerank_top_k: int = 5
+
+
+def reciprocal_rank_fusion(
+    rankings: List[List[Tuple[str, float]]],
+    k: int = 60
+) -> List[Tuple[str, float]]:
+    """
+    RRF fusion for multiple rankings.
+
+    Args:
+        rankings: List of (doc_id, score) rankings
+        k: RRF constant
+
+    Returns:
+        Fused ranking
+    """
+    scores: Dict[str, float] = {}
+
+    for ranking in rankings:
+        for rank, (doc_id, _) in enumerate(ranking):
+            if doc_id not in scores:
+                scores[doc_id] = 0
+            scores[doc_id] += 1 / (k + rank + 1)
+
+    return sorted(scores.items(), key=lambda x: x[1], reverse=True)
+
+
+class HybridRerankingPipeline:
+    """
+    Hybrid search pipeline with:
+    1. BM25 (sparse) retrieval
+    2. Dense (vector) retrieval
+    3. RRF fusion
+    4. Cross-encoder reranking
+    """
+
+    def __init__(
+        self,
+        bm25_retriever,
+        dense_retriever,
+        reranker,
+        document_store: Dict[str, str],  # doc_id -> content mapping
+        config: HybridConfig = None
+    ):
+        self.bm25 = bm25_retriever
+        self.dense = dense_retriever
+        self.reranker = reranker
+        self.document_store = document_store
+        self.config = config or HybridConfig()
+
+    def retrieve(self, query: str) -> List[Dict[str, Any]]:
+        """Execute hybrid retrieval with reranking."""
+
+        # Stage 1a: BM25 retrieval
+        bm25_results = self.bm25.search(query, top_k=self.config.initial_top_k)
+        bm25_ranking = [(r["id"], r["score"]) for r in bm25_results]
+
+        # Stage 1b: Dense retrieval
+        dense_results = self.dense.search(query, top_k=self.config.initial_top_k)
+        dense_ranking = [(r["id"], r["score"]) for r in dense_results]
+
+        # Stage 2: RRF fusion
+        fused = reciprocal_rank_fusion(
+            [bm25_ranking, dense_ranking],
+            k=self.config.rrf_k
+        )
+
+        # Get documents for reranking
+        fusion_ids = [doc_id for doc_id, _ in fused[:self.config.fusion_top_k]]
+        fusion_docs = [self.document_store[doc_id] for doc_id in fusion_ids]
+
+        # Stage 3: Reranking
+        reranked = self.reranker.rerank(
+            query=query,
+            documents=fusion_docs,
+            top_k=self.config.rerank_top_k
+        )
+
+        # Build final results
+        results = []
+        for r in reranked:
+            doc_id = fusion_ids[r["original_index"]]
+            results.append({
+                "id": doc_id,
+                "content": self.document_store[doc_id],
+                "rerank_score": r["score"],
+                "rrf_score": dict(fused)[doc_id]
+            })
+
+        return results]]></code>
+      </example>
+      <p>Async Reranking Pipeline Template — for high-throughput applications using async retrieval and API-based reranking with retry logic and concurrency control:</p>
+      <example type="good" title="AsyncRerankingPipeline with retry and semaphore">
+        <code lang="python"><![CDATA["""
+Template: Async reranking pipeline for high-throughput applications.
+"""
+import asyncio
+from typing import List, Dict, Any, Optional
+from dataclasses import dataclass
+import httpx
+
+
+@dataclass
+class AsyncConfig:
+    api_url: str
+    api_key: str
+    model: str = "rerank-english-v3.0"
+    max_concurrent: int = 10
+    timeout: int = 30
+    retry_attempts: int = 3
+
+
+class AsyncRerankingPipeline:
+    """
+    Async reranking pipeline for high-throughput scenarios.
+    """
+
+    def __init__(
+        self,
+        retriever,  # Async retriever
+        config: AsyncConfig
+    ):
+        self.retriever = retriever
+        self.config = config
+        self.semaphore = asyncio.Semaphore(config.max_concurrent)
+
+    async def _rerank_with_retry(
+        self,
+        client: httpx.AsyncClient,
+        query: str,
+        documents: List[str],
+        top_k: int
+    ) -> List[Dict]:
+        """Rerank with retry logic."""
+        for attempt in range(self.config.retry_attempts):
+            try:
+                async with self.semaphore:
+                    response = await client.post(
+                        self.config.api_url,
+                        json={
+                            "query": query,
+                            "documents": documents,
+                            "top_n": top_k,
+                            "model": self.config.model
+                        },
+                        headers={"Authorization": f"Bearer {self.config.api_key}"},
+                        timeout=self.config.timeout
+                    )
+                    response.raise_for_status()
+                    return response.json()["results"]
+            except Exception as e:
+                if attempt == self.config.retry_attempts - 1:
+                    raise
+                await asyncio.sleep(2 ** attempt)
+
+    async def retrieve(
+        self,
+        query: str,
+        initial_top_k: int = 50,
+        rerank_top_k: int = 5
+    ) -> List[Dict[str, Any]]:
+        """Async retrieval with reranking."""
+        # Stage 1: Async retrieval
+        initial_results = await self.retriever.aretrieve(query, top_k=initial_top_k)
+
+        if not initial_results:
+            return []
+
+        documents = [r["content"] for r in initial_results]
+
+        # Stage 2: Async reranking
+        async with httpx.AsyncClient() as client:
+            reranked = await self._rerank_with_retry(
+                client, query, documents, rerank_top_k
+            )
+
+        # Merge results
+        results = []
+        for r in reranked:
+            original = initial_results[r["index"]].copy()
+            original["rerank_score"] = r["relevance_score"]
+            results.append(original)
+
+        return results
+
+    async def retrieve_batch(
+        self,
+        queries: List[str],
+        initial_top_k: int = 50,
+        rerank_top_k: int = 5
+    ) -> List[List[Dict[str, Any]]]:
+        """Batch async retrieval."""
+        tasks = [
+            self.retrieve(q, initial_top_k, rerank_top_k)
+            for q in queries
+        ]
+        return await asyncio.gather(*tasks, return_exceptions=True)]]></code>
+      </example>
+    </section>
+
+    <section name="templates-config">
+      <p>Configuration Templates — YAML file, Python dataclass loader with environment variable expansion, and Pydantic environment-based config with validation.</p>
+      <example type="good" title="YAML configuration file for reranking pipeline">
+        <code lang="yaml"><![CDATA[# reranking-config.yaml
+# Production configuration for reranking pipeline
+
+reranker:
+  # Type: cross-encoder, cohere, jina, llm
+  type: cross-encoder
+
+  # Model configuration
+  model:
+    name: BAAI/bge-reranker-v2-m3
+    device: cuda  # cuda, cpu, mps
+    max_length: 512
+    batch_size: 32
+
+  # API configuration (for cohere, jina)
+  api:
+    key: ${RERANKER_API_KEY}  # Environment variable
+    timeout: 30
+    max_retries: 3
+
+retrieval:
+  # First stage retrieval
+  initial_top_k: 50
+
+  # After reranking
+  rerank_top_k: 5
+
+  # Enable/disable reranking
+  enabled: true
+
+  # Fallback to initial results on error
+  fallback_on_error: true
+
+performance:
+  # Caching
+  cache:
+    enabled: true
+    ttl_seconds: 3600
+    max_size: 10000
+
+  # Batching
+  batch:
+    max_batch_size: 100
+    batch_timeout_ms: 50
+
+  # Concurrency
+  max_concurrent_requests: 10
+
+monitoring:
+  # Metrics
+  metrics:
+    enabled: true
+    prefix: reranker
+
+  # Logging
+  logging:
+    level: INFO
+    format: json
+
+  # Alerting thresholds
+  alerts:
+    latency_p99_ms: 500
+    error_rate_percent: 1.0]]></code>
+      </example>
+      <example type="good" title="Python configuration loader with YAML and env-var expansion">
+        <code lang="python"><![CDATA["""
+Template: Configuration loader for reranking pipeline.
+"""
+import os
+import yaml
+from dataclasses import dataclass, field
+from typing import Optional, Dict, Any
+from pathlib import Path
+
+
+@dataclass
+class ModelConfig:
+    name: str = "cross-encoder/ms-marco-MiniLM-L-12-v2"
+    device: str = "cpu"
+    max_length: int = 512
+    batch_size: int = 32
+
+
+@dataclass
+class APIConfig:
+    key: Optional[str] = None
+    timeout: int = 30
+    max_retries: int = 3
+
+
+@dataclass
+class RerankerTypeConfig:
+    type: str = "cross-encoder"
+    model: ModelConfig = field(default_factory=ModelConfig)
+    api: APIConfig = field(default_factory=APIConfig)
+
+
+@dataclass
+class RetrievalTypeConfig:
+    initial_top_k: int = 50
+    rerank_top_k: int = 5
+    enabled: bool = True
+    fallback_on_error: bool = True
+
+
+@dataclass
+class CacheConfig:
+    enabled: bool = True
+    ttl_seconds: int = 3600
+    max_size: int = 10000
+
+
+@dataclass
+class BatchConfig:
+    max_batch_size: int = 100
+    batch_timeout_ms: int = 50
+
+
+@dataclass
+class PerformanceConfig:
+    cache: CacheConfig = field(default_factory=CacheConfig)
+    batch: BatchConfig = field(default_factory=BatchConfig)
+    max_concurrent_requests: int = 10
+
+
+@dataclass
+class MetricsConfig:
+    enabled: bool = True
+    prefix: str = "reranker"
+
+
+@dataclass
+class LoggingConfig:
+    level: str = "INFO"
+    format: str = "json"
+
+
+@dataclass
+class AlertsConfig:
+    latency_p99_ms: int = 500
+    error_rate_percent: float = 1.0
+
+
+@dataclass
+class MonitoringConfig:
+    metrics: MetricsConfig = field(default_factory=MetricsConfig)
+    logging: LoggingConfig = field(default_factory=LoggingConfig)
+    alerts: AlertsConfig = field(default_factory=AlertsConfig)
+
+
+@dataclass
+class RerankingConfig:
+    """Complete reranking configuration."""
+    reranker: RerankerTypeConfig = field(default_factory=RerankerTypeConfig)
+    retrieval: RetrievalTypeConfig = field(default_factory=RetrievalTypeConfig)
+    performance: PerformanceConfig = field(default_factory=PerformanceConfig)
+    monitoring: MonitoringConfig = field(default_factory=MonitoringConfig)
+
+    @classmethod
+    def from_yaml(cls, path: str) -> "RerankingConfig":
+        """Load configuration from YAML file."""
+        with open(path) as f:
+            data = yaml.safe_load(f)
+
+        # Expand environment variables
+        data = cls._expand_env_vars(data)
+
+        return cls._from_dict(data)
+
+    @classmethod
+    def _expand_env_vars(cls, data: Any) -> Any:
+        """Recursively expand environment variables."""
+        if isinstance(data, str):
+            if data.startswith("${") and data.endswith("}"):
+                env_var = data[2:-1]
+                return os.environ.get(env_var, "")
+            return data
+        elif isinstance(data, dict):
+            return {k: cls._expand_env_vars(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [cls._expand_env_vars(item) for item in data]
+        return data
+
+    @classmethod
+    def _from_dict(cls, data: Dict) -> "RerankingConfig":
+        """Create config from dictionary."""
+        reranker_data = data.get("reranker", {})
+        retrieval_data = data.get("retrieval", {})
+        performance_data = data.get("performance", {})
+        monitoring_data = data.get("monitoring", {})
+
+        return cls(
+            reranker=RerankerTypeConfig(
+                type=reranker_data.get("type", "cross-encoder"),
+                model=ModelConfig(**reranker_data.get("model", {})),
+                api=APIConfig(**reranker_data.get("api", {}))
+            ),
+            retrieval=RetrievalTypeConfig(**retrieval_data),
+            performance=PerformanceConfig(
+                cache=CacheConfig(**performance_data.get("cache", {})),
+                batch=BatchConfig(**performance_data.get("batch", {})),
+                max_concurrent_requests=performance_data.get("max_concurrent_requests", 10)
+            ),
+            monitoring=MonitoringConfig(
+                metrics=MetricsConfig(**monitoring_data.get("metrics", {})),
+                logging=LoggingConfig(**monitoring_data.get("logging", {})),
+                alerts=AlertsConfig(**monitoring_data.get("alerts", {}))
+            )
+        )
+
+
+# Usage
+if __name__ == "__main__":
+    # Load from file
+    config = RerankingConfig.from_yaml("reranking-config.yaml")
+
+    # Or create programmatically
+    config = RerankingConfig(
+        reranker=RerankerTypeConfig(
+            type="cohere",
+            api=APIConfig(key=os.getenv("COHERE_API_KEY"))
+        ),
+        retrieval=RetrievalTypeConfig(initial_top_k=100, rerank_top_k=10)
+    )
+
+    print(f"Reranker type: {config.reranker.type}")
+    print(f"Initial top-k: {config.retrieval.initial_top_k}")]]></code>
+      </example>
+      <example type="good" title="Environment-based configuration with Pydantic validation">
+        <code lang="python"><![CDATA["""
+Template: Environment-based configuration with validation.
+"""
+from pydantic import BaseModel, Field, validator
+from typing import Optional, Literal
+import os
+
+
+class RerankerEnvConfig(BaseModel):
+    """Reranker configuration from environment variables."""
+
+    # Reranker type
+    reranker_type: Literal["cross-encoder", "cohere", "jina", "llm"] = Field(
+        default="cross-encoder",
+        env="RERANKER_TYPE"
+    )
+
+    # Model settings
+    model_name: str = Field(
+        default="cross-encoder/ms-marco-MiniLM-L-12-v2",
+        env="RERANKER_MODEL"
+    )
+    device: str = Field(default="cpu", env="RERANKER_DEVICE")
+    max_length: int = Field(default=512, env="RERANKER_MAX_LENGTH")
+    batch_size: int = Field(default=32, env="RERANKER_BATCH_SIZE")
+
+    # API settings
+    api_key: Optional[str] = Field(default=None, env="RERANKER_API_KEY")
+    api_timeout: int = Field(default=30, env="RERANKER_API_TIMEOUT")
+
+    # Retrieval settings
+    initial_top_k: int = Field(default=50, env="RERANKER_INITIAL_TOP_K")
+    rerank_top_k: int = Field(default=5, env="RERANKER_RERANK_TOP_K")
+
+    # Performance
+    cache_enabled: bool = Field(default=True, env="RERANKER_CACHE_ENABLED")
+    cache_ttl: int = Field(default=3600, env="RERANKER_CACHE_TTL")
+    max_concurrent: int = Field(default=10, env="RERANKER_MAX_CONCURRENT")
+
+    class Config:
+        env_prefix = ""  # Don't add prefix, we define each env explicitly
+
+    @validator("api_key", always=True)
+    def validate_api_key(cls, v, values):
+        """Ensure API key is provided for API-based rerankers."""
+        reranker_type = values.get("reranker_type")
+        if reranker_type in ["cohere", "jina"] and not v:
+            raise ValueError(f"API key required for {reranker_type} reranker")
+        return v
+
+    @validator("device")
+    def validate_device(cls, v):
+        """Validate device setting."""
+        import torch
+        valid_devices = ["cpu"]
+        if torch.cuda.is_available():
+            valid_devices.append("cuda")
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            valid_devices.append("mps")
+
+        if v not in valid_devices:
+            raise ValueError(f"Device {v} not available. Valid: {valid_devices}")
+        return v
+
+    @classmethod
+    def from_env(cls) -> "RerankerEnvConfig":
+        """Load configuration from environment variables."""
+        return cls(
+            reranker_type=os.getenv("RERANKER_TYPE", "cross-encoder"),
+            model_name=os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-12-v2"),
+            device=os.getenv("RERANKER_DEVICE", "cpu"),
+            max_length=int(os.getenv("RERANKER_MAX_LENGTH", "512")),
+            batch_size=int(os.getenv("RERANKER_BATCH_SIZE", "32")),
+            api_key=os.getenv("RERANKER_API_KEY"),
+            api_timeout=int(os.getenv("RERANKER_API_TIMEOUT", "30")),
+            initial_top_k=int(os.getenv("RERANKER_INITIAL_TOP_K", "50")),
+            rerank_top_k=int(os.getenv("RERANKER_RERANK_TOP_K", "5")),
+            cache_enabled=os.getenv("RERANKER_CACHE_ENABLED", "true").lower() == "true",
+            cache_ttl=int(os.getenv("RERANKER_CACHE_TTL", "3600")),
+            max_concurrent=int(os.getenv("RERANKER_MAX_CONCURRENT", "10"))
+        )
+
+# Example .env file:
+# RERANKER_TYPE=cohere
+# RERANKER_MODEL=rerank-english-v3.0
+# RERANKER_API_KEY=your-api-key-here
+# RERANKER_INITIAL_TOP_K=100
+# RERANKER_RERANK_TOP_K=10
+# RERANKER_CACHE_ENABLED=true]]></code>
+      </example>
+    </section>
+
+    <section name="templates-service">
+      <p>Service Templates — FastAPI reranking microservice with health checks, request/response models, and Docker deployment configuration.</p>
+      <example type="good" title="FastAPI reranking service with health check and metrics">
+        <code lang="python"><![CDATA["""
+Template: FastAPI service for reranking.
+"""
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
+import logging
+from contextlib import asynccontextmanager
+import time
+
+logger = logging.getLogger(__name__)
+
+
+# Models
+
+class Document(BaseModel):
+    """Input document."""
+    text: str
+    id: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class RerankRequest(BaseModel):
+    """Rerank request."""
+    query: str = Field(..., min_length=1, max_length=10000)
+    documents: List[Document] = Field(..., min_items=1, max_items=1000)
+    top_k: int = Field(default=5, ge=1, le=100)
+    return_documents: bool = True
+
+
+class RerankResult(BaseModel):
+    """Single rerank result."""
+    index: int
+    score: float
+    document: Optional[Document] = None
+
+
+class RerankResponse(BaseModel):
+    """Rerank response."""
+    results: List[RerankResult]
+    model: str
+    latency_ms: float
+
+
+class HealthResponse(BaseModel):
+    """Health check response."""
+    status: str
+    model_loaded: bool
+    version: str
+
+
+# Service
+
+class RerankingService:
+    """Reranking service with health checks and metrics."""
+
+    def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-12-v2"):
+        self.model_name = model_name
+        self.reranker = None
+        self._load_model()
+
+    def _load_model(self):
+        """Load the reranking model."""
+        from sentence_transformers import CrossEncoder
+        logger.info(f"Loading model: {self.model_name}")
+        self.reranker = CrossEncoder(self.model_name)
+        logger.info("Model loaded successfully")
+
+    def rerank(
+        self,
+        query: str,
+        documents: List[str],
+        top_k: int = 5
+    ) -> List[Dict[str, Any]]:
+        """Rerank documents."""
+        import numpy as np
+
+        pairs = [[query, doc] for doc in documents]
+        scores = self.reranker.predict(pairs)
+        sorted_indices = np.argsort(scores)[::-1][:top_k]
+
+        return [
+            {
+                "index": int(idx),
+                "score": float(scores[idx])
+            }
+            for idx in sorted_indices
+        ]
+
+    @property
+    def is_ready(self) -> bool:
+        """Check if service is ready."""
+        return self.reranker is not None
+
+
+# FastAPI App
+
+service: Optional[RerankingService] = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage service lifecycle."""
+    global service
+    service = RerankingService()
+    yield
+    service = None
+
+
+app = FastAPI(
+    title="Reranking Service",
+    description="Cross-encoder reranking API",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+
+@app.get("/health", response_model=HealthResponse)
+async def health_check():
+    """Health check endpoint."""
+    return HealthResponse(
+        status="healthy" if service and service.is_ready else "unhealthy",
+        model_loaded=service.is_ready if service else False,
+        version="1.0.0"
+    )
+
+
+@app.post("/rerank", response_model=RerankResponse)
+async def rerank(request: RerankRequest):
+    """Rerank documents by relevance to query."""
+    if not service or not service.is_ready:
+        raise HTTPException(status_code=503, detail="Service not ready")
+
+    start_time = time.time()
+
+    try:
+        documents = [doc.text for doc in request.documents]
+
+        results = service.rerank(
+            query=request.query,
+            documents=documents,
+            top_k=request.top_k
+        )
+
+        response_results = []
+        for r in results:
+            result = RerankResult(
+                index=r["index"],
+                score=r["score"],
+                document=request.documents[r["index"]] if request.return_documents else None
+            )
+            response_results.append(result)
+
+        latency_ms = (time.time() - start_time) * 1000
+
+        return RerankResponse(
+            results=response_results,
+            model=service.model_name,
+            latency_ms=latency_ms
+        )
+
+    except Exception as e:
+        logger.error(f"Reranking failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Run with: uvicorn reranking_service:app --host 0.0.0.0 --port 8000]]></code>
+      </example>
+      <example type="good" title="Dockerfile and docker-compose for reranking service">
+        <code lang="dockerfile"><![CDATA[# Dockerfile for reranking service
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY . .
+
+# Download model at build time (optional)
+RUN python -c "from sentence_transformers import CrossEncoder; CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2')"
+
+# Run service
+EXPOSE 8000
+CMD ["uvicorn", "reranking_service:app", "--host", "0.0.0.0", "--port", "8000"]]]></code>
+      </example>
+      <example type="good" title="docker-compose with health check and resource limits">
+        <code lang="yaml"><![CDATA[# docker-compose.yaml
+version: '3.8'
+
+services:
+  reranker:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L-12-v2
+      - RERANKER_DEVICE=cpu
+    volumes:
+      - model-cache:/root/.cache
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+volumes:
+  model-cache:]]></code>
+      </example>
+    </section>
+
+    <section name="templates-testing">
+      <p>Testing Templates — unit tests with mocks, integration tests with real models, and benchmark tests measuring latency and throughput.</p>
+      <example type="good" title="Unit tests for reranker with mock model">
+        <code lang="python"><![CDATA["""
+Template: Unit tests for reranking components.
+"""
+import pytest
+from unittest.mock import Mock, patch
+import numpy as np
+
+
+class TestRerankerUnit:
+    """Unit tests for reranker class."""
+
+    @pytest.fixture
+    def mock_cross_encoder(self):
+        """Mock CrossEncoder model."""
+        mock = Mock()
+        mock.predict.return_value = np.array([0.9, 0.3, 0.7, 0.1, 0.5])
+        return mock
+
+    @pytest.fixture
+    def reranker(self, mock_cross_encoder):
+        """Create reranker with mocked model."""
+        with patch("sentence_transformers.CrossEncoder", return_value=mock_cross_encoder):
+            from your_module import BasicReranker
+            return BasicReranker(model_name="test-model")
+
+    def test_rerank_returns_top_k(self, reranker):
+        """Test that rerank returns exactly top_k results."""
+        query = "test query"
+        documents = ["doc1", "doc2", "doc3", "doc4", "doc5"]
+
+        results = reranker.rerank(query, documents, top_k=3)
+
+        assert len(results) == 3
+
+    def test_rerank_sorted_by_score(self, reranker):
+        """Test that results are sorted by score descending."""
+        query = "test query"
+        documents = ["doc1", "doc2", "doc3", "doc4", "doc5"]
+
+        results = reranker.rerank(query, documents, top_k=5)
+
+        scores = [r["score"] for r in results]
+        assert scores == sorted(scores, reverse=True)
+
+    def test_rerank_empty_documents(self, reranker):
+        """Test reranking with empty document list."""
+        results = reranker.rerank("query", [], top_k=5)
+        assert results == []
+
+    def test_rerank_preserves_original_index(self, reranker):
+        """Test that original indices are correctly preserved."""
+        query = "test query"
+        documents = ["doc1", "doc2", "doc3", "doc4", "doc5"]
+
+        results = reranker.rerank(query, documents, top_k=5)
+
+        # Highest score (0.9) is at index 0
+        assert results[0]["original_index"] == 0
+        # Second highest (0.7) is at index 2
+        assert results[1]["original_index"] == 2
+
+    def test_rerank_score_format(self, reranker):
+        """Test that scores are float type."""
+        query = "test query"
+        documents = ["doc1", "doc2"]
+
+        results = reranker.rerank(query, documents, top_k=2)
+
+        for r in results:
+            assert isinstance(r["score"], float)
+
+    def test_rerank_top_k_larger_than_docs(self, reranker):
+        """Test when top_k is larger than document count."""
+        query = "test query"
+        documents = ["doc1", "doc2"]
+
+        results = reranker.rerank(query, documents, top_k=10)
+
+        assert len(results) == 2
+
+
+class TestRerankerIntegration:
+    """Integration tests with real model (optional, slow)."""
+
+    @pytest.fixture
+    def real_reranker(self):
+        """Create real reranker (requires model download)."""
+        from your_module import BasicReranker
+        return BasicReranker(model_name="cross-encoder/ms-marco-MiniLM-L-6-v2")
+
+    @pytest.mark.slow
+    def test_real_model_relevance(self, real_reranker):
+        """Test that real model ranks relevant docs higher."""
+        query = "What is the capital of France?"
+        documents = [
+            "Python is a programming language.",
+            "Paris is the capital of France.",
+            "The weather is nice today."
+        ]
+
+        results = real_reranker.rerank(query, documents, top_k=3)
+
+        # Paris doc should be ranked first
+        assert "Paris" in results[0]["document"]]]></code>
+      </example>
+      <example type="good" title="Benchmark tests for latency and throughput measurement">
+        <code lang="python"><![CDATA["""
+Template: Benchmark tests for reranking performance.
+"""
+import pytest
+import time
+import statistics
+from typing import List, Dict
+import json
+
+
+class RerankingBenchmark:
+    """Benchmark reranking performance."""
+
+    def __init__(self, reranker):
+        self.reranker = reranker
+        self.results: List[Dict] = []
+
+    def run_latency_benchmark(
+        self,
+        query: str,
+        documents: List[str],
+        iterations: int = 100,
+        warmup: int = 10
+    ) -> Dict:
+        """Measure reranking latency."""
+        # Warmup
+        for _ in range(warmup):
+            self.reranker.rerank(query, documents, top_k=5)
+
+        # Benchmark
+        latencies = []
+        for _ in range(iterations):
+            start = time.perf_counter()
+            self.reranker.rerank(query, documents, top_k=5)
+            latencies.append((time.perf_counter() - start) * 1000)  # ms
+
+        result = {
+            "iterations": iterations,
+            "doc_count": len(documents),
+            "p50_ms": statistics.median(latencies),
+            "p90_ms": sorted(latencies)[int(iterations * 0.9)],
+            "p99_ms": sorted(latencies)[int(iterations * 0.99)],
+            "mean_ms": statistics.mean(latencies),
+            "std_ms": statistics.stdev(latencies)
+        }
+
+        self.results.append(result)
+        return result
+
+    def run_throughput_benchmark(
+        self,
+        query: str,
+        documents: List[str],
+        duration_seconds: int = 10
+    ) -> Dict:
+        """Measure reranking throughput."""
+        start = time.perf_counter()
+        count = 0
+
+        while time.perf_counter() - start < duration_seconds:
+            self.reranker.rerank(query, documents, top_k=5)
+            count += 1
+
+        elapsed = time.perf_counter() - start
+
+        result = {
+            "duration_seconds": elapsed,
+            "total_requests": count,
+            "requests_per_second": count / elapsed,
+            "doc_count": len(documents)
+        }
+
+        self.results.append(result)
+        return result
+
+    def save_results(self, path: str):
+        """Save benchmark results to file."""
+        with open(path, "w") as f:
+            json.dump(self.results, f, indent=2)
+
+
+class TestRerankingBenchmarks:
+    """Benchmark tests using pytest."""
+
+    @pytest.fixture
+    def reranker(self):
+        from your_module import BasicReranker
+        return BasicReranker(model_name="cross-encoder/ms-marco-MiniLM-L-6-v2")
+
+    @pytest.fixture
+    def sample_documents(self):
+        return [f"This is sample document number {i}" for i in range(50)]
+
+    @pytest.mark.benchmark
+    def test_latency_50_docs(self, reranker, sample_documents, benchmark):
+        """Benchmark latency for 50 documents."""
+        result = benchmark(
+            reranker.rerank,
+            "test query",
+            sample_documents,
+            5
+        )
+        assert len(result) == 5
+
+    @pytest.mark.benchmark
+    def test_latency_100_docs(self, reranker, benchmark):
+        """Benchmark latency for 100 documents."""
+        docs = [f"Document {i}" for i in range(100)]
+        result = benchmark(
+            reranker.rerank,
+            "test query",
+            docs,
+            5
+        )
+        assert len(result) == 5
+
+# Run with: pytest benchmark_tests.py -v --benchmark-only]]></code>
+      </example>
+    </section>
+
+    <section name="templates-monitoring">
+      <p>Monitoring Templates — Prometheus metrics instrumentation, Grafana dashboard JSON for visualizing request rate, latency percentiles, error rate, and score distribution, plus Prometheus alerting rules for high latency, high error rate, model down, and low throughput.</p>
+      <example type="good" title="Prometheus metrics instrumentation for reranking service">
+        <code lang="python"><![CDATA["""
+Template: Prometheus metrics for reranking service.
+"""
+from prometheus_client import Counter, Histogram, Gauge, Info
+import time
+
+
+# Counters
+RERANK_REQUESTS_TOTAL = Counter(
+    "reranker_requests_total",
+    "Total reranking requests",
+    ["model", "status"]
+)
+
+RERANK_DOCUMENTS_TOTAL = Counter(
+    "reranker_documents_total",
+    "Total documents reranked",
+    ["model"]
+)
+
+# Histograms
+RERANK_LATENCY = Histogram(
+    "reranker_latency_seconds",
+    "Reranking latency in seconds",
+    ["model"],
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+)
+
+RERANK_DOCUMENT_COUNT = Histogram(
+    "reranker_document_count",
+    "Number of documents per rerank request",
+    ["model"],
+    buckets=[1, 5, 10, 25, 50, 100, 250, 500, 1000]
+)
+
+RERANK_TOP_SCORE = Histogram(
+    "reranker_top_score",
+    "Top relevance score per request",
+    ["model"],
+    buckets=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+)
+
+# Gauges
+RERANK_MODEL_LOADED = Gauge(
+    "reranker_model_loaded",
+    "Whether the model is loaded",
+    ["model"]
+)
+
+RERANK_QUEUE_SIZE = Gauge(
+    "reranker_queue_size",
+    "Current request queue size"
+)
+
+# Info
+RERANK_MODEL_INFO = Info(
+    "reranker_model",
+    "Information about the loaded model"
+)
+
+
+class InstrumentedReranker:
+    """Reranker with Prometheus metrics instrumentation."""
+
+    def __init__(self, reranker, model_name: str):
+        self.reranker = reranker
+        self.model_name = model_name
+
+        # Set model info
+        RERANK_MODEL_INFO.info({
+            "name": model_name,
+            "type": type(reranker).__name__
+        })
+        RERANK_MODEL_LOADED.labels(model=model_name).set(1)
+
+    def rerank(self, query: str, documents: list, top_k: int = 5) -> list:
+        """Rerank with metrics collection."""
+        doc_count = len(documents)
+        RERANK_DOCUMENT_COUNT.labels(model=self.model_name).observe(doc_count)
+
+        start_time = time.time()
+        try:
+            results = self.reranker.rerank(query, documents, top_k)
+
+            RERANK_REQUESTS_TOTAL.labels(
+                model=self.model_name,
+                status="success"
+            ).inc()
+
+            RERANK_DOCUMENTS_TOTAL.labels(
+                model=self.model_name
+            ).inc(doc_count)
+
+            if results:
+                RERANK_TOP_SCORE.labels(
+                    model=self.model_name
+                ).observe(results[0].get("score", 0))
+
+            return results
+
+        except Exception as e:
+            RERANK_REQUESTS_TOTAL.labels(
+                model=self.model_name,
+                status="error"
+            ).inc()
+            raise
+
+        finally:
+            latency = time.time() - start_time
+            RERANK_LATENCY.labels(model=self.model_name).observe(latency)
+
+
+def setup_metrics_endpoint(app):
+    """Add /metrics endpoint to FastAPI app."""
+    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    from fastapi.responses import Response
+
+    @app.get("/metrics")
+    async def metrics():
+        return Response(
+            content=generate_latest(),
+            media_type=CONTENT_TYPE_LATEST
+        )]]></code>
+      </example>
+      <example type="good" title="Grafana dashboard JSON for reranking service">
+        <code lang="json"><![CDATA[{
+  "dashboard": {
+    "title": "Reranking Service Dashboard",
+    "panels": [
+      {
+        "title": "Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(reranker_requests_total[5m])",
+            "legendFormat": "{{model}} - {{status}}"
+          }
+        ]
+      },
+      {
+        "title": "Latency P50/P90/P99",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(reranker_latency_seconds_bucket[5m]))",
+            "legendFormat": "p50"
+          },
+          {
+            "expr": "histogram_quantile(0.90, rate(reranker_latency_seconds_bucket[5m]))",
+            "legendFormat": "p90"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(reranker_latency_seconds_bucket[5m]))",
+            "legendFormat": "p99"
+          }
+        ]
+      },
+      {
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(reranker_requests_total{status=\"error\"}[5m]) / rate(reranker_requests_total[5m]) * 100",
+            "legendFormat": "Error %"
+          }
+        ]
+      },
+      {
+        "title": "Documents per Request",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(reranker_document_count_bucket[5m]))",
+            "legendFormat": "Median docs/request"
+          }
+        ]
+      },
+      {
+        "title": "Top Score Distribution",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "rate(reranker_top_score_bucket[5m])",
+            "format": "heatmap"
+          }
+        ]
+      }
+    ]
+  }
+}]]></code>
+      </example>
+      <example type="good" title="Prometheus alerting rules for reranking service">
+        <code lang="yaml"><![CDATA[# alerting-rules.yaml
+groups:
+  - name: reranker_alerts
+    rules:
+      - alert: RerankerHighLatency
+        expr: histogram_quantile(0.99, rate(reranker_latency_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Reranker P99 latency is high"
+          description: "P99 latency is {{ $value }}s, threshold is 0.5s"
+
+      - alert: RerankerHighErrorRate
+        expr: |
+          rate(reranker_requests_total{status="error"}[5m])
+          / rate(reranker_requests_total[5m]) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Reranker error rate is above 1%"
+          description: "Error rate is {{ $value | humanizePercentage }}"
+
+      - alert: RerankerDown
+        expr: reranker_model_loaded == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Reranker model not loaded"
+          description: "The reranking model is not loaded or service is down"
+
+      - alert: RerankerLowThroughput
+        expr: rate(reranker_requests_total[5m]) < 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Reranker throughput is unusually low"
+          description: "Less than 1 request per second for 10 minutes"]]></code>
+      </example>
+    </section>
+
+    <see-also>
+      <link href="https://docs.cohere.com/docs/reranking">Cohere Rerank API</link>
+      <link href="https://jina.ai/models/jina-reranker-v3/">Jina Reranker v3</link>
+      <link href="https://huggingface.co/BAAI">BGE Rerankers (BAAI)</link>
+      <link href="https://www.sbert.net/examples/applications/cross-encoder/README.html">Sentence Transformers Cross-Encoders</link>
+      <link href="https://github.com/AnswerDotAI/rerankers">AnswerDotAI rerankers</link>
+      <link href="https://github.com/beir-cellar/beir">BEIR Benchmark</link>
+      <link href="https://microsoft.github.io/msmarco/">MS MARCO Dataset</link>
+      <link href="https://huggingface.co/spaces/mteb/leaderboard">MTEB Leaderboard</link>
+      <link href="https://www.pinecone.io/learn/series/rag/rerankers/">Pinecone Rerankers Guide</link>
+      <link href="https://arxiv.org/html/2509.25085v2">Jina-Reranker-V3: Last but Not Late Interaction</link>
+      <link href="https://arxiv.org/abs/2004.12832">ColBERT: Efficient and Effective Passage Search</link>
+      <link href="https://www.cs.cmu.edu/~jgc/publication/The_Use_MMR_Diversity_Based_LTMIR_1998.pdf">Maximal Marginal Relevance (MMR)</link>
+      <link href="https://www.zeroentropy.dev/articles/ultimate-guide-to-choosing-the-best-reranking-model-in-2025">Ultimate Guide to Choosing Reranking Models 2025</link>
+      <link href="https://www.analyticsvidhya.com/blog/2025/06/top-rerankers-for-rag/">Top 7 Rerankers for RAG</link>
+      <link href="https://www.llamaindex.ai/blog/boosting-rag-picking-the-best-embedding-reranker-models-42d079022e83">LlamaIndex Reranking Guide</link>
+      <link href="https://zilliz.com/learn/what-are-rerankers-enhance-information-retrieval">Zilliz Rerankers Tutorial</link>
+      <link href="https://agentset.ai/rerankers">Agentset Reranker Leaderboard</link>
+      <link href="https://www.siliconflow.com/articles/en/the-best-api-providers-of-open-source-reranker-model">SiliconFlow API Providers Guide</link>
+    </see-also>
+  </content>
+</methodology>
