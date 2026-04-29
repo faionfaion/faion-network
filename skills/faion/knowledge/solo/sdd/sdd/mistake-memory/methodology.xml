@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="mistake-memory">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd</domain>
+    <summary>Document failures with severity, Five Whys root cause, and prevention steps. Injected pre-task to prevent recurrence. Second occurrence triggers CI rule.</summary>
+    <tags>
+      <tag>learning</tag>
+      <tag>mistakes</tag>
+      <tag>quality-gates</tag>
+      <tag>prevention</tag>
+      <tag>memory</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Mistake Memory</title>
+    <summary>Mistake Memory is the SDD practice of documenting failures in `.aidocs/memory/mistakes.md` immediately after they occur and injecting relevant warnings into agent context before similar tasks. Each entry requires: severity, what happened, root cause (Five Whys chain, min 3 levels), and one concrete prevention step. Generic preventions ("be more careful") are not acceptable.</summary>
+    <why>
+      <p>LLM agents are stateless across sessions — they repeat the same error categories without a persistent record. Research confirms over-confidence and hallucination rates that make unguided retries ineffective. A keyword-indexed mistakes file gives the executor agent domain-specific warnings at task start, reducing recurrence. The second occurrence of a pattern triggers a mandatory CI rule, not just a doc update.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Before starting any task: load `.aidocs/memory/mistakes.md` and filter entries matching the task's domain keywords</item>
+        <item>After a task fails (CI failure, production bug, review rejection): append a new MIS-NNN entry within 24 hours</item>
+        <item>When the same failure pattern occurs a second time: escalate to an automated prevention rule in CI</item>
+        <item>When onboarding a new agent: include mistakes.md in the project context handoff</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>For tracking product bugs in a bug tracker — mistakes.md captures LLM/agent execution patterns, not feature defects</item>
+        <item>When the project has fewer than 3 completed tasks — corpus too thin for useful patterns</item>
+        <item>As a replacement for post-mortems on infrastructure incidents (mistakes.md is development-workflow scoped)</item>
+      </list>
+    </when-not-to-use>
+    <section name="Capture Triggers">
+      <rule>
+        <statement>Document a mistake within 24 hours of the failure. Do not defer — details fade within a single conversation turn.</statement>
+        <rationale>Incomplete entries written days later omit root cause and specific context, making them useless for future warning injection.</rationale>
+      </rule>
+      <rule>
+        <statement>Capture when: a bug reaches production, CI fails unexpectedly, the same error occurs twice, a task takes more than 2x estimated tokens, or an agent hallucinates an API or feature.</statement>
+        <rationale>These signals identify pattern-level failures worth documenting. One-off typos do not require entries.</rationale>
+      </rule>
+      <rule>
+        <statement>Every MIS-NNN entry must include: severity (critical/high/medium/low), what happened (specific description), root cause (Five Whys chain, minimum 3 levels), and one concrete prevention step.</statement>
+        <rationale>Entries without root cause cannot generate useful prevention rules. Entries without prevention are read-only history, not actionable warnings.</rationale>
+      </rule>
+    </section>
+    <section name="Entry Quality Rules">
+      <antipattern>
+        <description>Prevention step is "be more careful" or "review before committing".</description>
+        <reason>These are not actionable. A concrete prevention step specifies a trigger and an action: "When task keywords include 'migration', run COUNT(*) on affected tables before planning."</reason>
+      </antipattern>
+      <antipattern>
+        <description>Root cause attributed to "insufficient context" without identifying the specific missing piece.</description>
+        <reason>Every LLM failure can be attributed to "insufficient context" — this is always true and always useless. Identify what specific documentation, example, or constraint was absent.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Entry title does not include domain keywords: "MIS-007: Bug in code".</description>
+        <reason>Keyword search is the primary retrieval mechanism. Domain keywords in the title ("MIS-007: Database Migration — Missing Row Count Check") enable reliable pre-task matching.</reason>
+      </antipattern>
+      <rule>
+        <statement>When a pattern recurs a third time, add an automated CI prevention rule; documenting the same entry twice is not sufficient.</statement>
+        <rationale>Documentation is awareness, not enforcement. Recurring patterns require automated blocking to actually prevent recurrence.</rationale>
+      </rule>
+    </section>
+    <section name="Five Whys Example">
+      <example type="good">
+        <code lang="markdown"><![CDATA[## MIS-007: Database Migration — Missing Row Count Check
+
+**Severity:** High
+**What happened:** Migration timed out after 30 min on production (2.8M rows).
+**Root cause:**
+1. Why did migration time out? Transaction locked the entire table.
+2. Why was it a single transaction? ALTER TABLE applied to all rows at once.
+3. Why not batched? Row count not checked before choosing migration strategy.
+**Prevention:** Before any migration, run `SELECT COUNT(*) FROM <table>`. If >100k rows, use batched approach (PAT-002).]]></code>
+        <note>Three levels of why, specific numbers, concrete prevention with a reference to a known pattern.</note>
+      </example>
+    </section>
+    <section name="Hallucination Errors">
+      <rule>
+        <statement>Tag entries with `hallucination-api` when the agent invents a non-existent library method or endpoint. Prevention: include API reference documentation in task context.</statement>
+        <rationale>LLMs pattern-match from similar APIs and generate syntactically plausible but non-existent calls with full confidence. Type checking and tests are the only reliable catches.</rationale>
+      </rule>
+      <rule>
+        <statement>Tag entries with `hallucination-factual` when the agent confidently states a new feature, version, or behavior that does not exist. Prevention: ask for documentation links; treat any unverified "new in X" claim as unverified.</statement>
+        <rationale>The 64.5% blind-spot rate in self-correction studies means the agent cannot reliably flag its own factual errors. External verification is required.</rationale>
+      </rule>
+    </section>
+    <section name="Context Errors">
+      <rule>
+        <statement>Tag entries with `context-window-loss` when earlier instructions drift out of the effective context. Prevention: break tasks exceeding 300 lines into chunks; include a coding standards summary with each chunk.</statement>
+        <rationale>Models become unreliable at 65-80% of advertised context limits. Long conversations cause instruction drift even within the stated window.</rationale>
+      </rule>
+      <rule>
+        <statement>Tag entries with `instruction-drift` when requirements specified at session start are not honored mid-task. Prevention: re-inject key constraints every N tool calls or task boundaries.</statement>
+        <rationale>Instruction drift is distinct from window loss — the instruction is technically in context but deprioritized by later content.</rationale>
+      </rule>
+    </section>
+    <section name="Implementation Errors">
+      <list>
+        <item>missing-error-handling: try/catch absent in async flows, silent failures in payment or critical paths</item>
+        <item>edge-cases-missed: boundary conditions, empty arrays, null fields not handled</item>
+        <item>scope-creep: unrequested features added during implementation</item>
+        <item>premature-optimization: performance changes before correctness verified</item>
+      </list>
+    </section>
+    <section name="Process Errors">
+      <list>
+        <item>skipped-validation: quality gate bypassed, pre-commit hook skipped</item>
+        <item>estimation-underrun: task took 2x+ estimated tokens due to unknown unknowns</item>
+        <item>missing-env-var: new config variable not propagated to all environments</item>
+        <item>data-migration-no-backup: destructive operation without prior backup</item>
+      </list>
+    </section>
+    <section name="Layer 1: Pre-Task Warning Injection">
+      <rule>
+        <statement>Before executing any task, keyword-search mistakes.md and prepend matching entries as a Warnings section in the task prompt.</statement>
+        <rationale>Agents that skip pre-task loading get no benefit from the accumulated mistake corpus. Injection must be explicit and automated, not optional.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="bash"><![CDATA[# Load warnings before executing TASK-042 (database migration)
+./inject-warnings.sh "database migration schema" | prepend-to-task TASK-042]]></code>
+        <note>Keywords match entries by domain, not by full-text similarity. Semantic matching is unreliable in prompts.</note>
+      </example>
+    </section>
+    <section name="Layer 2: Quality Gates">
+      <rule>
+        <statement>SDD quality gates L1-L6 are the structural enforcement of lessons from past mistakes. Each gate failure generates a mistake entry.</statement>
+        <rationale>Gates create mandatory checkpoints that block progression when known failure conditions are detected, replacing optional checklists.</rationale>
+      </rule>
+    </section>
+    <section name="Layer 3: CI Automation">
+      <rule>
+        <statement>When a mistake pattern recurs, add an automated CI rule using a file pattern, keyword trigger, or code pattern detector.</statement>
+        <rationale>Documentation without enforcement is only awareness. Patterns that survive two documented occurrences require code-level blocking.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[# Prevention rule for destructive migrations (source: MIS-010)
+id: PREV_010
+trigger:
+  type: code_pattern
+  pattern: "DROP (TABLE|COLUMN)"
+  file_types: ["*.sql", "migrations/*"]
+action:
+  type: block
+  message: "Destructive migration detected. Take backup first. See MIS-010."]]></code>
+      </example>
+    </section>
+    <section name="Layer 4: Multi-Model Review">
+      <rule>
+        <statement>For high-severity mistakes (critical/high), add a cross-validation step where a second agent or model reviews the primary output.</statement>
+        <rationale>Self-evaluation has a 64.5% blind-spot rate. A second independent pass catches logical inconsistencies the first model cannot see in its own output.</rationale>
+      </rule>
+    </section>
+    <templates>
+      <template path="templates/mistake-entry.md" purpose="MIS-NNN entry template with all required fields"/>
+      <template path="templates/inject-warnings.sh" purpose="Bash script for keyword-based mistake injection before task start"/>
+    </templates>
+  </content>
+</methodology>
