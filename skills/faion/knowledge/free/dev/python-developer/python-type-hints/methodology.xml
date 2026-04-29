@@ -1,0 +1,572 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-type-hints"><metadata><tier>free</tier><group>dev</group><domain>python-developer</domain><summary>Python type hints and static type checking with mypy, pyright, and pydantic: catch bugs at development time, enable IDE autocomplete, and improve code readability.</summary><difficulty>intermediate</difficulty><created>2026-04-26</created><tags><tag>type-hints</tag><tag>mypy</tag><tag>static-typing</tag><tag>python</tag><tag>pydantic</tag></tags></metadata><content><title>Python Type Hints</title><summary><p>Type hints in Python 3.5+ enable static type checking, IDE autocomplete, and self-documenting code. Tools like mypy catch type errors before runtime. Pydantic integrates validation. Modern Python (3.11+) uses PEP 604 union syntax (X | Y) and PEP 673 Self type.</p></summary><why><p># Python Type Hints (Modern 3.12+)
+
+## Summary
+
+Comprehensive type annotation guide for Python 3.12+ covering PEP 695 type parameter syntax, PEP 604 union syntax, TypedDict, Protocol, TypeIs vs TypeGuard, and gradual rollout strategy. Core rules: one union style per project (`X | None`, ban `Optional` via ruff `UP007`); annotate the boundary first (HTTP I/O, queue payloads, DB results), then services, then internals; never silence with bare `# type: ignore`.
+
+## Why
+
+Type annotations at API boundaries catch shape mismatches before runtime and give LLMs accurate generation context. A file-by-file strict rollout (add module to mypy allowlist when green) is more effective than a repo-wide attempt — the latter produces 1000+ errors and freezes progress.
+
+## When To Use
+
+- Adding type hints file-by-file with strict mode on touched files only.
+- Annotating public API surfaces: service signatures, route handlers, queue consumers.
+- Modelling cross-boundary data shapes with `TypedDict` (cheap) or Pydantic (validating).
+- Defining structural inter-module contracts without forcing inheritance via `Protocol`.
+- CI gate: type-check files changed in a PR; block regressions on already-typed modules.
+- Migrating `typing.List`/`typing.Optional` to PEP 585/PEP 604 via `ruff --select UP --fix`.
+
+## When NOT To Use
+
+- One-off scripts under ~100 lines — mypy/pyright setup costs more than it returns.
+- Heavy metaprogramming (decorators that mutate signatures, `__getattr__` proxies) — isolate behind `Any` or `cast`.
+- Codebases pinned to Python 3.8 — use `typing_extensions` only as a last resort.
+- Pure Pydantic-only domains — adding parallel `TypedDict` creates two sources of truth.
+- Generated migrations — exclude in mypy config; no signal.
+
+## Content
+
+| File | What's inside |
+|------|---------------|
+| `content/01-syntax-by-version.xml` | Feature/version matrix; PEP 695 generics (3.12+); `type` alias statement; TypedDict evolution. |
+| `content/02-protocols-typeddict.xml` | Protocol vs ABC; `@runtime_checkable` when to use; TypedDict `NotRequired`/`ReadOnly`; `Literal` + `assert_never`. |
+| `content/03-rollout-strategy.xml` | File-by-file mypy adoption; incremental CI gate; error-class priority order. |
+| `content/04-antipatterns.xml` | `Optional` mixing, `from __future__ import annotations` + Pydantic v1, `Generic[T]` no-op, bare `# type: ignore`. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/typecheck-touched.sh` | Strict mypy on changed files only — CI/pre-push script. |
+| `templates/precommit-mypy.yaml` | `.pre-commit-config.yaml` hook running `typecheck-touched.sh` on pre-push. |
+</p><p># Agent Integration — Python Type Hints
+
+Methodology codifies modern Python typing for 3.12+ (PEP 695 type parameter syntax, PEP 604 unions, PEP 742 `TypeIs`, PEP 705 `ReadOnly`, TypeVar defaults, Protocol structural subtyping). This file is the runbook for an LLM agent introducing or maintaining type safety in a Python (often Django/FastAPI) codebase.
+
+## When to use
+- Adding type hints to an untyped Python codebase, file-by-file with strict mode on touched files only.
+- Public API surfaces — service signatures, route handlers, queue consumers, library exports.
+- Cross-boundary data shapes — request/response, cache values, queue payloads — modelled with `TypedDict` (cheap) or Pydantic (validating).
+- Defining structural inter-module contracts without forcing inheritance — `Protocol` (+ `@runtime_checkable` if `isinstance` is needed).
+- CI gate: type-check files changed in a PR; block regressions on already-typed modules.
+- Migrating old `typing.List` / `typing.Optional` to PEP 585 / PEP 604 syntax via `ruff --select UP --fix`.
+
+## When NOT to use
+- One-off scripts &lt; ~100 lines — mypy/pyright setup costs more than it returns.
+- Heavy metaprogramming surfaces (decorators that mutate signatures, `__getattr__` proxies, dynamic ORM-like APIs) — annotations fight the runtime; isolate behind `Any` or `cast`.
+- Codebases pinned to Python 3.8 — README assumes 3.9+ (`list[int]`) and PEP 604 (3.10+); use `typing_extensions` only if you must.
+- Pure Pydantic-only domains — adding parallel `TypedDict` definitions creates two sources of truth for the same shape.
+- Generated migrations (`apps/*/migrations/`) — exclude in mypy config; cluttering them yields no signal.
+
+## Where it fails / limitations
+- README oscillates between `Optional[X]` and `X | None` in examples — agents will mix both unless ruff `UP007` is enabled.
+- No coverage of `TypeVarTuple`, `Unpack`, `Concatenate`, `Self` (3.11+), or PEP 695 `type` statement edge cases (`type Vec[T] = list[T]`).
+- `mypy --strict` flags every test fixture and conftest helper — README does not show the `[mypy-tests.*]` override that fixes this.
+- `Protocol` example omits `@runtime_checkable` — `isinstance(x, Sendable)` raises `TypeError` at runtime if missing, but type-checks fine.
+- No mention of `Generic[T]` having zero runtime enforcement: `Repository[int]` and `Repository[str]` are the same class.
+- `from __future__ import annotations` interacts badly with Pydantic v1 / older FastAPI body-parsing — README does not warn.
+- `TypeIs` example is correct but agents conflate it with `TypeGuard`; pick one and document narrowing direction.
+- mypy/pyright comparison table is high-level — does not call out `reportMissingTypeStubs` (pyright) vs `--ignore-missing-imports` (mypy) divergence that bites in CI.
+
+## Agentic workflow
+File-by-file rollout: (1) pick one module, (2) annotate every public signature plus module-level vars, (3) run `mypy --strict &lt;file&gt;` (or `pyright --strict &lt;file&gt;`), (4) fix one error class at a time — start with `no-untyped-def`, then `var-annotated`, then `assignment`, then `arg-type`, (5) add file to `mypy.files=[...]` allowlist when green, (6) commit. Never run repo-wide `--strict` on day 1; the 1000+ errors will freeze the work. CI gate: strict-check only files in the diff (`git diff --name-only --diff-filter=AM origin/main -- '*.py'`).
+
+### Recommended subagents
+- `faion-code-agent` — Default for adding annotations and fixing type errors.
+- `faion-test-agent` — Owns test fixture / factory types under the relaxed `tests.*` mypy override.
+- `faion-software-architect` — Decides Protocol vs ABC vs Pydantic for cross-module contracts.
+- `faion-devtools-developer` — Owns mypy / pyright / ruff config and pre-commit integration.
+- `faion-sdd-execution` — Runs the gradual-typing rollout as a feature with milestones (per-app allowlist).
+
+### Prompt pattern
+
+Type one file:
+
+```
+Add type hints to apps/&lt;module&gt;/&lt;file&gt;.py per
+free/dev/python-developer/python-type-hints/README.md.
+Rules:
+  - Python 3.12+ syntax: list[T], dict[K,V], X | None (NEVER Optional/List/Dict).
+  - PEP 695 generics for new classes/functions: class Box[T]:, def first[T](...).
+  - Public functions: full annotations including return type.
+  - Internal helpers: annotate args + return; locals only if mypy complains.
+  - Use TypedDict for cache/queue payloads; Pydantic for HTTP I/O.
+  - Use Protocol (with @runtime_checkable IFF isinstance is called) for duck-typed interfaces.
+Run: mypy --strict apps/&lt;module&gt;/&lt;file&gt;.py
+Iterate to 0 errors. Each `# type: ignore[code]` MUST include a justification comment.
+```
+
+Introduce Protocol over ABC:
+
+```
+Replace abstract Sendable ABC in apps/notifications/base.py with
+typing.Protocol. Add @runtime_checkable iff isinstance is called.
+Concrete classes (EmailClient, SMSClient) must NOT inherit from Sendable.
+Update factory return type to Sendable. Run mypy + pytest.
+```
+
+Migrate `TypeVar` to PEP 695:
+
+```
+In apps/&lt;module&gt;/&lt;file&gt;.py, convert all `T = TypeVar("T", bound=X)` blocks
+to PEP 695 `class C[T: X]:` / `def f[T: X](...)`. Drop the TypeVar import
+if unused. Verify with `ruff check` and `mypy --strict`.
+```
+
+## CLI tools
+| Tool | Purpose | Install / docs |
+|------|---------|----------------|
+| `mypy` | Reference type checker; plugin support (django-stubs) | https://mypy.readthedocs.io |
+| `pyright` | Microsoft type checker, ~10x faster than mypy, default in VSCode/Pylance | https://microsoft.github.io/pyright |
+| `pytype` | Google type checker, infers types | https://github.com/google/pytype |
+| `pyre` | Meta's type checker, used at scale | https://pyre-check.org |
+| `ruff` rule `UP` | pyupgrade — converts `Optional[X]` → `X \| None`, `List` → `list`, etc. | https://docs.astral.sh/ruff |
+| `ruff` rule `ANN` | flake8-annotations — flag missing annotations on public funcs | same |
+| `ruff` rule `TCH` | flake8-type-checking — move type-only imports under `if TYPE_CHECKING` | same |
+| `monkeytype` | Record types from runtime traces, emit stubs / inline annotations | https://monkeytype.readthedocs.io |
+| `pyannotate` | Dropbox runtime-trace annotator | https://github.com/dropbox/pyannotate |
+| `stubgen` (mypy) | Generate `.pyi` stubs for an untyped third-party lib | bundled with mypy |
+| `mypy --html-report` | HTML coverage of typed % per module | bundled |
+| `mypy_django_plugin` | Plugin for Django ORM type narrowing | https://github.com/typeddjango/django-stubs |
+| `pyright --outputjson` | Machine-readable diagnostics for CI annotators | bundled |
+
+## Services &amp; apps
+| Service | Type | Agent-friendly? | Notes |
+|---------|------|-----------------|-------|
+| typeshed | OSS stub registry | Yes — auto-loaded by mypy/pyright | Contribute stubs when missing |
+| typing-extensions | OSS lib | Yes | Backport newer typing features (TypeIs, Self, etc.) |
+| GitHub Actions | CI | Yes — `mypy --strict $changed` | Cache `.mypy_cache` keyed on lockfile + Python version |
+| pre-commit.com | OSS | Yes — `pre-commit-mirrors-mypy` | Run on staged files only |
+| Codecov "type coverage" | SaaS (beta) | Partial — niche | Track typed-function % over time |
+| pyright LSP / Pylance | IDE | Yes — VSCode extension | Inline diagnostics during agentic edits |
+
+## Templates &amp; scripts
+
+See `templates.md` and `examples.md` for code patterns. Add this incremental adoption helper for CI / pre-push (≤45 lines):
+
+```bash
+#!/usr/bin/env bash
+# scripts/typecheck-touched.sh — strict mypy on changed files only.
+set -euo pipefail
+BASE_REF="${1:-origin/main}"
+mapfile -t files &lt; &lt;(git diff --name-only --diff-filter=AM "$BASE_REF" -- '*.py' \
+  | grep -v -E '^(.*/migrations/|tests/fixtures/|conftest\.py$)')
+if [[ ${#files[@]} -eq 0 ]]; then
+  echo "No Python files changed."; exit 0
+fi
+echo "Typechecking ${#files[@]} files with mypy --strict..."
+mypy --strict "${files[@]}"
+```
+
+`.pre-commit-config.yaml` hook:
+
+```yaml
+- repo: local
+  hooks:
+    - id: mypy-touched
+      name: mypy touched files (strict)
+      entry: scripts/typecheck-touched.sh
+      language: system
+      pass_filenames: false
+      stages: [pre-push]
+```
+
+## Best practices
+- **One union syntax per project.** Pick `X | None`, ban `Optional` via ruff `UP007` auto-fix.
+- **Type the boundary, then the seams.** Annotate I/O (HTTP, queue, DB) first; then services; then internals.
+- **`Any` is a smell.** Use `object` (no operations allowed) when you mean "anything"; reserve `Any` for FFI / dynamic metaprogramming with a `# type: ignore[code]` reason.
+- **`TypedDict` for cache/queue payloads, Pydantic for HTTP.** Don't run both in the same path — pick one source of truth.
+- **`Protocol` over ABC** when implementers are out of your control (third-party libs); add `@runtime_checkable` only if you actually `isinstance` it.
+- **Constrain `TypeVar` with `bound=`** or PEP 695 syntax (`class C[T: Model]:`); unconstrained generics rarely add safety.
+- **`Self` (3.11+)** for fluent builder return types, not `TForward = TypeVar(..., bound="Foo")` gymnastics.
+- **Sealed unions via `Literal`** for finite states + `assert_never()` for exhaustiveness checks.
+- **Per-module mypy override**: relax `disallow_untyped_defs` for tests, ignore migrations, strict everywhere else.
+- **Run mypy AND ruff `ANN`** — mypy catches type mismatches; ruff `ANN` catches *missing* annotations entirely (different signal).
+- **Cache `.mypy_cache` / `.pyright_cache`** in CI keyed on Python + lockfile hash.
+- **`pyright` for IDE, `mypy` for CI** — pyright is faster for inline feedback; mypy has the plugin ecosystem (Django, attrs, etc.).
+
+## AI-agent gotchas
+- **`Optional[X]` vs `X | None` mixing** in one PR confuses readers and ruff. Auto-fix with `ruff check --select UP007 --fix`.
+- **Forward refs**: `def f() -&gt; "Foo":` strings still required when `Foo` is defined below. `from __future__ import annotations` makes everything a string at runtime — breaks Pydantic v1, FastAPI body parsing on some versions.
+- **`from __future__ import annotations` + Pydantic v1** → "field type is undefined" runtime errors. Pydantic v2 handles it.
+- **`Generic[T]` runtime is a no-op.** `Repository[int]()` and `Repository[str]()` are the same class object. Don't rely on it for safety at runtime.
+- **`Protocol` without `@runtime_checkable`** + `isinstance(x, Proto)` raises `TypeError` at runtime; type-checks fine.
+- **`TypedDict` `total=False`** vs `NotRequired[X]` per-field: different typing versions handle them differently. Prefer `NotRequired` (3.11+ via `typing_extensions`).
+- **`TypeIs[T]` (3.13)** vs `TypeGuard[T]` (3.10) — `TypeIs` narrows in BOTH branches, `TypeGuard` only narrows in the `True` branch. Pick deliberately.
+- **`Callable[..., T]`** allows any args — silently allows misuse. Be specific where possible.
+- **`mypy_django_plugin`** narrows `Manager.get()` etc. but requires `[tool.django-stubs] django_settings_module = "config.settings.test"`. Without it, errors are spurious; agents revert annotations instead of fixing config.
+- **Bare `# type: ignore`** masks future bugs; ruff `PGH003` blocks it. Always `# type: ignore[code]` with a comment.
+- **Type narrowing through `assert`** works in mypy but not at runtime under `python -O`. Don't branch on it.
+- **`reveal_type(x)`** is mypy-only; leaving it in code raises `NameError` at runtime. Strip via pre-commit.
+- **Generators**: `Generator[YieldT, SendT, ReturnT]` vs `Iterator[YieldT]` vs `Iterable[YieldT]` — agents pick wrong half the time. Default to `Iterator` for read-only sequences.
+- **Async**: `Coroutine[Any, Any, T]` vs `Awaitable[T]` — return-annotate `T` directly on `async def f() -&gt; T`; type-checker unwraps automatically.
+- **PEP 695 `type` statement** is lazy-evaluated — `type Vec[T] = list[T]` resolves at first use, not at module load. Subtle in circular-import scenarios.
+- **PEP 649 lazy annotations (3.14)** changes `__annotations__` access — code that introspects annotations may need `inspect.get_annotations(...)` instead of `cls.__annotations__`.
+
+## References
+- README: `./README.md`
+- Sibling: `../python-modern-2026/`, `../python-typing/`, `../django-coding-standards/`
+- mypy strict: https://mypy.readthedocs.io/en/stable/getting_started.html#strict-mode
+- pyright: https://microsoft.github.io/pyright/
+- typeshed: https://github.com/python/typeshed
+- typing_extensions: https://pypi.org/project/typing-extensions/
+- PEP 604 (X | Y): https://peps.python.org/pep-0604/
+- PEP 695 (type parameter syntax, 3.12): https://peps.python.org/pep-0695/
+- PEP 705 (ReadOnly): https://peps.python.org/pep-0705/
+- PEP 742 (TypeIs, 3.13): https://peps.python.org/pep-0742/
+- PEP 649 (lazy annotations, 3.14): https://peps.python.org/pep-0649/
+- django-stubs: https://github.com/typeddjango/django-stubs
+- ruff annotations rules: https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
+</p><p>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;text id="01-syntax-by-version" title="Type Hint Syntax by Python Version"&gt;
+  &lt;summary&gt;Feature/version matrix, PEP 695 generic syntax (3.12+), type alias statement, and TypedDict evolution.&lt;/summary&gt;
+
+  &lt;section title="Version Feature Matrix"&gt;
+    &lt;rule&gt;
+      &lt;statement&gt;Before using a typing feature, verify the Python version floor of the repo matches or exceeds the feature's introduction version. Use `from __future__ import annotations` only as a temporary bridge for pre-3.10 syntax on 3.9 codebases.&lt;/statement&gt;
+      &lt;rationale&gt;Using `X | Y` syntax without `from __future__ import annotations` on Python 3.9 causes `TypeError` at import time. The feature matrix prevents silent syntax breaks in CI or production.&lt;/rationale&gt;
+    &lt;/rule&gt;
+    &lt;list&gt;
+      &lt;item&gt;3.9: `list[int]`, `dict[K, V]`, `set[T]`, `tuple[T, ...]` (PEP 585)&lt;/item&gt;
+      &lt;item&gt;3.10: `X | Y` union syntax (PEP 604), `ParamSpec`, `TypeAlias`&lt;/item&gt;
+      &lt;item&gt;3.11: `Self`, `LiteralString`, `TypeVarTuple`, `Required`/`NotRequired`&lt;/item&gt;
+      &lt;item&gt;3.12: PEP 695 `class Box[T]:`, `def first[T]():`, `type Alias = ...`&lt;/item&gt;
+      &lt;item&gt;3.13: `TypeIs` (PEP 742, bidirectional narrowing), `TypeVar` defaults, `ReadOnly` in TypedDict&lt;/item&gt;
+      &lt;item&gt;3.14: Deferred annotation evaluation by default (PEP 649)&lt;/item&gt;
+    &lt;/list&gt;
+  &lt;/section&gt;
+
+  &lt;section title="PEP 695 Type Parameter Syntax"&gt;
+    &lt;rule&gt;
+      &lt;statement&gt;Use PEP 695 syntax on 3.12+ floor: `class Foo[T]:`, `def func[T](x: T) -&gt; T:`, `type Alias = ...`. Migrate legacy `TypeVar`/`Generic` to this form when touching a file.&lt;/statement&gt;
+      &lt;rationale&gt;PEP 695 eliminates `T = TypeVar('T')` declarations and the `Generic[T]` base class. It co-locates the type parameter with the class/function definition, making the scope unambiguous and removing a common source of TypeVar naming collisions.&lt;/rationale&gt;
+    &lt;/rule&gt;
+    &lt;example type="good"&gt;
+      &lt;note&gt;PEP 695 generics — class, function, constrained, and alias&lt;/note&gt;
+      &lt;code lang="python"&gt;&lt;![CDATA[
+# Generic class
+class Stack[T]:
+    def __init__(self) -&gt; None:
+        self._items: list[T] = []
+
+    def push(self, item: T) -&gt; None:
+        self._items.append(item)
+
+    def pop(self) -&gt; T:
+        return self._items.pop()
+
+# Generic function
+def first[T](items: list[T]) -&gt; T | None:
+    return items[0] if items else None
+
+# Constrained TypeVar
+class NumberBox[T: (int, float)]:
+    def __init__(self, value: T) -&gt; None:
+        self.value = value
+
+# Type alias (PEP 695)
+type JSON = dict[str, "JSON"] | list["JSON"] | str | int | float | bool | None
+]]&gt;&lt;/code&gt;
+    &lt;/example&gt;
+  &lt;/section&gt;
+
+  &lt;section title="TypeIs vs TypeGuard"&gt;
+    &lt;rule&gt;
+      &lt;statement&gt;Use `TypeIs[T]` (Python 3.13+) instead of `TypeGuard[T]` for narrowing functions when the False branch should also narrow. `TypeGuard` only narrows in the True branch.&lt;/statement&gt;
+      &lt;rationale&gt;`TypeIs` enables bidirectional narrowing: in `if is_str(x)`, x is `str`; in `else`, x is narrowed to whatever remains after removing `str` from the union. `TypeGuard` leaves the else branch unnarrowed, requiring extra isinstance guards.&lt;/rationale&gt;
+    &lt;/rule&gt;
+    &lt;example type="good"&gt;
+      &lt;note&gt;TypeIs bidirectional narrowing vs TypeGuard one-sided&lt;/note&gt;
+      &lt;code lang="python"&gt;&lt;![CDATA[
+from typing import TypeIs
+
+def is_str(x: object) -&gt; TypeIs[str]:
+    return isinstance(x, str)
+
+def process(x: int | str) -&gt; None:
+    if is_str(x):
+        print(x.upper())  # x: str
+    else:
+        print(x + 1)      # x: int — narrowed by TypeIs, not narrowed by TypeGuard
+]]&gt;&lt;/code&gt;
+    &lt;/example&gt;
+  &lt;/section&gt;
+
+  &lt;section title="TypedDict Evolution"&gt;
+    &lt;rule&gt;
+      &lt;statement&gt;Use class-based TypedDict syntax. Use `NotRequired[T]` for optional fields (Python 3.11+) instead of `total=False` on the whole dict. Use `ReadOnly[T]` (Python 3.13+) for immutable fields.&lt;/statement&gt;
+      &lt;rationale&gt;`total=False` makes all fields optional, which is too broad. `NotRequired` is field-granular and makes the schema self-documenting. `ReadOnly` expresses intent without needing a frozen dataclass.&lt;/rationale&gt;
+    &lt;/rule&gt;
+    &lt;example type="good"&gt;
+      &lt;note&gt;TypedDict with granular Required/NotRequired&lt;/note&gt;
+      &lt;code lang="python"&gt;&lt;![CDATA[
+from typing import TypedDict, NotRequired, ReadOnly
+
+class UserProfile(TypedDict):
+    id: ReadOnly[int]       # Cannot be modified after creation
+    email: str              # Always required, mutable
+    bio: NotRequired[str]   # Optional field
+    avatar_url: NotRequired[str | None]
+]]&gt;&lt;/code&gt;
+    &lt;/example&gt;
+  &lt;/section&gt;
+&lt;/text&gt;
+
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;text id="03-rollout-strategy" title="Incremental Type Annotation Rollout"&gt;
+  &lt;summary&gt;File-by-file mypy adoption strategy, incremental CI gate, and error-class priority order for annotating legacy codebases.&lt;/summary&gt;
+
+  &lt;section title="Rollout Approach"&gt;
+    &lt;rule&gt;
+      &lt;statement&gt;Annotate boundary modules first (HTTP handlers, queue consumers, service entry points), then propagate inward to services and selectors, then internals. Never attempt repo-wide strict mode on an unannotated codebase.&lt;/statement&gt;
+      &lt;rationale&gt;Boundary modules catch the most impactful shape mismatches — wrong payload types crossing API or queue boundaries. Starting at boundaries maximizes the bug-finding value per annotation effort. Attempting repo-wide strict mode generates hundreds of errors and freezes progress.&lt;/rationale&gt;
+    &lt;/rule&gt;
+    &lt;rule&gt;
+      &lt;statement&gt;Maintain a per-module mypy allowlist in `[[tool.mypy.overrides]]`. When a module passes `mypy --strict`, move it to the strict list. Never lower strictness on a module that already passes — only raise it.&lt;/statement&gt;
+      &lt;rationale&gt;The allowlist prevents regression: a future commit cannot silently break type coverage on already-annotated modules. Moving modules to strict one by one creates a visible progress metric.&lt;/rationale&gt;
+    &lt;/rule&gt;
+  &lt;/section&gt;
+
+  &lt;section title="Error Class Priority"&gt;
+    &lt;rule&gt;
+      &lt;statement&gt;Fix mypy errors in this priority order: (1) `no-untyped-def` (add annotations), (2) `attr-defined` (real runtime AttributeErrors), (3) `arg-type`/`return-value` (shape mismatches), (4) `no-any-return` (narrow return types). Fix `misc` last.&lt;/statement&gt;
+      &lt;rationale&gt;`no-untyped-def` and `attr-defined` map directly to production bugs. `no-any-return` and `misc` are often noise or third-party stubs issues. Prioritizing by production-bug likelihood maximizes ROI of annotation effort.&lt;/rationale&gt;
+    &lt;/rule&gt;
+  &lt;/section&gt;
+
+  &lt;section title="CI Gate"&gt;
+    &lt;rule&gt;
+      &lt;statement&gt;Run mypy only on files changed in the PR (not the full repo) in pre-push hooks. Run the full repo check in CI on the main branch only.&lt;/statement&gt;
+      &lt;rationale&gt;Full-repo mypy on a large unannotated codebase can take minutes and block developers. Checking only changed files keeps the feedback loop fast. Main branch CI catches regressions introduced by merging multiple PRs that individually passed.&lt;/rationale&gt;
+    &lt;/rule&gt;
+    &lt;reference path="templates/typecheck-touched.sh"&gt;Pre-push script: strict mypy on changed files only&lt;/reference&gt;
+    &lt;reference path="templates/precommit-mypy.yaml"&gt;pre-commit hook config for typecheck-touched.sh&lt;/reference&gt;
+    &lt;example type="good"&gt;
+      &lt;note&gt;pyproject.toml mypy with per-module strict allowlist&lt;/note&gt;
+      &lt;code lang="toml"&gt;&lt;![CDATA[
+[tool.mypy]
+python_version = "3.12"
+# Default: lenient for unannotated legacy modules
+disallow_untyped_defs = false
+
+# Strict for modules that have been annotated
+[[tool.mypy.overrides]]
+module = [
+    "myapp.services.orders",
+    "myapp.services.users",
+    "myapp.api.views",
+]
+strict = true
+
+# Always exclude
+[[tool.mypy.overrides]]
+module = "myapp.migrations.*"
+ignore_errors = true
+]]&gt;&lt;/code&gt;
+    &lt;/example&gt;
+  &lt;/section&gt;
+
+  &lt;section title="Migration Tooling"&gt;
+    &lt;rule&gt;
+      &lt;statement&gt;Use `ruff check --select UP --fix` to auto-migrate deprecated typing imports to modern syntax before starting manual annotation work. Use `pyupgrade --py312-plus` for additional upgrades.&lt;/statement&gt;
+      &lt;rationale&gt;Auto-migration eliminates the mechanical work of renaming `Optional` → `X | None`, `List` → `list`, etc. Doing it first means all new manual annotations use modern syntax from the start, preventing mixed-style drift.&lt;/rationale&gt;
+    &lt;/rule&gt;
+  &lt;/section&gt;
+&lt;/text&gt;
+
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;text id="02-protocols-typeddict" title="Protocols, TypedDict, and Structural Patterns"&gt;
+  &lt;summary&gt;Protocol vs ABC selection, @runtime_checkable guidance, TypedDict patterns, Literal + assert_never for exhaustive matching.&lt;/summary&gt;
+
+  &lt;section title="Protocol vs ABC"&gt;
+    &lt;rule&gt;
+      &lt;statement&gt;Use `Protocol` when the contract is structural (any class with the right methods qualifies). Use `ABC` only when a base class provides shared implementation via `super()` call chains.&lt;/statement&gt;
+      &lt;rationale&gt;Protocol is "duck typing with type safety" — it enforces the contract without requiring explicit subclassing. ABC requires every implementor to import and inherit from the base class, creating coupling. Protocols are the standard for inter-module contracts.&lt;/rationale&gt;
+    &lt;/rule&gt;
+    &lt;rule&gt;
+      &lt;statement&gt;Mark Protocol methods with `...` (ellipsis) bodies, not `pass` or `raise NotImplementedError`. Ellipsis is the conventional body for abstract Protocol methods.&lt;/statement&gt;
+      &lt;rationale&gt;`...` is the canonical way to indicate "abstract, no body" in Protocol definitions. `raise NotImplementedError` is an ABC pattern and contradicts Protocol semantics — the Protocol itself never runs the method body.&lt;/rationale&gt;
+    &lt;/rule&gt;
+    &lt;example type="good"&gt;
+      &lt;note&gt;Protocol for storage backend — no inheritance coupling&lt;/note&gt;
+      &lt;code lang="python"&gt;&lt;![CDATA[
+from typing import Protocol
+
+class StorageBackend(Protocol):
+    def save(self, key: str, data: bytes) -&gt; None: ...
+    def load(self, key: str) -&gt; bytes | None: ...
+    def delete(self, key: str) -&gt; bool: ...
+
+# Both satisfy StorageBackend without importing it
+class S3Backend:
+    def save(self, key: str, data: bytes) -&gt; None: ...
+    def load(self, key: str) -&gt; bytes | None: ...
+    def delete(self, key: str) -&gt; bool: ...
+
+class LocalBackend:
+    def save(self, key: str, data: bytes) -&gt; None: ...
+    def load(self, key: str) -&gt; bytes | None: ...
+    def delete(self, key: str) -&gt; bool: ...
+]]&gt;&lt;/code&gt;
+    &lt;/example&gt;
+  &lt;/section&gt;
+
+  &lt;section title="@runtime_checkable"&gt;
+    &lt;rule&gt;
+      &lt;statement&gt;Add `@runtime_checkable` only when the Protocol is used in `isinstance()` checks in production code. Omit it when the Protocol is used purely as a type annotation.&lt;/statement&gt;
+      &lt;rationale&gt;`@runtime_checkable` checks only method name presence, not argument types or return types — it is weaker than a full type check. Adding it to every Protocol inflates overhead and gives a false sense of runtime safety.&lt;/rationale&gt;
+    &lt;/rule&gt;
+  &lt;/section&gt;
+
+  &lt;section title="TypedDict Best Practices"&gt;
+    &lt;rule&gt;
+      &lt;statement&gt;Use TypedDict for cross-boundary dict shapes (JSON API responses, queue payloads, config dicts). Do not add TypedDict to internal dicts that are immediately converted to dataclasses or ORM models.&lt;/statement&gt;
+      &lt;rationale&gt;TypedDict annotates existing dict-returning code without requiring migration to dataclasses. Adding TypedDict to a dict that is immediately `.model_validate()`-d into Pydantic creates two schemas for the same shape — one source of truth is enough.&lt;/rationale&gt;
+    &lt;/rule&gt;
+  &lt;/section&gt;
+
+  &lt;section title="Literal and assert_never"&gt;
+    &lt;rule&gt;
+      &lt;statement&gt;Use `Literal["a", "b", "c"]` to constrain string parameters to a known set. Use `typing.assert_never()` at exhaustive match/if-elif-else branches to catch missing cases at type-check time.&lt;/statement&gt;
+      &lt;rationale&gt;`Literal` lets the type checker verify that callers only pass allowed values. `assert_never()` makes match exhaustiveness a compile-time error — if a new enum variant is added, mypy reports an error at the unhandled branch, not a runtime crash.&lt;/rationale&gt;
+    &lt;/rule&gt;
+    &lt;example type="good"&gt;
+      &lt;note&gt;Literal constraint and assert_never for exhaustive dispatch&lt;/note&gt;
+      &lt;code lang="python"&gt;&lt;![CDATA[
+from typing import Literal, assert_never
+
+OrderStatus = Literal["pending", "confirmed", "shipped", "cancelled"]
+
+def next_status(current: OrderStatus) -&gt; OrderStatus:
+    match current:
+        case "pending":
+            return "confirmed"
+        case "confirmed":
+            return "shipped"
+        case "shipped":
+            return "shipped"  # Terminal state
+        case "cancelled":
+            return "cancelled"  # Terminal state
+        case _ as unreachable:
+            assert_never(unreachable)  # mypy error if a case is unhandled
+]]&gt;&lt;/code&gt;
+    &lt;/example&gt;
+  &lt;/section&gt;
+&lt;/text&gt;
+
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;text id="04-antipatterns" title="Type Hint Anti-Patterns"&gt;
+  &lt;summary&gt;Optional mixing, from __future__ import annotations with Pydantic v1, Generic[T] no-op, and bare type: ignore.&lt;/summary&gt;
+
+  &lt;section title="Optional Style Mixing"&gt;
+    &lt;antipattern&gt;
+      &lt;description&gt;Mixing `Optional[X]` and `X | None` in the same file or codebase — some imports use the old form, others the new.&lt;/description&gt;
+      &lt;reason&gt;Mixed styles confuse `ruff --fix` idempotency, create inconsistent grep results, and make the codebase look unmaintained. Pick one style and enforce it via ruff UP007. Use `ruff check --select UP007 --fix` for a batch migration.&lt;/reason&gt;
+    &lt;/antipattern&gt;
+  &lt;/section&gt;
+
+  &lt;section title="from __future__ import annotations with Pydantic v1"&gt;
+    &lt;antipattern&gt;
+      &lt;description&gt;Adding `from __future__ import annotations` to modules that define Pydantic v1 models.&lt;/description&gt;
+      &lt;reason&gt;Pydantic v1 evaluates annotations at class definition time using `get_type_hints()`. `from __future__ import annotations` defers evaluation to strings, which Pydantic v1 cannot resolve — field types become strings and validation silently breaks. Pydantic v2 handles this correctly. Verify the Pydantic version before adding future annotations.&lt;/reason&gt;
+    &lt;/antipattern&gt;
+  &lt;/section&gt;
+
+  &lt;section title="Generic[T] No-op"&gt;
+    &lt;antipattern&gt;
+      &lt;description&gt;Declaring a class as `Generic[T]` but never using `T` in any method signature or field type.&lt;/description&gt;
+      &lt;reason&gt;A `Generic[T]` class that does not use `T` provides no type safety — it is checked as if `T = Any`. The type parameter exists only as noise. Either use `T` in at least one method signature or remove the `Generic[T]` declaration entirely.&lt;/reason&gt;
+    &lt;/antipattern&gt;
+    &lt;example type="bad"&gt;
+      &lt;note&gt;Generic[T] declared but T never used — type safety is absent&lt;/note&gt;
+      &lt;code lang="python"&gt;&lt;![CDATA[
+from typing import TypeVar, Generic
+T = TypeVar('T')
+
+class Wrapper(Generic[T]):  # T is declared but never appears below
+    def __init__(self, value: object) -&gt; None:  # Should be T
+        self.value = value
+
+    def get(self) -&gt; object:  # Should be T
+        return self.value
+]]&gt;&lt;/code&gt;
+    &lt;/example&gt;
+  &lt;/section&gt;
+
+  &lt;section title="Bare type: ignore"&gt;
+    &lt;antipattern&gt;
+      &lt;description&gt;Using `# type: ignore` without an error code instead of `# type: ignore[code]`.&lt;/description&gt;
+      &lt;reason&gt;Bare `# type: ignore` silences all future mypy errors on that line, including unrelated ones introduced later. `warn_unused_ignores = true` in mypy config also cannot clean up stale bare ignores properly. Always scope to a specific error code.&lt;/reason&gt;
+    &lt;/antipattern&gt;
+  &lt;/section&gt;
+
+  &lt;section title="Annotating __init__ Parameters Not Used as Fields"&gt;
+    &lt;antipattern&gt;
+      &lt;description&gt;Annotating `self` in regular methods with a type other than the implicit `Self` type, or omitting `-&gt; None` on `__init__`.&lt;/description&gt;
+      &lt;reason&gt;mypy infers `self` type automatically in regular methods. Annotating `self: MyClass` is valid but redundant. `__init__` must return `None` — omitting `-&gt; None` does not cause an error but inconsistently breaks the rule of annotating all return types.&lt;/reason&gt;
+    &lt;/antipattern&gt;
+  &lt;/section&gt;
+&lt;/text&gt;
+
+</p><p>#!/usr/bin/env bash
+# typecheck-touched.sh — Strict mypy on files changed vs main branch.
+# Use as pre-push hook: runs only on files touched in the current branch.
+# Requires: mypy + django-stubs installed in venv (uv run)
+
+set -euo pipefail
+
+BASE_BRANCH=${BASE_BRANCH:-main}
+
+# Find .py files changed vs base branch
+CHANGED_FILES=$(git diff --name-only "$BASE_BRANCH"...HEAD -- '*.py' | grep -v migrations || true)
+
+if [ -z "$CHANGED_FILES" ]; then
+    echo "==&gt; No Python files changed. Skipping type check."
+    exit 0
+fi
+
+echo "==&gt; Running mypy --strict on changed files:"
+echo "$CHANGED_FILES" | sed 's/^/    /'
+
+# Run mypy with strict overrides for touched files
+# --no-error-summary: cleaner output
+# --show-column-numbers: precise error location
+uv run mypy \
+    --strict \
+    --no-error-summary \
+    --show-column-numbers \
+    $CHANGED_FILES
+
+echo "==&gt; mypy passed on all changed files."
+
+# .pre-commit-config.yaml snippet — add to existing pre-commit config
+# Runs strict mypy on changed files at pre-push stage (not pre-commit)
+# to keep commit speed fast while still catching type regressions.
+
+repos:
+  # ─── Ruff (fast, runs on every commit) ───────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+        stages: [pre-commit]
+      - id: ruff-format
+        stages: [pre-commit]
+
+  # ─── mypy (slower, runs only on push) ────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: mypy-touched
+        name: mypy strict (changed files)
+        entry: bash skills/faion/knowledge/free/dev/python-developer/python-type-hints/templates/typecheck-touched.sh
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        # Env override for base branch if not main:
+        # env:
+        #   BASE_BRANCH: develop
+
+</p></why><when-to-use><list><item>Python 3.5+ projects where IDE autocomplete and static analysis improve productivity.</item><item>Teams or codebases where runtime type errors cause production bugs.</item><item>APIs exposed to multiple callers (libraries, microservices) where contract clarity matters.</item><item>Projects using Pydantic for request/response validation in APIs.</item><item>Refactoring legacy Python code to improve maintainability.</item></list></when-to-use><when-not-to-use><list><item>Throwaway scripts or prototypes where typing overhead exceeds value.</item><item>Python 3.4 or older codebases (upgrade Python version first).</item><item>Teams not yet familiar with static typing; learning curve can slow initial development.</item><item>Simple scripts where runtime duck typing is sufficient and failure modes are obvious.</item></list></when-not-to-use><section name="External Resources"><see-also><link href="https://docs.python.org/3/library/typing.html" /><link href="https://www.python-typehing.org/" /><link href="https://mypy.readthedocs.io/" /><ref slug="python-poetry-setup" /><ref slug="python-fastapi" /></see-also></section></content></methodology>
