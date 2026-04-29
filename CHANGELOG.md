@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek methodologies → methodology.xml (tool-use-function-calling, google-ai-overviews-optimization, technical-seo-for-ai; feature-045 batch AD)
 - migrate: 2/3 geek/ai/ml-engineer methodologies → methodology.xml (rag-evaluation, speech-to-text; feature-045 batch AC)
 - migrate: 2/3 geek/ai/ml-engineer methodologies → methodology.xml (eu-ai-act-compliance, gemini-api; feature-045 batch AA)
 - migrate: 3/3 geek/ai/ml-engineer methodologies → methodology.xml (llm-observability-stack, model-evaluation, multi-agent-design-patterns; feature-045 batch AB)
