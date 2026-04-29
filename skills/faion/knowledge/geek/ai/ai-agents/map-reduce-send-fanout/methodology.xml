@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="map-reduce-send-fanout">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Map per-item LLM work with Send/ParallelAgent, cap at 20 concurrency, require idempotency — super-steps fail atomically so non-idempotent work double-applies on retry.</summary>
+    <tags>
+      <tag>parallelization</tag>
+      <tag>langgraph</tag>
+      <tag>fan-out</tag>
+      <tag>concurrency</tag>
+      <tag>map-reduce</tag>
+    </tags>
+    <category>pattern</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Map-Reduce Fan-Out with Bounded Concurrency and Idempotent Branches</title>
+    <summary>Use dynamic fan-out (Send(node, payload) in LangGraph, ParallelAgent in ADK, asyncio.gather in plain Python) to map a per-item LLM call across a list, then reduce with an annotated reducer (Annotated[list, operator.add] or a custom merge). Cap concurrency at ≤20 to avoid rate-limit cliffs, and design every branch to be idempotent + retryable because any single branch failure fails the entire super-step atomically. Never use map-reduce fan-out for branches that mutate shared external state — use a queue + workers instead.</summary>
+    <why>
+      <p>Latency in agent stacks is dominated by serialized LLM calls. For embarrassingly parallel work (per-document scoring, multi-source RAG, multi-candidate generation, batch tool calls over a list), map-reduce drops wall time from O(N · turn) to O(turn) — a 5-20× latency win on N=20 — and lets you route each branch to a cheaper model (Haiku per item, Sonnet for the reduce). The constraints exist because rate-limit cliffs are real (most providers rate-limit hard at 60-300 req/s, and parallel branches share that budget) and because LangGraph's super-step semantics fail atomically — a non-idempotent branch on the failing path produces a half-applied side effect on retry.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Per-document scoring or classification across N documents.</item>
+        <item>Multi-source RAG fan-out (vector search + web search + memory lookup, then merge).</item>
+        <item>Multi-candidate generation (sample N drafts, pick best with a reducer / vote).</item>
+        <item>Batch tool calls over a list (enrich N rows, classify N emails) where each item is independent.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Fixed-N parallel where N is known at graph-compile time — use static fan-out edges; Send is for runtime-variable N.</item>
+        <item>Branches that mutate shared external state (write to the same DB row, append to one file) — use a queue + workers, not Send. Atomic-fail of the super-step double-applies on retry.</item>
+        <item>N &gt; 20 with a single provider — split into batches, otherwise rate-limit kills the run; or move to provider Batch API.</item>
+        <item>Strong consistency requirements across branches (every branch must see the same prior state) — use sequential.</item>
+      </list>
+    </when-not-to-use>
+    <section name="bounded-fan-out-rule">
+      <p>Dynamic fan-out turns serial agent calls into parallel ones, but only if branches are independent and retryable. The shape is: a router node emits N Send commands, each carrying a per-item payload; an aggregator node reads the reduced list.</p>
+      <rule testable="true">
+        <statement>Use map-reduce fan-out (Send / ParallelAgent / asyncio.gather) only when (a) per-item work is independent, (b) every branch is idempotent and retryable, (c) the target state field has a reducer annotation, and (d) concurrency is capped at ≤20.</statement>
+        <rationale>LangGraph super-steps fail atomically — one branch crashing reverts the whole step's writes. Without idempotency, retry double-applies side effects. Without a reducer, parallel writes to the same key clobber each other. Above 20 concurrent calls, most providers' rate limits kick in and tail latency dominates the parallelism win.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[from typing import Annotated
+import operator
+from langgraph.types import Send
+
+class State(TypedDict):
+    items: list[str]
+    scored: Annotated[list[dict], operator.add]   # reducer required
+
+def router(state: State):
+    # Emit one Send per item; LangGraph parallelizes them.
+    return [Send("score_one", {"item": x}) for x in state["items"][:20]]
+
+def score_one(payload):
+    # Idempotent: same input → same output, no external mutation.
+    return {"scored": [{"item": payload["item"], "score": llm_score(payload["item"])}]}]]></code>
+        <note>Reducer annotation, cap of 20, pure scoring branch. Reads safely on retry.</note>
+      </example>
+      <example type="bad">
+        <code lang="python"><![CDATA[def router(state: State):
+    return [Send("write_row", {"id": x}) for x in state["items"]]   # 200 sends
+
+def write_row(payload):
+    db.update(payload["id"], status="processed")                    # side effect
+    return {"done": [payload["id"]]}]]></code>
+        <note>200 concurrent Sends saturate the rate limit; non-idempotent DB write double-applies on super-step retry.</note>
+      </example>
+      <antipattern>
+        <description>Forgetting the reducer annotation on the aggregation field.</description>
+        <reason>Parallel branches each overwrite the field, last write wins, all but one branch's result is lost. The Annotated[list, operator.add] (or a custom merge) is mandatory.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using Send for branches that mutate shared external state (S3 manifest, DB row, append-only file).</description>
+        <reason>Super-step atomic failure means partial side effects survive a retry. Use a queue + workers (SQS, Inngest, Temporal) for write fan-out, never Send.</reason>
+      </antipattern>
+    </section>
+    <section name="concurrency-cap-and-rate-limit-cliffs">
+      <list>
+        <item>Default cap: 20 concurrent branches per super-step. Above that, most provider rate limits dominate latency.</item>
+        <item>Anthropic Batch API / OpenAI Batch — use for N &gt; 100 with no real-time deadline; 50% cheaper, no rate-limit risk.</item>
+        <item>For N in 20-100 with deadline: chunk into batches of 20, run sequentially, accumulate.</item>
+        <item>Mix model tiers per branch: cheap model for the map, strong for the reduce — extra parallel tax stays in the cheap budget.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/send_fanout.py" purpose="LangGraph reference: router emits Send(...) per item, reducer aggregates with operator.add."/>
+    </templates>
+    <see-also>
+      <link href="https://docs.langchain.com/oss/python/langgraph/use-graph-api">LangGraph — Use the Graph API (Send semantics).</link>
+      <link href="https://medium.com/ai-engineering-bootcamp/map-reduce-with-the-send-api-in-langgraph-29b92078b47d">Map-Reduce with Send() in LangGraph — concrete walkthrough.</link>
+      <link href="https://aipractitioner.substack.com/p/scaling-langgraph-agents-parallelization">Scaling LangGraph Agents — parallelization, subgraphs, map-reduce.</link>
+    </see-also>
+  </content>
+</methodology>
