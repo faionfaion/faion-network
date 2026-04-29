@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ab-testing-basics">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>A/B testing compares variants using deterministic hash-based assignment. Define Experiment before coding; lock spec and compute sample size from baseline + MDE + power.</summary>
+    <tags>
+      <tag>a-b-testing</tag>
+      <tag>experimentation</tag>
+      <tag>experimental-design</tag>
+      <tag>statistical-testing</tag>
+      <tag>variant-assignment</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+
+  <content>
+    <title>A/B Testing Basics</title>
+
+    <summary>A/B testing compares two or more variants of a feature using deterministic hash-based assignment to measure which performs better on a pre-registered primary metric. Define an Experiment (hypothesis, variants, metrics, target sample size) before writing any code; bucket users with hash(experiment_id + user_id) % 10000 for stable, reproducible assignments.</summary>
+
+    <why>
+      <p>Gut-feel product decisions produce unpredictable outcomes. Randomized controlled experiments give a causal estimate of variant impact. The key reliability constraint is that everything — allocation, primary metric, MDE, sample size — must be locked before launch; post-hoc changes invalidate the statistical guarantees.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Testing UI/UX changes (button text, layout, checkout flow) before full rollout.</item>
+        <item>Evaluating algorithm improvements (search ranking, recommendation) with a defined success metric.</item>
+        <item>Pricing or copy experiments where conversion delta is the primary signal.</item>
+        <item>Any change where you need a causal (not correlational) lift estimate.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Rollouts where randomization is impossible (e.g., infrastructure changes) — use quasi-experimental methods.</item>
+        <item>Multi-armed bandit / adaptive allocation — this methodology is fixed-split only.</item>
+        <item>High-throughput platforms with thousands of concurrent experiments — use a managed platform (Statsig, Optimizely, GrowthBook) instead of the code snippets here.</item>
+        <item>When you cannot reach the required sample size — switch to qualitative research.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="experiment-design-schema-and-validation">
+      <p>Typed Experiment dataclass with Variant/Metric schema, validation rules, and sample-size requirements.</p>
+
+      <rule testable="true">
+        <statement>Define every experiment as a structured object with id, hypothesis, variants, metrics, target_sample_size, and owner before writing any assignment code.</statement>
+        <rationale>Locking the spec before code prevents post-hoc changes to allocation or primary metric, which invalidate statistical guarantees.</rationale>
+      </rule>
+
+      <reference path="templates/experiment.py">Experiment, Variant, Metric dataclasses and ExperimentAssigner.</reference>
+
+      <example type="good" title="Experiment dataclass with variants and metrics">
+        <code lang="python"><![CDATA[
+checkout_experiment = Experiment(
+    id="exp-checkout-v2-2024",
+    name="New Checkout Flow",
+    hypothesis="Simplified checkout will increase conversion by 15%",
+    variants=[
+        Variant("control", 0.5, "Current checkout flow"),
+        Variant("treatment", 0.5, "Single-page checkout"),
+    ],
+    metrics=[
+        Metric("checkout_conversion", "conversion", primary=True),
+        Metric("cart_abandonment", "conversion", direction="decrease"),
+        Metric("time_to_complete", "continuous", direction="decrease"),
+    ],
+    target_sample_size=10000,
+    owner="checkout-team",
+)
+        ]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Validate before launch: variant allocations must sum to 1.0, at least 2 variants required, exactly 1 primary metric.</statement>
+        <rationale>Multiple primary metrics enable HARKing (Hypothesizing After Results are Known); no primary metric means there is no pre-registered success criterion.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Compute required sample size from baseline rate, MDE (in absolute pp), alpha, and power before setting target_sample_size — never use a round number as the stopping rule.</statement>
+        <rationale>Stopping early on "enough data" without power calculation inflates false positives; round-number stopping rules are not tied to detectability.</rationale>
+      </rule>
+
+      <reference path="templates/sample-size.py">sample_size_per_variant() using statsmodels z-test for two proportions.</reference>
+
+      <example type="bad" title="Arbitrary sample size without power calculation">
+        <code lang="python"><![CDATA[
+target_sample_size=1000  # arbitrary round number
+        ]]></code>
+        <note>Not derived from baseline rate + MDE. Not a stopping rule.</note>
+      </example>
+
+      <example type="good" title="Sample size computed from power parameters">
+        <code lang="python"><![CDATA[
+# baseline=6.2%, mde=+0.5pp, alpha=0.05, power=0.8
+n = sample_size_per_variant(p_control=0.062, mde_abs=0.005)
+# => e.g. 11240
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="deterministic-assignment-hash-bucketing-and-override-hooks">
+      <p>Stable hash-based bucketing with md5, QA override hooks, and exposure event contract.</p>
+
+      <rule testable="true">
+        <statement>Bucket users using hashlib.md5(f"{experiment_id}:{user_id}".encode()).hexdigest() and bucket = (hash_value % 10000) / 10000.0 — never use random.random() or Python's built-in hash().</statement>
+        <rationale>Python's hash() is process-salted (changes per restart). random.random() produces different variants for the same user across requests. Both break session continuity and make analysis impossible.</rationale>
+      </rule>
+
+      <example type="bad" title="Using random or Python's built-in hash">
+        <code lang="python"><![CDATA[
+bucket = random.random()  # different result every request
+bucket = hash(user_id) % 10000  # salted per-process, unstable
+        ]]></code>
+      </example>
+
+      <example type="good" title="Deterministic md5-based bucketing">
+        <code lang="python"><![CDATA[
+import hashlib
+hash_key = f"{experiment_id}:{user_id}"
+hash_value = int(hashlib.md5(hash_key.encode()).hexdigest(), 16)
+bucket = (hash_value % 10000) / 10000.0
+        ]]></code>
+        <note>Do NOT change to sha256 post-launch — that reshuffles all users.</note>
+      </example>
+
+      <rule testable="true">
+        <statement>Gate the variant override path behind is_staff or an env check — never expose it as an unauthenticated query parameter in production.</statement>
+        <rationale>An unauthenticated override lets any user force themselves into a variant, biasing the sample and creating a security bypass.</rationale>
+      </rule>
+
+      <example type="bad" title="Unauthenticated variant override">
+        <code lang="python"><![CDATA[
+override = request.query_params.get("variant_override")
+# No auth check — any user can force a variant
+        ]]></code>
+      </example>
+
+      <example type="good" title="Staff-gated override hook">
+        <code lang="python"><![CDATA[
+override = None
+if user.is_staff and request.query_params.get("variant_override"):
+    override = request.query_params["variant_override"]
+        ]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Emit an exposure event on the first variant evaluation in a session; record separately from conversion — analyses run on exposures, not raw assignments.</statement>
+        <rationale>Assignment is "what would they get"; exposure is "did they actually see it". Diluting analysis with unexposed users underestimates lift.</rationale>
+      </rule>
+
+      <reference path="templates/exposure-event.json">Canonical exposure event schema with required fields.</reference>
+    </section>
+
+    <section name="a-b-testing-anti-patterns">
+      <p>Peeking, multiple testing without correction, mid-run changes, and agent-specific failure modes.</p>
+
+      <antipattern>
+        <description>Peeking: checking statistical significance before the pre-registered sample size is reached.</description>
+        <reason>Each look at results inflates the false-positive rate. At alpha=0.05, 5 peeks give ~20% Type I error instead of 5%. Use a sequential testing library or fix a single analysis date.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Multiple testing: running 5+ secondary metrics each at alpha=0.05 and reporting any p&lt;0.05 as a win.</description>
+        <reason>With 5 independent tests the familywise error rate is 1-(0.95^5) ≈ 23%. Apply Bonferroni correction or report only confidence intervals for secondary metrics.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Changing experiment mid-run: modifying allocation, variants, or primary metric after users are already bucketed.</description>
+        <reason>Users bucketed under the old allocation are not comparable to users bucketed under the new one. Results are confounded and uninterpretable.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Ignoring sample-ratio mismatch (SRM): the observed variant split deviates from the configured allocation.</description>
+        <reason>SRM is evidence of a bucketing bug or logging failure. Analysis on an SRM dataset produces biased lift estimates. Always run chi-square SRM check before analysis.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent confuses relative vs absolute MDE: "+10% lift on 6% baseline" is +0.6pp absolute, not +10pp.</description>
+        <reason>Forces units explicitly in every prompt and formula call. Wrong MDE input produces a wildly incorrect sample-size estimate.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-integration-and-workflows">
+      <p>The agent's job in basics is design + safe assignment, not analysis. Steps: (1) translate a PM hypothesis into the Experiment dataclass, (2) compute sample size via MDE/power (separate library: statsmodels or evan-miller-style), (3) wire ExperimentAssigner into the request handler, (4) emit an exposure event for downstream analysis (handled in ab-testing-implementation). Pair with a flag platform if you want runtime kill-switch independent of the bucketing.</p>
+
+      <p>Recommended subagents: faion-sdd-executor-agent — runs experiment-launch as an SDD task with a checklist (spec → assignment → exposure → kill-switch). faion-brainstorm — diverge/converge on hypothesis + metric tree before locking the spec. General code-writer for the assigner integration in app code.</p>
+
+      <p>Prompt pattern: Design the A/B experiment for "checkout simplification". Use solo/dev/automation-tooling/ab-testing-basics/README.md. Inputs: baseline conversion = 6.2%, minimum detectable effect = +0.5pp absolute (relative ~+8%), alpha = 0.05, power = 0.8, two variants (control / treatment), 50/50. Output: (1) Filled Experiment(...) instance, (2) Required sample size per variant (cite formula), (3) Exposure event schema (event name, properties), (4) Kill-switch plan.</p>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p>hashlib.md5 is fine for bucketing but flagged by some compliance scanners; agents may try to "fix" it to SHA-256, which silently changes everyone's bucket. Pin md5 explicitly.</p>
+
+      <p>bucket = (hash_value % 10000) / 10000.0 gives 4-decimal granularity; allocations like 0.001 (0.1%) round-trip to 0% sometimes. Agents launching 0.5% canaries get truncated.</p>
+
+      <p>No sample-ratio mismatch (SRM) check — the assigner could drift from configured allocations if hash space isn't uniform on a small user_id distribution. Always run SRM in production.</p>
+
+      <p>Override path (override="treatment") is unauthenticated; agents copy as-is into prod and create a bypass for QA. Wrap in if user.is_staff or env check.</p>
+
+      <p>target_sample_size: int = 1000 is a placeholder, not statistically derived; agent treats it as the actual power calc. Always compute via baseline rate + MDE.</p>
+
+      <p>No mutual-exclusion / experiment-cohort logic; if two experiments touch the same surface, results are confounded.</p>
+
+      <p>Agent-specific gotchas: Peeking — agents asked to "check if winning early" silently inflate false-positive rate. Either mandate fixed-horizon test or use a sequential-testing library (e.g., confidence-sequences). Agent confuses relative vs absolute MDE — "+10% lift" on 6% baseline is +0.6pp, not +10pp. Always force units in the prompt. Agent writes the assignment hash as hashlib.sha256(...).hexdigest() "for security"; changing the hash post-launch reshuffles users. Pin algorithm + comment in source. Agent uses random.random() instead of deterministic hash — assignments are not stable across requests, breaking session continuity. Fail loud on random. imports inside the assigner. Agent forgets the override safety check; QA bypass leaks to prod. Always require an is_staff/env gate. Agent treats two simultaneous experiments as independent without checking surface overlap; results are confounded. Maintain an experiment registry the agent must consult. Multiple-comparison: when there are 5+ secondary metrics, agent reports each p-value at α=0.05 — false-positive rate balloons. Apply Bonferroni or report only confidence intervals. Human-in-loop checkpoint: launching at > 10% allocation, changing primary metric, or stopping early always requires human sign-off. The agent prepares the case; it does not pull the trigger.</p>
+    </section>
+
+    <section name="best-practices">
+      <p>Lock the spec (variants, metrics, MDE, allocation) before writing assignment code — once the hash function ships, results bake the spec in.</p>
+
+      <p>Use one primary metric. Secondary metrics are observational; promoting a secondary to primary mid-experiment is HARKing.</p>
+
+      <p>Compute sample size from baseline + MDE + alpha + power; "1000 users" is not a stopping rule.</p>
+
+      <p>Random units must be the same as analysis units — bucket by user_id, analyse by user_id. Bucketing by session and analysing by user under-powers and biases.</p>
+
+      <p>Hold one variant pure ("control") even when shipping an obvious win; you need the counterfactual for diagnostics.</p>
+
+      <p>Build kill-switches at two layers: (1) flag the experiment off (assigner returns None), (2) flag the feature off (LegacyPaymentProcessor still wired). Don't conflate the two.</p>
+
+      <p>Record assignment + exposure separately. Assignment is "what would they get"; exposure is "did they actually see it". Analyses run on exposure, not assignment.</p>
+    </section>
+
+    <section name="tools-and-services">
+      <p>CLI tools: statsmodels (Power / sample size via z-test for proportions, pip install statsmodels), scipy.stats (Hypothesis tests, bundled with scipy), Evan Miller calculator web (Quick sample-size sanity check, https://www.evanmiller.org/ab-testing/), growthbook CLI (Local SDK + experiment tooling, https://docs.growthbook.io), optuna (Bayesian optimisation alternative — not A/B, only when bandits are appropriate), dbt + metrics (Define metrics for downstream analysis, https://docs.getdbt.com).</p>
+
+      <p>Services: GrowthBook (OSS / SaaS, Yes — REST + SDKs, Define experiments in YAML/JSON; agents can flip variants via API), Statsig (SaaS, Yes — REST + SDKs, Experiments + flags + analytics in one; generous free tier), LaunchDarkly Experiments (SaaS, Yes — REST, Use if already on LD for flags), PostHog (OSS / SaaS, Yes — REST, Self-hostable; experiments + product analytics), Optimizely (SaaS, Yes — REST, Enterprise; mature Stats Engine sequential testing), Eppo (SaaS, Yes — REST, Warehouse-native; computes lifts in your dbt models), Unleash (OSS, Limited, Has variants but weaker analysis layer), AB Tasty / VWO (SaaS, Partial, Marketing-led; client-side bias).</p>
+    </section>
+
+    <templates>
+      <template path="templates/experiment.py" purpose="Experiment, Variant, Metric dataclasses and ExperimentAssigner."/>
+      <template path="templates/sample-size.py" purpose="sample_size_per_variant() using statsmodels z-test for two proportions."/>
+      <template path="templates/exposure-event.json" purpose="Canonical exposure event schema with required fields."/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.cambridge.org/core/books/trustworthy-online-controlled-experiments/D97B26382EB0EB2DC2019A7A7B518F59"/>
+      <link href="https://www.optimizely.com/optimization-glossary/statistical-significance/"/>
+      <link href="https://www.evanmiller.org/ab-testing/"/>
+      <link href="https://exp-platform.com/"/>
+      <link href="https://docs.growthbook.io/statistics/overview"/>
+      <link href="https://eng.uber.com/xp/"/>
+    </see-also>
+  </content>
+</methodology>
