@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-services">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Service layer pattern separates business logic into dedicated functions with keyword-only args, typed signatures, and explicit transaction boundaries.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>architecture</tag>
+      <tag>service-layer</tag>
+      <tag>business-logic</tag>
+      <tag>testing</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Django Services Layer</title>
+
+    <summary>The service layer pattern separates business logic from Django models, views, and serializers into dedicated functions with keyword-only arguments, typed signatures, and explicit transaction boundaries. Services own write operations (CREATE/UPDATE/DELETE and external API calls); selectors handle complex read queries. The canonical naming convention is entity_action (order_create, user_deactivate). Every service that performs two or more writes must use @transaction.atomic.</summary>
+
+    <why>
+      <p>Fat views and fat models accumulate untestable, unreusable logic. The service layer creates a boundary where tests inject mock dependencies, multiple entry points (API, admin, CLI) call the same function, and transaction safety is explicit rather than implicit. The HackSoft Django Styleguide's empirical benchmark: services reduce view line-count by approximately 70 percent while enabling 90 percent plus branch coverage on business rules.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any CREATE/UPDATE/DELETE that touches two or more models or invokes an external API.</item>
+        <item>Replacing fat-model methods that do email plus payment plus audit log in one blob.</item>
+        <item>Wrapping side-effecting operations behind @transaction.atomic boundaries.</item>
+        <item>Building a testable surface for business rules with no Django request/response in tests.</item>
+        <item>Layering DRF: serializers validate input, views delegate to services, services own writes.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple property calculations — use @property on the model.</item>
+        <item>Pure querysets / chained filters — use a custom manager.</item>
+        <item>Read-only, permission-aware fetches — use a selector, not a service.</item>
+        <item>Trivial single-model CRUD where a direct ORM call is clearer.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="naming">
+      <p>Name service functions entity_action to group all operations on a domain object together, making grep and impact analysis reliable.</p>
+      <rule testable="true">
+        <statement>Name service functions entity_action (e.g. order_create, user_deactivate). Choose one convention project-wide and document it in the project AGENTS.md.</statement>
+        <rationale>entity_action groups all operations on a domain object together, making grep -r "order_" reliable for impact analysis.</rationale>
+      </rule>
+    </section>
+
+    <section name="signature">
+      <p>All service function arguments must be keyword-only with full type hints. Use TYPE_CHECKING imports for model types to avoid circular imports at runtime.</p>
+      <rule testable="true">
+        <statement>All service function arguments must be keyword-only (leading * separator). Include full type hints on all parameters and the return type. Use TYPE_CHECKING imports for model types.</statement>
+        <rationale>Keyword-only prevents positional mistakes when signatures grow. TYPE_CHECKING avoids circular imports at runtime while keeping type checkers happy.</rationale>
+      </rule>
+      <example type="good" title="Properly typed service signature">
+        <code lang="python"><![CDATA[
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from apps.orders.models import Order
+    from apps.users.models import User
+
+
+def order_create(
+    *,
+    user: User,
+    items: list[dict],
+    notes: str | None = None,
+) -> Order:
+    ...
+]]></code>
+      </example>
+      <example type="bad" title="Positional arguments with missing types">
+        <code lang="python"><![CDATA[
+def order_create(user, items, notes=None):  # positional, no types
+    ...
+]]></code>
+        <note>Positional args cause silent mistakes; missing types block pyright from catching signature drift.</note>
+      </example>
+    </section>
+
+    <section name="transactions">
+      <p>Apply @transaction.atomic only when the service performs two or more writes that must succeed together. For side effects that must not run on rollback, use transaction.on_commit() or task.delay_on_commit().</p>
+      <rule testable="true">
+        <statement>Apply @transaction.atomic only when the service performs two or more writes that must succeed together. Do not wrap read-only services or single-write operations.</statement>
+        <rationale>Unnecessary atomic blocks hold DB locks longer and nest savepoints with surprising rollback semantics.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>For any side effect that must not run on rollback (Celery tasks, webhook fires, email), use transaction.on_commit() or task.delay_on_commit().</statement>
+        <rationale>task.delay() inside an atomic block can execute before the commit completes, causing the task to query a row that does not yet exist.</rationale>
+      </rule>
+      <example type="good" title="Service with atomic block and delayed task">
+        <code lang="python"><![CDATA[
+from django.db import transaction
+from apps.orders.tasks import send_order_confirmation_email
+
+
+@transaction.atomic
+def order_create(*, user: User, items: list[dict]) -> Order:
+    order = Order.objects.create(user=user, status="pending")
+    for item in items:
+        OrderItem.objects.create(order=order, **item)
+    # Fires ONLY after commit
+    send_order_confirmation_email.delay_on_commit(order_id=order.id)
+    return order
+]]></code>
+      </example>
+    </section>
+
+    <section name="input-validation">
+      <p>Validate business rules at the service entry point with custom exceptions. Never let views validate business rules, so all entry points (API, admin, CLI) enforce the same rules.</p>
+      <rule testable="true">
+        <statement>Validate business rules at the service entry point. Raise a custom ValidationError with a descriptive message. Never let views validate business rules.</statement>
+        <rationale>Centralised validation means admin, API, and CLI entry points all enforce the same rules.</rationale>
+      </rule>
+      <example type="good" title="Business rule validation in service">
+        <code lang="python"><![CDATA[
+def user_create(*, email: str, password: str) -> User:
+    if User.objects.filter(email=email).exists():
+        raise ValidationError(f"Email {email} is already registered")
+    return User.objects.create_user(email=email, password=password)
+]]></code>
+      </example>
+    </section>
+
+    <section name="file-organisation">
+      <p>For small apps use a single services.py file. For larger apps create a services/ package with one module per entity (user_services.py, order_services.py) and re-export the public API in services/__init__.py.</p>
+      <rule testable="true">
+        <statement>For apps with fewer than 10 services use a single services.py. For larger apps, create a services/ package with one module per bounded entity (user_services.py, order_services.py) and re-export the public API in services/__init__.py.</statement>
+        <rationale>Re-exporting from __init__.py keeps call-sites stable when modules are split later.</rationale>
+      </rule>
+    </section>
+
+    <section name="error-handling">
+      <p>Define a service exception hierarchy rooted at ServiceError with domain-specific subclasses. Let exceptions propagate rather than swallowing them, so the caller (view, task) can map exceptions to HTTP status codes or retry decisions.</p>
+      <rule testable="true">
+        <statement>Define a service exception hierarchy rooted at ServiceError. Use domain-specific subclasses (InsufficientStockError, PaymentFailedError). Let exceptions propagate; do not swallow them inside services.</statement>
+        <rationale>Caller (view, task) maps exceptions to HTTP status codes or retry decisions. Swallowing silences bugs.</rationale>
+      </rule>
+      <reference path="templates/exceptions.py">Service exception hierarchy template.</reference>
+    </section>
+
+    <section name="selectors-optimised-reads">
+      <p>The selector pattern isolates complex read logic into dedicated functions, preventing N+1 queries and keeping views and services thin.</p>
+
+      <rule testable="true">
+        <statement>Create a selector function (not a service) when: the query spans multiple relations, includes permission-based filtering, involves aggregations, or is reused across multiple views.</statement>
+        <rationale>Selectors return QuerySets for further chaining. Placing read logic in a selector makes it testable in isolation and reusable from any entry point.</rationale>
+      </rule>
+    </section>
+
+    <section name="n-plus-one-prevention">
+      <p>Every selector must document its expected query count in the docstring. Use select_related() for FK/OneToOne and prefetch_related() for reverse FK/M2M. Add only() or defer() to limit loaded columns when serialising large sets.</p>
+      <rule testable="true">
+        <statement>Every selector must document its expected query count in the docstring. Use select_related() for FK/OneToOne and prefetch_related() for reverse FK/M2M. Add only() or defer() to limit loaded columns when serialising large sets.</statement>
+        <rationale>Unoptimised querysets serialised in DRF loop over relations, issuing one query per row (N+1). Prefetch collapses this to 2 queries.</rationale>
+      </rule>
+      <example type="good" title="Optimised selector with prefetch">
+        <code lang="python"><![CDATA[
+from django.db.models import Count, QuerySet
+
+
+def order_list_for_user(*, user: User) -> QuerySet[Order]:
+    """
+    Get visible orders for a user with items prefetched.
+
+    Query count: 3 (orders, items, products)
+    """
+    return (
+        Order.objects
+        .filter(user=user, is_visible=True)
+        .select_related("user", "payment")
+        .prefetch_related("items__product")
+        .annotate(item_count=Count("items"))
+        .order_by("-created_at")
+    )
+]]></code>
+      </example>
+      <example type="bad" title="Unoptimised selector causing N+1">
+        <code lang="python"><![CDATA[
+def order_list_for_user(*, user: User):
+    return Order.objects.filter(user=user)  # N+1 when serialised
+]]></code>
+        <note>Missing prefetch causes one extra query per order when serialiser accesses items.</note>
+      </example>
+    </section>
+
+    <section name="aggregation-selectors">
+      <p>Aggregation selectors must return a QuerySet so callers can chain additional filters. Document the output shape in the docstring.</p>
+      <rule testable="true">
+        <statement>Aggregation selectors must return a QuerySet, not a plain dict, so callers can chain additional filters. Document the output shape in the docstring.</statement>
+        <rationale>Returning a QuerySet keeps the selector composable; a plain dict forces a new selector every time a caller needs slightly different filters.</rationale>
+      </rule>
+      <example type="good" title="Composable aggregation selector">
+        <code lang="python"><![CDATA[
+from datetime import date
+from django.db.models import Avg, Count, Sum, QuerySet
+from django.db.models.functions import TruncMonth
+
+
+def sales_monthly_summary(*, start_date: date, end_date: date) -> QuerySet:
+    """
+    Monthly sales summary.
+
+    Query count: 1
+    Output columns: month, total_sales, order_count, avg_order_value
+    """
+    from apps.orders.models import Order
+
+    return (
+        Order.objects
+        .filter(
+            status="completed",
+            created_at__date__gte=start_date,
+            created_at__date__lte=end_date,
+        )
+        .annotate(month=TruncMonth("created_at"))
+        .values("month")
+        .annotate(
+            total_sales=Sum("total"),
+            order_count=Count("id"),
+            avg_order_value=Avg("total"),
+        )
+        .order_by("month")
+    )
+]]></code>
+      </example>
+    </section>
+
+    <section name="patterns-and-examples">
+      <p>Concrete examples for common migration patterns and architecture decisions.</p>
+
+      <rule testable="true">
+        <statement>Inject external services (payment gateways, email senders) as Protocol parameters. Never import SDK clients at module level inside a service.</statement>
+        <rationale>Protocol parameters let tests pass Mock() objects without patching module globals, which is fragile.</rationale>
+      </rule>
+
+      <example type="good" title="Business logic in service with thin view">
+        <code lang="python"><![CDATA[
+# services/order_services.py
+@transaction.atomic
+def order_create(*, user: User, items: list[dict], payment_gateway) -> Order:
+    products = _validate_inventory(items=items)
+    order = Order.objects.create(user=user, status="pending")
+    total = _create_order_items(order=order, items=items, products=products)
+    _deduct_inventory(items=items, products=products)
+    order.total = total
+    order.save(update_fields=["total", "updated_at"])
+    _process_payment(order=order, payment_gateway=payment_gateway)
+    send_order_confirmation_email.delay_on_commit(order_id=order.id)
+    return order
+
+# views.py  (thin — HTTP only)
+class OrderCreateView(APIView):
+    def post(self, request):
+        serializer = OrderCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            order = order_create(
+                user=request.user,
+                items=serializer.validated_data["items"],
+                payment_gateway=get_payment_gateway(),
+            )
+            return Response(OrderSerializer(order).data, status=201)
+        except InsufficientStockError as e:
+            return Response({"error": str(e)}, status=400)
+        except PaymentFailedError as e:
+            return Response({"error": str(e)}, status=402)
+]]></code>
+      </example>
+
+      <example type="good" title="Protocol-based dependency injection">
+        <code lang="python"><![CDATA[
+from typing import Protocol
+
+
+class PaymentGateway(Protocol):
+    def charge(self, amount: int, customer_id: str) -> str: ...
+    def refund(self, transaction_id: str) -> bool: ...
+
+
+def order_process_payment(
+    *,
+    order: Order,
+    payment_gateway: PaymentGateway,
+) -> Order:
+    transaction_id = payment_gateway.charge(
+        amount=int(order.total * 100),
+        customer_id=order.user.payment_customer_id,
+    )
+    order.payment_transaction_id = transaction_id
+    order.status = "paid"
+    order.save(update_fields=["payment_transaction_id", "status", "updated_at"])
+    return order
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Most frequent mistakes when generating service code.</p>
+      <antipattern>
+        <description>LLMs default to positional arguments and skip the leading * separator.</description>
+        <reason>Enforce keyword-only via ruff RET rule or a pyright reportMissingTypeArgument check in CI.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents call services from inside DRF ModelSerializer.create() because tutorials show it.</description>
+        <reason>Correct pattern: view calls service, serialiser handles I/O only. Serialiser business logic is untestable without HTTP.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents stack @transaction.atomic on both the outer service and inner helper services, creating savepoints with non-obvious rollback semantics.</description>
+        <reason>Only the outermost service in a flow should be atomic. Document the rule in the project AGENTS.md.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents mock ORM methods (Order.objects.create) to avoid a real DB in tests.</description>
+        <reason>Use real DB plus factory_boy. Mocking ORM makes tests pass while hiding query issues.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/service.py" purpose="Canonical service function skeleton with docstring, TYPE_CHECKING, @transaction.atomic."/>
+      <template path="templates/selector.py" purpose="Selector function skeleton with prefetch, query-count docstring."/>
+      <template path="templates/exceptions.py" purpose="Service exception hierarchy: ServiceError, ValidationError, NotFoundError, BusinessRuleError, ExternalServiceError."/>
+      <template path="templates/factories.py" purpose="Factory Boy factories for User, Order, Product, OrderItem."/>
+      <template path="templates/prompt-service.txt" purpose="LLM prompt template for generating a complete service."/>
+    </templates>
+  </content>
+</methodology>
