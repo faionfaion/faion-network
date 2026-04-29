@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="fail2ban-setup">
+  <metadata>
+    <tier>solo</tier>
+    <group>infra</group>
+    <domain>server-craft</domain>
+    <summary>Dynamic IP banning layer for Ubuntu 24.04 servers: SSH jail, nginx jails, custom filters, recidive escalation, Cloudflare whitelisting.</summary>
+    <tags>
+      <tag>fail2ban</tag>
+      <tag>security</tag>
+      <tag>firewall</tag>
+      <tag>nftables</tag>
+      <tag>ubuntu</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>fail2ban Setup for Ubuntu 24.04</title>
+
+    <summary>Dynamic IP banning layer for Ubuntu 24.04 servers using nftables backend and systemd journal log source: SSH jail (maxretry 3), nginx jails (botsearch, limit-req, http-auth), custom application filters, recidive jail for week-long all-ports bans on repeat offenders, and Cloudflare IP whitelisting. Configuration exclusively via drop-in files in jail.d/ and filter.d/ — never edit jail.conf directly.</summary>
+
+    <why>
+      <p>Even with SSH key-only auth and a firewall, servers face thousands of automated SSH brute-force attempts and web scanner bots daily. fail2ban monitors logs and temporarily bans IPs exhibiting malicious behavior, adding a dynamic defense layer at zero throughput cost. The recidive jail catches IPs that evade short bans by returning repeatedly, escalating to a one-week all-ports block.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>After SSH hardening — fail2ban is the dynamic complement to static firewall rules</item>
+        <item>When adding any publicly exposed service (nginx, mail server) — add a jail for that service</item>
+        <item>When nginx logs show repeated scanner traffic for the same IP — verify filter match, then enable jail</item>
+        <item>Deploying behind Cloudflare — configure real-IP extraction so the actual attacker IP is banned</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Servers behind a private VPN where SSH is not reachable from the public internet</item>
+        <item>Kubernetes pods / Docker containers logging to Docker log driver (not a file fail2ban can tail)</item>
+        <item>As a substitute for SSH key-only auth — it is a complement, not a replacement</item>
+        <item>Cloudflare Workers or serverless — no server-level log to monitor</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="fail2ban-architecture">
+      <p>Log files or systemd journal → fail2ban-server → filters match patterns → jails count matches → actions ban/unban via nftables.</p>
+
+      <rule testable="true">
+        <statement>Use backend=systemd for services that log to journald (sshd on Ubuntu 24.04). Use backend=auto for services with explicit log files (nginx). Never set logpath when using backend=systemd — it is silently ignored.</statement>
+        <rationale>The systemd backend reads the journal directly; there is no log file path. Including logpath with backend=systemd triggers a warning and may prevent the jail from starting correctly.</rationale>
+      </rule>
+    </section>
+
+    <section name="configuration-hierarchy">
+      <rule testable="true">
+        <statement>Never edit jail.conf or fail2ban.conf. Create all customizations in jail.local (global defaults) and jail.d/*.conf (per-jail drop-ins). These survive package upgrades.</statement>
+        <rationale>jail.conf is overwritten on package upgrade. jail.local and jail.d/ files are preserved. This mirrors the sshd_config.d/ pattern.</rationale>
+      </rule>
+      <list>
+        <item>/etc/fail2ban/jail.local — global defaults (bantime, findtime, maxretry, ignoreip, backend, banaction)</item>
+        <item>/etc/fail2ban/jail.d/*.conf — per-jail drop-ins</item>
+        <item>/etc/fail2ban/filter.d/*.conf — filter regex patterns</item>
+        <item>/etc/fail2ban/action.d/*.conf — ban/unban actions</item>
+      </list>
+    </section>
+
+    <section name="nftables-backend">
+      <rule testable="true">
+        <statement>Set banaction=nftables and banaction_allports=nftables[type=allports] in [DEFAULT]. Ubuntu 24.04 uses nftables as the default firewall backend; mixing iptables and nftables rules causes conflicts.</statement>
+        <rationale>fail2ban defaults to iptables on older systems. Ubuntu 24.04 uses nftables via UFW. Setting the nftables banaction explicitly ensures fail2ban's bans integrate correctly with the existing ruleset.</rationale>
+      </rule>
+    </section>
+
+    <section name="key-cli-commands">
+      <list>
+        <item>sudo fail2ban-client status — show all jails and summary</item>
+        <item>sudo fail2ban-client status sshd — detailed jail status with banned IPs</item>
+        <item>sudo fail2ban-client set sshd unbanip 1.2.3.4 — unban a specific IP</item>
+        <item>sudo fail2ban-client reload — reload config without clearing ban state (use instead of restart)</item>
+        <item>sudo fail2ban-regex /var/log/nginx/access.log /etc/fail2ban/filter.d/nginx-botsearch.conf — test filter</item>
+        <item>sudo nft list ruleset | grep -A5 "f2b" — inspect active nftables ban rules</item>
+      </list>
+      <rule testable="true">
+        <statement>Use fail2ban-client reload (not restart) after config changes. reload preserves existing ban state; restart clears all bans.</statement>
+        <rationale>Restarting fail2ban unbans all currently banned IPs, giving active attackers an immediate window to reconnect.</rationale>
+      </rule>
+    </section>
+
+    <section name="ignoreip-whitelist">
+      <rule testable="true">
+        <statement>Always whitelist localhost, Docker networks (172.16.0.0/12, 10.0.0.0/8), your static IP, VPN subnet, and all Cloudflare IP ranges BEFORE enabling any jail. A misconfigured whitelist bans you immediately on first nginx scan.</statement>
+        <rationale>fail2ban bans based on log patterns without geographic awareness. Your own monitoring tools, Docker containers, and Cloudflare proxy IPs all generate traffic that matches scanner patterns.</rationale>
+      </rule>
+      <reference path="templates/jail.local">Global jail.local with ignoreip and nftables backend</reference>
+    </section>
+
+    <section name="ssh-jail">
+      <rule testable="true">
+        <statement>Configure SSH jail with maxretry=3, findtime=600, bantime=3600. Use filter=sshd[mode=aggressive] to catch invalid user attempts in addition to failed passwords.</statement>
+        <rationale>3 failures in 10 minutes is aggressive enough to block brute-force (which tries hundreds per minute) while allowing legitimate multi-key authentication failures without permanent lockout.</rationale>
+      </rule>
+      <reference path="templates/jail-sshd.conf">SSH jail drop-in config</reference>
+    </section>
+
+    <section name="nginx-jails">
+      <list>
+        <item>nginx-http-auth — catches 401 errors from nginx basic auth (error.log)</item>
+        <item>nginx-botsearch — catches 404 probes for vulnerability paths (access.log), maxretry=10</item>
+        <item>nginx-limit-req — catches nginx rate limit violations (error.log)</item>
+        <item>nginx-bad-request — catches malformed HTTP requests, 400 responses (access.log)</item>
+      </list>
+      <reference path="templates/jail-nginx.conf">nginx jails drop-in config</reference>
+    </section>
+
+    <section name="recidive-jail-ban-escalation">
+      <rule testable="true">
+        <statement>Configure the recidive jail: if an IP is banned 3 times in 24 hours, ban it for 1 week on ALL ports using banaction=nftables[type=allports]. recidive requires /var/log/fail2ban.log to exist — logtarget must not be set to journal-only.</statement>
+        <rationale>Short bans (1h) do not deter persistent scanners. Recidive escalates to a week-long all-ports block for IPs that return after being banned, effectively removing persistent attackers.</rationale>
+      </rule>
+      <reference path="templates/jail-recidive.conf">Recidive jail drop-in config</reference>
+    </section>
+
+    <section name="ban-time-escalation">
+      <rule testable="true">
+        <statement>Enable bantime.increment=true in [DEFAULT] with bantime.factor=2 and bantime.maxtime=604800 to automatically double ban time for repeat offenders within the same jail, up to 1 week maximum.</statement>
+        <rationale>Linear ban times do not deter automated scanners. Exponential escalation per IP makes repeated attempts progressively more costly without manual intervention.</rationale>
+      </rule>
+    </section>
+
+    <section name="custom-filter-structure">
+      <rule testable="true">
+        <statement>Place custom filters in /etc/fail2ban/filter.d/&lt;name&gt;.conf with a [Definition] section containing failregex patterns. Use &lt;HOST&gt; as the placeholder for the IP address. Test every filter with fail2ban-regex before enabling the jail.</statement>
+        <rationale>An unmatched filter silently produces zero bans — there is no error. fail2ban-regex validates the pattern against real logs before deployment, showing match count and sample matched lines.</rationale>
+      </rule>
+      <example type="good" title="Custom filter for application authentication">
+        <code lang="ini"><![CDATA[
+# /etc/fail2ban/filter.d/webapp-auth.conf
+[Definition]
+failregex = ^<HOST> -.*"POST /api/auth/login.*" 401
+            ^<HOST> -.*"POST /api/auth/token.*" 401
+ignoreregex = ^<HOST> -.*"GET /api/auth/refresh.*" 401
+]]></code>
+        <note>datepattern may need to be set if the log format uses non-standard timestamp formatting.</note>
+      </example>
+    </section>
+
+    <section name="testing-filters">
+      <rule testable="true">
+        <statement>Run fail2ban-regex against the actual log file before enabling any jail. Check that the match count is non-zero and that the IP capture group works (shows actual IPs, not empty). A zero exit code does not mean matches were found — check stdout.</statement>
+        <rationale>fail2ban-regex returns exit 0 even if no matches are found. Agents and operators must read the match count line explicitly.</rationale>
+      </rule>
+      <example type="good" title="Testing a filter against real logs">
+        <code lang="bash"><![CDATA[
+sudo fail2ban-regex /var/log/nginx/access.log /etc/fail2ban/filter.d/webapp-auth.conf
+# Check output for:
+# Failregex: N total  (must be > 0)
+# Sample matched: 185.x.x.x -... "POST /api/auth/login..." 401
+]]></code>
+      </example>
+    </section>
+
+    <section name="cloudflare-real-ip-problem">
+      <rule testable="true">
+        <statement>When nginx is behind Cloudflare, configure nginx real_ip module with Cloudflare's IP ranges and real_ip_header CF-Connecting-IP so nginx logs the actual client IP. Without this, fail2ban bans Cloudflare proxy IPs, blocking all traffic through that proxy.</statement>
+        <rationale>Cloudflare forwards traffic from a small set of well-known IP ranges. If nginx logs the Cloudflare proxy IP instead of the real client IP, fail2ban will ban Cloudflare itself, disrupting all CDN-proxied traffic.</rationale>
+      </rule>
+      <example type="good" title="Real IP extraction for Cloudflare">
+        <code lang="nginx"><![CDATA[
+# /etc/nginx/nginx.conf — http block
+set_real_ip_from 103.21.244.0/22;
+set_real_ip_from 103.22.200.0/22;
+set_real_ip_from 103.31.4.0/22;
+# ... add all current Cloudflare ranges from https://www.cloudflare.com/ips-v4
+real_ip_header CF-Connecting-IP;
+]]></code>
+      </example>
+      <antipattern>
+        <description>Hardcoding Cloudflare IP ranges in nginx or fail2ban ignoreip. Cloudflare's IP ranges change over time.</description>
+        <reason>Fetch the live list with: curl https://www.cloudflare.com/ips-v4. Stale hardcoded ranges miss new Cloudflare IPs and create silent gaps.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/jail.local" purpose="Global jail.local with ignoreip, nftables backend, and default ban thresholds"/>
+      <template path="templates/jail-sshd.conf" purpose="SSH jail drop-in for jail.d/ with maxretry and findtime"/>
+      <template path="templates/jail-nginx.conf" purpose="nginx jails drop-in: http-auth, botsearch, limit-req, bad-request"/>
+      <template path="templates/jail-recidive.conf" purpose="Recidive jail for repeat-offender escalation with week-long all-ports ban"/>
+    </templates>
+
+    <see-also>
+      <ref slug="firewall-management"/>
+      <ref slug="ssh-hardening"/>
+      <ref slug="nginx-reverse-proxy"/>
+    </see-also>
+  </content>
+</methodology>
