@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="role-specialized-models">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Assign different Claude models to different cognitive roles (plan/review strong, execute mid, classify small) to reduce cost 3x with no quality regression.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>models</tag>
+      <tag>cost-optimization</tag>
+      <tag>multi-agent</tag>
+      <tag>claude</tag>
+      <tag>role-specialization</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>Role-Specialized Models per Agent Step</title>
+
+    <summary>Assign different models to different cognitive ROLES, not different subtasks. The empirical split that works in production: planning and review get the strongest model, execution and code-writing get the mid model, and classification, slot-filling, and formatting get the smallest model. In Claude Code subagents this maps to `model:` per agent definition; in LangGraph/CrewAI it maps to per-node LLM. The split is by cognitive demand, not by which step happens to be next in the pipeline.</summary>
+
+    <why>
+      <p>A single-model agent overpays on routine steps and underpays on hard reasoning. Anthropic's own "Opus-as-adviser, Sonnet-as-executor" pattern reports ~3x lower cost per shipped feature with no quality regression on internal eval suites. The mechanism is that planning steps consume a small fraction of total tokens (a 1k-token plan vs 50k tokens of execution) yet drive most of the quality, so spending the strongest model on the smallest token slice has outsized leverage. Conversely, classifying file paths or extracting names is a near-saturated capability where Opus and Haiku are within 1-2 pp of each other but Opus costs 60x more.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Multi-step agents where steps have genuinely different cognitive demands (planning vs typing vs labelling).</item>
+        <item>Claude Code projects where you can pin `model:` per subagent (`planner: opus`, `implementer: sonnet`, `classifier: haiku`).</item>
+        <item>Pipelines with an explicit plan-execute-review loop — review is often the second-best place to spend the strong model.</item>
+        <item>Workloads where token cost is dominated by a long execution step that does not require frontier reasoning.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-turn workloads where there is one cognitive role, one call.</item>
+        <item>Pipelines with heavy state hand-off where model swap loses too much signal — switching mid-conversation drops the cheaper model into a context the stronger model populated.</item>
+        <item>Cold starts and prototypes — pin everything to the strong model first, profile, then specialize roles where the data justifies it.</item>
+        <item>Chains of equally hard steps (every step is reasoning) — the split has no leverage; routing or cascade is a better fit.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="role-split">
+      <p>The three-tier cognitive split shows why it dominates the cost-per-feature metric and how to spot mis-assignments. Each role should map to a specific cognitive demand, not a step sequence.</p>
+
+      <list>
+        <item>Plan / review — strongest model. Decomposes the task, audits the result, decides whether to redo. ~5% of tokens, ~70% of the quality.</item>
+        <item>Execute / generate — mid model. Writes the code, drafts the document, runs the tool calls. ~80% of tokens.</item>
+        <item>Classify / extract / format — smallest model. Picks file paths, labels, normalizes formats, fills schemas. ~15% of tokens.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Pin the strongest model to planning and final review; pin the mid model to execution; pin the smallest model to classification, slot-filling, and reformatting.</statement>
+        <rationale>Anthropic's "advisor strategy" and Claude Code subagent guides report ~3x cost reduction at unchanged quality on long-running coding tasks; the small token share of planning means the strong-model premium is paid on a small slice while preserving its leverage.</rationale>
+      </rule>
+
+      <example type="good" title="Role-pinned models in Claude Code agents">
+        <code lang="yaml"><![CDATA[
+# .claude/agents/feature-impl.yaml
+planner:
+  model: opus
+  role: "decompose feature, list acceptance criteria, write per-step plan"
+implementer:
+  model: sonnet
+  role: "edit files, run tests, iterate on errors"
+classifier:
+  model: haiku
+  role: "given plan + repo tree, return list of files each step touches"
+reviewer:
+  model: opus
+  role: "approve or request changes per acceptance criterion"
+        ]]></code>
+        <note>Roles are wired to models, not steps. The plan/review boundary is where the strong model earns its premium.</note>
+      </example>
+
+      <example type="bad" title="Uniform Opus for all steps">
+        <code lang="yaml"><![CDATA[
+# uniform Opus everywhere
+default_model: opus
+        ]]></code>
+        <note>Pays the strong-model premium on every formatting and classification step. Typical 3-5x cost overrun with no quality gain.</note>
+      </example>
+
+      <see-also>
+        <link href="https://www.mindstudio.ai/blog/claude-code-advisor-strategy-opus-sonnet-haiku">Claude Code advisor strategy — Opus/Sonnet/Haiku role split.</link>
+        <link href="https://claude.com/resources/tutorials/choosing-the-right-claude-model">Anthropic — Choosing the right Claude model.</link>
+      </see-also>
+    </section>
+
+    <section name="detecting-mis-assignment">
+      <p>Two diagnostics catch wrong-role assignments faster than human review.</p>
+
+      <rule testable="true">
+        <statement>For each role, run a 30-prompt eval against the next-cheaper model and the next-stronger model; promote down a tier if quality holds within 1 pp, promote up a tier if quality falls more than 3 pp.</statement>
+        <rationale>The Pareto sweet spot drifts as model versions ship; locking a role to a model on launch leaves cost on the table within months. Periodic ablation keeps the assignment honest.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Splitting by step rather than role: "step-1 = haiku, step-2 = sonnet, step-3 = opus".</description>
+        <reason>Steps with the same cognitive role get different models, breaking the leverage. A long execution step does not need Opus just because it is the last step.</reason>
+      </antipattern>
+
+      <reference path="templates/agents.yaml">Reference Claude Code subagent definitions for the three roles.</reference>
+    </section>
+
+    <section name="handoff-as-artifact">
+      <p>The hand-off between roles is a structured artifact (plan, file list, criteria checklist) — not a copy of the conversation. The cheaper model receives only what it needs to do its narrow job; the stronger model rereads the artifact when it returns to review.</p>
+
+      <rule testable="true">
+        <statement>Each role hand-off must be a structured artifact (JSON plan, list of file paths, list of acceptance criteria) — never a verbatim copy of the prior conversation; the next role consumes the artifact, not the chat.</statement>
+        <rationale>Conversation history pollutes the cheaper model with strong-model reasoning it cannot reproduce, and it bloats the stronger model when it returns to review. Artifacts keep each role's input minimal and its output verifiable.</rationale>
+      </rule>
+
+      <example type="good" title="Structured hand-off artifact">
+        <code lang="json"><![CDATA[
+{
+  "plan_id": "F-117-step-3",
+  "intent": "wire RouteLLM client into chat handler",
+  "files": ["src/chat/handler.py", "tests/test_handler.py"],
+  "acceptance": [
+    "tests/test_handler.py passes",
+    "no new ruff E/F violations",
+    "router cost per call recorded in telemetry"
+  ]
+}
+        ]]></code>
+        <note>Implementer (mid model) gets a closed envelope. Reviewer (strong model) compares result to the same envelope.</note>
+      </example>
+
+      <example type="bad" title="Conversation blob hand-off">
+        <code lang="text"><![CDATA[
+# implementer prompt
+"Here is everything Opus said so far. Continue."
+        ]]></code>
+        <note>Floods Sonnet with reasoning it cannot reproduce; budget is wasted re-reading instead of editing.</note>
+      </example>
+    </section>
+
+    <section name="verification-at-boundaries">
+      <p>Each role transition is also a verification gate. The stronger model returns to check that the cheaper model did the narrow job correctly; if not, request changes — do not silently repair.</p>
+
+      <rule testable="true">
+        <statement>After every transition from a stronger to a weaker model, the stronger model must verify the artifact returned by the weaker one against the original acceptance criteria before any further action.</statement>
+        <rationale>Without an explicit gate, errors compound across roles: a misclassified file path in the small model corrupts the entire execution step. The verification is cheap (the strong model only reads a small artifact) and prevents expensive cascades.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Letting the weakest model both classify AND execute when classification confidence is low.</description>
+        <reason>The cheap model masks its own uncertainty; without a verification gate, low-confidence classifications silently propagate into execution.</reason>
+      </antipattern>
+
+      <see-also>
+        <link href="https://docs.anthropic.com/en/docs/claude-code/sub-agents">Claude Code sub-agents — pinning model per agent.</link>
+        <link href="https://www.anthropic.com/news/claude-3-5-sonnet">Anthropic — model selection guidance for multi-step agents.</link>
+      </see-also>
+    </section>
+
+    <templates>
+      <template path="templates/agents.yaml" purpose="Claude Code subagent definitions for planner / implementer / classifier with role-pinned models."/>
+    </templates>
+  </content>
+</methodology>
