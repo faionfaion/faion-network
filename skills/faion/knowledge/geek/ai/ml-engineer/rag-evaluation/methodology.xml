@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rag-evaluation">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Evaluate RAG pipelines by measuring retrieval (Precision@K, Recall@K, MRR, Hit Rate) and generation (Faithfulness, Answer Relevance, Hallucination Rate) separately to isolate failure root causes.</summary>
+    <tags>
+      <tag>rag</tag>
+      <tag>evaluation</tag>
+      <tag>metrics</tag>
+      <tag>ragas</tag>
+      <tag>retrieval</tag>
+    </tags>
+    <category>rag</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>RAG Evaluation</title>
+    <summary>Evaluate Retrieval-Augmented Generation pipelines by measuring retrieval (Precision@K, Recall@K, MRR, Hit Rate) and generation (Faithfulness, Answer Relevance, Hallucination Rate) components separately. Always evaluate retrieval and generation independently — a high faithfulness score with low hit rate means the model is hallucinating consistently, not retrieving well.</summary>
+    <why>
+      <p>RAG failures have two distinct root causes — retrieval failure (wrong chunks) and generation failure (hallucination from retrieved context) — that require different fixes. Conflating them produces misleading scores and misdirected optimization effort. RAGAS provides reference-free metrics that work without ground truth, but costs $5–20 per 100 samples in LLM-as-judge calls.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Before promoting a RAG pipeline to production — validate retrieval recall and generation faithfulness.</item>
+        <item>After changing chunking strategy, embedding model, or vector DB configuration — check for regression.</item>
+        <item>Comparing two embedding models for the same corpus — use Precision@K and MRR to decide.</item>
+        <item>Diagnosing user complaints about wrong or hallucinated answers.</item>
+        <item>Setting up continuous production monitoring (lightweight faithfulness + hit rate, sampled hourly).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>No ground truth queries and the domain is too specialized for reliable synthetic generation.</item>
+        <item>Pipeline is a prototype and chunking/embedding strategy is still changing daily — evaluate after it stabilizes.</item>
+        <item>Budget is insufficient for LLM-as-judge at scale — use automated retrieval metrics only as a proxy.</item>
+        <item>Primary goal is latency optimization, not quality — use profiling tools instead.</item>
+      </list>
+    </when-not-to-use>
+    <section name="retrieval-metrics">
+      <p>Retrieval metrics measure how well the vector DB retrieves relevant documents. These metrics require stable document IDs and relevance labels for ground truth comparison.</p>
+      <rule testable="true">
+        <statement>Require stable document IDs before computing retrieval metrics; if your vector DB returns raw chunks, compute IDs as hash(content).</statement>
+        <rationale>Precision@K and Recall@K require matching retrieved doc IDs against relevance labels. Without IDs the calculation is impossible.</rationale>
+      </rule>
+      <list>
+        <item>Precision@K: relevant_in_top_k / k — target &gt; 0.7</item>
+        <item>Recall@K: relevant_retrieved / total_relevant — target &gt; 0.8</item>
+        <item>MRR (Mean Reciprocal Rank): 1 / rank_of_first_relevant — target &gt; 0.6</item>
+        <item>NDCG@K: graded relevance with position weighting — target &gt; 0.8</item>
+        <item>Hit Rate: 1 if any relevant doc in top-K else 0 — target &gt; 0.9</item>
+      </list>
+      <note>Position matters: relevant docs at position 10+ are often ignored by the LLM due to context window positional bias.</note>
+    </section>
+    <section name="generation-metrics">
+      <p>Generation metrics measure the quality of answers produced by the LLM given the retrieved context. These distinguish between models that hallucinate from good retrieval and models that fail to synthesize retrieved information.</p>
+      <rule testable="true">
+        <statement>Do not conflate RAGAS Faithfulness (grounded in retrieved context) with factual accuracy (correct against world knowledge) — a faithful answer can still be factually wrong if the retrieved context is wrong.</statement>
+        <rationale>These measure different failure modes that require different fixes: bad retrieval vs hallucinating generation.</rationale>
+      </rule>
+      <list>
+        <item>Faithfulness: claims supported by context / total claims — target &gt; 0.85</item>
+        <item>Answer Relevance: does the answer address the question? — target &gt; 0.9</item>
+        <item>Context Relevance: is retrieved context relevant to the question? — target &gt; 0.7</item>
+        <item>Hallucination Rate: unsupported or fabricated claims — target &lt; 0.1</item>
+        <item>Citation Coverage: claims backed by source references — target &gt; 0.8</item>
+      </list>
+    </section>
+    <section name="composite-metrics">
+      <p>Composite metrics combine retrieval and generation signals into aggregate scores useful for model comparison and production gating.</p>
+      <list>
+        <item>RAGAS Score: Faithfulness + Answer Relevance + Context Relevance combined</item>
+        <item>Answer Correctness: semantic similarity + factual overlap against ground truth</item>
+        <item>Context Precision: relevant chunks / total retrieved chunks — proxy for retrieval efficiency</item>
+      </list>
+    </section>
+    <section name="metric-selection-by-situation">
+      <p>Different scenarios call for different metric sets. Choose based on data availability and optimization goals.</p>
+      <list>
+        <item>Have relevance labels: use Precision@K, Recall@K, NDCG, MRR</item>
+        <item>No ground truth: use Faithfulness, Answer Relevance (RAGAS LLM-based)</item>
+        <item>Production monitoring: Latency + Faithfulness + Hit Rate (lightweight)</item>
+        <item>Full model comparison: complete RAGAS suite + retrieval metrics</item>
+      </list>
+    </section>
+    <section name="agent-workflow">
+      <p>A four-step workflow separates retrieval evaluation from generation evaluation, isolating failures to their root cause.</p>
+      <rule testable="true">
+        <statement>Separate retrieval evaluation from generation evaluation in every run; a combined score masks root cause and misdirects fixes.</statement>
+        <rationale>Retrieval and generation have independent failure modes. A high faithfulness score with low hit rate means the model hallucinates consistently from bad retrieval — not a generation problem.</rationale>
+      </rule>
+      <list>
+        <item>Step 1: Load evaluation dataset (query, expected_answer, source_doc_ids).</item>
+        <item>Step 2: Run RAG pipeline — get retrieved_chunk_ids and generated_answer.</item>
+        <item>Step 3: Compute retrieval metrics (Precision@K, Hit Rate, MRR) + generation metrics via LLM-as-judge.</item>
+        <item>Step 4: Write structured report with per-metric scores, failure examples, and recommendations.</item>
+      </list>
+    </section>
+    <section name="production-monitoring">
+      <p>Production monitoring tracks lightweight metrics continuously while running comprehensive evaluations periodically. This balances cost and quality signal.</p>
+      <rule testable="true">
+        <statement>Target these baselines before production: Faithfulness &gt; 0.85, Answer Relevance &gt; 0.90, Hit Rate &gt; 0.90.</statement>
+        <rationale>These thresholds represent consistent observed quality in production RAG systems across diverse domains.</rationale>
+      </rule>
+      <list>
+        <item>Development: evaluate on every change, full metric suite.</item>
+        <item>Staging: daily, core metrics only.</item>
+        <item>Production: continuous lightweight sampling (faithfulness + hit rate); full suite monthly.</item>
+        <item>Run evaluation in CI; block merge if faithfulness drops &gt;5% vs main.</item>
+      </list>
+    </section>
+    <section name="ground-truth-creation">
+      <p>Ground truth — query-answer pairs and relevance judgments — must be generated carefully to avoid circularity and bias.</p>
+      <rule testable="true">
+        <statement>Generate synthetic ground truth (question-answer pairs) with a different model than the one being evaluated.</statement>
+        <rationale>Using the same model to generate and evaluate creates self-fulfilling evaluations — the evaluated model scores artificially high on its own synthetic questions.</rationale>
+      </rule>
+      <list>
+        <item>Manually verify 100 annotated query-document pairs minimum.</item>
+        <item>Include diverse question types: factual, comparative, multi-hop reasoning.</item>
+        <item>Cover edge cases and out-of-domain queries.</item>
+        <item>Target inter-annotator agreement Cohen's Kappa &gt; 0.7.</item>
+      </list>
+    </section>
+    <section name="common-pitfalls">
+      <antipattern>
+        <description>RAGAS context_recall used without ground truth answers.</description>
+        <reason>context_recall requires ground_truth to compute; without it the metric is unavailable. Check dataset completeness before running.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Running RAGAS evaluation of 100 samples without rate limiting.</description>
+        <reason>RAGAS faithfulness makes multiple LLM calls per sample (claim extraction + support checking); 100 samples costs $5–20 and hits rate limits if parallelized without a semaphore.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Reporting only a single-run RAGAS score without confidence intervals.</description>
+        <reason>LLM-as-judge scores vary ±3–5% between runs. Single-point estimates mislead stakeholders about actual quality.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/ragas-runner.py" purpose="RAGAS evaluation runner with dataset setup"/>
+      <template path="templates/retrieval-metrics.py" purpose="Hit rate, MRR, Precision@K calculator"/>
+      <template path="templates/faithfulness-judge-prompt.txt" purpose="LLM prompt for per-claim faithfulness scoring"/>
+    </templates>
+  </content>
+</methodology>

@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="speech-to-text">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Select STT provider (OpenAI, AssemblyAI, Deepgram, ElevenLabs, or self-hosted faster-whisper) by latency, accuracy, cost, and language support. Real-time vs batch, cloud vs self-hosted.</summary>
+    <tags>
+      <tag>speech-to-text</tag>
+      <tag>stt</tag>
+      <tag>transcription</tag>
+      <tag>audio</tag>
+      <tag>provider-selection</tag>
+    </tags>
+    <category>multimodal</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Speech-to-Text Integration</title>
+    <summary>Speech-to-text (STT) methodology covering provider selection (OpenAI Whisper/GPT-4o, AssemblyAI, Deepgram, ElevenLabs Scribe), local model deployment (faster-whisper, whisper.cpp), integration patterns, and cost optimization. Decision axis: real-time vs batch, accuracy vs cost, cloud vs self-hosted.</summary>
+    <why>
+      <p>Modern STT APIs differ dramatically on latency (150ms vs 5s), accuracy (WER), language support (30–125 languages), and cost ($0.002–$0.04/min). Choosing the wrong provider costs 10–20x more or misses accuracy requirements. Self-hosted faster-whisper breaks even at ~500 hours/month versus API pricing.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Meeting transcription, voice notes, podcast/video indexing (batch).</item>
+        <item>Real-time captioning, voice commands, live call analysis (streaming).</item>
+        <item>Any feature where users speak instead of type.</item>
+        <item>Audio content pipelines requiring transcript search or summarization.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Audio is synthetic TTS output — transcribe the source text instead.</item>
+        <item>Audio quality is below 8kHz mono — accuracy will be poor across all providers; fix the recording.</item>
+        <item>Language is not in the provider's supported list — verify before building.</item>
+      </list>
+    </when-not-to-use>
+    <section name="cloud-provider-matrix">
+      <p>Cloud providers vary significantly in latency, accuracy, language support, and cost. Choose based on use case constraints.</p>
+      <list>
+        <item>OpenAI Whisper: $0.006/min, 99+ languages, timestamps; best for general accuracy.</item>
+        <item>OpenAI GPT-4o Transcribe: $0.006/min, advanced accuracy, speaker diarization.</item>
+        <item>OpenAI GPT-4o Mini Transcribe: $0.003/min, good accuracy, cheapest OpenAI option.</item>
+        <item>AssemblyAI: $0.002–$0.04/min, 100+ languages, ~300ms latency; best for diarization + summaries.</item>
+        <item>ElevenLabs Scribe: ~150ms latency, 90+ languages; best for real-time low-latency.</item>
+        <item>Deepgram Nova-2: $0.0043/min, 30+ languages, real-time; best for custom vocabulary.</item>
+        <item>Google Speech: $0.004–$0.016/min, 125+ languages, streaming; best for enterprise + diarization.</item>
+        <item>Azure Speech: $0.016/min, 85+ languages; best for Microsoft ecosystem.</item>
+      </list>
+      <rule testable="true">
+        <statement>Default to GPT-4o Mini Transcribe for accuracy at low cost; switch to AssemblyAI when diarization or structured output (summaries, chapters) is needed.</statement>
+        <rationale>GPT-4o Mini Transcribe at $0.003/min offers the best accuracy/cost ratio for single-speaker audio. AssemblyAI's LeMUR pipeline adds post-processing (summaries, action items) without extra API calls.</rationale>
+      </rule>
+    </section>
+    <section name="local-models">
+      <p>Self-hosted models eliminate per-request costs at the expense of infrastructure overhead. Break-even point depends on monthly volume.</p>
+      <list>
+        <item>Whisper Large-v3: 1.55B params, 1x real-time speed, highest accuracy; use for offline max-accuracy.</item>
+        <item>Whisper Large-v3 Turbo: 809M params, 216x real-time; use for production self-hosted balance.</item>
+        <item>faster-whisper: CTranslate2 backend, 4x faster than original, same accuracy; recommended for self-hosted.</item>
+        <item>whisper.cpp: CPU-optimized, GGML quantization; use for edge/mobile/no-GPU.</item>
+        <item>Moonshine (27M–200M params): fastest, low memory; use for embedded/mobile.</item>
+      </list>
+      <rule testable="true">
+        <statement>Use faster-whisper (Large-v3 Turbo) for self-hosted production; break-even versus API is at ~30,000 minutes/month (~500 hours).</statement>
+        <rationale>Fixed GPU cost is ~$276/mo minimum. Below 30K minutes, APIs are cheaper and have no ops burden. Above that threshold, faster-whisper Large-v3 Turbo delivers 216x real-time on a single A10G.</rationale>
+      </rule>
+    </section>
+    <section name="decision-framework">
+      <p>Select provider based on latency, volume, cost, and feature requirements.</p>
+      <list>
+        <item>Real-time with latency &lt;200ms → ElevenLabs Scribe.</item>
+        <item>Real-time with latency &lt;1s → AssemblyAI or Deepgram.</item>
+        <item>Batch, high volume (&gt;500 hrs/month) → self-hosted faster-whisper.</item>
+        <item>Batch, &lt;500 hrs/month, need diarization → AssemblyAI.</item>
+        <item>Batch, &lt;500 hrs/month, cost priority → GPT-4o Mini Transcribe.</item>
+        <item>Privacy requirement, no cloud → faster-whisper local.</item>
+      </list>
+    </section>
+    <section name="audio-format-recommendations">
+      <p>Audio format choice affects transcription accuracy, upload cost, and storage size.</p>
+      <list>
+        <item>Best accuracy: WAV (lossless, no compression artifacts).</item>
+        <item>Recommended upload: FLAC (lossless, smaller than WAV).</item>
+        <item>Acceptable: MP3, M4A (lossy but widely supported).</item>
+        <item>Web: WebM/Opus (small, good quality for 16kHz mono).</item>
+        <item>Target: 16kHz mono for speech; stereo and 44kHz add cost without accuracy gain.</item>
+      </list>
+    </section>
+    <section name="batch-transcription-pattern">
+      <p>Batch transcription processes pre-recorded audio asynchronously. Key steps: validate input, chunk large files, submit, poll/webhook for results.</p>
+      <rule testable="true">
+        <statement>Validate file format and size before calling any STT API — return a structured error for unsupported inputs rather than letting the API fail mid-transfer.</statement>
+        <rationale>Large file uploads to APIs fail after consuming bandwidth. Pre-validation catches unsupported formats (.wav vs .wav64) and oversized files locally before any network cost is incurred.</rationale>
+      </rule>
+      <list>
+        <item>OpenAI API limit: 25MB per file; chunk larger files to 5-minute segments with 5-second overlap.</item>
+        <item>Overlap prevents mid-word cuts at segment boundaries; deduplicate at joins.</item>
+        <item>Use verbose_json response format when word timestamps are needed (adds ~10% latency).</item>
+        <item>For language auto-detection, omit the language param; for forced language, always specify.</item>
+      </list>
+    </section>
+    <section name="large-file-chunking">
+      <p>Chunking large audio files prevents API size limits and enables parallel processing.</p>
+      <rule testable="true">
+        <statement>Chunk large audio files to 5-minute segments with a 5-second overlap to prevent word truncation at boundaries.</statement>
+        <rationale>Without overlap, words that span a chunk boundary are split and the fragment gets dropped or mis-transcribed. A 5-second overlap ensures every word lands fully in at least one chunk.</rationale>
+      </rule>
+      <example type="good" title="Chunking with pydub and overlap join">
+        <code lang="python"><![CDATA[
+from pydub import AudioSegment
+import tempfile
+from pathlib import Path
+
+def chunk_audio(path: str, chunk_ms: int = 300_000, overlap_ms: int = 5_000) -> list[str]:
+    """Split audio into overlapping chunks; returns list of temp file paths."""
+    audio = AudioSegment.from_file(path)
+    chunks = []
+    start = 0
+    while start < len(audio):
+        end = min(start + chunk_ms, len(audio))
+        chunk = audio[start:end]
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+            chunk.export(f.name, format="mp3")
+            chunks.append(f.name)
+        start = end - overlap_ms
+    return chunks
+]]></code>
+        <note>Creates overlapping chunks to prevent mid-word truncation at boundaries.</note>
+      </example>
+    </section>
+    <section name="speaker-diarization">
+      <p>Speaker diarization labels which speaker (A, B, C...) is talking. Approaches vary by provider.</p>
+      <list>
+        <item>AssemblyAI: pass speaker_labels=True in TranscriptionConfig; returns utterances with speaker A/B labels.</item>
+        <item>Deepgram Nova-2: pass diarize=True in PrerecordedOptions; returns words with speaker field.</item>
+        <item>OpenAI GPT-4o Transcribe: supports diarization natively; pass timestamp_granularities=["word","segment"].</item>
+        <item>Local: use pyannote-audio for diarization + faster-whisper for transcription; align by timestamp.</item>
+        <item>Speaker identification (matching names to labels) requires a separate speaker enrollment step.</item>
+      </list>
+    </section>
+    <section name="output-format-patterns">
+      <p>Different output formats serve different downstream consumers. Choose based on use case.</p>
+      <list>
+        <item>SRT: sequential index + HH:MM:SS,mmm → HH:MM:SS,mmm + text + blank line; for video subtitles.</item>
+        <item>VTT: WEBVTT header + HH:MM:SS.mmm → HH:MM:SS.mmm + text; for web &lt;track&gt; elements.</item>
+        <item>JSON: full structured output with words, confidence, speaker labels; for downstream processing.</item>
+        <item>Plain text: best for LLM input — no timestamps, just words; strip filler words in post-processing.</item>
+      </list>
+    </section>
+    <section name="production-rules">
+      <p>Production transcription systems must handle failures, scale reliably, and track costs.</p>
+      <rule testable="true">
+        <statement>Always configure a fallback provider; never let a single-provider outage block a transcription pipeline.</statement>
+        <rationale>OpenAI API has had multiple incidents where audio transcription endpoints were degraded while chat remained up. A fallback to faster-whisper or AssemblyAI eliminates single-point dependency with minimal code overhead.</rationale>
+      </rule>
+      <list>
+        <item>Store transcription cost metadata (minutes, provider, model) alongside every transcript for audit and billing.</item>
+        <item>For async workloads: accept file upload, return job_id, send results via webhook — never block HTTP for &gt;30s.</item>
+        <item>Rate limits: OpenAI 50 req/min; Deepgram 100 req/min; AssemblyAI 32 concurrent; build a semaphore gate.</item>
+        <item>Clean up temp files in a finally block — chunking creates many temp files that accumulate on disk.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/transcription-service.py" purpose="Multi-provider TranscriptionService with fallback, chunking, cost tracking, and faster-whisper support"/>
+      <template path="templates/transcription-api.py" purpose="FastAPI endpoint with async processing, webhook delivery, and streaming support"/>
+    </templates>
+  </content>
+</methodology>
