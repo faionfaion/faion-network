@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-authentication">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>api-developer</domain>
+    <summary>Protect APIs with API keys (server-to-server), JWT (user sessions), or OAuth 2.0 (delegation). Validate all claims, never roll custom crypto.</summary>
+    <tags>
+      <tag>authentication</tag>
+      <tag>api-security</tag>
+      <tag>jwt</tag>
+      <tag>oauth</tag>
+      <tag>api-keys</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>API Authentication</title>
+    <summary>Custom auth middleware is the highest-risk code in the repo: subtle bugs like omitting aud/iss checks, accepting alg:none, or returning 200 on JWTError bypass all access control silently. Protect API endpoints with the minimum auth mechanism that fits the trust boundary: API keys (hashed, prefixed) for server-to-server, short-lived JWT (RS256, 5–15 min) plus rotating refresh tokens for user sessions, OAuth 2.0 Authorization Code + PKCE for third-party delegation. Never roll custom crypto or validation logic—use authlib, jose, or a vendor SDK. Every auth change requires negative tests (expired, wrong audience, missing scope).</summary>
+    <why>
+      <p>Custom auth middleware is the highest-risk code in the repo: subtle bugs bypass all access control silently. Omitting aud/iss checks, accepting alg:none, catching JWTError and returning 200—these mistakes compound with the fact that auth failures must be negative tests to catch (positive tests pass with missing checks). Refresh token reuse under concurrent requests requires a per-family lock and reuse-detection; last-write-wins breaks. API keys stored unhashed are unrecoverable on breach.</p>
+      <p>Auth is the bug class with the highest blast radius—keep agents far from key material and treat every change to auth code as security-review-required. The right approach is to never roll custom implementations and to use a well-audited library or vendor service.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any API exposing user data, billing, or write operations across an authentication boundary</item>
+        <item>Server-to-server integrations (API keys with rotation or OAuth client credentials)</item>
+        <item>Third-party access on behalf of users (OAuth 2.0 auth code + PKCE)</item>
+        <item>First-party SPA + mobile sessions: short-lived access JWT + rotating refresh token, ideally cookie-bound</item>
+        <item>Machine-to-machine in zero-trust networks (mTLS or signed JWTs with audience claims)</item>
+        <item>Scoped delegation instead of admin-or-nothing permissions</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Internal services on a private network where mTLS or service mesh identity already authenticates the caller—adding JWT layers is theatre</item>
+        <item>Public read-only endpoints (status, public data)—auth adds friction without security gain</item>
+        <item>Embedding HS256 secrets into mobile/SPA bundles—they will leak; use OAuth + PKCE or server proxy</item>
+        <item>One-off scripts reading a single resource—a per-script API key is sufficient</item>
+      </list>
+    </when-not-to-use>
+    <section name="Method selection">
+      <rule>
+        <statement>Choose the simplest mechanism that fits the trust boundary: API keys for server-to-server, JWT for user sessions, OAuth 2.0 Authorization Code + PKCE for third-party delegation, mTLS for zero-trust machine-to-machine.</statement>
+        <rationale>Over-engineering auth increases attack surface. OAuth is overkill for server-to-server; API keys are insufficient for user sessions with revocation requirements.</rationale>
+      </rule>
+    </section>
+    <section name="API keys">
+      <rule>
+        <statement>Store API keys hashed (HMAC-SHA-256 or argon2). Use a human-readable prefix (sk_live_, sk_test_) for identification. Never display after initial issuance.</statement>
+        <rationale>API keys stored in plaintext are unrecoverable secrets on breach. The prefix allows identifying which key was used without exposing the full value.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[import hashlib
+from fastapi import Header, HTTPException
+
+async def verify_api_key(x_api_key: str = Header(...)):
+    hashed = hashlib.sha256(x_api_key.encode()).hexdigest()
+    key = await db.api_keys.find_one(hashed=hashed)
+    if not key or key.revoked:
+        raise HTTPException(401, "Invalid API key")
+    return key]]></code>
+      </example>
+    </section>
+    <section name="JWT">
+      <rule>
+        <statement>Access tokens expire in 5–15 minutes. Refresh tokens rotate on every use; on reuse detection, invalidate the entire token family and force re-authentication.</statement>
+        <rationale>Short-lived access tokens limit breach window. Refresh token rotation detects theft: if a stolen token is used, the legitimate holder's rotation attempt reuses the old token, triggering family invalidation.</rationale>
+      </rule>
+      <rule>
+        <statement>Validate iss, aud, exp, nbf, and kid on every token. Reject alg:none and any algorithm not in an explicit allowlist. Use RS256/EdDSA when verifiers are distributed.</statement>
+        <rationale>Missing aud/iss checks allow tokens from other services to be replayed. alg:none is a trivially-exploitable bypass. HS256 with shared secret is unsafe when multiple services hold the key.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[from jose import jwt, JWTError
+from datetime import datetime, timedelta
+
+ALGORITHM = "RS256"  # asymmetric; HS256 only when issuer == single verifier
+ALLOWED_ALGORITHMS = ["RS256", "EdDSA"]
+
+def verify_token(token: str, audience: str, issuer: str) -> dict:
+    try:
+        payload = jwt.decode(
+            token,
+            PUBLIC_KEY,
+            algorithms=ALLOWED_ALGORITHMS,
+            audience=audience,
+            issuer=issuer,
+        )
+        return payload
+    except JWTError as e:
+        raise HTTPException(401, f"Invalid token: {e}")]]></code>
+      </example>
+    </section>
+    <section name="OAuth 2.0">
+      <rule>
+        <statement>Use Authorization Code + PKCE for all browser and mobile clients. Never implement Implicit Grant (deprecated) or Password Grant (deprecated) for new integrations.</statement>
+        <rationale>Implicit grant exposes tokens in URL fragments visible to third-party scripts. Password grant exposes user credentials to the client application. Both are deprecated in OAuth 2.1.</rationale>
+      </rule>
+      <rule>
+        <statement>Scope names follow the pattern capability:resource (read:users, write:billing). Never grant admin as a casual delegation scope.</statement>
+        <rationale>Over-broad scopes defeat the purpose of OAuth delegation. Granular scopes allow users to grant minimal necessary access.</rationale>
+      </rule>
+    </section>
+    <section name="Token binding">
+      <rule>
+        <statement>For browser clients, bind tokens as HttpOnly; Secure; SameSite=Lax cookies. Never store tokens in localStorage or sessionStorage.</statement>
+        <rationale>localStorage is accessible to any JavaScript running on the page; XSS attacks steal tokens from localStorage in one line. HttpOnly cookies are inaccessible to JavaScript.</rationale>
+      </rule>
+    </section>
+    <section name="Required tests for every auth change">
+      <rule>
+        <statement>Every auth code change must include negative tests: expired token rejected, wrong audience rejected, missing scope rejected, alg:none rejected.</statement>
+        <rationale>Auth bugs manifest as silent bypasses, not as exceptions. Positive tests pass with missing aud/iss checks; only negative tests catch those vulnerabilities.</rationale>
+      </rule>
+    </section>
+    <section name="Rotation discipline">
+      <rule>
+        <statement>Maintain a two-active-key window for secret/key rotation: the new key is added before the old is removed, so in-flight tokens continue to validate during the overlap.</statement>
+        <rationale>Single-key rotation invalidates all issued tokens simultaneously, causing a thundering herd of re-authentication requests from all active users.</rationale>
+      </rule>
+      <rule>
+        <statement>Rate-limit /login and /oauth/token per IP and per account with exponential backoff on failure. Alert on credential-stuffing patterns (many failures, varied usernames, narrow IP range).</statement>
+        <rationale>Unthrottled auth endpoints enable credential stuffing and brute-force attacks at scale with no server-side defense.</rationale>
+      </rule>
+    </section>
+    <section name="Antipatterns">
+      <antipattern>
+        <description>Agent generates a JWT secret inline in code or config files.</description>
+        <reason>Secrets in source code are permanently exposed via git history. Use environment variables or a secrets manager (1Password CLI, HashiCorp Vault).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Auth middleware catches JWTError and returns 200 with a default user.</description>
+        <reason>Silent auth bypass—a bug in token validation becomes a security hole. Always return 401 on JWTError.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Custom JWT validation logic instead of a library (authlib, jose, python-jose).</description>
+        <reason>Custom crypto has a long history of subtle bugs: timing attacks, algorithm confusion, missing claim validation. Use a well-audited library.</reason>
+      </antipattern>
+    </section>
+    <section name="Limitations and failure modes">
+      <p>JWT revocation is hard; "stateless tokens" become stateful when you need a deny-list. Refresh token theft results in silent persistent access. Rotation + reuse-detection is mandatory, not optional. API keys without prefix + hash storage are unrecoverable on breach. Treat them like passwords. OAuth implicit flow is deprecated; using it is a finding in any modern audit. Custom auth middleware is the highest-risk code in the repo: subtle bugs (e.g. accepting alg:none) bypass everything. Scope-creep: too many scopes means users approve all; too few means admin-or-nothing. Clock skew breaks JWT exp / iat. Allow 30–60s leeway, sync with NTP. mTLS clients are painful to rotate at scale; certificate management is a separate problem.</p>
+    </section>
+    <section name="Best practices">
+      <list>
+        <item>Never roll your own crypto, JWT validation, or OAuth state machine. Use authlib, jose, passport, nextauth, authjs, vendor SDK.</item>
+        <item>Access tokens 5–15 min. Refresh tokens rotated on every use, with reuse-detection (re-used refresh = invalidate family + force re-auth).</item>
+        <item>Cookie-bind tokens for browsers: HttpOnly; Secure; SameSite=Lax|Strict. Bearer tokens in localStorage are XSS-fatal.</item>
+        <item>API keys: store hashed (argon2/scrypt/HMAC-SHA-256), prefix to identify (sk_live_), display only at creation.</item>
+        <item>Rotate secrets/keys on a schedule, not after a breach. Two-active-key window for zero-downtime rotation.</item>
+        <item>Validate iss, aud, exp, nbf, kid. Reject alg:none and unknown alg. Pin allowed algorithms.</item>
+        <item>Use asymmetric (RS256/EdDSA) when verifiers are distributed; HS256 only when issuer == verifier.</item>
+        <item>Scopes: name by capability + resource (read:users, write:billing); never admin as a scope you grant casually.</item>
+        <item>Log every authentication event with request_id, IP, user-agent. Alert on credential-stuffing patterns.</item>
+        <item>Rate-limit /login and /oauth/token per IP + per account. Lockout with backoff, not permanent.</item>
+      </list>
+    </section>
+    <section name="Agentic workflow">
+      <p>Auth is the bug class with the highest blast radius—keep agents far from key material and treat every change to auth code as security-review-required. Agents may scaffold endpoints, draft permission decorators, write tests, audit dependencies. Agents must NOT change algorithms, generate secrets in repo, or modify token issuance without a human gate. Use a dedicated quality gate that fails CI on any diff touching auth/ without an attached test for revocation, expiry, and the negative case.</p>
+      <p>Recommended subagents: security-review (built-in)—run on every PR touching auth/, oauth/, or middleware. faion-sdd-execution—gate that requires negative tests (expired token, missing scope, wrong audience) on every auth change. An oauth-flow-implementer agent (Sonnet)—wires authorization code + PKCE end-to-end with library defaults, no custom crypto. A secrets-scanner task—runs gitleaks/trufflehog on the diff before commit.</p>
+    </section>
+    <section name="AI-agent gotchas">
+      <list>
+        <item>Agents will happily generate "demo" JWT secrets and commit them. Run secret scanning on every diff and reject.</item>
+        <item>LLMs frequently write JWT validators that omit aud/iss checks ("the test passed!"). SDD gate must require those assertions in tests.</item>
+        <item>Refresh-token rotation looks fine in unit tests and breaks under concurrent requests (last-write-wins). Force a per-family lock + reuse-detection test.</item>
+        <item>An agent shown two flows will pick the simpler—implicit grant or password grant. Both are deprecated. Constrain prompts to "code flow + PKCE only".</item>
+        <item>Generated middleware often catches JWTError and returns 200 with a default user (silent bypass). Lint for "auth error returns non-401".</item>
+        <item>API key hashing is often skipped in MVPs. The migration to hashed storage later is painful—make it the SDD acceptance criterion from day 1.</item>
+        <item>Agents debugging "401 in prod" will reach for alg:none or wider aud matches. Lock auth config behind a separate review path.</item>
+        <item>Mobile/SPA agents may store refresh tokens in localStorage. The right answer is HttpOnly cookie + same-site + CSRF token. Document this in the project AGENTS.md so the agent picks the right pattern by default.</item>
+        <item>When using a vendor (Auth0/Clerk), do not let agents hand-roll parallel auth for "just this one endpoint"—that is the bug class. Force every endpoint through the vendor middleware.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/jwt_auth.py" purpose="FastAPI JWT create/verify with exp, iss, aud, scope checks"/>
+      <template path="templates/jwt-misconfig-check.sh" purpose="CI smoke test: fails if API accepts alg:none or wrong-aud tokens"/>
+    </templates>
+    <see-also>
+      <link href="https://datatracker.ietf.org/doc/html/rfc6749"/>
+      <link href="https://datatracker.ietf.org/doc/html/rfc7636"/>
+      <link href="https://datatracker.ietf.org/doc/html/rfc9700"/>
+      <link href="https://datatracker.ietf.org/doc/html/rfc7519"/>
+      <link href="https://owasp.org/www-project-api-security/"/>
+      <link href="https://owasp.org/www-project-application-security-verification-standard/"/>
+      <link href="https://datatracker.ietf.org/doc/html/rfc8725"/>
+      <link href="https://oauth.net/2/pkce/"/>
+      <ref slug="api-contract-first"/>
+      <ref slug="api-rest-design"/>
+    </see-also>
+  </content>
+</methodology>
