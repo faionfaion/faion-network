@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="nodejs-service-layer-architecture">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>javascript-developer</domain>
+    <summary>Node.js REST API architecture: folder structure, DI container, error taxonomy, layer boundaries. Controllers, services, repositories with strict separation. process.env in config/ only.</summary>
+    <tags>
+      <tag>nodejs</tag>
+      <tag>express</tag>
+      <tag>architecture</tag>
+      <tag>dependency-injection</tag>
+      <tag>error-handling</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-24</created>
+    <frameworks>
+      <framework>express</framework>
+    </frameworks>
+    <languages>
+      <language>typescript</language>
+      <language>javascript</language>
+    </languages>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+  <content>
+    <title>Node.js Service Layer Architecture</title>
+    <summary>Architectural scaffold for layered Node.js REST APIs: folder structure, error taxonomy, DI wiring, and layer boundary rules. The core rule: process.env access only in config/index.ts, never scattered across the codebase; error handler middleware must be registered last in app.ts after all routes.</summary>
+    <why>
+      <p>Without explicit layer boundaries, Node.js apps accumulate business logic in route handlers (fat controllers), Prisma calls leak into services, and error handling is inconsistent. Establishing the error hierarchy in utils/errors.ts as the first file and wiring dependencies in container.ts as a module-level singleton gives all subsequent feature code a stable foundation to depend on.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing the folder structure and layer boundaries for a new Node.js REST API before writing code</item>
+        <item>Establishing dependency injection patterns and container wiring strategy for a team codebase</item>
+        <item>Auditing an existing Express app for layer violations (business logic in controllers, Prisma in services)</item>
+        <item>Defining error taxonomy and error handler middleware as a shared foundation before feature work</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Prototypes and throwaway scripts where architectural purity adds no return</item>
+        <item>Serverless functions (Lambda/Edge) where a cold-start DI container is overhead</item>
+        <item>GraphQL APIs with resolver-based patterns where resolvers replace controllers</item>
+      </list>
+    </when-not-to-use>
+    <section name="Canonical Folder Layout and Layer Responsibilities">
+      <rule>
+        <statement>Controllers: HTTP handling only — parse request params, validate input with Zod, call one service method, return the result, delegate all errors to next(). No business logic, no database access.</statement>
+        <rationale>Controllers that contain business logic cannot be unit-tested without an HTTP layer. Keeping controllers thin makes them trivial adapters that rarely need modification.</rationale>
+      </rule>
+      <rule>
+        <statement>Services: business logic and orchestration — validation rules, multi-step operations, domain error throwing. Services receive domain types and return domain types. No Prisma imports, no HTTP concepts (req, res).</statement>
+        <rationale>Services are the only layer that knows the business rules. Isolating them from both HTTP and database concerns enables pure unit testing with mocked repositories and no infrastructure dependencies.</rationale>
+      </rule>
+      <rule>
+        <statement>Repositories: all database access — Prisma queries, data mapping, connection management. Repositories implement typed interfaces (IUserRepository). No business logic, no HTTP concepts.</statement>
+        <rationale>Repository interfaces decouple services from ORM specifics. Swapping Prisma for another ORM requires changing only repository files, not services.</rationale>
+      </rule>
+      <rule>
+        <statement>process.env access is allowed only in config/index.ts. Everywhere else, import from config. Never scatter process.env.XYZ across the codebase.</statement>
+        <rationale>Scattered environment variable access is invisible to type checking, cannot be validated at startup, and makes configuration changes require searching the entire codebase.</rationale>
+      </rule>
+      <p>Canonical layout for src/: app.ts (Express setup), server.ts (entry), config/ (index.ts + database.ts), controllers/, services/, repositories/, models/, middleware/ (auth.ts, errorHandler.ts, validate.ts), routes/ (index.ts + per-entity), types/, utils/ (errors.ts, logger.ts).</p>
+      <rule>
+        <statement>Router files import only from container.ts and middleware. Never import services directly into route files.</statement>
+        <rationale>Router-to-service imports bypass the container, creating a second instantiation point. All instantiation must flow through container.ts as the single source of truth.</rationale>
+      </rule>
+    </section>
+    <section name="DI Container, Error Hierarchy, and Error Handler Middleware">
+      <rule>
+        <statement>PrismaClient must be instantiated at module level in container.ts as a singleton, never inside a function. A PrismaClient instantiated inside a function creates a new connection pool per request, exhausting database connections.</statement>
+        <rationale>Prisma connection pools are expensive to create. A module-level singleton shares one pool across all requests. A function-scoped client creates and abandons a pool per request, causing connection exhaustion under load.</rationale>
+      </rule>
+      <rule>
+        <statement>container.ts is the single source of truth for all DI wiring: database client → repositories → services → controllers. Feature agents must read container.ts before adding constructor injections to avoid duplicate instantiation.</statement>
+        <rationale>Agents regenerating container.ts from scratch tend to duplicate or omit existing entries. Read-before-write prevents overwriting established wiring.</rationale>
+      </rule>
+      <rule>
+        <statement>Define the error hierarchy in utils/errors.ts as the first file in any new project: AppError (base), NotFoundError (404), ConflictError (409), UnauthorizedError (401), ValidationError (400). All subsequent code imports from this file.</statement>
+        <rationale>All feature code depends on domain errors. Creating errors.ts first provides a stable import target. Features written before errors.ts invent ad-hoc error handling that diverges across files.</rationale>
+      </rule>
+      <example type="good" title="Error Hierarchy">
+        <code lang="typescript"><![CDATA[
+export class AppError extends Error {
+  constructor(
+    message: string,
+    public statusCode = 500,
+    public code = 'INTERNAL_ERROR',
+    public isOperational = true,
+  ) {
+    super(message);
+    this.name = this.constructor.name;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+export class NotFoundError extends AppError {
+  constructor(msg = 'Resource not found') { super(msg, 404, 'NOT_FOUND'); }
+}
+        ]]></code>
+      </example>
+      <rule>
+        <statement>The Express error handler middleware must be registered last in app.ts, after all routes. It requires exactly 4 parameters (err, req, res, _next) — a 3-parameter version is not recognized as an error handler by Express.</statement>
+        <rationale>Express distinguishes error handlers from regular middleware solely by parameter count. A 3-parameter function is treated as a regular middleware that never receives errors. Registering it before routes means routes never register at all.</rationale>
+      </rule>
+      <rule>
+        <statement>The error handler must handle three cases: ZodError (400 Validation), AppError with isOperational=true (use statusCode and code from the error), and all other errors (500 Internal Server Error). Log all errors via the logger before responding.</statement>
+        <rationale>Operational errors are expected domain failures. Non-operational errors are bugs. The distinction drives different monitoring and alerting behavior. Both require logging before the response to ensure the log captures the full stack trace.</rationale>
+      </rule>
+    </section>
+    <section name="Service Layer Architecture Anti-Patterns">
+      <antipattern>
+        <description>Business logic in controllers: fat route handlers that perform validation, check for existing records, hash passwords, and create entities all inline.</description>
+        <reason>Business logic in controllers cannot be unit-tested without spinning up HTTP infrastructure. When the same logic appears in multiple routes (create user, update user), it duplicates without a shared test surface. Move to service layer.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Direct Prisma access in services: service methods call prisma.user.findUnique() directly rather than through a repository interface.</description>
+        <reason>Services that import PrismaClient are directly coupled to the ORM. Unit tests for services must either start a real database or mock PrismaClient, which is fragile. Repository interfaces provide a clean mock boundary.</reason>
+      </antipattern>
+      <antipattern>
+        <description>PrismaClient instantiated inside a factory function or per-request handler rather than at module level.</description>
+        <reason>Each PrismaClient instance opens a new connection pool. A new instance per request exhausts database connections under concurrent load. The symptom is database connection errors that are intermittent and hard to reproduce in testing.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Inconsistent naming: UserRepository vs UsersRepository, userService vs UsersService, varying between singular and plural across entities in the same codebase.</description>
+        <reason>Inconsistent naming forces developers to look up the exact class name before every import. Enforce a naming convention at project start: singular noun for all layers (UserRepository, UserService, UserController).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Async route handlers without try/catch + next(error). Unhandled promise rejections bypass the error handler middleware entirely, returning 500 with an empty body or crashing the process.</description>
+        <reason>Express does not catch unhandled async errors automatically (Express 4.x). Every async route handler must wrap its body in try/catch and call next(error) in the catch. Express 5.x handles this natively, but most production apps are on 4.x.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Workflow">
+      <p>An agent bootstraps the architecture by first generating the src/ folder tree (controllers/, services/, repositories/, middleware/, routes/, utils/), then creating the shared error taxonomy in utils/errors.ts, then wiring the container.ts file. Feature-specific layers (controller, service, repository per entity) are generated separately per entity. An audit agent can scan all controller files for direct Prisma or business-logic calls and report violations.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent (sequences architecture setup tasks with type-check gates between steps).</p>
+      <p>Prompt pattern: "Generate the Node.js service layer architecture scaffold for a REST API with entities: &lt;EntityA&gt;, &lt;EntityB&gt;. Stack: Express, TypeScript strict, Prisma ORM. Output: 1. src/ directory tree (no code, just structure), 2. utils/errors.ts with AppError, NotFoundError, ConflictError, UnauthorizedError, ValidationError, 3. middleware/errorHandler.ts that handles ZodError and AppError, 4. container.ts with manual DI wiring for all entities, 5. routes/index.ts mounting all entity routers" / "Audit the controllers/ directory. Flag any function that: Uses PrismaClient directly, Contains if/else business logic beyond input parsing, Catches errors and builds error responses (instead of calling next(error)). Report violations as a list with file path and line number."</p>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Define the error hierarchy in utils/errors.ts as the very first file; all subsequent code depends on it and agents need a stable import target</item>
+        <item>The error handler middleware must be registered last in app.ts after all routes — agents frequently add it before routes, breaking the Express middleware chain</item>
+        <item>Keep container.ts as a single point of truth for DI wiring; feature agents must read it before adding new constructor injections</item>
+        <item>Use process.env only in config/index.ts — nowhere else; agents tend to scatter process.env.XYZ calls across the codebase</item>
+        <item>Router files should only import from container.ts and middleware — never import services directly</item>
+        <item>Integration tests should use a real (test) database rather than mocking repositories, to catch SQL-level bugs invisible to unit tests</item>
+      </list>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <list>
+        <item>Agents generating multiple entity layers in one pass often produce inconsistent naming (UserRepository vs UsersRepository) — enforce a naming convention in the prompt</item>
+        <item>The errorHandler middleware signature must have 4 parameters (err, req, res, next) including the unused _next; agents often emit 3-parameter versions that Express does not recognize as error handlers</item>
+        <item>Agents writing container.ts may instantiate PrismaClient inside a function rather than as a module-level singleton, causing a new connection pool per request</item>
+        <item>When using async/await in route handlers, unhandled promise rejections bypass the error handler unless the controller passes errors to next(); agents must wrap every async controller in try/catch ... next(error)</item>
+        <item>Human checkpoint needed before adding a new service that introduces a circular dependency in container.ts</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html"/>
+      <link href="https://github.com/goldbergyoni/nodebestpractices"/>
+      <link href="https://khalilstemmler.com/articles/software-design-architecture/dependency-injection/"/>
+      <link href="https://martinfowler.com/eaaCatalog/serviceLayer.html"/>
+      <link href="https://www.prisma.io/docs"/>
+    </see-also>
+    <templates>
+      <template path="templates/errors.ts" purpose="Full AppError hierarchy with NotFoundError, ConflictError, UnauthorizedError, ValidationError"/>
+      <template path="templates/error-handler.ts" purpose="Express error handler middleware (ZodError + AppError + fallback)"/>
+      <template path="templates/container.ts" purpose="Manual DI container wiring Prisma → repositories → services → controllers"/>
+      <template path="templates/layer-violation-check.sh" purpose="Grep script to detect Prisma in services, direct DB in controllers, res.status in services"/>
+    </templates>
+  </content>
+</methodology>

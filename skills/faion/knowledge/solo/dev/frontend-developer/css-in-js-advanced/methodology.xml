@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="css-in-js-advanced">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>frontend-developer</domain>
+    <summary>Zero-runtime CSS-in-JS extracts styles at build time (vanilla-extract, Panda, StyleX). SSR extraction prevents FOUC for runtime libraries.</summary>
+    <category>css</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>css-in-js</tag>
+      <tag>vanilla-extract</tag>
+      <tag>zero-runtime</tag>
+      <tag>ssr</tag>
+      <tag>styled-components</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>CSS-in-JS Advanced</title>
+
+    <summary>Zero-runtime CSS-in-JS (vanilla-extract, Panda CSS, StyleX) extracts styles at build time, producing plain CSS with no runtime serialization cost. Use recipe() for typed variants, createVar() for CSS variable contract, and Sprinkles for a constrained atomic utility layer. SSR style extraction for runtime libraries (styled-components, Emotion) requires a server-side registry and a FOUC Playwright assertion.</summary>
+
+    <why>
+      <p>Runtime CSS-in-JS dominates Largest Contentful Paint (LCP) in large applications because the browser cannot paint until JavaScript serializes and injects styles. Migrating to zero-runtime removes this bottleneck and makes components compatible with React Server Components.</p>
+      <p>Sprinkles and Panda recipes encode the design token contract directly in TypeScript, making invalid token combinations a compile error instead of a runtime footgun. This prevents entire classes of styling bugs and improves developer experience with autocomplete.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Migrating styled-components / Emotion codebase to a zero-runtime solution (vanilla-extract, Linaria, Panda CSS, StyleX) for Core Web Vitals or React Server Components.</item>
+        <item>Building a typed atomic CSS layer (Sprinkles / Panda recipes) when Tailwind doesn't fit (e.g., heavy theming, multi-brand white-label).</item>
+        <item>Setting up SSR style extraction for a styled-components / Emotion app on Next.js Pages Router or Remix.</item>
+        <item>Optimizing a runtime CSS-in-JS app whose Largest Contentful Paint is dominated by serialized CSS injection.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>New apps where Tailwind + CSS variables solves the problem — runtime CSS-in-JS adds bundle and hydration cost without theming gains.</item>
+        <item>React Server Components-only trees: styled-components and Emotion runtime require a 'use client' boundary; pick vanilla-extract, Panda, or StyleX instead.</item>
+        <item>Component libraries published to npm — runtime CSS-in-JS forces the consumer's bundler to ship the runtime; ship plain CSS or zero-runtime output.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="vanilla-extract-core">
+      <title>vanilla-extract Core: recipe() and createVar()</title>
+      <p>Use createVar() to declare CSS custom properties and recipe() to combine base styles with typed variant maps. Always set defaultVariants. createVar() produces a named CSS variable with TypeScript type; omitting defaultVariants causes runtime errors when the recipe receives undefined for a required variant.</p>
+      <example type="good" title="vanilla-extract recipe with createVar">
+        <code lang="typescript"><![CDATA[
+import { createVar } from '@vanilla-extract/css';
+import { recipe, RecipeVariants } from '@vanilla-extract/recipes';
+
+const focusColor = createVar();
+
+export const button = recipe({
+  base: {
+    display: 'inline-flex',
+    fontWeight: 500,
+    borderRadius: '0.375rem',
+    cursor: 'pointer',
+    vars: { [focusColor]: '#3b82f6' },
+    ':focus-visible': { outline: `2px solid ${focusColor}`, outlineOffset: '2px' },
+  },
+  variants: {
+    color: {
+      primary: { background: '#3b82f6', color: '#fff', ':hover': { background: '#2563eb' } },
+      secondary: { background: '#f3f4f6', color: '#1f2937' },
+    },
+    size: {
+      sm: { padding: '0.375rem 0.75rem', fontSize: '0.875rem' },
+      md: { padding: '0.5rem 1rem', fontSize: '1rem' },
+    },
+  },
+  defaultVariants: { color: 'primary', size: 'md' },
+});
+
+export type ButtonVariants = RecipeVariants<typeof button>;
+        ]]></code>
+      </example>
+      <rule testable="true">
+        <statement>Always set defaultVariants in a recipe() definition. When a consumer calls button({ color: undefined }), vanilla-extract must have a fallback variant.</statement>
+        <rationale>Omitting defaultVariants causes runtime errors on undefined variant slots. The recipe type cannot be narrowed at call time if variants are optional.</rationale>
+      </rule>
+    </section>
+
+    <section name="vanilla-extract-sprinkles">
+      <title>Sprinkles and Budget Rules</title>
+      <p>Treat Sprinkles properties like a public API. Audit generated CSS size in CI. Every added property compiles to N classnames where N = number of values × number of conditions.</p>
+      <rule testable="true">
+        <statement>Keep Sprinkles properties narrowly scoped. Every added property expands CSS by multiplying its value count by the condition count. Over-broad arrays explode CSS by 5-10x.</statement>
+        <rationale>The resulting stylesheet causes measurable parse-time LCP regressions on mobile. A 500kb stylesheet can delay first paint by 200-500ms on 3G networks.</rationale>
+      </rule>
+      <p>When defining Sprinkles properties, constrain to tokens that actually vary (colors, sizes, spacing) and avoid explosion by keeping value arrays small. Monitor CSS output in CI builds.</p>
+    </section>
+
+    <section name="vanilla-extract-build-sandbox">
+      <title>Build Sandbox Constraints</title>
+      <p>Keep .css.ts files dependency-free of app code. Only import other .css.ts files, types, and literal constants. Never reference window, process.env, or dynamic imports.</p>
+      <rule testable="true">
+        <statement>vanilla-extract runs .css.ts files in a restricted Node sandbox at build time. Do not import app-level modules that reference browser globals or environment checks.</statement>
+        <rationale>Importing app code that uses window or process.env crashes the build with cryptic "cannot find module" errors. The sandbox has no browser APIs and cannot evaluate async imports.</rationale>
+      </rule>
+      <example type="bad" title="Broken build: importing app code">
+        <code lang="typescript"><![CDATA[
+// ❌ BROKEN
+import { isDarkMode } from '../utils/theme'; // imports window.matchMedia
+export const styles = recipe({
+  base: isDarkMode() ? { color: '#fff' } : { color: '#000' },
+});
+        ]]></code>
+      </example>
+      <example type="good" title="Correct: literal tokens only">
+        <code lang="typescript"><![CDATA[
+// ✅ CORRECT
+import { tokens } from './tokens'; // literal object, no app code
+export const styles = recipe({
+  base: { color: tokens.color.primary },
+});
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="ssr-styled-components-registry">
+      <title>Server-Side Style Extraction: styled-components</title>
+      <p>For Next.js App Router with styled-components, wrap the tree in a ServerStyleSheet registry component with "use client" and compiler.styledComponents enabled in next.config.js.</p>
+      <rule testable="true">
+        <statement>styled-components v6 without the registry produces hydration mismatches because CSS is injected client-side after the server-rendered HTML is painted.</statement>
+        <rationale>The browser paints unstyled HTML (Flash of Unstyled Content) before JS runs and applies styles. The registry injects style tags into the server response, preventing FOUC.</rationale>
+      </rule>
+      <example type="good" title="styled-components registry for App Router">
+        <code lang="tsx"><![CDATA[
+// lib/registry.tsx
+'use client';
+import { createContext, useContext, useState, useRef } from 'react';
+import { useServerInsertedHTML } from 'next/navigation';
+import { ServerStyleSheet, StyleSheetManager } from 'styled-components';
+
+export default function StyledComponentsRegistry({ children }: { children: React.ReactNode }) {
+  const [styledSheet] = useState(() => new ServerStyleSheet());
+  useServerInsertedHTML(() => {
+    const styles = styledSheet.getStyleElement();
+    styledSheet.instance.clearTag();
+    return <>{styles}</>;
+  });
+  return <StyleSheetManager sheet={styledSheet.instance}>{children}</StyleSheetManager>;
+}
+
+// app/layout.tsx
+import StyledComponentsRegistry from '@/lib/registry';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html>
+      <body>
+        <StyledComponentsRegistry>{children}</StyledComponentsRegistry>
+      </body>
+    </html>
+  );
+}
+        ]]></code>
+      </example>
+      <p>Also ensure next.config.js has: compiler: { styledComponents: true }</p>
+    </section>
+
+    <section name="fouc-assertion">
+      <title>FOUC Prevention: Playwright Assertion</title>
+      <p>Write a Playwright test that fetches the page HTML and asserts a style tag with data-styled or equivalent attribute is present in the initial response body.</p>
+      <rule testable="true">
+        <statement>FOUC is only visible on slow networks; it cannot be caught in development but fails user perception on first paint in production. Always write a Playwright test that confirms styles are in the initial HTML.</statement>
+        <rationale>Developers with fast networks and cached assets never see FOUC locally. It only appears on first visit over 3G. Tests catch this before production.</rationale>
+      </rule>
+      <example type="good" title="Playwright FOUC test">
+        <code lang="typescript"><![CDATA[
+test('styles are in initial HTML (no FOUC)', async ({ request }) => {
+  const res = await request.get('/');
+  const html = await res.text();
+  expect(html).toMatch(/data-styled/);
+});
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="emotion-ssr">
+      <title>Server-Side Style Extraction: Emotion</title>
+      <p>Emotion SSR requires a CacheProvider and extractCritical for Pages Router, or a client-side CacheProvider wrapper for App Router.</p>
+      <rule testable="true">
+        <statement>Emotion runtime requires a client context; without the CacheProvider wrapper in App Router, the css prop silently degrades to a plain style attribute and FOUC occurs.</statement>
+        <rationale>Emotion's CSS-in-JS machinery requires a React context to collect styles. App Router's default server behavior cannot use that context; the wrapper bridges it.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <title>CSS-in-JS Anti-Patterns</title>
+      <antipattern>
+        <description>Defining styled.div or recipe() calls inside a React component render body.</description>
+        <reason>Creates a new component class or stylesheet on every render, causing style cache misses and performance regressions. Move styled components and recipes to module scope; pass dynamic values via CSS variables or transient props.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using vars: { color: '#3b82f6' } in vanilla-extract instead of createVar() + assignVars.</description>
+        <reason>Inline var assignment bypasses the typed contract; switching themes requires touching every .css.ts file instead of reassigning variables at the theme boundary. Use createVar() to decouple style definitions from runtime theme values.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Omitting defaultVariants in a recipe() definition.</description>
+        <reason>When a consumer calls button({ color: undefined }), vanilla-extract throws at runtime because no fallback exists for the undefined variant slot. Always provide sensible defaults.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Adding Emotion to Next.js App Router without the 'use client' CacheProvider wrapper.</description>
+        <reason>Emotion runtime requires a client context; without the wrapper, the css prop silently degrades to a plain style attribute and FOUC occurs on first paint. Styling appears to work in development but fails in production or on cold cache.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Importing app-level modules (environment checks, API clients) from .css.ts files.</description>
+        <reason>vanilla-extract runs .css.ts in a Node build sandbox; browser globals and async imports are unavailable and crash the build with cryptic "cannot find module" errors. Keep .css.ts pure and dependency-free of runtime code.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Memoizing css template literal calls instead of lifting styled components to module scope.</description>
+        <reason>Memoization reduces re-computation but the component class is still created inside the component function; only module-scope definitions produce stable class names and prevent style churn.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Copying RecipeVariants&lt;typeof button&gt; but forgetting the matching defaultVariants.</description>
+        <reason>The recipe type is inferred from variants but requires a defaultVariants object that matches the variant map. Agents often copy types without realizing the runtime dependency on defaults.</reason>
+      </antipattern>
+    </section>
+
+    <section name="panda-css">
+      <title>Panda CSS Alternative</title>
+      <p>Panda CSS provides a zero-runtime alternative built on CSS variables and atomic CSS generation. Use panda.config.ts to define tokens, recipes, and utilities. Panda generates utility classes like vanilla-extract recipes with zero runtime overhead.</p>
+      <p>Key advantage: Panda includes a Tailwind-like utility layer for quick styling without hand-rolling Sprinkles. Good for teams migrating from Tailwind but needing stronger theming control.</p>
+    </section>
+
+    <section name="stylex">
+      <title>StyleX (Meta)</title>
+      <p>StyleX is a compile-time CSS-in-JS framework from Meta (Instagram, React Docs). It guarantees deterministic output, atomic CSS classes, and zero runtime. Supports React Server Components natively.</p>
+      <p>StyleX requires a Babel plugin and produces an .stylex.js file. The API is similar to styled-components but with deterministic class names and no runtime.</p>
+    </section>
+
+    <section name="migration-strategy">
+      <title>Migration Strategy: Runtime → Zero-Runtime</title>
+      <p>For large codebases, migrate incrementally: (1) audit existing styled components and list them by file, (2) convert one component/page at a time using vanilla-extract recipes, (3) run typecheck + Storybook visual diff after every batch, (4) commit per-batch so reverts are surgical, (5) keep the human in the loop for theming decisions (CSS variables vs Panda theme() API) — those become load-bearing later.</p>
+      <p>For SSR style extraction, the agent should produce registry/document changes and a Playwright assertion that no FOUC occurs on first paint.</p>
+      <p>Recommended subagents: faion-feature-executor (sequential per-component migration with a "build + visual-test" quality gate). faion-sdd-executor-agent (full SDD loop for large migrations).</p>
+      <p>Prompt pattern: "Convert src/components/Button.tsx from styled-components to vanilla-extract recipes. Preserve prop API. Output Button.css.ts and updated Button.tsx. Then write a story that exercises every variant." OR "Find all styled.X calls inside render bodies in src/. Return a refactor plan that lifts them to module scope and threads dynamic values via transient props or CSS variables."</p>
+    </section>
+
+    <section name="best-practices">
+      <title>Best Practices</title>
+      <p>Pick exactly one CSS-in-JS library per app. Mixing styled-components + Emotion doubles runtime and breaks themes. Consolidate on vanilla-extract, Panda, or StyleX for new projects.</p>
+      <p>Keep *.css.ts files dependency-free of app code — only import other *.css.ts, types, and constants. Anything else slows the build sandbox.</p>
+      <p>Use CSS variables for any value that changes per render (theme, animation target). Avoid prop-driven styled.div for hot paths — set the variable via inline style instead.</p>
+      <p>For SSR with styled-components, always render through the registry and write a Playwright test that asserts style data-styled appears in the initial HTML.</p>
+      <p>Treat Sprinkles properties like a public API: every added property compiles to N classnames. Audit the generated CSS size in CI. Keep value arrays small to prevent CSS explosion.</p>
+      <p>Lift all styled components and recipe() calls to module scope. Dynamic styles should use CSS variables or transient props, never prop-conditional template strings.</p>
+    </section>
+
+    <section name="cli-tools">
+      <title>CLI Tools and Setup</title>
+      <p>vanilla-extract: pnpm add @vanilla-extract/css, @vanilla-extract/recipes, @vanilla-extract/sprinkles. Build plugin: pnpm add -D @vanilla-extract/vite-plugin (or webpack/next plugin). Panda CSS: pnpm add @pandacss/dev &amp;&amp; panda init. Meta StyleX: pnpm add @stylexjs/stylex. styled-components v6+: pnpm add styled-components. Emotion: pnpm add @emotion/react @emotion/styled. Emotion ESLint: npx @emotion/eslint-plugin.</p>
+    </section>
+
+    <section name="services-and-tools">
+      <title>Services and Analysis Tools</title>
+      <p>Chromatic (SaaS): catches visual regressions during migration; treat as oracle for "did the styles actually change?". Bundlephobia (web): use to compare runtime cost; no API for agents — wrap with npm-bundle-size. Statoscope / Webpack Bundle Analyzer (OSS): agents can parse JSON output to verify CSS extraction worked. Linaria (OSS): alternative zero-runtime; tagged-template syntax is closer to styled-components for migration.</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <title>AI Agent Gotchas and Failure Modes</title>
+      <p>Agents copy RecipeVariants&lt;typeof button&gt; but forget the matching defaultVariants; output throws at runtime because the recipe receives undefined.</p>
+      <p>LLMs often write vars: &lt; color: '#3b82f6' &gt; instead of using createVar() + assignVars, breaking theme switching.</p>
+      <p>For Emotion in App Router, generated code omits 'use client' and the CacheProvider; FOUC + hydration mismatch.</p>
+      <p>Agents reach for &amp;&amp; css`...` template-string composition and lose TS types — prefer recipe variants over prop-conditional template strings.</p>
+      <p>When asked to "make it faster", agents memoize the wrong layer (memoizing css calls instead of lifting styled components out of render).</p>
+      <p>styled-components v6 + Next.js App Router needs styled-components/registry and compiler.styledComponents = true; agents routinely produce hydration-mismatch warnings without it.</p>
+      <p>vanilla-extract's .css.ts files run in a Node sandbox at build time — process.env, window, and dynamic imports break the build cryptically.</p>
+      <p>Sprinkles bundles every variant combo as static classnames; over-broad properties arrays explode CSS size by 5-10x.</p>
+      <p>Emotion css prop with TS strict mode requires /** @jsxImportSource @emotion/react */ per file or it silently degrades to plain style.</p>
+    </section>
+
+    <section name="references">
+      <title>References and Documentation</title>
+      <p>vanilla-extract: https://vanilla-extract.style/ — comprehensive docs and examples. Panda CSS: https://panda-css.com — token system and recipe documentation. StyleX: https://stylexjs.com — Meta's deterministic CSS-in-JS. styled-components SSR: https://styled-components.com/docs/advanced#server-side-rendering — server-side rendering setup. Emotion SSR: https://emotion.sh/docs/ssr — Emotion server rendering. Josh Comeau, "The Styled-Components Happy Path": https://www.joshwcomeau.com/css/styled-components/ — best practices and patterns.</p>
+    </section>
+
+    <templates>
+      <template path="templates/button.css.ts" purpose="Complete vanilla-extract recipe with color and size variants"/>
+      <template path="templates/find-render-styled.sh" purpose="Bash script to flag styled.X definitions inside React component render bodies"/>
+    </templates>
+
+    <see-also>
+      <link href="https://vanilla-extract.style/"/>
+      <link href="https://panda-css.com"/>
+      <link href="https://stylexjs.com"/>
+      <link href="https://styled-components.com/docs/advanced#server-side-rendering"/>
+      <link href="https://emotion.sh/docs/ssr"/>
+      <link href="https://www.joshwcomeau.com/css/styled-components/"/>
+    </see-also>
+  </content>
+</methodology>
