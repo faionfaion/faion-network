@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="llm-observability-stack">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Production observability stack for LLM systems: tracing, cost analytics, quality evaluation, and alerting via OpenTelemetry. Vendor-neutral approach for 2026.</summary>
+    <tags>
+      <tag>llm</tag>
+      <tag>observability</tag>
+      <tag>tracing</tag>
+      <tag>monitoring</tag>
+      <tag>otel</tag>
+    </tags>
+    <category>ml-ops</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+
+  <content>
+    <title>LLM Observability Stack</title>
+
+    <summary>Production observability stack for LLM systems: tracing, cost analytics, quality evaluation, and alerting via OpenTelemetry. Vendor-neutral approach for 2026.</summary>
+
+    <why>
+      <p>LLM systems fail in ways invisible to traditional APM: hallucinations, cost spikes, TTFT degradation, and multi-turn context corruption. A dedicated observability stack exposes token cost per conversation, per-request quality scores, and agent reasoning chains — none of which are visible in CPU/memory metrics.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Going to production with an LLM feature — set up tracing before the first real users</item>
+        <item>Diagnosing quality regressions after a model, prompt, or retrieval change</item>
+        <item>Enforcing budget controls: daily spend alerts, cost per team/feature</item>
+        <item>Debugging agentic loops with nested tool calls and multi-step reasoning</item>
+        <item>Compliance contexts requiring audit trails of every LLM interaction</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Prototype/experiment phase where data volume is negligible — add a TODO for later</item>
+        <item>Purely batch offline workloads with no SLA — standard job monitoring suffices</item>
+        <item>Primary bottleneck is something other than LLM calls (DB, network) — profile those first</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="why-llm-observability-differs-from-traditional-apm">
+      <p>Traditional APM monitors infrastructure and application health. LLM systems require a different model:</p>
+      <list>
+        <item>Traditional: CPU/memory/uptime → LLM: token usage, cost per conversation</item>
+        <item>Traditional: error rates → LLM: hallucination rate, quality scores</item>
+        <item>Traditional: single-request latency → LLM: TTFT, streaming throughput, P50/P95/P99</item>
+        <item>Traditional: deterministic output → LLM: non-deterministic, needs LLM-as-judge evaluation</item>
+        <item>Traditional: single-request scope → LLM: multi-turn conversation tracking with context</item>
+      </list>
+    </section>
+
+    <section name="platform-comparison-2026">
+      <p>The observability platform landscape for LLM systems in 2026 includes specialized tools designed for different deployment models and organizational needs:</p>
+      <list>
+        <item>Langfuse — open source (MIT), self-host, tracing + prompts + evals; best for privacy/compliance</item>
+        <item>LangSmith — SaaS by LangChain, agent debugging, ideal for LangChain/LangGraph users</item>
+        <item>Arize Phoenix — open source, evaluation + embeddings, good for ML teams</item>
+        <item>Helicone — proxy-based, cost analytics + caching, free 10K calls then $79/mo</item>
+        <item>Portkey — AI gateway, multi-provider routing + fallback, usage-based</item>
+        <item>OpenLLMetry — open source (Apache 2.0), 23+ backends, OTEL-native; 6.6k+ stars</item>
+        <item>Datadog LLM Obs — enterprise, full-stack APM, no self-host</item>
+        <item>Braintrust — SaaS, multi-agent tracing, enterprise pricing</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Choose Langfuse for self-hosted production; Helicone for cost-first optimization; LangSmith only if already on LangChain.</statement>
+        <rationale>Langfuse is MIT-licensed, actively maintained, and covers tracing + evals in one tool. Helicone adds a proxy layer that tracks costs without code changes. LangSmith's value is its deep LangGraph integration; outside that stack it adds a vendor dependency for little gain.</rationale>
+      </rule>
+    </section>
+
+    <section name="metrics-taxonomy">
+      <p>A comprehensive observability strategy tracks multiple dimensions of LLM system behavior:</p>
+      <list>
+        <item>Cost: token usage (input/output), $/conversation, cache hit rate, cost by user/team/feature</item>
+        <item>Quality: relevance scores, hallucination rate, user feedback (thumbs), safety scores</item>
+        <item>Performance: latency P50/P95/P99, TTFT (time to first token), throughput, queue depth</item>
+        <item>Reliability: error rate, retry rate, fallback trigger rate, timeout rate</item>
+        <item>Agent-specific: tool call success rate, reasoning step count, iteration count, loop detection</item>
+      </list>
+    </section>
+
+    <section name="opentelemetry-integration">
+      <p>OpenTelemetry (OTEL) is the emerging standard for vendor-neutral tracing of LLM systems. It decouples instrumentation from backend choice:</p>
+
+      <rule testable="true">
+        <statement>Instrument via OpenTelemetry and route to any backend — never use vendor SDKs as the primary tracing layer.</statement>
+        <rationale>OTEL gives vendor portability. Switching from Langfuse to Datadog requires only a config change when using OTEL exporters; it requires a full re-instrument when using vendor-specific SDKs.</rationale>
+      </rule>
+
+      <list>
+        <item>OTEL Collector receives spans on port 4317 (gRPC) or 4318 (HTTP)</item>
+        <item>Route to Langfuse via otlp/langfuse exporter with Authorization header</item>
+        <item>Route to Prometheus via prometheus exporter on port 8889 for metrics</item>
+        <item>OpenLLMetry auto-instruments OpenAI, Anthropic, LangChain calls with zero code changes</item>
+      </list>
+    </section>
+
+    <section name="stack-selection-decision-tree">
+      <p>Platform selection depends on deployment constraints and organizational priorities:</p>
+      <list>
+        <item>Need self-hosting (privacy/compliance)? → Langfuse (MIT) or Arize Phoenix</item>
+        <item>Using LangChain/LangGraph? → LangSmith</item>
+        <item>Primary goal is cost optimization? → Helicone</item>
+        <item>Multi-provider routing + fallback? → Portkey</item>
+        <item>Existing APM (Datadog, Grafana)? → OpenLLMetry OTEL bridge</item>
+        <item>General purpose, no constraints? → Langfuse Cloud</item>
+      </list>
+    </section>
+
+    <section name="instrumentation-rules">
+      <p>Proper instrumentation is critical to extract signal from an LLM observability platform. Each tracing point must capture the right context:</p>
+
+      <rule testable="true">
+        <statement>Attach user_id, session_id, and feature_flag to every LLM span at call time — not post-hoc.</statement>
+        <rationale>Post-hoc enrichment requires a join on a secondary store. Inline attribution enables per-user cost breakdown, session replay, and A/B comparison directly in the tracing UI.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Log both input and output token counts per call; never derive cost from character count alone.</statement>
+        <rationale>Character count diverges from token count for non-ASCII content, code, and structured JSON. Token counts are available directly from provider responses and are the only reliable cost signal.</rationale>
+      </rule>
+
+      <list>
+        <item>Wrap every external LLM call in a span; include model name, provider, temperature, max_tokens</item>
+        <item>For streaming responses, record TTFT (time to first token) as a separate metric</item>
+        <item>Record cache hit/miss on every call to track prompt caching effectiveness</item>
+        <item>For agents: create parent span per agent run, child spans per tool call; include iteration count</item>
+      </list>
+    </section>
+
+    <section name="production-alert-thresholds">
+      <p>Alerting strategy must balance responsiveness with alert fatigue. Production baselines for LLM systems differ significantly from traditional infrastructure:</p>
+
+      <rule testable="true">
+        <statement>Alert on these baselines: error rate &gt;5%, P99 latency &gt;10s, TTFT P95 &gt;2s, hallucination rate &gt;10%, daily spend &gt;80% of budget.</statement>
+        <rationale>These thresholds represent practical production baselines. Lower thresholds create alert fatigue; higher thresholds miss meaningful degradation. Tune to your SLA after establishing a 2-week baseline.</rationale>
+      </rule>
+
+      <list>
+        <item>Cost spike: hourly spend &gt;150% of 7-day rolling average → warning</item>
+        <item>Quality drop: average quality score &lt;3.5/5 sustained for 15 minutes → warning</item>
+        <item>Cache hit rate &lt;20% for 30 minutes → info (investigate prompt variation)</item>
+        <item>All critical alerts → PagerDuty; warnings → Slack #llm-alerts channel</item>
+      </list>
+    </section>
+
+    <section name="cost-tracking-patterns">
+      <p>Cost management is a critical dimension of LLM operations. Structured cost tracking enables budget control and per-team accountability:</p>
+      <list>
+        <item>Use pricing.yaml to centralize model costs — never hardcode rates in application code</item>
+        <item>Track cost by team, environment, and feature via span attributes; bill back to owners</item>
+        <item>Budget allocation: production 70%, staging 20%, development 10% of monthly budget</item>
+        <item>Self-hosted break-even: ~30,000 minutes/month (500 GPU-hours); below that use APIs</item>
+      </list>
+    </section>
+
+    <section name="agent-tracing-patterns">
+      <p>Agentic systems introduce unique tracing challenges due to multi-step reasoning and tool interactions. Hierarchical tracing is essential:</p>
+
+      <rule testable="true">
+        <statement>Create a parent trace per agent invocation and nest all tool calls as child spans — never emit flat independent spans.</statement>
+        <rationale>Flat spans make it impossible to reconstruct reasoning chains or correlate tool results with the LLM decision that triggered them. Hierarchical spans enable full session replay.</rationale>
+      </rule>
+
+      <list>
+        <item>Record tool_name, input_args, output_size, and success/error for every tool call span</item>
+        <item>Log intermediate reasoning steps (thought content) as span events, not separate spans</item>
+        <item>Detect loops: flag when the same tool is called with identical args &gt;2 times in one session</item>
+        <item>Store full conversation history in trace metadata for debugging hallucination root causes</item>
+      </list>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Sampling all traces at &lt;100% in development.</description>
+        <reason>Development traffic is low enough to sample at 100%. Sampling misses the exact anomalous call you need to debug. Reserve sampling strategies (e.g., 10%) for high-volume production only.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using Prometheus counters for LLM cost without per-model labels.</description>
+        <reason>A single llm_cost_usd counter masks model mix. If GPT-4o spikes while GPT-4o-mini stays flat, an unlabeled counter hides the root cause. Always include model and provider labels.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Only alerting on error rate, ignoring quality score drift.</description>
+        <reason>Quality regressions (relevance drop, hallucination increase) do not surface as HTTP errors. They show up as user churn. Quality alerts require LLM-as-judge sampling running continuously in production.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/langfuse-stack.yaml" purpose="Docker Compose: Langfuse + Prometheus + Grafana + OTEL Collector"/>
+      <template path="templates/alert-rules.yaml" purpose="Prometheus alert rules for error rate, latency, cost, quality, cache hit rate"/>
+      <template path="templates/pricing.yaml" purpose="Model pricing config (Q1 2026) for cost calculation"/>
+    </templates>
+  </content>
+</methodology>
