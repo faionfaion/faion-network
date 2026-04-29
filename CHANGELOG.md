@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 free/dev python/software-developer methodologies → methodology.xml (python-poetry-setup, python-type-hints, mobile-responsive; feature-045 batch C)
 - migrate: 3/3 free/dev/javascript-developer methodologies → methodology.xml (react-patterns, typescript-patterns, typescript-strict-mode; feature-045 batch B)
 - migrate: 3/3 free/dev/javascript-developer methodologies → methodology.xml (bun-runtime-simple, javascript-modern, react-hooks; feature-045 batch A)
 - chore: re-migrate 6 incomplete methodology.xml paths (django-base-model, plg-metrics, plg-optimization-tactics, viral-loops, viral-optimization, visibility-of-system-status; feature-045 sonnet-retry-C)
