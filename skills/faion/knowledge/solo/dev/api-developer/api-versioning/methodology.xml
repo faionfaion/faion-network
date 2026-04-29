@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-versioning">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>api-developer</domain>
+    <summary>Version REST APIs only for breaking semantic changes; additive changes never require a new version. Use URL path versioning with support for N and N-1 versions simultaneously.</summary>
+    <tags>
+      <tag>api-versioning</tag>
+      <tag>rest-api</tag>
+      <tag>breaking-changes</tag>
+      <tag>deprecation</tag>
+      <tag>backwards-compatibility</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>API Versioning</title>
+    <summary>Version REST APIs only for breaking semantic changes; additive changes (new field, new optional input, new endpoint) never require a new version. Use URL path versioning (`/api/v1/`) — cacheable, debuggable, unambiguous. Support N and N-1 simultaneously; emit `Deprecation`, `Sunset`, and `Link: rel=successor-version` headers from deprecated routes; measure per-version traffic before sunsetting.</summary>
+    <why>
+      <p>Maintaining 3+ active major versions is exponentially expensive. Header/Accept-version routing breaks CDN cache keys. Without `oasdiff` in CI, breaking changes ship undetected. Without measured traffic before sunset, v1 removal strands real clients — enforce sunset with 410 Gone responses, not blog posts.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Public APIs with external consumers you cannot redeploy in lockstep (partners, mobile apps shipped to stores, third-party integrations).</item>
+        <item>Major contract changes: renamed/removed fields, changed types, new required inputs.</item>
+        <item>Two-team handoffs where producer ships ahead of consumers and needs a bridge.</item>
+        <item>Long-tail clients (mobile apps from 2 years ago still hitting prod).</item>
+        <item>Migrations: feature-flag-style rollout of v2 alongside v1.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Internal-only API with one consumer redeployed atomically — backward-compat fields beat versions.</item>
+        <item>Additive changes (new field, new endpoint, new optional input) — never a new version.</item>
+        <item>GraphQL APIs — use `@deprecated` + field evolution + persisted queries instead.</item>
+        <item>Tiny app you control end-to-end — versioning ceremony eats cycles you don't have.</item>
+        <item>After-the-fact for breaking changes already merged — that is a hotfix, not a `/v2`.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Additive-first rule">
+      <rule>
+        <statement>New nullable fields, new optional inputs, and new endpoints are never breaking changes and never require a new version. Only create a new version for breaking semantic changes.</statement>
+        <rationale>90% of API changes are additive. Version ceremony for additive changes wastes cycles and confuses consumers. Reserve versions for genuinely breaking changes: removed fields, changed types, new required inputs.</rationale>
+      </rule>
+    </section>
+    <section name="Strategy comparison">
+      <list>
+        <item>URL path (/api/v1/...) — cacheable, debuggable, explicit. Recommended default.</item>
+        <item>Header (Accept-Version: v1) — clean URLs, less visible, breaks CDN cache key-on-URL.</item>
+        <item>Query param (?version=1) — easy to add, poisons CDN cache keys.</item>
+        <item>Content-Type negotiation — standards-based but complex client-side handling.</item>
+      </list>
+      <rule>
+        <statement>Default to URL path versioning. Never use query-param versioning for cacheable endpoints.</statement>
+        <rationale>URL path versioning is the boring, CDN-friendly, browser-debuggable choice. Every major public API (Stripe, Twilio, GitHub) uses it.</rationale>
+      </rule>
+    </section>
+    <section name="URL path versioning">
+      <example type="good" title="FastAPI v1/v2 router setup">
+        <code lang="python"><![CDATA[
+from fastapi import APIRouter
+
+v1_router = APIRouter(prefix="/api/v1")
+v2_router = APIRouter(prefix="/api/v2")
+
+@v1_router.get("/users")
+async def get_users_v1():
+    # v1 response shape — frozen, never changed
+    return {"format": "v1", "users": []}
+
+@v2_router.get("/users")
+async def get_users_v2():
+    # v2 response shape — new structure
+    return {"data": {"users": []}, "meta": {}}
+        ]]></code>
+        <note>v1 routes are frozen. v2 lives in a separate module the agent cannot edit when working on v1.</note>
+      </example>
+    </section>
+    <section name="Header versioning">
+      <example type="good" title="Accept-Version header approach">
+        <code lang="http"><![CDATA[
+GET /users HTTP/1.1
+Host: api.example.com
+Accept-Version: v2
+        ]]></code>
+        <note>Header versioning keeps URLs clean but requires CDN configuration to vary cache on the header.</note>
+      </example>
+    </section>
+    <section name="Deprecation headers">
+      <rule>
+        <statement>Emit Deprecation, Sunset, and Link: rel=successor-version headers from every deprecated route from the day deprecation is announced.</statement>
+        <rationale>Headers are machine-readable. SDK maintainers and observability tools can detect them automatically. Blog posts alone are not sufficient for long-tail mobile clients.</rationale>
+      </rule>
+      <example type="good" title="Deprecation response headers">
+        <code lang="http"><![CDATA[
+HTTP/1.1 200 OK
+Deprecation: Sun, 01 Jan 2026 00:00:00 GMT
+Sunset: Sun, 01 Jul 2026 00:00:00 GMT
+Link: </api/v2/users>; rel="successor-version"
+        ]]></code>
+      </example>
+    </section>
+    <section name="Usage metrics before sunset">
+      <rule>
+        <statement>Track per-version traffic via a Prometheus label (http_requests_total{version="v1"}). Do not sunset a version until traffic is zero or negligible for 30 days.</statement>
+        <rationale>You cannot sunset what you cannot measure. Removing a version with active clients causes immediate incidents, regardless of announced sunset dates.</rationale>
+      </rule>
+    </section>
+    <section name="Sunset enforcement">
+      <rule>
+        <statement>On the sunset date, routes return 410 Gone with a body pointing to v2. Delete the handler code only in a separate PR after 30 days of zero traffic.</statement>
+        <rationale>Two-PR sunset: (1) 410 Gone, (2) code deletion. This gives agents and clients final warning before code disappears and prevents accidental restoration.</rationale>
+      </rule>
+      <example type="good" title="410 Gone response with migration guidance">
+        <code lang="json"><![CDATA[
+{
+  "data": [],
+  "_warnings": [
+    {
+      "code": "DEPRECATED_API",
+      "message": "v1 API deprecated. Migrate to /api/v2 by 2026-07-01.",
+      "documentation": "https://api.example.com/docs/migration/v1-to-v2"
+    }
+  ]
+}
+        ]]></code>
+      </example>
+    </section>
+    <section name="Limitations and failure modes">
+      <list>
+        <item>Maintaining 3+ active majors gets exponentially expensive. Cap at 2 supported majors with a sunset policy.</item>
+        <item>Header / Accept-version routing breaks naive HTTP caches and CDNs that key on URL only.</item>
+        <item>Date-based versioning (Stripe-style) requires per-customer pinning and a transformation pipeline — heavy for small teams.</item>
+        <item>Query-param versioning poisons CDN cache keys.</item>
+        <item>"Internal" v2 that diverges silently from v1 → endless duplication. Without a clear deprecation date, v1 lives forever.</item>
+        <item>Mobile clients that don't update strand v1 in production indefinitely; sunset must be enforced with HTTP responses, not just blog posts.</item>
+        <item>Versioning gives a false sense of safety: callers still break on response body shape changes you didn't think were "breaking".</item>
+      </list>
+    </section>
+    <section name="Antipatterns">
+      <antipattern>
+        <description>Agent deduplicates v1/v2 handler code to be "DRY".</description>
+        <reason>Shared code silently introduces v1 breaking changes when v2 evolves. v1 routes must be frozen in a separate, read-only module.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Date-based versioning (Stripe-style) on a 2-person team.</description>
+        <reason>Requires a per-customer version pin + request/response transformation pipeline. Overhead is not paid back at small scale. URL path versioning is the right default.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic workflow">
+      <p>The agent's job is to detect breaking changes before they ship and to enforce the sunset lifecycle. Pin a contract diff tool (`oasdiff`, `graphql-inspector`) into CI. On any spec edit, the gate runs the diff; if breaking, the change requires either a new `/v2` route, a header switch, or an explicit "breaking — minor bump" override approved by a human. Agents never delete v1 routes — they mark `Deprecation`/`Sunset` headers, log usage, and only the human triggers the final removal after the sunset date.</p>
+      <p>Recommended subagents: `faion-sdd-execution` for quality gates running `oasdiff` with breaking-change failure; a `version-router` agent (Sonnet) to wire v1/v2 routers and copy handlers to v2 module; a `sunset-comms` agent (Haiku) to draft deprecation notices and migration guides; `nero-tools` to schedule sunset reminders.</p>
+      <p>Prompt pattern: Compare openapi/v1.yaml HEAD~1 → HEAD with oasdiff. For each BREAKING change, decide: (a) revert and find an additive alternative; (b) move the change to /api/v2 alongside v1; (c) document it as accepted breaking change with explicit version bump. Output: oasdiff report + decision table + a patch that either reverts or duplicates the handler under /v2.</p>
+      <p>Generate Deprecation/Sunset headers for routes listed in ops/sunset.yaml that hit their `deprecate_at` date. Update the response middleware. Do not remove handlers — that is a separate PR after sunset_at and 0 30-day usage.</p>
+    </section>
+    <section name="Best practices">
+      <list>
+        <item>Default to additive evolution. New field nullable, new endpoint, new optional input — no version bump.</item>
+        <item>Major version only for breaking semantic changes. URL path versioning (`/api/v1/...`) is the boring, cacheable, debuggable choice.</item>
+        <item>Support N and N-1; announce sunset 6 months ahead, enforce 12 months for partner APIs.</item>
+        <item>Always emit `Deprecation`, `Sunset`, and `Link: rel=successor-version` headers from deprecated routes.</item>
+        <item>Track per-version usage in metrics (`http_requests_total{version="v1"}`). You cannot sunset what you cannot measure.</item>
+        <item>Provide a migration guide + automated codemod when feasible. Stripe-style dual-running with a version pin is the gold standard.</item>
+        <item>Never let v2 silently change a v1 response shape. v1 routes freeze; v2 lives in a separate module/router.</item>
+        <item>Include the version in error responses (`X-API-Version`) so client logs can attribute regressions.</item>
+        <item>For SDKs: pin the API version at SDK build time; SDK majors trail API majors.</item>
+        <item>Persisted queries (GraphQL) and Protobuf with `buf breaking` are stronger guarantees than path versioning — prefer them when the stack allows.</item>
+      </list>
+    </section>
+    <section name="AI-agent gotchas">
+      <list>
+        <item>Agents conflate "any change → new version". 90% of changes are additive — push back. Make the SDD gate require a justified breaking-change line in `.changelog-pending` to bump.</item>
+        <item>LLMs deduplicate v1/v2 handlers "to be DRY", silently introducing breaking changes in v1. Lock v1 routes behind read-only flags or a separate package the agent cannot edit.</item>
+        <item>Generated client SDKs that auto-update can leak v2 fields into v1 consumers if codegen is misconfigured. Pin SDK versions to API versions explicitly.</item>
+        <item>Sunset enforcement is forgotten. Cron a job that, on `sunset_at`, returns 410 Gone with a body pointing to v2. Agents draft the migration but humans flip the switch.</item>
+        <item>Header-based routing is sometimes "implemented" by an agent as a body-field switch — that's not versioning, that's mode-switching. Reject in review.</item>
+        <item>Date-based versioning needs a transformation pipeline (request/response rewriters per version). Agents will try to fold versions into business logic with `if version == ...` branches. That's the bug factory. Centralize in middleware.</item>
+        <item>Agents reading the Stripe blog will copy date-based versioning to a 2-person team. Push back: header or path versioning is the right default at small scale.</item>
+        <item>When sunsetting, agents may want to delete v1 code. Force two PRs: (1) flip to 410 Gone, (2) — only after 30 days of zero traffic — delete code.</item>
+      </list>
+    </section>
+    <section name="Tools and services">
+      <p>CLI tools for breaking-change detection and versioning:</p>
+      <list>
+        <item>oasdiff — OpenAPI 3 diff with breaking-change detection. `brew install tufin/tap/oasdiff`</item>
+        <item>openapi-diff (Atlassian) — Older OpenAPI diff, JSON output. `npm i -g openapi-diff`</item>
+        <item>graphql-inspector — GraphQL schema diff with breaking-change rules. `npm i -g @graphql-inspector/cli`</item>
+        <item>buf breaking — Protobuf breaking-change check. `brew install bufbuild/buf/buf`</item>
+        <item>pact-broker — Consumer-driven contract verification across versions. `brew install pact-foundation/pact-ruby-standalone/pact-ruby-standalone`</item>
+        <item>httpie — Hand-test header/path versioning. `pip install httpie`</item>
+        <item>vacuum — OpenAPI quality + lint with versioning rules. `brew install daveshanley/vacuum/vacuum`</item>
+      </list>
+      <p>Services and SaaS platforms:</p>
+      <list>
+        <item>Stripe API versioning model — Date-based per-account pinning; copy the model, not the infrastructure.</item>
+        <item>Apollo GraphOS — Schema registry + breaking-change gates. `Rover CLI`</item>
+        <item>Buf Schema Registry (BSR) — Protobuf registry with breaking checks. `buf` CLI</item>
+        <item>Postman API versioning — Mock servers per version.</item>
+        <item>Stoplight — OpenAPI registry with diff.</item>
+        <item>Bump.sh — API changelog + diff service. `bump` CLI</item>
+        <item>ReadMe API Hub — Dev docs with version switcher.</item>
+        <item>AWS API Gateway stages — Stage-based routing as crude versioning. IaC</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/versioned_router.py" purpose="FastAPI v1/v2 router setup with prefix separation"/>
+      <template path="templates/oasdiff-ci.sh" purpose="CI breaking-change gate: oasdiff diff + changelog-pending enforcement"/>
+    </templates>
+    <see-also>
+      <link href="https://datatracker.ietf.org/doc/html/rfc8594">RFC 8594: Sunset header</link>
+      <link href="https://datatracker.ietf.org/doc/html/rfc9745">RFC 9745: Deprecation header</link>
+      <link href="https://stripe.com/blog/api-versioning">Stripe: API versioning blog post</link>
+      <link href="https://stripe.com/docs/api/versioning">Stripe: API versioning documentation</link>
+      <link href="https://github.com/microsoft/api-guidelines/blob/vNext/Guidelines.md#12-versioning">Microsoft API Guidelines: Versioning</link>
+      <link href="https://github.com/Tufin/oasdiff">oasdiff GitHub repository</link>
+      <link href="https://buf.build/docs/breaking">Buf: Breaking change detection</link>
+      <link href="https://restfulapi.net/versioning/">RESTful API design: Versioning</link>
+    </see-also>
+  </content>
+</methodology>
