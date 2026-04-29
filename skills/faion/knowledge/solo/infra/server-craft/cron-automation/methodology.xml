@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cron-automation">
+  <metadata>
+    <tier>solo</tier>
+    <group>infra</group>
+    <domain>server-craft</domain>
+    <summary>Linux cron scheduling patterns for VPS platforms: script structure (lock + log + trap + env), crontab management, flock-based overlap prevention, environment handling, and FLOW-style multi-frequency monitoring.</summary>
+    <tags>
+      <tag>cron</tag>
+      <tag>scheduling</tag>
+      <tag>automation</tag>
+      <tag>bash</tag>
+      <tag>production</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+
+  <content>
+    <title>Cron Automation</title>
+
+    <summary>Linux cron scheduling patterns for VPS platforms: script structure (lock + log + trap + env), crontab management, flock-based overlap prevention, environment handling, and FLOW-style multi-frequency monitoring (hourly silent health check → daily/weekly reports). Every production cron script must use `set -euo pipefail`, a `flock` lock file, a log function, and a `trap cleanup EXIT`.</summary>
+
+    <why>
+      <p>Cron runs with a minimal environment (`PATH=/usr/bin:/bin`, no `.bashrc`) and produces no output visible to the operator unless explicitly redirected. Scripts that work manually fail silently in cron because of missing PATH, unloaded env vars, and no lock preventing overlapping runs. The FLOW pattern structures monitoring at increasing detail per cadence so hourly checks are silent on success (no alert fatigue) while daily/weekly reports always fire.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Scheduling recurring server-side tasks: backups, log cleanup, health checks, report delivery</item>
+        <item>Implementing FLOW-style multi-frequency autonomous monitoring (hourly/daily/weekly cadence)</item>
+        <item>Running post-deploy hooks or config sync at a fixed cadence</item>
+        <item>Draining queues or syncing files at a fixed interval</item>
+        <item>`@reboot` tasks that must start when the server boots</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tasks needing reliable missed-run recovery → use systemd timers (`Persistent=true`)</item>
+        <item>Application-level scheduling tied to Django/Celery → use Celery Beat</item>
+        <item>Tasks needing resource limits (CPU cap, memory max) → systemd timer with `MemoryMax=`</item>
+        <item>Dependency ordering between tasks → systemd `After=`/`Wants=`</item>
+        <item>Sub-minute scheduling → cron minimum resolution is 1 min; use a loop service</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="required-script-structure">
+      <rule>
+        <statement>Every cron script must include: shebang, set -euo pipefail, logging function writing to a log file, flock-based lock preventing overlapping runs, trap cleanup EXIT for failure alerting, and source of the project .env file.</statement>
+        <rationale>Cron runs with minimal PATH and no user environment. Without these patterns a script that works manually will fail silently in cron, run twice simultaneously, and leave no trace of failure.</rationale>
+      </rule>
+      <reference path="templates/cron-script.sh">Full cron script template with all required patterns</reference>
+    </section>
+
+    <section name="environment-handling">
+      <rule>
+        <statement>Set SHELL=/bin/bash, a full PATH, and MAILTO="" at the top of every crontab. Source the project .env file inside each script using: if [ -f "$HOME/workspace/.env" ]; then set -a; source "$HOME/workspace/.env"; set +a; fi</statement>
+        <rationale>Cron's default PATH is /usr/bin:/bin. Any script calling project binaries, Python venvs, or reading secrets will fail silently unless PATH and secrets are explicitly loaded.</rationale>
+      </rule>
+      <example type="bad">
+        <code lang="bash"><![CDATA[
+# Crontab with no header — wrong PATH, mail output piles up
+0 3 * * * /home/nero/workspace/scripts/backup.sh
+]]></code>
+        <note>No SHELL, no PATH, no MAILTO="". Script may fail on missing binary; output goes to local mail.</note>
+      </example>
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Crontab header
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/nero/.local/bin
+MAILTO=""
+
+0 3 * * * /home/nero/workspace/scripts/backup.sh >> /var/log/nero-backup.log 2>&1
+]]></code>
+        <note>Explicit SHELL, full PATH, no mail. Output redirected to log file.</note>
+      </example>
+    </section>
+
+    <section name="locking-with-flock">
+      <rule>
+        <statement>Use flock -n 9 with a lock file to prevent overlapping runs. Open the lock file descriptor before the main logic and bind it for the duration of the script.</statement>
+        <rationale>Long-running jobs scheduled at an interval shorter than their runtime will spawn multiple concurrent instances without locking, corrupting shared state (databases, log files, backups).</rationale>
+      </rule>
+      <example type="good">
+        <code lang="bash"><![CDATA[
+LOCK_FILE="/tmp/${SCRIPT_NAME}.lock"
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+    log "ERROR: Another instance is already running, exiting"
+    exit 1
+fi
+]]></code>
+        <note>Non-blocking (-n): fail immediately if already locked. The file descriptor 9 stays open until the script exits.</note>
+      </example>
+    </section>
+
+    <section name="stale-lock-gotcha">
+      <antipattern>
+        <description>Diagnosing "job not running" without checking for stale lock files. If a script is killed mid-execution, the lock file remains and every subsequent run silently skips.</description>
+        <reason>flock holds the lock via an open file descriptor. When the process dies, the OS releases the lock. But agents checking the lock file's existence (not the flock state) will falsely conclude it is still locked.</reason>
+      </antipattern>
+      <rule>
+        <statement>To check if a lock is genuinely held (not stale), run: lsof /tmp/scriptname.lock. If no process holds it, delete the lock file and retry.</statement>
+        <rationale>File existence does not equal active lock. The lock is only active while a process has the file descriptor open.</rationale>
+      </rule>
+    </section>
+
+    <section name="testing-cron-scripts">
+      <rule>
+        <statement>Before adding a script to crontab, test it with cron's minimal environment: env -i HOME=$HOME PATH=/usr/bin:/bin SHELL=/bin/bash bash /path/to/script.sh</statement>
+        <rationale>A script that works in the user's full shell environment but fails in cron's minimal environment is the most common cron failure mode.</rationale>
+      </rule>
+    </section>
+
+    <section name="cron-expression-syntax">
+      <p>Format: minute (0-59) | hour (0-23) | day-of-month (1-31) | month (1-12) | day-of-week (0-7, both 0 and 7 = Sunday)</p>
+      <list>
+        <item>*/5 * * * *  — every 5 minutes</item>
+        <item>0 * * * *   — every hour at :00</item>
+        <item>0 3 * * *   — daily at 3 AM</item>
+        <item>0 7 * * 1   — every Monday at 7 AM</item>
+        <item>15 7 1 * *  — first of month at 7:15</item>
+        <item>@reboot     — once at server boot</item>
+        <item>@daily      — equivalent to 0 0 * * *</item>
+      </list>
+      <rule>
+        <statement>Stagger jobs by 5-10 minutes from each other. Never schedule multiple heavy jobs at exactly :00 — this creates simultaneous resource spikes.</statement>
+        <rationale>Most admins default to :00 for hourly and :00/:30 for half-hourly. Staggering distributes load and avoids disk/CPU contention between jobs.</rationale>
+      </rule>
+    </section>
+
+    <section name="crontab-management">
+      <list>
+        <item>crontab -e   — edit crontab for current user</item>
+        <item>crontab -l   — list current crontab</item>
+        <item>crontab crontab.txt   — install from file (version-controlled)</item>
+        <item>crontab -l &gt; ~/workspace/configs/crontab.txt   — backup crontab</item>
+      </list>
+      <rule>
+        <statement>Store the crontab as a file in the project repo (crontab.txt) and manage it with `crontab crontab.txt`. This provides version control and reproducible server setup.</statement>
+        <rationale>Crontab edited in-place has no history. A stored file can be restored after accidental deletion, diffed across servers, and committed with the infrastructure code.</rationale>
+      </rule>
+    </section>
+
+    <section name="cron-vs-systemd-timers">
+      <rule>
+        <statement>Use systemd timers instead of cron when the job needs: journald logging (Persistent=true for missed runs), resource limits (MemoryMax=, CPUQuota=), or dependency ordering (After=, Wants=).</statement>
+        <rationale>Cron has no built-in missed-run recovery, no resource limits, and no dependency system. systemd timers provide all three at the cost of two unit files instead of one crontab line.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# When to use cron (simple, familiar, portable):
+0 3 * * * /home/nero/workspace/scripts/backup.sh >> /var/log/backup.log 2>&1
+
+# When to use systemd timer (needs missed-run recovery):
+# backup.timer + backup.service with Persistent=true
+]]></code>
+      </example>
+    </section>
+
+    <section name="flow-schedule-hierarchy">
+      <rule>
+        <statement>The hourly check must be silent on success — only send an alert when problems are detected. Daily and weekly reports always send regardless of server state.</statement>
+        <rationale>An hourly alert that fires when everything is OK trains operators to ignore alerts. Silence = OK for the hourly check. For daily/weekly reports, always-send provides the baseline that makes deviations visible.</rationale>
+      </rule>
+      <list>
+        <item>Hourly   — quick health check (services, Docker, disk, memory, API) — silent on success</item>
+        <item>Every 3h — summarize recent hourly checks</item>
+        <item>Daily    — full status report (services, resources, errors, backup) — always sends</item>
+        <item>Weekly   — trends (restarts, errors by day, disk growth) — always sends</item>
+        <item>@reboot  — boot notification with service count</item>
+      </list>
+    </section>
+
+    <section name="flow-crontab-entries">
+      <example type="good">
+        <code lang="cron"><![CDATA[
+# FLOW Monitoring
+0 * * * *            /home/nero/workspace/scripts/flow-hourly.sh >> /var/log/nero-flow.log 2>&1
+5 6,9,12,15,18,21 * * * /home/nero/workspace/scripts/flow-summarize.sh >> /var/log/nero-flow.log 2>&1
+0 22 * * *           /home/nero/workspace/scripts/flow-send-daily.sh >> /var/log/nero-flow.log 2>&1
+0 7 * * 1            /home/nero/workspace/scripts/flow-send-weekly.sh >> /var/log/nero-flow.log 2>&1
+15 7 1 * *           /home/nero/workspace/scripts/flow-send-monthly.sh >> /var/log/nero-flow.log 2>&1
+@reboot sleep 30 && /home/nero/workspace/scripts/startup-heartbeat.sh >> /var/log/nero-startup.log 2>&1
+]]></code>
+        <note>Summarize runs 5 minutes after hourly to avoid race condition. Startup heartbeat has sleep 30 to wait for services to stabilize.</note>
+      </example>
+    </section>
+
+    <section name="hourly-health-check-pattern">
+      <rule>
+        <statement>In the hourly script, collect issues into a variable. Only send a Telegram alert if the issues variable is non-empty. Log "All OK" on success for the log file, but send nothing externally.</statement>
+        <rationale>Alert fatigue is the failure mode of monitoring. Silent-on-success hourly checks ensure that when an alert does fire, operators treat it as actionable.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="bash"><![CDATA[
+ISSUES=""
+add_issue() { ISSUES="${ISSUES}- $1\n"; }
+
+# Check services
+for svc in nero-core nero-web; do
+    systemctl --user is-active --quiet "$svc" || add_issue "$svc is DOWN"
+done
+
+# Check disk
+DISK_PCT=$(df / --output=pcent | tail -1 | tr -d ' %')
+[ "$DISK_PCT" -gt 90 ] && add_issue "Disk: ${DISK_PCT}%"
+
+# Report only on problems
+if [ -n "$ISSUES" ]; then
+    echo -e "FLOW ALERT $(hostname):\n$ISSUES" | /usr/local/bin/notify-telegram.sh
+    log "ALERT: $(echo -e "$ISSUES" | tr '\n' ' ')"
+else
+    log "All OK"
+fi
+]]></code>
+      </example>
+    </section>
+
+    <section name="log-rotation">
+      <rule>
+        <statement>Add a logrotate rule for every new cron log file, or use a fixed-size log with truncation for low-value logs. Cron log files grow indefinitely otherwise.</statement>
+        <rationale>A backup script logging 5 lines per day produces ~1800 lines per year, manageable. An hourly health check logging 10 lines produces ~87,600 lines per year — logrotate is required.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/cron-script.sh" purpose="Production-ready cron script template with all required patterns"/>
+      <template path="templates/crontab.txt" purpose="Complete crontab with header, FLOW monitoring, backup, and maintenance entries"/>
+    </templates>
+
+  </content>
+</methodology>
