@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="deploy-scripts">
+  <metadata>
+    <tier>solo</tier>
+    <group>infra</group>
+    <domain>server-craft</domain>
+    <summary>Bash deploy orchestrator for workspace/runtime separation: rsync source, manage virtualenvs, restart systemd services, and validate with health checks.</summary>
+    <tags>
+      <tag>deployment</tag>
+      <tag>bash</tag>
+      <tag>systemd</tag>
+      <tag>production</tag>
+      <tag>orchestration</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+
+  <content>
+    <title>Deploy Scripts</title>
+    <summary>Bash-based deploy orchestrator for workspace/runtime separation: rsync source to runtime, manage Python virtualenvs with `pip install -e .`, restart systemd user services, and validate with a health check. A single `deploy.sh &lt;service|all&gt; [--rebuild-venv]` script handles the full lifecycle.</summary>
+    <why>
+      <p>Ad-hoc deployment is error-prone and leaves no audit trail. A structured script enforces consistent deploy order (SDK before dependents), detects dependency changes, validates before and after, and provides a reproducible rollback path.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Adding or changing a service on a VPS using workspace/runtime separation pattern</item>
+        <item>Setting up initial deploy pipeline for a multi-service Python/Node platform</item>
+        <item>Needing rollback capability (`rollback.sh service HEAD~1`)</item>
+        <item>Post-deploy health validation before declaring success</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Docker-only deployments (use `docker compose up --pull` instead)</item>
+        <item>CI/CD-managed deployments (GitHub Actions, GitLab CI)</item>
+        <item>Monorepos where workspace and runtime are the same directory</item>
+      </list>
+    </when-not-to-use>
+    <section name="deploy-lifecycle">
+      <rule>
+        <statement>A deploy has five ordered phases: pre-checks → rsync → deps → restart → validate. Never skip pre-checks or post-validate in production.</statement>
+        <rationale>Skipping pre-checks lets deploys proceed with a missing env file or full disk, which leaves the runtime in a partial state. Skipping post-validation means a failed restart is not caught until a user hits an error.</rationale>
+      </rule>
+    </section>
+    <section name="pre-deploy-checks">
+      <rule>
+        <statement>Validate env file, disk space (&gt;1 GB free), systemd user session, and runtime directory existence before any rsync. Exit non-zero on failure.</statement>
+        <rationale>A deploy that starts without the env file will sync code correctly but the service will fail to start with a config error.</rationale>
+      </rule>
+    </section>
+    <section name="rsync-patterns">
+      <rule>
+        <statement>Use `rsync -a --delete` with excludes for `.git/`, `__pycache__/`, `.venv/`, `.env`, and `node_modules/`. Source path must end with `/` to sync contents, not the directory itself.</statement>
+        <rationale>Without the trailing slash, rsync creates a nested directory (`src/nero-core/`) instead of syncing files directly into `src/`.</rationale>
+      </rule>
+    </section>
+    <section name="virtualenv-management">
+      <rule>
+        <statement>Create the venv once; reinstall deps only when `requirements.txt` or `pyproject.toml` changes. Use `--rebuild-venv` flag to force recreate after Python version upgrades.</statement>
+        <rationale>Running `pip install` on every deploy adds 10-30 seconds to each deploy and generates churn in pip's cache.</rationale>
+      </rule>
+    </section>
+    <section name="service-restart-and-validation">
+      <rule>
+        <statement>After restarting a systemd service, wait up to 30 seconds for it to become active. For HTTP services, also confirm the health endpoint returns 200.</statement>
+        <rationale>A restart command exits successfully even if the process crashes immediately after. Polling `is-active` and then hitting `/health` gives confidence that the new code is actually running.</rationale>
+      </rule>
+    </section>
+    <section name="deploy-hook-system">
+      <p>Hooks let each service extend the deploy lifecycle without modifying the central script. Create shell scripts in `deploy-hooks/` inside the workspace service directory.</p>
+      <rule>
+        <statement>Support hooks at: `pre-deploy`, `post-sync`, `pre-restart`, `post-restart`. The central deploy script checks for each file and sources it if present.</statement>
+        <rationale>Database migrations (`post-sync`), connection draining (`pre-restart`), and notification webhooks (`post-restart`) are service-specific concerns.</rationale>
+      </rule>
+    </section>
+    <section name="multi-service-deploy-order">
+      <rule>
+        <statement>Define a deploy order array: SDK/libraries first, then infra (Docker), then application services, then frontend. When SDK changes, redeploy all dependents.</statement>
+        <rationale>A service that restarts before its shared library is updated will start against stale library code.</rationale>
+      </rule>
+    </section>
+    <templates>
+      <template path="templates/deploy.sh" purpose="Full deploy orchestrator: service registry, pre-checks, rsync, venv, restart, health check"/>
+      <template path="templates/rollback.sh" purpose="Git-based rollback: checkout previous commit, redeploy, print undo command"/>
+      <template path="templates/pre-deploy-check.sh" purpose="Standalone pre-deploy validation: env file, disk space, git status, backing services"/>
+      <template path="templates/status.sh" purpose="Show all service status, Docker containers, health endpoints, resource usage"/>
+    </templates>
+  </content>
+</methodology>
