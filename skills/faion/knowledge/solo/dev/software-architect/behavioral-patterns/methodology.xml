@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="behavioral-patterns">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Nine GoF patterns (Strategy, Observer, Command, State, CoR, Template, Mediator, Iterator, Visitor) for runtime behavior control. Apply when code smells justify abstraction cost.</summary>
+    <tags>
+      <tag>design-patterns</tag>
+      <tag>behavioral</tag>
+      <tag>gof</tag>
+      <tag>refactoring</tag>
+      <tag>architecture</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+
+  <content>
+    <title>Behavioral Design Patterns</title>
+
+    <summary>Nine GoF behavioral patterns for controlling how objects communicate and distribute responsibilities at runtime. Strategy, Observer, and Command handle algorithm selection and operation history. State, Chain of Responsibility, Template Method, and Mediator manage complex flows and component interaction. Iterator and Visitor provide traversal and operation abstraction. Apply them when measured code smells — cyclomatic complexity &gt;15, repeated switch-on-type, growing if-state chains — justify the abstraction cost. Start with the simplest representation (function, lookup table); promote to a class-based pattern only when type signatures or shared state demand it.</summary>
+
+    <why>
+      <p>Behavioral patterns solve a specific class of design problem: behavior that varies at runtime (Strategy, State), fan-out notification (Observer), operation history (Command), or extensible processing pipelines (Chain of Responsibility). Applying them off metrics (complexity, duplication, change frequency) prevents over-abstraction; applying them off aesthetics produces one-impl interfaces that add ceremony without extensibility.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Code review: long switch/match on type, duplicated event-listener boilerplate, or growing if/else state machines.</item>
+        <item>New feature: multiple algorithms selectable at runtime (Strategy), domain events fan-out to N consumers (Observer), explicit state machine with guards (State).</item>
+        <item>Refactoring a monolithic class into smaller testable pieces by externalizing variable behavior.</item>
+        <item>Building extensible middleware/handler chains (Chain of Responsibility): request validation, auth pipelines, log enrichers.</item>
+        <item>LLM-driven code generation that needs a vocabulary of named patterns to constrain output and keep code idiomatic.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Two-line if/else with one likely future variant — pattern overhead outweighs benefit; revisit at third variant.</item>
+        <item>Pure data-transformation pipelines mapping cleanly to functions or streams — patterns add ceremony.</item>
+        <item>Languages with first-class FP idioms (Rust, Haskell, modern TS) — many GoF behavioral patterns reduce to higher-order functions.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="strategy-pattern">
+      <p>Apply Strategy when you have three or more algorithm variants that swap at runtime AND the switching logic is a growing if/else or switch-on-type. With two variants, a simple conditional is cleaner.</p>
+
+      <rule testable="true">
+        <statement>Apply Strategy when you have three or more algorithm variants that swap at runtime AND the switching logic is a growing if/else or switch-on-type. With two variants, a simple conditional is cleaner.</statement>
+        <rationale>Premature abstraction with one or two implementations produces an interface with no real polymorphism; the Strategy indirection adds ceremony without extensibility benefit.</rationale>
+      </rule>
+
+      <list>
+        <item>Use when: multiple algorithms for the same task selectable at runtime (payment methods, sorting, validation, compression), or you want to isolate algorithm implementation from consuming code.</item>
+        <item>Avoid when: only 2–3 simple algorithms unlikely to change, or clients have no reason to know about alternative strategies.</item>
+        <item>Modern Python: use Protocol for duck typing — no abstract base class required. The strategy is any object with the right method signature.</item>
+        <item>Modern TypeScript: discriminated unions provide type-safe strategy selection at compile time. Strategy as a function type (not a class) is idiomatic for single-method strategies.</item>
+        <item>Dependency injection frameworks (Spring, FastAPI, NestJS): strategies are injected as constructor parameters, making the pattern implicit and testable without factory boilerplate.</item>
+      </list>
+    </section>
+
+    <section name="observer-pattern">
+      <p>Use Observer for fan-out notification to N consumers where the subject does not need to know who is listening. Use direct callbacks or dependency injection when the relationship is one-to-one.</p>
+
+      <rule testable="true">
+        <statement>Use Observer for fan-out notification to N consumers where the subject does not need to know who is listening. Use direct callbacks or dependency injection when the relationship is one-to-one.</statement>
+        <rationale>Observer decouples the subject from consumers at the cost of making notification order and error propagation implicit. One-to-one relationships don't need that indirection.</rationale>
+      </rule>
+
+      <list>
+        <item>Use when: objects need notification of state changes, implementing event-driven architectures, building reactive systems.</item>
+        <item>Avoid when: simple one-to-one relationships, notification order is critical (use an ordered event chain instead), or you need synchronous error propagation from observers.</item>
+        <item>Python: WeakSet for observers prevents memory leaks when observer objects are garbage-collected. subscribe() returns an unsubscribe callable.</item>
+        <item>TypeScript: typed EventEmitter with generic event map provides compile-time checking of event names and payload shapes.</item>
+        <item>Modern trends: reactive streams (RxJS, RxPy), Signals in Solid/Angular/Vue (fine-grained reactivity without explicit subscribe/unsubscribe). Event sourcing integrates Observer at the architectural level.</item>
+      </list>
+
+      <antipattern>
+        <description>Attaching observers without an unsubscribe mechanism in long-lived objects.</description>
+        <reason>Memory leak: the subject holds a strong reference to the observer, preventing garbage collection. Always return an unsubscribe function or use WeakSet/WeakRef.</reason>
+      </antipattern>
+    </section>
+
+    <section name="command-pattern">
+      <p>Apply Command when you need undo/redo, operation queuing, or audit logging — not as a general wrapper for every method call. Command adds a class per operation; reserve it for operations where that overhead is justified.</p>
+
+      <rule testable="true">
+        <statement>Apply Command when you need undo/redo, operation queuing, or audit logging — not as a general wrapper for every method call. Command adds a class per operation; reserve it for operations where that overhead is justified.</statement>
+        <rationale>Wrapping every service method in a Command object creates an explosion of classes with no real benefit if the operations never need to be undone, queued, or replayed.</rationale>
+      </rule>
+
+      <list>
+        <item>Use when: undo/redo functionality, queuing operations for later or out-of-order execution, logging/auditing all actions, implementing transactions or sagas.</item>
+        <item>Avoid when: simple operations without undo requirements, no need for operation history.</item>
+        <item>Invoker pattern: an Invoker holds a history stack and redo stack. execute() pushes to history and clears redo; undo() pops from history and pushes to redo.</item>
+        <item>Modern trends: CQRS (Command Query Responsibility Segregation) separates write commands from read queries at the architecture level. Event sourcing stores commands as the source of truth. Saga orchestration in microservices uses Command objects to coordinate distributed transactions.</item>
+      </list>
+    </section>
+
+    <section name="state-pattern">
+      <p>Apply State when an object's behavior changes significantly across multiple states AND the state-transition logic is growing into a complex conditional. With 2–3 states and simple transitions, an enum + switch is cleaner.</p>
+
+      <rule testable="true">
+        <statement>Apply State when an object's behavior changes significantly across multiple states AND the state-transition logic is growing into a complex conditional. With 2–3 states and simple transitions, an enum + switch is cleaner.</statement>
+        <rationale>State pattern promotes each state to a class; this is only worth the overhead when per-state behavior has real complexity. Simple enums with minimal branching don't justify the class explosion.</rationale>
+      </rule>
+
+      <list>
+        <item>Use when: object behavior varies significantly by internal state, complex conditional logic based on state, implementing finite state machines (order lifecycle, document workflow).</item>
+        <item>Avoid when: only 2–3 simple states with minimal logic, states rarely change.</item>
+        <item>State vs Strategy: both change behavior at runtime, but State transitions automatically based on internal events; Strategy is set externally by the client.</item>
+        <item>Modern TypeScript: XState provides typed state machines with guards, actions, and hierarchical states. Discriminated unions give type-safe FSM representation without a library.</item>
+        <item>Functional state machines: pure transition functions (currentState, event) → nextState with no side effects in the transition are easier to test and reason about.</item>
+      </list>
+    </section>
+
+    <section name="chain-of-responsibility">
+      <p>Use Chain of Responsibility for middleware pipelines where each handler decides to process the request or pass it on. Prefer a function-composition approach (list of handler functions iterated in order) over class-based chains for simple pipelines.</p>
+
+      <rule testable="true">
+        <statement>Use Chain of Responsibility for middleware pipelines where each handler decides to process the request or pass it on. Prefer a function-composition approach (list of handler functions iterated in order) over class-based chains for simple pipelines.</statement>
+        <rationale>Class-based chains add boilerplate for simple middleware cases; a list of handler functions achieves the same decoupling with less ceremony in languages with first-class functions.</rationale>
+      </rule>
+
+      <list>
+        <item>Use when: multiple handlers may process a request, handler set should be configurable at runtime, implementing middleware pipelines (auth, validation, logging, rate limiting).</item>
+        <item>Avoid when: only one handler needed, request must always be handled (use a default/fallback handler instead), order is fixed and handlers never change.</item>
+        <item>Fluent set_next: returning the next handler from set_next enables builder-style chain construction: handlerA.set_next(handlerB).set_next(handlerC).</item>
+        <item>Modern trends: Express/Koa/Hono middleware patterns, pipeline operators in functional languages, functional composition chains. ASGI middleware in FastAPI/Starlette is Chain of Responsibility implemented with callables.</item>
+      </list>
+    </section>
+
+    <section name="template-method">
+      <p>Apply Template Method when multiple classes share the same algorithm structure but differ in steps. If algorithm structure itself varies, use Strategy instead.</p>
+
+      <rule testable="true">
+        <statement>Apply Template Method when multiple classes share the same algorithm structure but differ in steps. If algorithm structure itself varies, use Strategy instead.</statement>
+        <rationale>Template Method uses inheritance to fix the skeleton; Strategy uses composition to swap the whole algorithm. Inheritance is harder to test and refactor; prefer Strategy when both could work.</rationale>
+      </rule>
+
+      <list>
+        <item>Use when: algorithm structure is fixed and multiple subclasses share the workflow, framework extension points needed (lifecycle hooks), data processing pipelines with variant steps.</item>
+        <item>Avoid when: algorithm needs complete flexibility (use Strategy), only one implementation exists (YAGNI — no base class needed).</item>
+        <item>Hooks: optional steps with a default implementation (no-op or sensible default) that subclasses can override without being forced to implement. Distinguished from abstract steps by having a body.</item>
+        <item>Modern trends: hooks and lifecycle methods in React (useEffect, componentDidMount) are Template Method at the framework level. Protocol/trait-based approaches replace inheritance in Rust and modern Go.</item>
+      </list>
+    </section>
+
+    <section name="mediator-pattern">
+      <p>Use Mediator to reduce many-to-many coupling between components. Stop when the Mediator becomes a god object that knows too much — split into multiple mediators by domain.</p>
+
+      <rule testable="true">
+        <statement>Use Mediator to reduce many-to-many coupling between components. Stop when the Mediator becomes a god object that knows too much — split into multiple mediators by domain.</statement>
+        <rationale>A Mediator that coordinates all components becomes a single point of failure and a maintainability bottleneck. The pattern solves coupling; one Mediator per domain keeps it bounded.</rationale>
+      </rule>
+
+      <list>
+        <item>Use when: many components communicate in complex ways, reducing coupling between N components to 1 (each knows only the mediator), centralized control point needed.</item>
+        <item>Avoid when: simple direct communication suffices, Mediator would accumulate too many responsibilities (god object).</item>
+        <item>Mediator vs Observer: Observer is distributed (subject notifies subscribers directly); Mediator is centralized (all communication routes through one object). Mediator gives more control; Observer gives more decoupling.</item>
+        <item>Modern trends: message brokers (RabbitMQ, Kafka, Redis Pub/Sub) are Mediator at the infrastructure level. Redux/Vuex are UI Mediators. Event bus implementations (MediatR in .NET, EventBus in Android) apply the pattern within a process.</item>
+      </list>
+    </section>
+
+    <section name="iterator-pattern">
+      <p>Use Iterator to provide uniform traversal of collections without exposing internal structure. In modern languages, Iterator is typically built into the language protocol.</p>
+
+      <list>
+        <item>Use when: need uniform traversal of collections without exposing internal structure, multiple traversal algorithms (forward, reverse, filtered) needed, lazy evaluation for large or infinite sequences.</item>
+        <item>Modern Python: __iter__/__next__ protocol is built-in; generators (yield) are idiomatic iterators with lazy evaluation. filter(), map(), itertools provide composable iterator transformations.</item>
+        <item>Modern TypeScript: Symbol.iterator protocol is built-in; generators and async generators (for await...of) handle both sync and async streams. The explicit Iterator interface is rarely needed.</item>
+        <item>Go: range over custom types requires implementing the Seq or iter.Seq interface introduced in Go 1.23; for older Go, manual iteration methods are idiomatic.</item>
+      </list>
+
+      <note>In modern languages (Python 3, TypeScript, Go 1.23+, Rust, Java streams), the Iterator pattern is built into the language protocol. You rarely need to implement it from scratch — extend or wrap the built-in iteration protocol instead.</note>
+    </section>
+
+    <section name="visitor-pattern">
+      <p>Apply Visitor when you need to add multiple operations to a stable class hierarchy without modifying those classes. If the hierarchy changes frequently, Visitor is the wrong choice.</p>
+
+      <rule testable="true">
+        <statement>Apply Visitor when you need to add multiple operations to a stable class hierarchy without modifying those classes. If the hierarchy changes frequently, Visitor is the wrong choice — every new class requires updating all visitors.</statement>
+        <rationale>Visitor trades hierarchy extensibility for operation extensibility. It is the inverse of the Open-Closed trade-off: Visitor makes adding operations easy, but adding new element types hard.</rationale>
+      </rule>
+
+      <list>
+        <item>Use when: adding operations to a class hierarchy without modifying it (AST traversal, serialization, reporting), operations on heterogeneous collections of objects.</item>
+        <item>Avoid when: the class hierarchy changes frequently, operations are simple or few, pattern matching (Rust, Kotlin, Scala) or structural pattern matching (Python 3.10+) achieves the same goal with less boilerplate.</item>
+        <item>Double dispatch: Visitor relies on double dispatch — the visitor.visit(element) call resolves to the correct visit_element_X method based on the runtime type of both the visitor and the element.</item>
+        <item>Modern alternatives: Python 3.10+ match/case, Rust match on enum variants, Kotlin sealed classes — all provide exhaustive pattern matching that replaces Visitor for many AST-style use cases.</item>
+      </list>
+    </section>
+
+    <section name="pattern-relationships">
+      <p>Understanding how patterns relate to each other helps avoid misapplication and choose the right tool.</p>
+
+      <list>
+        <item>Strategy vs State: both change behavior at runtime. Strategy is set externally by the client and remains stable; State transitions automatically based on internal events.</item>
+        <item>Observer vs Mediator: Observer is distributed (subject notifies subscribers directly, 1-to-N); Mediator is centralized (all communication routes through one object, N-to-1-to-N). Observer decouples more; Mediator controls more.</item>
+        <item>Command vs Memento: Command stores operations (what to do + undo); Memento stores state snapshots (what the object looked like). Use Command for undo/redo in systems with explicit actions; Memento for snapshot/restore in stateful objects.</item>
+        <item>Chain of Responsibility vs Composite: often used together — a Composite tree can trigger a chain that traverses it. Chain handles request routing; Composite handles tree structure.</item>
+        <item>Visitor vs Iterator: Iterator provides access to collection elements; Visitor processes each element with a type-specific operation. They compose naturally — use Iterator to traverse, Visitor to process.</item>
+      </list>
+    </section>
+
+    <section name="pattern-selection-matrix">
+      <p>Quick reference matrix mapping design situations to patterns:</p>
+
+      <list>
+        <item>"Multiple algorithms, choose at runtime" → Strategy. Alternative: Command (when each algorithm needs undo).</item>
+        <item>"Notify many objects of state changes" → Observer. Alternative: Mediator (when you need central control over notification order).</item>
+        <item>"Undo/redo support needed" → Command. Alternative: Memento (for snapshot-based undo, not operation-based).</item>
+        <item>"Object behaves differently per internal state" → State. Alternative: Strategy (when state is set externally, not managed internally).</item>
+        <item>"Pipeline of handlers, each may process or pass" → Chain of Responsibility. Alternative: Decorator (when every handler always processes).</item>
+        <item>"Same algorithm structure, steps vary by subclass" → Template Method. Alternative: Strategy (when algorithm structure itself should vary).</item>
+        <item>"Reduce many-to-many component dependencies" → Mediator. Alternative: Observer (when you want purely decoupled notification).</item>
+        <item>"Traverse collection uniformly" → Iterator (or built-in language protocol). Alternative: Visitor (when you also need type-specific processing per element).</item>
+        <item>"Add operations without modifying class hierarchy" → Visitor. Alternative: Strategy (when the class hierarchy changes frequently).</item>
+      </list>
+    </section>
+
+    <section name="anti-patterns">
+      <antipattern>
+        <description>Applying a behavioral pattern when a simple function or data structure suffices.</description>
+        <reason>A Strategy with one implementation, an Observer with one subscriber, or a Chain with one handler adds abstraction cost with no extensibility gain. Apply patterns off measured code smells (cyclomatic complexity, duplication, change frequency), not aesthetics.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using class-based GoF patterns in languages with first-class functions.</description>
+        <reason>In Python, TypeScript, and Rust, many behavioral patterns reduce to higher-order functions or type system features. A Strategy pattern implemented as a callable function is idiomatic and requires no class hierarchy.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Over-engineering Observer chains without error handling or backpressure.</description>
+        <reason>Unbounded Observer chains where a slow subscriber blocks notification or an exception propagates silently cause hard-to-debug cascading failures. Use reactive streams (RxJS, RxPy) when backpressure and error propagation matter.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Pattern-zealotry: applying Strategy with one implementation "for future flexibility".</description>
+        <reason>Forces a 2nd-impl-or-no-pattern rule. One-impl interfaces add ceremony without extensibility benefit.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Observer patterns generated by LLMs that forget to unsubscribe.</description>
+        <reason>Memory leaks in long-lived processes. Require an explicit `dispose`/`close` in the template.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Visitor implementations that mismatch the entity hierarchy after edits.</description>
+        <reason>Missed new entity types cause silent failures. Demand exhaustiveness checks (TS `never`, Python `assert_never`).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Command pattern code lacking idempotency keys when used for retried operations.</description>
+        <reason>Duplicate retries execute the same operation twice. Require an idempotency key in the prompt for any networked command.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Run a recognizer agent that scans diffs/files for code-smell signatures (long switch on type, repeated subscribe boilerplate, growing if-state chains), proposes the matching pattern, and outputs a concrete refactor diff. A separate critic agent challenges the proposal: is the abstraction load-bearing, or are we adding a one-impl interface? Use templates to constrain the agent's idioms per language. Always keep a behavioral-patterns ADR for non-obvious choices (e.g., why Observer was chosen over a message bus).</p>
+
+      <list>
+        <item>Recommended subagents: faion-brainstorm (diverge over candidate patterns when more than one fits), faion-sdd-execution (small refactor task with tests proving behavior preservation), faion-improver (periodic sweep for over-abstraction).</item>
+      </list>
+
+      <p>Prompt pattern:</p>
+
+      <code lang="text"><![CDATA[INPUT: <file>.ts and a brief on the change driver (new payment provider, new event consumer).
+TASK: Identify the smallest pattern that fits (Strategy, Observer, State, CoR, Template).
+Justify against the change driver. Reject patterns that introduce more than one
+new file unless they remove an existing if/else by at least 30% LOC.
+OUTPUT: refactor diff + tests + 3-line ADR rationale.]]></code>
+
+      <p>Pattern-critic prompt:</p>
+
+      <code lang="text"><![CDATA[ROLE: pattern-critic
+TASK: Argue against the proposed pattern. Suggest a simpler alternative
+(plain function, lookup table, library state machine). Score 1-5 for
+extensibility, debuggability, learning curve, lines added, lines removed.]]></code>
+    </section>
+
+    <section name="cli-tools-and-services">
+      <p>Tools for detecting pattern candidates and refactoring opportunities:</p>
+
+      <list>
+        <item>ruff / pylint — Detect long branches, complexity (Python).</item>
+        <item>eslint + plugin-sonarjs — Cyclomatic complexity, switch length (TS/JS).</item>
+        <item>golangci-lint — gocyclo, cyclop (Go).</item>
+        <item>jscpd — Duplicate-code detection — pre-pattern signal.</item>
+        <item>Lizard — Cross-language complexity scanner.</item>
+        <item>Semgrep — Custom rules for "switch on type" / pattern smells.</item>
+        <item>ast-grep — Structural search across languages for refactor sites.</item>
+      </list>
+
+      <p>Services &amp; apps:</p>
+
+      <list>
+        <item>Sourcegraph / Cody (SaaS) — Find all callers of a Strategy, batch-refactor consumers.</item>
+        <item>GitHub Copilot Workspace / Claude Code (SaaS) — Diff-driven refactors that follow pattern templates.</item>
+        <item>XState (Stately) (OSS+SaaS) — Use instead of hand-rolled State pattern for non-trivial FSMs.</item>
+        <item>RxJS / RxPy (OSS) — Modern alternative to hand-rolled Observer.</item>
+        <item>Apache Camel / Spring Integration (OSS) — Heavy CoR/mediator runtimes for JVM apps.</item>
+        <item>EventEmitter (Node) / Pyee (Python) (OSS) — Built-in Observer; agent-friendly idioms.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Trigger pattern application off measured smells (complexity, duplication, change frequency), not aesthetics.</item>
+        <item>Start with the simplest representation: function pointer, dict-of-functions, lookup table. Promote to a class-based pattern only when type signatures or shared state demand it.</item>
+        <item>Pair Observer with a structured event taxonomy (event names, payloads, version) — undisciplined Observer becomes an undebuggable spaghetti.</item>
+        <item>Use library state machines (XState, statecharts4j) for &gt;3 states or guards/actions; hand-rolled State is only justified for tiny, stable flows.</item>
+        <item>For Strategy, keep the interface narrow — one method most of the time; multi-method strategies usually want to be a Service.</item>
+        <item>Always add tests that exercise pattern boundaries (new strategy, new state transition, new handler in chain) — regressions hide there.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/strategy-py.py" purpose="Strategy pattern in Python using Protocol for duck typing."/>
+      <template path="templates/observer-py.py" purpose="Observer/EventEmitter in Python with WeakSet and unsubscribe return."/>
+      <template path="templates/command-py.py" purpose="Command pattern in Python with undo/redo Invoker."/>
+      <template path="templates/state-py.py" purpose="State pattern in Python with Context and abstract State base."/>
+      <template path="templates/chain-py.py" purpose="Chain of Responsibility in Python with fluent set_next chaining."/>
+    </templates>
+
+    <see-also>
+      <link href="https://refactoring.guru/design-patterns/behavioral-patterns"/>
+      <link href="https://martinfowler.com/eaaCatalog/"/>
+      <link href="https://stately.ai/docs/state-machines-and-statecharts"/>
+      <link href="https://www.rxjs.dev/"/>
+      <link href="https://github.com/kamranahmedse/design-patterns-for-humans"/>
+    </see-also>
+  </content>
+</methodology>
