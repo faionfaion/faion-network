@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="graphql-api-design">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>api-developer</domain>
+    <summary>Schema-first GraphQL: SDL is the contract, every list uses Relay cursor pagination, every relation has a per-request DataLoader, every public schema has depth and complexity limits.</summary>
+    <tags>
+      <tag>graphql</tag>
+      <tag>schema-first</tag>
+      <tag>dataloader</tag>
+      <tag>relay-pagination</tag>
+      <tag>federation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+      <language>typescript</language>
+    </languages>
+    <frameworks>
+      <framework>strawberry</framework>
+      <framework>apollo</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>GraphQL API Design</title>
+
+    <summary>Design GraphQL APIs schema-first: the SDL is the contract that humans review before code is written. Every list field uses Relay-style cursor pagination; every relation field has a DataLoader scoped per-request in context; every mutation returns a typed payload with union error types; every public endpoint has depth (8–10) and complexity (100–500) limits.</summary>
+
+    <why>
+      <p>Schema-first aligns frontend/backend teams on a stable contract before implementation begins. DataLoader is not optional: N+1 queries are the default failure mode for any nested list resolver, and they pass unit tests while destroying prod performance. Relay pagination survives concurrent writes; offset pagination produces duplicates and gaps.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>New service designed schema-first, where SDL is the contract reviewed by humans + consumed by codegen.</item>
+        <item>Multiple distinct clients (web, mobile, partner) each need a different shape of the same domain.</item>
+        <item>You expect federation/microservices later — start with the supergraph mindset.</item>
+        <item>Heavy use of nested reads with field-level auth (e.g. SaaS dashboard with org/role permissions).</item>
+        <item>Real-time + query unification: subscriptions next to queries on the same schema.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Public, cacheable read API → REST + CDN wins.</item>
+        <item>Hard latency budgets where unbounded resolver fan-out is unacceptable.</item>
+        <item>File upload / streaming-binary heavy workloads.</item>
+        <item>Single-client, single-team CRUD — overhead of schema, codegen, DataLoaders, depth/complexity is not paid back.</item>
+        <item>Org without bandwidth to operate persisted queries, schema registry, breaking-change checks.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="schema-first-rule">
+      <rule>
+        <statement>Always design the SDL before writing resolver code. The SDL diff is the artifact a human reviews — never let an agent autopatch a resolver without showing the schema change first.</statement>
+        <rationale>Schema-first aligns frontend/backend teams on a stable contract before implementation. Resolver code is derived from the schema, not the other way around.</rationale>
+      </rule>
+    </section>
+
+    <section name="type-conventions">
+      <rule>
+        <statement>Use interfaces (Node, Timestamped) to share common fields. Implement PascalCase for types, camelCase for fields, SCREAMING_SNAKE for enums. Pin in schema linter.</statement>
+        <rationale>Consistent naming across a large schema makes SDL readable and allows schema linters to enforce conventions automatically.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="graphql"><![CDATA[
+scalar DateTime
+scalar UUID
+scalar Email
+
+interface Node { id: ID! }
+interface Timestamped { createdAt: DateTime!; updatedAt: DateTime! }
+
+enum UserRole { ADMIN MODERATOR MEMBER }
+
+type User implements Node & Timestamped {
+  id: ID!
+  email: Email!
+  name: String!
+  role: UserRole!
+  isActive: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  orders(first: Int, after: String): OrderConnection!
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="mutation-payload-with-error-union">
+      <rule>
+        <statement>Mutations return a typed payload with a union of success type and typed error types. Use union types (Result) for expected errors; leave errors[] for unexpected failures.</statement>
+        <rationale>Union types make expected failure modes explicit in the schema and force clients to handle them. Untyped errors[] signals a bug, not a business rule.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="graphql"><![CDATA[
+type CreateUserPayload {
+  user: User
+  errors: [UserError!]
+}
+
+type UserError {
+  field: String
+  message: String!
+  code: String!  # stable enum: VALIDATION_ERROR, EMAIL_TAKEN, etc.
+}
+
+type Mutation {
+  createUser(input: CreateUserInput!): CreateUserPayload!
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="input-types">
+      <rule>
+        <statement>All mutations take a single input argument of an input type. Never use individual scalar arguments for mutations.</statement>
+        <rationale>Input types can be extended with optional fields without breaking existing callers. Individual scalar arguments cannot be extended non-breakingly.</rationale>
+      </rule>
+    </section>
+
+    <section name="dataloader-mandatory">
+      <rule>
+        <statement>Every resolver that accesses a related entity must use a DataLoader. Instantiate DataLoaders per-request in the GraphQL context, never at module scope.</statement>
+        <rationale>Module-global DataLoaders cache data across requests, leaking one user's data to another. Without DataLoader, N+1 queries pass all unit tests while destroying prod performance.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+from strawberry.dataloader import DataLoader
+from typing import List
+from uuid import UUID
+
+class OrganizationLoader(DataLoader[UUID, "Organization"]):
+    async def batch_load_fn(self, keys: List[UUID]) -> List["Organization"]:
+        orgs = await self.repository.find_by_ids(keys)
+        org_map = {org.id: org for org in orgs}
+        return [org_map.get(key) for key in keys]  # preserve key order
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="permission-classes">
+      <rule>
+        <statement>Every Query and Mutation field touching auth-scoped data must declare permission_classes (Strawberry) or an equivalent directive. Never put auth checks in business logic.</statement>
+        <rationale>Auth checks scattered in business logic are forgotten on new fields. A quality gate enforcing permission_classes on every resolver catches missing auth before merge.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+from strawberry.permission import BasePermission
+from strawberry.types import Info
+
+class IsAuthenticated(BasePermission):
+    message = "User is not authenticated"
+
+    def has_permission(self, source, info: Info, **kwargs) -> bool:
+        return info.context.current_user_id is not None
+
+@strawberry.type
+class Mutation:
+    @strawberry.mutation(permission_classes=[IsAuthenticated])
+    async def create_order(self, info: Info, input: CreateOrderInput) -> Order:
+        ...
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="depth-and-complexity-limits">
+      <rule>
+        <statement>Apply QueryDepthLimiter (max 8–10) and QueryComplexityExtension (max 100–500) on every public schema. Tune thresholds from real traffic histograms after launch.</statement>
+        <rationale>A single deeply nested query or query with high complexity can drain the DB connection pool. Depth 10 covers all realistic client operations; higher depths are attack vectors.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+from strawberry.extensions import QueryDepthLimiter
+from strawberry.extensions.query_complexity import QueryComplexityExtension
+
+schema = strawberry.Schema(
+    query=Query,
+    mutation=Mutation,
+    extensions=[
+        QueryDepthLimiter(max_depth=10),
+        QueryComplexityExtension(max_complexity=200),
+    ],
+)
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="limitations">
+      <list>
+        <item>N+1 by default. DataLoader is mandatory infrastructure, not optional.</item>
+        <item>HTTP caching does not work — no GET semantics, every request is POST `/graphql`.</item>
+        <item>Depth + complexity bombs are trivial to write; without limits, public endpoints are DoS-prone.</item>
+        <item>Field-level auth is hand-rolled per resolver; easy to miss on a new field.</item>
+        <item>Error envelope (`data + errors`) confuses status-code-based monitoring; partial success is normal.</item>
+        <item>Schema evolution requires deprecation (`@deprecated`) and sometimes versioned types — not a free lunch over REST.</item>
+        <item>Persisted queries are operationally heavier (registry, build-time hashing) but mandatory for prod safety.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Schema-first, always. The agent edits the SDL → schema lints + breaking-change check run → codegen produces typed clients + resolver scaffolds → agent fills resolvers + DataLoaders → integration test exercises the new field → human reviews the SDL diff (the contract). For federation, gate on `rover subgraph check` against the production graph before merging.</p>
+
+      <p>Recommended subagents:</p>
+      <list>
+        <item>`faion-feature-executor` — sequence: SDL edit → codegen → resolver → DataLoader → permission → test.</item>
+        <item>`faion-sdd-execution` — quality gate enforcing DataLoader, depth/complexity limits, permission class on every new field.</item>
+        <item>A `schema-reviewer` agent (Opus) — checks SDL diff for naming, nullability, pagination, breaking changes.</item>
+        <item>A `resolver-implementer` agent (Sonnet) — generates Strawberry/Apollo resolvers + DataLoaders from SDL.</item>
+      </list>
+    </section>
+
+    <section name="prompt-patterns">
+      <prompt purpose="schema-edit-and-implement"><![CDATA[
+Edit schema/users.graphql: add an `archivedAt: DateTime` nullable field to
+type User and a `archiveUser(id: ID!): ArchiveUserPayload!` mutation
+returning the union of (User, ValidationError, NotAuthorizedError).
+
+Then:
+1. Run `graphql-inspector diff schema/users.graphql HEAD~1` and confirm
+   non-breaking.
+2. Run codegen.
+3. Implement Strawberry resolver in resolvers/users.py with @permission_classes=[IsAdmin].
+4. Add a UserArchivedAt DataLoader if archivedAt requires a join.
+5. Add a pytest covering archive + double-archive + non-admin denial.
+
+Output: unified diff only.
+]]></prompt>
+
+      <prompt purpose="permission-audit"><![CDATA[
+Audit resolvers/*.py for missing permission_classes on Mutation fields.
+List offenders and propose the minimal permission class per field.
+]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>`rover` — Apollo Federation: schema check / publish / compose (`curl -sSL https://rover.apollo.dev/nix/latest | sh`).</item>
+        <item>`graphql-codegen` — TS types, hooks, resolver scaffolds (`npm i -D @graphql-codegen/cli`).</item>
+        <item>`graphql-inspector` — Diff + breaking-change detection (`npm i -g @graphql-inspector/cli`).</item>
+        <item>`gql.tada` — Inline typed queries (zero-codegen TS) (`npm i gql.tada`).</item>
+        <item>`graphql-schema-linter` — SDL style + naming rules (`npm i -g graphql-schema-linter`).</item>
+        <item>`graphqurl` (`gq`) — GraphQL curl (`npm i -g graphqurl`).</item>
+        <item>`graphql-cop` — security audit (depth, batching, suggestions) (`pip install graphql-cop`).</item>
+        <item>`clairvoyance` — schema recovery when introspection is off (red team) (`pip install clairvoyance`).</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>Apollo GraphOS / Studio — SaaS, Rover CLI + REST API; Federation registry + schema checks + ops metrics.</item>
+        <item>WunderGraph Cosmo — OSS, `wgc` CLI; self-hostable federation + registry.</item>
+        <item>Hasura — OSS + Cloud, partial REST admin API; Postgres → GraphQL with metadata YAML.</item>
+        <item>PostGraphile — OSS, config files; Postgres → GraphQL, plugin-driven.</item>
+        <item>The Guild Hive — OSS + SaaS, CLI + API; schema registry + usage analytics.</item>
+        <item>Stellate — SaaS, config-as-code; GraphQL CDN + edge cache.</item>
+        <item>Strawberry (Python) — OSS lib; type-hint-driven server, Pythonic.</item>
+        <item>Apollo Server / Yoga — OSS; TS/JS reference servers.</item>
+      </list>
+    </section>
+
+    <section name="ci-lint-and-breaking-change-gate">
+      <p>Lint + breaking-change gate (drop into CI):</p>
+      <example type="good">
+        <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+set -euo pipefail
+graphql-schema-linter schema/*.graphql
+graphql-inspector diff schema/schema.graphql origin/main:schema/schema.graphql \
+  --rule considerUsage \
+  --fail-on-breaking
+# Federation
+rover subgraph check users --schema schema/users.graphql \
+  --name production --hint "$GITHUB_PR"
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>One DataLoader per relation, scoped per request via context. Module-global = cross-request leak.</item>
+        <item>Depth limit 8–10, complexity limit 100–500 on every public schema. Tune from real traffic histograms.</item>
+        <item>Persist queries in production: client sends a hash, server resolves to a vetted operation. Closes injection + DoS surface in one move.</item>
+        <item>Use `Result` / union types for expected errors (NotFound, Validation, NotAuthorized) — leave `errors[]` for unexpected failures.</item>
+        <item>Stable error codes in `extensions.code` as an enum; clients never parse `message`.</item>
+        <item>Relay-style cursor pagination on every list. Offset breaks under writes.</item>
+        <item>Field-level auth via permission classes / directives, not in business logic.</item>
+        <item>`@deprecated(reason: "...")` over silent removal; track usage in the schema registry before retiring.</item>
+        <item>Disable introspection in production for non-public APIs, or gate behind auth.</item>
+        <item>Naming: types `PascalCase`, fields `camelCase`, enums `SCREAMING_SNAKE`. Pin in schema linter.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents copy REST endpoints into GraphQL queries 1:1 (one query per old route). Force them to model the entity graph, not the operation list.</item>
+        <item>LLM-generated SDL often drops non-null markers (`!`) or invents types like `Float` for money. Run `graphql-schema-linter` on every commit.</item>
+        <item>Resolvers generated without DataLoader pass tests but quadratic in prod. Lint for "DB call inside iteration" and demand a loader.</item>
+        <item>Permissions are forgotten on new resolvers — silently exposing data. SDD quality gate must require `permission_classes=` (or directive equivalent) on every Mutation/Query field touching auth-scoped data.</item>
+        <item>An agent editing one subgraph can break the supergraph. Always run `rover subgraph check` before merging — the human-in-loop checkpoint.</item>
+        <item>Persisted queries break iterative LLM debugging. Allow a dev-only escape hatch (`x-persisted-bypass=1`), never in prod.</item>
+        <item>Error envelope means HTTP 200 can carry failure. Wire alerts on `errors[]` count, not status codes.</item>
+        <item>Subscription handlers leak listeners when refactored by an agent that doesn't understand stateful sessions. Require explicit `on_disconnect` cleanup in any subscription PR.</item>
+      </list>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Agent adds a new Query/Mutation field without permission_classes.</description>
+        <reason>Silently exposes data or performs mutations without auth. SDD quality gate must enforce this with a CI check.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Offset pagination on list fields.</description>
+        <reason>Under concurrent writes, offset pagination produces duplicates (inserted rows) and gaps (deleted rows). Cursor pagination is stable.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/schema.graphql" purpose="SDL skeleton: Node/Timestamped interfaces, Connection/Edge/PageInfo, Payload with error union"/>
+      <template path="templates/dataloader.py" purpose="Strawberry DataLoader: batch_load_fn with key-order preservation"/>
+    </templates>
+
+    <see-also>
+      <link href="https://spec.graphql.org/"/>
+      <link href="https://graphql.org/learn/best-practices/"/>
+      <link href="https://strawberry.rocks/"/>
+      <link href="https://relay.dev/graphql/connections.htm"/>
+      <link href="https://www.apollographql.com/docs/federation/"/>
+      <link href="https://www.apollographql.com/docs/apollo-server/performance/apq/"/>
+      <link href="https://github.com/dolevf/graphql-cop"/>
+      <link href="https://escape.tech/blog/graphql-security-checklist/"/>
+    </see-also>
+  </content>
+</methodology>
