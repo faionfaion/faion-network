@@ -1,0 +1,691 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-backend">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Production-grade Go backend patterns with Gin and Echo frameworks: project structure, layered architecture, error handling, middleware, and concurrency patterns.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>go</tag>
+      <tag>backend</tag>
+      <tag>gin</tag>
+      <tag>echo</tag>
+      <tag>rest-api</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>go</language>
+    </languages>
+    <frameworks>
+      <framework>gin</framework>
+      <framework>echo</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Go Backend Development Patterns</title>
+
+    <summary>Production-grade Go backend patterns with Gin and Echo frameworks. Covers project structure (cmd/ + internal/ + pkg/), layered architecture (handler → service → repository), HTTP routers, request binding, worker pools, fan-out/fan-in concurrency, and centralized error handling. Defines interfaces at the consumer side for testability. Emphasizes context propagation, typed errors with HTTP status codes, graceful shutdown with WaitGroup, goroutine leak prevention, and middleware ordering pitfalls agents face.</summary>
+
+    <why>
+      <p>Go's clarity and concurrency model make it ideal for backend services, but the lack of framework conventions means agents often repeat mistakes: middleware chain breakage, goroutine leaks, nil-pointer panics, and context propagation failures. The cmd/internal/pkg layout enforces boundaries at the compiler level and prevents circular imports. Layered architecture (handler → service → repository) makes the business logic testable in isolation and deployable without web bindings. Typed errors with HTTP status codes eliminate the need for status-code lookup tables and make error handling explicit at every boundary. Context propagation ensures cancellation signals flow through the entire call stack, preventing zombie goroutines and requests that hang on shutdown.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a new Go service (Gin/Echo/Chi) with the cmd/ + internal/ + pkg/ layout.</item>
+        <item>Adding HTTP handlers, middleware, request validation, or worker pools to an existing Go backend.</item>
+        <item>Refactoring ad-hoc Go code into the layered handler → service → repository structure.</item>
+        <item>Adding apperror-style typed errors and centralized error middleware.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Greenfield where the team has more Python/TS experience and operational constraints don't justify Go's runtime profile. Python/Node might be faster to iterate on with less tooling overhead.</item>
+        <item>Pure CLI tools — different layout (cmd/&lt;tool&gt;/main.go + flat libs); see go-project-structure. HTTP backend patterns don't apply to standalone binaries.</item>
+        <item>Async-heavy event processing where a message bus + lightweight consumer in any language fits better than a long-lived HTTP service. Consider a dedicated event processor or worker service.</item>
+        <item>Prototypes where dependency injection wiring would slow down iteration; prefer a single-file spike first. Layered architecture has overhead; spike first, structure second.</item>
+        <item>Embedded systems or extremely resource-constrained environments where Go's memory footprint (10+ MB minimum) exceeds the budget. Use C/Rust instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="project-structure">
+      <p>The standard Go backend structure enforces boundaries and package organization:</p>
+      <code lang="text"><![CDATA[
+project/
+├── cmd/
+│   └── api/
+│       └── main.go           # Entry point
+├── internal/
+│   ├── handler/              # HTTP handlers
+│   ├── service/              # Business logic
+│   ├── repository/           # Data access
+│   ├── model/                # Domain models
+│   ├── middleware/           # HTTP middleware
+│   └── config/               # Configuration
+├── pkg/                      # Public packages
+├── migrations/               # Database migrations
+├── go.mod
+└── go.sum
+      ]]></code>
+      <rule testable="true">
+        <statement>Use internal/ to prevent external imports; use cmd/ for multiple binaries; keep pkg/ flat and package-focused.</statement>
+        <rationale>The internal/ directory enforces module boundaries at the Go compiler level. Anything exposed in pkg/ becomes a public contract and can never be removed without breaking external consumers. Keep exports minimal.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Define interfaces at the consumer (handler defines service.UserService, not the service package).</statement>
+        <rationale>This keeps internal/service swappable in tests and prevents circular dependencies. The handler owns its dependency contract.</rationale>
+      </rule>
+    </section>
+
+    <section name="layered-architecture">
+      <p>Layered architecture separates concerns: HTTP handlers receive requests, services contain business logic, repositories handle data access.</p>
+
+      <example type="good" title="Handler with injected service">
+        <code lang="go"><![CDATA[
+// internal/handler/user.go
+package handler
+
+import (
+    "net/http"
+    "github.com/gin-gonic/gin"
+    "project/internal/service"
+)
+
+type UserHandler struct {
+    userService service.UserService
+}
+
+func NewUserHandler(us service.UserService) *UserHandler {
+    return &UserHandler{userService: us}
+}
+
+func (h *UserHandler) GetUser(c *gin.Context) {
+    id := c.Param("id")
+    user, err := h.userService.GetByID(c.Request.Context(), id)
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+        return
+    }
+    c.JSON(http.StatusOK, user)
+}
+        ]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Always pass ctx := c.Request.Context() into the service layer; never call DB drivers without a context.</statement>
+        <rationale>Context propagation enables timeouts, cancellation, and request-scoped values throughout the call chain. Missing context causes requests to hang on shutdown or context deadline events.</rationale>
+      </rule>
+    </section>
+
+    <section name="http-routers">
+      <p>Gin and Echo are the most common choices; both have clear middleware models but require different setup patterns.</p>
+
+      <example type="good" title="Gin Router with versioned API groups">
+        <code lang="go"><![CDATA[
+package main
+
+import (
+    "github.com/gin-gonic/gin"
+    "project/internal/handler"
+    "project/internal/middleware"
+)
+
+func SetupRouter(h *handler.UserHandler) *gin.Engine {
+    r := gin.Default()
+
+    r.Use(middleware.RequestID())
+    r.Use(middleware.Logger())
+    r.Use(middleware.Recovery())
+
+    v1 := r.Group("/api/v1")
+    {
+        users := v1.Group("/users")
+        users.Use(middleware.Auth())
+        {
+            users.GET("", h.ListUsers)
+            users.GET("/:id", h.GetUser)
+            users.POST("", h.CreateUser)
+            users.PUT("/:id", h.UpdateUser)
+            users.DELETE("/:id", h.DeleteUser)
+        }
+    }
+
+    return r
+}
+        ]]></code>
+      </example>
+
+      <example type="good" title="Echo Router with middleware composition">
+        <code lang="go"><![CDATA[
+package main
+
+import (
+    "github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v4/middleware"
+)
+
+func SetupRouter() *echo.Echo {
+    e := echo.New()
+
+    e.Use(middleware.Logger())
+    e.Use(middleware.Recover())
+    e.Use(middleware.RequestID())
+
+    api := e.Group("/api/v1")
+    api.Use(middleware.JWT([]byte("secret")))
+
+    api.GET("/users", listUsers)
+    api.GET("/users/:id", getUser)
+    api.POST("/users", createUser)
+
+    return e
+}
+        ]]></code>
+      </example>
+
+      <antipattern>
+        <description>gin.Default() already includes Logger+Recovery; agents often add them again, double-logging every request.</description>
+        <reason>Pin the middleware list explicitly and avoid default(). Only add what you need.</reason>
+      </antipattern>
+    </section>
+
+    <section name="request-binding-validation">
+      <example type="good" title="Strict request binding with validation tags">
+        <code lang="go"><![CDATA[
+type CreateUserRequest struct {
+    Name  string `json:"name" binding:"required,min=2,max=100"`
+    Email string `json:"email" binding:"required,email"`
+    Age   int    `json:"age" binding:"gte=0,lte=130"`
+}
+
+func (h *UserHandler) CreateUser(c *gin.Context) {
+    var req CreateUserRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+    // Process valid request
+}
+        ]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Always use binding:"required" and other validator tags on request struct fields; never validate in handler logic.</statement>
+        <rationale>Declarative validation keeps handlers thin and makes constraints visible at the type level. Validator errors are JSON-safe already.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>c.ShouldBindJSON returns Go validator errors that are user-unfriendly; agents ship them raw to the client (info-leak + bad UX).</description>
+        <reason>Wrap validator errors in a standardized response type before sending. Never expose internal error types to the client.</reason>
+      </antipattern>
+    </section>
+
+    <section name="error-handling">
+      <example type="good" title="Typed error wrapper with HTTP status mapping">
+        <code lang="go"><![CDATA[
+package apperror
+
+import (
+    "fmt"
+    "net/http"
+)
+
+type AppError struct {
+    Code       string `json:"code"`
+    Message    string `json:"message"`
+    HTTPStatus int    `json:"-"`
+    Err        error  `json:"-"`
+}
+
+func (e *AppError) Error() string {
+    if e.Err != nil {
+        return fmt.Sprintf("%s: %v", e.Message, e.Err)
+    }
+    return e.Message
+}
+
+func (e *AppError) Unwrap() error {
+    return e.Err
+}
+
+var (
+    ErrNotFound = &AppError{
+        Code:       "NOT_FOUND",
+        Message:    "Resource not found",
+        HTTPStatus: http.StatusNotFound,
+    }
+    ErrUnauthorized = &AppError{
+        Code:       "UNAUTHORIZED",
+        Message:    "Authentication required",
+        HTTPStatus: http.StatusUnauthorized,
+    }
+)
+
+func NewNotFound(resource string) *AppError {
+    return &AppError{
+        Code:       "NOT_FOUND",
+        Message:    fmt.Sprintf("%s not found", resource),
+        HTTPStatus: http.StatusNotFound,
+    }
+}
+
+func Wrap(err error, message string) *AppError {
+    return &AppError{
+        Code:       "INTERNAL_ERROR",
+        Message:    message,
+        HTTPStatus: http.StatusInternalServerError,
+        Err:        err,
+    }
+}
+        ]]></code>
+      </example>
+
+      <example type="good" title="Centralized error handler middleware">
+        <code lang="go"><![CDATA[
+func ErrorHandler() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        c.Next()
+
+        if len(c.Errors) > 0 {
+            err := c.Errors.Last().Err
+            if appErr, ok := err.(*apperror.AppError); ok {
+                c.JSON(appErr.HTTPStatus, gin.H{
+                    "error": gin.H{
+                        "code":    appErr.Code,
+                        "message": appErr.Message,
+                    },
+                })
+                return
+            }
+            c.JSON(http.StatusInternalServerError, gin.H{
+                "error": gin.H{
+                    "code":    "INTERNAL_ERROR",
+                    "message": "An unexpected error occurred",
+                },
+            })
+        }
+    }
+}
+        ]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Centralize the error handler middleware and forbid c.JSON(http.StatusXXX, err.Error()) directly in handlers — it leaks internal errors.</statement>
+        <rationale>One place to handle errors prevents inconsistent response formats and info leaks. All errors go through the middleware to a standardized response shape.</rationale>
+      </rule>
+    </section>
+
+    <section name="concurrency-patterns">
+      <example type="good" title="Worker pool pattern">
+        <code lang="go"><![CDATA[
+package worker
+
+import (
+    "context"
+    "sync"
+)
+
+type Job func(ctx context.Context) error
+
+type Pool struct {
+    workers int
+    jobs    chan Job
+    wg      sync.WaitGroup
+}
+
+func NewPool(workers int, buffer int) *Pool {
+    return &Pool{
+        workers: workers,
+        jobs:    make(chan Job, buffer),
+    }
+}
+
+func (p *Pool) Start(ctx context.Context) {
+    for i := 0; i < p.workers; i++ {
+        p.wg.Add(1)
+        go p.worker(ctx)
+    }
+}
+
+func (p *Pool) worker(ctx context.Context) {
+    defer p.wg.Done()
+    for {
+        select {
+        case &lt;-ctx.Done():
+            return
+        case job, ok := &lt;-p.jobs:
+            if !ok {
+                return
+            }
+            _ = job(ctx)
+        }
+    }
+}
+
+func (p *Pool) Submit(job Job) {
+    p.jobs &lt;- job
+}
+
+func (p *Pool) Stop() {
+    close(p.jobs)
+    p.wg.Wait()
+}
+        ]]></code>
+      </example>
+
+      <example type="good" title="Fan-out/fan-in pattern">
+        <code lang="go"><![CDATA[
+func ProcessItems(ctx context.Context, items []Item) []Result {
+    numWorkers := runtime.NumCPU()
+    jobs := make(chan Item, len(items))
+    results := make(chan Result, len(items))
+
+    // Fan-out: start workers
+    var wg sync.WaitGroup
+    for i := 0; i < numWorkers; i++ {
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            for item := range jobs {
+                results &lt;- processItem(ctx, item)
+            }
+        }()
+    }
+
+    // Send jobs
+    for _, item := range items {
+        jobs &lt;- item
+    }
+    close(jobs)
+
+    // Wait and close results
+    go func() {
+        wg.Wait()
+        close(results)
+    }()
+
+    // Fan-in: collect results
+    var output []Result
+    for r := range results {
+        output = append(output, r)
+    }
+    return output
+}
+        ]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use errgroup.WithContext over hand-rolled WaitGroup+errCh whenever there's an error to bubble up; it composes with cancellation.</statement>
+        <rationale>errgroup handles context cancellation and error propagation automatically. Manual patterns are verbose, error-prone, and hard to test. errgroup provides both synchronization and error collection in one API.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>LLMs love to spawn goroutines without ctx — every go func() you accept must include either a context check or a clear lifetime contract; otherwise the worker leaks forever.</description>
+        <reason>Every goroutine must have an exit path. Use context.Done() or close() to signal shutdown. Test for goroutine leaks with `go test -race`.</reason>
+      </antipattern>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Agents export types from internal/ by mistake by referencing them in pkg/ — Go won't compile, but the agent's first fix is usually to move the type to pkg/.</description>
+        <reason>Force agents to fix the import direction instead. internal/ must stay unexported. Use interfaces at boundaries. The import direction rule is not negotiable — it prevents public/private boundaries from collapsing.</reason>
+      </antipattern>
+      <antipattern>
+        <description>The provided Wrap(err, msg) returns 500 even for known categories — agents call it on user errors and lose the right HTTP status.</description>
+        <reason>Require typed wrappers (apperror.AsValidation, apperror.AsNotFound) that preserve the original error type and status code. Generic wrapping loses type information and results in poor client UX.</reason>
+      </antipattern>
+      <antipattern>
+        <description>gin.Default() already includes Logger+Recovery; agents often add them again, double-logging every request.</description>
+        <reason>Pin the middleware list explicitly and avoid default(). Only add what you need. Global middleware duplication leads to verbose logs and confusion about what's running.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Missing c.Next() in middleware breaks the handler chain — subsequent middleware and handlers don't run.</description>
+        <reason>Every middleware must call c.Next() to proceed. Forgetting this is a silent failure; the handler never runs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Spawning goroutines in handlers without tracking them via WaitGroup — workers leak forever on shutdown.</description>
+        <reason>Every goroutine must be tracked and have an exit signal. Use context cancellation or WaitGroup to ensure graceful shutdown.</reason>
+      </antipattern>
+    </section>
+
+    <section name="tools-and-services">
+      <p>Essential CLI tools for Go backend development:</p>
+      <list>
+        <item>go: Build, test, vet, mod (https://go.dev/doc/).</item>
+        <item>golangci-lint: Aggregated linter (govet, staticcheck, errcheck, ineffassign, gosec) (https://golangci-lint.run/).</item>
+        <item>staticcheck: Deep analysis (unused, error checks) (https://staticcheck.dev/).</item>
+        <item>gofumpt: Stricter gofmt (https://github.com/mvdan/gofumpt).</item>
+        <item>air: Live reload during dev (https://github.com/cosmtrek/air).</item>
+        <item>mockgen: Interface mocks for repo/service (https://github.com/uber-go/mock).</item>
+        <item>swag: Generate OpenAPI from Gin annotations (https://github.com/swaggo/swag).</item>
+        <item>goose / migrate: DB migrations (https://github.com/pressly/goose · https://github.com/golang-migrate/migrate).</item>
+        <item>pprof: CPU/heap/goroutine profiles (https://pkg.go.dev/net/http/pprof).</item>
+        <item>delve: Debugger (https://github.com/go-delve/delve).</item>
+      </list>
+      <p>Frameworks and SaaS services:</p>
+      <list>
+        <item>Gin: OSS framework with largest LLM training corpus; agents produce idiomatic code (https://gin-gonic.com/).</item>
+        <item>Echo: OSS framework with cleaner middleware model (https://echo.labstack.com/).</item>
+        <item>Chi: OSS stdlib-style router; preferred when agent should not import a "framework" (https://github.com/go-chi/chi).</item>
+        <item>Fiber: OSS framework (fasthttp-based) — incompatible with net/http middleware; warn the agent (https://gofiber.io/).</item>
+        <item>Sentry / Rollbar: SaaS error tracking; drop-in middleware (https://sentry.io/).</item>
+        <item>Datadog APM: SaaS APM with dd-trace-go middleware (https://datadoghq.com/).</item>
+        <item>OpenTelemetry: OSS collector with otelhttp + otelgin packages; preferred over vendor SDKs (https://opentelemetry.io/).</item>
+        <item>Prometheus: OSS metrics with promhttp.Handler() on /metrics (https://prometheus.io/).</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <rule testable="true">
+        <statement>Define interfaces at the consumer (handler defines service.UserService, not the service package) — this keeps internal/service swappable in tests.</statement>
+        <rationale>Dependency inversion prevents circular imports and makes testing trivial with interface mocks.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Always pass ctx := c.Request.Context() into the service layer; never call DB drivers without a context.</statement>
+        <rationale>Context propagation enables timeouts, cancellation, and request-scoped values throughout the call chain.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Centralize the error handler middleware and forbid c.JSON(http.StatusXXX, err.Error()) directly in handlers — it leaks internal errors.</statement>
+        <rationale>One place to handle errors prevents inconsistent response formats and info leaks.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Run golangci-lint run --new-from-rev=HEAD~1 in CI so agents only have to fix what they touched.</statement>
+        <rationale>Incremental linting reduces noise and focuses on actual changes, not pre-existing issues.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Keep go.mod clean: agents that add a dep must justify it in the commit body. Prefer stdlib + Gin/Echo + sqlx/pgx + zap.</statement>
+        <rationale>Each dependency increases maintenance burden and attack surface. Stick to a curated set.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations-and-failures">
+      <p>Known issues and when this pattern breaks down:</p>
+      <list>
+        <item>Gin's middleware error chain (c.Errors) is easy to misuse — agents often forget c.Next() ordering and the error handler never fires.</item>
+        <item>internal/ boundary protections are weakened if the agent puts shared types in pkg/ prematurely; once exposed, you can't pull them back without breaking external consumers.</item>
+        <item>The provided Pool example has no result channel and silently swallows job errors — fine for fire-and-forget, dangerous as a default.</item>
+        <item>c.ShouldBindJSON returns Go validator errors that are user-unfriendly; the snippet ships them raw to the client (info-leak + bad UX).</item>
+        <item>Standard layout debate: agents will cargo-cult pkg/ even when nothing public exists — leading to empty dirs and confused imports.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive Go backend work through SDD: spec the endpoint contract first, generate handler+service+repository skeletons in one pass (Sonnet), then have a reviewer pass enforce the layered boundaries and error-typing rules.</p>
+      <p>Pair coding agents with go vet, staticcheck, and golangci-lint runs after every edit — they catch most LLM-induced concurrency / nil-pointer mistakes cheaply.</p>
+      <p>For new services, start by committing the directory tree + go.mod + a no-op main.go so subsequent agents have a stable target.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-sdd-executor-agent — runs the SDD task lifecycle (spec → design → impl → review) for a Go feature; quality gates already enforce build + vet.</item>
+        <item>A custom go-reviewer (Opus, read-only) — verifies layered architecture (no handler imports repo, no repo imports handler), context propagation, and apperror typing.</item>
+        <item>password-scrubber-agent — sanitize hardcoded JWT secrets / DSNs the LLM tends to inline in SetupRouter.</item>
+      </list>
+      <p>Recommended prompt patterns:</p>
+      <code lang="text"><![CDATA[
+Add endpoint <METHOD /path> to module <name>.
+Write three files: internal/handler/<name>.go, internal/service/<name>.go, internal/repository/<name>.go.
+Handler depends on service interface; service depends on repository interface; repository is the only package that imports the DB driver.
+Use apperror.AppError for all returned errors. Bind input with `binding:"required"` tags. Propagate ctx from c.Request.Context().
+After writing, run: gofmt -w, go vet ./..., golangci-lint run.
+      ]]></code>
+      <code lang="text"><![CDATA[
+Review the diff for: (1) layered boundaries, (2) ctx propagation in every I/O call, (3) error wrapping with apperror, (4) goroutine leaks (any `go func` without ctx exit).
+Return JSON: {violations: [{file, line, rule, fix}]}.
+      ]]></code>
+    </section>
+
+    <section name="implementation-checklist">
+      <p>Phase 1: Requirements Analysis</p>
+      <list>
+        <item>Document current implementation (if exists).</item>
+        <item>Identify pain points and limitations.</item>
+        <item>Measure baseline metrics.</item>
+        <item>List technical debt items.</item>
+        <item>Gather stakeholder requirements.</item>
+        <item>Set performance targets.</item>
+        <item>Define quality attributes.</item>
+        <item>Establish testing requirements.</item>
+        <item>Evaluate tool options: Gin, Echo, Chi, Standard library.</item>
+        <item>Consider team expertise.</item>
+        <item>Review infrastructure compatibility.</item>
+        <item>Assess maintenance burden.</item>
+      </list>
+      <p>Phase 2: Design</p>
+      <list>
+        <item>Define overall structure and identify components and boundaries.</item>
+        <item>Plan data flow and error handling strategy.</item>
+        <item>Define public APIs and design data models.</item>
+        <item>Plan configuration management and integration points.</item>
+        <item>Identify security requirements and plan authentication/authorization.</item>
+        <item>Review data protection needs and audit logging.</item>
+      </list>
+      <p>Phase 3: Implementation</p>
+      <list>
+        <item>Initialize project structure and configure development environment.</item>
+        <item>Set up CI/CD pipeline and configure linting and formatting.</item>
+        <item>Initialize testing framework and implement main functionality.</item>
+        <item>Add error handling, logging, and metrics/monitoring.</item>
+        <item>Integrate with existing systems and implement adapters/bridges.</item>
+        <item>Add feature flags and configure deployment.</item>
+      </list>
+      <p>Phase 4: Testing</p>
+      <list>
+        <item>Write unit tests (>80% coverage) and test edge cases and error scenarios.</item>
+        <item>Mock external dependencies and verify assertions.</item>
+        <item>Test component interactions and verify data persistence.</item>
+        <item>Test external integrations and validate configuration.</item>
+        <item>Benchmark critical paths and load test under realistic traffic.</item>
+        <item>Test scaling behavior and identify bottlenecks.</item>
+      </list>
+      <p>Phase 5: Deployment</p>
+      <list>
+        <item>Review code changes and run full test suite.</item>
+        <item>Update documentation and prepare rollback plan.</item>
+        <item>Schedule deployment window and deploy to staging.</item>
+        <item>Verify health checks and metrics in staging.</item>
+        <item>Execute canary or blue-green deployment.</item>
+        <item>Monitor metrics and be ready to rollback.</item>
+      </list>
+    </section>
+
+    <section name="agent-model-selection">
+      <p>Recommended model selection for different Go backend tasks based on complexity and reasoning depth:</p>
+      <list>
+        <item>Database schema design and normalization: Opus. Requires architectural decisions and complex trade-offs.</item>
+        <item>Implement Go concurrency patterns: Sonnet. Coding with existing patterns, medium complexity.</item>
+        <item>Write database migration scripts: Haiku. Mechanical task using templates.</item>
+        <item>Review error handling implementation: Sonnet. Code review and refactoring.</item>
+        <item>Profile and optimize slow queries: Opus. Novel optimization problem, deep analysis.</item>
+        <item>Setup Redis caching layer: Sonnet. Medium complexity implementation task.</item>
+      </list>
+    </section>
+
+    <section name="handler-examples">
+      <p>Concrete examples of the layered pattern in action, showing handler responsibility boundaries:</p>
+      <rule testable="true">
+        <statement>Handlers receive HTTP requests, validate input, call service methods, and format responses. They must never touch the database directly or access repositories.</statement>
+        <rationale>Keeping the handler focused on HTTP contract makes it easy to test in isolation and switch between web frameworks without changing service code.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Services contain business logic and coordinate repositories. They must accept context and propagate it to all I/O operations.</statement>
+        <rationale>Business logic isolated in the service layer is testable without a database or web server, and reusable across HTTP handlers, gRPC, CLI, etc.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Repositories handle data access. They must be the only code that imports DB drivers and SQL directly.</statement>
+        <rationale>Centralizing data access makes it easy to swap implementations (e.g., swap Postgres for SQLite in tests) and audit all database operations in one place.</rationale>
+      </rule>
+    </section>
+
+    <section name="middleware-ordering">
+      <p>Middleware order in Gin matters — the last middleware registered executes first on the way into the handler, and last on the way out.</p>
+      <rule testable="true">
+        <statement>Place recovery and logging middleware early (registered first) so they wrap all subsequent middleware. Place auth and validation middleware specific to routes (via groups).</statement>
+        <rationale>Recovery must wrap everything to catch panics. Logging at the outer layer captures the complete request cycle. Route-specific middleware attached to groups keeps auth constraints visible at the routing level.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Place the error handler middleware last so it wraps handlers that set c.Errors. Always call c.Next() in your middleware to continue the chain.</statement>
+        <rationale>Error handlers sitting outside the middleware chain never see errors set inside handlers. Missing c.Next() breaks the chain — subsequent handlers don't run.</rationale>
+      </rule>
+    </section>
+
+    <section name="testing-strategy">
+      <p>Go backend testing follows the pyramid: many unit tests (service layer), fewer integration tests (handler + service + DB), and selective end-to-end tests.</p>
+      <rule testable="true">
+        <statement>Write unit tests for service and repository logic using interface mocks (mockgen). These tests should run in milliseconds and need no database setup.</statement>
+        <rationale>Fast unit tests enable rapid iteration. Mocking repositories makes the service testable in complete isolation.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Write integration tests for handlers using an in-memory test database (SQLite). These verify the handler → service → repo → DB flow end-to-end.</statement>
+        <rationale>Integration tests catch issues at boundaries and ensure the contract between components actually works. In-memory databases run in seconds.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use go test -race to detect data races and -cover to track coverage. Keep coverage >80% for service and repository layers.</statement>
+        <rationale>Race detection catches concurrency bugs that are hard to reproduce. Coverage metrics prevent untested code paths shipping to production.</rationale>
+      </rule>
+    </section>
+
+    <section name="goroutine-safety">
+      <p>Goroutines are Go's concurrency primitive, but they are easy to leak if not managed carefully.</p>
+      <rule testable="true">
+        <statement>Every goroutine you start must have a path to exit. Use context.Done(), close(channel), or select to ensure the goroutine receives a shutdown signal.</statement>
+        <rationale>Leaked goroutines accumulate over time and eventually exhaust system resources. Graceful shutdown requires all goroutines to exit on signal.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use sync.WaitGroup or errgroup.Group to track running goroutines. Call wg.Wait() before shutdown to ensure all workers have exited.</statement>
+        <rationale>WaitGroup provides a synchronization barrier. errgroup additionally handles error propagation, which is common in worker pools.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Test for goroutine leaks with go test -race. CI should fail if the test suite leaves goroutines running.</statement>
+        <rationale>Race detection catches leaks in tests. If tests leak goroutines, production code will too.</rationale>
+      </rule>
+    </section>
+
+    <section name="common-patterns">
+      <p>Recurring patterns in Go backends that agents should recognize and apply correctly:</p>
+      <list>
+        <item>Handler → Service → Repository (layered): Separation of concerns, testability, boundary clarity.</item>
+        <item>Interface injection: Handlers define service interfaces; services define repository interfaces. Enables swapping implementations and testing.</item>
+        <item>Error wrapping (apperror): Typed errors carrying HTTP status codes. Unwrap with errors.Is() / errors.As() to inspect error chains.</item>
+        <item>Request groups: Gin/Echo group middleware by route prefix. Cleaner than global middleware for auth, rate limiting, etc.</item>
+        <item>Database transactions: Pass context through layers so operations can abort early on context deadline.</item>
+        <item>Graceful shutdown: Set a timeout, close listener, let inflight requests finish, force-kill remaining goroutines.</item>
+        <item>Health checks: /healthz endpoints that return 200 if dependencies (DB, cache) are up; return 503 otherwise.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://go.dev/doc/effective_go"/>
+      <link href="https://gin-gonic.com/docs/"/>
+      <link href="https://echo.labstack.com/docs"/>
+      <link href="https://github.com/go-chi/chi"/>
+      <link href="https://github.com/golang-standards/project-layout"/>
+      <link href="https://github.com/uber-go/guide/blob/master/style.md"/>
+      <link href="https://golangci-lint.run/"/>
+    </see-also>
+  </content>
+</methodology>
