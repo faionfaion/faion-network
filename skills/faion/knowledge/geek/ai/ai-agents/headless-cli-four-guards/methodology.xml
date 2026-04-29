@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="headless-cli-four-guards">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Every headless agent CLI must set four guards: print flag, allowlist, max-turns, closed stdin. Missing any guard causes hangs or runaway loops in production.</summary>
+    <tags>
+      <tag>headless</tag>
+      <tag>agents</tag>
+      <tag>ci</tag>
+      <tag>production</tag>
+      <tag>safety</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Headless CLI — Four Guards Against Mystery Hangs</title>
+    <summary>Every non-interactive run of an agent CLI (Claude Code, OpenAI Codex, Aider, opencode) MUST set four guards: (1) print/headless flag to disable the TUI, (2) explicit allowedTools allowlist (NEVER --dangerously-skip-permissions in prod), (3) --max-turns cap, (4) closed stdin via &lt; /dev/null so the agent cannot block waiting on user input. Missing any one of the four turns into a mystery hang or runaway-loop incident in production.</summary>
+    <why>
+      <p>Production CIs, cron jobs, and queue workers do not have a TTY, do not have a human to approve a prompt, and do not have a sane upper bound on how many turns the agent will take. Each missing guard maps to a known failure mode: TUI mode leads to process hangs waiting for terminal control codes; missing allowlist causes hangs on the first permission prompt OR runs unbounded tools; no max-turns causes infinite agent loops that drain budget; open stdin causes agents to read garbage from a parent pipe and behave erratically. The four-guards rule is the minimum viable contract for any headless agent invocation.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>ANY cron/CI/GitHub Actions/queue/scheduled-agent invocation of claude, codex, aider, or opencode.</item>
+        <item>Multi-agent pipelines where one agent shells out to another.</item>
+        <item>Background pool subagents (e.g. /faion-poll-agents, claude --print workers).</item>
+        <item>Self-healing scripts that run unattended on a server.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Interactive developer sessions — the TUI and prompt-on-demand UX are the whole point; no guards required.</item>
+        <item>One-shot smoke tests where the operator is watching the terminal and will Ctrl-C on a hang.</item>
+        <item>Local prototyping where you actively want the model to stop and ask.</item>
+      </list>
+    </when-not-to-use>
+    <section name="The Rule">
+      <rule>
+        <statement>Every non-interactive invocation of claude, codex, aider, or opencode MUST set ALL four guards: (1) print/headless flag, (2) explicit tool allowlist, (3) max-turns cap, (4) &lt; /dev/null redirect on stdin. A run missing any one of the four MUST be rejected by code review or CI lint.</statement>
+        <rationale>Each missing guard maps to a documented production failure mode (TUI hang, permission stall, runaway loop, stdin garbage). The rule is empirically the minimum that prevents mystery hangs.</rationale>
+      </rule>
+    </section>
+    <section name="Per-CLI Flag Mapping">
+      <p>The four guards by CLI:</p>
+      <list>
+        <item>Claude Code: -p / --print, --allowedTools "...", --max-turns N, &lt; /dev/null.</item>
+        <item>OpenAI Codex: codex exec (implies headless), --sandbox workspace-write (or stricter), no native turn cap — wrap in timeout, &lt; /dev/null.</item>
+        <item>Aider: --yes (auto-confirm), --auto-test off unless test allowlist set, --max-chat-history-tokens to bound context, &lt; /dev/null.</item>
+        <item>opencode: headless mode flag, explicit tool config, run-time cap, &lt; /dev/null.</item>
+      </list>
+    </section>
+    <section name="Forbidden Shortcut">
+      <antipattern>
+        <description>Using --dangerously-skip-permissions to "make it just work" in CI.</description>
+        <reason>Removes guard #2 (allowlist). The agent can run arbitrary tools — including destructive bash, git push, network calls. Use a narrow allowlist instead, even if you have to enumerate it explicitly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Setting --max-turns 999 "to be safe."</description>
+        <reason>Defeats guard #3. The cap exists to bound cost; pick a value tied to a real workflow length (e.g. 15-30 for a single coding task) and fail loudly if hit.</reason>
+      </antipattern>
+    </section>
+    <section name="Failure Mode: Missing Print/Headless Flag">
+      <rule>
+        <statement>Headless runs MUST disable the TUI explicitly (-p for Claude Code, codex exec for Codex, headless flag for others). Never rely on the binary auto-detecting non-TTY environments.</statement>
+        <rationale>Auto-detection is unreliable across container runtimes and CI shells; an unwanted TUI emits terminal control sequences that block on stdout.</rationale>
+      </rule>
+      <example type="bad" title="No headless flag in CI">
+        <code lang="bash"><![CDATA[claude "$TASK"   # no -p, no flags]]></code>
+        <note>In a CI runner, the binary may attempt to start the TUI and the job hangs until job-level timeout.</note>
+      </example>
+    </section>
+    <section name="Failure Mode: Missing Allowlist">
+      <rule>
+        <statement>Production headless runs MUST pass --allowedTools with the smallest viable allowlist; permission prompts in headless mode block forever.</statement>
+        <rationale>Without an allowlist the agent stalls on the first permission prompt (no human to answer) or — if --dangerously-skip-permissions was used — it executes arbitrary shell with no upper bound.</rationale>
+      </rule>
+      <example type="good" title="Narrow explicit allowlist">
+        <code lang="bash"><![CDATA[--allowedTools "Read,Edit,Bash(pytest:*),Bash(git:status)"]]></code>
+        <note>Narrow, explicit, auditable.</note>
+      </example>
+    </section>
+    <section name="Failure Mode: Missing Max-Turns">
+      <rule>
+        <statement>Every headless run MUST cap turns to a value tied to the task length; the absence of a cap is a budget bug, not a feature.</statement>
+        <rationale>Loop bugs (model decides to "try one more thing" indefinitely) drain Anthropic/OpenAI budget within minutes if the cap is open.</rationale>
+      </rule>
+      <example type="bad" title="Open turn budget in headless run">
+        <code lang="bash"><![CDATA[claude -p "$TASK" --allowedTools "..." < /dev/null
+# missing --max-turns]]></code>
+        <note>One agent stuck in a tool-call loop can burn the daily budget cap before any human notices.</note>
+      </example>
+    </section>
+    <section name="Failure Mode: Open Stdin">
+      <rule>
+        <statement>Always redirect &lt; /dev/null on stdin for headless runs.</statement>
+        <rationale>Without it, the agent's stdin inherits whatever the parent shell forwards (closed pipe, garbage from another process, or interactive TTY) and behaviour becomes non-deterministic — the documented mode is closed stdin.</rationale>
+      </rule>
+      <example type="good" title="All four guards in place">
+        <code lang="bash"><![CDATA[claude -p "$TASK" --allowedTools "..." --max-turns 20 < /dev/null]]></code>
+        <note>Closed stdin guarantees the agent never blocks on a phantom read.</note>
+      </example>
+      <antipattern>
+        <description>Running the headless command inside a function that pipes JSON into stdin "just in case the agent reads it."</description>
+        <reason>The CLI does not consume stdin in -p mode; piping unexpected content can change the harness's behaviour and is not part of the supported contract.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/headless-guards.sh" purpose="Reusable guarded invocation wrapper for Claude Code, Codex, Aider, opencode — sets all four guards automatically."/>
+    </templates>
+  </content>
+</methodology>
