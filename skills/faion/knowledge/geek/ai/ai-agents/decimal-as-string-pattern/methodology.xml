@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="decimal-as-string-pattern">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Declare money and exact decimals as str fields with regex patterns, not float or number. Parse to Decimal after model produces tokens. Decode-time constraints prevent drift.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>schemas</tag>
+      <tag>structured-output</tag>
+      <tag>decimal</tag>
+      <tag>money</tag>
+      <tag>precision</tag>
+    </tags>
+  </metadata>
+  <content>
+    <title>Decimal as Pattern-Constrained String</title>
+    <summary>For money, prices, exact decimals, large IDs, phone numbers, and any value where lossy float conversion would corrupt data, declare the schema field as `str` with a regex `pattern`, not `float` or `number`. The receiving side parses with `Decimal()` (or the language equivalent) only after the model has produced a known-good token sequence. The pattern constraint is enforced at sampling time on strict-mode and grammar-backed decoders, so the model cannot emit `19.999` when the schema demands two decimal places.</summary>
+    <why>
+      <p>LLMs encode numbers as per-digit base-10 representations and frequently emit them as quoted strings even when asked for a number. Forcing a `float` field invites silent precision loss (`0.1 + 0.2 != 0.3` problem); forcing a JSON `number` lets the model emit any digit count. A regex-constrained string locks the surface form to exactly what downstream parsers expect — two decimals for currency, exactly 12 digits for an account number, semver shape for a version. The constraint masks invalid digit sequences at decode time, eliminating the common "$19.99" vs `19.989999` drift reported by the Promptfoo evaluation guide and the Base-10 digit-encoding paper.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Currency (USD, EUR, BTC, etc.) — always.</item>
+        <item>Exact decimals in finance, science, or engineering reports.</item>
+        <item>Big integers larger than 2^53 (JSON number cannot hold them safely).</item>
+        <item>Account numbers, credit cards, phone numbers, postal codes, ISBNs.</item>
+        <item>Version strings (semver), date-time stamps when ISO-8601 is mandatory.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Counts, ranks, indices, scores — `int` is fine and saves tokens.</item>
+        <item>Floating-point measurements where a few ULPs of drift do not matter (sensor noise, ML scores).</item>
+        <item>Free-form numerics where the format is genuinely unknown — pattern-less string is safer than a wrong pattern.</item>
+      </list>
+    </when-not-to-use>
+    <section name="the-rule">
+      <p>Any field whose exact textual form matters — money, big integers, identifiers, version strings — is declared as str with a regex pattern, not as a numeric JSON type. Parse to the appropriate exact type (Decimal, int, datetime) only after the model has produced a known-good string.</p>
+      <rule testable="true">
+        <statement>For currency, exact decimals, big integers (greater than 2^53), and structured identifiers, declare the schema field as a string with a regex pattern that pins the exact surface form, then parse to Decimal/int/datetime on the receiving side.</statement>
+        <rationale>JSON number types do not pin precision, and float deserialization can introduce binary-rounding drift. Regex-constrained strings are masked at decode time on strict-mode or grammar backends — the model literally cannot emit "19.989999" when the pattern demands two decimal places.</rationale>
+      </rule>
+      <example type="good" title="Pattern-constrained decimal string">
+        <code lang="python"><![CDATA[
+from decimal import Decimal
+from pydantic import BaseModel, Field
+
+class LineItem(BaseModel):
+    sku: str
+    price_usd: str = Field(
+        pattern=r"^\d+\.\d{2}$",
+        description="USD price as decimal string e.g. '19.99'. Two decimal places required.",
+    )
+    quantity: int  # OK as int — small counts, no precision issue
+
+# Receiving side: parse exactly, no float drift.
+item = LineItem(sku="A1", price_usd="19.99", quantity=3)
+total: Decimal = Decimal(item.price_usd) * item.quantity  # Decimal('59.97')
+        ]]></code>
+        <note>The pattern forbids "19", "19.9", "19.999". Decimal arithmetic on the parsed string is exact. No float drift anywhere in the path.</note>
+      </example>
+      <example type="bad" title="Lossy float field">
+        <code lang="python"><![CDATA[
+class LineItem(BaseModel):
+    price_usd: float
+
+# Model emits 19.99; pydantic parses it as 19.989999999999998 on some platforms.
+total = item.price_usd * 3  # 59.96999999999999 — wrong for a billing system.
+        ]]></code>
+        <note>Float storage corrupts the exact value before any business logic runs. Sums diverge from cents-accurate totals.</note>
+      </example>
+      <antipattern>
+        <description>Modeling currency as a JSON number (float) and "rounding to two decimals at the end".</description>
+        <reason>Compounding drift across many line items pushes totals off by one or more cents, which fails reconciliation. The Base-10 digit-encoding paper shows LLMs emit numbers as digit tokens anyway, so a string field is closer to the model's native representation while gaining exact arithmetic on the consumer side.</reason>
+      </antipattern>
+    </section>
+    <section name="patterns-catalog">
+      <p>Battle-tested regex patterns for common decimal and identifier shapes.</p>
+      <list>
+        <item>USD/EUR currency, two decimals: ^\d+\.\d{2}$</item>
+        <item>Currency with optional negative: ^-?\d+\.\d{2}$</item>
+        <item>BTC, eight decimals: ^\d+\.\d{8}$</item>
+        <item>Semver: ^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$</item>
+        <item>ISO-8601 date: ^\d{4}-\d{2}-\d{2}$</item>
+        <item>ISO-8601 datetime UTC: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$</item>
+        <item>E.164 phone: ^\+\d{8,15}$</item>
+        <item>IBAN (loose): ^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$</item>
+        <item>Big integer up to 32 digits: ^\d{1,32}$</item>
+      </list>
+      <rule testable="true">
+        <statement>Pick the strictest pattern that the legitimate input distribution can satisfy; pair it with a Field description that names the format and gives one canonical example.</statement>
+        <rationale>Patterns are enforced at decode time on strict mode or constrained backends, but the model still needs the description as a prompt anchor on JSON-mode-only fallbacks. The pattern catches drift; the description teaches the format on the first try.</rationale>
+      </rule>
+      <example type="good" title="Multiple pattern-constrained fields">
+        <code lang="python"><![CDATA[
+from pydantic import BaseModel, Field
+
+class Payment(BaseModel):
+    amount_eur: str = Field(
+        pattern=r"^-?\d+\.\d{2}$",
+        description="Amount in EUR, two decimals, negative for refunds. Example: '-12.50'.",
+    )
+    iban: str = Field(
+        pattern=r"^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$",
+        description="IBAN, uppercase, no spaces. Example: 'DE89370400440532013000'.",
+    )
+    issued_at: str = Field(
+        pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$",
+        description="UTC ISO-8601, second precision. Example: '2026-04-26T08:30:00Z'.",
+    )
+        ]]></code>
+        <note>Each pattern is the minimum strictness that excludes the typical drift modes (extra decimals, lowercase IBAN, missing Z).</note>
+      </example>
+      <antipattern>
+        <description>Reusing one wide pattern (^\S+$) for every string field "just in case".</description>
+        <reason>Any string passes — the pattern adds zero decode-time constraint and earns false confidence. If the format is genuinely unknown, omit the pattern; otherwise pin the exact shape.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/decimal_schema.py" purpose="Pydantic invoice model with regex-patterned price and big-int ID fields."/>
+    </templates>
+    <see-also>
+      <link href="https://www.promptfoo.dev/docs/guides/evaluate-json/">Promptfoo — LLM evaluation techniques for JSON outputs.</link>
+      <link href="https://arxiv.org/html/2410.11781v1">Language Models Encode Numbers Using Digit Representations in Base 10 (arXiv 2410.11781).</link>
+      <link href="https://json-schema.org/understanding-json-schema/reference/regular_expressions">JSON Schema — pattern keyword and regex flavor reference.</link>
+    </see-also>
+  </content>
+</methodology>
