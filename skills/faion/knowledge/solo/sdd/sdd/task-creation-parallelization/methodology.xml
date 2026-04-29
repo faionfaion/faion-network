@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="task-creation-parallelization">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd</domain>
+    <summary>Decompose approved design.md into LLM-executable TASK-XXX.md files bounded by 100k tokens, then organize into waves for 2-4x parallel execution with explicit dependency-summary propagation.</summary>
+    <tags>
+      <tag>task-decomposition</tag>
+      <tag>parallelization</tag>
+      <tag>wave-execution</tag>
+      <tag>invest-criteria</tag>
+      <tag>context-budget</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Task Creation &amp; Parallelization</title>
+
+    <summary>Decompose an approved `design.md` into LLM-executable `TASK-XXX-*.md` files, each bounded by the 100k token rule, then organize them into dependency waves for parallel execution. Each task must satisfy INVEST criteria: Independent within its wave, Negotiable on impl details, Valuable (traces to FR-X), Estimable (token budget), Small (single context window), Testable (Given-When-Then AC).</summary>
+
+    <why>
+      <p>LLMs have fixed context windows. A task that exceeds 100k tokens causes forgotten requirements, inconsistent patterns, and incomplete implementations. Wave-based execution (2-4x speedup) requires task boundaries that are file-level, not feature-level — two tasks modifying the same file conflict in parallel git worktrees. Pattern propagation between waves requires explicit dependency-summary sections; without them each agent starts fresh and produces divergent naming and error handling.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Decomposing an approved `design.md` before execution begins</item>
+        <item>Planning wave-based parallel execution across multiple agents or worktrees</item>
+        <item>Checking that each task fits the 100k token context budget</item>
+        <item>Propagating patterns from early waves into later-wave task context</item>
+        <item>Managing strict finish-to-start dependencies (a task needing output from two others waits for both)</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Feature is a single-task implementation (less than 30k tokens) — one task, no waves needed</item>
+        <item>`design.md` is not yet approved — do not decompose while spec is still changing</item>
+        <item>Tasks are unknown until runtime (data-driven pipelines) — decomposition cannot be done upfront</item>
+        <item>Experimental/spike work where implementation approach is undefined — discover first, decompose after</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="task-decomposition-principles">
+      <p>Core rules for breaking design.md into LLM-executable tasks: the 100k token rule, INVEST criteria, wave-based execution, and context budget allocation.</p>
+
+      <section name="hundred-k-token-rule">
+        <rule>
+          <statement>Each task must fit within a single 100k-token context window.</statement>
+          <rationale>LLMs with fixed context limits forget requirements, produce inconsistent patterns, and leave implementations incomplete when context overflows. Sizing tasks to fit one window prevents all three failure modes.</rationale>
+        </rule>
+
+        <p>Complexity sizing guide:</p>
+        <list>
+          <item>Simple (less than 30k): single file, clear pattern, 0 architecture decisions</item>
+          <item>Normal (30-60k): 2-4 files, 1-2 decisions, implement a defined plan</item>
+          <item>Complex (60-100k): 4+ files, 3+ decisions, architecture choices required</item>
+        </list>
+
+        <rule>
+          <statement>Add 20k tokens to any estimate for a task touching more than 3 existing files.</statement>
+          <rationale>Agents underestimate token usage for tasks requiring reading existing code; the buffer prevents context overflow mid-task.</rationale>
+        </rule>
+      </section>
+
+      <section name="invest-criteria">
+        <rule>
+          <statement>Every task must satisfy all six INVEST criteria before it enters the todo/ queue.</statement>
+          <rationale>A task failing any criterion is either too large (split), ambiguous (rewrite AC), or improperly sequenced (adjust dependencies).</rationale>
+        </rule>
+
+        <list>
+          <item>Independent: no circular dependencies; can start without incomplete sibling tasks</item>
+          <item>Negotiable: implementation details can be refined without changing acceptance criteria</item>
+          <item>Valuable: links to at least one FR-X requirement from spec.md</item>
+          <item>Estimable: token budget can be assigned (simple/normal/complex)</item>
+          <item>Small: fits in a single context window (less than 100k tokens)</item>
+          <item>Testable: has at least one Given-When-Then acceptance criterion</item>
+        </list>
+      </section>
+
+      <section name="wave-based-execution">
+        <rule>
+          <statement>Assign every task to a wave; tasks in the same wave must be file-independent.</statement>
+          <rationale>Two tasks in the same wave that modify the same file create merge conflicts in parallel git worktrees. Task boundaries must be defined at the file level, not the feature level.</rationale>
+        </rule>
+
+        <rule>
+          <statement>Never combine research ("figure out how") and implementation ("build it") in one task.</statement>
+          <rationale>LLMs fail when asked to plan and code simultaneously. Planning tasks produce only a documented plan; implementation tasks only execute that plan.</rationale>
+        </rule>
+
+        <p>Wave construction rule: Wave N contains all tasks whose dependencies are entirely in waves 1..N-1. Wave 1 tasks have no dependencies at all.</p>
+      </section>
+
+      <section name="context-budget-allocation">
+        <p>Recommended token allocation within a 100k task:</p>
+        <list>
+          <item>SDD docs (constitution, spec, design): 15%</item>
+          <item>Dependency tree (completed task summaries): 10%</item>
+          <item>Research (existing code patterns): 25%</item>
+          <item>Implementation (actual coding): 40%</item>
+          <item>Testing (verification): 10%</item>
+        </list>
+
+        <rule>
+          <statement>Include dependency task summaries, not full content, in the dependency tree section.</statement>
+          <rationale>Full task content wastes context budget. Summaries (key patterns, files created, critical snippets) provide the signal without the noise.</rationale>
+        </rule>
+      </section>
+
+      <section name="pattern-propagation">
+        <rule>
+          <statement>Every Wave 2+ task must include an explicit "Task Dependency Tree" section listing key patterns from completed dependencies.</statement>
+          <rationale>Without explicit dependency summaries, each downstream agent starts fresh and produces divergent naming conventions, error handling approaches, and duplicated utilities. This is the leading cause of inconsistency in wave-based development.</rationale>
+        </rule>
+      </section>
+
+      <reference path="templates/task-file.md">Full TASK-XXX template with all required sections</reference>
+    </section>
+
+    <section name="task-decomposition-checklist">
+      <p>Six-phase checklist for breaking an implementation plan into LLM-executable tasks: pre-decomposition, task identification, dependency mapping, task definition, quality review, and documentation.</p>
+
+      <section name="phase-1-pre-decomposition">
+        <rule>
+          <statement>Gather all four inputs before creating any task: implementation-plan.md, spec.md (FR-X), design.md (AD-X), and constitution.md standards.</statement>
+          <rationale>Tasks created without the full context produce incomplete traceability and miss architectural constraints established earlier in the SDD cycle.</rationale>
+        </rule>
+
+        <list>
+          <item>Implementation plan reviewed and understood</item>
+          <item>FR-X requirements from spec.md identified</item>
+          <item>AD-X decisions from design.md understood</item>
+          <item>Existing codebase patterns researched</item>
+          <item>Critical path dependencies identified</item>
+        </list>
+      </section>
+
+      <section name="phase-2-task-identification">
+        <rule>
+          <statement>For each candidate task: if greater than 100k tokens or greater than 4 subtasks, split; if less than 10k tokens and trivial, merge with a related task.</statement>
+          <rationale>Both extremes (monolith task and micro-task) defeat the purpose of decomposition. Right-sizing keeps each task verifiable and executable.</rationale>
+        </rule>
+
+        <list>
+          <item>Tasks extracted from each component in the plan</item>
+          <item>Right-size rule applied (split/merge as needed)</item>
+          <item>INVEST criteria validated for each task</item>
+        </list>
+      </section>
+
+      <section name="phase-3-dependency-mapping">
+        <rule>
+          <statement>Draw an explicit dependency graph; verify no circular dependencies before assigning wave numbers.</statement>
+          <rationale>Circular dependencies deadlock wave execution. Spotting them at planning time prevents discovered mid-wave.</rationale>
+        </rule>
+
+        <list>
+          <item>All tasks listed as nodes</item>
+          <item>Dependency arrows drawn with type labels (FS/SS/FF/SF)</item>
+          <item>No circular dependencies present</item>
+          <item>Wave 1 identified (tasks with no dependencies)</item>
+          <item>All tasks assigned to waves</item>
+          <item>Tasks within each wave verified file-independent</item>
+        </list>
+      </section>
+
+      <section name="phase-4-task-definition">
+        <list>
+          <item>Title: action-oriented (verb + object), no ambiguous language</item>
+          <item>FR-X links added from spec.md</item>
+          <item>AD-X links added from design.md</item>
+          <item>AC-1: happy path (Given-When-Then)</item>
+          <item>AC-2+: alternative paths and error cases</item>
+          <item>Boundary conditions covered</item>
+          <item>Test commands specified in AC</item>
+          <item>Files table: CREATE/MODIFY/DELETE with exact paths</item>
+          <item>Dependency Tree section for Wave 2+ tasks</item>
+          <item>Token budget breakdown totaling less than 100k</item>
+        </list>
+      </section>
+
+      <section name="phase-5-quality-review">
+        <rule>
+          <statement>Before marking decomposition complete, verify all FR-X requirements are covered by at least one task and no two tasks have overlapping file scope.</statement>
+          <rationale>Gaps mean requirements go unimplemented. Overlaps cause merge conflicts in parallel execution.</rationale>
+        </rule>
+
+        <list>
+          <item>All FR-X requirements covered by tasks</item>
+          <item>All AD-X decisions reflected in task context</item>
+          <item>No gaps between tasks</item>
+          <item>No overlapping file scope</item>
+          <item>Wave 1 tasks can start immediately (no missing prerequisites)</item>
+        </list>
+      </section>
+
+      <section name="phase-6-documentation">
+        <list>
+          <item>TASK_XXX files created in todo/ with sequential numbering</item>
+          <item>Task list summary created with dependency graph and wave table</item>
+          <item>implementation-plan.md references the task files</item>
+        </list>
+      </section>
+
+      <section name="common-mistakes">
+        <antipattern>
+          <description>Task too large: greater than 100k tokens or greater than 4 subtasks in one task file.</description>
+          <reason>Context overflow causes forgotten requirements and inconsistent implementations.</reason>
+        </antipattern>
+
+        <antipattern>
+          <description>Vague acceptance criteria: "registration should work" instead of Given-When-Then with specific values.</description>
+          <reason>Agents cannot verify completion against vague criteria and produce implementations that pass the agent's interpretation but not the actual requirement.</reason>
+        </antipattern>
+
+        <antipattern>
+          <description>Missing dependency tree: Wave 2+ task has no summaries from Wave 1 dependencies.</description>
+          <reason>Each execution agent starts fresh; without explicit patterns from prior waves, naming conventions and error handling diverge.</reason>
+        </antipattern>
+
+        <antipattern>
+          <description>Tasks sharing a file in the same wave.</description>
+          <reason>Parallel git worktree execution produces merge conflicts when two agents modify the same file simultaneously.</reason>
+        </antipattern>
+      </section>
+    </section>
+
+    <section name="decomposition-examples-and-anti-patterns">
+      <p>Real-world decomposition examples showing good vs bad breakdown, a full TASK-005 definition, and five anti-patterns to avoid.</p>
+
+      <section name="authentication-feature-decomposition">
+        <example type="bad">
+          <code lang="text"><![CDATA[TASK-001: Build authentication system (~200k tokens)]]></code>
+          <note>Too large for a single context window; no clear success criteria; cannot parallelize; cannot track progress.</note>
+        </example>
+
+        <example type="good">
+          <code lang="text"><![CDATA[
+Wave 1 (no dependencies):
+  TASK-001: Create users table migration (simple, ~20k)
+  TASK-002: Create sessions table migration (simple, ~15k)
+  TASK-003: Implement password hashing utilities (normal, ~35k)
+  TASK-004: Implement JWT utilities (normal, ~40k)
+
+Wave 2 (depends on Wave 1):
+  TASK-005: Create User model with validation (normal, ~45k)
+    depends: TASK-001, TASK-003
+  TASK-006: Create Session model (simple, ~25k)
+    depends: TASK-002, TASK-004
+
+Wave 3 (depends on Wave 2):
+  TASK-007: Implement register endpoint (normal, ~50k) -> TASK-005
+  TASK-008: Implement login endpoint (normal, ~50k) -> TASK-005, TASK-006
+  TASK-009: Implement logout endpoint (simple, ~30k) -> TASK-006
+
+Wave 4 (depends on Wave 3):
+  TASK-010: Implement auth middleware (normal, ~45k) -> TASK-007, TASK-008
+  TASK-011: Write unit tests (normal, ~50k) -> TASK-007, TASK-008, TASK-009
+  TASK-012: Write integration tests (normal, ~55k) -> TASK-010
+          ]]></code>
+          <note>12 tasks across 4 waves; Wave 1 runs 4 tasks in parallel; parallelization covers all waves. Critical path: TASK-001 to TASK-005 to TASK-007 to TASK-010 to TASK-012.</note>
+        </example>
+      </section>
+
+      <section name="full-task-definition-example-task-005">
+        <example type="good">
+          <code lang="markdown"><![CDATA[
+# TASK_005: Create User Model with Validation
+
+| Field | Value |
+|-------|-------|
+| Complexity | normal |
+| Est. Tokens | ~45k |
+| Feature | feature-027-auth |
+
+## Task Dependency Tree
+
+TASK-001 (Create users table migration)
+  Status: DONE
+  Files: migrations/001_create_users.py
+  Patterns: AlembicMigration base class
+  Key code:
+    op.create_table('users',
+      sa.Column('id', UUID, primary_key=True),
+      sa.Column('email', VARCHAR(255), unique=True), ...)
+
+TASK-003 (Password hashing utilities)
+  Status: DONE
+  Files: utils/password.py
+  Patterns:
+    hash_password(plain: str) -> str
+    verify_password(plain: str, hashed: str) -> bool
+
+## Acceptance Criteria
+
+AC-1: Valid user creation
+  Given: email "test@example.com" and password "SecurePass123"
+  When: User.create(email, password) is called
+  Then: record created with hashed password, UUID id, timestamps
+
+AC-5: Password never stored in plain text
+  Given: any user creation or update
+  When: database is queried
+  Then: password_hash contains bcrypt hash, not plain password
+
+## Files to Change
+| Action | File |
+|--------|------|
+| CREATE | models/user.py |
+| MODIFY | models/__init__.py |
+| CREATE | tests/unit/test_user_model.py |
+          ]]></code>
+          <note>Dependency tree provides concrete patterns and code snippets from Wave 1. ACs use specific values, not vague terms. Files are exact paths.</note>
+        </example>
+      </section>
+
+      <section name="anti-patterns">
+        <antipattern>
+          <description>The Monolith Task: one task for the entire feature.</description>
+          <reason>Exceeds context window; cannot parallelize; progress is invisible; rollback is all-or-nothing.</reason>
+        </antipattern>
+
+        <antipattern>
+          <description>The Micro-Task: separate tasks for import statement, function signature, function body.</description>
+          <reason>Coordination overhead exceeds implementation time; each task lacks sufficient context to make meaningful decisions.</reason>
+        </antipattern>
+
+        <antipattern>
+          <description>The Circular Dependency: TASK-001 depends on TASK-002 which depends on TASK-001.</description>
+          <reason>Deadlocks wave execution; fix by extracting the shared dependency into a new Wave 1 task.</reason>
+        </antipattern>
+
+        <antipattern>
+          <description>The Missing Context: implementation task with no dependency tree and no related-files section.</description>
+          <reason>Agent starts fresh without pattern context; produces naming and error handling inconsistent with prior waves.</reason>
+        </antipattern>
+
+        <antipattern>
+          <description>The Vague AC: "AC-1: registration should work".</description>
+          <reason>Agent cannot verify completion; implements to its own interpretation rather than the actual requirement.</reason>
+        </antipattern>
+      </section>
+    </section>
+
+    <templates>
+      <template path="templates/task-file.md" purpose="Full TASK-XXX-*.md template with INVEST fields, token estimate, wave, dependency tree"/>
+      <template path="templates/task-list.md" purpose="Feature-level task overview with dependency graph and wave status table"/>
+      <template path="templates/task-minimal.md" purpose="Minimal template for simple tasks under 30k tokens"/>
+      <template path="templates/task-research.md" purpose="Research task template producing ADR + next-task list"/>
+      <template path="templates/prompt-decompose.txt" purpose="Prompts for decomposition, wave planning, AC generation, and task verification"/>
+    </templates>
+  </content>
+</methodology>
