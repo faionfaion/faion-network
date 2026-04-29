@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-rest-design">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Design REST APIs with plural noun resources, HTTP methods mapped to CRUD, correct status codes, and query parameters for filtering and sorting.</summary>
+    <tags>
+      <tag>api</tag>
+      <tag>rest</tag>
+      <tag>http</tag>
+      <tag>design</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+
+  <content>
+    <title>REST API Design</title>
+
+    <summary>Design REST APIs by mapping resources (plural nouns, lowercase, hyphenated) to HTTP methods (GET/POST/PUT/PATCH/DELETE), returning correct status codes for each outcome, using query parameters for filtering and sorting, and nesting sub-resources for ownership relationships.</summary>
+
+    <why>
+      <p>Consistent resource URLs and method semantics let clients predict behavior without reading docs. Correct status codes enable transparent caching (GET 304), safe retries (idempotent PUT/DELETE), and automated monitoring.</p>
+      <p>Violating REST conventions — verbs in URLs, wrong status codes, inconsistent naming — forces per-API client workarounds and makes APIs difficult to reason about. Adherence to REST principles makes APIs predictable, cacheable, and maintainable across team changes.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Designing any new HTTP API surface from scratch (greenfield service, internal microservice, public SaaS).</item>
+        <item>Adding endpoints to an existing API where naming, status codes, and pagination must stay consistent across teams.</item>
+        <item>Auditing an inconsistent API to refactor toward Richardson Level 2/3 maturity before publishing SDKs.</item>
+        <item>Generating server stubs and SDKs from a spec (pairs with api-contract-first and api-openapi-spec).</item>
+        <item>LLM agents drafting endpoint sets from a domain model — gives a fixed grammar so output is deterministic and reviewable.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Real-time bidirectional communication — use WebSockets or SSE instead.</item>
+        <item>Bulk or batch operations with complex transactions — consider GraphQL or RPC.</item>
+        <item>Internal service-to-service calls where gRPC is already the standard.</item>
+        <item>Asynchronous, event-driven flows where Webhook + Pub/Sub is a better fit (use AsyncAPI, not REST).</item>
+        <item>Streaming, large bidirectional payloads, ultra-low latency — gRPC, WebSocket, or SSE are better.</item>
+        <item>Complex graph traversal queries with N+1 fan-out — GraphQL beats REST for client-driven shape selection.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="url-naming">
+      <p>URL naming conventions establish a predictable contract for clients. Consistent patterns reduce cognitive load and make APIs easier to navigate.</p>
+
+      <rule>
+        <statement>Use plural nouns for resource collections: /users, /orders, /products.</statement>
+        <rationale>Plural names make the collection vs. singleton distinction consistent: /users (collection) vs /users/{id} (singleton).</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use lowercase with hyphens: /user-profiles, not /UserProfiles or /user_profiles.</statement>
+        <rationale>URLs are case-sensitive on most servers. Hyphens are readable in links; underscores can be hidden by text underline rendering.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use verbs only for actions that do not map to CRUD: /payments/{id}/refund, /users/{id}/activate.</statement>
+        <rationale>Pure noun-based URLs cover 90% of cases. Actions on resources are the accepted exception.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Nest sub-resources to express ownership: /users/{id}/orders for a user's orders.</statement>
+        <rationale>Nesting makes the ownership relationship explicit in the URL. Limit nesting to two levels to avoid unwieldy paths.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use query parameters for filtering, sorting, and pagination: ?status=active&amp;sort=-created_at&amp;limit=20.</statement>
+        <rationale>Query parameters do not alter resource identity. They allow the same resource URL to serve filtered views.</rationale>
+      </rule>
+    </section>
+
+    <section name="http-methods">
+      <p>HTTP method semantics establish whether operations are safe, idempotent, and cacheable. Clients and intermediaries rely on these properties.</p>
+
+      <rule>
+        <statement>GET must be safe and idempotent; POST creates and is neither; PUT replaces (idempotent); PATCH updates fields (not idempotent); DELETE removes (idempotent).</statement>
+        <rationale>Clients and proxies rely on method semantics for caching (GET), retry safety (idempotent), and optimistic UI updates.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Return 201 Created with a Location header and the created resource in the body for successful POST.</statement>
+        <rationale>Location lets clients navigate to the new resource without a second request. Body avoids a follow-up GET.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Return 204 No Content for successful DELETE with no response body.</statement>
+        <rationale>A deleted resource has nothing to return. Returning 200 with an empty body is ambiguous.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Reserve POST for unsafe non-idempotent creation; use PUT for "create-or-replace at known URL", PATCH (with JSON Merge Patch or JSON Patch — pick one and document) for partial updates.</statement>
+        <rationale>Semantic clarity prevents client confusion and enables safe retry semantics in distributed systems.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Always return the canonical resource representation on POST/PUT/PATCH — saves a round-trip and makes clients deterministic.</statement>
+        <rationale>Without the response body, clients need a follow-up GET to confirm the state change, doubling latency and breaking transactional semantics.</rationale>
+      </rule>
+    </section>
+
+    <section name="status-codes">
+      <p>Status codes signal the outcome of a request: success, client error, or server error. Proper status code selection enables transparent error handling and monitoring.</p>
+
+      <rule>
+        <statement>Use 400 for client input that fails syntactic or semantic validation; 422 for input that is structurally valid but violates business rules.</statement>
+        <rationale>The distinction matters for client error handling: 400 means "fix the request format"; 422 means "fix the business logic inputs".</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use 401 when authentication credentials are missing or invalid; 403 when credentials are valid but permission is denied.</statement>
+        <rationale>Conflating 401 and 403 confuses clients about whether re-authenticating will help.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use 409 for state conflicts (duplicate resource, optimistic lock failure); not for validation errors.</statement>
+        <rationale>409 signals a conflict with current server state — the client may retry after resolving the conflict, unlike a validation error.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Never return 200 with an error body. Use the appropriate 4xx or 5xx code.</statement>
+        <rationale>HTTP clients and monitoring tools inspect status codes, not body content, to detect errors. 200 with error body defeats all standard tooling.</rationale>
+      </rule>
+    </section>
+
+    <section name="error-handling">
+      <p>Error shape standardization is critical for client robustness and LLM client parsing. RFC 7807 / Problem+JSON provides a universal format.</p>
+
+      <rule>
+        <statement>Standardize error bodies on RFC 7807 (Problem Details) — fixed type, title, status, detail, instance. LLM clients can parse this reliably.</statement>
+        <rationale>Heterogeneous error bodies break clients silently and force each consumer to invent error envelope parsing logic.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use 422 for semantic validation errors (e.g., email already exists) and lock the error schema in the spec, referencing it from every operation.</statement>
+        <rationale>Agents and clients rely on consistent error structure to implement retry logic and user feedback.</rationale>
+      </rule>
+    </section>
+
+    <section name="pagination">
+      <p>Pagination is not standardized in REST; every API invents its own batch endpoint and style. Enforcing one pattern prevents drift and client breakage.</p>
+
+      <rule>
+        <statement>Pick one pagination style (cursor recommended) and embed it into the style guide; ban offset for any list expected to grow past ~10k rows.</statement>
+        <rationale>Cursor pagination is stable under concurrent inserts and deletes; offset breaks when rows shift between requests. Agents pick offset/limit for some endpoints and cursor for others within the same spec without explicit enforcement.</rationale>
+      </rule>
+    </section>
+
+    <section name="hateoas-links">
+      <p>HATEOAS (Hypermedia As The Engine Of Application State) is rarely consumed by clients, but linking is valuable for discovery and reducing URL coupling.</p>
+
+      <rule>
+        <statement>Include a _links object with self, related resources, and available actions when clients need to discover next steps dynamically.</statement>
+        <rationale>HATEOAS decouples clients from URL structure — they follow links rather than constructing URLs, reducing breakage on API refactors.</rationale>
+      </rule>
+
+      <example type="good" title="HATEOAS with self and related links">
+        <code lang="json"><![CDATA[
+{
+  "id": "123",
+  "name": "John Doe",
+  "_links": {
+    "self": { "href": "/users/123" },
+    "orders": { "href": "/users/123/orders" },
+    "update": { "href": "/users/123", "method": "PATCH" }
+  }
+}
+]]></code>
+        <note>Self link allows clients to confirm the URL; orders link navigates to related resources; update link signals available mutations.</note>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>LLM agents can produce REST designs through a multi-pass loop, with a critic agent rejecting designs that violate the rules.</p>
+
+      <p>Drive REST design as a three-pass loop. Pass 1: a domain-modeling agent maps entities, relationships, and aggregates from the spec/PRD into a resource tree. Pass 2: an endpoint-generator agent produces a matrix of (resource, verb, status code, request schema, response schema) rows, applying the rules table from this methodology. Pass 3: a critic agent runs the checklist items (plural nouns, idempotency claim valid, 201+Location, no verbs in path) against the matrix and rejects rows that fail. Persist the result as an OpenAPI 3.1 file, then hand to api-contract-first for stub generation. Re-run pass 3 on every diff.</p>
+
+      <p>LLMs default to verb-style endpoints (POST /createUser) because that mirrors function names in their training data. Force the resource-noun convention in the system prompt and reject violations. Agents invent custom error envelopes per endpoint — lock the error schema (Problem+JSON) in the spec and reference it from every operation. Agents hallucinate idempotency claims; cross-check by code-generating a property test that calls the endpoint twice and diffs state. Long-running operations: agents respond with 200 + "in progress" body instead of 202 + status URL. Add the LRO pattern (RFC 7240, Prefer: respond-async) to the prompt. Bulk endpoints: agents emit POST /users with array body, breaking the singular-vs-collection contract. Force POST /users:batchCreate (Google AIP-136) or a separate /batch resource. Schema breaking changes (field removed, type narrowed, required added) must be human-approved. Run oasdiff breaking in CI and fail-close. Agents skip the Location header on 201 responses because the SDK templates do; add a Spectral rule that fails when 201 is missing headers.Location.</p>
+    </section>
+
+    <section name="limitations">
+      <p>REST has well-known limitations that agents and designers must be aware of when choosing this architecture.</p>
+
+      <p>"RESTful" is under-specified: teams diverge on PUT vs PATCH semantics, on 404 vs 410, on whether 200 with errors[] is acceptable. Resource modeling fails for verb-heavy actions (POST /sendEmail, POST /refundCharge). Forcing them into POST /actions/&lt;verb&gt; ages badly. Bulk operations are not standardized — every API invents its own batch endpoint, and idempotency under partial failure is hard. Pagination is not part of the spec; offset, cursor, and link-header styles all coexist and break clients silently. HATEOAS is rarely consumed by clients; building Level 3 hypermedia is mostly wasted effort outside of niche domains. Error shape is unstandardized; RFC 7807 helps but is not universal.</p>
+    </section>
+
+    <section name="tools-and-services">
+      <p>The following tools help enforce REST conventions in design, validation, and testing.</p>
+
+      <p>spectral — Lint OpenAPI for naming, status, response shape rules. npm i -g @stoplight/spectral-cli; https://stoplight.io/open-source/spectral. redocly — Lint + preview docs from spec. npm i -g @redocly/cli; https://redocly.com/docs/cli/. oasdiff — Detect breaking changes between spec versions. https://github.com/Tufin/oasdiff. openapi-generator — Generate stubs/clients in 50+ languages. https://openapi-generator.tech/. httpie / xh — Hand-test endpoints during design loop. brew install httpie / cargo install xh. vacuum — Fast OpenAPI linter (Go), pluggable rules. https://quobix.com/vacuum/. prism — Mock server from OpenAPI spec, contract validation. npm i -g @stoplight/prism-cli. gh CLI — Open issues for design rule violations directly from critic agent output. https://cli.github.com.</p>
+
+      <p>Stoplight Studio — Visual designer; agents drive via Spectral rules. SwaggerHub — Hosted spec governance + style guides. Postman — Spec import + contract test runs in CI (newman CLI). Bump.sh — Diff and document specs over time; good for change review. Redocly — Style guides ship as JSON; agents can extend. Apicurio — Self-hosted spec registry. Hoppscotch — Lightweight Postman alternative; scriptable. ReadMe.com — Published docs from spec; supports recipes.</p>
+    </section>
+
+    <section name="best-practices-summary">
+      <p>Consolidation of proven practices for robust REST API design.</p>
+
+      <p>Encode versioning in URL prefix (/v1/...) for public APIs; header-based versioning is harder for caches and CDNs and confuses agents. Document idempotency with Idempotency-Key header on POSTs that mutate; otherwise retries during partial failures will double-charge / double-create. Treat the OpenAPI spec as the source of truth and generate the rest. Hand-written docs drift; generated SDKs and contract tests do not. Human-in-loop checkpoint: schema breaking changes (field removed, type narrowed, required added) must be human-approved. Run oasdiff breaking in CI and fail-close.</p>
+    </section>
+
+    <see-also>
+      <ref slug="api-contract-first"/>
+      <ref slug="api-openapi-spec"/>
+      <ref slug="api-versioning"/>
+      <ref slug="api-error-handling"/>
+      <ref slug="api-rate-limiting"/>
+      <link href="https://www.ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm">Roy Fielding — REST architectural style dissertation, Ch. 5</link>
+      <link href="https://github.com/microsoft/api-guidelines">Microsoft REST API Guidelines</link>
+      <link href="https://google.aip.dev/">Google API Improvement Proposals (AIPs)</link>
+      <link href="https://opensource.zalando.com/restful-api-guidelines/">Zalando RESTful API and Event Guidelines</link>
+      <link href="https://martinfowler.com/articles/richardsonMaturityModel.html">Richardson Maturity Model</link>
+      <link href="https://datatracker.ietf.org/doc/html/rfc7807">RFC 7807 (Problem Details for HTTP APIs)</link>
+      <link href="https://datatracker.ietf.org/doc/html/rfc7396">RFC 7396 (JSON Merge Patch)</link>
+    </see-also>
+  </content>
+</methodology>
