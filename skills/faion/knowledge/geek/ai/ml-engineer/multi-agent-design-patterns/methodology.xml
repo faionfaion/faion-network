@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="multi-agent-design-patterns">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Canonical patterns for orchestrating AI agents: Supervisor, Hierarchical, Sequential, Peer-to-Peer. Design checklists and production-readiness gates.</summary>
+    <tags>
+      <tag>agents</tag>
+      <tag>orchestration</tag>
+      <tag>design-patterns</tag>
+      <tag>multi-agent</tag>
+      <tag>langgraph</tag>
+    </tags>
+    <category>agent-design</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+
+  <content>
+    <title>Multi-Agent Design Patterns</title>
+
+    <summary>Four canonical patterns for orchestrating multiple AI agents: Supervisor, Hierarchical, Sequential, and Peer-to-Peer. Choose the simplest pattern; includes design checklists and production-readiness gates.</summary>
+
+    <why>
+      <p>Single agents fail on complex enterprise workflows because of context window limits, tool access isolation requirements, and latency constraints. Multi-agent systems apply the microservices principle: specialized agents collaborate through typed shared state, with each agent owning a narrow domain. Gartner recorded a 1,445% surge in multi-agent inquiries from Q1 2024 to Q2 2025.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Single agent context window is insufficient for the full task</item>
+        <item>Tasks have parallelizable subtasks (research + writing + validation can run concurrently)</item>
+        <item>Domain expertise must be isolated — a billing agent must not have access to CRM tools</item>
+        <item>Enterprise workflows map naturally to organizational units (teams, departments, roles)</item>
+        <item>Reliability requires cross-checking: parallel agents can validate each other's outputs</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple single-step tasks — multi-agent adds coordination overhead with no benefit</item>
+        <item>Latency is critical (&lt;2s) — agent-to-agent round trips add 500ms–2s each</item>
+        <item>The problem is not well-decomposed yet — build a working single agent first, then extract workers</item>
+        <item>Token budget is constrained — multi-agent systems use significantly more tokens per task</item>
+        <item>Infrastructure cannot reliably run concurrent agent processes</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="supervisor-pattern">
+      <p>The Supervisor pattern centralizes orchestration: a single coordinator agent routes requests to specialized worker agents based on task classification.</p>
+
+      <rule testable="true">
+        <statement>Use Supervisor when tasks map to distinct worker domains and centralized control is acceptable.</statement>
+        <rationale>A single coordinator routes requests to specialized workers via LLM reasoning or rule-based matching. Predictable, debuggable, but creates a single point of failure.</rationale>
+      </rule>
+
+      <p>Supported by: LangGraph (StateGraph + supervisor node), CrewAI (manager agent), AutoGen (GroupChat), Google ADK (transfer_to_agent).</p>
+
+      <list>
+        <item>Good for: multi-domain help desks, intelligent routing, centralized monitoring</item>
+        <item>Risk: supervisor bottleneck; LLM routing is probabilistic — ambiguous inputs can route incorrectly</item>
+      </list>
+    </section>
+
+    <section name="hierarchical-pattern">
+      <p>The Hierarchical pattern applies recursive decomposition across organizational units. Higher-level agents break down goals into sub-tasks for lower-level agents.</p>
+
+      <rule testable="true">
+        <statement>Use Hierarchical when the problem requires recursive decomposition across organizational units; limit to 2–3 levels to avoid coordination overhead.</statement>
+        <rationale>Multi-level tree where higher agents decompose goals into sub-tasks for lower agents. Scales well but each coordination layer adds 500ms+ of LLM call overhead.</rationale>
+      </rule>
+
+      <list>
+        <item>Good for: complex enterprise workflows with cross-functional teams, large report generation</item>
+        <item>Risk: "middle management" latency; difficult to debug across levels without distributed tracing</item>
+      </list>
+    </section>
+
+    <section name="sequential-pattern">
+      <p>The Sequential pattern implements linear workflows where each stage depends on the previous one. Agents are invoked in order, with each stage writing typed output for the next stage.</p>
+
+      <rule testable="true">
+        <statement>Use Sequential for linear workflows where stage N depends on stage N-1; use output_key per stage to pass typed state.</statement>
+        <rationale>Assembly-line pipeline: each agent reads the previous stage output from shared state and writes its result under a named key. Deterministic, easy to debug, but no fault isolation — failure at any stage blocks all downstream stages.</rationale>
+      </rule>
+
+      <p>Supported by: Google ADK (SequentialAgent), LangGraph (linear graph edges), CrewAI (sequential process).</p>
+
+      <list>
+        <item>Good for: ETL pipelines, document transformation chains (parse → extract → summarize → format)</item>
+        <item>Risk: no parallelism; single failure stops the pipeline</item>
+      </list>
+    </section>
+
+    <section name="peer-to-peer-pattern">
+      <p>The Peer-to-Peer pattern enables decentralized architectures where agents communicate directly without a central orchestrator. Each agent routes to peers based on its local routing rules.</p>
+
+      <rule testable="true">
+        <statement>Use Peer-to-Peer only when resilience and fault tolerance outweigh debugging complexity; enforce DAG structure to prevent circular routing.</statement>
+        <rationale>Decentralized architecture where agents communicate directly without a central orchestrator. High fault tolerance but requires distributed tracing to understand message flow.</rationale>
+      </rule>
+
+      <list>
+        <item>Good for: cross-organizational collaboration, privacy-preserving systems, adaptive agent networks</item>
+        <item>Risk: circular dependency potential; global state is hard to reason about</item>
+      </list>
+    </section>
+
+    <section name="pattern-comparison">
+      <p>Each pattern trades off different qualities. No single pattern is universally best; selection depends on your specific constraints and priorities:</p>
+      <list>
+        <item>Control: Supervisor=centralized, Hierarchical=multi-level, Sequential=linear, P2P=distributed</item>
+        <item>Fault tolerance: Supervisor=low, Hierarchical=medium, Sequential=low, P2P=high</item>
+        <item>Debugging: Sequential=easiest, P2P=hardest</item>
+      </list>
+    </section>
+
+    <section name="additional-patterns">
+      <p>Beyond the core four patterns, several derived patterns address specific use cases:</p>
+      <list>
+        <item>Parallel Fan-Out/Gather — spawn concurrent agents, synthesize results</item>
+        <item>Generator-Critic — one agent creates, another validates; run at least 2 critique passes</item>
+        <item>Loop (Iterative Refinement) — repeated improvement until criteria met; always set max_iterations</item>
+        <item>Human-in-the-Loop — explicit approval checkpoints in graph; must be designed in, not retrofitted</item>
+        <item>Router — dynamic tool/agent selection based on input classification</item>
+      </list>
+    </section>
+
+    <section name="critical-gotchas">
+      <antipattern>
+        <description>Infinite loop: supervisor routes to agent A, which routes back to supervisor, which routes to A again.</description>
+        <reason>Without a max_steps guard the loop never terminates. Set MAX_ITER and return a sentinel message to the user when reached.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Token explosion: each agent forwards its full conversation history to the next agent.</description>
+        <reason>History accumulates multiplicatively across multi-agent calls. Summarize or trim conversation history between agent steps.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Parallel fan-out agents writing to shared state simultaneously.</description>
+        <reason>Race conditions corrupt state. Use merge nodes with explicit conflict resolution.</reason>
+      </antipattern>
+    </section>
+
+    <section name="pre-implementation-all-patterns">
+      <p>Before implementing any multi-agent system, establish clear boundaries and infrastructure:</p>
+
+      <rule testable="true">
+        <statement>Define clear agent role boundaries and tool access permissions before writing any prompts or code.</statement>
+        <rationale>Tool access leakage in frameworks like AutoGen lets agents see tool results intended for others; scoping prevents this.</rationale>
+      </rule>
+
+      <list>
+        <item>Define clear problem scope and agent responsibilities</item>
+        <item>Choose communication mechanism: typed shared state (Pydantic models), message passing, or tool results</item>
+        <item>Select framework: LangGraph (state machines), CrewAI (role-based), Google ADK (native primitives), AutoGen (conversations)</item>
+        <item>Plan error handling and fallback strategies per agent</item>
+        <item>Design logging and distributed tracing from day one</item>
+        <item>Establish max_iterations guard before writing the first agent loop</item>
+      </list>
+    </section>
+
+    <section name="supervisor-pattern-checklist">
+      <list>
+        <item>Design: list all task types, group into non-overlapping worker domains</item>
+        <item>Design: choose routing method — LLM-driven or rule-based; plan fallback for unclassified requests</item>
+        <item>Implement: supervisor with timeout handling and result aggregation</item>
+        <item>Implement: workers with isolated tool access and structured output</item>
+        <item>Test: routing accuracy, each worker in isolation, error fallbacks, concurrent load on supervisor</item>
+        <item>Production: add circuit breakers for failing workers; set alerting on supervisor failure</item>
+      </list>
+    </section>
+
+    <section name="sequential-pattern-checklist">
+      <list>
+        <item>Design: define output_key for each stage; verify stage N output matches stage N+1 input schema</item>
+        <item>Design: plan state storage and cleanup after pipeline completion</item>
+        <item>Implement: checkpoint persistence between critical stages for recovery</item>
+        <item>Implement: early termination conditions when validation fails</item>
+        <item>Test: each stage independently; stage-to-stage data passing; pipeline recovery from checkpoint</item>
+        <item>Production: add per-stage retries for idempotent stages; measure stage-by-stage latency</item>
+      </list>
+    </section>
+
+    <section name="hierarchical-pattern-checklist">
+      <list>
+        <item>Design: map organizational structure; define 2–3 levels maximum</item>
+        <item>Design: specify task specification format (parent to child) and result format (child to parent)</item>
+        <item>Implement: timeout cascading across levels</item>
+        <item>Test: each level in isolation; escalation scenarios; partial failure handling</item>
+        <item>Production: monitor each level independently; set up distributed tracing</item>
+      </list>
+    </section>
+
+    <section name="peer-to-peer-pattern-checklist">
+      <list>
+        <item>Design: define routing strategy per agent; enforce DAG — no cycles</item>
+        <item>Design: plan authentication between agents and data sharing boundaries</item>
+        <item>Implement: message acknowledgment and dead-letter handling</item>
+        <item>Test: multi-hop routing; network partition scenarios; circular dependency prevention</item>
+        <item>Production: implement distributed tracing; monitor communication latency; plan agent version compatibility</item>
+      </list>
+    </section>
+
+    <section name="quality-gates-before-deployment">
+      <rule testable="true">
+        <statement>Block deployment if any of these gates fails: role boundaries undefined, no distributed tracing, no max_iterations guard, no fallback path for primary agent failure.</statement>
+        <rationale>Multi-agent failures without traces are nearly impossible to debug; loops without guards drain budgets silently.</rationale>
+      </rule>
+
+      <list>
+        <item>All agent roles clearly defined with scoped tool access</item>
+        <item>End-to-end latency measured and acceptable</item>
+        <item>All agents emit logs; distributed tracing works</item>
+        <item>Agent-to-agent auth implemented; prompt injection mitigations in place</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/langgraph-supervisor.py" purpose="Minimal LangGraph supervisor graph implementation"/>
+      <template path="templates/pipeline-state.py" purpose="Pydantic state models for all four patterns"/>
+      <template path="templates/agents-config.yaml" purpose="YAML configuration for agent roles and routing rules"/>
+    </templates>
+  </content>
+</methodology>
