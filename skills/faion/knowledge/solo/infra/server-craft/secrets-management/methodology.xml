@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="secrets-management">
+  <metadata>
+    <tier>solo</tier>
+    <group>infra</group>
+    <domain>server-craft</domain>
+    <summary>Secrets management for solo developer VPS: .env hygiene, systemd EnvironmentFile, 1Password CLI op inject, pre-commit hooks, file permission hardening, and rotation procedures.</summary>
+    <tags>
+      <tag>secrets</tag>
+      <tag>env-files</tag>
+      <tag>1password</tag>
+      <tag>systemd</tag>
+      <tag>security</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Secrets Management</title>
+    <summary>Secrets management for solo developer VPS platforms: .env file hygiene, systemd EnvironmentFile integration, 1Password CLI (op) for programmatic secret injection, pre-commit hooks to block secret commits, file permission hardening, and secret rotation procedures. Defense-in-depth across file permissions, .gitignore, and git hooks.</summary>
+    <why>
+      <p>Secrets committed to Git or left world-readable on disk are the most common breach vector for solo developer platforms. A single master .env (chmod 600) + systemd EnvironmentFile + gitignore patterns + startup validation covers 95% of risk at minimal overhead. The 1Password op CLI enables zero-secret-on-disk workflows via op inject.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Setting up a new project requiring API keys, database credentials, or JWT secrets</item>
+        <item>Deploying a service to production where .env must be generated from a secrets manager</item>
+        <item>Rotating a compromised or expired credential across all services</item>
+        <item>Auditing a codebase for hardcoded secrets or improper .env handling</item>
+        <item>Configuring systemd EnvironmentFile for a new user service</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Compliance environments requiring HashiCorp Vault or AWS Secrets Manager with audit trails</item>
+        <item>Short-lived ephemeral scripts that do not need persistent secrets</item>
+        <item>Public configuration values (feature flags, log levels) that do not require protection</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="env-file-patterns">
+      <rule>
+        <statement>Set chmod 600 on every .env file immediately after creating it; world-readable secrets are a breach waiting to happen.</statement>
+        <rationale>Default umask creates files with mode 644. A world-readable .env containing API keys or database credentials can be read by any process on the server, including compromised services.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Never use the export prefix in .env files intended for systemd EnvironmentFile; systemd does not parse shell syntax, only bare KEY=VALUE pairs.</statement>
+        <rationale>export DATABASE_URL=... is valid shell syntax but systemd EnvironmentFile treats the word "export" as part of the variable name, creating a variable literally named "export DATABASE_URL".</rationale>
+      </rule>
+
+      <rule>
+        <statement>Never expand variables in .env values ($OTHER_VAR); systemd EnvironmentFile does not perform variable substitution.</statement>
+        <rationale>REDIS_URL=redis://$HOST:6379 will be passed literally with "$HOST" as a string, not expanded. Write full literal values in .env files for systemd consumption.</rationale>
+      </rule>
+
+      <section name="format-rules">
+        <example type="good">
+          <code lang="bash"><![CDATA[
+# .env — valid format for systemd EnvironmentFile
+# Comments with # are allowed
+# No spaces around =
+# No export prefix
+# Quote values containing spaces or special characters
+# Literal values only (no $VAR expansion)
+
+DATABASE_URL=postgresql://nero:secretpass@localhost:5432/nero_db
+REDIS_URL=redis://localhost:6379/0
+ANTHROPIC_API_KEY=sk-ant-api03-xxxxxxxxxxxxxxxxxxxx
+JWT_SECRET=a-long-random-string-here
+RABBITMQ_URL=amqp://nero:rabbitpass@localhost:5672/nero
+LOG_LEVEL=INFO
+DEBUG=false
+          ]]></code>
+        </example>
+
+        <example type="bad">
+          <code lang="bash"><![CDATA[
+# Wrong: export prefix breaks systemd EnvironmentFile
+export DATABASE_URL=postgresql://localhost/nero_db
+
+# Wrong: variable expansion silently fails in systemd
+HOST=localhost
+DB_PORT=5432
+DATABASE_URL=postgresql://$HOST:$DB_PORT/nero_db
+
+# Wrong: spaces around = break the parse
+DATABASE_URL = postgresql://localhost/nero_db
+          ]]></code>
+          <note>All three patterns above work in a shell (source .env) but silently fail or produce wrong values when loaded by systemd EnvironmentFile.</note>
+        </example>
+      </section>
+
+      <section name="systemd-environmentfile">
+        <rule>
+          <statement>Use the - prefix (EnvironmentFile=-/path) for optional override files; required files without - will fail the service start if missing.</statement>
+          <rationale>A missing required EnvironmentFile causes the systemd unit to fail with "No such file or directory" before the process even starts. The - prefix makes the file optional, useful for per-instance overrides.</rationale>
+        </rule>
+
+        <example type="good">
+          <code lang="ini"><![CDATA[
+[Service]
+# Required: service fails to start if this is missing
+EnvironmentFile=/srv/nero/nero-core/.env
+
+# Optional: loaded if present, ignored if absent
+EnvironmentFile=-/srv/nero/nero-core/.env.local
+
+ExecStart=/srv/nero/nero-core/.venv/bin/python -m src.main
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="file-layout">
+        <list>
+          <item>~/workspace/.env — master secrets file, source of truth for all credentials</item>
+          <item>/srv/project/.env — per-service copy or symlink; chmod 600</item>
+          <item>.env.example — committed to git, shows variable names with placeholder values</item>
+          <item>.env.tpl — 1Password inject template with op:// references; safe to commit</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="secret-prevention">
+      <rule>
+        <statement>Add .gitignore patterns for .env files at the root of every repository before the first commit; retroactively removing committed secrets requires rewriting history.</statement>
+        <rationale>A secret committed once is in the git history even after deletion. History rewriting is destructive and requires coordinated force-push across all clones. Prevention is the only safe path.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Install a pre-commit hook that scans staged file content for API key patterns; a .gitignore miss still blocks the secret at the commit boundary.</statement>
+        <rationale>Defense in depth: .gitignore prevents accidental addition, pre-commit hooks catch secrets in code files (hardcoded tokens, test fixtures). Both layers are needed.</rationale>
+      </rule>
+
+      <section name="gitignore-patterns">
+        <example type="good">
+          <code lang="text"><![CDATA[
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging
+.env.*.local
+*.env
+
+# Keep examples and templates
+!.env.example
+!.env.tpl
+
+# Cryptographic keys
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+id_ecdsa
+
+# 1Password session
+.op/
+
+# Credential files
+credentials.json
+service-account.json
+token.json
+          ]]></code>
+        </example>
+
+        <reference path="templates/gitignore-secrets">.gitignore block covering all common secret file patterns</reference>
+      </section>
+
+      <section name="pre-commit-hook">
+        <reference path="templates/pre-commit-secrets.sh">pre-commit hook blocking Anthropic/OpenAI key patterns and PRIVATE KEY in staged files</reference>
+
+        <example type="good">
+          <code lang="bash"><![CDATA[
+# Install the hook in a repository
+cp templates/pre-commit-secrets.sh .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+
+# Test: stage a file with a fake key
+echo 'API_KEY=sk-ant-api03-fake' > test.py
+git add test.py
+git commit -m "test"  # Should be blocked
+
+# Clean up
+git rm test.py
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="audit-commands">
+        <example type="good">
+          <code lang="bash"><![CDATA[
+# Check if any .env files are tracked in git
+git ls-files | grep -E '\.env$'
+
+# Search git history for known secret patterns (requires git-secrets or truffleHog)
+git log --all --full-diff -p | grep -E 'sk-ant-api|PRIVATE KEY' | head -20
+
+# Check file permissions on all .env files
+find ~/ -name "*.env" -not -path "*/node_modules/*" -exec stat -c "%a %n" {} \;
+
+# Find world-readable files in /srv that might be secrets
+find /srv -maxdepth 4 -name ".env" -perm /o+r 2>/dev/null
+          ]]></code>
+        </example>
+      </section>
+    </section>
+
+    <section name="secret-rotation">
+      <rule>
+        <statement>Always generate the new secret before revoking the old one; never create a gap where neither works.</statement>
+        <rationale>Revoking first leaves services broken until the new secret is deployed. Generating first allows a brief overlap window where both are valid, enabling zero-downtime rotation.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Restart all affected services immediately after updating .env; stale processes still hold the old secret in memory.</statement>
+        <rationale>A running service loaded its environment variables at startup. Updating .env on disk has no effect on running processes until they are restarted and reload the file via systemd EnvironmentFile.</rationale>
+      </rule>
+
+      <section name="rotation-schedule">
+        <list>
+          <item>API keys (Anthropic, OpenAI): rotate every 90 days or immediately on suspected compromise</item>
+          <item>Database passwords: rotate every 180 days or on team member departure</item>
+          <item>JWT signing keys: rotate every 90 days (invalidates all active sessions)</item>
+          <item>SSH keys: rotate annually or on machine compromise</item>
+          <item>RabbitMQ passwords: rotate every 180 days</item>
+        </list>
+      </section>
+
+      <section name="rotation-procedure">
+        <example type="good">
+          <code lang="bash"><![CDATA[
+# Safe rotation procedure (zero-downtime)
+# 1. Generate new secret in provider dashboard (keep old active)
+# 2. Update in 1Password vault
+op item edit "Anthropic" "api-key=sk-ant-api03-NEW_VALUE"
+
+# 3. Regenerate .env from 1Password template
+op inject -i ~/workspace/.env.tpl -o ~/workspace/.env
+chmod 600 ~/workspace/.env
+
+# 4. Restart affected services
+systemctl --user restart nero-core nero-channel-web nero-channel-tg
+
+# 5. Verify services healthy
+systemctl --user status nero-core
+curl -sf http://127.0.0.1:8100/health
+
+# 6. Revoke old secret in provider dashboard
+# 7. Done — old secret is now invalid but services run on new one
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="op-inject-workflow">
+        <rule>
+          <statement>Store the OP_SERVICE_ACCOUNT_TOKEN in ~/.bashrc or a secure environment (not in .env.tpl itself); it is the master key that unlocks all other secrets.</statement>
+          <rationale>The service account token is a bootstrap credential that cannot be stored in the vault it unlocks. It belongs in a separate secret storage path (system environment or secure config).</rationale>
+        </rule>
+
+        <example type="good">
+          <code lang="bash"><![CDATA[
+# .env.tpl — committed to git, no actual secrets
+DATABASE_URL={{ op://ServerVault/Database/url }}
+ANTHROPIC_API_KEY={{ op://ServerVault/Anthropic/api-key }}
+JWT_SECRET={{ op://ServerVault/JWT/secret }}
+TELEGRAM_BOT_TOKEN={{ op://ServerVault/TelegramBot/token }}
+LOG_LEVEL=INFO
+DEBUG=false
+
+# Generate .env from template (run at deploy time or after rotation)
+export OP_SERVICE_ACCOUNT_TOKEN="ops_xxxxxxxxxxxx"
+op inject -i ~/workspace/.env.tpl -o ~/workspace/.env
+chmod 600 ~/workspace/.env
+          ]]></code>
+        </example>
+
+        <reference path="templates/validate_env.py">Python startup validator: required vars list, fail-fast with clear error message</reference>
+        <reference path="templates/env.tpl">.env.tpl with 1Password op:// references for common service credentials</reference>
+      </section>
+    </section>
+
+    <templates>
+      <template path="templates/env.example" purpose=".env.example with grouped placeholders for all common service credentials"/>
+      <template path="templates/env.tpl" purpose=".env.tpl for op inject: 1Password {{ op://Vault/Item/field }} references"/>
+      <template path="templates/pre-commit-secrets.sh" purpose="Pre-commit hook blocking Anthropic/OpenAI key patterns and PRIVATE KEY"/>
+      <template path="templates/validate_env.py" purpose="Python startup validator: required vars list, fail-fast with clear message"/>
+      <template path="templates/gitignore-secrets" purpose=".gitignore block covering .env, *.pem, *.key, id_*, .op/"/>
+    </templates>
+  </content>
+</methodology>

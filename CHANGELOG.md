@@ -3,6 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+- chore: migrate secrets-management, shell-productivity, ssh-hardening to methodology.xml (feature-045 batch FV)
 - chore: migrate product-discovery, product-launch, release-planning to methodology.xml (feature-045 batch FT)
 - chore: migrate continuous-discovery, feature-prioritization-moscow, feature-prioritization-rice to methodology.xml (feature-045 batch FS)
 - chore: migrate 3/3 solo/ux/ux-ui-designer methodologies → methodology.xml (mobile-ux, prototyping, recognition-over-recall; feature-045 batch FR)
