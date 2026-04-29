@@ -1,0 +1,385 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="perf-test-basics">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Establish measurable performance baselines using load testing, function profiling, micro-benchmarks, and N+1 detection. Core rule: never optimize without a baseline from a dedicated environment.</summary>
+    <tags>
+      <tag>performance-testing</tag>
+      <tag>load-testing</tag>
+      <tag>profiling</tag>
+      <tag>benchmarking</tag>
+      <tag>locust</tag>
+      <tag>k6</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Performance Testing Basics</title>
+
+    <summary>Establish measurable performance baselines for services and detect regressions in CI. Covers load testing with Locust/k6, function-level profiling with cProfile/py-spy/memray, micro-benchmarks with pytest-benchmark, and N+1 query detection via SQLAlchemy event listeners. The core rule: never optimize without a captured baseline from a dedicated environment.</summary>
+
+    <why>
+      <p>Without baselines, performance work is guesswork. A single load-test run under realistic concurrency (p50/p95/p99/error-rate/RPS) gives a falsifiable target: "change X should improve p95 by Y ms." pytest-benchmark gates CI against regressions on hot paths. Profiling narrows the hypothesis space before any code changes.</p>
+      <p>Premature optimization without baselines wastes effort on non-bottlenecks. Agents will rewrite code for perceived "performance" without data, leading to wasted change review, risk, and regression. Measurement disciplines the optimization conversation.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Establishing a first performance baseline for a service that has none — generating Locust/k6 scripts, capturing p50/p95/p99, error rate, throughput.</item>
+        <item>Adding profiling (cProfile, py-spy, memory_profiler) to investigate a localized slowdown.</item>
+        <item>Wiring pytest-benchmark micro-benchmarks into CI to gate on regressions for hot paths.</item>
+        <item>Detecting and asserting against N+1 queries and slow-query thresholds in tests.</item>
+        <item>Writing a CI check that fails the build when p95 latency or error rate breaches a threshold.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>For full load-testing tool comparison (k6 vs Locust vs Gatling vs Artillery vs JMeter) — use perf-test-tools/ instead.</item>
+        <item>For frontend Web Vitals (LCP, INP, CLS) — that's a Lighthouse/RUM domain, not backend perf.</item>
+        <item>For chaos engineering / fault injection — separate discipline (Chaos Mesh, Litmus, Gremlin).</item>
+        <item>For continuous production load testing without a safety story — agents should not be flooding prod.</item>
+        <item>For trading systems / sub-millisecond latency tuning — needs CPU pinning, NUMA, kernel tuning beyond this scope.</item>
+        <item>When the bottleneck is clearly architectural (synchronous calls, single-threaded worker) — fix the architecture first; perf-test second.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="performance-test-types">
+      <p>Five test types — load, stress, spike, endurance, scalability — each with a distinct purpose, duration, and user profile.</p>
+
+      <rule testable="true">
+        <statement>Use load tests to verify system behavior under expected traffic; run for an extended period (hours) at normal-to-peak users.</statement>
+        <rationale>Load tests establish the production-shaped baseline and confirm SLOs hold under representative concurrency.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use stress tests to find the breaking point; run until failure with users exceeding maximum expected capacity.</statement>
+        <rationale>Knowing where the system breaks informs autoscaling thresholds and circuit-breaker settings.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use spike tests to validate behavior under sudden load jumps (low to high in seconds); run in short bursts.</statement>
+        <rationale>Marketing campaigns and viral events produce spike shapes, not gradual ramps.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use endurance (soak) tests at normal load for 12-72 hours to detect memory leaks and resource exhaustion.</statement>
+        <rationale>Memory leaks and file-descriptor leaks are invisible in short runs; only sustained load makes the trend measurable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use scalability tests with incrementally increasing users to verify that horizontal/vertical scaling produces proportional throughput gains.</statement>
+        <rationale>A system that does not scale linearly has a bottleneck that must be found before capacity planning is trustworthy.</rationale>
+      </rule>
+    </section>
+
+    <section name="always-capture-these-metrics">
+      <p>Record p50, p95, p99, error rate, RPS, concurrent users, and duration for every load-test run. A single average latency number lies.</p>
+
+      <rule testable="true">
+        <statement>Record p50, p95, p99, error rate, RPS, concurrent users, and duration for every load-test run. A single average latency number lies.</statement>
+        <rationale>Tail latency (p99) is where users churn; aggregate averages hide bimodal distributions caused by slow endpoints or N+1 queries.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Never load-test from the same machine as the system under test — observer effect dominates the results.</statement>
+        <rationale>CPU and network contention on the test machine competes with the target, producing artificially low throughput numbers.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Warm caches and connection pools before measuring (one full pass at low concurrency) so JIT/connection-pool effects do not dominate.</statement>
+        <rationale>Cold-start numbers are not representative of sustained production behavior and will produce misleading baselines.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Store raw results (not summaries) so you can re-aggregate later with different percentile cuts.</statement>
+        <rationale>Summarized results cannot be re-analyzed; raw results survive SLO changes and retrospective root-cause work.</rationale>
+      </rule>
+    </section>
+
+    <section name="environment-rules">
+      <p>Run all load tests against a staging environment that mirrors production. Hard-code an environment allowlist to prevent accidental production load.</p>
+
+      <rule testable="true">
+        <statement>Run all load tests against a staging environment that mirrors production in hardware, data volume, and network topology.</statement>
+        <rationale>Perf numbers from a weak-hardware or empty-database environment are not transferable to production.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Hard-code an environment allowlist in every load-test script (e.g., assert "prod" not in TARGET_URL) to prevent accidental production load.</statement>
+        <rationale>Agents running automated load tests will target production by accident without this guard.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For Locust, enforce a gradual spawn-rate profile (e.g., 10 users/second) rather than setting spawn_rate = total_users.</statement>
+        <rationale>Spawning all users simultaneously overwhelms the target before the test starts, invalidating the measurement.</rationale>
+      </rule>
+    </section>
+
+    <section name="application-profiling">
+      <p>Rules and tool selection for profiling Python services: cProfile for offline function-level analysis, py-spy for live sampling, memray for allocation tracking.</p>
+
+      <rule testable="true">
+        <statement>Use sampling profilers (py-spy, pyinstrument) on running services; use deterministic profilers (cProfile) on offline reproductions. Sampling overhead is bounded; deterministic overhead can distort results.</statement>
+        <rationale>On a running production-like service, cProfile's instrumentation overhead can exceed 30% and hide the real bottleneck.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Profile a single representative request before load-testing a change — flame graphs narrow hypothesis space before any optimization attempt.</statement>
+        <rationale>Load-testing without a flame graph leads to optimizing cold paths because they look messy, not because they are hot.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use memray (not memory_profiler) for allocation tracking on the whole process; memory_profiler only instruments the decorated function and misses leaks elsewhere.</statement>
+        <rationale>memory_profiler's @profile decorator scope is too narrow for leak hunting; memray tracks all allocations process-wide.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For memory leaks, run an endurance test for hours and watch RSS slope over time — do not rely on single-snapshot peak values.</statement>
+        <rationale>A leak produces a gradual slope in RSS; a single snapshot cannot distinguish a one-time allocation spike from a continuous leak.</rationale>
+      </rule>
+    </section>
+
+    <section name="cprofile-usage">
+      <p>Sort cProfile stats by cumulative time and inspect the top 20 functions to find the dominant hotspot.</p>
+
+      <rule testable="true">
+        <statement>Sort cProfile stats by cumulative time (stats.sort_stats('cumulative')) and inspect the top 20 functions to find the dominant hotspot.</statement>
+        <rationale>Cumulative time shows total cost including callee chains; per-call time alone misses deep recursive or high-fanout call sites.</rationale>
+      </rule>
+
+      <example type="good" title="cProfile decorator with cumulative time sorting">
+        <code lang="python"><![CDATA[
+import cProfile, pstats
+from io import StringIO
+
+def profile_function(func):
+    def wrapper(*args, **kwargs):
+        profiler = cProfile.Profile()
+        profiler.enable()
+        result = func(*args, **kwargs)
+        profiler.disable()
+        stream = StringIO()
+        stats = pstats.Stats(profiler, stream=stream)
+        stats.sort_stats('cumulative')
+        stats.print_stats(20)
+        return result
+    return wrapper
+        ]]></code>
+        <note>Use as a decorator on the entry point being profiled; run against a realistic request, not a synthetic no-op.</note>
+      </example>
+    </section>
+
+    <section name="py-spy-usage">
+      <p>Use py-spy for sampling profiling on running services and open results in speedscope to identify hot functions.</p>
+
+      <rule testable="true">
+        <statement>Use py-spy record -f speedscope for 30 seconds on the target PID, then open in speedscope.app to identify top-3 hot functions by total time.</statement>
+        <rationale>Speedscope's left-heavy view makes it easy to identify the dominant call tree without reading raw text output.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Simulate realistic network latency when profiling localhost (e.g., tc qdisc add dev lo root netem delay 20ms) to avoid concluding the service is fast due to zero-latency loopback.</statement>
+        <rationale>Without artificial latency, profiling results show CPU time only and hide serialization/IO-wait hotspots that dominate in production.</rationale>
+      </rule>
+    </section>
+
+    <section name="profiling-antipatterns">
+      <p>Common mistakes agents make when profiling and optimizing.</p>
+
+      <antipattern>
+        <description>Caching every function with @lru_cache after profiling shows "DB calls are slow."</description>
+        <reason>lru_cache works for pure functions; it breaks for stateful operations (DB calls, time-dependent results, user-specific data). The reflex to add caching without checking purity is the #1 agent gotcha.</reason>
+      </antipattern>
+    </section>
+
+    <section name="pytest-benchmark-rules">
+      <p>Use pytest-benchmark for CI regression gates on hot paths with proper statistical awareness.</p>
+
+      <rule testable="true">
+        <statement>Run pytest-benchmark with --benchmark-min-rounds=20; the default rounds produce noisy results on short functions.</statement>
+        <rationale>Statistical noise in micro-benchmarks is dominated by system interrupts and GC pauses; more rounds reduce variance enough to distinguish signal from noise.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Gate CI on --benchmark-compare-fail=mean:5% against the previous main commit to catch performance regressions automatically.</statement>
+        <rationale>Without a CI gate, benchmark results accumulate in reports nobody reads; a fail threshold makes regressions visible at merge time.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Read benchmark stats.mean and stats.stddev together; agents that read mean and ignore stddev will merge regressions hidden by high variance.</statement>
+        <rationale>A benchmark with mean 10ms and stddev 8ms is not better than one with mean 12ms and stddev 0.5ms — the former result is unreliable.</rationale>
+      </rule>
+
+      <example type="good" title="pytest-benchmark with assertion and min-rounds">
+        <code lang="python"><![CDATA[
+import pytest
+from decimal import Decimal
+
+def test_price_calculation_performance(benchmark):
+    items = [
+        {"price": Decimal("10.00"), "quantity": 2},
+        {"price": Decimal("25.50"), "quantity": 1},
+        {"price": Decimal("5.00"), "quantity": 10},
+    ] * 100  # 300 items
+
+    def calculate():
+        return sum(item["price"] * item["quantity"] for item in items)
+
+    result = benchmark(calculate)
+    assert result == Decimal("7050.00")
+    # Run: pytest --benchmark-only --benchmark-min-rounds=20
+        ]]></code>
+        <note>The assertion prevents the benchmark from optimizing away the computation.</note>
+      </example>
+    </section>
+
+    <section name="n-plus-one-query-detection">
+      <p>Use an SQLAlchemy before_cursor_execute event listener fixture to count queries, not caplog log-scraping.</p>
+
+      <rule testable="true">
+        <statement>Use an SQLAlchemy before_cursor_execute event listener fixture to count queries, not caplog log-scraping. caplog misses queries when log level is INFO.</statement>
+        <rationale>Log-level-dependent query counting is fragile; the event listener fires on every cursor execution regardless of log configuration.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Assert query_counter["n"] &lt;= expected_count (typically 1-3 for a paginated list endpoint), not a static threshold like 5.</statement>
+        <rationale>A static threshold of 5 passes an N+1 that fires on every item in a list of 4; the threshold must be tied to the expected query plan.</rationale>
+      </rule>
+
+      <example type="bad" title="Log-based query counting (do not use)">
+        <code lang="python"><![CDATA[
+# BAD: relies on log capture — misses queries when logging is at INFO
+def test_no_n_plus_one(db_session, caplog):
+    orders = db_session.query(Order).limit(10).all()
+    query_count = sum(1 for r in caplog.records if 'SELECT' in r.message)
+    assert query_count < 5
+        ]]></code>
+        <note>caplog requires sqlalchemy.engine logger at DEBUG level; agents forget to set it and the test always passes with count=0.</note>
+      </example>
+    </section>
+
+    <section name="ci-threshold-gates">
+      <p>Define per-endpoint thresholds and require human approval for threshold changes to prevent drift.</p>
+
+      <rule testable="true">
+        <statement>Define per-endpoint thresholds (p95, error rate, minimum RPS) in a versioned config file; fail the CI pipeline when any threshold is breached.</statement>
+        <rationale>Reviewing perf graphs manually is unreliable; a failing CI step creates an actionable artifact tied to a specific commit.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Require human approval to increase a threshold; agents that push thresholds up after every regression to keep CI green destroy the regression signal.</statement>
+        <rationale>Threshold drift is the most common way performance monitoring becomes a rubber stamp.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow-and-gotchas">
+      <p>Performance work should always follow measure-hypothesize-verify cycle and refuse optimization without baselines.</p>
+
+      <antipattern>
+        <description>Premature optimization: agents will rewrite a function for "perf" without a benchmark.</description>
+        <reason>Refuse to merge without before/after numbers from the same machine.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>"Add caching" reflex: agents wrap everything in @lru_cache — works for pure functions, breaks for stateful ones (DB calls, time-dependent results).</description>
+        <reason>Check purity before caching; profile to verify the function is actually a bottleneck.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Locust spawn-rate: agents set spawn_rate = users and overwhelm the target before the test even starts.</description>
+        <reason>Force a ramp profile (e.g. 10/s) to warm up gradually.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents read pytest-benchmark mean and ignore stddev; force fail criteria on mean ± 2σ of baseline.</description>
+        <reason>High-stddev results are unreliable; always consider statistical variance.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>N+1 detection: agents use the caplog snippet and miss the actual queries because logging is set to INFO.</description>
+        <reason>Use the SQLAlchemy event listener fixture instead of log-based detection.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Profiling: agents profile localhost with no network latency and conclude the service is fast.</description>
+        <reason>Add a realistic latency simulation (tc qdisc add dev lo root netem delay 20ms).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Memory: memory_profiler @profile works only on the decorated function; agents miss leaks elsewhere.</description>
+        <reason>Use memray run for the whole process instead.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents will load-test prod by accident.</description>
+        <reason>Hard-code an env-name allowlist (assert "prod" not in TARGET_URL).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Threshold drift: agents push the threshold up after every regression to keep CI green.</description>
+        <reason>Require a human approver for threshold changes.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices-summary">
+      <rule testable="true">
+        <statement>Always capture: p50, p95, p99, error rate, RPS, concurrent users, duration. A single "average latency" number lies.</statement>
+        <rationale>Aggregate averages hide tail latency where users churn and bimodal distributions caused by slow code paths.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Compare runs on identical hardware/data — perf numbers are not transferable across environments.</statement>
+        <rationale>Different hardware, empty vs full data, and network topology produce incomparable baseline.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For micro-benchmarks, run pytest-benchmark with --benchmark-min-rounds=20; default rounds give noisy results.</statement>
+        <rationale>More rounds reduce variance enough to distinguish signal from noise.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set explicit thresholds in CI per critical endpoint; fail the pipeline on regression rather than reviewing graphs.</statement>
+        <rationale>Manual review is unreliable; failing CI creates an actionable artifact tied to a commit.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use sampling profilers (py-spy, pyinstrument) over deterministic (cProfile) on running services — overhead is bounded.</statement>
+        <rationale>Deterministic profilers can have 30%+ overhead and hide the real bottleneck.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For memory leaks, run an endurance test for hours and watch RSS slope, not single-snapshot peak.</statement>
+        <rationale>A leak produces gradual slope; single snapshots cannot distinguish spikes from continuous leaks.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Never load-test from the same machine as the system under test — observer effect dominates.</statement>
+        <rationale>CPU and network contention on test machine competes with target, producing artificially low throughput.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/query-counter-fixture.py" purpose="SQLAlchemy before_cursor_execute fixture for N+1 assertion in pytest tests."/>
+      <template path="templates/perf-threshold-check.py" purpose="CI script to parse load-test JSON results and fail on p95/error-rate threshold breaches."/>
+    </templates>
+
+    <see-also>
+      <link href="https://pytest-benchmark.readthedocs.io/"/>
+      <link href="https://github.com/benfred/py-spy"/>
+      <link href="https://bloomberg.github.io/memray/"/>
+      <link href="https://docs.locust.io/"/>
+      <link href="https://k6.io/docs/"/>
+      <link href="https://pyroscope.io/"/>
+      <link href="https://web.dev/vitals/"/>
+      <link href="https://speedscope.app/"/>
+      <link href="https://github.com/brendangregg/FlameGraph"/>
+      <link href="https://systems-performance.brendangregg.com/"/>
+      <ref slug="perf-test-tools"/>
+    </see-also>
+  </content>
+</methodology>
