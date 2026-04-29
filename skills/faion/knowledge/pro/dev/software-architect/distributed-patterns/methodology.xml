@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="distributed-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Patterns for data consistency, fault tolerance, and coordination across service boundaries. Saga, CQRS, Event Sourcing, Outbox, Circuit Breaker, Bulkhead, Idempotency, and Leader Election.</summary>
+    <tags>
+      <tag>distributed-systems</tag>
+      <tag>patterns</tag>
+      <tag>fault-tolerance</tag>
+      <tag>consistency</tag>
+      <tag>microservices</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Distributed Patterns</title>
+    <summary>Patterns for data consistency, fault tolerance, and coordination in distributed systems. Covers Saga (choreography vs orchestration), CQRS, Event Sourcing, Outbox, 2PC vs Saga vs TCC trade-offs, Circuit Breaker, Bulkhead, Retry with jitter, Idempotency, Leader Election, and Rate Limiting algorithms.</summary>
+    <why>
+      <p>Distributed systems cannot use database transactions across service boundaries. Each pattern addresses a specific class of failure: Saga handles long-running multi-service transactions with compensating actions; Outbox guarantees event publication without two-phase commits; Circuit Breaker prevents one failing dependency from cascading. Choosing the wrong pattern leads to data corruption (missing compensation) or unavailability (tight coordinator coupling).</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing a multi-service transaction that spans more than one database</item>
+        <item>Implementing event publishing that must survive process crashes (Outbox)</item>
+        <item>Adding resilience to service-to-service calls (Circuit Breaker + Retry + Bulkhead)</item>
+        <item>Separating read and write models for a high read/write ratio domain (CQRS)</item>
+        <item>Needing full audit trail or temporal queries (Event Sourcing)</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Monolith or modular monolith — use local transactions instead; distributed patterns add complexity without benefit</item>
+        <item>Simple CRUD service without external calls — Circuit Breaker/Bulkhead overhead is not justified</item>
+        <item>Event Sourcing when the domain has no meaningful history requirement — storage cost is ~230% higher than snapshot-based</item>
+        <item>2PC for long-running processes — coordinator blocks resources; use Saga instead</item>
+      </list>
+    </when-not-to-use>
+    <section name="Saga Pattern">
+      <rule>
+        <statement>Define a compensating transaction for every step in a saga before implementing the forward path.</statement>
+        <rationale>A saga without compensating transactions has no rollback. When step 3 of 5 fails, the system is left in a partial state with no path to consistency.</rationale>
+      </rule>
+      <list>
+        <item>Choreography: services react to events emitted by peers. Loose coupling, lower complexity, suitable for 3-5 service flows. Risk: hard to trace overall saga state.</item>
+        <item>Orchestration: central saga coordinator sends commands to services and receives replies. Easier to track state and add timeouts. Use for complex multi-step flows or when visibility is critical.</item>
+      </list>
+      <rule>
+        <statement>All compensating transactions must be idempotent; use a correlation ID on every saga step to handle duplicate event delivery.</statement>
+        <rationale>Message brokers guarantee at-least-once delivery. A compensation triggered twice must be safe — otherwise rollback itself introduces inconsistency.</rationale>
+      </rule>
+    </section>
+    <section name="CQRS">
+      <rule>
+        <statement>Apply CQRS only when the read model and write model have genuinely different optimisation requirements (e.g., read/write ratio above 10:1 or read projections require denormalisation incompatible with the write schema).</statement>
+        <rationale>CQRS introduces separate read and write models, event synchronisation, and eventual consistency — significant complexity. For balanced read/write workloads, a single model with read replicas is simpler and sufficient.</rationale>
+      </rule>
+      <p>Benefits: 64% average performance improvement for read-intensive operations; independent scaling of read and write paths; separate teams can own each model.</p>
+    </section>
+    <section name="Event Sourcing">
+      <rule>
+        <statement>Use Event Sourcing only when the domain requires complete audit trail, temporal queries, or event replay — not as a default persistence strategy.</statement>
+        <rationale>Event Sourcing stores ~230% more data than snapshot-based approaches and requires projections (read models) for every query. The complexity is only justified when history itself is a business requirement.</rationale>
+      </rule>
+      <p>Benefits: 100% audit trail, temporal queries (state at any point in time), event replay for debugging and new projections. Natural fit for CQRS.</p>
+    </section>
+    <section name="Outbox Pattern">
+      <rule>
+        <statement>Use the Outbox pattern to guarantee event publication: write to the outbox table in the same database transaction as the business record, then publish via a relay process.</statement>
+        <rationale>Publishing to a message broker after committing a database transaction is not atomic: process crash between commit and publish causes lost events. Outbox eliminates this race by making publication a database operation in the same transaction.</rationale>
+      </rule>
+      <list>
+        <item>Polling Publisher: relay process queries outbox table periodically and publishes pending messages. Simple; adds latency proportional to polling interval.</item>
+        <item>Transaction Log Tailing (CDC): relay reads database transaction log (Debezium, AWS DMS). Lower latency; requires database-specific setup.</item>
+      </list>
+      <rule>
+        <statement>All Outbox consumers must be idempotent because the relay delivers at-least-once.</statement>
+        <rationale>The relay may publish a message multiple times after a crash between publish and outbox row deletion. Consumer idempotency prevents duplicate processing.</rationale>
+      </rule>
+    </section>
+    <section name="Distributed Transaction Pattern Selection">
+      <rule>
+        <statement>Prefer Saga over 2PC for long-running distributed transactions; use 2PC only for short, critical financial operations where strong isolation is legally required.</statement>
+        <rationale>2PC holds database locks for the duration of the transaction across all participants. In a distributed system with network latency, lock duration can be seconds, causing contention. Saga releases locks after each local transaction and uses compensations for rollback.</rationale>
+      </rule>
+      <list>
+        <item>2PC: strong consistency, full isolation, lower availability (coordinator is SPOF), higher latency. Use for: core financial ledger, strict audit, short transactions.</item>
+        <item>Saga: eventual consistency, no isolation (dirty reads between steps), high availability, lower latency. Use for: order processing, long-running workflows, microservices.</item>
+        <item>TCC (Try-Confirm-Cancel): partial isolation via reservation phase, medium complexity. Use for: inventory holds, seat reservations, time-sensitive resource allocation.</item>
+      </list>
+    </section>
+    <section name="Circuit Breaker">
+      <rule>
+        <statement>Configure circuit breaker failure threshold as an absolute count within a rolling time window, not as a percentage, for low-traffic services.</statement>
+        <rationale>At low traffic (5 req/min), a 50% failure rate threshold opens the circuit after 2-3 failures — correct for high traffic but too sensitive for low traffic where single errors are noise. Absolute count (e.g., 5 failures in 60s) is more appropriate.</rationale>
+      </rule>
+      <p>Typical config: failure threshold 5-10 in a 10-60s window; open timeout 30-60s; success threshold in half-open 3-5; slow call threshold treated as failure when duration exceeds 2x expected p99.</p>
+    </section>
+    <section name="Bulkhead">
+      <rule>
+        <statement>Use thread-pool bulkhead when timeout isolation is required; use semaphore bulkhead when overhead must be minimal and the calling thread can be blocked safely.</statement>
+        <rationale>Thread-pool isolation allows explicit timeouts for waiting requests — the pool rejects new requests when full. Semaphore isolation runs on the calling thread, so a blocked semaphore blocks the caller's thread with no timeout option.</rationale>
+      </rule>
+    </section>
+    <section name="Retry with Jitter">
+      <rule>
+        <statement>Apply decorrelated jitter (next_wait = min(cap, random(base, prev_wait * 3))) rather than pure exponential backoff when many clients retry the same service simultaneously.</statement>
+        <rationale>Pure exponential backoff synchronises all clients to retry at exactly the same intervals, creating thundering herd. Decorrelated jitter breaks the synchronisation by randomising each client's wait independently.</rationale>
+      </rule>
+      <p>Jitter strategies: Full Jitter = random(0, base * 2^attempt), spreads all retries; Equal Jitter = delay/2 + random(0, delay/2), moderate spread; Decorrelated = min(cap, random(base, prev * 3)), best for high-contention (AWS/Netflix recommended).</p>
+      <antipattern>
+        <description>Retrying non-idempotent write operations without verifying idempotency first.</description>
+        <reason>Retrying a POST /orders without idempotency key creates duplicate orders. Either make the operation idempotent via idempotency key, or convert to PUT with a client-generated ID.</reason>
+      </antipattern>
+    </section>
+    <section name="Idempotency">
+      <rule>
+        <statement>Store the idempotency record and its response after the transaction commits, not before, using the idempotency key as the primary key.</statement>
+        <rationale>Storing before the transaction means a commit failure leaves a stale "already processed" record with no result — subsequent retries are silently dropped. Storing after ensures the record exists only when the operation actually succeeded.</rationale>
+      </rule>
+      <list>
+        <item>Idempotency Key: client-generated UUID per operation, stored in cache/DB with TTL. Return same response for same key.</item>
+        <item>Natural Key: business identifier (account_id + amount + reference_id). Hash to create deterministic key. No client cooperation required.</item>
+        <item>ETag / Version: optimistic concurrency control. Client includes If-Match header; server rejects if version mismatch.</item>
+        <item>Message Deduplication: queue-level dedup window (SQS: 5min; Kafka: enable.idempotence = true).</item>
+      </list>
+      <rule>
+        <statement>Set an expiration time on idempotency keys (typically 24h-7d) to prevent indefinite storage growth.</statement>
+        <rationale>Without expiration, idempotency records accumulate indefinitely. After the safe retry window (client's retry policy maximum), old keys are no longer needed.</rationale>
+      </rule>
+    </section>
+    <section name="Leader Election">
+      <p>Common approaches by context:</p>
+      <list>
+        <item>etcd / Consul: consensus-based (Raft algorithm), production-grade, use for distributed coordination (Kubernetes, Kafka KRaft).</item>
+        <item>Redis SETNX + TTL (Redlock): simpler, sufficient for single-datacenter; not safe across multiple independent Redis instances.</item>
+        <item>Database row lock + heartbeat: suitable when a database is already available; leader holds a lock row and renews on interval.</item>
+      </list>
+      <rule>
+        <statement>Always set a TTL on leader locks; the leader must renew the lock before expiry, not after re-election.</statement>
+        <rationale>A leader that pauses (GC, network partition) without TTL holds the lock indefinitely, blocking all other candidates. TTL ensures automatic failover within a bounded time window.</rationale>
+      </rule>
+    </section>
+    <section name="Rate Limiting Algorithms">
+      <list>
+        <item>Token Bucket: allows controlled bursts up to bucket size, smooth average rate. Best for API rate limiting where occasional bursts are acceptable.</item>
+        <item>Leaky Bucket: fixed output rate regardless of input burst. Best for traffic shaping to downstream with fixed capacity.</item>
+        <item>Fixed Window: simple, but allows 2x rate at window boundaries. Use only for rough limiting.</item>
+        <item>Sliding Window: accurate, no boundary spikes. Best for precise per-client rate control.</item>
+      </list>
+    </section>
+    <section name="Pattern Combination Matrix">
+      <p>Common production combinations:</p>
+      <list>
+        <item>E-commerce order: Saga + Outbox + Idempotency Key</item>
+        <item>Real-time analytics: CQRS + Event Sourcing</item>
+        <item>Payment processing: 2PC (core ledger) + Saga (auxiliary steps)</item>
+        <item>API resilience: Circuit Breaker + Bulkhead + Retry with jitter</item>
+        <item>Event streaming: Event Sourcing + CQRS + Outbox</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/saga-orchestrator.py" purpose="Python saga orchestrator skeleton with compensating transaction registry"/>
+      <template path="templates/outbox-publisher.py" purpose="Outbox polling publisher with at-least-once delivery and idempotency check"/>
+    </templates>
+  </content>
+</methodology>
