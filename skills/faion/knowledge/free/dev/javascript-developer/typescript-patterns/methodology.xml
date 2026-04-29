@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="typescript-patterns">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>javascript-developer</domain>
+    <summary>Advanced TypeScript patterns: utility types, generics, type guards, discriminated unions, and Zod validation to express domain constraints in the type system.</summary>
+    <tags>
+      <tag>typescript</tag>
+      <tag>types</tag>
+      <tag>validation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>TypeScript Patterns</title>
+    <summary>Advanced type patterns including utility types, generics, type guards, discriminated unions, and Zod schema validation for expressing domain constraints in the type system and catching errors at compile time.</summary>
+    <why>
+      <p>TypeScript's structural type system enables encoding invariants as types — making impossible states unrepresentable. Patterns like discriminated unions eliminate null checks; generics with constraints prevent misuse at call sites; Zod bridges runtime validation with static types by inferring TS types from schemas.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Defining repository interfaces with generic CRUD contracts</item>
+        <item>Handling API responses where success and error shapes differ</item>
+        <item>Validating unknown external input (API bodies, env vars, form data)</item>
+        <item>Building reusable generic components or data structures</item>
+        <item>Needing exhaustive checks on a union type</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Simple scripts or one-off tools — strict generics add noise without benefit</item>
+        <item>Prototyping where types would be reworked immediately anyway</item>
+        <item>When a plain interface suffices — avoid generics unless the type parameter is actually reused</item>
+      </list>
+    </when-not-to-use>
+    <section name="TypeScript Utility and Advanced Types">
+      <rule>
+        <statement>Use built-in utility types rather than rewriting equivalent mapped types by hand.</statement>
+        <rationale>Partial, Required, Readonly, Pick, Omit, Record, keyof, and indexed access are universally understood and compiler-optimized.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[type UserPartial = Partial<User>;           // All props optional
+type UserRequired = Required<User>;         // All props required
+type UserReadonly = Readonly<User>;         // All props readonly
+type UserName = Pick<User, 'name' | 'email'>;
+type UserWithoutPassword = Omit<User, 'password'>;
+type IdType = User['id'];                   // Indexed access
+type UserKeys = keyof User;                 // Union of keys
+type StringUser = Record<string, User>;     // Index signature
+
+type Status = 'pending' | 'active' | 'inactive';
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';]]></code>
+      </example>
+    </section>
+    <section name="Template Literal and Conditional Types">
+      <rule>
+        <statement>Use template literal types to enforce string shape contracts at the type level.</statement>
+        <rationale>Template literal types catch mismatched string patterns (e.g., wrong URL prefix) at compile time with zero runtime cost.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[type EventName = `on${Capitalize<string>}`;  // 'onClick', 'onSubmit'
+type Endpoint = `/api/${string}`;
+
+// Conditional types
+type ArrayElement<T> = T extends (infer U)[] ? U : never;
+type Awaited<T> = T extends Promise<infer U> ? U : T;]]></code>
+      </example>
+    </section>
+    <section name="Generic Functions and Interfaces">
+      <rule>
+        <statement>Constrain type parameters with extends when the generic must satisfy a shape contract.</statement>
+        <rationale>Unconstrained generics accept any type, losing type-safety inside the function; constraints make the contract explicit at the call site.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key];
+}]]></code>
+      </example>
+      <templates>
+        <template path="templates/repository.ts" purpose="Generic Repository interface with typed CRUD methods"/>
+      </templates>
+    </section>
+    <section name="Generic React Components">
+      <rule>
+        <statement>Type generic React components with a type parameter on the props interface, not with any.</statement>
+        <rationale>Generic props let callers pass a typed items array and render callback, while the component stays unaware of the domain type.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[interface ListProps<T> {
+  items: T[];
+  renderItem: (item: T, index: number) => React.ReactNode;
+  keyExtractor: (item: T) => string;
+}
+
+function List<T>({ items, renderItem, keyExtractor }: ListProps<T>) {
+  return (
+    <ul>
+      {items.map((item, index) => (
+        <li key={keyExtractor(item)}>{renderItem(item, index)}</li>
+      ))}
+    </ul>
+  );
+}]]></code>
+      </example>
+      <antipattern>
+        <description>Using any[] as the items type in a reusable list component.</description>
+        <reason>Loses type safety in renderItem — errors like accessing a non-existent property only surface at runtime.</reason>
+      </antipattern>
+    </section>
+    <section name="Type Predicates">
+      <rule>
+        <statement>Write type predicates (value is T) instead of casting to narrow unknown values.</statement>
+        <rationale>Type predicates make the narrowing condition explicit and reusable; casting bypasses the compiler check entirely.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[function isUser(value: unknown): value is User {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    'email' in value
+  );
+}]]></code>
+      </example>
+    </section>
+    <section name="Discriminated Unions">
+      <rule>
+        <statement>Model success/failure responses as a discriminated union with a boolean discriminant, not as a nullable return value.</statement>
+        <rationale>Discriminated unions force the caller to handle both branches; nullable returns are easy to ignore and carry no error information.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[type Result<T, E = Error> =
+  | { success: true; data: T }
+  | { success: false; error: E };
+
+function handleResult<T>(result: Result<T>): T {
+  if (result.success) {
+    return result.data;  // TypeScript knows data exists
+  }
+  throw result.error;    // TypeScript knows error exists
+}]]></code>
+      </example>
+      <templates>
+        <template path="templates/result.ts" purpose="Discriminated union Result type + assertDefined helper"/>
+      </templates>
+    </section>
+    <section name="Assertion Functions">
+      <rule>
+        <statement>Use assertion functions (asserts value is T) to throw on null/undefined and narrow the type for subsequent code.</statement>
+        <rationale>Assertion functions remove repeated null checks while retaining narrowing benefits, unlike the non-null assertion operator (!) which is invisible at runtime.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[function assertDefined<T>(
+  value: T | null | undefined,
+  message = 'Value is null or undefined',
+): asserts value is T {
+  if (value === null || value === undefined) {
+    throw new Error(message);
+  }
+}]]></code>
+      </example>
+      <antipattern>
+        <description>Using the non-null assertion operator (!) on values that could legitimately be null.</description>
+        <reason>! silently produces a runtime error; assertDefined throws with a message and narrows the type correctly.</reason>
+      </antipattern>
+    </section>
+    <section name="Schema Definition and Type Inference">
+      <rule>
+        <statement>Derive TypeScript types from Zod schemas with z.infer rather than defining a separate interface.</statement>
+        <rationale>Keeping the schema as the single source of truth prevents drift between the runtime validator and the static type.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[import { z } from 'zod';
+
+const UserSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  name: z.string().min(2).max(100),
+  age: z.number().int().positive().optional(),
+  role: z.enum(['admin', 'user', 'guest']),
+  createdAt: z.date(),
+});
+
+type User = z.infer<typeof UserSchema>;
+
+// Partial schema for updates
+const UpdateUserSchema = UserSchema.partial().omit({ id: true });
+type UpdateUserData = z.infer<typeof UpdateUserSchema>;]]></code>
+      </example>
+      <templates>
+        <template path="templates/zod-user.ts" purpose="Zod UserSchema with inferred types and validation helpers"/>
+      </templates>
+    </section>
+    <section name="Parse Patterns">
+      <rule>
+        <statement>Use safeParse at API boundaries and parse inside trusted service layers.</statement>
+        <rationale>safeParse returns a Result-like object that avoids exception handling at every call site; parse is appropriate when invalid data is a programming error, not a user error.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[type Result<T, E = Error> =
+  | { success: true; data: T }
+  | { success: false; error: E };
+
+function safeValidateUser(data: unknown): Result<User> {
+  const result = UserSchema.safeParse(data);
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, error: result.error };
+}]]></code>
+      </example>
+    </section>
+  </content>
+</methodology>
