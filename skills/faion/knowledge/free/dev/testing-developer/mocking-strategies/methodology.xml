@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="mocking-strategies">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>testing-developer</domain>
+    <summary>Test doubles taxonomy and decision framework: when to mock, mock boundaries, partial vs full mocking, language-specific tools, and over-mocking detection.</summary>
+    <tags>
+      <tag>mocking</tag>
+      <tag>test-doubles</tag>
+      <tag>testing</tag>
+      <tag>unittest-mock</tag>
+      <tag>pytest-mock</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Mocking Strategies</title>
+    <summary>Covers the five test-double types (Dummy/Stub/Spy/Mock/Fake), decision framework for what to mock (mock at boundaries, not internals), Python unittest.mock / pytest-mock, JavaScript vi.mock / Jest, Go interface-based mocking, time mocking, and external API levels. Includes an over-mock linter script.</summary>
+    <why>
+      <p>Over-mocking is a silent suite killer: tests pass but production breaks because the mocked contract drifts from reality. Under-mocking makes tests slow and non-deterministic. The boundary-based decision tree and the autospec / over-mock-lint.py tools prevent both failure modes.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Deciding whether to mock a dependency or use a real one</item>
+        <item>Writing Python mocks with unittest.mock / pytest-mock</item>
+        <item>Writing JavaScript mocks with Vitest vi.mock or Jest</item>
+        <item>Writing Go mocks via interface substitution or mockery</item>
+        <item>Diagnosing "mock swallows typo" bugs (MagicMock, wrong patch target)</item>
+        <item>Auditing a test suite for over-mocking</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>E2E tests where no mocking is desired — use e2e-testing</item>
+        <item>Database isolation (use real DB with rollback) — use test-fixtures</item>
+        <item>Fixture design decisions — use test-fixtures</item>
+      </list>
+    </when-not-to-use>
+    <section name="five-test-double-types">
+      <p>The five test-double types and their appropriate uses:</p>
+      <list>
+        <item>Dummy — passed but never used. Satisfies a required parameter. Example: null logger passed to a constructor.</item>
+        <item>Stub — returns pre-configured responses to calls. No behavior verification. Example: always returns {status: 200} for an HTTP client.</item>
+        <item>Spy — real object that records calls. Behavior is real, but calls can be inspected after. Example: spy on email service to check how many times it was called.</item>
+        <item>Mock — pre-programmed with expectations. Fails the test if not called as expected. Example: assert payment.charge() called once with correct amount.</item>
+        <item>Fake — working implementation with shortcuts. Example: in-memory repository instead of real database.</item>
+      </list>
+    </section>
+    <section name="selection-guide">
+      <rule>Use Stub when you only care about the return value, not whether the dependency was called.</rule>
+      <rule>Use Mock when you need to verify that a dependency was called with specific arguments.</rule>
+      <rule>Use Fake for complex dependencies used heavily across a suite (e.g., a repository interface).</rule>
+      <rule>Prefer Fake over Mock for stateful dependencies — Fakes are more maintainable long-term.</rule>
+      <example type="good" title="Fake repository vs Mock repository">
+        <code lang="python"><![CDATA[
+# Fake: implements the interface, simpler to maintain
+class InMemoryUserRepository:
+    def __init__(self):
+        self._users = {}
+
+    def save(self, user): self._users[user.id] = user
+    def find_by_id(self, id): return self._users.get(id)
+
+# Mock: heavy expectations, breaks when implementation changes
+mock_repo = Mock()
+mock_repo.save.return_value = None
+mock_repo.find_by_id.return_value = User(id=1, email="a@example.com")
+# Must assert every call — fragile
+        ]]></code>
+      </example>
+    </section>
+    <section name="when-not-to-use-mocks">
+      <rule>Do not mock the system under test itself — test real behavior.</rule>
+      <rule>Do not mock value objects or simple data structures — use real ones.</rule>
+      <rule>Do not mock what you do not own (third-party libraries) — wrap them in an adapter first, then mock the adapter.</rule>
+    </section>
+    <section name="mock-at-boundaries-principle">
+      <rule>Mock at the architectural boundary, not inside the system under test.</rule>
+      <rule>Boundaries: I/O (filesystem, network), time (datetime.now), randomness (uuid4), external services.</rule>
+      <rule>Internal collaborators within your own codebase should use real implementations in unit tests.</rule>
+      <example type="good" title="Mock the HTTP client boundary, not internal service logic">
+        <code lang="python"><![CDATA[
+# Good: mock at the HTTP boundary
+def test_payment_service_retries_on_timeout(mocker):
+    mock_post = mocker.patch("myapp.adapters.stripe.requests.post")
+    mock_post.side_effect = [Timeout(), Timeout(), Mock(status_code=200)]
+
+    result = PaymentService().charge(amount=100)
+
+    assert result.success is True
+    assert mock_post.call_count == 3
+        ]]></code>
+      </example>
+    </section>
+    <section name="partial-vs-full-mocking">
+      <rule>Full mock: replace the entire object with Mock(). Use when you want to verify call patterns.</rule>
+      <rule>Partial mock: patch one method on a real object with mocker.patch.object(). Use when most behavior should remain real.</rule>
+      <example type="good" title="Partial mock: only patch the external call">
+        <code lang="python"><![CDATA[
+# Partial mock: only patch the external call
+def test_user_service_sends_welcome_email(mocker):
+    mocker.patch.object(EmailClient, "send", return_value=True)
+    service = UserService(email_client=EmailClient())
+    service.register(email="new@example.com")
+    EmailClient.send.assert_called_once()
+        ]]></code>
+      </example>
+    </section>
+    <section name="time-mocking">
+      <rule>Never test time-dependent code against real datetime.now() — use freezegun or mocker.patch.</rule>
+      <example type="good" title="Time mocking with freezegun">
+        <code lang="python"><![CDATA[
+from freezegun import freeze_time
+
+@freeze_time("2024-01-15 12:00:00")
+def test_subscription_expires_after_30_days():
+    sub = Subscription.create(start_date=datetime(2024, 1, 15))
+    assert sub.expires_at == datetime(2024, 2, 14)
+        ]]></code>
+      </example>
+    </section>
+    <section name="mock-decision-tree">
+      <rule>Ask: Does removing this dependency make the test faster or more reliable? If yes, mock it.</rule>
+      <rule>Ask: Is this a third-party service that may be unavailable in CI? If yes, mock it.</rule>
+      <rule>Ask: Is this a collaborator in my own codebase? If yes, prefer a real or fake implementation.</rule>
+      <rule>Ask: Am I mocking to avoid writing a difficult test? If yes, fix the design instead.</rule>
+    </section>
+    <section name="python-unittest-mock">
+      <rule>Use mocker.patch() (pytest-mock) inside tests instead of @patch decorator — cleaner scope management.</rule>
+      <rule>Always use spec= or autospec=True to catch typos and attribute mismatches at call time.</rule>
+      <antipattern>
+        <description>MagicMock without spec swallows typos silently</description>
+        <code lang="python"><![CDATA[
+# Bad: mock.notexistingmethod() returns a Mock instead of raising AttributeError
+mock = MagicMock()
+result = mock.notexistingmethod()  # no error — silent false positive
+
+# Good: autospec raises AttributeError for methods not on the real class
+mock = create_autospec(PaymentGateway)
+result = mock.notexistingmethod()  # AttributeError caught immediately
+        ]]></code>
+        <reason>autospec validates call signatures against the real class at mock-creation time.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Patching at the wrong location</description>
+        <code lang="python"><![CDATA[
+# Bad: patches the original module, not where it's used
+mocker.patch("stripe.Charge.create")
+
+# Good: patch where the name is looked up (the importing module)
+mocker.patch("myapp.services.payment.stripe.Charge.create")
+        ]]></code>
+        <reason>Python looks up names at call time in the namespace of the importing module.</reason>
+      </antipattern>
+    </section>
+    <section name="javascript-vitest-jest">
+      <rule>Use vi.mock() / jest.mock() at the module level — hoisted above imports by the bundler.</rule>
+      <rule>Use vi.spyOn() for partial mocking of a single method on a real object.</rule>
+      <rule>Always call vi.clearAllMocks() or jest.clearAllMocks() in afterEach to prevent state leakage.</rule>
+      <example type="good" title="Vitest mocking with sendEmail">
+        <code lang="typescript"><![CDATA[
+import { vi, describe, it, expect, afterEach } from 'vitest';
+import { sendEmail } from '../services/email';
+import { registerUser } from '../services/user';
+
+vi.mock('../services/email');
+
+afterEach(() => vi.clearAllMocks());
+
+it('sends welcome email on registration', async () => {
+  await registerUser({ email: 'new@example.com' });
+  expect(sendEmail).toHaveBeenCalledOnce();
+  expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+    to: 'new@example.com',
+  }));
+});
+        ]]></code>
+      </example>
+    </section>
+    <section name="go-interface-based-mocking">
+      <rule>Go mocking is interface substitution — define a minimal interface, implement it in tests.</rule>
+      <rule>Use mockery for auto-generating mocks from interfaces; use manual mocks for simple cases.</rule>
+      <example type="good" title="Go interface mocking with manual mock">
+        <code lang="go"><![CDATA[
+// Define the interface in production code
+type Mailer interface {
+    Send(to, subject, body string) error
+}
+
+// Manual test mock
+type mockMailer struct {
+    calls []string
+    err   error
+}
+
+func (m *mockMailer) Send(to, subject, body string) error {
+    m.calls = append(m.calls, to)
+    return m.err
+}
+
+func TestUserService_Register(t *testing.T) {
+    mailer := &mockMailer{}
+    svc := NewUserService(mailer)
+    svc.Register("user@example.com")
+    if len(mailer.calls) != 1 || mailer.calls[0] != "user@example.com" {
+        t.Errorf("expected one email to user@example.com, got %v", mailer.calls)
+    }
+}
+        ]]></code>
+      </example>
+    </section>
+    <templates>
+      <template path="templates/over-mock-lint.py" purpose="Script to detect over-mocked test files in a Python project"/>
+    </templates>
+  </content>
+</methodology>
