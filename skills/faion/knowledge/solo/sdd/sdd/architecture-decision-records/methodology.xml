@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="architecture-decision-records">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd</domain>
+    <summary>ADRs capture architectural decisions with context, alternatives, and consequences. Store in version control with code, not wikis.</summary>
+    <category>sdd</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>architecture</tag>
+      <tag>decision-records</tag>
+      <tag>adr</tag>
+      <tag>nygard</tag>
+      <tag>documentation</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <applies-to>both</applies-to>
+  </metadata>
+
+  <content>
+    <title>Architecture Decision Records</title>
+
+    <summary>ADRs capture significant architectural decisions with context, alternatives, and consequences. They prevent tribal knowledge loss and stop the same debates from recurring. Store ADRs in version control with code, not in wikis. Keep each ADR to 1-2 pages. Status lifecycle: Proposed → Accepted → Deprecated | Superseded. Never alter an accepted ADR — create a new one to supersede it.</summary>
+
+    <why>
+      <p>Without ADRs, teams repeat the same architectural debates, new members lack context for existing design choices, and production incidents lack design rationale. ADRs are not design guides — they document the decision and why it was made, not how to implement it.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Choosing frameworks, databases, or major dependencies.</item>
+        <item>Breaking API changes that require consumer migration.</item>
+        <item>Adopting architectural patterns (microservices, event-driven, CQRS).</item>
+        <item>Quality attribute tradeoffs (security vs. performance, consistency vs. availability).</item>
+        <item>Cross-team decisions affecting multiple services.</item>
+        <item>Making implicit standards explicit.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Small, reversible decisions with low risk.</item>
+        <item>Implementation details that don't set a pattern.</item>
+        <item>Individual bug fixes or minor feature changes.</item>
+        <item>Items already covered by existing standards.</item>
+        <item>Single-developer, self-contained, minimal-risk choices.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="adr-structure">
+      <p>Nygard format fields, status lifecycle, immutability principle, and storage conventions.</p>
+
+      <section name="nygard-format">
+        <rule>
+          <statement>Every ADR must include: sequential number (NNNN), title, date, deciders, status, Context, Decision, and Consequences sections.</statement>
+          <rationale>The Nygard format is the minimum viable ADR. Skipping Context means future readers cannot evaluate whether the decision still applies. Skipping Consequences means risks are hidden.</rationale>
+        </rule>
+
+        <example type="good" title="Complete Nygard-format ADR">
+          <code lang="markdown"><![CDATA[# ADR-0001: Use PostgreSQL as primary database
+
+**Status:** Accepted
+**Date:** 2024-01-15
+**Deciders:** @ruslan, @arch-team
+
+## Context
+Service requires ACID transactions and JSON querying. Team has strong PostgreSQL expertise.
+SQLite ruled out due to write concurrency limits at expected scale.
+
+## Decision
+We will use PostgreSQL 16 as the primary database for all transactional data.
+
+## Alternatives Considered
+- **SQLite:** Rejected — no multi-process write concurrency.
+- **MongoDB:** Rejected — team unfamiliarity; no strong schema benefit here.
+
+## Consequences
+- Positive: ACID guarantees, mature ecosystem, team expertise.
+- Negative: Requires managed instance in prod (vs. embedded).
+- Risk: Schema migrations must be backward-compatible (mitigated by migration tooling).]]></code>
+        </example>
+      </section>
+
+      <section name="status-lifecycle">
+        <rule>
+          <statement>Use exactly these statuses: Proposed, Accepted, Rejected, Deprecated, Superseded. When superseding, add "Superseded by ADR-NNNN" to the old ADR's status field.</statement>
+          <rationale>Consistent status vocabulary lets tooling and agents filter active vs. historical decisions. Free-form status strings break filtering.</rationale>
+        </rule>
+
+        <rule>
+          <statement>Never modify the Context, Decision, or Consequences of an Accepted ADR. Only the Status field may be updated. Create a new ADR to record a changed decision.</statement>
+          <rationale>Immutability preserves the historical record. Editing an accepted ADR erases the original reasoning, which is the primary value of the document.</rationale>
+        </rule>
+      </section>
+
+      <section name="storage-convention">
+        <rule>
+          <statement>Store ADRs in version control at `docs/adr/NNNN-short-title.md`. Use 4-digit zero-padded numbers. Never reuse a number, even for superseded ADRs.</statement>
+          <rationale>Co-location with code ensures ADRs evolve with the codebase and are visible in pull requests. Wikis and Confluence pages drift out of sync.</rationale>
+        </rule>
+
+        <rule>
+          <statement>Keep ADRs to 1-2 pages. If the decision requires more explanation, put supplementary material in a linked design doc, not in the ADR body.</statement>
+          <rationale>Long ADRs are not read. The goal is a scannable record of the decision, not a comprehensive design guide.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="writing-process">
+      <p>Pre-writing gate, alternatives research requirements, quality checks, and agent-specific failure modes.</p>
+
+      <section name="pre-writing-gate">
+        <rule>
+          <statement>Before writing an ADR, verify: (1) decision has significant architectural impact, (2) decision is hard to reverse, (3) at least 2 alternatives have been considered. If none of these hold, use a code comment or commit message instead.</statement>
+          <rationale>ADR overhead is not justified for trivial decisions. Over-using ADRs dilutes the signal — teams stop reading them when every minor choice has one.</rationale>
+        </rule>
+      </section>
+
+      <section name="alternatives-research">
+        <rule>
+          <statement>Document at least 2 rejected alternatives with explicit rejection reasons. "Do nothing" counts as an alternative if it was genuinely considered.</statement>
+          <rationale>An ADR without alternatives is just an assertion. The value of documenting rejected options is preventing future re-debates of the same tradeoffs.</rationale>
+        </rule>
+
+        <antipattern>
+          <description>Agent writes ADR with only the chosen option and no alternatives section, or with alternatives that are clearly strawmen.</description>
+          <reason>LLMs default to validating the chosen option rather than steelmanning alternatives. Require the agent to explicitly argue for each alternative before explaining rejection. If an alternative has no strong case, it was not seriously considered.</reason>
+        </antipattern>
+      </section>
+
+      <section name="quality-checks">
+        <rule>
+          <statement>An ADR passes quality review when: a new team member could understand why the decision was made without any additional context, and all consequences (including negative ones) are listed.</statement>
+          <rationale>ADRs written for current insiders become useless within 6-12 months as context fades. Writing for future outsiders forces clarity.</rationale>
+        </rule>
+
+        <antipattern>
+          <description>Agent lists only positive consequences or downplays negative ones to make the decision look better.</description>
+          <reason>LLMs are trained to be helpful and tend to justify chosen options. Negative consequences are not failures — they are honest tradeoffs. Require the agent to list at least one negative consequence for any non-trivial decision.</reason>
+        </antipattern>
+      </section>
+
+      <section name="review-process">
+        <rule>
+          <statement>Use pull requests for ADR review. Set status to Proposed until at least one reviewer approves. Update status to Accepted only after merge.</statement>
+          <rationale>PR review creates a searchable discussion thread attached to the ADR, preserving objections and amendments alongside the final document.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <templates>
+      <template path="templates/adr-template.md" purpose="Nygard-format ADR stub (copy-paste)."/>
+      <template path="templates/new-adr.sh" purpose="Shell script to create next-numbered ADR file."/>
+    </templates>
+
+    <see-also>
+      <link href="https://adr.github.io/"/>
+      <link href="https://github.com/joelparkerhenderson/architecture-decision-record"/>
+      <link href="https://www.thoughtworks.com/radar/techniques/architecture-decision-records"/>
+    </see-also>
+  </content>
+</methodology>
