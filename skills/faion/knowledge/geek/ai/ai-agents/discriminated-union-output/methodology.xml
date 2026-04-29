@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="discriminated-union-output">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Model polymorphic structured output as a discriminated union — a tagged union where one literal field selects the branch and locks the JSON-Schema grammar.</summary>
+    <tags>
+      <tag>structured-output</tag>
+      <tag>discriminated-union</tag>
+      <tag>pydantic</tag>
+      <tag>json-schema</tag>
+      <tag>schema-design</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Discriminated-Union Structured Output</title>
+    <summary>When a structured-output schema must choose between two or more distinct shapes (different agent actions, different entity types, different intents, different events), model the output as a discriminated union — a tagged union where one literal field (kind, type, action) is generated FIRST and selects which branch the rest of the object must follow. The discriminator locks the JSON-Schema/grammar branch and turns shape selection into a single constrained-decoding choice instead of a probabilistic mess of optional fields.</summary>
+    <why>
+      <p>Pydantic, JSON Schema 2020-12, and OpenAI strict mode all support oneOf + a discriminator keyword that compiles into a finite-state grammar: once the model emits the discriminator literal, only the fields of the matching branch are reachable. This eliminates the two failure modes of "flat schema with all-optional fields" — silently mixing fields from different shapes, and ambiguity over which fields are required. It also gives parsers a single key to switch on, which mirrors algebraic-data-type pattern matching in the consumer code.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Agent action selection where each action has different required arguments (search vs fetch vs finish vs ask-user).</item>
+        <item>Polymorphic entity extraction (Person vs Company vs Product vs Address) from one document.</item>
+        <item>Router outputs that must dispatch to one of N downstream handlers.</item>
+        <item>Event logs / message buses where each event type has its own payload schema.</item>
+        <item>Multi-intent classification where every intent owns its own structured payload.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>All branches share more than ~90% of their fields — flatten with optional fields and a single kind literal instead, the union machinery costs more than it saves.</item>
+        <item>The set of branches is open (user-defined entity types, plug-in actions) — use a registry pattern with free-string kind plus a separate validation pass.</item>
+        <item>Targets that do not honour the discriminator keyword (older Outlines/XGrammar versions, custom GBNF grammars without union support) — fall back to two sequential calls (classify, then extract).</item>
+      </list>
+    </when-not-to-use>
+    <section name="Tagged unions with a literal discriminator">
+      <p>A discriminated union pairs each branch with a unique literal value of one shared field (commonly named kind, type, or action). Constrained decoders compile this into a finite-state grammar: emitting "kind": "search" makes only the search branch's fields reachable; the model cannot accidentally produce a url while inside a search action.</p>
+      <rule>
+        <statement>For every output where the model picks one of N distinct shapes, define each shape with a Literal[...] discriminator field, combine them with Annotated[A | B | C, Field(discriminator="kind")], and place the discriminator first in each branch model.</statement>
+        <rationale>Pydantic v2 emits oneOf + discriminator in the JSON schema; OpenAI strict mode and Outlines compile this into a grammar that prevents cross-branch field bleed, and parsers can switch on a single key.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[from typing import Annotated, Literal
+from pydantic import BaseModel, Field
+
+class SearchAction(BaseModel):
+    kind: Literal["search"] = "search"
+    query: str
+
+class FetchAction(BaseModel):
+    kind: Literal["fetch"] = "fetch"
+    url: str
+
+class FinishAction(BaseModel):
+    kind: Literal["finish"] = "finish"
+    summary: str
+
+class AgentTurn(BaseModel):
+    reasoning: str
+    action: Annotated[
+        SearchAction | FetchAction | FinishAction,
+        Field(discriminator="kind"),
+    ]]]></code>
+        <note>The kind literal is the only field shared across branches; once the model writes it, the rest of the action is locked to one shape.</note>
+      </example>
+      <example type="bad">
+        <code lang="python"><![CDATA[class AgentTurn(BaseModel):
+    reasoning: str
+    action_type: str           # free text — no grammar constraint
+    query: str | None = None   # field bleed
+    url: str | None = None     # field bleed
+    summary: str | None = None # field bleed]]></code>
+        <note>The model can emit any subset of optional fields. There is no guarantee that url is present when action_type == "fetch", and query+url may co-occur.</note>
+      </example>
+    </section>
+    <section name="Antipatterns when modelling polymorphic output">
+      <p>Common ways teams break discriminated unions: dropping the discriminator, putting it last, and over-using unions when branches are nearly identical.</p>
+      <antipattern>
+        <description>Declaring action: SearchAction | FetchAction | FinishAction without Field(discriminator="kind").</description>
+        <reason>Pydantic falls back to smart union mode and the JSON schema emits anyOf without a discriminator keyword. OpenAI strict mode then has to try every branch; with overlapping fields this either fails to compile or accepts cross-branch data.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Defining a branch as class SearchAction(BaseModel): query: str; kind: Literal["search"] = "search" — discriminator at the bottom.</description>
+        <reason>Order matters in autoregressive generation. With the literal at the end, the model must commit to query before it has chosen the branch, which defeats the grammar-locking benefit. Always declare the discriminator first.</reason>
+      </antipattern>
+      <rule>
+        <statement>The discriminator field must be the first field of every branch model.</statement>
+        <rationale>Constrained decoding only locks the schema branch once the discriminator literal is emitted; placing it first means subsequent fields are constrained from the very next token onwards.</rationale>
+      </rule>
+      <antipattern>
+        <description>Modelling EmailMessage vs SmsMessage as a discriminated union when both share recipient, body, sent_at, and only differ by one channel-specific field.</description>
+        <reason>Two near-identical branches double the schema size, double the prompt-cache footprint, and force the model to learn two shapes for one concept. Use a single model with a channel: Literal["email","sms"] discriminator and channel-specific optional fields instead.</reason>
+      </antipattern>
+      <rule>
+        <statement>If two branches share more than ~90 percent of their fields, collapse them into one model with a literal kind field and channel-specific optional fields, not into a discriminated union.</statement>
+        <rationale>The grammar advantage of unions is paid for by schema size; when the branches barely differ, the cost outweighs the benefit and the model picks the union arm at random.</rationale>
+      </rule>
+    </section>
+    <templates>
+      <template path="templates/agent_action_union.py" purpose="Pydantic discriminated union for an agent action selector (search / fetch / finish)."/>
+      <template path="templates/agent_action.schema.json" purpose="Equivalent JSON Schema 2020-12 with oneOf + discriminator for non-Python providers."/>
+    </templates>
+    <see-also>
+      <link href="https://docs.pydantic.dev/latest/concepts/unions/">Pydantic unions and discriminated unions.</link>
+      <link href="https://endjin.com/blog/json-schema-patterns-dotnet-pattern-matching-and-discriminated-unions">JSON-Schema patterns: discriminated unions and pattern matching.</link>
+      <link href="https://docs.pydantic.dev/latest/concepts/unions/#discriminated-unions">Pydantic guidance on when to use discriminated unions.</link>
+    </see-also>
+  </content>
+</methodology>

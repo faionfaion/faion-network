@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (discriminated-union-output, enum-constraints-closed-vocabularies, filesystem-as-working-memory; feature-045 batch O)
 - migrate: 3/3 methodologies → methodology.xml (unit-testing, array-items-wrapper-extraction, auto-evict-tool-results; feature-045 batch L)
 - migrate: 3/3 free/dev/testing-developer methodologies → methodology.xml (testing-javascript, testing-patterns, testing-pytest; feature-045 batch K)
 - migrate: 3/3 free/dev/testing-developer methodologies → methodology.xml (tdd-workflow, test-fixtures, testing-go; feature-045 batch J)
