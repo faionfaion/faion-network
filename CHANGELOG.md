@@ -15,6 +15,7 @@
 - migrate: 3/3 solo/dev/automation-tooling methodologies → methodology.xml (ab-testing-basics, ab-testing-implementation, best-practices-2026; feature-045 batch CV)
 - migrate: 3/3 API developer methodologies → methodology.xml (api-rate-limiting, api-rest-design, api-testing; feature-045 batch CT)
 - migrate: 3/3 pro/research/market-researcher methodologies → methodology.xml (continuous-discovery, distribution-channel-research, market-analysis; feature-045 batch DC)
+- migrate: 3/3 paths to methodology.xml (risk-assessment, playwright-automation, pnpm-package-management; feature-045 batch CZ)
 - migrate: 3/3 pro methodologies → methodology.xml (product-lifecycle, business-model-planning, business-model-research; feature-045 batch CE)
 - migrate: 3/3 solo/comms/communicator methodologies → methodology.xml (business-storytelling, conflict-resolution, difficult-conversations; feature-045 batch CO)
 - migrate: 3/3 pro pm/product methodologies → methodology.xml (resource-management, mlp-planning, portfolio-strategy; feature-045 batch CC)
