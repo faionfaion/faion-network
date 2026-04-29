@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="posttool-hook-self-correction">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Wire linters and typecheckers into PostToolUse hooks so validator failures appear to the agent as tool errors and trigger automatic corrections on the next turn.</summary>
+    <tags>
+      <tag>hooks</tag>
+      <tag>self-correction</tag>
+      <tag>validation</tag>
+      <tag>code-editing</tag>
+      <tag>feedback-loop</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>PostToolUse Hook as Self-Correction Loop</title>
+    <summary>Wire PostToolUse hooks (matcher "Write|Edit") to run linters, formatters, and typecheckers automatically after every file mutation. Hook stderr is fed back to the agent as a tool-result error message, so the model SEES the failure on its next turn and rewrites the bad change without needing a manual "now run lint" prompt. This turns a code-editing agent into a self-correcting loop using the deterministic hook layer instead of relying on the model to remember.</summary>
+    <why>
+      <p>Code-editing agents that "remember to run lint" are unreliable — the model omits the check exactly when it matters (long contexts, after a tricky edit). Wiring lint/typecheck into a PostToolUse hook makes the verification deterministic and invisible: the agent emits Write or Edit, the hook runs ruff check $CLAUDE_FILE_PATH, and on failure stderr is injected into the next turn as a tool-result error. The agent is fine-tuned to react to tool errors by retrying with corrections — so the hook converts a manual "lint then fix" cycle into one auto-corrected turn at zero prompt cost.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any code-editing agent run with Claude Code's hook system (Bash, Edit, Write tools).</item>
+        <item>CI bots and headless runs where no human is around to catch a missed lint.</item>
+        <item>Strict-format pipelines: doc generators that must obey markdownlint, JSON producers that must validate against a schema.</item>
+        <item>Prepush gates: typecheck on every Edit prevents shipping any or unused imports.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Read-only research agents — there's no mutation to validate, hooks add latency for nothing.</item>
+        <item>Slow validators (&gt;5s per call) — hook stalls every Edit; move slow checks to a background job and gate on commit instead.</item>
+        <item>Model-driven exploratory tasks where lint failures are expected mid-flight (refactors that span many files) — relax the hook with matcher: "" or scope it to specific paths.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Validator-as-feedback rule">
+      <p>The agent already knows how to react to a tool error: retry with a fix. PostToolUse hooks let you piggyback on that mechanic — every Write or Edit triggers a validator, and a non-zero exit code is fed back as the next turn's tool-result error message.</p>
+      <rule>
+        <statement>For every code-editing agent, configure a PostToolUse hook with matcher "Write|Edit" that runs the project's mandatory validator (ruff, eslint, tsc, pytest -x, schema validate) on the affected file. Failures must exit non-zero so stderr is surfaced to the agent.</statement>
+        <rationale>Hook stderr is wired by Claude Code into the next tool-result message. The model is RLHF-trained to react to tool errors by editing the previous output; the hook converts "ask the agent to lint" into "the agent sees lint failure and fixes it" with zero prompt overhead.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="json"><![CDATA[
+{
+  "hooks": {
+    "PostToolUse": [{
+      "matcher": "Write|Edit",
+      "hooks": [{
+        "type": "command",
+        "command": "ruff check --quiet $CLAUDE_FILE_PATH"
+      }]
+    }]
+  }
+}
+        ]]></code>
+        <note>Validator scoped to the mutated file; non-zero exit on lint failure flows back as tool error; agent self-corrects.</note>
+      </example>
+      <example type="bad">
+        <code lang="markdown"><![CDATA[
+You are a Python agent. After every edit, run `ruff check`
+on the file you changed and fix any errors before continuing.
+        ]]></code>
+        <note>Prompt-based instruction relies on the model remembering. Long contexts skip the check exactly when it matters.</note>
+      </example>
+      <antipattern>
+        <description>PostToolUse hook that runs the full project lint (ruff check .) instead of the changed file.</description>
+        <reason>Latency scales with project size, hook stalls every Edit, and unrelated pre-existing failures pollute the agent's view of its own change.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Slow validators (mypy strict on the whole repo, integration tests) wired as PostToolUse.</description>
+        <reason>Each Edit blocks for seconds-to-minutes — the agent thrashes and contexts blow up. Move slow checks to PreCommit or background tasks.</reason>
+      </antipattern>
+      <reference path="templates/settings.json">Reference settings.json wiring ruff (Python) and eslint+tsc (TypeScript) on Write|Edit.</reference>
+      <link href="https://code.claude.com/docs/en/hooks-guide">Claude Code Hooks guide — matcher syntax and exit-code semantics.</link>
+      <link href="https://platform.claude.com/docs/en/agent-sdk/hooks">Agent SDK hooks reference — programmatic hook registration.</link>
+    </section>
+    <section name="What the agent sees on failure">
+      <p>When the hook exits non-zero, Claude Code injects the captured stderr as a synthetic tool error attached to the just-completed Write/Edit. The agent's next turn receives this error in its message stream and proposes a corrective edit without a separate prompt.</p>
+      <list>
+        <item>Hook exit 0 — silent, agent continues as if nothing happened.</item>
+        <item>Hook exit non-zero — stderr surfaces as tool-result error, agent retries with fix.</item>
+        <item>Hook stdout is shown to the agent only via a structured tool result; prefer stderr for failure detail.</item>
+        <item>Set a per-hook timeout (default 60s) — long-running validators stall the loop.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/settings.json" purpose="Reference .claude/settings.json snippet wiring PostToolUse hooks for Python (ruff) and TypeScript (eslint+tsc)."/>
+    </templates>
+  </content>
+</methodology>
