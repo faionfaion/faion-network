@@ -1,0 +1,418 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="react-hooks">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>javascript-developer</domain>
+    <summary>Functional component patterns using React's built-in hooks — state, effects, memoization, refs, reducers, context, and reusable custom hook extraction.</summary>
+    <tags>
+      <tag>react</tag>
+      <tag>hooks</tag>
+      <tag>functional-components</tag>
+      <tag>state-management</tag>
+      <tag>context</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>React Hooks</title>
+    <summary>Functional component patterns using React's built-in hooks — state, effects, memoization, refs, reducers, context, and reusable custom hook extraction.</summary>
+    <why>
+      <p>Hooks are the only state/lifecycle mechanism in modern React. Misusing them (stale closures, missing cleanup, over-memoization, conditional calls) causes subtle bugs that are hard to diagnose.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>All functional components needing local state or side effects</item>
+        <item>Extracting reusable stateful logic into custom hooks</item>
+        <item>Performance optimization via memoization (with profiling first)</item>
+        <item>Sharing state across a component tree via Context</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Class components (use the React docs migration path)</item>
+        <item>Logic that belongs in a state manager (Zustand, TanStack Query) — don't replicate server cache or global UI state with local hooks</item>
+      </list>
+    </when-not-to-use>
+    <section name="useState and useRef Patterns">
+      <rule>
+        <statement>Update object state immutably via functional updater; use lazy initializer for expensive computations; prefer useReducer when state shape grows beyond 3 fields.</statement>
+        <rationale>Direct mutation does not trigger re-render; functional updater avoids stale-closure bugs; lazy initializer runs only on mount.</rationale>
+      </rule>
+      <example type="good" title="useState Patterns">
+        <code lang="typescript"><![CDATA[
+// Typed array state
+const [items, setItems] = useState<Item[]>([]);
+
+// Object state — immutable update
+const [user, setUser] = useState<User>({ name: '', email: '' });
+const updateName = (name: string) => setUser(prev => ({ ...prev, name }));
+
+// Lazy initializer — runs once on mount
+const [data, setData] = useState(() => computeExpensiveInitialValue());
+
+// Co-located loading/error/data triplet — signal to prefer useReducer
+const [isLoading, setIsLoading] = useState(false);
+const [error, setError] = useState<Error | null>(null);
+const [result, setResult] = useState<Data | null>(null);
+]]></code>
+      </example>
+      <rule>
+        <statement>Use useRef for DOM references, for mutable values that must not trigger re-renders, and for stable callback references; never read .current during render.</statement>
+        <rationale>Reading .current during render makes the component non-deterministic; useRef mutations are synchronous but outside React's reconciliation cycle.</rationale>
+      </rule>
+      <example type="good" title="useRef Patterns">
+        <code lang="typescript"><![CDATA[
+// DOM reference
+const inputRef = useRef<HTMLInputElement>(null);
+const focusInput = () => inputRef.current?.focus();
+// <input ref={inputRef} />
+
+// Mutable value — no re-render on change
+const renderCount = useRef(0);
+renderCount.current += 1;
+
+// Previous value pattern
+function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T>();
+  useEffect(() => { ref.current = value; }, [value]);
+  return ref.current;
+}
+
+// Stable callback (useEvent pattern) — avoids adding callback to effect deps
+function useEvent<T extends (...args: unknown[]) => unknown>(callback: T): T {
+  const ref = useRef(callback);
+  ref.current = callback;
+  return useCallback(((...args) => ref.current(...args)) as T, []);
+}
+]]></code>
+      </example>
+      <antipattern>
+        <description>Reading ref.current inside JSX or during the render function body.</description>
+        <reason>The value may differ between React's two rendering passes (Concurrent Mode), causing visual inconsistencies.</reason>
+      </antipattern>
+    </section>
+    <section name="useEffect Patterns">
+      <rule>
+        <statement>Always return a cleanup function from effects that subscribe to external resources; never define the async function inline — define it inside and call it.</statement>
+        <rationale>Without cleanup, effects accumulate subscriptions on every render cycle, causing memory leaks. Async inline effects cannot return a cleanup because async functions return a Promise, not a function.</rationale>
+      </rule>
+      <example type="good" title="Effect Cleanup">
+        <code lang="typescript"><![CDATA[
+useEffect(() => {
+  const subscription = api.subscribe(handleUpdate);
+  return () => subscription.unsubscribe();
+}, [handleUpdate]);
+]]></code>
+      </example>
+      <example type="good" title="Data Fetching with AbortController">
+        <code lang="typescript"><![CDATA[
+// Data fetching with abort — prevents state update after unmount
+useEffect(() => {
+  const controller = new AbortController();
+
+  async function fetchData() {
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      const data = await response.json();
+      setData(data);
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') {
+        setError(error);
+      }
+    }
+  }
+
+  fetchData();
+  return () => controller.abort();
+}, [url]);
+]]></code>
+      </example>
+      <rule>
+        <statement>Use a callbackRef to attach event listeners with an empty dependency array when the handler needs access to the latest props or state without re-registering on every change.</statement>
+        <rationale>Re-registering event listeners on every render is wasteful; the ref always holds the latest value without being a dependency.</rationale>
+      </rule>
+      <example type="good" title="Stable Event Listener Pattern">
+        <code lang="typescript"><![CDATA[
+const callbackRef = useRef(callback);
+callbackRef.current = callback;
+
+useEffect(() => {
+  const handler = () => callbackRef.current();
+  window.addEventListener('resize', handler);
+  return () => window.removeEventListener('resize', handler);
+}, []); // empty deps OK — handler accesses latest callback via ref
+]]></code>
+      </example>
+      <antipattern>
+        <description>Omitting a variable from the dependency array to avoid re-running the effect — fixing with a functional state updater instead.</description>
+        <reason>Stale closure: the effect captures an old value of count. Use the functional updater form to read the current value without declaring it as a dependency.</reason>
+      </antipattern>
+      <example type="bad" title="Stale Closure Antipattern">
+        <code lang="typescript"><![CDATA[
+// BAD — stale count inside interval
+useEffect(() => {
+  const timer = setInterval(() => {
+    setCount(count + 1); // count is stale
+  }, 1000);
+  return () => clearInterval(timer);
+}, []); // missing count
+]]></code>
+      </example>
+      <example type="good" title="Using Functional Updater">
+        <code lang="typescript"><![CDATA[
+// GOOD — functional updater avoids stale closure
+useEffect(() => {
+  const timer = setInterval(() => {
+    setCount(prev => prev + 1);
+  }, 1000);
+  return () => clearInterval(timer);
+}, []);
+]]></code>
+      </example>
+      <antipattern>
+        <description>Passing an object or array literal as a dependency — it creates a new reference every render, causing the effect to re-run continuously.</description>
+        <reason>Object identity comparison: {} !== {} even with equal contents. Use primitive deps or memoize the object with useMemo.</reason>
+      </antipattern>
+      <example type="bad" title="Object Dependency Antipattern">
+        <code lang="typescript"><![CDATA[
+// BAD — options is a new object every render
+useEffect(() => { fetchData(options); }, [options]);
+]]></code>
+      </example>
+      <example type="good" title="Primitive Dependencies">
+        <code lang="typescript"><![CDATA[
+// GOOD — primitive deps
+useEffect(() => { fetchData({ page, limit }); }, [page, limit]);
+]]></code>
+      </example>
+    </section>
+    <section name="useCallback, useMemo, and useReducer">
+      <rule>
+        <statement>Apply useCallback only to functions passed as props to memoized children or as effect dependencies; apply useMemo only to computations that are demonstrably slow under profiling or that stabilize object references for effect deps.</statement>
+        <rationale>Both hooks add overhead (extra memory + comparison on every render). Premature memoization makes code harder to read without measurable benefit.</rationale>
+      </rule>
+      <example type="good" title="useCallback and useMemo">
+        <code lang="typescript"><![CDATA[
+// useCallback — stable reference for memoized child or effect dep
+const handleClick = useCallback((id: string) => {
+  setSelectedId(id);
+}, []);
+
+const handleSubmit = useCallback(async (data: FormData) => {
+  await api.submit(userId, data);
+  onSuccess();
+}, [userId, onSuccess]);
+
+// useMemo — expensive sort, runs only when items changes
+const sortedItems = useMemo(
+  () => [...items].sort((a, b) => a.name.localeCompare(b.name)),
+  [items],
+);
+
+// useMemo — stabilize object reference used as effect dep
+const options = useMemo(() => ({ endpoint: '/api', timeout: 5000 }), []);
+]]></code>
+      </example>
+      <antipattern>
+        <description>Wrapping cheap calculations in useMemo.</description>
+        <reason>The memoization overhead exceeds the cost of the computation; just calculate inline.</reason>
+      </antipattern>
+      <example type="bad">
+        <code lang="typescript"><![CDATA[
+const doubled = useMemo(() => count * 2, [count]); // unnecessary
+]]></code>
+      </example>
+      <example type="good">
+        <code lang="typescript"><![CDATA[
+const doubled = count * 2; // just compute it
+]]></code>
+      </example>
+      <rule>
+        <statement>Prefer useReducer over multiple useState calls when state fields change together or when the next state depends on the previous state across multiple transitions.</statement>
+        <rationale>A reducer co-locates all state transitions in one function, making it easier to test and reason about, and eliminates race conditions from interleaved setState calls.</rationale>
+      </rule>
+      <example type="good" title="useReducer for Complex State">
+        <code lang="typescript"><![CDATA[
+type State = {
+  items: Item[];
+  isLoading: boolean;
+  error: Error | null;
+};
+
+type Action =
+  | { type: 'FETCH_START' }
+  | { type: 'FETCH_SUCCESS'; payload: Item[] }
+  | { type: 'FETCH_ERROR'; payload: Error }
+  | { type: 'ADD_ITEM'; payload: Item }
+  | { type: 'REMOVE_ITEM'; payload: string };
+
+const initialState: State = { items: [], isLoading: false, error: null };
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'FETCH_START':
+      return { ...state, isLoading: true, error: null };
+    case 'FETCH_SUCCESS':
+      return { ...state, isLoading: false, items: action.payload };
+    case 'FETCH_ERROR':
+      return { ...state, isLoading: false, error: action.payload };
+    case 'ADD_ITEM':
+      return { ...state, items: [...state.items, action.payload] };
+    case 'REMOVE_ITEM':
+      return { ...state, items: state.items.filter(i => i.id !== action.payload) };
+    default:
+      return state;
+  }
+}
+
+function ItemList() {
+  const [state, dispatch] = useReducer(reducer, initialState);
+
+  useEffect(() => {
+    dispatch({ type: 'FETCH_START' });
+    fetchItems()
+      .then(items => dispatch({ type: 'FETCH_SUCCESS', payload: items }))
+      .catch(error => dispatch({ type: 'FETCH_ERROR', payload: error }));
+  }, []);
+}
+]]></code>
+      </example>
+    </section>
+    <section name="Custom Hooks and Context Provider Pattern">
+      <rule>
+        <statement>Name custom hooks with the use prefix; return a typed interface (not a tuple unless it mirrors useState); declare the return interface explicitly above the hook.</statement>
+        <rationale>A named interface makes the hook's contract visible at the call site and prevents callers from relying on positional tuple indices that break on refactoring.</rationale>
+      </rule>
+      <example type="good" title="Custom Hook Shape">
+        <code lang="typescript"><![CDATA[
+interface UseFetchResult<T> {
+  data: T | null;
+  isLoading: boolean;
+  error: Error | null;
+  refetch: () => Promise<void>;
+}
+
+function useFetch<T>(url: string): UseFetchResult<T> {
+  const [data, setData] = useState<T | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      setData(await response.json());
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Unknown error'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [url]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  return { data, isLoading, error, refetch: fetchData };
+}
+
+// Usage
+const { data: user, isLoading, error } = useFetch<User>('/api/user/1');
+]]></code>
+      </example>
+      <example type="good" title="useDebounce Hook">
+        <code lang="typescript"><![CDATA[
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+// Usage — search input debounced 300 ms
+function SearchInput() {
+  const [query, setQuery] = useState('');
+  const debouncedQuery = useDebounce(query, 300);
+
+  useEffect(() => {
+    if (debouncedQuery) performSearch(debouncedQuery);
+  }, [debouncedQuery]);
+
+  return <input value={query} onChange={e => setQuery(e.target.value)} />;
+}
+]]></code>
+      </example>
+      <rule>
+        <statement>Initialize Context with null and throw a descriptive error in the consumer hook when the value is null; wrap the mutable value in useMemo so consumers do not re-render on every provider render.</statement>
+        <rationale>A null sentinel makes it impossible to consume context outside its provider without a silent bug. Memoizing the value object prevents all consumers from re-rendering when an unrelated piece of provider state changes.</rationale>
+      </rule>
+      <example type="good" title="Context Provider with Hook">
+        <code lang="typescript"><![CDATA[
+interface AuthContextValue {
+  user: User | null;
+  isAuthenticated: boolean;
+  login: (credentials: Credentials) => Promise<void>;
+  logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+
+  const login = useCallback(async (credentials: Credentials) => {
+    const user = await authApi.login(credentials);
+    setUser(user);
+  }, []);
+
+  const logout = useCallback(() => {
+    authApi.logout();
+    setUser(null);
+  }, []);
+
+  const value = useMemo(
+    () => ({ user, isAuthenticated: user !== null, login, logout }),
+    [user, login, logout],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth(): AuthContextValue {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  return context;
+}
+]]></code>
+      </example>
+      <antipattern>
+        <description>Calling hooks conditionally based on a prop or runtime flag.</description>
+        <reason>React relies on a stable hook call order across renders. Conditional hooks violate the Rules of Hooks and cause runtime errors.</reason>
+      </antipattern>
+      <example type="bad">
+        <code lang="typescript"><![CDATA[
+function Component({ enabled }: { enabled: boolean }) {
+  if (enabled) {
+    const [value, setValue] = useState(''); // Error!
+  }
+}
+]]></code>
+      </example>
+      <example type="good">
+        <code lang="typescript"><![CDATA[
+function Component({ enabled }: { enabled: boolean }) {
+  const [value, setValue] = useState('');
+  if (!enabled) return null;
+  return <input value={value} onChange={e => setValue(e.target.value)} />;
+}
+]]></code>
+      </example>
+    </section>
+  </content>
+</methodology>
