@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-error-handling-patterns">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Centralize sentinel errors in apperror, wrap with fmt.Errorf, use errors.Is/As, map errors at transport edge, log once. Enforce with errcheck, errorlint, wrapcheck.</summary>
+    <tags>
+      <tag>go</tag>
+      <tag>error-handling</tag>
+      <tag>best-practices</tag>
+      <tag>testing</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Go Error Handling Patterns</title>
+    <summary>Go error handling convention for services: define sentinel errors in one apperror package; wrap with fmt.Errorf("op: %w", err); check errors with errors.Is/As, never ==; map domain errors to HTTP/gRPC codes only at transport edge; log once at boundary, never log-and-return.</summary>
+    <why>
+      <p>Bare errors.New("failed") without context makes stack traces useless in production. %v formats without wrapping — errors.Is cannot traverse chain. Logging + returning creates duplicate Sentry events. Centralizing sentinels in apperror makes domain error contract explicit.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing error contracts for new Go services</item>
+        <item>Refactoring legacy Go code with bare errors</item>
+        <item>Auditing for double-wrapping or missing errors.Is checks</item>
+        <item>Mapping domain errors to HTTP status codes</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Quick scripts where log.Fatal is acceptable</item>
+        <item>One-shot migration scripts where error taxonomy is overkill</item>
+      </list>
+    </when-not-to-use>
+    <rule>
+      <statement>Wrap every error with operation name using fmt.Errorf("operation_name: %w", err). Use %w not %v.</statement>
+      <rationale>%v formats but does not wrap, making errors.Is traversal impossible. %w preserves the chain.</rationale>
+    </rule>
+    <rule>
+      <statement>Define sentinel errors in one apperror package per service. Repository wraps low-level errors into domain sentinels.</statement>
+      <rationale>Preventing sql.ErrNoRows leak into business logic keeps domain transport-agnostic.</rationale>
+    </rule>
+    <rule>
+      <statement>Always use errors.Is to compare sentinels. Never use == to compare errors.</statement>
+      <rationale>== fails on wrapped errors. errors.Is traverses the entire chain.</rationale>
+    </rule>
+    <rule>
+      <statement>Log errors once at the outermost boundary. Never log-and-return.</statement>
+      <rationale>Log-and-return creates 3 Sentry events for one failure through a 3-layer call chain.</rationale>
+    </rule>
+    <templates>
+      <template path="templates/apperror.go" purpose="Sentinel errors, AppError type, HTTP mapping"/>
+      <template path="templates/golangci.yml" purpose="Lint config with errcheck, errorlint, wrapcheck"/>
+    </templates>
+    <see-also>
+      <link href="https://go.dev/blog/go1.13-errors">Go blog: Working with Errors in Go 1.13</link>
+      <link href="https://github.com/cockroachdb/errors">Cockroach error library with stack traces</link>
+    </see-also>
+  </content>
+</methodology>

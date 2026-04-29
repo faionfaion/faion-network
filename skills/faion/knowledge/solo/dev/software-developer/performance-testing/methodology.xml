@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="performance-testing">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Validate applications meet latency, throughput, stability under realistic load. Covers load, stress, spike, endurance tests with k6/Locust and CI budget gates.</summary>
+    <tags>
+      <tag>performance</tag>
+      <tag>load-testing</tag>
+      <tag>benchmarking</tag>
+      <tag>profiling</tag>
+      <tag>optimization</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Performance Testing</title>
+    <summary>A discipline for validating that applications meet latency, throughput, and stability targets under realistic load. Covers five test types (load, stress, spike, endurance, scalability), micro-benchmarking with pytest-benchmark, macro load testing with k6/Locust, profiling with py-spy, and CI budget gates that fail PRs on regression.</summary>
+    <why>
+      <p>Without baselines and automated gates, performance regressions ship silently. Measuring before optimizing prevents wasted effort; coordinated-omission-corrected tools (k6, wrk2, vegeta) surface true tail latency that averages hide. Budget enforcement in CI converts one-off tests into permanent protection.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Pre-launch validation: API must hold expected RPS at acceptable latency.</item>
+        <item>Regression gates after major refactors (ORM swap, query rewrite, caching change).</item>
+        <item>Baseline establishment for SLOs (p95 less than 300 ms, error rate less than 1%).</item>
+        <item>Capacity planning before scaling infra.</item>
+        <item>Endurance soak tests for memory leaks in long-running services.</item>
+        <item>Comparing two implementations (orjson vs json, sync vs async ORM).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pre-MVP code — premature optimization wastes effort.</item>
+        <item>One-off scripts or batch jobs without a latency contract.</item>
+        <item>Pure UI components without measurable backend interactions.</item>
+        <item>Without a staging environment that mirrors prod data volume — results are misleading.</item>
+        <item>When the bottleneck is obvious (a single N+1 query EXPLAIN shows clearly).</item>
+      </list>
+    </when-not-to-use>
+    <section name="Test-Type-Definitions">
+      <rule>
+        <statement>Always define an SLO (p50, p95, p99 latency, RPS, error rate ceiling) before running any test. Get human approval on the SLO numbers — they are product/business decisions.</statement>
+        <rationale>Measuring without a target produces data with no pass/fail verdict. SLO numbers encode business risk tolerance and must not be set unilaterally by an agent.</rationale>
+      </rule>
+      <rule>
+        <statement>Establish a baseline on a stable build and commit it to .perf/baseline.json before any optimization work begins.</statement>
+        <rationale>Without a baseline, regressions and improvements are undetectable. Baseline must include git SHA, environment, and dataset size as metadata.</rationale>
+      </rule>
+      <section name="Load-Test">
+        <p>Purpose: verify system under expected steady-state load. Duration: extended (hours). Users: normal to peak expected concurrency. Pass criterion: all SLO thresholds met throughout.</p>
+      </section>
+      <section name="Stress-Test">
+        <p>Purpose: find the breaking point. Duration: until failure. Users: beyond maximum capacity. Pass criterion: system degrades gracefully (errors, not data corruption).</p>
+      </section>
+      <section name="Spike-Test">
+        <p>Purpose: test sudden load increases. Duration: short bursts. Users: sudden jump from low to high. Pass criterion: system recovers to baseline latency within N seconds after spike.</p>
+      </section>
+      <section name="Endurance-Test-Soak">
+        <p>Purpose: surface memory leaks and resource exhaustion. Duration: 8-72 hours. Users: normal load sustained. Pass criterion: RSS, heap, and FD counts stable throughout.</p>
+      </section>
+      <section name="Scalability-Test">
+        <p>Purpose: verify horizontal/vertical scaling headroom. Duration: varied. Users: incrementally increasing. Pass criterion: linear throughput scaling with added replicas.</p>
+      </section>
+    </section>
+    <section name="Tooling-Rules">
+      <rule>
+        <statement>Use coordinated-omission-corrected tools (k6, wrk2, vegeta) for load tests. Never use tools that issue the next request only after the previous response (Apache Bench, naive scripts) — they underreport tail latency.</statement>
+        <rationale>Non-corrected tools synchronize request rate to server speed, hiding queuing delay. Real clients do not wait politely.</rationale>
+      </rule>
+      <rule>
+        <statement>Run load tests on a staging environment with production-equivalent data volume. Never draw conclusions from local-machine runs or empty-database tests.</statement>
+        <rationale>Empty DBs produce optimistic query plans. Local machines have different CPU governor, network, and I/O than production servers.</rationale>
+      </rule>
+      <rule>
+        <statement>Warm the cache and JIT for at least 60 seconds before recording results. Discard the ramp-up window from metrics.</statement>
+        <rationale>First-run results include import cost, JIT compilation, and cold cache fills. They are not representative of steady-state performance.</rationale>
+      </rule>
+    </section>
+    <section name="Pytest-Benchmark">
+      <rule>
+        <statement>Use pytest-benchmark for comparing two implementations (e.g., orjson vs json, sync vs async ORM). Require at least 3 rounds and report mean ± stdev. Never accept a single-run result as evidence.</statement>
+        <rationale>Single runs include JIT warmup, OS scheduling noise, and cache effects. Statistical rounds filter transient outliers.</rationale>
+      </rule>
+      <example type="good" title="Comparing serialization libraries">
+        <code lang="python"><![CDATA[import json
+import orjson
+import pytest
+
+def test_json_serialization(benchmark):
+    data = {"users": [{"id": i, "name": f"User {i}"} for i in range(1000)]}
+    result = benchmark.pedantic(lambda: orjson.dumps(data), iterations=100, rounds=10)
+    assert result  # non-empty bytes
+
+def test_json_stdlib(benchmark):
+    data = {"users": [{"id": i, "name": f"User {i}"} for i in range(1000)]}
+    result = benchmark.pedantic(lambda: json.dumps(data), iterations=100, rounds=10)
+    assert result
+
+# Run: pytest --benchmark-compare --benchmark-only]]></code>
+      </example>
+    </section>
+    <section name="Profiling-with-py-spy">
+      <rule>
+        <statement>Use py-spy record (sampling profiler, no instrumentation) for profiling live services. Never run cProfile (deterministic, 10-30% overhead) simultaneously with a load test.</statement>
+        <rationale>Deterministic profilers change the timing they measure. py-spy attaches to a running PID with negligible overhead and produces flame graphs from real load.</rationale>
+      </rule>
+      <example type="good" title="py-spy commands">
+        <code lang="bash"><![CDATA[# Record flame graph for running process
+py-spy record -o profile.svg --pid <PID> --duration 60
+
+# Live top-like view
+py-spy top --pid <PID>
+
+# View SVG in browser (or use speedscope)]]></code>
+      </example>
+    </section>
+    <section name="Database-Query-Profiling">
+      <rule>
+        <statement>Log every SQL query that exceeds 100 ms. Detect N+1 patterns by counting queries per request in tests and asserting the count is below a threshold (e.g., less than 5 queries for a list of 10 items).</statement>
+        <rationale>N+1 queries are the most common source of latency spikes and invisible to request-level metrics unless explicitly counted.</rationale>
+      </rule>
+      <example type="good" title="SQLAlchemy slow-query event hook">
+        <code lang="python"><![CDATA[import time
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+
+@event.listens_for(Engine, "before_cursor_execute")
+def before_execute(conn, cursor, statement, parameters, context, executemany):
+    conn.info.setdefault("query_start_time", []).append(time.perf_counter())
+
+@event.listens_for(Engine, "after_cursor_execute")
+def after_execute(conn, cursor, statement, parameters, context, executemany):
+    total = time.perf_counter() - conn.info["query_start_time"].pop()
+    if total > 0.1:
+        import logging
+        logging.warning("SLOW QUERY (%.3fs): %s", total, statement[:120])]]></code>
+      </example>
+    </section>
+    <section name="Antipatterns">
+      <antipattern>
+        <description>Running a load test without a committed baseline.</description>
+        <reason>Without a baseline, there is no definition of regression. Every result is the current state with no directional signal.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Skipping warm-up: recording metrics from the first 60 seconds of a run.</description>
+        <reason>First-run results include JIT compilation, cold cache fills, and DB query planner stats. They are not representative of steady-state performance and inflate tail latency figures.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Running cProfile or a deterministic profiler concurrently with a load test.</description>
+        <reason>Deterministic profilers add 10-30% overhead, distorting both the load test results and the profile. Profile separately under a low-concurrency synthetic load.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Testing only on the local machine instead of a staging environment.</description>
+        <reason>Local machines have different CPU governor, network latency, and I/O characteristics. Results are not portable to production. Conclusions drawn from local runs routinely fail to reproduce on staging.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LLM agent reports "fast" based on a single 5-second run.</description>
+        <reason>A single run has no statistical validity. Require N greater than or equal to 3 runs, report mean ± stdev, and assert stdev / mean less than 0.1 before accepting a result as stable.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using time.time() instead of time.perf_counter() for sub-millisecond timing.</description>
+        <reason>time.time() is not monotonic and has platform-dependent resolution (up to 10 ms on some systems). time.perf_counter() is monotonic and high-resolution.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Async benchmark awaiting tasks sequentially instead of concurrently.</description>
+        <reason>Agents generate sequential await chains in async benchmarks, testing serialized latency instead of concurrent throughput. Use asyncio.gather() to simulate real concurrent load.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic-Workflow">
+      <p>Drive perf work as: (1) define SLO/budget upfront (latency p95, RPS, error rate), (2) establish baseline on stable build, (3) run targeted scenarios (load / spike / soak), (4) collect metrics + flame graphs, (5) identify top-N bottlenecks, (6) fix one at a time, re-test, (7) commit budgets to CI as gates. Agents should never "optimize blindly" — every change requires before/after numbers in the commit body. Use pytest-benchmark --benchmark-compare for micro, k6/Locust for macro, py-spy/pprof for flame graphs.</p>
+    </section>
+    <section name="Recommended-Subagents">
+      <list>
+        <item>faion-sdd-executor-agent — wraps perf work under SDD gates, enforces baseline-fix-retest loop.</item>
+        <item>faion-software-architect-agent — picks scenarios + interprets bottlenecks (DB, network, CPU, GC).</item>
+        <item>faion-browser-agent — drives k6/Lighthouse from CLI.</item>
+        <item>faion-feature-executor — orchestrates baseline → optimize → verify as discrete tasks.</item>
+      </list>
+    </section>
+    <section name="CLI-Tools">
+      <p>k6 — Modern JS-script load testing. Docs: https://k6.io/docs</p>
+      <p>locust — Python load testing, web UI. Install: pip install locust</p>
+      <p>wrk / wrk2 — Constant-rate HTTP benchmarking. Install: apt install wrk</p>
+      <p>hey — Lightweight Apache Bench replacement. Install: go install github.com/rakyll/hey</p>
+      <p>vegeta — Constant-RPS, JSON+plot output. Install: go install github.com/tsenart/vegeta</p>
+      <p>pytest-benchmark — Python micro-benchmarks with stats. Install: pip install pytest-benchmark</p>
+      <p>py-spy — Sampling profiler for Python (no instrumentation). Install: pip install py-spy</p>
+      <p>pprof (Go) — CPU + memory profiling. Bundled in Go</p>
+      <p>perf / flamegraph.pl — Linux perf events → flamegraph. Install: apt install linux-tools</p>
+      <p>lighthouse — Web Vitals + perf audit. Install: npm i -g lighthouse</p>
+      <p>sitespeed.io — Web perf + browser metrics. Install: npm i -g sitespeed.io</p>
+      <p>criterion.rs — Rust micro-benchmark with stats. Add: cargo add criterion</p>
+      <p>hyperfine — Shell command benchmark with warmup. Install: cargo install hyperfine</p>
+    </section>
+    <section name="Services-and-Apps">
+      <p>Grafana k6 Cloud (SaaS) — Distributed runners + dashboards. Agent-friendly via CLI.</p>
+      <p>Grafana Cloud / OSS (SaaS+OSS) — Pair with Prometheus/Loki for live dashboards during runs.</p>
+      <p>Datadog APM / NR APM (SaaS) — Trace + flamegraph during load tests. Agent-friendly via agents + API.</p>
+      <p>Sentry Performance (SaaS) — Spans + p95 latency tracking from prod.</p>
+      <p>BlazeMeter (SaaS) — Hosted JMeter / Gatling / Taurus.</p>
+      <p>Speedscope (OSS) — Local flame graph viewer for py-spy/pprof outputs.</p>
+      <p>Pyroscope (Grafana, OSS+SaaS) — Continuous profiling, low overhead.</p>
+      <p>Lighthouse CI Server (OSS) — Self-host LHCI; budget enforcement on PRs.</p>
+      <p>WebPageTest (SaaS+OSS) — Real-browser, multi-region, network throttling. Agent-friendly via API.</p>
+    </section>
+    <section name="Best-Practices">
+      <list>
+        <item>Baseline before optimizing — commit a .perf/baseline.json per environment.</item>
+        <item>Test prod-like data volume; empty DBs lie about query plans.</item>
+        <item>Warm caches before measuring; first 30-60s of a run is throwaway.</item>
+        <item>Separate latency from throughput — fix latency first, then push RPS.</item>
+        <item>Always use coordinated-omission-corrected tools (wrk2, vegeta, k6) for true tail latency.</item>
+        <item>Pin all client-side perf tooling versions in CI; output formats change.</item>
+        <item>Annotate runs with git SHA + env + dataset size — comparison is meaningless without context.</item>
+        <item>Profile with py-spy record (sampling) over cProfile (deterministic, slow) for live services.</item>
+        <item>Flame graphs greater than flat profiles: flat profiles miss call-graph context.</item>
+        <item>Run soak tests overnight (8h+) to surface memory leaks; track RSS over time.</item>
+        <item>Track p99/p999 — averages hide tail; tails are what users feel during outage.</item>
+        <item>Budget enforcement in CI: fail PR if p95 regresses more than 5%.</item>
+      </list>
+    </section>
+    <section name="AI-Agent-Gotchas">
+      <list>
+        <item>LLMs report "fast" based on a single 5-second run; require N=3+ runs and stats (mean ± stdev).</item>
+        <item>Agents conflate time.time() with monotonic — use time.perf_counter() / process_time_ns().</item>
+        <item>Generated benchmarks often forget warm-up; first iteration includes import/JIT cost.</item>
+        <item>Async benchmarks: agents await sequentially when concurrency is the point — verify with asyncio.gather.</item>
+        <item>Profilers + load tests at once skew results; agents enable both. Force serial: profile small load, then load test without profiler.</item>
+        <item>LLMs add print() inside hot loops "for debugging" — kills perf and pollutes logs. Run with T20 ruff rule.</item>
+        <item>Async ORM regressions: agent "optimizes" with cache, but cache layer adds round-trip on cold path; require A/B with cache disabled.</item>
+        <item>Human-in-loop checkpoint: SLO numbers — they're product/business decisions, not technical. Agent suggests, human ratifies.</item>
+        <item>Agents draw conclusions from local-machine runs; remind them prod has different CPU governor, network, IO. Always verify on staging.</item>
+        <item>"Performance bug" vs "performance feature": agents will optimize a rarely-used endpoint and ignore the hot one. Prioritize by RPS × latency.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/k6-scenario.js" purpose="k6 script with steady + spike scenarios and SLO thresholds"/>
+    </templates>
+    <scripts>
+      <script path="scripts/perf-gate.py" purpose="Compare current metrics vs baseline JSON; exit 1 on regression greater than 5%"/>
+    </scripts>
+    <see-also>
+      <link href="https://k6.io/docs">k6 docs</link>
+      <link href="https://docs.locust.io">Locust docs</link>
+      <link href="https://pytest-benchmark.readthedocs.io">pytest-benchmark</link>
+      <link href="https://github.com/benfred/py-spy">py-spy</link>
+      <link href="https://www.brendangregg.com/flamegraphs.html">Brendan Gregg flame graphs</link>
+      <link href="https://web.dev/vitals/">Web Vitals</link>
+      <link href="http://www.azulsystems.com/presentation/javaone-2013-bof-jvm-performance/4-systems-performance-mistakes">Coordinated omission</link>
+      <link href="https://pyroscope.io/docs/">Pyroscope</link>
+      <link href="https://grafana.com/blog/2024/02/27/k6-tracing/">Grafana k6 + tracing</link>
+    </see-also>
+  </content>
+</methodology>

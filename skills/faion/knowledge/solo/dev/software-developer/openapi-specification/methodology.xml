@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="openapi-specification">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>OpenAPI 3.1 single source of truth for HTTP/JSON APIs with canonical spec, $ref schemas, operationId per operation, and CI gates blocking breaking changes.</summary>
+    <tags>
+      <tag>openapi</tag>
+      <tag>rest-api</tag>
+      <tag>api-design</tag>
+      <tag>specification</tag>
+      <tag>documentation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>OpenAPI Specification</title>
+    <summary>OpenAPI 3.1 as the single source of truth for HTTP/JSON APIs: one canonical openapi.yaml at repo root, all schemas and error responses under components/ referenced via $ref, mandatory operationId on every operation, and CI gates (Spectral lint + oasdiff breaking-change check) that block merges introducing undocumented or breaking changes.</summary>
+    <why>
+      <p>API documentation drifts from implementation within days unless the spec is machine-checked. A single spec enables typed client SDK generation across languages, mock servers for FE/BE parallel development, contract tests (schemathesis), and automated breaking-change detection — all from one file. Duplicated schemas and missing required arrays are the top two sources of generated-client bugs.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing a new HTTP/JSON API where clients, servers, mocks, tests, and docs must stay in sync.</item>
+        <item>Generating typed clients (TS, Python, Go) instead of hand-writing N SDKs.</item>
+        <item>Contract-first work between FE and BE where one side is agent-built.</item>
+        <item>Documenting an existing API before refactor.</item>
+        <item>Public API surface where SDK generation and developer docs are expected.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure internal RPCs between trusted services — use Protobuf/gRPC/tRPC; OpenAPI adds ceremony for no gain.</item>
+        <item>GraphQL APIs — schema is the contract; OpenAPI is irrelevant.</item>
+        <item>Event-driven / pub-sub — use AsyncAPI instead.</item>
+        <item>Tiny one-endpoint webhook receivers — overhead exceeds value.</item>
+        <item>Server-driven UI payloads over a stream, not REST.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Core-Structure-Rules">
+      <rule>
+        <statement>Keep one canonical openapi.yaml at the repo root. Use redocly bundle for distribution. Never commit split/dereferenced copies alongside the source.</statement>
+        <rationale>Multiple copies diverge immediately. One source + one bundle command keeps them in sync. CI must verify the bundled output matches the source on every PR.</rationale>
+      </rule>
+      <rule>
+        <statement>Set operationId on every operation in kebab-case or camelCase, globally unique. Code generators key client method names off operationId; missing or duplicate IDs produce broken client code.</statement>
+        <rationale>Without operationId, generators produce method names from path + verb which are verbose and change on path rename. operationId provides a stable contract surface.</rationale>
+      </rule>
+      <rule>
+        <statement>Put every reusable schema under components/schemas, every reusable error under components/responses, every reusable parameter under components/parameters. Reference via $ref. Never inline the same schema in two places.</statement>
+        <rationale>Duplicated schemas drift. When the canonical schema changes, only the components/ version is updated; inlined copies stay stale and produce incorrect generated clients.</rationale>
+      </rule>
+    </section>
+    <section name="Schemas">
+      <rule>
+        <statement>Every object schema must include an explicit required array listing all non-optional properties. Missing required array makes the generated TypeScript type Partial everywhere.</statement>
+        <rationale>Generators treat all properties as optional when required is absent. This produces unsafe client code that compiles but fails at runtime on missing fields.</rationale>
+      </rule>
+      <rule>
+        <statement>Include examples (plural, named scenarios) on every response code. Agents can lift these into integration tests and mock servers use them for realistic responses.</statement>
+        <rationale>Named examples allow clients and tests to reference specific scenarios (e.g., example: "UserNotFound") rather than parsing generic example objects.</rationale>
+      </rule>
+      <example type="good" title="Schema with required array and examples">
+        <code lang="yaml"><![CDATA[components:
+  schemas:
+    User:
+      type: object
+      required: [id, email, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        status:
+          type: string
+          enum: [active, inactive]
+          default: active]]></code>
+      </example>
+    </section>
+    <section name="Security">
+      <rule>
+        <statement>Declare security: [] on public endpoints (e.g., GET /health, POST /auth/login). All other operations inherit the global security scheme. Missing security blocks on auth endpoints are a common agent error caught by Spectral rules.</statement>
+        <rationale>Global security applies to all operations by default. Endpoints that must be publicly accessible need security: [] override, not absence of the security key — absence inherits global.</rationale>
+      </rule>
+    </section>
+    <section name="Linting-Rules">
+      <rule>
+        <statement>Run redocly lint and spectral lint --fail-severity=warn on every PR. Configure Spectral rules: require description on all operations, ban additionalProperties: true on response schemas, require at least one 2xx and one 4xx response per operation.</statement>
+        <rationale>Undescribed operations produce useless docs. additionalProperties: true breaks forward-compat in generated clients that use discriminated union types. Missing 4xx responses omit the error contract.</rationale>
+      </rule>
+      <rule>
+        <statement>Gate every PR with oasdiff breaking comparing HEAD to main. Fail the build on any BREAK classification. A breaking change requires human sign-off; never let an agent merge a BREAK diff unattended.</statement>
+        <rationale>Breaking changes (path removal, required field addition, enum shrinkage) silently break existing clients. Automated detection prevents accidental breakage from merging.</rationale>
+      </rule>
+    </section>
+    <section name="Server-Generated-Specs">
+      <rule>
+        <statement>For FastAPI / drf-spectacular / NestJS: commit the generated openapi.yaml snapshot to git and add a CI step that regenerates it and fails if the output differs from the committed version.</statement>
+        <rationale>Server-generated specs can drift from the committed snapshot when developers change models without regenerating. CI drift detection prevents the docs from lying about the API.</rationale>
+      </rule>
+      <example type="good" title="FastAPI spec regeneration CI check">
+        <code lang="bash"><![CDATA[# Regenerate spec from running app
+fastapi run --export-openapi /tmp/current-openapi.yaml
+# Diff against committed version
+diff openapi.yaml /tmp/current-openapi.yaml || \
+  (echo "ERROR: openapi.yaml is stale. Run: fastapi run --export-openapi openapi.yaml" && exit 1)]]></code>
+      </example>
+    </section>
+    <section name="Large-Specs">
+      <rule>
+        <statement>Split specs using redocly split once the paths object exceeds 30 endpoints. Reassemble with redocly bundle for distribution. Large monolithic specs become unreadable diffs and slow linters.</statement>
+        <rationale>At 5k+ lines, linters slow, diffs are unreadable, and agents lose track of $ref graphs. Splitting into per-tag files restores locality without losing the single-bundle contract.</rationale>
+      </rule>
+    </section>
+    <section name="Antipatterns">
+      <antipattern>
+        <description>LLM duplicates schemas instead of using $ref for existing components.</description>
+        <reason>Duplicate schemas produce structurally identical definitions that can diverge on the next edit. Run a post-pass that detects structurally equal schemas without a shared $ref and flags them for consolidation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent emits type: object without a required array.</description>
+        <reason>Generators treat all properties as Partial. TypeScript clients compile but fail at runtime on missing fields. Every object schema must have an explicit required list, even if it mirrors all properties.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using oneOf for union types without a discriminator.propertyName.</description>
+        <reason>Without a discriminator, many generators silently produce any for the union type, defeating the purpose of the union. Verify the generated client output, not just spec validity.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent re-indents the entire YAML file on update, producing a giant unreadable diff.</description>
+        <reason>YAML formatting changes obscure the semantic diff and trigger false positives in oasdiff. Pin to a formatter (prettier --parser yaml or yq) and apply it in a separate commit before the semantic change.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Missing security block on POST /login or similar public-entry endpoints.</description>
+        <reason>Without security: [], the global security scheme is inherited, making the login endpoint appear to require authentication before issuing credentials. Add a Spectral rule that fails if security is missing on any operation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using x-* custom extensions that are not supported by the target generator.</description>
+        <reason>Custom extensions are silently ignored by most generators and do not reach the generated client. Only use x-* extensions documented by the specific generator you are targeting.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic-Workflow">
+      <p>Treat the spec as the artifact. A planner subagent drafts paths + schemas from a feature spec. A linter subagent runs Spectral and Redocly to enforce style. A generator subagent regenerates client SDKs and server stubs and commits them as a separate diff. A diff-reviewer subagent compares the new spec to main and emits a breaking-change report (paths removed, required fields added, enums shrunk).</p>
+      <rule>
+        <statement>Recommended subagents: faion-sdd-executor-agent — own spec → review → generate → tests loop. A user-defined openapi-linter (model: haiku) — run Spectral/Redocly, return only violations. A user-defined breaking-change-detector (model: sonnet) — diff specs, classify changes (additive / breaking / cosmetic). password-scrubber-agent — sweep generated SDK fixtures for leaked tokens.</statement>
+        <rationale>Decomposing the workflow into narrow subagents keeps each one focused. Haiku for linting (quick, cheap). Sonnet for semantic diff classification (more sophisticated). Dedicated linter prevents drift in the spec.</rationale>
+      </rule>
+    </section>
+    <section name="Prompt-Patterns">
+      <p>Read openapi-specification/README.md and the feature spec at path. Emit additions to openapi.yaml only — paths, schemas under components.schemas, parameters under components.parameters. Use $ref for every reuse. Add operationId, tags, examples, and 4xx/5xx via components.responses. Output unified diff against current openapi.yaml.</p>
+      <p>Compare openapi.yaml@HEAD to openapi.yaml@main. Classify each change as additive, breaking, or cosmetic. Output a markdown table; flag breaking changes with BREAK.</p>
+    </section>
+    <section name="CLI-Tools">
+      <p>redocly/cli — Lint, bundle, split, preview. Install: npm i -g @redocly/cli. Docs: https://redocly.com/docs/cli</p>
+      <p>Spectral — Style + correctness linter, custom rulesets. Install: npm i -g @stoplight/spectral-cli</p>
+      <p>openapi-generator-cli — Generate clients/servers in 50+ langs. Install: npm i -g @openapitools/openapi-generator-cli</p>
+      <p>openapi-typescript — TS types only, no runtime client. Install: npm i -D openapi-typescript</p>
+      <p>openapi-fetch — Tiny typed fetch wrapper paired with openapi-typescript. Install: npm i openapi-fetch</p>
+      <p>prism — Mock server + contract validator from spec. Install: npm i -g @stoplight/prism-cli</p>
+      <p>swagger-cli — Validate, bundle, dereference. Install: npm i -g @apidevtools/swagger-cli</p>
+      <p>oasdiff — Detect breaking changes between two specs. https://github.com/Tufin/oasdiff</p>
+      <p>vacuum — Fast Go-based linter (alt to Spectral). https://quobix.com/vacuum/</p>
+      <p>schemathesis — Property-based contract tests from spec. Install: pip install schemathesis</p>
+    </section>
+    <section name="Best-Practices">
+      <list>
+        <item>Keep one canonical openapi.yaml at repo root; bundle with redocly bundle for distribution.</item>
+        <item>Always set operationId (kebab- or camelCase, unique) — generators key client method names off it.</item>
+        <item>Put every error response under components/responses; reuse via $ref. Pick a single Error schema and stick to it.</item>
+        <item>Use examples (plural) per response code with named scenarios; agents can lift these into integration tests.</item>
+        <item>Pin info.version to semver and bump on every breaking change; gate oasdiff breaking in CI.</item>
+        <item>Split large specs by tag using redocly split once paths exceeds ~30 endpoints.</item>
+        <item>For server-generated specs (FastAPI, drf-spectacular, NestJS), commit a snapshot to git and CI-fail if it drifts.</item>
+        <item>Add Spectral rules: require description, ban additionalProperties: true on response schemas, require 2xx + at least one 4xx per operation.</item>
+        <item>Use nullable: true (3.0) or type: ['string', 'null'] (3.1) consistently — generator output diverges otherwise.</item>
+      </list>
+    </section>
+    <section name="AI-Agent-Gotchas">
+      <list>
+        <item>LLMs duplicate schemas instead of $ref-ing existing ones — leads to subtle drift. Run a post-pass that detects structurally-equal schemas.</item>
+        <item>Agents emit type: object without required array → generated TS becomes Partial everywhere. Always require an explicit required list.</item>
+        <item>LLMs love oneOf for union types but forget discriminator.propertyName; some generators silently produce any. Verify generated client output, not just the spec.</item>
+        <item>Agents may invent custom x-* extensions; they don't reach the generated client. Only use x-* if the generator documents support.</item>
+        <item>When updating an existing spec, agents often re-indent the whole YAML, producing a giant diff. Pin to prettier --parser yaml or yq formatting before committing.</item>
+        <item>Agents tend to lose security blocks on POST /login (which should be []) vs other endpoints (which need bearerAuth). Add a Spectral rule that fails if security is missing.</item>
+        <item>Human-in-loop checkpoint: a human must sign off any change that bumps the major version or removes a path; never let an agent merge a BREAK diff unattended.</item>
+        <item>For FastAPI/drf-spectacular: instruct the agent to regenerate openapi.yaml after code change, then commit both in the same PR.</item>
+      </list>
+    </section>
+    <section name="Services-and-Apps">
+      <p>Stoplight (SaaS) — Visual editor, governance rulesets. Agent-friendly via CLI + API.</p>
+      <p>Redocly (SaaS + OSS CLI) — Best dev portal generator; CLI is fully scriptable.</p>
+      <p>Bump.sh (SaaS) — API doc hosting + breaking-change diff.</p>
+      <p>SwaggerHub (SaaS) — Heavier, enterprise. Partial agent support.</p>
+      <p>Prism (Stoplight, OSS) — Mock server agents can test against.</p>
+      <p>ReadMe.com (SaaS) — Good docs hosting; CLI exists but limited. Partial agent support.</p>
+      <p>Postman (SaaS) — Imports OpenAPI; team-collab oriented, less scriptable. Partial agent support.</p>
+    </section>
+    <section name="CI-Workflow">
+      <p>Minimal pre-commit lint + breaking-change check the agent should add to CI:</p>
+      <code lang="yaml"><![CDATA[# .github/workflows/openapi.yml
+name: openapi
+on: [pull_request]
+jobs:
+  lint-and-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm i -g @redocly/cli @stoplight/spectral-cli
+      - run: redocly lint openapi.yaml
+      - run: spectral lint openapi.yaml --fail-severity=warn
+      - name: Breaking-change diff
+        run: |
+          git show origin/main:openapi.yaml > /tmp/base.yaml
+          docker run --rm -v "$PWD:/specs" -v /tmp:/tmp tufin/oasdiff \
+            breaking /tmp/base.yaml /specs/openapi.yaml --fail-on ERR]]></code>
+    </section>
+    <templates>
+      <template path="templates/openapi-base.yaml" purpose="Minimal OpenAPI 3.1 skeleton with User CRUD, shared Error schema, bearerAuth, pagination parameters"/>
+      <template path="templates/openapi-ci.yml" purpose="GitHub Actions workflow: Redocly lint + Spectral lint + oasdiff breaking-change gate"/>
+    </templates>
+    <see-also>
+      <link href="https://spec.openapis.org/oas/v3.1.0">OpenAPI 3.1 spec</link>
+      <link href="https://redocly.com/docs/cli">Redocly CLI</link>
+      <link href="https://stoplight.io/open-source/spectral">Spectral</link>
+      <link href="https://openapi-generator.tech">openapi-generator</link>
+      <link href="https://github.com/Tufin/oasdiff">oasdiff</link>
+      <link href="https://openapi-ts.dev">openapi-typescript</link>
+      <link href="https://schemathesis.readthedocs.io">Schemathesis</link>
+      <link href="https://github.com/zalando/restful-api-guidelines">API style guide examples</link>
+    </see-also>
+  </content>
+</methodology>
