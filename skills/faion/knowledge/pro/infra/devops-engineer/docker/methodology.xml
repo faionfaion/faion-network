@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="docker">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Docker images are built in layers. Placing dependency installation before source code COPY caches layers across code changes. Multi-stage builds reduce size 50-90%.</summary>
+    <tags>
+      <tag>docker</tag>
+      <tag>containerization</tag>
+      <tag>layer-caching</tag>
+      <tag>multi-stage-builds</tag>
+      <tag>image-optimization</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Docker Operations</title>
+
+    <summary>Docker builds images in layers; each instruction creates a cached layer. Multi-stage builds separate build-time tooling from the runtime image, reducing size 50-90%. Non-root user, health check, exec-form CMD/ENTRYPOINT, and no secrets in image layers are non-negotiable for production.</summary>
+
+    <why>
+      <p>Layer cache misses are the #1 cause of slow Docker builds. Large images (root user, no multi-stage, no distroless) expand the attack surface and slow rollouts. Using shell form for CMD/ENTRYPOINT prevents proper SIGTERM signal handling, causing ungraceful container shutdowns. Each anti-pattern has a concrete, testable fix.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Containerizing any application for local development or deployment</item>
+        <item>Auditing an existing Dockerfile for security or size issues</item>
+        <item>Setting up Docker Compose for multi-service local stacks</item>
+        <item>Integrating Docker builds into CI/CD with scanning and signing</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Kubernetes deployments where Helm or Kustomize manage runtime config — Docker knowledge is a prerequisite but Dockerfile authoring is not the bottleneck</item>
+        <item>Serverless functions (AWS Lambda, Cloud Run) — container packaging rules differ</item>
+        <item>Windows-only applications without Linux compatibility</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="layer-caching-strategy">
+      <rule>
+        <statement>Place dependency installation before source code COPY so dependency layers are cached across code changes.</statement>
+        <rationale>Docker invalidates cache for a layer and all subsequent layers when any input changes. Source code changes on every commit; dependency files change rarely. Copying dependencies first preserves the expensive install layer across most builds.</rationale>
+      </rule>
+      <example type="bad" title="Invalidates Cache on Every Code Change">
+        <code lang="dockerfile"><![CDATA[
+# Invalidates pip install cache on every code change
+COPY . .
+RUN pip install -r requirements.txt
+]]></code>
+      </example>
+      <example type="good" title="Preserves Cache Across Code Changes">
+        <code lang="dockerfile"><![CDATA[
+# pip install cached; only invalidated when requirements.txt changes
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+]]></code>
+      </example>
+    </section>
+
+    <section name="base-image-selection">
+      <rule>
+        <statement>Use -slim for production balance; use Alpine or Distroless for maximum size reduction and security.</statement>
+        <rationale>Full images (python:3.12, ~900MB) include tools unnecessary in production and expand the attack surface. Distroless (~30MB) contains only the runtime and app; no shell means no interactive exploitation path.</rationale>
+      </rule>
+      <list>
+        <item>Full (python:3.12, ~900MB): development and debugging only</item>
+        <item>Slim (python:3.12-slim, ~150MB): production balance — recommended starting point</item>
+        <item>Alpine (python:3.12-alpine, ~50MB): minimal size, musl libc (test compatibility)</item>
+        <item>Distroless (gcr.io/distroless/python3, ~30MB): maximum security, no shell</item>
+      </list>
+    </section>
+
+    <section name="cmd-vs-entrypoint">
+      <rule>
+        <statement>Always use exec form (JSON array syntax) for CMD and ENTRYPOINT; never shell form in production.</statement>
+        <rationale>Shell form runs via /bin/sh -c, which becomes the PID 1 process. The shell does not forward SIGTERM to the child process, causing ungraceful shutdowns and missed graceful-drain windows in Kubernetes.</rationale>
+      </rule>
+      <example type="bad" title="Shell Form Does Not Forward SIGTERM">
+        <code lang="dockerfile"><![CDATA[
+CMD python app.py   # shell form — SIGTERM not forwarded
+]]></code>
+      </example>
+      <example type="good" title="Exec Form Handles SIGTERM Correctly">
+        <code lang="dockerfile"><![CDATA[
+ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["gunicorn", "app:app", "--workers", "4"]
+]]></code>
+      </example>
+    </section>
+
+    <section name="multi-stage-builds">
+      <rule>
+        <statement>Use multi-stage builds to exclude build-time tooling from the runtime image.</statement>
+        <rationale>Build tools (compilers, test runners, dev dependencies) can be 10x the size of the runtime artifact. Multi-stage copies only the compiled binary or production packages into a minimal runtime image, reducing size 50-90% and eliminating build tools from the attack surface.</rationale>
+      </rule>
+    </section>
+
+    <section name="volume-types">
+      <list>
+        <item>Named volume (mydata:/app/data): persistent data, managed by Docker, survives container removal</item>
+        <item>Bind mount (./src:/app/src): development use, source code or config files from host</item>
+        <item>tmpfs (--tmpfs /tmp): temporary data, sensitive in-memory data, not persisted to disk</item>
+      </list>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Using the latest tag for base images or pushed images.</description>
+        <reason>latest is mutable — a base image update can change behavior without any change to the Dockerfile. Pin specific versions (python:3.12.7-slim) for reproducible builds.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Running containers as root user.</description>
+        <reason>Root inside container maps to root on host if namespace isolation is bypassed. Create a non-root user in the Dockerfile and set USER before the final CMD.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Storing secrets in ENV instructions or build ARGs.</description>
+        <reason>ENV values are visible in docker inspect, image history, and any process that reads /proc/self/environ. Use Docker secrets, runtime environment injection, or an external vault at container startup.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Missing HEALTHCHECK in production images.</description>
+        <reason>Without HEALTHCHECK, orchestrators (Kubernetes, ECS, Swarm) cannot distinguish a running-but-broken container from a healthy one. Containers stuck in crash-loops with no readiness signals cause silent traffic loss.</reason>
+      </antipattern>
+    </section>
+
+    <section name="critical-production-checklist">
+      <list>
+        <item>Non-root user created and set with USER instruction</item>
+        <item>No secrets in image (no ENV for passwords, no ARG secrets baked into layers)</item>
+        <item>Base image pinned to specific version (not latest)</item>
+        <item>Base image scanned for CVEs (Trivy or Docker Scout)</item>
+        <item>HEALTHCHECK configured with appropriate interval and timeout</item>
+        <item>Resource limits set (memory and CPU) at runtime</item>
+      </list>
+    </section>
+
+    <section name="dockerfile-quality-checklist">
+      <list>
+        <item>.dockerignore present and excludes: .git, node_modules, .env, test files, docs</item>
+        <item>Layer caching optimized: dependency files copied before source code</item>
+        <item>RUN commands combined where appropriate to reduce layers</item>
+        <item>Multi-stage build used when build-time tools are needed</item>
+        <item>WORKDIR set before any COPY or RUN</item>
+        <item>COPY used instead of ADD unless extracting archives</item>
+        <item>Exec form used for CMD and ENTRYPOINT</item>
+        <item>EXPOSE documents ports even if not enforced</item>
+        <item>Cache mounts used for package managers: --mount=type=cache,target=/root/.cache/pip</item>
+      </list>
+    </section>
+
+    <section name="security-checklist">
+      <list>
+        <item>No private keys or certificates in image layers</item>
+        <item>Read-only root filesystem enabled at runtime (--read-only) where possible</item>
+        <item>All capabilities dropped (--cap-drop ALL) with only required caps added back</item>
+        <item>no-new-privileges security option set</item>
+        <item>Internal-only services not exposed on host ports</item>
+        <item>Docker Secrets used for sensitive runtime values (not ENV)</item>
+        <item>Regular image scanning in CI/CD; critical CVEs block deployment</item>
+      </list>
+    </section>
+
+    <section name="production-readiness-checklist">
+      <list>
+        <item>Image tagged with semantic version + git SHA (not just latest)</item>
+        <item>Image size optimized (below 500MB for most applications)</item>
+        <item>Logging to stdout/stderr in JSON structured format</item>
+        <item>SIGTERM handled gracefully (pre-stop hook or signal handler in app)</item>
+        <item>All configuration via environment variables with sensible defaults</item>
+        <item>Restart policy defined (unless-stopped or always)</item>
+        <item>Rolling update strategy defined</item>
+      </list>
+    </section>
+
+    <section name="quick-audit-commands">
+      <example type="good" title="Docker Audit and Inspection Commands">
+        <code lang="bash"><![CDATA[
+# Scan for CVEs
+trivy image myapp:latest
+docker scout cves myapp:latest
+
+# Lint Dockerfile
+hadolint Dockerfile
+
+# Analyze layer sizes
+dive myapp:latest
+docker history myapp:latest
+
+# Check running container security posture
+docker inspect --format='{{.Config.User}}' container_name
+docker inspect --format='{{.HostConfig.ReadonlyRootfs}}' container_name
+docker inspect --format='{{.HostConfig.CapDrop}}' container_name
+
+# Resource usage
+docker stats container_name
+
+# Health status
+docker inspect --format='{{.State.Health.Status}}' container_name
+]]></code>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/Dockerfile.python" purpose="Multi-stage Python production Dockerfile (slim base, non-root user, health check, exec form)"/>
+      <template path="templates/docker-compose.yml" purpose="Compose template with named networks, volumes, depends_on health conditions, env overrides"/>
+    </templates>
+  </content>
+</methodology>
