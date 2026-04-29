@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="integration-testing">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>testing-developer</domain>
+    <summary>Test multiple components against real dependencies (databases, APIs, services) using isolation strategies, FastAPI/Django patterns, and respx/WireMock mocking.</summary>
+    <tags>
+      <tag>integration-testing</tag>
+      <tag>testcontainers</tag>
+      <tag>database-testing</tag>
+      <tag>api-testing</tag>
+      <tag>mocking</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Integration Testing</title>
+    <summary>Integration tests catch the class of bugs that unit tests cannot: ORM query bugs, constraint violations, serialization mismatches between layers, and authentication middleware failures. This methodology covers test isolation strategies, database patterns with Testcontainers and pytest-django, FastAPI/Django API testing with dependency injection, and external service mocking with respx and WireMock.</summary>
+    <why>
+      <p>Integration tests catch the class of bugs that unit tests cannot: ORM query bugs, constraint violations, serialization mismatches between layers, and authentication middleware failures. Without them, these bugs reach production.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Database interactions (ORM, queries, transactions, constraints)</item>
+        <item>API endpoints with real request/response validation</item>
+        <item>Service-to-service communication contracts</item>
+        <item>Authentication and authorization flows</item>
+        <item>Message queue producers and consumers</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Testing a single pure function with no external calls — that is a unit test</item>
+        <item>Testing a full user journey through the browser — that is E2E</item>
+      </list>
+    </when-not-to-use>
+    <section name="test-isolation-strategies">
+      <p>Four strategies for preventing integration tests from interfering with each other: transaction rollback (fastest), table truncate (accurate), Testcontainers (reproducible), and unique IDs (parallelizable). Choose based on the accuracy vs. speed trade-off.</p>
+      <list>
+        <item>Transaction rollback — fastest; wraps each test in a transaction that rolls back; misses commit-time errors (unique constraints)</item>
+        <item>Truncate tables — medium speed; catches all errors; accurate but slower than rollback</item>
+        <item>Testcontainers — slowest startup, fastest per-test after warm-up; real DB behavior; requires Docker; ideal for CI</item>
+        <item>Unique IDs per test run — allows parallel execution; data accumulates; suitable when cleanup is handled separately</item>
+      </list>
+      <note>Combine strategies: session-scoped Testcontainers container (one Docker start) + function-scoped transaction rollback (fast per-test isolation). This is the recommended default.</note>
+    </section>
+    <section name="transaction-rollback">
+      <rule>
+        <statement>Use transaction rollback as the default isolation strategy: begin a transaction in the fixture, yield the session, then rollback unconditionally in teardown.</statement>
+        <rationale>Rollback is faster than DELETE or TRUNCATE because it is a single low-level operation. The test never commits, so the database state is always clean for the next test.</rationale>
+      </rule>
+      <example type="good" title="Transaction rollback fixture">
+        <code lang="python"><![CDATA[
+@pytest.fixture
+def session(engine):
+    connection = engine.connect()
+    transaction = connection.begin()
+    Session = sessionmaker(bind=connection)
+    db = Session()
+
+    yield db
+
+    db.close()
+    transaction.rollback()
+    connection.close()
+        ]]></code>
+      </example>
+    </section>
+    <section name="unique-id-isolation">
+      <rule>
+        <statement>When running tests in parallel, use UUID-based unique identifiers for email addresses, usernames, and any unique-constrained fields instead of relying on cleanup.</statement>
+        <rationale>Parallel test workers cannot share a transaction; unique IDs prevent constraint violations without serializing execution.</rationale>
+      </rule>
+      <example type="good" title="UUID-based unique email fixture">
+        <code lang="python"><![CDATA[
+import uuid
+
+@pytest.fixture
+def unique_email():
+    return f"test-{uuid.uuid4()}@example.com"
+
+def test_user_registration(client, unique_email):
+    response = client.post("/api/users", json={"email": unique_email})
+    assert response.status_code == 201
+        ]]></code>
+      </example>
+    </section>
+    <section name="testcontainers-sqlalchemy">
+      <rule>
+        <statement>Scope the Docker container fixture to the session and the transaction session fixture to the function; this starts Docker once and gets per-test rollback isolation.</statement>
+        <rationale>Session scope for the container avoids Docker startup cost on every test. Function scope for the DB session ensures each test starts with a clean slate via rollback.</rationale>
+      </rule>
+      <example type="good" title="PostgreSQL Testcontainers with SQLAlchemy">
+        <code lang="python"><![CDATA[
+# conftest.py
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from testcontainers.postgres import PostgresContainer
+from app.models import Base
+
+@pytest.fixture(scope="session")
+def postgres_container():
+    with PostgresContainer("postgres:16-alpine") as postgres:
+        yield postgres
+
+@pytest.fixture(scope="session")
+def engine(postgres_container):
+    engine = create_engine(postgres_container.get_connection_url())
+    Base.metadata.create_all(engine)
+    return engine
+
+@pytest.fixture
+def session(engine):
+    connection = engine.connect()
+    transaction = connection.begin()
+    db = sessionmaker(bind=connection)()
+    yield db
+    db.close()
+    transaction.rollback()
+    connection.close()
+        ]]></code>
+      </example>
+      <reference path="templates/conftest_postgres.py">Full conftest.py for PostgreSQL Testcontainers</reference>
+    </section>
+    <section name="pytest-django">
+      <rule>
+        <statement>Use @pytest.mark.django_db for standard tests with automatic rollback; use transaction=True only when the test must verify commit-time behavior (e.g., unique constraint errors).</statement>
+        <rationale>transaction=True wraps the test in a real transaction that commits, which is slower and requires explicit cleanup. The default wraps in a savepoint that rolls back.</rationale>
+      </rule>
+      <example type="good" title="pytest-django with transaction behavior testing">
+        <code lang="python"><![CDATA[
+@pytest.mark.django_db
+def test_create_user():
+    user = User.objects.create(email="test@example.com")
+    assert user.pk is not None
+
+@pytest.mark.django_db(transaction=True)
+def test_unique_email_constraint():
+    User.objects.create(email="dup@example.com")
+    with pytest.raises(IntegrityError):
+        User.objects.create(email="dup@example.com")
+        ]]></code>
+      </example>
+    </section>
+    <section name="factory-boy">
+      <rule>
+        <statement>Define a DjangoModelFactory per model; use factory.Sequence for unique fields; use factory.Faker for realistic but arbitrary data; expose named fixtures per common test scenario.</statement>
+        <rationale>Factories generate valid objects with minimal boilerplate. Sequences guarantee uniqueness without UUID overhead. Named fixtures (user, admin_user) communicate intent better than raw factory calls.</rationale>
+      </rule>
+      <example type="good" title="Factory Boy with Django">
+        <code lang="python"><![CDATA[
+import factory
+from factory.django import DjangoModelFactory
+
+class UserFactory(DjangoModelFactory):
+    class Meta:
+        model = User
+
+    email = factory.Sequence(lambda n: f"user{n}@example.com")
+    name = factory.Faker("name")
+    is_active = True
+
+@pytest.fixture
+def user(db):
+    return UserFactory()
+
+@pytest.fixture
+def admin_user(db):
+    return UserFactory(is_staff=True, is_superuser=True)
+        ]]></code>
+      </example>
+      <reference path="templates/conftest_django.py">Full Django conftest with Factory Boy</reference>
+    </section>
+    <section name="fastapi-testclient-sync">
+      <rule>
+        <statement>Override the get_db dependency with a fixture that yields the test session; clear overrides in teardown; never call the app directly without the override — the test will use the production database.</statement>
+        <rationale>dependency_overrides is FastAPI's injection replacement mechanism. Without clearing it after the test, overrides leak into subsequent tests.</rationale>
+      </rule>
+      <example type="good" title="FastAPI TestClient with dependency override">
+        <code lang="python"><![CDATA[
+from fastapi.testclient import TestClient
+
+@pytest.fixture
+def client(session):
+    def override_get_db():
+        yield session
+
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+def test_create_user(client):
+    response = client.post("/api/users", json={
+        "email": "new@example.com",
+        "name": "New User",
+    })
+    assert response.status_code == 201
+    assert response.json()["email"] == "new@example.com"
+
+def test_get_nonexistent_user(client):
+    response = client.get("/api/users/nonexistent-id")
+    assert response.status_code == 404
+        ]]></code>
+      </example>
+    </section>
+    <section name="fastapi-asyncclient-async">
+      <rule>
+        <statement>Use httpx.AsyncClient with ASGITransport for async endpoint tests; mark tests with @pytest.mark.anyio; override dependencies the same way as synchronous tests.</statement>
+        <rationale>TestClient runs the ASGI app in a thread. AsyncClient drives it in the same event loop, which is required when the application code uses async database drivers (asyncpg, motor) that cannot be called from a thread.</rationale>
+      </rule>
+      <example type="good" title="FastAPI AsyncClient for async endpoints">
+        <code lang="python"><![CDATA[
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+@pytest.fixture
+async def async_client(session):
+    app.dependency_overrides[get_db] = lambda: session
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        yield client
+    app.dependency_overrides.clear()
+
+@pytest.mark.anyio
+async def test_list_users(async_client):
+    response = await async_client.get("/api/users")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+        ]]></code>
+      </example>
+      <reference path="templates/fastapi_client.py">Full FastAPI sync + async client fixtures</reference>
+    </section>
+    <section name="respx-httpx-mocking">
+      <rule>
+        <statement>Use @respx.mock to intercept outbound httpx requests in tests; define route → response mappings before calling the code under test; assert call counts and request bodies after.</statement>
+        <rationale>respx operates at the transport layer, intercepting real httpx calls without any code changes. This is the minimal-overhead way to mock HTTP dependencies in Python async code.</rationale>
+      </rule>
+      <example type="good" title="respx mocking external API calls">
+        <code lang="python"><![CDATA[
+import respx
+from httpx import Response
+
+@respx.mock
+async def test_fetch_user_from_external_api():
+    respx.get("https://api.example.com/users/1").mock(
+        return_value=Response(200, json={"id": 1, "name": "Test User"})
+    )
+
+    result = await fetch_user(user_id=1)
+
+    assert result["name"] == "Test User"
+    assert respx.calls.call_count == 1
+
+@respx.mock
+async def test_handles_external_api_error():
+    respx.get("https://api.example.com/users/99").mock(
+        return_value=Response(404)
+    )
+
+    with pytest.raises(UserNotFoundError):
+        await fetch_user(user_id=99)
+        ]]></code>
+      </example>
+    </section>
+    <section name="wiremock-testcontainers">
+      <rule>
+        <statement>Use a WireMock container (session-scoped) when the code under test calls multiple endpoints, uses HTTP features (redirects, cookies, chunked transfer), or when you need realistic HTTP behavior that respx cannot simulate.</statement>
+        <rationale>WireMock runs a real HTTP server; the application connects to it exactly as it would to the real service. This catches connection pooling bugs, header parsing issues, and retry logic that mock transports miss.</rationale>
+      </rule>
+      <example type="good" title="WireMock via Testcontainers for payment flow">
+        <code lang="python"><![CDATA[
+import requests
+from testcontainers.core.container import DockerContainer
+
+@pytest.fixture(scope="session")
+def wiremock_url():
+    container = DockerContainer("wiremock/wiremock:3.3.1")
+    container.with_exposed_ports(8080)
+    container.start()
+    url = f"http://{container.get_container_host_ip()}:{container.get_exposed_port(8080)}"
+    yield url
+    container.stop()
+
+@pytest.fixture(autouse=True)
+def clear_wiremock_mappings(wiremock_url):
+    yield
+    requests.delete(f"{wiremock_url}/__admin/mappings")
+
+def stub_payment_success(wiremock_url: str):
+    requests.post(f"{wiremock_url}/__admin/mappings", json={
+        "request": {"method": "POST", "urlPath": "/charge"},
+        "response": {
+            "status": 200,
+            "jsonBody": {"payment_id": "pay_123", "status": "success"},
+        },
+    })
+
+def test_payment_flow(client, wiremock_url):
+    stub_payment_success(wiremock_url)
+    response = client.post("/api/orders/1/pay")
+    assert response.status_code == 200
+        ]]></code>
+      </example>
+    </section>
+    <section name="antipatterns">
+      <antipattern>
+        <description>Testing against a production database or live external API in CI.</description>
+        <reason>Network failures and data mutations cause flaky tests and real side effects. Use Testcontainers for databases and respx/WireMock for HTTP dependencies.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Mocking the integration layer to test integration behavior.</description>
+        <reason>If you mock the database in an "integration test", you are writing a unit test. Integration tests must use real (or containerized) services to validate the actual connection.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Sharing mutable test data across integration tests without rollback or cleanup.</description>
+        <reason>Tests become order-dependent. One test's inserted row can cause another test's unique constraint violation, creating intermittent failures that are hard to reproduce.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/conftest_postgres.py" purpose="Session-scoped Postgres container + function-scoped transaction rollback session"/>
+      <template path="templates/conftest_django.py" purpose="Django conftest with Factory Boy UserFactory and admin_user fixture"/>
+      <template path="templates/fastapi_client.py" purpose="FastAPI TestClient and AsyncClient fixtures with dependency override"/>
+    </templates>
+  </content>
+</methodology>
