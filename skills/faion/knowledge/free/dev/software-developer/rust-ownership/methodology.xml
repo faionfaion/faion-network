@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rust-ownership">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Ownership eliminates memory errors at compile time. One owner per value; transfers on assignment. References borrow temporarily. Answer three questions before writing function bodies.</summary>
+    <tags>
+      <tag>rust</tag>
+      <tag>ownership</tag>
+      <tag>borrowing</tag>
+      <tag>memory-safety</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>rust</language>
+    </languages>
+  </metadata>
+  <content>
+    <title>Rust Ownership Model</title>
+    <summary>Ownership eliminates memory errors at compile time. One owner per value; transfers on assignment. References borrow temporarily. Answer three questions before writing function bodies.</summary>
+    <why>
+      <p>Memory safety without GC is only achievable because the compiler enforces ownership rules statically. Every clone() added to silence the borrow checker is a sign the data layout or function signature is wrong, not that the checker is wrong. Fighting the borrow checker with .clone() or Rc&lt;RefCell&lt;T&gt;&gt; costs runtime performance and signals a design flaw.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any Rust project — ownership rules are always in effect.</item>
+        <item>Designing function signatures (consume vs borrow vs share decision is upfront).</item>
+        <item>Translating algorithms from GC languages (Python, Go, JS) to Rust.</item>
+        <item>Refactoring code that fights the borrow checker with .clone() or Rc&lt;RefCell&lt;T&gt;&gt;.</item>
+        <item>Writing async code where 'static and Send + Sync bounds appear.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Tiny scripts where .clone() everywhere is acceptable — borrow-checker design costs more than it saves.</item>
+        <item>Procedural macros — token stream manipulation has different ownership idioms.</item>
+        <item>Wrapping C APIs via FFI — manual lifetime management dominates; standard ownership advice barely applies.</item>
+        <item>Code generated from schemas (Prost, sqlx) — accept the generated ownership shape.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Ownership Rules, Borrowing, and Lifetimes">
+      <section name="Three Ownership Rules">
+        <rule>
+          <statement>Each value in Rust has exactly one owner at any time.</statement>
+          <rationale>Enforces single-point responsibility for deallocation; when the owner goes out of scope the value is dropped.</rationale>
+        </rule>
+        <rule>
+          <statement>Assignment of a non-Copy type moves ownership; the original binding becomes invalid.</statement>
+          <rationale>Prevents double-free and use-after-free at compile time with zero runtime cost.</rationale>
+        </rule>
+        <rule>
+          <statement>Copy types (all stack-only primitives like i32, bool, char, f64, and tuples of Copy types) are copied on assignment; both bindings remain valid.</statement>
+          <rationale>Copy is safe only when bitwise duplication is semantically correct and carries no heap allocation.</rationale>
+        </rule>
+        <example type="good" title="Move vs Copy Semantics">
+          <code lang="rust"><![CDATA[
+let s1 = String::from("hello");
+let s3 = s1;          // s1 moved into s3
+// println!("{}", s1); // compile error: s1 moved
+
+let x = 5;
+let y = x;            // copied — x is still valid
+println!("{} {}", x, y);
+]]></code>
+          <note>String is not Copy (heap allocation); i32 is Copy (stack-only).</note>
+        </example>
+      </section>
+      <section name="Borrowing Rules">
+        <rule>
+          <statement>At any given time you may have either any number of immutable references (&amp;T) OR exactly one mutable reference (&amp;mut T), but not both.</statement>
+          <rationale>Shared XOR mutable — eliminates data races statically.</rationale>
+        </rule>
+        <rule>
+          <statement>References must not outlive the value they point to.</statement>
+          <rationale>Dangling pointers are a compile error, not a runtime crash.</rationale>
+        </rule>
+        <example type="good" title="Multiple Immutable Borrows">
+          <code lang="rust"><![CDATA[
+fn calculate_length(s: &String) -> usize { s.len() }
+
+let mut s = String::from("hello");
+let len1 = calculate_length(&s);
+let len2 = calculate_length(&s);   // multiple immutable borrows OK
+// mutable borrow is fine after last immutable borrow use
+let r = &mut s;
+r.push_str(" world");
+]]></code>
+        </example>
+        <example type="bad" title="Conflicting Borrow Rules">
+          <code lang="rust"><![CDATA[
+let r1 = &s;
+let r2 = &s;
+let r3 = &mut s; // ERROR: cannot borrow as mutable while immutable borrows exist
+println!("{} {}", r1, r2);
+]]></code>
+          <note>Rearrange so r1/r2 are last used before r3 is introduced — Non-Lexical Lifetimes (NLL) may allow it if r1/r2 are not used after r3's introduction.</note>
+        </example>
+      </section>
+      <section name="Lifetime Annotations">
+        <rule>
+          <statement>Add explicit lifetime parameters only when the compiler asks; name them after their meaning ('src, 'cfg) not positionally ('a, 'b).</statement>
+          <rationale>Lifetime elision handles the common cases; premature explicit lifetimes obscure intent and cascade into callers.</rationale>
+        </rule>
+        <example type="good" title="Lifetime Patterns">
+          <code lang="rust"><![CDATA[
+// Compiler can infer: output lifetime = input lifetime
+fn first_word(s: &str) -> &str {
+    s.split_whitespace().next().unwrap_or("")
+}
+
+// Explicit needed: two inputs, compiler can't guess which to tie output to
+fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+    if x.len() > y.len() { x } else { y }
+}
+
+// Lifetime in struct: struct cannot outlive the slice it holds
+struct Excerpt<'a> {
+    part: &'a str,
+}
+]]></code>
+        </example>
+        <rule>
+          <statement>For async code, all values moved into spawned tasks must be 'static — capture by value with move or Arc::clone shared state.</statement>
+          <rationale>tokio::spawn and std::thread::spawn require 'static + Send; borrowed locals do not satisfy this.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="Smart Pointers: Box, Rc, RefCell, Arc, Mutex">
+      <section name="Box — Heap Allocation with Single Ownership">
+        <rule>
+          <statement>Use Box&lt;T&gt; for recursive types (where the size is unknown at compile time) or to move large values to the heap.</statement>
+          <rationale>Box provides heap allocation with ownership semantics identical to stack values; the pointer is the owner and frees on drop.</rationale>
+        </rule>
+        <example type="good" title="Box for Recursive Types">
+          <code lang="rust"><![CDATA[
+enum List {
+    Cons(i32, Box<List>),
+    Nil,
+}
+// Without Box, List has infinite size — compiler rejects it.
+]]></code>
+        </example>
+      </section>
+      <section name="Rc — Shared Ownership (Single Thread)">
+        <rule>
+          <statement>Use Rc&lt;T&gt; for shared ownership in single-threaded code only; Rc is not Send.</statement>
+          <rationale>Rc uses non-atomic reference counting — cheaper than Arc but unsafe across threads.</rationale>
+        </rule>
+        <example type="good" title="Rc Reference Counting">
+          <code lang="rust"><![CDATA[
+use std::rc::Rc;
+let data = Rc::new(vec![1, 2, 3]);
+let data2 = Rc::clone(&data); // increments refcount
+println!("count: {}", Rc::strong_count(&data)); // 2
+]]></code>
+        </example>
+      </section>
+      <section name="RefCell — Interior Mutability (Single Thread)">
+        <rule>
+          <statement>Use RefCell&lt;T&gt; when you need mutability inside an otherwise-immutable context; borrow rules are checked at runtime, not compile time.</statement>
+          <rationale>Moves the borrow-check to runtime — a panic replaces a compile error. Use only as a last resort when ownership redesign is truly impossible.</rationale>
+        </rule>
+        <rule>
+          <statement>Do not reach for Rc&lt;RefCell&lt;T&gt;&gt; to silence the borrow checker — it usually means the data layout is wrong (graph forced into a tree, etc.).</statement>
+          <rationale>Runtime borrow panics are harder to debug than compile errors and add pointer-chasing overhead.</rationale>
+        </rule>
+      </section>
+      <section name="Arc and Mutex — Thread-Safe Shared State">
+        <rule>
+          <statement>Use Arc&lt;T&gt; (atomic reference counting) to share ownership across threads. Combine with Mutex&lt;T&gt; for shared mutation.</statement>
+          <rationale>Arc is Send + Sync; Rc is not. Atomic refcount is more expensive than Rc — prefer message passing (mpsc) over Arc&lt;Mutex&lt;T&gt;&gt; when possible.</rationale>
+        </rule>
+        <rule>
+          <statement>In async code use tokio::sync::Mutex when you need to hold the lock across an .await point; use std::sync::Mutex for compute-heavy synchronous critical sections.</statement>
+          <rationale>std::sync::Mutex is not async-aware — holding it across .await blocks a thread. tokio::Mutex yields the task instead.</rationale>
+        </rule>
+        <example type="good" title="Arc and Mutex for Thread-Safe State">
+          <code lang="rust"><![CDATA[
+use std::sync::{Arc, Mutex};
+use std::thread;
+
+let counter = Arc::new(Mutex::new(0));
+let handles: Vec<_> = (0..10).map(|_| {
+    let c = Arc::clone(&counter);
+    thread::spawn(move || { *c.lock().unwrap() += 1; })
+}).collect();
+for h in handles { h.join().unwrap(); }
+println!("{}", *counter.lock().unwrap()); // 10
+]]></code>
+        </example>
+      </section>
+    </section>
+    <section name="Ownership Patterns and Antipatterns">
+      <section name="API Design Rules">
+        <rule>
+          <statement>Accept the most permissive type: &amp;str over &amp;String, &amp;[T] over &amp;Vec&lt;T&gt;, impl AsRef&lt;Path&gt; over &amp;PathBuf.</statement>
+          <rationale>Callers can always coerce to the permissive type; accepting the concrete type forces unnecessary allocations at call sites.</rationale>
+        </rule>
+        <rule>
+          <statement>Return owned data when the function allocates; return a reference when slicing into a parameter.</statement>
+          <rationale>Clarifies lifetime semantics at the function boundary and avoids forcing callers to clone.</rationale>
+        </rule>
+      </section>
+      <section name="Clone and Copy Traits">
+        <rule>
+          <statement>Derive Copy only for types that are purely stack-allocated (all fields are Copy). Derive Clone for types that need explicit deep copy.</statement>
+          <rationale>Copy is implicit and zero-cost; Clone is explicit and signals "this may allocate". Mixing them confuses callers about copy cost.</rationale>
+        </rule>
+      </section>
+      <section name="Cow — Clone-on-Write">
+        <rule>
+          <statement>Use Cow&lt;'a, str&gt; when a function sometimes modifies its input and sometimes returns it unchanged — avoids unconditional cloning.</statement>
+          <rationale>Cow::Borrowed is a zero-cost borrow; Cow::Owned is a heap allocation. The choice is deferred to runtime.</rationale>
+        </rule>
+        <example type="good" title="Cow for Conditional Cloning">
+          <code lang="rust"><![CDATA[
+use std::borrow::Cow;
+fn normalize(input: &str) -> Cow<str> {
+    if input.contains("  ") {
+        Cow::Owned(input.replace("  ", " "))
+    } else {
+        Cow::Borrowed(input)
+    }
+}
+]]></code>
+        </example>
+      </section>
+      <section name="Closure Ownership">
+        <rule>
+          <statement>Use move closures when the closure must outlive the current scope or be sent to another thread. Use borrows when the closure is called within the same scope.</statement>
+          <rationale>move captures all referenced variables by value; without move, the closure borrows them and cannot outlive the borrow.</rationale>
+        </rule>
+      </section>
+      <section name="Antipatterns">
+        <antipattern>
+          <description>Adding .clone() every time the borrow checker complains without investigating why.</description>
+          <reason>clone() allocates and copies; it is a band-aid over a design flaw in the ownership graph. Budget rule: if the same function signature has been changed 3+ times for borrow errors, simplify the design (return owned, restructure the data).</reason>
+        </antipattern>
+        <antipattern>
+          <description>Returning a reference to a local value (dangling reference).</description>
+          <reason>The local is dropped at function exit; the reference points to freed memory. Compiler rejects it, but LLMs sometimes suggest workarounds like Box::leak — avoid.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Using fn foo(s: &amp;String) instead of fn foo(s: &amp;str).</description>
+          <reason>Clippy lint ptr_arg catches this. &amp;String forces callers to own a String; &amp;str accepts any string slice.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Adding 'static to every lifetime parameter to silence "does not outlive 'static" errors.</description>
+          <reason>Poisons the API — forces callers to own or leak data. Walk back to the original mismatch; usually data is borrowed when it should be owned.</reason>
+        </antipattern>
+      </section>
+    </section>
+    <section name="Agent Workflow">
+      <p>A code-writing agent first answers three ownership questions: (1) does this function consume, borrow, or share its inputs? (2) does it return owned data or a reference into existing data? (3) does it cross a thread boundary (Send + Sync needed)? Answer is captured in the function signature before the body is written. A code-review agent runs cargo clippy (with clippy::needless_pass_by_value, clippy::redundant_clone, clippy::ptr_arg) and cargo machete to flag mis-ownership and dead clones. Borrow-check failures are treated as design feedback, not noise — never papered over with .clone().</p>
+      <section name="Recommended Subagents">
+        <list>
+          <item>faion-sdd-executor-agent — runs the task; constitution.md should pin "no .clone() to silence borrow checker".</item>
+          <item>A purpose-built borrow-checker-explainer subagent — given a cargo build failure, expands the cryptic error into "what &amp; to remove or what to consume".</item>
+          <item>A clippy-enforcer subagent — runs Clippy gates with a strict ownership-related allowlist.</item>
+        </list>
+      </section>
+      <section name="Prompt Pattern">
+        <p>Before writing the body, answer: 1. Each parameter: borrowed (&amp;T), mutably borrowed (&amp;mut T), or owned (T)? 2. Return type: owned (T) or reference (&amp;'a T) into a parameter? 3. Threads: is this called from spawn? If so, all captures must be 'static. Print the signature first, then the body.</p>
+        <p>This compile error: "&lt;paste&gt;". Walk me through the ownership graph of the function. Suggest the minimal fix that does not call .clone() or wrap in Rc&lt;RefCell&lt;T&gt;&gt;. If neither is possible, say so.</p>
+      </section>
+    </section>
+    <section name="Tooling">
+      <section name="CLI Tools">
+        <list>
+          <item>cargo — Build / test / borrow check</item>
+          <item>cargo clippy — Lints around ownership patterns</item>
+          <item>cargo expand — Inspect generated code; useful for macros that move values</item>
+          <item>cargo machete — Find unused deps after refactor</item>
+          <item>rust-analyzer — LSP — inlay hints show inferred lifetimes &amp; types</item>
+          <item>bacon — Background cargo check watcher</item>
+          <item>mold / lld — Faster linker</item>
+          <item>miri — Detect undefined behavior in unsafe code</item>
+          <item>loom — Concurrency permutation tester</item>
+        </list>
+      </section>
+      <section name="Services &amp; Apps">
+        <list>
+          <item>Rust Playground — Quick borrow-checker experiments via API.</item>
+          <item>godbolt.org (Compiler Explorer) — Inspect MIR / asm to verify zero-cost abstractions.</item>
+          <item>crates.io — Look up Send/Sync annotations of imported types.</item>
+          <item>Lib.rs — Same niche, often more accurate type info.</item>
+          <item>GitHub Copilot Workspace / Cursor — Partial: Borrow-checker errors propagate poorly; needs human escalation often.</item>
+        </list>
+      </section>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>API rule of thumb: take the most flexible type you can (&amp;str over &amp;String, &amp;[T] over &amp;Vec&lt;T&gt;, impl IntoIterator over Vec&lt;T&gt;).</item>
+        <item>Return owned data when the function allocates; return a borrow when slicing into a parameter.</item>
+        <item>Prefer iterator chains (.iter().filter().map().collect()) over indexing — borrow checker is happier and code is faster.</item>
+        <item>Use Cow&lt;'a, str&gt; when sometimes-borrowed sometimes-owned (parser output, normalization).</item>
+        <item>For shared state across threads, prefer message passing (mpsc, tokio::sync::mpsc) over Arc&lt;Mutex&lt;T&gt;&gt;.</item>
+        <item>Don't reach for Rc&lt;RefCell&lt;T&gt;&gt; to silence the borrow checker — usually means data layout is wrong (graph in a tree, etc.).</item>
+        <item>Lifetime elision: avoid explicit 'a parameters until the compiler asks; once it asks, name them after their meaning ('src, 'config).</item>
+        <item>For async, all spawned tasks need 'static — capture by value with move, or Arc::clone shared state.</item>
+        <item>Use rust-analyzer inlay hints to make ownership transfers visible while typing.</item>
+      </list>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <list>
+        <item>LLMs default to .clone() to escape the borrow checker. Override with: "If you call .clone(), justify in a comment why the borrow can't work. Otherwise rewrite the signature."</item>
+        <item>LLMs writing fn foo(s: &amp;String) instead of &amp;str — clippy lint catches; agent must accept the lint, not silence it.</item>
+        <item>LLMs love Rc&lt;RefCell&lt;T&gt;&gt; from web-search results; in async contexts they then write Arc&lt;Mutex&lt;T&gt;&gt; and forget tokio's Mutex is async-aware (std::sync::Mutex is fine in compute-heavy code, tokio::sync::Mutex for await while holding).</item>
+        <item>Agents accept "lifetime 'a may not outlive 'static" by adding 'static everywhere — this poisons APIs and cascades. Walk back to the original mismatch; usually the data is borrowed when it should be owned.</item>
+        <item>Self-referential structs: LLMs invent &amp;self-referencing fields; safe Rust forbids. Agent must recognize and use Pin, ouroboros, or restructure.</item>
+        <item>Async iterators / streams: LLMs use .iter() inside async and hold borrows across .await, which breaks Send. Refactor to consume the iterator before the await point.</item>
+        <item>Closures capturing &amp; while also &amp;mut of the same value — the lint message is unhelpful; agents need to recognize the pattern (e.g., vec.iter().for_each(|x| vec.push(x.clone())) is illegal).</item>
+        <item>Borrow-checker fights waste tokens fast. Budget rule: if the agent has changed the same function signature 3+ times, escalate or simplify (collect into Vec, return owned, redesign).</item>
+      </list>
+    </section>
+    <section name="Where it fails / limitations">
+      <list>
+        <item>The methodology covers basic ownership but not the deeper Pin, unsafe, or async-Send issues that bite in real apps.</item>
+        <item>Lifetime elision rules are presented as "compiler infers" — agents that paste examples then add a second reference parameter break the elision and don't know why.</item>
+        <item>Rc&lt;RefCell&lt;T&gt;&gt; and Arc&lt;Mutex&lt;T&gt;&gt; are introduced as escape hatches but the runtime cost (pointer chasing, lock contention, refcount atomics) is rarely quantified.</item>
+        <item>String vs &amp;str advice is sound, but generic impl AsRef&lt;str&gt; is the more flexible choice for libs and is under-discussed.</item>
+        <item>Self-referential structs are flat-out unsupported by safe Rust; agents need ouroboros / pinning, neither is in basic ownership docs.</item>
+        <item>Borrow-checker errors are notoriously cryptic for agents — "lifetime 'a does not outlive 'b" doesn't explain which &amp; to remove.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/api-surface-cheatsheet.rs" purpose="Canonical function signature patterns for common ownership shapes."/>
+    </templates>
+    <see-also>
+      <link href="https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html"/>
+      <link href="https://rust-unofficial.github.io/too-many-lists/"/>
+      <link href="https://rust-lang.github.io/api-guidelines/"/>
+      <link href="https://doc.rust-lang.org/nomicon/"/>
+      <link href="https://blog.logrocket.com/understanding-ownership-in-rust/"/>
+      <link href="https://docs.rs/tokio/latest/tokio/task/"/>
+      <link href="https://github.com/dtolnay/anyhow"/>
+      <link href="https://rust-lang.github.io/rust-clippy/master/"/>
+    </see-also>
+  </content>
+</methodology>
