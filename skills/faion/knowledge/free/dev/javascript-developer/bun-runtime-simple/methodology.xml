@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="bun-runtime-simple">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>javascript-developer</domain>
+    <summary>Bun: high-perf runtime with TypeScript, Hono framework, native file I/O, password hashing, .env loading, and Jest-compatible test runner.</summary>
+    <tags>
+      <tag>bun</tag>
+      <tag>runtime</tag>
+      <tag>typescript</tag>
+      <tag>http-server</tag>
+      <tag>javascript</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Bun Runtime</title>
+    <summary>Bun is a high-performance JavaScript runtime with built-in TypeScript support, a fast HTTP server (Bun.serve), native file I/O (Bun.file/Bun.write), built-in password hashing, automatic .env loading, and a Jest-compatible test runner. Use Hono as the preferred web framework. Bun eliminates the need for dotenv, bcrypt, node-fetch, and separate test runners.</summary>
+    <why>
+      <p>Bun starts 8x faster than Node.js (Express) and handles 7x more requests/sec (Hono vs Express). Its built-in APIs replace common npm packages, reducing dependency surface. The unified toolchain (runtime + bundler + test runner + package manager) eliminates version mismatch issues.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>New TypeScript projects requiring maximum startup or throughput performance</item>
+        <item>Projects needing a unified runtime + test + bundler toolchain</item>
+        <item>Replacing node-fetch, bcrypt, or dotenv in an existing project</item>
+        <item>Monorepos benefiting from Bun's fast install speed</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>AWS Lambda deployments (Bun support is limited; use Node.js target)</item>
+        <item>Projects with C++ native addon dependencies that lack Bun bindings</item>
+        <item>Enterprise environments with strict Node.js LTS runtime policies</item>
+        <item>When migrating: verify all dependencies work in Bun before committing</item>
+      </list>
+    </when-not-to-use>
+    <section name="Project Setup and Native API Replacements">
+      <rule>
+        <statement>Initialize Bun projects with bun init; pin the bun.lockb in version control.</statement>
+        <rationale>bun.lockb is Bun's binary lockfile; committing it ensures reproducible installs across machines and CI.</rationale>
+      </rule>
+      <templates>
+        <template path="templates/bunfig.toml" purpose="Standard Bun configuration for install, test, build"/>
+        <template path="templates/package.json" purpose="package.json with Bun scripts"/>
+        <template path="templates/tsconfig.bun.json" purpose="tsconfig for Bun projects"/>
+      </templates>
+      <rule>
+        <statement>Do NOT install node-fetch, bcrypt, or dotenv in Bun projects; use native fetch, Bun.password, and Bun.env respectively.</statement>
+        <rationale>These packages add unnecessary size and potential incompatibilities; Bun's built-ins are faster and require no import.</rationale>
+      </rule>
+      <list>
+        <item>node-fetch → native fetch (global)</item>
+        <item>bcrypt → Bun.password.hash() / Bun.password.verify()</item>
+        <item>dotenv → Bun.env (auto-loaded from .env)</item>
+        <item>fs/promises readFile → Bun.file(path).text()</item>
+        <item>fs/promises writeFile → Bun.write(path, content)</item>
+      </list>
+      <antipattern>
+        <description>Installing and importing node-fetch in a Bun project.</description>
+        <reason>Redundant — fetch is a global in Bun; importing node-fetch may cause version conflicts.</reason>
+      </antipattern>
+    </section>
+    <section name="HTTP Server Patterns">
+      <rule>
+        <statement>Use Bun.serve for simple APIs or scripts that need maximum throughput; export the config object as default.</statement>
+        <rationale>Bun.serve is the lowest-overhead HTTP layer; exporting as default lets Bun auto-detect the server entry point.</rationale>
+      </rule>
+      <example type="good" title="Native Bun.serve">
+        <code lang="typescript"><![CDATA[
+const server = Bun.serve({
+  port: Bun.env.PORT || 3000,
+
+  fetch(request: Request): Response | Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname === '/health') {
+      return new Response('OK', { status: 200 });
+    }
+    return new Response('Not Found', { status: 404 });
+  },
+
+  error(error: Error): Response {
+    console.error(error);
+    return new Response('Internal Server Error', { status: 500 });
+  },
+});
+]]></code>
+      </example>
+      <rule>
+        <statement>Use Hono for production APIs that need routing, middleware, and Zod validation; export the app as a default object with port and fetch.</statement>
+        <rationale>Hono runs on Bun natively and is 5x faster than Express; its zValidator middleware colocates schema and handler, reducing boilerplate.</rationale>
+      </rule>
+      <example type="good" title="Hono Framework">
+        <code lang="typescript"><![CDATA[
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { logger } from 'hono/logger';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
+
+const app = new Hono();
+app.use('*', logger());
+app.use('/api/*', cors());
+
+app.post(
+  '/api/users',
+  zValidator('json', z.object({ email: z.string().email(), name: z.string().min(1) })),
+  async (c) => {
+    const data = c.req.valid('json');
+    return c.json({ data }, 201);
+  },
+);
+
+export default { port: Bun.env.PORT || 3000, fetch: app.fetch };
+]]></code>
+      </example>
+    </section>
+    <section name="Bun Native APIs: File I/O, Env, Testing, Bundling">
+      <rule>
+        <statement>Use Bun.file() to read and Bun.write() to write; stream large files to avoid loading them fully into memory.</statement>
+        <rationale>Bun's file APIs use native I/O paths that outperform fs/promises; the streaming API prevents OOM on large files.</rationale>
+      </rule>
+      <example type="good" title="File I/O">
+        <code lang="typescript"><![CDATA[
+const text = await Bun.file('data.txt').text();
+const json = await Bun.file('config.json').json();
+await Bun.write('output.txt', 'Hello World');
+const exists = await Bun.file('maybe.txt').exists();
+
+const stream = Bun.file('large.csv').stream();
+for await (const chunk of stream) { /* process */ }
+]]></code>
+      </example>
+      <rule>
+        <statement>Wrap Bun.env in a validated accessor function that throws on missing required vars at startup, not at first use.</statement>
+        <rationale>Failing at startup with a clear message is better than a cryptic TypeError later in a request handler when the var is first accessed.</rationale>
+      </rule>
+      <example type="good" title="Type-Safe Environment Variables">
+        <code lang="typescript"><![CDATA[
+interface Env {
+  DATABASE_URL: string;
+  JWT_SECRET: string;
+  PORT?: string;
+}
+
+function getEnv(): Env {
+  const required = ['DATABASE_URL', 'JWT_SECRET'];
+  for (const key of required) {
+    if (!Bun.env[key]) throw new Error(`Missing required env var: ${key}`);
+  }
+  return Bun.env as unknown as Env;
+}
+]]></code>
+      </example>
+      <rule>
+        <statement>Import describe, it, expect, mock from bun:test; replace jest.fn() with mock().</statement>
+        <rationale>bun:test is Jest-compatible in API but runs 10-100x faster due to native execution; no additional packages needed.</rationale>
+      </rule>
+      <example type="good" title="Testing with bun:test">
+        <code lang="typescript"><![CDATA[
+import { describe, it, expect, mock } from 'bun:test';
+
+describe('Users API', () => {
+  it('returns empty list', async () => {
+    const response = await app.request('/api/users');
+    expect(response.status).toBe(200);
+  });
+});
+
+const mockGetUser = mock(() => Promise.resolve({ id: '1', name: 'Test' }));
+]]></code>
+      </example>
+      <rule>
+        <statement>Use bun build for compilation; support both Bun and Node.js targets via flags.</statement>
+        <rationale>Bun's bundler is fast and produces smaller output than esbuild; multi-target support ensures portability.</rationale>
+      </rule>
+      <list>
+        <item>Build for Bun: bun build ./src/index.ts --outdir ./dist --target bun --minify</item>
+        <item>Build for Node.js: bun build ./src/index.ts --outdir ./dist --target node --minify</item>
+      </list>
+      <templates>
+        <template path="templates/dockerfile.bun" purpose="Multi-stage Dockerfile for Bun production"/>
+      </templates>
+    </section>
+  </content>
+</methodology>

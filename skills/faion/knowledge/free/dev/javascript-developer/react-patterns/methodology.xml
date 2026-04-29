@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="react-patterns">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>javascript-developer</domain>
+    <summary>Modern React patterns: feature-based structure, typed components, custom hooks, Context, state management routing, and memoization rules for React 18+ with TypeScript strict mode.</summary>
+    <tags>
+      <tag>react</tag>
+      <tag>hooks</tag>
+      <tag>typescript</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>React Patterns</title>
+    <summary>Feature-based folder structure, typed functional components, custom hooks, Context provider pattern, state management decision tree, and memoization rules for maintainable React apps.</summary>
+    <why>
+      <p>React's flexibility makes it easy to write hard-to-maintain code. These patterns enforce consistent colocated state, prevent prop-drilling via Context, and ensure memoization is applied only where measured — avoiding the common trap of over-optimizing.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building a new React feature module (auth, dashboard, checkout)</item>
+        <item>Deciding where to put state (server vs. local vs. global)</item>
+        <item>Extracting reusable async data-fetching logic into a custom hook</item>
+        <item>Wrapping third-party state in a typed Context provider</item>
+        <item>Optimizing a component that profiling shows as a bottleneck</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Simple presentational components with no state — just write JSX</item>
+        <item>When TanStack Query is already in use for server state — don't duplicate with useEffect fetching</item>
+        <item>When Zustand already handles global UI state — don't add a Context layer on top</item>
+      </list>
+    </when-not-to-use>
+    <section name="React Project Structure and Component Rules">
+      <rule>
+        <statement>Organize code by feature, not by file type. Each feature owns its components, hooks, API client, and types.</statement>
+        <rationale>Feature cohesion reduces cross-directory jumps during changes; file-type grouping (components/, hooks/, types/) creates scattered coupling.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[src/
+├── components/        # Shared UI primitives (Button, Input)
+│   └── ui/
+├── features/
+│   ├── auth/
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── api.ts
+│   │   └── types.ts
+│   └── dashboard/
+├── hooks/             # Truly shared custom hooks
+├── utils/             # Pure utility functions
+├── types/             # Shared TypeScript types
+├── lib/               # Third-party wrappers
+└── app/               # Next.js app directory / routes]]></code>
+      </example>
+    </section>
+    <section name="Functional Component Conventions">
+      <rule>
+        <statement>Use function declarations (not arrow functions) for components; always declare props as a named interface.</statement>
+        <rationale>Function declarations are hoisted and show the component name in stack traces; named prop interfaces document the API and enable IDE autocomplete.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[interface UserCardProps {
+  user: User;
+  onEdit?: (id: string) => void;
+  className?: string;
+}
+
+export function UserCard({ user, onEdit, className }: UserCardProps): React.ReactElement {
+  const handleEdit = () => {
+    onEdit?.(user.id);
+  };
+
+  return (
+    <div className={cn('card', className)}>
+      <h3>{user.name}</h3>
+      <p>{user.email}</p>
+      {onEdit && <button onClick={handleEdit}>Edit</button>}
+    </div>
+  );
+}]]></code>
+      </example>
+      <antipattern>
+        <description>Exporting anonymous arrow function components: export default () => &lt;div /&gt;</description>
+        <reason>Anonymous components show as "Unknown" in React DevTools and error stack traces, making debugging harder.</reason>
+      </antipattern>
+    </section>
+    <section name="Custom Hooks and Context Pattern">
+      <rule>
+        <statement>Define an explicit return interface for every custom hook; do not return a plain tuple for hooks with more than two values.</statement>
+        <rationale>Named return properties self-document intent at the call site and survive refactoring without breaking destructuring order.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[interface UseUserResult {
+  user: User | null;
+  isLoading: boolean;
+  error: Error | null;
+  refetch: () => Promise<void>;
+}
+
+export function useUser(userId: string): UseUserResult {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const refetch = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await fetchUser(userId);
+      setUser(data);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Unknown error'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
+
+  return { user, isLoading, error, refetch };
+}]]></code>
+      </example>
+    </section>
+    <section name="Context Provider Pattern">
+      <rule>
+        <statement>Initialize Context with null and throw in the consumer hook if accessed outside the provider.</statement>
+        <rationale>createContext(undefined) or a fake default silently provides wrong values; throwing a descriptive error surfaces the bug immediately.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[interface AuthContextValue {
+  user: User | null;
+  isAuthenticated: boolean;
+  login: (credentials: Credentials) => Promise<void>;
+  logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+
+  const login = useCallback(async (credentials: Credentials) => {
+    const userData = await authService.login(credentials);
+    setUser(userData);
+  }, []);
+
+  const logout = useCallback(() => {
+    authService.logout();
+    setUser(null);
+  }, []);
+
+  const value = useMemo(
+    () => ({ user, isAuthenticated: user !== null, login, logout }),
+    [user, login, logout],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth(): AuthContextValue {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+}]]></code>
+      </example>
+    </section>
+    <section name="State Management Decision Tree and Performance">
+      <rule>
+        <statement>Route state to the correct layer: server state to TanStack Query, form state to React Hook Form, global UI state to Zustand/Jotai, component-local state to useState/useReducer.</statement>
+        <rationale>Each state type has different caching, synchronization, and invalidation needs; mixing them in one store produces accidental coupling and stale data bugs.</rationale>
+      </rule>
+      <list>
+        <item>Server state (API data) → TanStack Query / SWR</item>
+        <item>Form state → React Hook Form</item>
+        <item>Global UI state (theme, sidebar) → Zustand (simple) / Jotai (atomic)</item>
+        <item>Component-local state → useState / useReducer</item>
+        <item>Cross-component state in same feature → Context + useReducer</item>
+      </list>
+    </section>
+    <section name="Memoization Rules">
+      <rule>
+        <statement>Memoize only after profiling confirms a re-render problem; default to no memoization for simple computations.</statement>
+        <rationale>useMemo and useCallback add overhead (allocation + comparison); blindly applying them for every value creates more work, not less.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[// Memoize expensive sort: items array changes trigger re-sort
+const sortedItems = useMemo(
+  () => items.slice().sort((a, b) => a.name.localeCompare(b.name)),
+  [items],
+);
+
+// Memoize callbacks passed to memoized children to preserve referential equality
+const handleItemClick = useCallback((id: string) => {
+  setSelectedId(id);
+}, []);]]></code>
+      </example>
+      <antipattern>
+        <description>Passing inline objects or arrays as JSX props: &lt;Comp style={{ color: 'red' }} /&gt;</description>
+        <reason>A new object is created on every render, breaking React.memo equality checks and causing unnecessary child re-renders.</reason>
+      </antipattern>
+    </section>
+  </content>
+</methodology>
