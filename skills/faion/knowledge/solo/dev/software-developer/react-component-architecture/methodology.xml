@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="react-component-architecture">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>React/Next.js directory layout and design patterns: UI primitives in components/ui/, feature modules isolated, colocated tests and stories, named exports, forwardRef on React 18.</summary>
+    <category>frontend</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>react</tag>
+      <tag>architecture</tag>
+      <tag>component-design</tag>
+      <tag>next.js</tag>
+      <tag>typescript</tag>
+    </tags>
+    <languages>
+      <language>typescript</language>
+      <language>typescript-jsx</language>
+    </languages>
+    <frameworks>
+      <framework>react</framework>
+      <framework>next.js</framework>
+    </frameworks>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>React Component Architecture: Layout, Patterns, and Isolation</title>
+
+    <summary>A directory layout and component design system for React/Next.js projects: shared UI primitives in components/ui/, feature modules in features/&lt;name&gt;/, colocated tests and stories, named exports only, and data fetching confined to feature hooks or RSC. Component files are capped at ~250 lines; beyond that, extract subcomponents or hooks.</summary>
+
+    <why>
+      <p>Without explicit boundaries, components accumulate logic, features leak into each other, and refactoring becomes risky. Colocation (component + test + story + types in one folder) makes renames mechanical. Named exports preserve tree-shaking and refactor tooling. Feature module isolation enforced by eslint-plugin-boundaries prevents cross-feature coupling from silently growing.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a new React/Next.js codebase and you need a defensible directory layout from day one.</item>
+        <item>Refactoring a sprawling components/ folder into feature-modules plus shared UI primitives.</item>
+        <item>Building or extending a design system (Button, Card, Input) where compound and polymorphic patterns matter.</item>
+        <item>Establishing coding standards an LLM agent will follow when generating new components.</item>
+        <item>Migrating from Pages Router to App Router and deciding server vs client component boundaries.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-off React prototypes or spikes — full architecture is overhead.</item>
+        <item>Pure logic libraries with no JSX — use module-architecture guidance instead.</item>
+        <item>React Native projects with platform-specific file suffixes — adapt, do not copy.</item>
+        <item>When the project already mandates a different convention (Bulletproof React, Nx generators) — follow that instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="top-level-structure">
+      <rule testable="true">
+        <statement>Place shared UI primitives in src/components/ui/, feature-specific components in src/features/FEATURE/components/, and shared hooks in src/hooks/. Do not put feature components in src/components/.</statement>
+        <rationale>Mixing feature-specific and shared components in one folder makes boundaries implicit and leads to cross-feature imports that are hard to detect. The split is the enforcement boundary.</rationale>
+      </rule>
+      <example type="good">
+        <note>Top-level directory layout</note>
+        <code lang="text"><![CDATA[
+src/
+├── components/
+│   ├── ui/            # shared primitives: Button, Input, Card
+│   ├── forms/         # shared form components
+│   └── layout/        # Header, Footer, Sidebar
+├── features/
+│   ├── auth/
+│   │   ├── components/  # LoginForm, RegisterForm
+│   │   ├── hooks/       # useAuth.ts
+│   │   ├── api.ts
+│   │   ├── types.ts
+│   │   └── index.ts
+│   └── dashboard/
+│       ├── components/
+│       ├── hooks/
+│       └── index.ts
+├── hooks/             # shared custom hooks
+├── utils/             # pure utility functions
+├── types/             # shared TypeScript types
+├── lib/               # third-party wrappers
+└── app/               # Next.js app router or pages/
+]]></code>
+      </example>
+    </section>
+
+    <section name="component-colocation">
+      <rule testable="true">
+        <statement>Every component lives in its own folder containing: Component.tsx, Component.test.tsx, Component.stories.tsx, index.ts. Add Component.module.css if using CSS Modules. Do not place these files in the parent directory.</statement>
+        <rationale>Colocation makes renames mechanical (rename the folder), keeps context local, and prevents stale imports after moves.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Export components using named exports only. Never use default exports for components.</statement>
+        <rationale>Default exports break refactor tools (rename-symbol), create ambiguous import names, and are not tree-shaken reliably by all bundlers.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Cap component file size at 250 lines. If a component exceeds this, extract subcomponents or move logic into a custom hook before continuing.</statement>
+        <rationale>Files over 250 lines are doing more than one thing. The cap is a forcing function that surfaces the extraction opportunity before it becomes a refactoring project.</rationale>
+      </rule>
+    </section>
+
+    <section name="feature-module-isolation">
+      <rule testable="true">
+        <statement>Install eslint-plugin-boundaries and configure it so that src/features/A cannot import from src/features/B internal paths. Exports from feature index.ts files are the only permitted cross-feature surface.</statement>
+        <rationale>Feature-module boundaries are nominal without enforcement. Without ESLint rules, agents silently create cross-feature imports that grow into circular dependency traps.</rationale>
+      </rule>
+    </section>
+
+    <section name="functional-component-with-forwardref">
+      <rule testable="true">
+        <statement>Use forwardRef on every UI primitive that may need a ref (Button, Input, Combobox triggers, Radix primitives). On React 19, drop forwardRef — refs are props on function components. Pin the React version in agent prompts.</statement>
+        <rationale>forwardRef is required for React 18 ref forwarding. Mixing React 18 forwardRef and React 19 ref-as-prop syntax in the same codebase produces runtime errors. Pin the version to prevent agents from mixing the two.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use cva (class-variance-authority) for variant management only when a component has two or more variants. Single-variant cva calls are noise.</statement>
+        <rationale>cva adds a runtime dependency and boilerplate. It pays off only when multiple variants need to be composed safely. Single-variant components are better served by a simple className string.</rationale>
+      </rule>
+    </section>
+
+    <section name="compound-component">
+      <rule testable="true">
+        <statement>Export compound subcomponents as named exports (export function CardHeader) AND assign as properties (Card.Header = CardHeader). The property assignment is ergonomic sugar; the named export is required for tree-shaking.</statement>
+        <rationale>If only Card.Header exists (no named export), bundlers cannot tree-shake the subcomponent when it is not used. Named export preserves the optimization while keeping the ergonomic namespace API.</rationale>
+      </rule>
+      <example type="good">
+        <note>Compound Card component with named exports</note>
+        <code lang="tsx"><![CDATA[
+import { createContext, useContext, type ReactNode } from 'react';
+import { cn } from '@/lib/utils';
+
+interface CardContextValue { variant: 'default' | 'outlined' }
+const CardContext = createContext<CardContextValue | null>(null);
+
+function useCardContext() {
+  const ctx = useContext(CardContext);
+  if (!ctx) throw new Error('Card components must be used within Card');
+  return ctx;
+}
+
+export function Card({ variant = 'default', className, children }: {
+  variant?: 'default' | 'outlined'; className?: string; children: ReactNode;
+}) {
+  return (
+    <CardContext.Provider value={{ variant }}>
+      <div className={cn('rounded-lg bg-card', variant === 'outlined' && 'border', className)}>
+        {children}
+      </div>
+    </CardContext.Provider>
+  );
+}
+
+export function CardHeader({ className, children }: { className?: string; children: ReactNode }) {
+  return <div className={cn('flex flex-col space-y-1.5 p-6', className)}>{children}</div>;
+}
+
+export function CardContent({ className, children }: { className?: string; children: ReactNode }) {
+  return <div className={cn('p-6 pt-0', className)}>{children}</div>;
+}
+
+// Ergonomic namespace alias (tree-shaking still works via named exports above)
+Card.Header = CardHeader;
+Card.Content = CardContent;
+]]></code>
+      </example>
+    </section>
+
+    <section name="container-presenter-pattern">
+      <rule testable="true">
+        <statement>Put all data fetching in feature hooks (or RSC), never inside leaf components. The presenter component receives only plain data props and renders them.</statement>
+        <rationale>Data fetching in leaf components makes testing slow (requires mocking fetch), disables RSC optimization, and couples rendering to network state. Extracting to hooks makes presenters testable with plain data.</rationale>
+      </rule>
+    </section>
+
+    <section name="polymorphic-component">
+      <rule testable="true">
+        <statement>When implementing polymorphic as props, include a TypeScript usage test that verifies href is typed on &lt;Box as="a"&gt;. Agents frequently produce generics that compile but do not type the element-specific attributes.</statement>
+        <rationale>The common mistake is Box&lt;T&gt; that compiles but strips element-specific props. A compile-time test catches this before it reaches a PR review.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Prop drilling: passing the same prop through 3+ component levels.</description>
+        <reason>Deep prop chains couple the intermediate components to data they do not use. Any change to the prop shape requires updates at every level. Use React context or move data to a feature hook.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Giant component: a single component file exceeding 300 lines mixing rendering, data fetching, and business logic.</description>
+        <reason>Mega-components cannot be unit-tested in isolation, are hard to review, and accumulate future tech debt. The 250-line cap is the forcing function to split early.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Business logic (validation, API calls, error handling) placed directly inside component functions instead of custom hooks or services.</description>
+        <reason>Business logic in JSX cannot be tested without rendering. Extracting to hooks enables unit tests without a DOM, and makes the component's rendering responsibility clear.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Default exports on components.</description>
+        <reason>Default exports produce ambiguous names on import, break rename-symbol refactoring tools, and prevent barrel files from being reliably tree-shaken.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LLM adds 'use client' defensively to every component.</description>
+        <reason>Marking a component as client when it has no client-side interactivity prevents RSC optimization and increases bundle size. Audit each generated component for actual client-side dependencies before accepting the directive.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent imports from deep paths (src/components/ui/Button/Button) instead of the barrel (src/components/ui/Button).</description>
+        <reason>Deep imports couple consumers to the internal file structure. When the internal layout changes, all deep imports break. Enforce barrel imports with an ESLint rule against deep imports inside components/ui/.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent adds a new compound subcomponent (Card.Action) but forgets to add the named export to index.ts.</description>
+        <reason>The component is accessible via the namespace alias but invisible to the barrel, causing missing exports and tree-shaking failures. Review every compound component addition for index.ts coverage.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive React component architecture as a planning + scaffold + verify loop. A planner subagent decides whether the new piece is a UI primitive (components/ui/), a feature component (features/&lt;X&gt;/components/), or a layout. A scaffolder subagent emits the 4-5 file folder (Component.tsx + tests + stories + index.ts). A reviewer subagent runs ESLint, TS, and a11y checks plus hunts for prop-drilling, oversized components, and client/server boundary mistakes.</p>
+
+      <p>Recommended subagents: faion-sdd-executor-agent owns the spec → scaffold → tests → review loop for any new component. password-scrubber-agent sweeps generated files before commit (catches accidental tokens in stories/fixtures). A user-defined frontend-reviewer (model: sonnet) checks Server vs Client component placement, RSC-safety of imports, and 'use client' correctness.</p>
+    </section>
+
+    <section name="best-practices">
+      <p>One folder per component, even for tiny primitives — keeps tests/stories/types colocated and makes future renames mechanical. Default to named exports only; default exports break refactor tools and create ambiguous imports. Cap component file size at ~250 lines; past that, force-extract subcomponents or hooks. Put all data fetching in feature hooks (or RSC), never inside leaf components — this is what makes Container/Presenter actually pay off. For React 19 codebases, drop forwardRef; for React 18, keep it on every primitive that may need a ref (Button, Input, Combobox triggers, Radix primitives). Use cva only when variants ≥2 — single-variant cva calls are noise. Compound components: keep child components as named exports too (export function CardHeader) and assign Card.Header = CardHeader only as ergonomic alias, so tree-shaking still works. Add an eslint-plugin-boundaries config so features/auth cannot reach into features/billing/internal; agents will respect the boundary if the linter screams.</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>LLMs love to emit 'use client' defensively at the top of every component — review server-component candidates and strip it. LLMs frequently mix React 18 forwardRef with React 19 ref-as-prop syntax in the same file. Pin the React version in the prompt. Polymorphic component generics: agents often produce as: T extends ElementType = 'div' but forget to spread ComponentPropsWithoutRef&lt;T&gt; correctly — TS will compile but href won't be typed for &lt;Box as="a"&gt;. Always include a typed usage test. Compound components break when an agent adds a new subcomponent (Card.Action) but forgets to also export it from index.ts — barrel drift is the #1 LLM bug here. Agents tend to import from deep paths ('@/components/ui/Button/Button') instead of the barrel ('@/components/ui/Button'). Add an ESLint rule against deep imports inside components/ui/*/. Human-in-loop checkpoint: after agent generates a new feature module, manually verify there is no import from features/&lt;other&gt;/ — circular feature deps are a long-tail trap.</p>
+    </section>
+
+    <section name="cli-tools-services">
+      <p>plop: Scaffold component folders from a template (npm i -D plop — https://plopjs.com). hygen: Same idea, faster + zero-deps templates (npm i -g hygen — https://hygen.io). eslint-plugin-react + eslint-plugin-jsx-a11y: Enforce JSX patterns, a11y baseline (npm i -D eslint-plugin-react eslint-plugin-jsx-a11y). eslint-plugin-boundaries: Enforce feature-module isolation (features/A cannot import features/B/internal/*) (npm i -D eslint-plugin-boundaries). madge: Detect circular deps between feature modules (npx madge --circular src/). knip: Find unused exports inside feature index.ts barrels (npx knip). Storybook CLI: Story-driven dev for primitives (npx storybook@latest init). tsc --noEmit: Type-check polymorphic + generic components (bundled).</p>
+
+      <p>Storybook: Stories double as agent-readable docs + visual fixtures (OSS, Yes). Chromatic: Visual regression for component diffs in CI (SaaS, REST/CLI). Vercel v0: LLM emits shadcn-style components; useful as an idea source, not the final commit (SaaS, Partial). shadcn/ui registry: npx shadcn@latest add &lt;comp&gt; — agents can drive component installation; the patterns in the README map directly (OSS, Yes). Bit.dev: Component-as-package — heavy for solo, useful for multi-app monorepos (SaaS/OSS, Limited).</p>
+    </section>
+
+    <templates>
+      <template path="templates/button.tsx">Button primitive with cva variants, forwardRef (React 18), full TypeScript props.</template>
+      <template path="templates/plopfile.cjs">Plop generator: scaffolds component folder (tsx + test + stories + index.ts).</template>
+    </templates>
+
+    <see-also>
+      <link href="https://plopjs.com">Plop documentation</link>
+      <link href="https://hygen.io">hygen documentation</link>
+      <link href="https://storybook.js.org">Storybook official site</link>
+      <link href="https://github.com/palmerhq/eslint-plugin-boundaries">eslint-plugin-boundaries</link>
+      <link href="https://cva.style">class-variance-authority (cva)</link>
+      <link href="https://shadcn-ui.com">shadcn/ui registry</link>
+    </see-also>
+  </content>
+</methodology>
