@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vui-iot-integration">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>Design coherent voice control patterns for smart home and IoT devices. Multi-device coordination requires intent mapping, scene logic, status feedback, and graceful handling of partial failures.</summary>
+    <tags>
+      <tag>voice-ui</tag>
+      <tag>iot</tag>
+      <tag>smart-home</tag>
+      <tag>multi-device</tag>
+      <tag>voice-patterns</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>VUI + IoT Integration</title>
+    <summary>Smart home voice control requires cohesive intent design, multi-device synchronization, and explicit feedback for partial failures. Group devices logically, create intuitive scene names, provide action confirmation per routine, handle undo, and test under noisy conditions.</summary>
+    <why>
+      <p>Smart home devices exist in heterogeneous ecosystems (Zigbee, Z-Wave, Matter, Wi-Fi). Voice is the most natural interface, but coordination across vendors demands careful flow design. Poor patterns lead to silent failures, user confusion, and loss of trust in automation.</p>
+      <p>Multi-device coordination requires mapping user intent to device-specific APIs, managing partial failures (3 of 5 devices respond), and providing feedback that is informative without being verbose.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing voice control flows for smart home, commercial IoT, or industrial automation.</item>
+        <item>Authoring multi-device routines like "Goodnight", "Leaving", "Movie Mode" that fan out commands.</item>
+        <item>Mapping natural language intents and utterances to device APIs (Matter, Home Assistant, SmartThings, Alexa, Google Home).</item>
+        <item>Designing failure, partial-success, and undo behavior across heterogeneous device fleets.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure visual app UI work where voice is not a channel — use core VUI design principles instead.</item>
+        <item>Single-device, single-vendor remote control with no scene logic — manufacturer SDK is sufficient.</item>
+        <item>Safety-critical automation (medical, alarm dispatch) — requires regulatory layer and domain expertise beyond VUI patterns.</item>
+      </list>
+    </when-not-to-use>
+    <section name="smart-home-patterns">
+      <title>Smart Home Voice Patterns</title>
+      <rule>
+        <statement>Map user utterances to discrete control patterns: direct control, scene activation, status query, conditional logic, and scheduling.</statement>
+        <rationale>Each pattern has different latency, feedback, and error-recovery needs. Conflating them produces ambiguous flows.</rationale>
+      </rule>
+      <example type="good" title="Direct Control">
+        <code lang="text"><![CDATA[User: "Turn off the lights"
+System:
+→ Interprets intent: TurnOff(entity=lights)
+→ Routes to all lights in current room or tagged "default"
+→ Sends commands immediately
+→ Confirms: "Lights are off"]]></code>
+      </example>
+      <example type="good" title="Scene Activation">
+        <code lang="text"><![CDATA[User: "Goodnight"
+System:
+→ Interprets intent: ActivateScene(scene=goodnight)
+→ Locks doors
+→ Turns off lights
+→ Adjusts thermostat
+→ Arms security
+→ Confirms: "Home secured. Have a good day." (single confirmation, not per-device)]]></code>
+      </example>
+      <example type="good" title="Status Query">
+        <code lang="text"><![CDATA[User: "Is the front door locked?"
+System:
+→ Queries lock entity
+→ Returns state immediately if known (cached <5 min) or refreshes if stale
+→ Confirms: "Yes, the front door is locked."]]></code>
+      </example>
+      <example type="bad" title="Ambiguous Intent">
+        <code lang="text"><![CDATA[User: "Turn off"
+System response: Ambiguous — could mean lights, TV, stereo, or all.
+Better: Require explicit target ("Turn off the lights") or default to tagged group ("Turn off the living room")]]></code>
+      </example>
+    </section>
+    <section name="multi-device-coordination">
+      <title>Multi-Device Coordination</title>
+      <rule>
+        <statement>Group devices logically by room, function, or user-defined zone. Provide a scene name that is intuitive and avoids command verbs (e.g., "Goodnight" not "Turn Off Everything").</statement>
+        <rationale>Logical grouping reduces cognitive load and allows "turn off the living room" to work intuitively. Scene names without verbs are easier to speak and remember.</rationale>
+      </rule>
+      <rule>
+        <statement>Provide feedback for each action in a scene, but aggregate into one terminal confirmation to avoid voice spam.</statement>
+        <rationale>Users need to know what happened, but hearing "light off, door locked, thermostat set" repeated separately is exhausting. One confirmation per scene is optimal.</rationale>
+      </rule>
+      <rule>
+        <statement>Handle partial failures explicitly: if 3 of 5 devices respond, report which ones succeeded and which ones failed, and offer undo or retry.</statement>
+        <rationale>Silent partial success is a trust killer. Users may not know the scene is incomplete, leading to safety or comfort issues.</rationale>
+      </rule>
+      <rule>
+        <statement>Implement an explicit undo intent with a 60-second window scoped to the originating user.</statement>
+        <rationale>Multi-device changes are harder to reverse mentally; explicit undo prevents accidental irreversibility.</rationale>
+      </rule>
+    </section>
+    <section name="intent-mapping-utterances">
+      <title>Intent Mapping and Utterances</title>
+      <rule>
+        <statement>Force at least 5 lexical variants per intent to avoid modal collapse where all utterances converge to one phrasing.</statement>
+        <rationale>Users speak in natural, varied language. Over-training on a single utterance produces cascading NLU failures when users deviate.</rationale>
+      </rule>
+      <rule>
+        <statement>Map intents to device API capabilities using vendor matrices (Matter cluster IDs, Alexa Smart Home capability interfaces, Google Home traits). Validate each utterance against the matrix.</statement>
+        <rationale>Vendor parity drifts: Matter abstracts most attributes but not vendor-specific scenes. Without a capability matrix, agents hallucinate unsupported utterances.</rationale>
+      </rule>
+      <rule>
+        <statement>Use implicit confirmation for low-risk actions (lights), explicit for high-risk (locks, garage, thermostats outside a safe range).</statement>
+        <rationale>Explicit confirmation slows interaction but prevents accidents. Implicit confirmation is faster for reversible actions.</rationale>
+      </rule>
+    </section>
+    <section name="latency-and-failure-modes">
+      <title>Latency and Failure Modes</title>
+      <rule>
+        <statement>Understand the latency stack: NLU (~100ms) + intent routing (~50ms) + cloud bridge (~200ms) + Zigbee/Z-Wave hop (~1000ms) can exceed 2 seconds.</statement>
+        <rationale>Long latency feels unresponsive. Design feedback to acknowledge the request immediately ("Turning off the lights..."), even if completion takes 2+ seconds.</rationale>
+      </rule>
+      <rule>
+        <statement>Isolate device-level success/failure logs separately from utterance-level logs so analytics can identify weak nodes.</statement>
+        <rationale>A scene may appear to succeed overall while individual devices fail. Separate logs help diagnose network or device issues.</rationale>
+      </rule>
+      <rule>
+        <statement>Test voice interactions in noisy conditions (kids, TV, traffic). Wake-word false-trigger rate is the dominant UX killer.</statement>
+        <rationale>Lab conditions hide real-world noise. Noisy environments corrupt wake-word detection and routine logs, triggering unintended actions.</rationale>
+      </rule>
+      <rule>
+        <statement>Disclose privacy implications: utterance transcripts persist on vendor cloud by default. Provide opt-out or transparent deletion policy.</statement>
+        <rationale>Voice transcripts are PII. Users must know where they are stored and have control over deletion.</rationale>
+      </rule>
+    </section>
+    <section name="agentic-workflow">
+      <title>Agentic Workflow</title>
+      <p>Use a subagent to draft sample dialogues and intent/slot tables from a device inventory, then verify each utterance against vendor capability matrices (Matter cluster IDs, Alexa Smart Home capability interfaces, Google Smart Home traits). A second pass generates undo-flows and partial-failure prompts. Keep humans in the loop for any scene that touches doors, locks, alarms, or thermostats outside a safe range.</p>
+      <rule>
+        <statement>Never let an agent auto-deploy a routine that touches locks, alarms, garage, or thermostat extremes — gate behind human approval.</statement>
+        <rationale>Voice-initiated safety-critical actions need human verification to prevent accidents or unauthorized control.</rationale>
+      </rule>
+      <rule>
+        <statement>Require at least 5 lexical utterance variants per intent and test each variant against the vendor capability matrix before finalizing.</statement>
+        <rationale>LLM-generated utterance lists drift to single phrasing. Forcing variants and validating each one prevents hallucinated unsupported utterances.</rationale>
+      </rule>
+    </section>
+    <section name="tools-and-services">
+      <title>Tools and Services</title>
+      <p>CLI tools for smart home voice design:</p>
+      <commands>
+        <command name="ask-cli">Build, deploy, test Alexa Skills and smart-home interfaces. `npm i -g ask-cli`; developer.amazon.com/alexa/alexa-skills-kit</command>
+        <command name="gactions">Google Actions / Smart Home action lifecycle. developers.google.com/assistant/conversational/gactions</command>
+        <command name="hass">Home Assistant CLI — manage scripts, automations, voice intents. home-assistant.io/docs</command>
+        <command name="matter-tool / chip-tool">Commission Matter devices, exercise clusters. github.com/project-chip/connectedhomeip</command>
+        <command name="voice2json">Offline NLU prototyping (intent + slot extraction). voice2json.org</command>
+      </commands>
+      <p>Services and platforms:</p>
+      <list>
+        <item><term name="Home Assistant">OSS, REST + WebSocket API, YAML configs editable by agents. Best target for cross-vendor scenes; Assist pipeline integrates LLMs.</term></item>
+        <item><term name="Alexa Smart Home">SaaS, ASK SDK callable, certification human-gated. Capability interfaces define valid utterances.</term></item>
+        <item><term name="Google Home / Smart Home Actions">SaaS, gactions CLI, device traits change. LLM-friendly via Gemini integration in Home APIs.</term></item>
+        <item><term name="SmartThings">SaaS, REST API, scenes via API. Good for Samsung-heavy households.</term></item>
+        <item><term name="Matter (CSA)">OSS standard, chip-tool + ecosystem bridges. Commission once, control via any controller.</term></item>
+        <item><term name="Picovoice / Rhino">SaaS+OSS, on-device intent inference, deterministic. Useful when cloud round-trip is unacceptable.</term></item>
+      </list>
+    </section>
+    <section name="templates">
+      <title>Home Assistant Script Skeleton</title>
+      <code lang="yaml"><![CDATA[leaving_home:
+  alias: "I'm leaving"
+  sequence:
+    - service: lock.lock
+      target: { entity_id: lock.front_door }
+    - service: light.turn_off
+      target: { area_id: [living_room, kitchen, bedroom] }
+    - service: climate.set_temperature
+      target: { entity_id: climate.main }
+      data: { temperature: 18 }
+    - service: alarm_control_panel.alarm_arm_away
+      target: { entity_id: alarm_control_panel.home }
+    - service: tts.cloud_say
+      data:
+        entity_id: media_player.kitchen
+        message: "Home secured. Have a good day."
+  mode: single]]></code>
+    </section>
+    <section name="best-practices">
+      <title>Best Practices</title>
+      <list>
+        <item>Always emit one terminal confirmation per routine, not per device, to avoid voice spam.</item>
+        <item>Implement an explicit undo intent with a 60-second window scoped to the originating user.</item>
+        <item>Use implicit confirmation for low-risk (lights), explicit for high-risk (locks, garage, alarms).</item>
+        <item>Reserve scene names from common English stems; avoid "set" / "turn" / "play" as the scene noun.</item>
+        <item>Log device-level success/failure separately from utterance-level so analytics can find weak nodes.</item>
+        <item>Test in noisy conditions (kids, TV) — wake-word false-trigger rate is the dominant UX killer.</item>
+      </list>
+    </section>
+    <section name="ai-agent-gotchas">
+      <title>AI-Agent Gotchas</title>
+      <antipattern>
+        <description>LLM-generated utterance lists drift to single phrasing; developers accept the first output without forcing variants.</description>
+        <reason>Users speak in natural, varied language. Over-training on a single utterance produces cascading NLU failures.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents skip undo and partial-failure paths in the output, treating them as optional.</description>
+        <reason>Voice-initiated multi-device changes are hard to reverse; undo and explicit partial-failure reporting are essential for user trust.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Vendor capability matrices are cached in the prompt or RAG without version pinning; matrices change between quarters.</description>
+        <reason>Matter cluster IDs, Alexa capability interfaces, and Google Home traits evolve. Agents hallucinate unsupported utterances if the matrix is stale.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents auto-deploy a routine that touches locks, alarms, garage, or thermostat extremes without human approval.</description>
+        <reason>Voice-initiated safety-critical actions need human verification to prevent accidents or unauthorized control.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Voice transcripts in vendor cloud are treated as ephemeral; agents echo full transcripts in logs or prompts.</description>
+        <reason>Transcripts are PII persisting on vendor cloud. Echoing them violates privacy and creates regulatory exposure.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents hallucinate Matter cluster IDs without grounding via chip-tool discovery.</description>
+        <reason>Matter cluster IDs are numeric and not intuitive. LLMs freely invent them; use chip-tool to ground truth.</reason>
+      </antipattern>
+    </section>
+    <see-also>
+      <link href="https://csa-iot.org/all-solutions/matter/">Matter 1.4 Specification</link>
+      <link href="https://developer.amazon.com/en-US/docs/alexa/device-apis/list-of-interfaces.html">Alexa Smart Home Capability Interfaces</link>
+      <link href="https://developers.google.com/assistant/smarthome/traits">Google Smart Home Device Traits</link>
+      <link href="https://home-assistant.io/voice_control/">Home Assistant Assist Pipeline</link>
+      <link href="https://www.nngroup.com/articles/voice-first/">NN/g: Voice-First Devices Hit Usability Roadblocks</link>
+    </see-also>
+  </content>
+</methodology>
