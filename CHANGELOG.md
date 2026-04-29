@@ -3,6 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+- chore: migrate success-metrics-definition, use-case-mapping, user-interviews to methodology.xml (feature-045 batch FH 3/3)
 - chore: migrate reflexion-learning, sdd-workflow-overview, task-creation-parallelization to methodology.xml (feature-045 batch FM 3/3)
 - chore: migrate 3/3 solo/sdd methodologies → methodology.xml (key-trends-summary, living-documentation, mistake-memory; feature-045 batch FO)
 - chore: migrate ops-financial-planning, ops-pricing-strategy, tailwind-design-tokens to methodology.xml (feature-045 batch FQ)
