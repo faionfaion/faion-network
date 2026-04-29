@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="mcp-transport-stdio-vs-http">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Pick MCP transport by deployment shape: stdio for local single-user subprocesses, Streamable HTTP for remote/multi-tenant, and treat SSE as deprecated.</summary>
+    <tags>
+      <tag>mcp</tag>
+      <tag>transport</tag>
+      <tag>deployment</tag>
+      <tag>architecture</tag>
+      <tag>scaling</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>MCP Transport — stdio Local, Streamable HTTP Remote, SSE Dead</title>
+    <summary>Pick MCP transport from a closed three-option list keyed to deployment shape: stdio for local single-user subprocess servers (Claude Desktop, Claude Code, Cursor, IDE plugins), Streamable HTTP (single endpoint, OAuth 2.1, resumable streams) for remote/multi-tenant/hosted, and treat SSE as deprecated — only support it for back-compat with pre-2026-03-26 clients. The choice is not a preference, it is dictated by whether the server runs as a subprocess of the client or behind a load balancer.</summary>
+    <why>
+      <p>The MCP spec moved decisively: revision 2025-11-25 removed the dual-endpoint SSE transport in favor of a single Streamable HTTP endpoint that can negotiate POST → SSE upgrade per request. stdio remains the cheapest, lowest-latency option for local IPC because there is no HTTP framing, no OAuth handshake, and the lifecycle is tied to the parent process. Picking SSE in 2026 means writing dead-on-arrival code; picking stdio for a multi-tenant SaaS means you cannot horizontally scale (one process per client). Getting this wrong bakes in a rewrite at the worst time — when you are trying to go to production.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing a new MCP server and choosing how clients will reach it.</item>
+        <item>Migrating an existing SSE server to the post-2026-03-26 spec.</item>
+        <item>Reviewing an MCP integration PR — flag any new SSE code as tech debt on day one.</item>
+        <item>Sizing a deployment: stdio implies "1 process per agent session"; HTTP implies a fleet behind an LB.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Non-MCP tool integrations (plain HTTP APIs, gRPC) — this rule is MCP-specific.</item>
+        <item>Pure prototype where the server runs once on the author's laptop and never ships — pick whatever is fastest to type.</item>
+        <item>Clients that explicitly require SSE for back-compat and you control both sides — keep SSE only behind a feature flag with a sunset date.</item>
+      </list>
+    </when-not-to-use>
+    <section name="transport-decision">
+      <rule testable="true">
+        <statement>For every new MCP server, pick exactly one transport from {stdio, streamable-http}. Choose stdio iff the server runs as a subprocess of a single client on the same machine. Choose streamable-http iff the server is reached over a network OR serves more than one concurrent client. Treat SSE as deprecated — only enable it behind a legacy_sse: true feature flag with a documented sunset date.</statement>
+        <rationale>MCP spec revision 2025-11-25 removed the dual-endpoint SSE transport in favor of a single Streamable HTTP endpoint that can negotiate POST → SSE upgrade per request. stdio remains the only zero-overhead option for local IPC; HTTP is the only option that scales horizontally. SSE is transitional and slated for removal.</rationale>
+      </rule>
+      <example type="good" title="Local stdio">
+        <code lang="python"><![CDATA[
+# Local stdio — one process per Claude Desktop session
+from mcp.server.fastmcp import FastMCP
+mcp = FastMCP("github-local")
+mcp.run(transport="stdio")
+        ]]></code>
+        <note>Subprocess of the client; lifecycle tied to parent; no network surface.</note>
+      </example>
+      <example type="good" title="Remote streamable HTTP">
+        <code lang="python"><![CDATA[
+# Remote streamable HTTP — single endpoint /mcp behind nginx + OAuth 2.1
+mcp.run(transport="streamable-http", host="0.0.0.0", port=8080)
+        ]]></code>
+        <note>Horizontally scalable; supports POST + SSE upgrade per request; resumable.</note>
+      </example>
+      <example type="bad" title="2026 greenfield with SSE">
+        <code lang="python"><![CDATA[
+# 2026 greenfield with SSE transport
+mcp.run(transport="sse", host="0.0.0.0", port=8080)
+        ]]></code>
+        <note>Deprecated transport; clients are migrating off it; you will rewrite this within months.</note>
+      </example>
+      <section name="when-each-option-fits">
+        <list>
+          <item>stdio: Claude Desktop / Claude Code / Cursor plugins, local CLI tools, fast launch, single-user.</item>
+          <item>streamable-http: hosted SaaS MCP servers, multi-tenant, behind LB, OAuth 2.1, resumable streams.</item>
+          <item>SSE: legacy clients pinned to pre-2026-03-26 protocol — ship only as a back-compat shim.</item>
+        </list>
+      </section>
+      <antipattern>
+        <description>Running stdio in production multi-user deployment ("we will spawn one stdio process per request").</description>
+        <reason>Process-per-request defeats connection reuse, breaks OAuth flows, and saturates fork()/spawn() under load. Use HTTP.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Greenfield server that supports SSE "for compatibility" without naming a single client that needs it.</description>
+        <reason>SSE is transitional. Without a named legacy client and a sunset date, you are paying maintenance tax on dead code.</reason>
+      </antipattern>
+      <reference path="templates/transport-decision.txt">One-screen decision flow for design docs.</reference>
+    </section>
+    <section name="deployment-shapes">
+      <section name="stdio-local-subprocess">
+        <rule testable="true">
+          <statement>If you choose stdio, document that the server is single-user, in-process-tree, and auth is delegated to the host OS user. Do NOT add OAuth, do NOT bind to a port, do NOT log to a shared file — assume the parent process owns lifecycle and stdout/stderr.</statement>
+          <rationale>stdio servers inherit the client's identity. Adding network auth on top of stdio is wasted work; binding to a port turns a local subprocess into a quasi-network surface that bypasses the client's sandboxing.</rationale>
+        </rule>
+      </section>
+      <section name="streamable-http-remote-scalable">
+        <rule testable="true">
+          <statement>If you choose Streamable HTTP, you MUST implement: (1) OAuth 2.1 with PKCE for client auth, (2) idempotent request handling so a resumed SSE stream does not double-execute side effects, (3) a single /mcp endpoint that accepts POST and upgrades to SSE per request, (4) horizontal-scale-safe session state (Redis or DB, not in-process).</statement>
+          <rationale>The Streamable HTTP transport is designed to support multi-tenant hosted deployments. Skipping OAuth opens the server to anyone; in-process session state makes the deployment a single point of failure.</rationale>
+        </rule>
+        <example type="good" title="Production-shape Streamable HTTP">
+          <code lang="yaml"><![CDATA[
+# Production-shape Streamable HTTP MCP service
+service:
+  transport: streamable-http
+  endpoint: /mcp
+  auth: oauth2.1-pkce
+  session_store: redis://valkey:6379/0
+  replicas: 3
+  health: /healthz
+          ]]></code>
+          <note>Stateless replicas + shared session store + OAuth — the minimum production shape.</note>
+        </example>
+      </section>
+      <section name="common-mismatch-failures">
+        <antipattern>
+          <description>Server uses stdio but is wrapped by a TCP-to-stdio bridge to "make it remote".</description>
+          <reason>The bridge becomes a single-point bottleneck with no auth, no resumability, and no per-tenant isolation. Use Streamable HTTP natively instead.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Streamable HTTP server keeps session state in a Python dict (in-process).</description>
+          <reason>Two replicas behind an LB cannot see each other's sessions; the next request hits the wrong replica and the agent loses context mid-loop.</reason>
+        </antipattern>
+      </section>
+    </section>
+    <templates>
+      <template path="templates/transport-decision.txt" purpose="One-screen decision flow an engineer can paste into a design doc."/>
+    </templates>
+  </content>
+</methodology>
