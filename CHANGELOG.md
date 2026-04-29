@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 - migrate: 3/3 pro/infra methodologies → methodology.xml (terraform, terraform-iac, aws-architecture-services; feature-045 batch AX)
+- cleanup: remove leftover AGENTS.md/CLAUDE.md/content/ from helm-charts; migrate kubernetes + aws-ec2-ecs to methodology.xml (feature-045 batch AY)
 - migrate: 2/2 pro/infra/devops-engineer methodologies → methodology.xml (helm-charts, jenkins-pipelines; feature-045 batch AU-local)
 - migrate: 3/3 pro/infra/devops-engineer methodologies → methodology.xml (kubernetes-deployment, nginx-configuration, prometheus-monitoring; feature-045 batch AU)
 - migrate: 3/3 pro/infra/devops-engineer methodologies → methodology.xml (secrets-management, security-as-code, ssl-tls-setup; feature-045 batch AW)
