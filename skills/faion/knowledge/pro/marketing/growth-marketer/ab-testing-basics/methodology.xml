@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ab-testing-basics">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>growth-marketer</domain>
+    <summary>Controlled experiment comparing two variants with 50/50 traffic split, measured against a pre-registered primary metric and statistical significance to make causal decisions.</summary>
+    <tags>
+      <tag>experimentation</tag>
+      <tag>ab-testing</tag>
+      <tag>split-testing</tag>
+      <tag>statistical-significance</tag>
+      <tag>hypothesis</tag>
+    </tags>
+    <category>experiments</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>A/B Testing Basics</title>
+    <summary>A/B testing (split testing) is a controlled experiment that compares two versions of a change by splitting traffic 50/50, measuring which variant performs better on a pre-registered primary metric, and deciding based on statistical significance. The lifecycle is: hypothesis (if/then/because) → sample-size calculation → run to full size → analyze (p-value, SRM check, guardrails) → ship or kill.</summary>
+    <why>
+      <p>Opinion-driven product decisions fail because individual intuition has no error rate. A/B tests produce a causal estimate of a change's effect with a known false-positive rate (alpha). Without a pre-committed end date and a sample-ratio mismatch check, peeking inflates false positives 5–10x and SRM silently invalidates results.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Reversible UI/copy/flow changes where the change affects a metric trackable in real time.</item>
+        <item>At least 1k weekly events on the primary metric surface.</item>
+        <item>One change per experiment — multiple simultaneous changes prevent causal isolation.</item>
+        <item>Team has committed to a single primary metric and 3+ guardrail metrics before launch.</item>
+        <item>A/B platform available with deterministic-hash bucketing (user_id + experiment_id).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Strategic choices (pricing model, brand positioning) — blast radius too large, too few decisions.</item>
+        <item>Network-effect surfaces (Slack workspaces, marketplaces) — treatment leaks into control; use cluster/switchback designs.</item>
+        <item>Traffic below 100 users/day on the test surface — test duration exceeds product-iteration cadence.</item>
+        <item>Full redesigns — too many confounders; use phased feature-flag rollout instead.</item>
+        <item>Highly personalized products where every user already sees a different variant.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Hypothesis Format">
+      <rule>
+        <statement>Write every hypothesis in if/then/because format before any code is written.</statement>
+        <rationale>Pre-registration prevents HARKing (Hypothesizing After Results are Known) and anchors the team to a single primary metric.</rationale>
+      </rule>
+      <example type="bad">
+        <note>"The new design is better" — no metric, no mechanism, cannot be falsified.</note>
+      </example>
+      <example type="good">
+        <note>IF we simplify signup from 6 fields to 3, THEN conversion will increase 10%, BECAUSE friction decreases.</note>
+      </example>
+    </section>
+    <section name="Lifecycle Steps">
+      <rule>
+        <statement>Progress through all six steps in order; do not begin analysis before the pre-committed sample size and end date are reached.</statement>
+        <rationale>Peeking at interim results and stopping early inflates false positives by 5–10x.</rationale>
+      </rule>
+      <list>
+        <item>1. HYPOTHESIS — if/then/because, primary metric, guardrails, MDE</item>
+        <item>2. DESIGN — one change only; define control and treatment</item>
+        <item>3. SAMPLE SIZE — calculate n per variant using statsmodels NormalIndPower</item>
+        <item>4. RUN — random assignment, no peeking, simultaneous variants</item>
+        <item>5. ANALYZE — SRM check first, then z-test primary, then guardrails</item>
+        <item>6. DECIDE — ship, kill, retest, or investigate tradeoffs</item>
+      </list>
+    </section>
+    <section name="Statistical Interpretation">
+      <rule>
+        <statement>Require raw counts (n1, x1, n2, x2) before computing significance; never accept a reported p-value without verifying the inputs.</statement>
+        <rationale>LLMs and junior analysts fabricate plausible-looking p-values when given only percentages.</rationale>
+      </rule>
+      <p>Interpretation table by p-value:</p>
+      <list>
+        <item>p &lt; 0.01 — strong evidence, ship B</item>
+        <item>0.01 to 0.05 — good evidence, ship B</item>
+        <item>0.05 to 0.10 — weak evidence, retest with larger sample</item>
+        <item>p &gt; 0.10 — not significant, keep A</item>
+      </list>
+      <rule>
+        <statement>Treat 0.05 &lt; p &lt; 0.10 as "no result, need more data" — not as "almost a win".</statement>
+        <rationale>Rounding borderline results to wins doubles the realized false-positive rate over an experiment program.</rationale>
+      </rule>
+    </section>
+    <section name="Decision Rules">
+      <list>
+        <item>B wins significantly → ship B to 100% via phased rollout (10% → 50% → 100%)</item>
+        <item>A wins significantly → keep A, document what failed and why</item>
+        <item>No significant difference → keep A (simpler), test a different hypothesis</item>
+        <item>B wins primary but hurts a guardrail → investigate tradeoffs before shipping</item>
+      </list>
+    </section>
+    <section name="Metric Selection">
+      <rule>
+        <statement>Choose exactly ONE primary metric per test; declare guardrail metrics as "watch only" — they cannot win or lose the test alone.</statement>
+        <rationale>Multiple primaries inflate the family-wise error rate; guardrails exist to catch Pyrrhic victories.</rationale>
+      </rule>
+      <list>
+        <item>Landing page test → primary: signup conversion rate</item>
+        <item>Checkout flow test → primary: purchase completion rate</item>
+        <item>Email test → primary: click rate (not open rate — iOS prefetch noise)</item>
+        <item>Onboarding test → primary: activation rate within 7 days</item>
+      </list>
+    </section>
+    <section name="Pre-Launch Gates">
+      <rule>
+        <statement>Block test launch if any of these six items is absent: hypothesis_if_then_because, primary_metric, mde_relative, sample_per_variant, end_date, guardrails.</statement>
+        <rationale>Tests missing any one of these cannot be analyzed correctly or compared to prior experiments in the log.</rationale>
+      </rule>
+      <reference path="templates/pretest-check.py">Python function that enforces all six pre-launch gates and returns a pass/fail list</reference>
+      <list>
+        <item>hypothesis written in if/then/because format</item>
+        <item>primary metric tied to a business outcome (not a vanity metric)</item>
+        <item>MDE stated as relative percentage (e.g. 10% relative lift on a 5% baseline)</item>
+        <item>sample_per_variant &gt;= 1000 (below this, results are unreliable)</item>
+        <item>end_date committed in writing before traffic flows</item>
+        <item>3+ guardrail metrics named explicitly</item>
+        <item>no overlapping test on the same surface or user segment</item>
+      </list>
+    </section>
+    <section name="Day-1 Monitoring">
+      <rule>
+        <statement>Configure a sample-ratio mismatch (SRM) check on day 1; if observed split deviates from expected (chi-square p &lt; 0.001), pause and investigate before proceeding.</statement>
+        <rationale>SRM indicates randomization failure and silently invalidates the entire test — an SRM-affected result cannot be trusted even if the primary metric looks significant.</rationale>
+      </rule>
+      <list>
+        <item>verify tracking fires on both variants</item>
+        <item>run chi-square SRM test on observed traffic split</item>
+        <item>check that partial first/last days with ramp-up traffic are excluded from analysis window</item>
+      </list>
+    </section>
+    <section name="Analysis Steps">
+      <list>
+        <item>1. SRM check (chi-square on split) — invalidate if p &lt; 0.001</item>
+        <item>2. Primary metric z-test with raw counts n1, x1, n2, x2</item>
+        <item>3. Confidence interval on the lift</item>
+        <item>4. Secondary metrics (informational only)</item>
+        <item>5. All guardrail metrics — flag any regression &gt; 5%</item>
+        <item>6. Segment check (day-of-week, device, acquisition channel) for heterogeneity</item>
+      </list>
+      <antipattern>
+        <description>Running analysis before the pre-committed sample size is reached.</description>
+        <reason>Peeking inflates false positives — the test is not valid until the pre-registered sample and end date are both met.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Testing 5 segments and calling the one that wins the "result".</description>
+        <reason>Multiple comparisons without Bonferroni correction produces a ~23% family-wise false-positive rate at 5 tests.</reason>
+      </antipattern>
+    </section>
+    <section name="Example: CTA Button Copy Win">
+      <example type="good">
+        <note>Hypothesis: IF we change CTA from "Sign Up" to "Start Free Trial", THEN conversion will increase 8%, BECAUSE it emphasizes the free offer. Baseline 4.5%, MDE 8% relative (~0.36pp absolute), n=50k/variant, 3 weeks. Result: A=4.50% (n=52340), B=4.90% (n=51890), diff=+0.40pp (+8.9% relative), p=0.003 (99.7% confidence). Decision: ship B.</note>
+      </example>
+    </section>
+    <section name="Example: Pricing Badge Marginal Win">
+      <example type="good">
+        <note>Hypothesis: IF we add "Most Popular" badge to Pro plan, THEN Pro selection will increase 15%, BECAUSE social proof influences choice. Result: A=15.0% (n=8450), B=17.0% (n=8380), diff=+2.0pp (+13.3%), p=0.048 (95.2% confidence). Decision: ship B — positive direction with sufficient confidence, even though below 15% MDE target.</note>
+      </example>
+    </section>
+    <section name="Example: Failed Testimonial Test">
+      <example type="bad">
+        <note>Hypothesis: IF we add testimonials above the fold, THEN conversions will increase 10%, BECAUSE social proof builds trust. Result: A=5.00% (n=12000), B=4.79% (n=12200), diff=-0.21pp (-4.2%), p=0.32 (68% confidence). Decision: keep A (no significance, and directionally negative). Learning: testimonials may have distracted from the CTA; test placement below the fold instead.</note>
+      </example>
+      <rule>
+        <statement>When a test fails directionally, document the specific learning, not just "hypothesis was wrong" — failed tests are the most informative entries in the experiment log.</statement>
+        <rationale>The experiment log is the cumulative knowledge base for the growth function; vague failure entries cannot inform future test design.</rationale>
+      </rule>
+    </section>
+    <section name="Common Mistakes">
+      <antipattern>
+        <description>Peeking at interim results and stopping early when a winner appears.</description>
+        <reason>Inflates false positives 5–10x; the test is only valid at the pre-committed sample size and end date.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Testing multiple simultaneous changes in one variant.</description>
+        <reason>Cannot isolate which change caused the effect; the test produces an uninterpretable compound result.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Ignoring guardrail metrics after a primary win.</description>
+        <reason>Pyrrhic victories — e.g. a signup-rate win that increases D7 churn — destroy more value than they create.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/pretest-check.py" purpose="Python gate function — blocks underpowered or misconfigured tests before launch"/>
+      <template path="templates/prompt-test-card.txt" purpose="LLM prompt to draft a hypothesis card with all required fields"/>
+    </templates>
+  </content>
+</methodology>
