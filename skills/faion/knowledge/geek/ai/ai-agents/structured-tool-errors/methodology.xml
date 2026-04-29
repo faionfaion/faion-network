@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="structured-tool-errors">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Structure tool errors with code, message, recoveryHint enum, and traceId to let agent loops branch deterministically.</summary>
+    <tags>
+      <tag>error-handling</tag>
+      <tag>structured-errors</tag>
+      <tag>agent-loops</tag>
+      <tag>mcp</tag>
+      <tag>tool-design</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Structured Tool Errors with recoveryHint</title>
+    <summary>Tool errors are part of the prompt — they are the next thing the agent reads. Never bubble raw stack traces, HTTP error bodies, or upstream JSON. Return a structured object: {code, message, recoveryHint, traceId, ...details} where recoveryHint is a closed enum (RETRY_LATER | CHECK_INPUT | TRY_ALTERNATIVE | REPORT_TO_USER | NEEDS_AUTH). The hint is a direct instruction to the model's next reasoning step. The closed code lets the agent's loop decide retry vs escalate vs abort without re-reading the message.</summary>
+    <why>
+      <p>LLM-friendly error design papers (SHIELDA, Kumaran's MCP error guide) consistently show that an unstructured error like TypeError: NoneType has no attribute 'json' at line 42 causes the agent to either retry blindly (wasting tokens and risking duplicate side effects) or hallucinate an explanation ("the API is down, I will try again"). A structured error with a recoveryHint enum gives the loop a deterministic branch: RETRY_LATER → sleep + retry; CHECK_INPUT → reconsider arguments; NEEDS_AUTH → ask user; REPORT_TO_USER → stop. Same paper measured 30%+ reduction in dead-end loops on agent error benchmarks. The traceId is what the human reads when the agent escalates — never omit it.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Every error path of every tool, including reads.</item>
+        <item>Tools wrapping flaky upstreams (rate limits, auth tokens, transient 5xx).</item>
+        <item>Tools where the agent retries automatically — the hint controls the retry policy.</item>
+        <item>MCP servers — error structure is part of the public contract.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Don't fabricate recoveryHint when the failure is genuinely unrecoverable — emit REPORT_TO_USER and stop the loop instead of guessing RETRY_LATER.</item>
+        <item>Don't add a hint to a successful response with warnings; warnings belong in a separate warnings: [] field, not the error envelope.</item>
+        <item>Don't expose internal stack traces inside details — they leak implementation, fill context, and don't help the agent.</item>
+      </list>
+    </when-not-to-use>
+    <section name="error-envelope">
+      <p>The model reads tool errors verbatim and uses them to plan the next call. A raw exception leaks Python noise, dumps line numbers, and gives the agent no policy signal. A structured envelope gives the loop a single field (recoveryHint) it can branch on without re-reading the message.</p>
+      <rule testable="true">
+        <statement>Every tool error response MUST be a JSON object with these required fields: code (UPPER_SNAKE machine code), message (one human sentence, no stack trace), recoveryHint (one of RETRY_LATER | CHECK_INPUT | TRY_ALTERNATIVE | REPORT_TO_USER | NEEDS_AUTH), traceId (correlation ID). Optional: retry_after_seconds, details (sanitised, no stack frames).</statement>
+        <rationale>SHIELDA and Kumaran's MCP error-design study measured a 30%+ drop in dead-end retry loops when tools emit a closed recoveryHint enum vs free-form messages. The closed enum is what makes the policy mapping deterministic.</rationale>
+      </rule>
+      <example type="good" title="Structured error with recovery hint">
+        <code lang="json"><![CDATA[{
+  "error": {
+    "code": "UPSTREAM_RATE_LIMITED",
+    "message": "GitHub API returned 429.",
+    "recoveryHint": "RETRY_LATER",
+    "retry_after_seconds": 60,
+    "traceId": "01HX9V7Q2XQF9P0M4Z"
+  }
+}]]></code>
+        <note>Closed code, one-sentence message, actionable hint, retry budget. Agent loop sleeps 60s and retries. Human reading logs has the traceId.</note>
+      </example>
+      <example type="bad" title="Raw stack trace without structure">
+        <code lang="json"><![CDATA[{ "error": "TypeError: NoneType has no attribute 'json' at /app/tools/github.py:42\n  File ..." }]]></code>
+        <note>Raw stack trace. Agent cannot tell if it is rate-limited, broken, or its fault. Likely retries blindly or hallucinates a fix.</note>
+      </example>
+      <antipattern>
+        <description>Returning HTTP status code AS the error code (code: "429").</description>
+        <reason>Status codes describe transport, not the agent action. Use semantic codes (UPSTREAM_RATE_LIMITED, INVALID_ARGUMENT) and let the hint enum drive the loop.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Stuffing the upstream stack trace into details.</description>
+        <reason>Leaks implementation, fills context, and gives the model no actionable signal. Sanitise: keep what the agent can act on, drop the rest.</reason>
+      </antipattern>
+      <templates>
+        <template path="templates/error_envelope.json" purpose="Canonical error envelope shape with all fields"/>
+        <template path="templates/recovery_hints.txt" purpose="Closed enum of recovery hints with one-line semantics"/>
+      </templates>
+    </section>
+    <section name="loop-policy">
+      <p>The whole point of a closed enum is deterministic dispatch. The agent runner inspects recoveryHint and routes the next step without involving the model again, saving a turn and avoiding hallucinated retry policies.</p>
+      <rule testable="true">
+        <statement>The agent runner MUST map each recoveryHint value to exactly one action: RETRY_LATER → wait retry_after_seconds (clamped 1-300s) and retry the same call up to a per-tool retry budget; CHECK_INPUT → return the error to the model with no automatic retry; TRY_ALTERNATIVE → return to the model, signal to pick a different tool; REPORT_TO_USER → halt the loop, surface to user; NEEDS_AUTH → halt the loop, request credentials.</statement>
+        <rationale>Without an explicit mapping, the model invents its own retry policy each turn, often retrying INVALID_ARGUMENT (waste) or escalating RATE_LIMITED (premature). Explicit dispatch is cheaper and safer.</rationale>
+      </rule>
+      <list>
+        <item>RETRY_LATER — transient (rate limit, 503, network blip). Runner sleeps and retries automatically.</item>
+        <item>CHECK_INPUT — argument problem (validation, bad ID). Send back to model so it can rethink.</item>
+        <item>TRY_ALTERNATIVE — this tool cannot serve the request (wrong scope, missing permission). Model picks a different tool.</item>
+        <item>REPORT_TO_USER — irrecoverable for the agent (data inconsistency, business rule violation). Halt, surface.</item>
+        <item>NEEDS_AUTH — credentials missing or expired. Halt, request via the user-facing flow.</item>
+      </list>
+      <example type="good" title="Error dispatch mapping in agent runner">
+        <code lang="python"><![CDATA[ACTION = {
+    "RETRY_LATER":      lambda env: ("retry", min(max(env.get("retry_after_seconds", 5), 1), 300)),
+    "CHECK_INPUT":      lambda env: ("send_to_model", None),
+    "TRY_ALTERNATIVE":  lambda env: ("send_to_model", None),
+    "REPORT_TO_USER":   lambda env: ("halt", env),
+    "NEEDS_AUTH":       lambda env: ("auth", env),
+}
+
+def dispatch(error_envelope, retries_left):
+    hint = error_envelope["recoveryHint"]
+    kind, payload = ACTION[hint](error_envelope)
+    if kind == "retry" and retries_left > 0:
+        return ("sleep_then_retry", payload)
+    if kind == "retry":
+        return ("send_to_model", error_envelope)  # exhausted
+    return (kind, payload)]]></code>
+        <note>Closed enum + closed table. Every hint has exactly one outcome. Retry budget bounds the loop.</note>
+      </example>
+      <antipattern>
+        <description>Returning the error envelope to the model on every hint and letting the model decide whether to retry.</description>
+        <reason>Burns tokens, invites hallucinated retry decisions, and bypasses the runner's retry budget — the loop can spin forever.</reason>
+      </antipattern>
+    </section>
+    <see-also>
+      <link href="https://medium.com/@kumaran.isk/llm-friendly-error-handling-designing-mcp-servers-for-ai-df427f6dfd2f">Kumaran ISK — LLM-friendly error handling for MCP</link>
+      <link href="https://arxiv.org/pdf/2508.07935">SHIELDA — structured-error agent benchmark</link>
+      <link href="https://www.arunbaby.com/ai-agents/0033-error-handling-recovery/">Arun Baby — Error handling and recovery in AI agents</link>
+    </see-also>
+  </content>
+</methodology>
