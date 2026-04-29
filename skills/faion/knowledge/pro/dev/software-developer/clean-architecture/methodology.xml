@@ -1,0 +1,687 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="clean-architecture">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Separate concerns into concentric layers with inward dependencies, keeping business logic independent of frameworks and databases. Covers entities, use cases, adapters, and the dependency rule.</summary>
+    <tags>
+      <tag>clean-architecture</tag>
+      <tag>architecture</tag>
+      <tag>ddd</tag>
+      <tag>layered-architecture</tag>
+      <tag>dependency-inversion</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Clean Architecture</title>
+    <summary>Clean Architecture separates concerns into concentric layers, with dependencies pointing inward. The core business logic remains independent of frameworks, databases, and delivery mechanisms. This methodology covers implementation patterns across different languages and frameworks.</summary>
+    <why>
+      <p>In traditional layered architectures, business logic becomes entangled with framework-specific code (ORM decorators, web framework dependencies, database client libraries). When infrastructure changes (database swap, API framework upgrade), core logic must be rewritten. Clean Architecture inverts this: the domain layer has no imports from outer layers, making business rules portable and independently testable. Error budgets improve because domain bugs are caught in microsecond unit tests, not in integration tests that mock databases and web servers.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Complex business logic applications</item>
+        <item>Long-lived enterprise systems</item>
+        <item>Projects requiring high testability</item>
+        <item>Applications that may change infrastructure</item>
+        <item>Teams practicing Domain-Driven Design</item>
+        <item>Long-lived enterprise codebases where infrastructure (DB, message bus, auth provider, payment processor) is expected to change at least once over the product lifetime</item>
+        <item>Domains with non-trivial business rules — pricing engines, eligibility checks, regulatory calculations — that deserve to be tested without booting the framework</item>
+        <item>Polyglot persistence: same domain logic must be servable from REST, GraphQL, gRPC, and a CLI without duplication</item>
+        <item>Greenfield builds where the team has DDD literacy and is committed to dependency-inversion as a hard rule</item>
+        <item>Existing Big Ball of Mud where you want a strangler-fig migration: extract a use case at a time into a clean core</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>CRUD apps with thin business logic (form → table). Three layers of indirection over a User table is pure tax.</item>
+        <item>Solo MVP / pre-PMF: the cost (entities + interfaces + use cases + DTOs + adapters) buys nothing while the domain is unstable</item>
+        <item>Throwaway scripts, batch jobs, glue code. Use the framework directly.</item>
+        <item>Teams without DDD/inversion experience — Clean Architecture without aggregate boundaries collapses into "DTOs all the way down" with extra mappers</item>
+        <item>Tight latency budgets where every layer's mapping costs measurable µs (HFT, real-time bidding). Direct paths win.</item>
+        <item>Frameworks designed against the dependency rule (Rails, Django) where fighting the framework costs more than it saves; modular monolith inside the framework is often the better answer</item>
+      </list>
+    </when-not-to-use>
+    <section name="key-principles">
+      <list>
+        <item>Dependency rule - Dependencies point inward toward higher-level policies</item>
+        <item>Entities - Enterprise business rules, framework-independent</item>
+        <item>Use cases - Application-specific business rules</item>
+        <item>Interface adapters - Convert data between layers</item>
+        <item>Frameworks and drivers - External tools and delivery mechanisms</item>
+      </list>
+    </section>
+    <section name="layer-structure">
+      <p>Clean Architecture organizes code into concentric layers:</p>
+      <section name="the-four-layers">
+        <p>From outside-in:</p>
+        <list>
+          <item>Frameworks &amp; Drivers (outermost): Web frameworks (Django, FastAPI, Rails), databases (PostgreSQL, MongoDB), message brokers (RabbitMQ, Kafka), external APIs (Stripe, Twilio). These change most frequently.</item>
+          <item>Interface Adapters: Controllers (HTTP handlers), Gateways (database query translators), Presenters (response formatters). Convert between framework-native objects and domain objects. Controllers invoke use cases; use cases return DTOs.</item>
+          <item>Application Business Rules (Use Cases): Orchestrate domain objects and interfaces. Each use case = one user-facing action (CreateUser, PlaceOrder, CancelSubscription). No knowledge of HTTP, database schema, or framework. Depends inward on domain.</item>
+          <item>Enterprise Business Rules (Entities, innermost): Core domain logic: validation, state transitions, invariants. User entity enforces "email must be unique and valid". Order entity enforces "total &gt;= sum of line items". Framework-agnostic pure Python/Java/Go. One test per entity runs in microseconds.</item>
+        </list>
+      </section>
+      <section name="project-structure-example">
+        <p>Typical folder layout (Python):</p>
+        <code lang="text"><![CDATA[src/
+├── domain/                     # Entities layer
+│   ├── entities/
+│   │   ├── user.py
+│   │   └── order.py
+│   ├── value_objects/
+│   │   ├── email.py
+│   │   └── money.py
+│   ├── events/
+│   │   └── domain_events.py
+│   ├── exceptions/
+│   │   └── domain_exceptions.py
+│   └── interfaces/             # Repository interfaces
+│       ├── user_repository.py
+│       └── order_repository.py
+│
+├── application/                # Use cases layer
+│   ├── use_cases/
+│   │   ├── users/
+│   │   │   ├── create_user.py
+│   │   │   ├── get_user.py
+│   │   │   └── update_user.py
+│   │   └── orders/
+│   │       └── place_order.py
+│   ├── interfaces/             # Application service interfaces
+│   │   ├── unit_of_work.py
+│   │   └── event_publisher.py
+│   └── dto/
+│       ├── user_dto.py
+│       └── order_dto.py
+│
+├── infrastructure/             # Frameworks layer
+│   ├── persistence/
+│   │   ├── repositories/
+│   │   │   └── user_repository_impl.py
+│   │   ├── orm/
+│   │   │   └── models.py
+│   │   └── unit_of_work_impl.py
+│   ├── services/
+│   │   ├── email_service.py
+│   │   └── payment_gateway.py
+│   └── config/
+│       └── database.py
+│
+└── presentation/               # Interface adapters
+    ├── api/
+    │   ├── controllers/
+    │   │   └── user_controller.py
+    │   ├── schemas/
+    │   │   └── user_schemas.py
+    │   └── middleware/
+    └── cli/
+        └── commands.py]]></code>
+      </section>
+    </section>
+    <section name="domain-layer-entities">
+      <p>The innermost layer. Pure business logic with zero framework dependencies. Entities are mutable domain objects with identity (User with id, Order with order_number). Value objects are immutable (Email, Money, Address). Both encapsulate rules.</p>
+      <example type="good" title="entity-example">
+        <code lang="python"><![CDATA[# domain/entities/user.py
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Optional
+from uuid import UUID, uuid4
+
+from domain.value_objects.email import Email
+from domain.events.domain_events import UserCreated, UserEmailChanged
+from domain.exceptions.domain_exceptions import DomainError
+
+
+@dataclass
+class User:
+    """User entity - core business rules."""
+
+    id: UUID = field(default_factory=uuid4)
+    name: str = ""
+    email: Email = field(default_factory=lambda: Email(""))
+    role: str = "member"
+    is_active: bool = True
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    _events: list = field(default_factory=list, repr=False)
+
+    def __post_init__(self):
+        self._validate()
+
+    def _validate(self):
+        if len(self.name) &lt; 2:
+            raise DomainError("Name must be at least 2 characters")
+
+    @classmethod
+    def create(cls, name: str, email: str) -> "User":
+        """Factory method for creating new users."""
+        user = cls(
+            name=name,
+            email=Email(email),
+        )
+        user._events.append(UserCreated(user.id, email))
+        return user
+
+    def change_email(self, new_email: str) -> None:
+        """Change user's email with validation."""
+        old_email = self.email.value
+        self.email = Email(new_email)
+        self._events.append(UserEmailChanged(self.id, old_email, new_email))
+
+    def promote_to_admin(self) -> None:
+        """Promote user to admin role."""
+        if self.role == "admin":
+            raise DomainError("User is already an admin")
+        self.role = "admin"
+
+    def deactivate(self) -> None:
+        """Deactivate the user account."""
+        self.is_active = False
+
+    def collect_events(self) -> list:
+        """Collect and clear domain events."""
+        events = self._events.copy()
+        self._events.clear()
+        return events
+
+
+# domain/value_objects/email.py
+from dataclasses import dataclass
+import re
+
+from domain.exceptions.domain_exceptions import DomainError
+
+
+@dataclass(frozen=True)
+class Email:
+    """Email value object with validation."""
+
+    value: str
+
+    def __post_init__(self):
+        if not self._is_valid_email(self.value):
+            raise DomainError(f"Invalid email format: {self.value}")
+        # Normalize to lowercase
+        object.__setattr__(self, 'value', self.value.lower())
+
+    @staticmethod
+    def _is_valid_email(email: str) -> bool:
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return bool(re.match(pattern, email))
+
+
+# domain/interfaces/user_repository.py
+from abc import ABC, abstractmethod
+from typing import Optional
+from uuid import UUID
+
+from domain.entities.user import User
+
+
+class UserRepository(ABC):
+    """Repository interface for User entity."""
+
+    @abstractmethod
+    async def find_by_id(self, user_id: UUID) -> Optional[User]:
+        pass
+
+    @abstractmethod
+    async def find_by_email(self, email: str) -> Optional[User]:
+        pass
+
+    @abstractmethod
+    async def save(self, user: User) -> None:
+        pass
+
+    @abstractmethod
+    async def delete(self, user: User) -> None:
+        pass]]></code>
+      </example>
+    </section>
+    <section name="application-layer-use-cases">
+      <p>Orchestrates domain objects. One use case per command or query. Each use case takes an input DTO (user-provided data), invokes domain logic and repository interfaces (no concrete implementations), and returns an output DTO. Use cases have zero knowledge of HTTP status codes, database connections, or web frameworks.</p>
+      <example type="good" title="use-case-example">
+        <code lang="python"><![CDATA[# application/use_cases/users/create_user.py
+from dataclasses import dataclass
+from uuid import UUID
+
+from domain.entities.user import User
+from domain.interfaces.user_repository import UserRepository
+from application.interfaces.unit_of_work import UnitOfWork
+from application.interfaces.event_publisher import EventPublisher
+from application.dto.user_dto import UserDTO
+from application.exceptions import ApplicationError
+
+
+@dataclass
+class CreateUserInput:
+    name: str
+    email: str
+    organization_id: UUID
+
+
+@dataclass
+class CreateUserOutput:
+    user: UserDTO
+
+
+class CreateUserUseCase:
+    """Use case for creating a new user."""
+
+    def __init__(
+        self,
+        user_repository: UserRepository,
+        unit_of_work: UnitOfWork,
+        event_publisher: EventPublisher,
+    ):
+        self._user_repository = user_repository
+        self._unit_of_work = unit_of_work
+        self._event_publisher = event_publisher
+
+    async def execute(self, input_data: CreateUserInput) -> CreateUserOutput:
+        # Check if user exists
+        existing = await self._user_repository.find_by_email(input_data.email)
+        if existing:
+            raise ApplicationError("User with this email already exists")
+
+        # Create user entity
+        user = User.create(
+            name=input_data.name,
+            email=input_data.email,
+        )
+
+        # Persist and commit
+        async with self._unit_of_work:
+            await self._user_repository.save(user)
+            await self._unit_of_work.commit()
+
+        # Publish domain events
+        for event in user.collect_events():
+            await self._event_publisher.publish(event)
+
+        return CreateUserOutput(user=UserDTO.from_entity(user))
+
+
+# application/use_cases/users/get_user.py
+from dataclasses import dataclass
+from typing import Optional
+from uuid import UUID
+
+from domain.interfaces.user_repository import UserRepository
+from application.dto.user_dto import UserDTO
+from application.exceptions import NotFoundError
+
+
+@dataclass
+class GetUserInput:
+    user_id: UUID
+
+
+class GetUserUseCase:
+    """Use case for retrieving a user by ID."""
+
+    def __init__(self, user_repository: UserRepository):
+        self._user_repository = user_repository
+
+    async def execute(self, input_data: GetUserInput) -> UserDTO:
+        user = await self._user_repository.find_by_id(input_data.user_id)
+
+        if not user:
+            raise NotFoundError(f"User not found: {input_data.user_id}")
+
+        return UserDTO.from_entity(user)
+
+
+# application/dto/user_dto.py
+from dataclasses import dataclass
+from datetime import datetime
+from uuid import UUID
+
+from domain.entities.user import User
+
+
+@dataclass
+class UserDTO:
+    """Data transfer object for User."""
+
+    id: UUID
+    name: str
+    email: str
+    role: str
+    is_active: bool
+    created_at: datetime
+
+    @classmethod
+    def from_entity(cls, user: User) -> "UserDTO":
+        return cls(
+            id=user.id,
+            name=user.name,
+            email=user.email.value,
+            role=user.role,
+            is_active=user.is_active,
+            created_at=user.created_at,
+        )
+
+
+# application/interfaces/unit_of_work.py
+from abc import ABC, abstractmethod
+
+
+class UnitOfWork(ABC):
+    """Unit of Work pattern interface."""
+
+    @abstractmethod
+    async def __aenter__(self):
+        pass
+
+    @abstractmethod
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+    @abstractmethod
+    async def commit(self) -> None:
+        pass
+
+    @abstractmethod
+    async def rollback(self) -> None:
+        pass]]></code>
+      </example>
+    </section>
+    <section name="infrastructure-layer">
+      <p>Implements interfaces defined in domain and application layers. Repositories translate between domain objects and ORM models. Services integrate external systems. Configuration provides database connections and credentials.</p>
+      <example type="good" title="infrastructure-example">
+        <code lang="python"><![CDATA[# infrastructure/persistence/repositories/user_repository_impl.py
+from typing import Optional
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from domain.entities.user import User
+from domain.interfaces.user_repository import UserRepository
+from domain.value_objects.email import Email
+from infrastructure.persistence.orm.models import UserModel
+
+
+class SQLAlchemyUserRepository(UserRepository):
+    """SQLAlchemy implementation of UserRepository."""
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def find_by_id(self, user_id: UUID) -> Optional[User]:
+        result = await self._session.execute(
+            select(UserModel).where(UserModel.id == user_id)
+        )
+        model = result.scalar_one_or_none()
+        return self._to_entity(model) if model else None
+
+    async def find_by_email(self, email: str) -> Optional[User]:
+        result = await self._session.execute(
+            select(UserModel).where(UserModel.email == email.lower())
+        )
+        model = result.scalar_one_or_none()
+        return self._to_entity(model) if model else None
+
+    async def save(self, user: User) -> None:
+        model = self._to_model(user)
+        self._session.add(model)
+
+    async def delete(self, user: User) -> None:
+        result = await self._session.execute(
+            select(UserModel).where(UserModel.id == user.id)
+        )
+        model = result.scalar_one_or_none()
+        if model:
+            await self._session.delete(model)
+
+    def _to_entity(self, model: UserModel) -> User:
+        return User(
+            id=model.id,
+            name=model.name,
+            email=Email(model.email),
+            role=model.role,
+            is_active=model.is_active,
+            created_at=model.created_at,
+        )
+
+    def _to_model(self, entity: User) -> UserModel:
+        return UserModel(
+            id=entity.id,
+            name=entity.name,
+            email=entity.email.value,
+            role=entity.role,
+            is_active=entity.is_active,
+            created_at=entity.created_at,
+        )
+
+
+# infrastructure/persistence/unit_of_work_impl.py
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from application.interfaces.unit_of_work import UnitOfWork
+
+
+class SQLAlchemyUnitOfWork(UnitOfWork):
+    """SQLAlchemy implementation of Unit of Work."""
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            await self.rollback()
+
+    async def commit(self) -> None:
+        await self._session.commit()
+
+    async def rollback(self) -> None:
+        await self._session.rollback()]]></code>
+      </example>
+    </section>
+    <section name="presentation-layer-interface-adapters">
+      <p>Controllers translate HTTP requests to use case inputs, invoke use cases, and translate outputs to HTTP responses. Controllers have zero business logic; they are routing + serialization only. Schemas validate input; responses serialize DTOs.</p>
+      <example type="good" title="controller-example">
+        <code lang="python"><![CDATA[# presentation/api/controllers/user_controller.py
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from application.use_cases.users.create_user import CreateUserUseCase, CreateUserInput
+from application.use_cases.users.get_user import GetUserUseCase, GetUserInput
+from application.exceptions import ApplicationError, NotFoundError
+from presentation.api.schemas.user_schemas import (
+    CreateUserRequest,
+    UserResponse,
+)
+from presentation.api.dependencies import get_create_user_use_case, get_get_user_use_case
+
+router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(
+    request: CreateUserRequest,
+    use_case: CreateUserUseCase = Depends(get_create_user_use_case),
+):
+    try:
+        output = await use_case.execute(
+            CreateUserInput(
+                name=request.name,
+                email=request.email,
+                organization_id=request.organization_id,
+            )
+        )
+        return UserResponse.from_dto(output.user)
+    except ApplicationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/{user_id}", response_model=UserResponse)
+async def get_user(
+    user_id: UUID,
+    use_case: GetUserUseCase = Depends(get_get_user_use_case),
+):
+    try:
+        user_dto = await use_case.execute(GetUserInput(user_id=user_id))
+        return UserResponse.from_dto(user_dto)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))]]></code>
+      </example>
+    </section>
+    <section name="anti-patterns">
+      <antipattern>
+        <description>Leaking domain logic into controllers.</description>
+        <reason>Controllers become stateful and untestable. Every endpoint reimplements the same logic.</reason>
+        <example type="bad">
+          <code lang="python"><![CDATA[# BAD - business logic in controller
+@router.post("/users")
+async def create_user(request: CreateUserRequest):
+    if await user_repo.find_by_email(request.email):
+        raise HTTPException(400, "Email exists")
+    user = User(name=request.name, email=request.email)
+    await user_repo.save(user)
+    return user
+
+# GOOD - delegate to use case
+@router.post("/users")
+async def create_user(
+    request: CreateUserRequest,
+    use_case: CreateUserUseCase = Depends(get_create_user_use_case),
+):
+    output = await use_case.execute(CreateUserInput(...))
+    return UserResponse.from_dto(output.user)]]></code>
+        </example>
+      </antipattern>
+      <antipattern>
+        <description>Framework coupling in domain entities.</description>
+        <reason>Entities become non-portable; changing database or web framework breaks domain tests.</reason>
+        <example type="bad">
+          <code lang="python"><![CDATA[# BAD - SQLAlchemy in domain entity
+from sqlalchemy import Column, String
+from sqlalchemy.orm import declarative_base
+
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+    email = Column(String, unique=True)
+
+# GOOD - pure Python domain entity
+@dataclass
+class User:
+    email: Email
+    name: str]]></code>
+        </example>
+      </antipattern>
+    </section>
+    <section name="domain-events-and-event-publishing">
+      <p>Domain events capture important facts that happen during a business operation. User created, Order placed, Payment received. These events become the source of truth for downstream processes (send email, update analytics, trigger fulfillment).</p>
+      <rule>
+        <statement>Domain events must be published after the entity is persisted. Either commit first then publish, or use transactional outbox pattern to ensure events are not lost on failure.</statement>
+        <rationale>If an entity is modified and the event fails to publish, the system is inconsistent. Using Unit of Work to batch events and publish after commit, or using an outbox table that a separate process polls, prevents silent data loss.</rationale>
+      </rule>
+      <list>
+        <item>Event naming: use past tense (UserCreated, OrderPlaced, PaymentReceived) to reflect that they are facts that happened.</item>
+        <item>Event payload: include only data needed to react to the event, not the entire entity (UserCreated includes user_id and email, not password or internal state).</item>
+        <item>Event handlers: independent service that listens and reacts (send email on UserCreated, update analytics on OrderPlaced). Handlers are adapters; use cases do not depend on them.</item>
+      </list>
+    </section>
+    <section name="polyglot-interfaces">
+      <p>Clean Architecture enables the same domain to be served over multiple interfaces (REST, GraphQL, gRPC, CLI) without duplicating business logic. Each interface is an adapter that translates from the transport format to the use case input and back to the response format.</p>
+      <example type="good" title="polyglot-interfaces">
+        <note>Same CreateUserUseCase called by REST controller (POST /users → JSON request), GraphQL resolver (mutation createUser), and CLI command (cli user create --name X --email Y). Each adapter handles format; domain stays protocol-agnostic.</note>
+      </example>
+    </section>
+    <section name="known-limitations-and-antipatterns">
+      <list>
+        <item>Mapper sprawl: Every layer translates DTO → entity → ORM model. Without discipline, you get N×M mapping classes; reviews grind.</item>
+        <item>Anaemic domain: Entities become record-like, all behavior leaks into use cases. Then "use case" is just a "service" by another name.</item>
+        <item>Use-case explosion: One use case per endpoint × CRUD verbs × resources = hundreds of classes. Without grouping, navigation suffers.</item>
+        <item>Repository misuse: Repos morph into query factories with findByXAndYOrderByZ; the abstraction leaks ORM semantics.</item>
+        <item>Premature abstraction: Interfaces for things with one impl forever (a single Postgres). Extra layer with zero option value.</item>
+        <item>Slow tests: Each use case test sets up entities + repos + UoW + event publisher mocks. Without test fixtures, suite balloons.</item>
+        <item>Cross-cutting concerns: Logging, tracing, audit, retry — get scattered. Decorators help but require a consistent style.</item>
+        <item>Framework-lock through the back door: Validation, serialization, auth tied to the web framework leak into use cases via DTOs that are actually request/response models.</item>
+        <item>Async / transaction boundary confusion: UoW per use case is fine; emitting a domain event mid-transaction and then the event handler tries to commit again — deadlock or lost event.</item>
+      </list>
+    </section>
+    <section name="testing-strategy">
+      <p>Clean Architecture excels at testing because each layer can be tested in isolation with minimal mocks. Domain entities test in microseconds with no I/O. Use cases test against mock repositories without starting a database. Infrastructure tests run integration tests against real databases but are isolated from domain logic.</p>
+      <rule>
+        <statement>Every domain entity must have a test suite that runs in under 100ms total, with zero database, HTTP, or framework dependencies.</statement>
+        <rationale>Fast domain tests catch bugs in business rules immediately during development, enabling confident refactoring. If domain tests are slow, the logic is leaking into infrastructure concerns.</rationale>
+      </rule>
+      <list>
+        <item>Domain tests: Pure Python unit tests, no mocks needed. Test state transitions, invariants, validation rules. Example: create a User, verify email is normalized and validated.</item>
+        <item>Use case tests: Mock repositories and external services. Verify the use case orchestrates domain objects correctly and returns the correct DTO. No database, no HTTP calls.</item>
+        <item>Infrastructure tests: Integration tests with real database/broker. Verify repositories correctly persist and retrieve domain objects. Verify adapters translate correctly between frameworks and domain.</item>
+        <item>Controller tests: Test HTTP request/response translation only. Use a test client; mock use cases. Verify routing, status codes, error handling.</item>
+      </list>
+    </section>
+    <section name="aggregate-design-and-boundaries">
+      <p>In Domain-Driven Design, aggregates are clusters of entities and value objects that are modified together and treated as a single unit. An aggregate root is the only entity in the aggregate that holds references from outside. This keeps transaction boundaries clear: one repository saves one aggregate root at a time.</p>
+      <rule>
+        <statement>Define aggregate boundaries such that each transaction modifies exactly one aggregate root. If a use case must modify two aggregates, it must commit them separately (two repository.save() calls) and handle the possibility of partial failure.</statement>
+        <rationale>Aggregates that span a single transaction boundary can be validated atomically; aggregates that cross must handle eventual consistency. If you need two aggregates in one transaction, they might actually be one aggregate.</rationale>
+      </rule>
+      <example type="good" title="aggregate-boundary">
+        <note>Order aggregate = Order root + LineItem children. All modifications go through Order (add_item, remove_item, apply_discount). Customer is a separate aggregate; Order holds only customer_id. Changing the customer does not affect Order; changing the order does not affect Customer.</note>
+      </example>
+    </section>
+    <section name="avoiding-mapper-sprawl">
+      <p>The largest hidden cost in Clean Architecture is mappers. Every layer boundary requires translation: request → input DTO → entity, entity → output DTO → response. Without discipline, you end up with more mapper code than business logic.</p>
+      <rule>
+        <statement>Generate mappers or use a library (e.g., pydantic .dict(), dataclass_transforms) rather than hand-writing them. If a mapper becomes longer than 10 lines, reconsider the layer boundary.</statement>
+        <rationale>Manual mappers accumulate: DTO has 10 fields, request model has 15, entity has 12. Three 15-line mappers later the codebase is 50% translation code. Automation keeps mapping boilerplate minimal.</rationale>
+      </rule>
+    </section>
+    <section name="domain-vs-use-case-logic">
+      <p>The most common mistake is putting use-case logic into entities. Entities should enforce invariants; use cases should orchestrate them. If a method belongs in an entity, it is framework-independent and works without repositories. If it needs repositories, it belongs in a use case.</p>
+      <example type="bad" title="logic-in-entity">
+        <code lang="python"><![CDATA[# BAD - repository call in entity
+class Order:
+    def apply_discount(self, code: str, discount_repo: DiscountRepository) -> None:
+        discount = await discount_repo.find_by_code(code)  # Entity shouldn't know about repos
+        self.discount = discount.amount
+
+# GOOD - orchestrate in use case
+class ApplyDiscountUseCase:
+    def __init__(self, order_repo: OrderRepository, discount_repo: DiscountRepository):
+        self._order_repo = order_repo
+        self._discount_repo = discount_repo
+
+    async def execute(self, order_id: UUID, code: str) -> OrderDTO:
+        order = await self._order_repo.find_by_id(order_id)
+        discount = await self._discount_repo.find_by_code(code)
+        order.apply_discount(discount.amount)  # Entity only knows discount amount, not where it came from
+        await self._order_repo.save(order)
+        return OrderDTO.from_entity(order)]]></code>
+      </example>
+    </section>
+    <section name="agentic-workflow">
+      <p>Drive Clean Architecture as a four-stage pipeline: (1) a domain agent extracts entities, value objects, aggregates, domain events, and domain-service interfaces from the spec — never naming a framework or DB; (2) a use-case agent emits one use case per command/query, each with explicit input DTO, output DTO, and dependency interfaces; (3) an adapter agent implements the interfaces (repository over the chosen ORM, message bus over the chosen broker, web controllers over the chosen framework); (4) a review agent runs the dependency-rule checklist (no domain → infra import, no use case → framework import, no entity → ORM import, no DTO leaking entity, no async-IO inside an entity). Persist the bounded context + use-case map in .aidocs/product_docs/clean-architecture-map.md so subsequent feature work appends without re-deriving boundaries. Pair with pro/dev/code-quality/domain-driven-design/, pro/dev/code-quality/cqrs-pattern/, and pro/dev/code-quality/event-sourcing-implementation/.</p>
+      <section name="recommended-tools-and-agents">
+        <list>
+          <item>faion-sdd-executor-agent — one task = one use case (input DTO + interactor + output DTO + tests + adapter wiring). Opus for non-trivial domain modeling; sonnet for routine adapter implementations.</item>
+          <item>A dependency-rule-review-agent linter that fails the build if domain/ imports from infrastructure/, application/, or any framework package; if application/ imports a framework package; if entities call await on IO.</item>
+          <item>faion-feature-executor skill — sequential mode keeps domain → use case → adapter → controller ordering correct; out-of-order writing produces interactors against not-yet-written entities and cycles in imports.</item>
+        </list>
+      </section>
+    </section>
+    <section name="agent-workflow-prompts">
+      <p>Inventory pass: You are a Clean Architecture designer. Given the spec in spec, output: (a) Entities: name, identity, invariants (state transitions allowed). (b) Value objects: name, type, validation rules. (c) Aggregates: which entities, root, transactional boundary. (d) Domain events: name, payload (intent + minimal facts). (e) Use cases: name, kind (command|query), input DTO, output DTO, dependencies (interfaces only — no concrete classes), errors. Do not mention any framework, ORM, or database. Reject any entity with an id of type AutoField/SQLAlchemy.Column/etc.</p>
+    </section>
+    <see-also>
+      <link href="https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html">Clean Architecture by Robert C. Martin</link>
+      <link href="https://alistair.cockburn.us/hexagonal-architecture/">Hexagonal Architecture</link>
+      <link href="https://herbertograca.com/2017/09/14/ports-adapters-architecture/">Ports and Adapters Pattern</link>
+    </see-also>
+  </content>
+</methodology>
