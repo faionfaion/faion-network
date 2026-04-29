@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="living-documentation">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd</domain>
+    <summary>Docs-as-Code treats documentation as versioned code co-located with source, auto-generated where possible, validated in CI. ADRs hand-authored; API refs, changelogs, and links automated.</summary>
+    <tags>
+      <tag>docs-as-code</tag>
+      <tag>documentation</tag>
+      <tag>ci-cd</tag>
+      <tag>devops</tag>
+      <tag>quality-gates</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Living Documentation</title>
+    <summary>Living Documentation (Docs-as-Code) treats documentation as a versioned artifact co-located with source code, auto-generated from code where possible, validated in CI, and never manually edited in the auto-generated sections. ADRs and design rationale remain hand-authored. API reference, changelogs, and link validity are automated. Every auto-generated section is tagged `<!-- AUTO-GENERATED -->` so agents and humans know not to overwrite it manually.</summary>
+    <why>
+      <p>Static wikis become graveyards within months. Docs that live outside version control drift from the code they describe. Broken links and stale examples erode trust. The Docs-as-Code model applies the same review, CI, and versioning discipline to documentation that code already has — documentation failures block deploys the same as test failures.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Setting up a new project's documentation pipeline: generator, CI pipeline, auto-generated API reference</item>
+        <item>When documentation has drifted from code: regenerate API reference from OpenAPI spec</item>
+        <item>When onboarding a new agent: living docs (especially llms.txt and structured README) reduce hallucination</item>
+        <item>When deploying a developer portal that surfaces service ownership and runbooks</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Internal ADRs and design rationale — must remain manually authored; auto-generated "why" is always wrong</item>
+        <item>User-facing marketing copy — optimized for accuracy, not persuasion</item>
+        <item>Projects to be archived within 3 months — infrastructure investment exceeds value</item>
+        <item>Teams without code review discipline — Docs-as-Code requires the same PR review rigor as code PRs</item>
+      </list>
+    </when-not-to-use>
+    <section name="Docs-as-Code Rules">
+      <rule>
+        <statement>Store documentation in the same repository as the code it describes, updated in the same PR.</statement>
+        <rationale>Co-location ensures the same review process catches doc drift. Separate wikis always lag behind code changes.</rationale>
+      </rule>
+      <rule>
+        <statement>Tag every auto-generated section with `&lt;!-- AUTO-GENERATED: source=openapi.yaml --&gt;`. Never edit content inside AUTO-GENERATED boundaries manually or with an agent.</statement>
+        <rationale>Auto-generated sections are overwritten on the next generation pass. Manual edits inside them are silently lost. The tag makes the boundary explicit for both humans and agents.</rationale>
+      </rule>
+      <rule>
+        <statement>Documentation failures (broken links, invalid API spec, failed build) must block the CI pipeline the same way test failures do.</statement>
+        <rationale>Documentation that does not block deploys is treated as optional. Optional docs are not maintained.</rationale>
+      </rule>
+    </section>
+    <section name="What to Auto-Generate vs Hand-Author">
+      <list>
+        <item>Auto-generate: API reference (from OpenAPI/JSDoc), changelogs (from conventional commits), code examples (from tests)</item>
+        <item>Hand-author: Architecture Decision Records, design rationale, user guides, tutorials, onboarding docs</item>
+      </list>
+      <antipattern>
+        <description>Agent overwrites an entire docs page on re-run, including manually-authored introduction sections.</description>
+        <reason>Without AUTO-GENERATED tags, agents have no boundary to respect. Use explicit section markers and instruct agents to only update content between those tags.</reason>
+      </antipattern>
+    </section>
+    <section name="LLM Optimization">
+      <rule>
+        <statement>Write `llms.txt` at the repo root with one-line descriptions of top-level doc sections. Do not copy full section content into llms.txt — link to full pages instead.</statement>
+        <rationale>Agents and LLM tools use llms.txt as a navigation index, not as full content. Over-detailed llms.txt files waste context budget on the index itself.</rationale>
+      </rule>
+    </section>
+    <section name="Generator Selection">
+      <list>
+        <item>MkDocs + Material: Python projects, technical docs, fast builds, Material theme</item>
+        <item>Docusaurus: Node.js/React projects, developer portals, MDX support</item>
+        <item>VitePress: Vue projects, very fast builds</item>
+        <item>Starlight (Astro): modern DX, content collections with Zod schemas</item>
+      </list>
+      <rule>
+        <statement>Run `mkdocs build --strict` (or equivalent `--fail-on-warning`) in CI to catch broken references before deploy.</statement>
+        <rationale>Non-strict builds silently skip broken includes and missing pages. Strict mode surfaces all issues at build time.</rationale>
+      </rule>
+    </section>
+    <section name="Linting Pipeline">
+      <rule>
+        <statement>Add three linting steps to the docs CI job: prose lint (Vale), link validation (linkinator), and API spec validation (Spectral for OpenAPI).</statement>
+        <rationale>Each tool catches a different failure class: Vale catches style drift, linkinator catches broken URLs, Spectral catches spec regressions. Running all three is the minimum viable doc quality gate.</rationale>
+      </rule>
+      <antipattern>
+        <description>Running Vale with default rules on technical writing without customization.</description>
+        <reason>Default Vale rules produce too many false positives on technical prose (passive voice warnings, capitalization rules). Configure `.vale.ini` and disable overly aggressive rules before using in CI.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents updating OpenAPI specs without running a breaking-change check.</description>
+        <reason>Renamed fields and removed endpoints are breaking changes. Run `redocly diff` or `bump.sh diff` before committing spec changes to surface regressions.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/docs-ci.yaml" purpose="GitHub Actions workflow: lint, link check, API spec validate, build, deploy"/>
+      <template path="templates/mkdocs.yml" purpose="MkDocs Material theme configuration for technical docs"/>
+    </templates>
+  </content>
+</methodology>
