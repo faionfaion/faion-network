@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (ads-meta-reporting, ads-meta-targeting, ads-retargeting; feature-045 batch BO)
 - migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (ads-linkedin-ads, ads-meta-campaign-setup, ads-meta-creative; feature-045 batch BN)
 - migrate: 3/3 pro/marketing/gtm-strategist methodologies → methodology.xml (ops-contractor-basics, ops-contractor-management, ops-customer-success-basics; feature-045 batch BK)
 - migrate: 3/3 pro/marketing methodologies → methodology.xml (activation-metrics, viral-metrics; pro/marketing/gtm-strategist/growth-affiliate-marketing; feature-045 batch BJ)
