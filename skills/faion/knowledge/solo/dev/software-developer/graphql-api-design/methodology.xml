@@ -39,13 +39,12 @@
         <item>When your team has zero GraphQL experience and the deadline is tight; learning curve hits hard at the resolver-and-dataloader stage</item>
       </list>
     </when-not-to-use>
-    <section name="Schema-First Rule">
+
+    <section name="schema-design">
       <rule>
         <statement>Treat schema.graphql (SDL) as the source of truth. Run codegen in CI and fail if generated files drift from the committed schema.</statement>
         <rationale>SDL-first ensures the API contract is reviewed before any implementation. Committing generated files by hand allows them to diverge from the schema silently.</rationale>
       </rule>
-    </section>
-    <section name="Type Design">
       <rule>
         <statement>Every root type should implement Node (with id: ID!) and Timestamped (with createdAt, updatedAt). This enables consistent caching and relay compliance.</statement>
         <rationale>Relay client caching is keyed by id. Without a consistent id field, clients cannot normalize the cache. Timestamps are universally needed for auditing and display.</rationale>
@@ -54,24 +53,285 @@
         <statement>Every mutation must return a typed payload: MutationNamePayload containing the result object and a userErrors: [Error!]! array. Never throw exceptions for business errors.</statement>
         <rationale>HTTP always returns 200 for GraphQL. Exceptions become opaque errors[] entries. Typed payloads allow clients to handle business errors (validation, conflicts) structurally in the same type system as success responses.</rationale>
       </rule>
-    </section>
-    <section name="Relay Connections">
+      <example type="good" title="Node interface, Timestamped, and mutation payload">
+        <code lang="graphql"><![CDATA[
+interface Node { id: ID! }
+interface Timestamped { createdAt: DateTime!  updatedAt: DateTime! }
+
+type User implements Node & Timestamped {
+  id: ID!
+  email: String!
+  name: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  orders(first: Int, after: String, status: OrderStatus): OrderConnection!
+}
+
+type CreateUserPayload {
+  user: User
+  errors: [Error!]!
+}
+
+type Error {
+  field: String
+  message: String!
+  code: String!
+}
+
+type Mutation {
+  createUser(input: CreateUserInput!): CreateUserPayload!
+}
+]]></code>
+      </example>
       <rule>
         <statement>Use Relay cursor connections for every list field that could grow beyond 10 items. Never expose offset/limit pagination in the public schema.</statement>
-        <rationale>Offset pagination is unstable when items are inserted or deleted mid-page. Cursor pagination returns consistent results regardless of concurrent modifications. Relay clients depend on PageInfo for infinite scroll.</rationale>
+        <rationale>Offset pagination is unstable when items are inserted or deleted mid-page. Cursor pagination returns consistent results regardless of concurrent modifications. Relay clients (and many non-Relay clients) depend on the PageInfo structure for infinite scroll.</rationale>
       </rule>
       <reference path="templates/schema.graphql">Full reference schema with Connection types and mutation payloads</reference>
     </section>
-    <section name="Best Practices">
-      <p>DataLoader per request, not per process; keys identity-equal to actual fetch key</p>
-      <p>Make every mutation return a typed MutationNamePayload with userErrors array</p>
-      <p>Persisted queries in production; reject unknown query hashes</p>
-      <p>Disable introspection in prod or gate behind admin auth</p>
-      <p>Field-level auth via policy layer, never sprinkle checks in resolvers</p>
+
+    <section name="resolvers">
+      <rule>
+        <statement>Create a typed context dataclass per request containing current_user_id, loaders, and services. Pass it to every resolver via info.context.</statement>
+        <rationale>Resolver isolation requires all dependencies to flow through context, not module-level globals. A per-request context prevents cross-request state pollution (especially DataLoaders which must not be shared).</rationale>
+      </rule>
+      <example type="good" title="Strawberry context pattern with mutation error handling">
+        <code lang="python"><![CDATA[
+import strawberry
+from strawberry.types import Info
+from typing import Optional
+from uuid import UUID
+
+@strawberry.type
+class Query:
+    @strawberry.field
+    async def user(self, info: Info, id: strawberry.ID) -> Optional[User]:
+        service = info.context.services.user
+        return await service.get_by_id(UUID(id))
+
+    @strawberry.field
+    async def me(self, info: Info) -> Optional[User]:
+        uid = info.context.current_user_id
+        if not uid:
+            return None
+        return await info.context.services.user.get_by_id(uid)
+
+@strawberry.type
+class Mutation:
+    @strawberry.mutation
+    async def create_user(
+        self, info: Info, input: CreateUserInput
+    ) -> CreateUserPayload:
+        try:
+            user = await info.context.services.user.create(
+                email=input.email, name=input.name
+            )
+            return CreateUserPayload(user=user, errors=[])
+        except ValidationError as e:
+            return CreateUserPayload(user=None, errors=[
+                Error(field=err.field, message=err.message, code="VALIDATION")
+                for err in e.errors
+            ])
+]]></code>
+      </example>
+      <rule>
+        <statement>Instantiate DataLoaders in the per-request context factory. Each request gets its own loader instances so batching is scoped to the request lifecycle.</statement>
+        <rationale>A process-level DataLoader accumulates keys from all concurrent requests, producing incorrect results by mixing data across users and requests.</rationale>
+      </rule>
+      <reference path="templates/dataloader.py">Strawberry DataLoader batch_load_fn with key-to-result mapping</reference>
     </section>
+
+    <section name="auth-and-limits">
+      <rule>
+        <statement>Apply authorization at the field resolver level using permission classes, not only at the gateway or query root. A field added to a type inherits no auth from its parent.</statement>
+        <rationale>GraphQL composition allows clients to embed any field in any query. A gateway-level auth check on the top-level query does not propagate down to nested fields added later.</rationale>
+      </rule>
+      <example type="good" title="Strawberry permission classes">
+        <code lang="python"><![CDATA[
+from strawberry.permission import BasePermission
+from strawberry.types import Info
+
+class IsAuthenticated(BasePermission):
+    message = "Authentication required"
+    def has_permission(self, source, info: Info, **kwargs) -> bool:
+        return info.context.current_user_id is not None
+
+class IsAdmin(BasePermission):
+    message = "Admin role required"
+    async def has_permission(self, source, info: Info, **kwargs) -> bool:
+        uid = info.context.current_user_id
+        if not uid:
+            return False
+        user = await info.context.services.user.get_by_id(uid)
+        return user and user.role == UserRole.ADMIN
+
+@strawberry.type
+class Mutation:
+    @strawberry.mutation(permission_classes=[IsAuthenticated])
+    async def create_order(self, info: Info, input: CreateOrderInput) -> Order:
+        ...
+
+    @strawberry.mutation(permission_classes=[IsAdmin])
+    async def delete_user(self, info: Info, id: strawberry.ID) -> bool:
+        ...
+]]></code>
+      </example>
+      <rule>
+        <statement>Add query depth limiting (max 10) and complexity analysis before production. Set a hard max on pagination first arguments server-side.</statement>
+        <rationale>A friends.friends.friends... query triggers exponential DB calls. Without server-side pagination caps, a client requesting first: 1000000 bypasses the design and runs a full table scan.</rationale>
+      </rule>
+      <example type="good" title="Strawberry depth limiter and complexity extension">
+        <code lang="python"><![CDATA[
+from strawberry.extensions import QueryDepthLimiter
+from strawberry.extensions.query_complexity import QueryComplexityExtension
+
+schema = strawberry.Schema(
+    query=Query,
+    mutation=Mutation,
+    extensions=[
+        QueryDepthLimiter(max_depth=10),
+        QueryComplexityExtension(max_complexity=1000),
+    ],
+)
+
+# Server-side pagination cap in resolver
+@strawberry.field
+async def users(self, info: Info, first: int = 20) -> UserConnection:
+    if first > 100:
+        raise ValueError("Cannot request more than 100 items")
+    ...
+]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Resolver eagerly loads all related entities in the parent query, regardless of whether the client requested them.</description>
+        <reason>Executes DB queries for data the client never uses, degrading performance proportionally to the number of unused relations loaded.</reason>
+      </antipattern>
+      <antipattern>
+        <description>List field returns all items with no pagination: async def users(self) -&gt; List[User].</description>
+        <reason>Returns millions of rows in one request on a large dataset. All list fields that could grow must use cursor-based Connection types with server-enforced size caps.</reason>
+      </antipattern>
+      <example type="bad" title="N+1 without DataLoader">
+        <code lang="python"><![CDATA[
+# BAD — N+1: every user in the list triggers a separate DB query for orders
+@strawberry.type
+class User:
+    @strawberry.field
+    async def orders(self) -> List[Order]:
+        return await db.orders.find_all(user_id=self.id)  # called once per user!
+]]></code>
+      </example>
+      <example type="good" title="Batched via DataLoader">
+        <code lang="python"><![CDATA[
+# GOOD — batched via DataLoader: all users' orders fetched in one query
+@strawberry.type
+class User:
+    @strawberry.field
+    async def orders(self, info: Info) -> List[Order]:
+        return await info.context.loaders.orders_by_user.load(self.id)
+]]></code>
+      </example>
+      <antipattern>
+        <description>Mutations raise exceptions for business errors (validation, not found, conflict) instead of returning typed error payloads.</description>
+        <reason>Exceptions become opaque errors[] entries with no type information. Clients cannot distinguish "user not found" from "permission denied" without string-matching error messages.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Schema breaking changes (renaming or removing a field) merged without a deprecation cycle and schema diff check in CI.</description>
+        <reason>Clients that query the renamed/removed field receive a GraphQL error. Breaking changes require @deprecated(reason: "..."), usage analytics to confirm zero traffic, then removal.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Schema-first: write or evolve schema.graphql first; agents then run codegen for typed resolvers (graphql-codegen, strawberry, ariadne-codegen) and stub each missing resolver. A second agent audits the schema for N+1 risk (any list field that returns objects with their own resolvers) and inserts DataLoader scaffolding. A third agent generates persisted-query manifests for production. Always gate schema breaking changes behind graphql-inspector diff in CI; never auto-merge a breaking change.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent drives the schema → resolver → test loop one type at a time. A custom graphql-schema-reviewer (created under agents/) reads only schema.graphql + diff and produces breaking-change reports.</p>
+      <prompt purpose="extend-schema"><![CDATA[
+You are extending schema.graphql. Add type <X> with fields <...>.
+Constraints:
+- Use Relay-style Connection for any list field returning >10 items.
+- Every nullable field must have a justification comment.
+- Output a breaking-change diff against current schema using graphql-inspector format.
+]]></prompt>
+      <prompt purpose="dataloader-resolver"><![CDATA[
+For resolver <Type.field>, write a DataLoader-batched implementation.
+Inputs: <parent type>, batch by <key>, fetch via <repo method>.
+Output: resolver fn + dataloader registration + 1 unit test asserting N+1 collapses to 1 DB call.
+]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <p>graphql-codegen: TS/Go/Python type + resolver codegen — npm i -D @graphql-codegen/cli · the-guild.dev</p>
+      <p>graphql-inspector: Schema diff, breaking-change CI gate — npm i -D @graphql-inspector/cli</p>
+      <p>Apollo Rover: Federated supergraph composition + checks — curl -sSL https://rover.apollo.dev/nix/latest | sh</p>
+      <p>spectaql / magidoc: Static schema docs site — npm</p>
+      <p>graphqurl / gq: curl-equivalent for GraphQL endpoints — npm</p>
+      <p>strawberry-graphql: Python schema-first lib (codegen via decorators) — pip install strawberry-graphql</p>
+      <p>ariadne-codegen: Python typed client codegen — pip install ariadne-codegen</p>
+      <p>genql: TS typed client codegen from schema — npm</p>
+      <p>GraphQL Armor: Security middleware (depth, cost, alias limits) — escape.tech/graphql-armor</p>
+    </section>
+
+    <section name="security-best-practices">
+      <p>Use Relay-style Connection (edges, pageInfo, opaque cursor) for every list >10 items; never offset/limit in public schema.</p>
+      <p>DataLoader per request, not per process; keys identity-equal to the actual fetch key (don't pre-stringify).</p>
+      <p>Make every mutation return a typed MutationNamePayload with a userErrors: [Error!]! array — never throw for business errors.</p>
+      <p>Persisted queries / Automatic Persisted Queries in production; reject unknown query hashes — kills introspection-based DoS.</p>
+      <p>Disable introspection in prod or gate it behind admin auth; tools like Apollo Studio can ingest the schema via uploads instead.</p>
+      <p>Field-level auth via a single policy layer (e.g., graphql-shield, custom directive @auth(role: "ADMIN")); never sprinkle if (user.role !== ...) in resolvers.</p>
+      <p>Track the supergraph in a registry; CI runs inspector diff and fails on breaking changes unless tagged BREAKING_CHANGE_APPROVED.</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>LLMs forget DataLoader. They will write users.map(u =&gt; fetchUserOrders(u.id)) and ship N+1s. Force "every list-returning resolver MUST use a dataloader" in the prompt.</p>
+      <p>Agents tend to expose password, email, apiKey on the User type. Provide an explicit "fields to never expose" list.</p>
+      <p>Generated mutations often throw new Error("not found") instead of returning userErrors. Provide the MutationPayload template.</p>
+      <p>Schema diffs from agents may rename fields rather than deprecate; require @deprecated(reason: "...") for any removal.</p>
+      <p>Subscriptions written by agents commonly leak DB connections / forget to unsubscribe on disconnect. Add a checklist item: unsubscribe + cleanup is asserted in test.</p>
+      <p>Cost limits: an agent will set maxCost: 1_000_000 to "make tests pass". Lock the value and require a justification comment if changed.</p>
+      <p>Human-in-loop checkpoint: any change to schema.graphql that triggers an inspector BREAKING result must have a human reviewer.</p>
+    </section>
+
+    <section name="cost-limit-example">
+      <example type="good" title="GraphQL Armor plugins">
+        <code lang="typescript"><![CDATA[
+// src/graphql/cost-limit.ts
+import { costLimitPlugin } from "@escape.tech/graphql-armor-cost-limit";
+import { maxDepthPlugin }  from "@escape.tech/graphql-armor-max-depth";
+import { maxAliasesPlugin } from "@escape.tech/graphql-armor-max-aliases";
+
+export const armorPlugins = [
+  costLimitPlugin({ maxCost: 1000, objectCost: 2, scalarCost: 1, depthCostFactor: 1.5 }),
+  maxDepthPlugin({ n: 8 }),
+  maxAliasesPlugin({ n: 15 }),
+];
+]]></code>
+      </example>
+    </section>
+
+    <section name="services">
+      <p>Apollo GraphOS / Studio (SaaS, Rover CLI + REST API): Schema registry, checks, federation; agents drive via rover subgraph publish.</p>
+      <p>GraphQL Hive (OSS + SaaS, CLI + API): OSS alternative to Apollo Studio.</p>
+      <p>Hasura (OSS + SaaS, hasura CLI + metadata files): Auto-generated GraphQL over Postgres; metadata is YAML, agent-friendly.</p>
+      <p>PostGraphile (OSS): Postgres → GraphQL with row-level security.</p>
+      <p>Stepzen / IBM API Connect (SaaS): Schema stitching as a service.</p>
+      <p>AWS AppSync (SaaS, CDK / Terraform): Managed GraphQL with VTL/JS resolvers; works well in IaC pipelines.</p>
+      <p>Apollo Server (OSS): De-facto Node server; integrates with most tracing stacks.</p>
+      <p>Yoga / The Guild (OSS): Lightweight alt to Apollo Server, modern envelop plugins.</p>
+    </section>
+
     <templates>
-      <template path="templates/schema.graphql" purpose="Full reference schema with Connection types"/>
-      <template path="templates/dataloader.py" purpose="Strawberry DataLoader batch_load_fn"/>
+      <template path="templates/schema.graphql" purpose="Full reference schema: scalars, interfaces, Connection types, Query/Mutation/Subscription roots"/>
+      <template path="templates/dataloader.py" purpose="Strawberry DataLoader batch_load_fn with key-to-result mapping"/>
     </templates>
+
+    <see-also>
+      <link href="https://spec.graphql.org/">GraphQL Spec</link>
+      <link href="https://relay.dev/graphql/connections.htm">Relay Cursor Connections</link>
+      <link href="https://github.com/graphql/dataloader">DataLoader</link>
+      <link href="https://escape.tech/graphql-armor/">GraphQL Armor</link>
+      <link href="https://www.apollographql.com/docs/federation/">Apollo Federation</link>
+      <link href="https://www.apollographql.com/docs/apollo-server/security/">Production Considerations (Apollo)</link>
+    </see-also>
   </content>
 </methodology>
