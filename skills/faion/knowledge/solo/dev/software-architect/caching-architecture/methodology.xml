@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="caching-architecture">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Multi-layer caching (browser → CDN → gateway → app → DB) with five patterns and Redis/Memcached production rules. Every cache layer needs explicit TTL, invalidation trigger, and stampede control.</summary>
+    <tags>
+      <tag>caching</tag>
+      <tag>redis</tag>
+      <tag>performance</tag>
+      <tag>architecture</tag>
+      <tag>scalability</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+
+  <content>
+    <title>Caching Architecture and Patterns</title>
+
+    <summary>Design multi-layer caching strategies (browser → CDN → API gateway → application → database) using the correct pattern per data type: cache-aside, read-through, write-through, write-behind, or write-around. Every cache layer requires explicit TTL with jitter, an invalidation trigger, and stampede control. Always measure hit ratio and p95 latency before and after.</summary>
+
+    <why>
+      <p>Proper caching reduces p95 latency by eliminating redundant DB/upstream calls (70-90% fewer queries is typical) and absorbs traffic spikes without scaling the backend. Cache invalidation is the hard part: TTL is the safe default; event-driven invalidation only works with reliable change-data capture. Hot-key skew and stampedes are the most common failure modes at scale.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Read-heavy workloads with measured DB or upstream pressure (>30% of latency budget on data fetch).</item>
+        <item>Hot, repeatable read paths: profiles, catalogues, configuration, feature flags, auth lookups.</item>
+        <item>Cost reduction where compute/IO cost is dominated by repeated queries.</item>
+        <item>CDN/edge work for static assets, public APIs, marketing pages, image variants.</item>
+        <item>LLM-powered apps needing prompt cache, embedding cache, or tool-result cache layers.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Strong-consistency-critical paths (ledger balances, inventory at checkout) without write-through or distributed-lock pattern.</item>
+        <item>Personalized data with hit-rate ceiling below ~30% — the cache adds latency without payback.</item>
+        <item>Premature optimization: skip until profiling shows a hot key/query.</item>
+        <item>Writes-dominated workloads — caches become invalidation sinks.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="cache-layers-overview">
+      <p>A complete caching strategy spans multiple layers, each with specific tools and TTL guidelines:</p>
+
+      <list>
+        <item>Browser: static assets, API responses. Tools: HTTP headers, Service Worker. TTL: 1h–1y.</item>
+        <item>CDN/Edge: static files, HTML, API responses. Tools: Cloudflare, CloudFront, Fastly. TTL: 5m–24h.</item>
+        <item>API Gateway: full responses, rate limiting. Tools: Kong, nginx, Envoy. TTL: 1m–1h.</item>
+        <item>Application: objects, queries, sessions. Tools: Redis, Memcached, in-memory. TTL: 1m–24h.</item>
+        <item>Database: query results, prepared statements. Tools: built-in query cache. TTL: auto-managed.</item>
+      </list>
+    </section>
+
+    <section name="pattern-1-cache-aside">
+      <p>Use cache-aside as the default pattern for read-heavy workloads where the application controls cache lifecycle explicitly.</p>
+
+      <rule testable="true">
+        <statement>Use cache-aside as the default pattern for read-heavy workloads where the application controls cache lifecycle explicitly.</statement>
+        <rationale>Application code controls exactly what is cached and when; cache contains only requested data, avoiding prefill waste. Most flexible — compatible with any storage backend.</rationale>
+      </rule>
+
+      <list>
+        <item>Read flow: App → Cache (miss) → DB → Cache (store) → App.</item>
+        <item>Write flow: App → DB → Cache (invalidate or TTL expiry handles it).</item>
+        <item>Best for: read-heavy workloads, data that can tolerate staleness, heterogeneous data access patterns.</item>
+        <item>Avoid for: write-heavy workloads where the cache is constantly invalidated, real-time consistency requirements.</item>
+      </list>
+    </section>
+
+    <section name="pattern-2-read-through">
+      <p>Use read-through when you want transparent cache management — the cache library handles DB fetches on misses, not application code.</p>
+
+      <rule testable="true">
+        <statement>Use read-through when you want transparent cache management — the cache library handles DB fetches on misses, not application code.</statement>
+        <rationale>Removes cache-population logic from application code; all reads go through a single path. Simplifies code at the cost of flexibility.</rationale>
+      </rule>
+
+      <list>
+        <item>Read flow: App → Cache (miss) → Cache fetches from DB → App.</item>
+        <item>Best for: simpler application code, consistent caching logic across all read paths.</item>
+        <item>Avoid for: complex invalidation requirements, data needing custom transformation before caching.</item>
+      </list>
+    </section>
+
+    <section name="pattern-3-write-through">
+      <p>Use write-through for data that is frequently read immediately after write and where consistency is critical.</p>
+
+      <rule testable="true">
+        <statement>Use write-through for data that is frequently read immediately after write and where consistency is critical.</statement>
+        <rationale>Every write goes to cache and DB synchronously; cache is always warm and consistent. The latency penalty on writes is the trade-off.</rationale>
+      </rule>
+
+      <list>
+        <item>Write flow: App → Cache → DB (synchronous).</item>
+        <item>Best for: data consistency critical (e.g., shopping cart, user preferences read immediately after update).</item>
+        <item>Avoid for: write-heavy workloads (latency penalty accumulates), data rarely read after write.</item>
+      </list>
+    </section>
+
+    <section name="pattern-4-write-behind">
+      <p>Use write-behind only when eventual consistency is acceptable and write throughput is the primary bottleneck.</p>
+
+      <rule testable="true">
+        <statement>Use write-behind only when eventual consistency is acceptable and write throughput is the primary bottleneck. Never use for financial or inventory data without explicit durability guarantees.</statement>
+        <rationale>Async DB persistence risks data loss on cache failure; the throughput gain is only worth it when loss is tolerable.</rationale>
+      </rule>
+
+      <list>
+        <item>Write flow: App → Cache → Queue → DB (asynchronous).</item>
+        <item>Best for: high write throughput, analytics events, activity logs, eventual consistency acceptable.</item>
+        <item>Avoid for: critical data (ledger, inventory), strong consistency requirements, systems without a reliable queue to buffer writes.</item>
+      </list>
+    </section>
+
+    <section name="pattern-5-write-around">
+      <list>
+        <item>Write flow: App → DB directly. Cache not updated on write. Reads use cache-aside pattern on subsequent access.</item>
+        <item>Best for: write-once/read-rarely data, large objects (media files, backups), data unlikely to be re-read soon.</item>
+        <item>Avoid for: data frequently accessed immediately after write — causes cache misses and DB load spikes.</item>
+      </list>
+    </section>
+
+    <section name="pattern-selection-matrix">
+      <p>Quick reference for selecting the right pattern per data type:</p>
+
+      <list>
+        <item>User profiles → Cache-Aside + TTL: read-heavy, tolerate staleness.</item>
+        <item>Shopping cart → Write-Through: consistency critical, read immediately after write.</item>
+        <item>Analytics events → Write-Behind: high volume, eventual consistency acceptable.</item>
+        <item>File uploads → Write-Around: large, rarely re-read soon.</item>
+        <item>Session data → Read-Through: transparent management, high hit rate.</item>
+        <item>Leaderboards → Cache-Aside + Event invalidation: frequent reads, periodic updates.</item>
+        <item>Configuration/feature flags → Cache-Aside + short TTL: rarely changes, safe to serve slightly stale.</item>
+        <item>Auth lookups → Cache-Aside + short TTL: high frequency, low staleness tolerance.</item>
+      </list>
+    </section>
+
+    <section name="cache-key-design">
+      <p>Proper key construction enables predictable invalidation and long-term maintainability:</p>
+
+      <rule testable="true">
+        <statement>Use hierarchical, predictable key patterns. Include version suffix (v1, v2) for keys tied to a schema; never include unstable attributes (timestamps, request IDs, nonces) in keys.</statement>
+        <rationale>Predictable keys allow prefix-based invalidation (SCAN + DEL pattern), version suffixes enable cheap schema-change rollover without manual key purge.</rationale>
+      </rule>
+
+      <list>
+        <item>Simple entity: user:{user_id} — maps directly to a single record.</item>
+        <item>Nested entity: user:{user_id}:orders:page:{page} — hierarchical for pagination.</item>
+        <item>With version: user:{user_id}:profile:v2 — bump v2 after schema change; old v1 keys expire via TTL.</item>
+        <item>Complex parameters: search:{md5(sorted_query_params)} — hash to bound key length; sort params first for determinism.</item>
+        <item>Forbidden in keys: timestamps, request IDs, random nonces, user-agent strings — these produce unique keys on every call, making the cache useless.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Never cache user-specific data with a global key. Always include the user or tenant identifier in the key.</statement>
+        <rationale>Global keys for personalized data cause cross-user data leaks; this is a security bug, not just a stale-data bug.</rationale>
+      </rule>
+    </section>
+
+    <section name="ttl-guidelines">
+      <p>TTL strategy directly impacts cache freshness and operational load:</p>
+
+      <rule testable="true">
+        <statement>Always add jitter to TTLs (base * (1 + rand(-0.1, 0.1))) to avoid synchronized expiry storms across horizontally scaled instances.</statement>
+        <rationale>Without jitter, all instances that populated the cache at the same time expire simultaneously, causing a thundering herd on the DB.</rationale>
+      </rule>
+
+      <list>
+        <item>Static assets (CSS/JS): 1 year — versioned filenames ensure cache busting on deploy.</item>
+        <item>Product catalog: 5–15 min — moderate change frequency; stale for seconds is acceptable.</item>
+        <item>User profiles: 1–5 min — personal data, changes occasionally, staleness is visible to the user.</item>
+        <item>Session data: 30 min–24h — security vs UX balance; sliding expiry on activity.</item>
+        <item>Search results: 1–5 min — freshness matters, cache to absorb repeated identical queries.</item>
+        <item>Configuration / feature flags: 1–5 min — short TTL prevents stale config from causing outages.</item>
+        <item>Real-time data: 10–60 sec — near real-time; cache only if DB/API pressure is demonstrated.</item>
+        <item>Auth tokens / permissions: match the token TTL — never cache longer than the token is valid.</item>
+      </list>
+    </section>
+
+    <section name="hit-ratio-targets">
+      <p>Monitor hit ratio per key prefix, not in aggregate:</p>
+
+      <list>
+        <item>CDN static assets: >95% — anything below indicates poor cache-control headers or key fragmentation.</item>
+        <item>API responses: >70% — baseline target; below this the cache rarely pays back its operational cost.</item>
+        <item>Database query cache: >80% — significant load reduction; below 60% the cache is adding latency without benefit.</item>
+        <item>Session data: >90% — user-specific, near-deterministic access; low ratio indicates short TTL or key churn.</item>
+      </list>
+
+      <note>Track hit ratio per key prefix, not in aggregate. An overall 80% can hide a dead cache on a hot path masking a burned-out 20% of traffic.</note>
+    </section>
+
+    <section name="common-problems-and-solutions">
+      <p>Six critical failure modes and their solutions:</p>
+
+      <rule testable="true">
+        <statement>Cache stampede (thundering herd) must be mitigated with single-flight / request coalescing, not solely with probabilistic early expiration. Both defenses are needed at scale.</statement>
+        <rationale>XFetch (probabilistic early expiration) reduces stampede probability but does not eliminate it at high concurrency; single-flight collapses concurrent misses to one upstream fetch.</rationale>
+      </rule>
+
+      <list>
+        <item>Cache Stampede: multiple processes attempt to rebuild the same cache entry simultaneously on expiry. Solutions: single-flight (collapse concurrent misses), probabilistic early expiration (XFetch), distributed lock (SETNX + TTL) during fill.</item>
+        <item>Hot Keys: single key receives disproportionate read traffic, pinning one Redis shard. Solutions: local in-process L1 cache in front of Redis, key replication to N shards with random suffix selection, read-aside from replicas.</item>
+        <item>Cold Start: cache empty after deploy or failover; all requests hit DB. Solutions: cache warming script runs before traffic is routed, gradual traffic shift (canary) during startup, pre-populate from a recent dump.</item>
+        <item>Stale Data: TTL too long or event invalidation missed. Solutions: shorten TTL, implement reliable CDC-based event invalidation (Debezium / outbox pattern), version-based keys for schema-driven invalidation.</item>
+        <item>Memory Pressure: cache approaching maxmemory limit, triggering evictions that hurt hit ratio. Solutions: set explicit eviction policy (allkeys-lru or volatile-ttl), monitor eviction rate (not just memory %), tier cold data to a cheaper store.</item>
+        <item>Inconsistency: write-through inconsistency between cache and DB. Solutions: use distributed transactions (rare), accept eventual consistency with bounded TTL, use version keys so stale data auto-expires.</item>
+        <item>Stale Negatives: caching "not found" causes ghost entries after a subsequent write creates the record. Solution: choose explicitly whether to cache misses; if yes, use very short TTL (5–30 sec) and invalidate on create.</item>
+      </list>
+    </section>
+
+    <section name="in-memory-cache-tools">
+      <p>Tools for application-level caching:</p>
+
+      <list>
+        <item>Redis: general purpose, rich data structures (strings, hashes, sorted sets, streams, bitmaps). Single-threaded event loop; use Redis Cluster for horizontal write scaling. Best for most use cases.</item>
+        <item>Memcached: pure key-value, no persistence, no data structures. Multi-threaded; higher raw throughput for simple get/set. Best for homogeneous string-value caches at very high RPS where Redis memory overhead matters.</item>
+        <item>Dragonfly: Redis-compatible protocol, multi-threaded (no GIL). Significantly lower memory usage via Dashtable. Best for replacing Redis when single-threaded CPU is the bottleneck. Smaller community; verify compatibility before adoption.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Choose Redis unless profiling demonstrates that single-threaded CPU is the bottleneck and Memcached or Dragonfly is validated by a PoC. Do not migrate for theoretical performance gains.</statement>
+        <rationale>Redis ecosystem maturity (client libs, monitoring, Cluster, Sentinel, persistence) reduces operational risk; switching for undemonstrated gains introduces compatibility risk.</rationale>
+      </rule>
+    </section>
+
+    <section name="redis-production-rules">
+      <p>Critical configuration and monitoring practices for production Redis:</p>
+
+      <list>
+        <item>Set maxmemory and an explicit eviction policy: allkeys-lru (general), allkeys-lfu (hot data), volatile-ttl (TTL-keyed eviction). Without a policy, Redis returns OOM errors instead of evicting.</item>
+        <item>Monitor eviction rate (evicted_keys / sec from INFO stats), not just memory percent. Rising eviction rate means the cache is thrashing.</item>
+        <item>Disable persistence (save "" and appendonly no) for pure caches — persistence adds latency and is unnecessary when the DB is the source of truth.</item>
+        <item>Use connection pooling at the application level; each process should hold a pool of 10–50 connections, not one per request.</item>
+        <item>Use SLOWLOG to surface commands exceeding a latency threshold. The default threshold (10ms) is appropriate for most setups.</item>
+        <item>Set tcp-keepalive 60 to detect dead connections from application-side network failures.</item>
+      </list>
+    </section>
+
+    <section name="cdn-providers">
+      <p>CDN selection matrix by use case:</p>
+
+      <list>
+        <item>Cloudflare: free tier, Workers for edge logic, DDoS protection, built-in security. Best for most projects — lowest barrier to entry, global coverage.</item>
+        <item>CloudFront (AWS): deep AWS integration, Lambda@Edge for custom logic, OAI/OAC for S3. Best for AWS-heavy stacks where unified billing and IAM matter.</item>
+        <item>Fastly: real-time purge API (&lt;150ms), VCL (Varnish Configuration Language) for advanced edge logic. Best when programmatic cache invalidation is a core requirement.</item>
+        <item>Akamai: enterprise SLAs, broadest PoP coverage, premium pricing. Best for large enterprises with compliance requirements or geographic edge cases.</item>
+      </list>
+
+      <note>For most new projects: Cloudflare first. Migrate to Fastly only when real-time purge latency matters; migrate to CloudFront only when AWS integration is a hard requirement.</note>
+    </section>
+
+    <section name="framework-integration">
+      <p>Language-specific caching patterns:</p>
+
+      <list>
+        <item>Django: django.core.cache + django-redis backend. Use KEY_PREFIX to namespace keys per environment. cache_page decorator for view-level caching, cache.get_or_set for entity-level.</item>
+        <item>FastAPI: no built-in cache; use fastapi-cache2 (decorator-based) or aiocache (async). Annotate endpoints with @cache() and set expire parameter.</item>
+        <item>Express (Node.js): no built-in cache; use ioredis client directly or node-cache for in-process TTL cache. Middleware pattern for route-level caching.</item>
+        <item>Spring Boot: Spring Cache abstraction (@Cacheable, @CacheEvict, @CachePut) + spring-data-redis. CacheManager bean configures TTL per cache name.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>In Django, set KEY_PREFIX to the environment name (prod, staging, dev) in CACHES settings. Without a prefix, a staging deploy can read or pollute production cache keys if they share a Redis instance.</statement>
+        <rationale>Shared Redis instances across environments without key namespacing cause data leaks between environments and unpredictable test results.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Use a designer agent to map cache layers (CDN → gateway → app → DB) and pick a pattern per data type, a code-author agent to wire the chosen client (Redis/Memcached/Varnish/CDN), and a critic agent to attack invalidation, stampedes, and consistency. Always gather two metrics before/after: cache hit ratio and p95 latency on the cached path.</p>
+
+      <list>
+        <item>Recommended subagents: faion-brainstorm (diverge over cache placement and pattern choice), faion-sdd-execution (produce spec/design including invalidation events and TTL policy), faion-improver (post-deploy audit of hit ratio, eviction rate, p99 tail).</item>
+      </list>
+
+      <p>Prompt pattern for LLM-assisted cache design:</p>
+
+      <code lang="text"><![CDATA[For each entity in <model>, output a row:
+| entity | access pattern | volatility | strategy | layer | TTL | invalidation trigger | stampede control |
+Reject any row where invalidation = "manual" without an event source.]]></code>
+
+      <p>Critique prompt:</p>
+
+      <code lang="text"><![CDATA[Critique this cache design for: stampedes, hot keys, stale-after-write,
+negative caching, multi-region replication lag, and TTL synchronization.
+Suggest concrete code changes (single-flight, jitter, request coalescing).]]></code>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always add jitter to TTLs (`base * (1 + rand(-0.1, 0.1))`) to avoid synchronized expiry storms.</item>
+        <item>Cache the result of an expensive computation, not the raw row — survives schema changes better.</item>
+        <item>Set explicit eviction policy (`maxmemory-policy allkeys-lru` or `volatile-ttl`) and alert on eviction rate, not just memory.</item>
+        <item>Track hit ratio per key prefix; an aggregate hit ratio masks dead caches.</item>
+        <item>Use idempotent keys; never include unstable attributes (timestamps, request IDs) in keys.</item>
+        <item>Prefer `SETNX` + TTL for distributed locks during cache fill, not application-level mutexes that don't survive process restarts.</item>
+        <item>For LLM apps, always measure cache value with a tracing tool — agents tend to over-cache prompt fragments that change every call.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents will cache user-specific data with a global key — always require the prompt to spell out the cache key formula (`user:{uid}:profile:v1`).</item>
+        <item>Agents forget to bump cache version when schema changes; require a `v&lt;N&gt;` suffix in keys and have a critic check schema↔key version coupling.</item>
+        <item>Don't let agents cache 404s without an explicit policy — silent stale negatives cause "ghost user" bugs.</item>
+        <item>LLM-generated Redis pipelines often lack `await` boundaries; pin the prompt to specific async patterns of the client lib.</item>
+        <item>Human-in-loop gates: TTL policy approval (per data class), invalidation strategy review for any write path, post-deploy hit-ratio review.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/cache-service.py" purpose="Generic Python CacheService with get/set/get-or-set-with-lock, XFetch early-expiration, and pattern invalidation."/>
+      <template path="templates/redis-config.conf" purpose="Production Redis standalone config with maxmemory, eviction policy, TLS, and persistence disabled."/>
+      <template path="templates/django-cache-settings.py" purpose="Django CACHES settings for default + sessions with django-redis, KEY_PREFIX, and cache decorators."/>
+    </templates>
+
+    <see-also>
+      <link href="https://redis.io/docs/manual/patterns/"/>
+      <link href="https://martinfowler.com/bliki/TwoHardThings.html"/>
+      <link href="https://aws.amazon.com/builders-library/caching-challenges-and-strategies/"/>
+      <link href="https://docs.aws.amazon.com/whitepapers/latest/database-caching-strategies-using-redis/welcome.html"/>
+      <link href="https://www.cloudflare.com/learning/cdn/what-is-caching/"/>
+      <link href="https://www.varnish-software.com/developers/tutorials/"/>
+    </see-also>
+  </content>
+</methodology>
