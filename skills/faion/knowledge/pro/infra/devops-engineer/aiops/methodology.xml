@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="aiops">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>AIOps applies ML and LLM-powered analysis to IT operations to automate anomaly detection, RCA, and incident remediation with human-approval gates for risky actions.</summary>
+    <tags>
+      <tag>aiops</tag>
+      <tag>observability</tag>
+      <tag>incident-response</tag>
+      <tag>machine-learning</tag>
+      <tag>self-healing</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+  <content>
+    <title>AIOps: ML-Powered Incident Detection and Auto-Remediation</title>
+    <summary>AIOps applies ML and LLM-powered analysis to IT operations to automate anomaly detection, root cause analysis, and incident remediation. The five capabilities are: anomaly detection, root cause analysis, predictive alerts, auto-remediation, and capacity planning. Every auto-remediation action must be classified by risk level and gated by a human-approval policy for P1/P2 incidents.</summary>
+    <why>
+      <p>Alert fatigue causes teams to miss critical signals; AIOps platforms correlate raw events (reducing noise 80%+) and surface ranked probable causes. LLM integration enables natural-language incident summaries and AI-generated runbooks. Change-aware correlation (linking RCA to recent deployments/config changes) dramatically improves diagnosis accuracy. Gartner projects 60%+ of large enterprises will adopt self-healing systems by 2026.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Reducing MTTR by automating triage and RCA across metrics, logs, and traces.</item>
+        <item>Alert noise reduction — raw event stream too high for manual triage.</item>
+        <item>Building self-healing systems with human-approval gates for risky actions.</item>
+        <item>Establishing SLO-aware alerting based on error-budget burn rates.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Teams without an observability foundation (Prometheus + structured logs + traces) — collect data first.</item>
+        <item>Organizations that have not defined SLOs — anomaly detection without SLOs produces meaningless alerts.</item>
+        <item>Small services with predictable failure modes — static runbooks and on-call rotation are sufficient.</item>
+        <item>When explainability/audit requirements are strict and ML model decisions cannot be logged with reasoning.</item>
+      </list>
+    </when-not-to-use>
+    <section name="core-capabilities">
+      <p>AIOps operates across five core capabilities that work together in an integrated platform.</p>
+      <p>Anomaly detection identifies deviations from normal using ML algorithms (Isolation Forest, Prophet, LSTM). Root cause analysis determines failure origin via event correlation, causal graphs, and topology analysis. Predictive alerts forecast failures before impact using time-series forecasting. Auto-remediation enables self-healing actions (restart, scale, rollback) with risk-based approval gates. Capacity planning forecasts resource demand using regression and seasonal decomposition.</p>
+      <rule testable="true">
+        <statement>Implement anomaly detection on a minimum 2+ weeks of baseline data. Start with Isolation Forest for general deviations, then layer Prophet for time-series patterns and LSTM for complex behaviors.</statement>
+        <rationale>ML models trained on insufficient data overfit to noise. Baseline collection reveals seasonality (weekly traffic patterns, release-day spikes) that must be factored into anomaly thresholds. Starting with Isolation Forest gives fast results; adding Prophet and LSTM incrementally prevents overwhelming the ops team with alerts.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use dynamic thresholds connected to SLO error-budget burn rates, not static threshold values like "CPU &gt; 80%".</statement>
+        <rationale>Static thresholds are orthogonal to business impact. A service burning error budget at 50%/day deserves immediate attention; one at 5%/day can wait. SLO-aware thresholds align operations with product commitments.</rationale>
+      </rule>
+    </section>
+    <section name="data-flow-architecture">
+      <p>AIOps requires unified telemetry collection before any ML or LLM analysis can be applied. Data sources include metrics (Prometheus), logs (Fluent Bit), traces (Jaeger/OpenTelemetry), events (Kubernetes), and changes (Git/CD systems). OpenTelemetry Collector normalizes across sources into a unified format. Analysis layer runs ML models for anomaly detection plus LLM for incident summaries and runbook generation. Action layer handles auto-remediation scripts, human-approval gates, and SOAR/ChatOps integration.</p>
+      <rule testable="true">
+        <statement>AIOps platform MUST ingest metrics, logs, traces, and change events through OpenTelemetry Collector into a single telemetry backend before any analysis.</statement>
+        <rationale>Siloed data sources prevent correlation. A metric spike in isolation is noise. Metrics + logs + traces + recent deployments together reveal the root cause. OpenTelemetry standardizes collection across all sources; your platform becomes language-agnostic and polyglot-ready.</rationale>
+      </rule>
+    </section>
+    <section name="auto-remediation-risk-classification">
+      <p>Every auto-remediation action must be classified by risk level and require human approval proportional to the risk and severity of the incident.</p>
+      <p>Low-risk actions (auto-execute): pod restart on CrashLoopBackOff, HPA scale on CPU above 80%, cache flush on memory pressure. Medium-risk actions (notify + short timeout): node drain on unhealthy node, deployment rollback on error spike post-deploy. High-risk actions (require human approval): cluster-wide operations, cross-service changes, data-touching actions.</p>
+      <rule testable="true">
+        <statement>Auto-remediation without approval gates MUST NOT execute on P1 or P2 incidents. Classify actions by risk level; require human approval matrix for medium and high-risk actions.</statement>
+        <rationale>Auto-remediation without oversight can cascade failures. A pod restart might fix 95% of anomalies but mask a symptom of a wider outage. High-risk actions (rolling back a deployment, draining a node) need human judgment. Medium-risk actions need a short timeout window (5-15 min) to escalate if human doesn't approve.</rationale>
+      </rule>
+      <example type="good" title="Auto-remediation approval policy">
+        <p>Low-risk actions: pod restart on CrashLoopBackOff (auto-execute immediately). Medium-risk actions: rollback on error spike &gt;50% above baseline within 5 minutes of deployment (notify on-call, execute after 5 min if not explicitly rejected). High-risk actions: cluster-wide operations, cross-service changes (require explicit approval from on-call engineer before any execution).</p>
+      </example>
+      <antipattern>
+        <description>Auto-execute all remediation actions without approval gates because "the ML model is 95% accurate."</description>
+        <reason>The 5% of edge cases—where the proposed action is harmful—can cause cascading failures. A restart that fixes a transient issue 95% of the time masks a symptom of a wider outage the other 5%. Human-in-the-loop gates catch those edge cases.</reason>
+      </antipattern>
+    </section>
+    <section name="evolution-trends-2025-2026">
+      <p>AIOps is evolving toward more autonomous and explainable systems.</p>
+      <p>LLM integration is adding natural language incident summaries and GenAI-generated runbooks from topology + history. Predictive operations move from reactive (detect anomaly, then act) to proactive (predict failure, prevent before impact). Hybrid workflows have AI recommend actions, humans approve, systems execute—not fully autonomous systems. Explainable AI logs every auto-action with reasoning for audit trails. SLO-aware detection means alerts based on error budget burn rate, not static thresholds. Change-aware correlation causes RCA to consider recent deployments and config changes in root-cause ranking.</p>
+      <rule testable="true">
+        <statement>Every auto-remediation action MUST log the reasoning (ML features, confidence score, context) for audit trail and postmortem learning.</statement>
+        <rationale>Explainability is both a compliance requirement (SOC2, HIPAA) and a debugging necessity. If an auto-action caused harm, you need to know why the system thought it was correct. Logs enable postmortems and model retraining.</rationale>
+      </rule>
+    </section>
+    <section name="root-cause-analysis-setup">
+      <p>RCA combines event correlation, topology analysis, and LLM reasoning to surface probable root causes ranked by confidence.</p>
+      <p>Maintain an up-to-date service dependency graph (topology). Track change events: deployments, config changes, feature flag flips. Configure correlation window for event grouping (typically 5-30 minutes). Link APM traces to RCA findings. Attach relevant logs and anomalous metrics to each incident. Output ranked probable causes with confidence percentages. Export RCA data for postmortem templates.</p>
+      <rule testable="true">
+        <statement>RCA output MUST include (1) ranked probable causes with confidence percentages, (2) timeline of related events (deployments, config changes, metric spikes), (3) affected services and scope, (4) relevant logs and traces for human investigation.</statement>
+        <rationale>On-call engineers need to make decisions in seconds. Ranked causes with confidence let them prioritize investigation. Timeline context (recent deploy? config change?) is often the answer. Scope tells them the blast radius. Logs/traces accelerate troubleshooting vs starting from scratch.</rationale>
+      </rule>
+    </section>
+    <section name="anomaly-detection-best-practices">
+      <p>Anomaly detection is the entry point to AIOps but is also the most error-prone component if not tuned carefully.</p>
+      <p>Metrics coverage: CPU, memory, disk, network, latency, error rates all instrumented. Log aggregation: centralized with structured (JSON) format. Distributed tracing enabled across all services. Establish 2+ weeks of baseline data before enabling ML alerts. Map seasonality: weekly, monthly, and release-day patterns. Select algorithm: Isolation Forest for general anomalies, Prophet for time-series, LSTM for complex patterns. Use dynamic thresholds, not static; connect to SLO error-budget burn rates. Target false positive rate below 20% before expanding alert coverage. Define escalation paths for unacknowledged alerts. Build feedback loop: process for teams to mark false positives for model retraining.</p>
+      <rule testable="true">
+        <statement>Before deploying anomaly detection, establish 2+ weeks of baseline data and map seasonality (weekly, monthly, release-day patterns). Target false positive rate &lt;20% before expanding to new services.</statement>
+        <rationale>Models trained on insufficient data trigger false alerts that erode trust. Seasonality (weekend traffic drop, release-day spike) is often mistaken for anomalies. Starting with &lt;20% false positives ensures the ops team trusts the system enough to act on alerts.</rationale>
+      </rule>
+      <example type="good" title="Isolation Forest + Prophet baseline setup">
+        <p>Week 1-2: collect metrics (CPU, memory, latency, error rates) with 1-minute granularity. Week 2: run Isolation Forest offline to identify obvious anomalies; mark true ones. Week 3: deploy Isolation Forest in shadow mode (alert but don't action). Week 4: retrain with feedback; then add Prophet for time-series seasonality. Week 5: enable low-risk auto-remediation on anomalies &gt;95th percentile.</p>
+      </example>
+      <antipattern>
+        <description>Deploy anomaly detection with &lt;1 week of baseline data and static thresholds like "error rate &gt; 1%".</description>
+        <reason>Models overfit to noise. 1% error rate might be normal for a particular time of day or service. False alerts erode trust and cause on-call fatigue.</reason>
+      </antipattern>
+    </section>
+    <section name="success-metrics-targets">
+      <p>AIOps success is measurable. Define targets for each metric and track quarterly.</p>
+      <p>Anomaly precision: target above 60% after tuning (true incidents / total anomalies promoted). Auto-remediation rate: start above 15%, grow to above 40% over 6 months. MTTR reduction: target above 50% improvement vs pre-AIOps baseline. False positive rate: target below 20%. Noise reduction: target above 80% (correlated alerts / raw alert count).</p>
+      <rule testable="true">
+        <statement>Track anomaly precision, auto-remediation rate, MTTR, false positive rate, and noise reduction quarterly. If MTTR is not improving by &gt;30% within 3 months, re-examine the data-flow architecture and model selection.</statement>
+        <rationale>AIOps is only valuable if it reduces MTTR and false alerts. If numbers aren't improving, the system is likely producing noise (overfitting, poor feature selection, wrong algorithm). Quarterly reviews force course-correction.</rationale>
+      </rule>
+    </section>
+    <section name="minimum-platform-requirements-2026">
+      <p>A production AIOps platform must meet these baseline capabilities as of 2026.</p>
+      <p>Native OpenTelemetry support (unified metrics, logs, traces). SLO-aware detection with error-budget burn-rate alerts. Change-aware correlation (deployment and config change events in RCA). Service topology with automatic dependency discovery. LLM/RAG integration for intelligent runbook generation.</p>
+      <rule testable="true">
+        <statement>Platforms without native OpenTelemetry, SLO-aware detection, and change correlation are not viable for modern production AIOps as of 2026.</statement>
+        <rationale>OpenTelemetry is the de facto standard for observability. SLO-aware detection aligns ops with product commitments. Change correlation is what distinguishes useful RCA from noise. These three are table-stakes for any platform.</rationale>
+      </rule>
+    </section>
+    <section name="implementation-checklist">
+      <p>Implement AIOps in phases: observability foundation → anomaly detection → RCA → auto-remediation → predictive analytics.</p>
+      <p>Phase 1 (Observability): Metrics coverage (CPU, memory, disk, network, latency, error rates) instrumented. Log aggregation centralized with structured (JSON) format. Distributed tracing enabled. Service topology maintained. Establish 2+ weeks baseline data before ML.</p>
+      <p>Phase 2 (Anomaly Detection): Map seasonality (weekly, monthly, release-day patterns). Select algorithm (start with Isolation Forest). Use dynamic thresholds connected to SLO burn rates. Target false positive rate &lt;20%. Build feedback loop for false positive reporting.</p>
+      <p>Phase 3 (RCA): Maintain service dependency graph. Track change events (deployments, config, feature flags). Configure correlation window (5-30 min). Link APM traces to RCA. Output ranked probable causes with confidence percentages.</p>
+      <p>Phase 4 (Auto-Remediation): Define scope of automatable actions. Classify by risk (low/medium/high). Set approval matrix. Define blast-radius limits and rate limits. Require health verification post-action. Log all actions. Provide manual override.</p>
+      <p>Phase 5 (Predictive): Implement capacity planning using regression + seasonal decomposition. Deploy predictive alerts for forecasted failures. Build feedback loop for prediction accuracy.</p>
+      <p>Quarterly audit: MTTR trend improving? False positive rate decreasing? Auto-remediation expanding? Concept drift detected? Runbook accuracy? Feature relevance? Tool adoption among teams?</p>
+    </section>
+    <section name="llm-integration">
+      <p>LLM integration elevates AIOps from pure ML to hybrid AI by adding natural language reasoning and context to incident summaries and runbook generation.</p>
+      <p>Natural language incident summaries: instead of "anomaly in metric_x at 14:32", generate "Payment service latency spike detected (p99 latency 500ms → 2s) coinciding with deployment of billing-service v2.1.3. Probable causes: (1) database connection pool exhaustion (68% confidence), (2) network latency to payment provider (19%), (3) algorithm change in billing calculation (11%). Recommended action: rollback billing-service v2.1.3."</p>
+      <p>GenAI runbook generation: given service topology, historical incidents, and recent changes, generate context-specific runbooks for the on-call engineer. "Step 1: Verify payment-service replicas. Step 2: Check database connection pool (ps aux | grep postgres). Step 3: Review recent deployments (git log --oneline -5). Step 4: If rollback is safe, execute script at /opt/rollback/billing-v2.1.3.sh."</p>
+      <rule testable="true">
+        <statement>LLM integration MUST include prompt caching (for topology/history context) to reduce latency and cost. Every LLM-generated runbook must be marked as "auto-generated" and reviewed by on-call before execution.</statement>
+        <rationale>LLMs are fast but not infallible. Caching context (service topology, incident history) reduces API costs and latency. Marking auto-generated content prevents on-call from blindly following incorrect recommendations. Human review gates catch edge cases.</rationale>
+      </rule>
+    </section>
+    <see-also>
+      <link href="https://www.gartner.com/en/research/ai-operations-aiops"/>
+      <link href="https://opentelemetry.io/"/>
+      <link href="https://prometheus.io/"/>
+      <link href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html"/>
+      <link href="https://www.jaegertracing.io/"/>
+      <link href="https://www.datadoghq.com/blog/aiops/"/>
+    </see-also>
+  </content>
+</methodology>
