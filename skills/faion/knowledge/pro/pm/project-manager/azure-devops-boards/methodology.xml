@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="azure-devops-boards">
+  <metadata>
+    <tier>pro</tier>
+    <group>pm</group>
+    <domain>project-manager</domain>
+    <summary>Enterprise project management supporting four process templates with work-item hierarchy, Kanban boards, WIP limits, WIQL queries, and REST API for agent automation.</summary>
+    <tags>
+      <tag>azure-devops</tag>
+      <tag>boards</tag>
+      <tag>project-management</tag>
+      <tag>kanban</tag>
+      <tag>scrum</tag>
+    </tags>
+    <category>boards</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Azure DevOps Boards</title>
+
+    <summary>Microsoft's enterprise project management tool supporting four process templates (Basic, Agile, Scrum, CMMI) with a work-item hierarchy (Epic → Feature → User Story/PBI → Task), configurable Kanban boards, WIP limits, WIQL query language, and full REST API. Integrates natively with Azure Pipelines, Repos, and Test Plans. Agents operate via PAT-scoped REST API or az boards CLI; treat process-template definitions as YAML stored in version control.</summary>
+
+    <why>
+      <p>Enterprise Microsoft-stack organisations need a single project management layer that integrates with Entra ID (SSO), Azure DevOps Pipelines (build traceability), and Power BI (Analytics OData). The CMMI template provides built-in Risk, Change Request, and Review work item types required for regulated industries. AB#&lt;id&gt; commit syntax links code changes to work items automatically.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Microsoft-ecosystem organisations requiring Entra ID SSO and tenant-level governance.</item>
+        <item>Regulated or audit-heavy projects needing CMMI work item types and audit trail.</item>
+        <item>Teams using Azure Pipelines/Repos/Test Plans — Boards integrates build, PR, and release traceability.</item>
+        <item>Portfolio reporting via Azure DevOps Analytics + Power BI.</item>
+        <item>Hybrid on-prem (Azure DevOps Server) requirements where SaaS Jira is not permitted.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Engineering-only teams preferring Linear or GitHub Projects — ADO Boards UI is heavier.</item>
+        <item>Teams primarily on GitHub — GitHub Projects v2 avoids identity and permission duplication.</item>
+        <item>Open-source or community projects — ADO licensing assumes commercial accounts.</item>
+        <item>Lightweight single-team Kanban — Trello, ClickUp, or Linear ship faster with less configuration.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="setup-templates-hierarchy">
+      <title>ADO Boards Setup: Templates, Hierarchy, and Board Configuration</title>
+
+      <section name="process-template-selection">
+        <title>Process Template Selection</title>
+        <rule>
+          <statement>Pick one process template per organisation and inherit from it — never fork. Mass-edit migrations across forks are painful and irreversible.</statement>
+          <rationale>Custom-process forks diverge quickly; template inheritance lets you propagate org-wide field changes centrally.</rationale>
+        </rule>
+        <list>
+          <item>Basic — Issue + Task: simple projects or teams new to ADO.</item>
+          <item>Agile — Epic, Feature, User Story, Task, Bug: standard agile teams.</item>
+          <item>Scrum — Epic, Feature, PBI, Task, Bug, Impediment: Scrum teams with formal impediment tracking.</item>
+          <item>CMMI — Epic, Feature, Requirement, Task, Bug, Change Request, Review, Risk: regulated/audit-heavy environments.</item>
+        </list>
+      </section>
+
+      <section name="work-item-hierarchy">
+        <title>Work Item Hierarchy</title>
+        <p>Agile process hierarchy (top to bottom): Epic (initiative) → Feature (shippable capability) → User Story (user value) → Task (technical unit) → Bug (defect, any level).</p>
+        <rule>
+          <statement>Use Area Path for team ownership and Iteration Path for time. Do not overload either dimension with the other's concerns.</statement>
+          <rationale>Area/Iteration confusion is the most common ADO setup error: teams assign work to an iteration that belongs to a different area team, creating invisible cross-team dependencies.</rationale>
+        </rule>
+      </section>
+
+      <section name="board-configuration">
+        <title>Board Configuration</title>
+        <rule>
+          <statement>Set WIP limits per board column and enforce them via card-style rules that colour blocked or over-limit columns red. Without enforced limits, the Active column becomes a backlog landfill.</statement>
+          <rationale>WIP limits are the primary Kanban control mechanism; visual enforcement makes violations visible in stand-up without anyone having to report them.</rationale>
+        </rule>
+        <example type="good" title="Board column configuration with WIP limits">
+          <code lang="yaml"><![CDATA[columns:
+  - name: "New"
+    state_mapping: ["New"]
+    wip_limit: null
+  - name: "Active"
+    state_mapping: ["Active"]
+    wip_limit: 5
+    split: true          # Doing / Done sub-columns
+  - name: "Resolved"
+    state_mapping: ["Resolved"]
+    wip_limit: 3
+  - name: "Closed"
+    state_mapping: ["Closed"]
+swimlanes:
+  - name: "Expedite"
+  - name: "Default"
+  - name: "Tech Debt"
+card_styles:
+  - name: "Blocked"
+    condition: "Tags Contains 'Blocked'"
+    background_color: "#FF0000"]]></code>
+        </example>
+      </section>
+
+      <section name="sprint-structure">
+        <title>Sprint Structure</title>
+        <rule>
+          <statement>Define Iteration paths with a Release/Sprint hierarchy before the first sprint starts; agents that create missing iterations in production break sprint history.</statement>
+          <rationale>Iteration path creation is additive — once a sprint exists, renaming or restructuring it invalidates all historical velocity data.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="queries-automation-api">
+      <title>WIQL, Automation, REST API, and Agent Gotchas</title>
+
+      <section name="wiql-queries">
+        <title>WIQL Queries</title>
+        <example type="good" title="My active items ordered by priority">
+          <code lang="sql"><![CDATA[SELECT [System.Id], [System.Title], [System.State]
+FROM WorkItems
+WHERE [System.AssignedTo] = @Me
+  AND [System.State] IN ('New', 'Active')
+ORDER BY [Microsoft.VSTS.Common.Priority]]]></code>
+        </example>
+        <example type="good" title="Current sprint burndown items">
+          <code lang="sql"><![CDATA[SELECT [System.Id], [System.Title], [System.State],
+       [Microsoft.VSTS.Scheduling.RemainingWork]
+FROM WorkItems
+WHERE [System.IterationPath] = @CurrentIteration
+  AND [System.WorkItemType] IN ('User Story', 'Bug', 'Task')]]></code>
+        </example>
+        <rule>
+          <statement>Save WIQL as Shared Queries with stable URLs; agents should reference the URL, not the query body, so query updates do not break consumers.</statement>
+          <rationale>Query body references in agent code create drift — when the query changes, every consumer breaks silently.</rationale>
+        </rule>
+        <rule>
+          <statement>Note that @CurrentIteration is team-scoped; an agent querying across teams sees stale or wrong iteration data unless the team is explicitly specified.</statement>
+          <rationale>Multi-team ADO organisations have one iteration tree shared differently across team contexts. Unqualified @CurrentIteration returns the default team's iteration.</rationale>
+        </rule>
+      </section>
+
+      <section name="automation-rules">
+        <title>Automation Rules</title>
+        <rule>
+          <statement>Use Boards Automation Rules for simple state transitions; use Azure Pipelines or Power Automate for cross-system workflows that exceed the Boards rule engine's capabilities.</statement>
+          <rationale>Boards automation rules are limited (no joins, no cross-project triggers); forcing complex logic into them produces fragile, invisible workflows.</rationale>
+        </rule>
+      </section>
+
+      <section name="rest-api">
+        <title>REST API</title>
+        <rule>
+          <statement>Scope PAT tokens to the minimum required permissions per agent role; rotate every 90 days. Never store PAT in description fields — they are not encrypted beyond ADO defaults.</statement>
+          <rationale>PAT scope sprawl means a compromised token has organisation-wide write access. Description field storage creates a credential leak in work item history.</rationale>
+        </rule>
+        <rule>
+          <statement>JSON Patch operations are order-sensitive in the ADO API; set required fields before setting State, or the operation returns 200 with a ValidationError in the body.</statement>
+          <rationale>Silent ValidationErrors in 200 responses are the most common ADO API integration bug — the caller assumes success but the item was not updated.</rationale>
+        </rule>
+        <rule>
+          <statement>System.Tags is a semicolon-separated string, not an array; an agent setting it naively overwrites all existing tags.</statement>
+          <rationale>Tag overwrites are silent and not recoverable from standard history; read-then-merge is required for safe tag updates.</rationale>
+        </rule>
+      </section>
+
+      <section name="antipatterns">
+        <antipattern>
+          <description>Agents marking work items "Closed" without verifying acceptance evidence is attached.</description>
+          <reason>Closing without evidence creates an audit gap. For regulated projects (CMMI), closure without an attached acceptance artefact fails SOX/SOC2 review.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Linking by bare work item ID instead of full URL in relation payloads.</description>
+          <reason>ADO silently drops bare-ID relations. The relation must reference the full work-item URL to be persisted.</reason>
+        </antipattern>
+      </section>
+    </section>
+
+    <section name="agentic-workflow">
+      <title>Agentic Workflow and Integration</title>
+      <p>A subagent operates against the ADO REST API (PAT or Microsoft Entra service principal), creating/updating work items, running WIQL queries, and updating board state. Use the az boards CLI for shell-friendly automation; use REST for batch operations and dashboards. Treat the process template as code: store custom fields/states/rules in YAML, apply via API, version in repo. Human-in-loop required for state-template changes, sprint commitments, and release approvals — agents may set "Active" but not "Closed" without verification.</p>
+
+      <section name="recommended-subagents">
+        <title>Recommended Subagents</title>
+        <list>
+          <item>faion-pm-agent — sprint planning, backlog refinement, capacity calc.</item>
+          <item>faion-sdd-executor-agent — converts SDD TASK_*.md → User Story/Task work items with wbs_id field.</item>
+          <item>faion-business-analyst — generates User Stories with Gherkin acceptance criteria.</item>
+          <item>faion-software-developer — links commits/PRs to work items via AB#&lt;id&gt; syntax.</item>
+        </list>
+      </section>
+
+      <section name="cli-tools">
+        <title>CLI Tools</title>
+        <list>
+          <item>az (Azure CLI) + az devops — Auth, projects, repos (https://learn.microsoft.com/cli/azure/devops).</item>
+          <item>az boards — Work item CRUD, queries (https://learn.microsoft.com/cli/azure/boards).</item>
+          <item>az pipelines — Trigger builds linked to work items (https://learn.microsoft.com/cli/azure/pipelines).</item>
+          <item>tfx-cli — Process template export/import, extension publish (https://github.com/microsoft/tfs-cli).</item>
+          <item>python-tfs / azure-devops Python SDK — Programmatic access (pip install azure-devops).</item>
+          <item>httpie — Quick REST API exploration with PAT (https://httpie.io).</item>
+        </list>
+      </section>
+
+      <section name="services-apps">
+        <title>Services and Apps</title>
+        <list>
+          <item>Azure DevOps Services — SaaS, REST 7.x, GraphQL via Analytics; cloud, default.</item>
+          <item>Azure DevOps Server — On-prem, same APIs; self-hosted, regulated/airgapped orgs.</item>
+          <item>Azure DevOps Analytics — SaaS, OData v4; source for Power BI dashboards.</item>
+          <item>Power BI — SaaS, REST + Analytics; Burndown, velocity, CFD.</item>
+          <item>GitHub — SaaS, sync via "Boards-GitHub Integration"; mirror commits/PRs as work item links.</item>
+          <item>Marketplace extensions — SaaS, Mixed; vet for active maintenance.</item>
+          <item>Microsoft Teams — SaaS, connector + Graph API; notifications on board events.</item>
+          <item>Power Automate — SaaS, connector; cross-system automation if Boards rules aren't enough.</item>
+        </list>
+      </section>
+
+      <section name="best-practices">
+        <title>Best Practices</title>
+        <list>
+          <item>Pick one process template per org and inherit (don't fork): mass-edit migrations across forks are painful.</item>
+          <item>Set WIP limits per board column and surface them in card-style rules; without limits Boards become "Active" landfills.</item>
+          <item>Use Area Path for ownership, Iteration Path for time. Don't overload either.</item>
+          <item>Link commits/PRs with AB#&lt;id&gt; so traceability is automatic; don't rely on manual association.</item>
+          <item>Capacity planning: enter team member days off; velocity forecasts are only useful with capacity adjustment.</item>
+          <item>Save WIQL as Shared Queries with stable URLs; agents reference URL, not query body, so query updates don't break consumers.</item>
+          <item>For audit: enable Process History export; CMMI states (Proposed/Active/Resolved/Closed) plus the audit trail satisfy SOX/SOC2.</item>
+          <item>PAT scoping: read-only by default; write-scope tokens per agent role; rotate every 90 days.</item>
+        </list>
+      </section>
+
+      <section name="ai-agent-gotchas">
+        <title>AI Agent Gotchas</title>
+        <list>
+          <item>Iteration paths must be created before assignment; agent that "fixes" a missing iteration by creating one in production breaks sprint history.</item>
+          <item>WIQL @CurrentIteration is team-scoped; agent across teams sees stale data unless team is specified.</item>
+          <item>System.Tags is a semicolon-separated string, not an array; agents naively setting it overwrite existing tags.</item>
+          <item>JSON Patch ops are order-sensitive; setting State before required fields fails silently with 200 + ValidationError in body.</item>
+          <item>Throttling: ADO returns 429 + Retry-After under load; agents must implement backoff (Microsoft documents an 18,750 TSTU/5min limit).</item>
+          <item>Linking by full URL is required for relations; bare IDs are silently dropped.</item>
+          <item>Process customisation via REST has eventual consistency: read-after-write may show stale schema for ~30s.</item>
+          <item>"Closed" state from agents requires verifying acceptance evidence is attached; otherwise audit gap.</item>
+          <item>Personally-Identifying-Information: Description fields are not encrypted at rest beyond ADO defaults; never store secrets there.</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="references">
+      <title>References</title>
+      <list>
+        <item>Azure Boards docs: https://learn.microsoft.com/en-us/azure/devops/boards/</item>
+        <item>REST API reference: https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/</item>
+        <item>Process customisation: https://learn.microsoft.com/en-us/azure/devops/organizations/settings/work/customize-process</item>
+        <item>WIQL syntax: https://learn.microsoft.com/en-us/azure/devops/boards/queries/wiql-syntax</item>
+        <item>Analytics OData: https://learn.microsoft.com/en-us/azure/devops/report/extend-analytics/data-model-analytics-service</item>
+        <item>Rate limits: https://learn.microsoft.com/en-us/azure/devops/integrate/concepts/rate-limits</item>
+        <item>az devops CLI: https://learn.microsoft.com/en-us/cli/azure/devops</item>
+        <item>Python SDK: https://github.com/microsoft/azure-devops-python-api</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/sprint-planning.md" purpose="Sprint planning document with capacity table, backlog, risks, DoD."/>
+      <template path="templates/user-story.md" purpose="User Story with As-a/I-want/So-that and Gherkin acceptance criteria."/>
+    </templates>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/en-us/azure/devops/boards/"/>
+      <link href="https://learn.microsoft.com/en-us/azure/devops/integrate/concepts/rate-limits"/>
+    </see-also>
+  </content>
+</methodology>
