@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="refactoring-patterns">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Structural code transformations: Extract Method, Extract Class, Replace Polymorphism, Replace Magic Numbers, Move Method. One pattern per commit with tests green before and after.</summary>
+    <tags>
+      <tag>refactoring</tag>
+      <tag>code-quality</tag>
+      <tag>patterns</tag>
+      <tag>maintainability</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Refactoring Patterns</title>
+    <summary>Catalog of structural code transformations that improve readability and maintainability without changing external behavior: Extract Method/Function, Extract Class, Replace Conditional with Polymorphism, Introduce Parameter Object, Replace Magic Numbers, Decompose Conditional, Rename for Clarity, Move Method. Each is applied one at a time, with tests green before and after.</summary>
+    <why>
+      <p>Refactoring in small, test-verified steps lowers the risk of introducing regressions. Naming the pattern (e.g. "Extract Method") makes the change reviewable and reversible. The Boy Scout Rule — leave code better than you found it — applied incrementally prevents accumulation of complexity that eventually blocks feature delivery.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Preparatory refactoring before a feature lands ("make the change easy, then make the easy change").</item>
+        <item>Reducing cyclomatic complexity / function length flagged by linters or code review.</item>
+        <item>Eliminating duplication detected by jscpd, pylint duplicate-code, or similar.</item>
+        <item>Modernizing legacy modules: replacing magic constants, decomposing god classes, extracting strategies.</item>
+        <item>Pre-test refactoring to make seams for mocks before adding tests.</item>
+        <item>Post-merge cleanup pass over a freshly delivered feature.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>During the same change as a behavior modification — refactoring requires "tests stay green and behavior unchanged".</item>
+        <item>When tests do not exist or do not cover the affected code paths. Add characterization tests first.</item>
+        <item>Hot paths where the "messy" form is intentional (manual loop unrolling, allocation reuse).</item>
+        <item>Right before a release window — defer to next cycle.</item>
+        <item>Generated code, vendored libraries, or migration scripts.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Pattern Catalog">
+      <section name="Extract Method">
+        <rule>
+          <statement>Extract a cohesive block of code into a named function when a method exceeds ~20 lines or contains multiple distinct responsibilities.</statement>
+          <rationale>Named functions communicate intent; extracted functions are independently testable and reusable.</rationale>
+        </rule>
+        <example type="good" title="Extract Method Example">
+          <code lang="python"><![CDATA[
+# AFTER extract: each function has one responsibility
+def process_order(order):
+    validate_order(order)
+    totals = calculate_totals(order)
+    process_payment(order.customer, totals.total)
+    send_confirmation(order.customer, totals)
+    return {"order_id": order.id, "total": totals.total}
+]]></code>
+        </example>
+      </section>
+      <section name="Extract Class">
+        <rule>
+          <statement>Extract a group of related fields and methods into a new class when a class has more than one cohesive responsibility.</statement>
+          <rationale>Single Responsibility Principle: each class should have one reason to change. Address data belongs in Address, not User.</rationale>
+        </rule>
+        <example type="good" title="Extract Class Example">
+          <code lang="python"><![CDATA[
+@dataclass
+class Address:
+    street: str
+    city: str
+    state: str
+    zip_code: str
+
+    def get_full_address(self) -> str:
+        return f"{self.street}, {self.city}, {self.state} {self.zip_code}"
+
+@dataclass
+class User:
+    name: str
+    email: str
+    address: Address
+]]></code>
+        </example>
+      </section>
+      <section name="Replace Conditional with Polymorphism">
+        <rule>
+          <statement>Replace a type-switch or multi-branch if/elif that dispatches behavior by type with a strategy/polymorphism pattern. Apply only when branches > 4 and each branch is non-trivial.</statement>
+          <rationale>Polymorphism extends by adding a new class rather than editing an existing conditional. Reduces cyclomatic complexity at the call site.</rationale>
+        </rule>
+        <example type="good" title="Polymorphism Example">
+          <code lang="python"><![CDATA[
+class PricingStrategy(ABC):
+    @abstractmethod
+    def calculate_discount(self, product) -> Decimal: ...
+
+class PremiumPricing(PricingStrategy):
+    def calculate_discount(self, product) -> Decimal:
+        return Decimal("0.1")
+
+STRATEGIES = {"premium": PremiumPricing(), "regular": RegularPricing()}
+strategy = STRATEGIES.get(customer_type, RegularPricing())
+]]></code>
+        </example>
+      </section>
+      <section name="Introduce Parameter Object">
+        <rule>
+          <statement>Group more than 4 related parameters into a dataclass or NamedTuple. Replace the long parameter list with the new type.</statement>
+          <rationale>Long parameter lists are hard to read at call sites and fragile to extend. Parameter objects are self-documenting and extendable without changing signatures.</rationale>
+        </rule>
+      </section>
+      <section name="Replace Magic Numbers">
+        <rule>
+          <statement>Replace every numeric or string literal that encodes a business concept with a named constant or enum.</statement>
+          <rationale>Magic numbers are undocumented contracts that break when business rules change. Named constants are searchable and document intent.</rationale>
+        </rule>
+        <example type="bad" title="Antipattern: Magic Numbers">
+          <code lang="python"><![CDATA[
+if order.total > 100:  # What does 100 mean?
+    order.shipping = 0
+]]></code>
+        </example>
+        <example type="good" title="Refactored: Named Constants">
+          <code lang="python"><![CDATA[
+class ShippingConfig:
+    FREE_SHIPPING_THRESHOLD = Decimal("100.00")
+    STANDARD_SHIPPING_COST = Decimal("9.99")
+
+if order.total >= ShippingConfig.FREE_SHIPPING_THRESHOLD:
+    order.shipping = Decimal("0")
+]]></code>
+        </example>
+      </section>
+      <section name="Decompose Conditional">
+        <rule>
+          <statement>Extract complex boolean conditions and each branch body into named functions that reveal intent.</statement>
+          <rationale>Nested conditions are hard to reason about. Named predicates and action functions make the structure self-documenting.</rationale>
+        </rule>
+      </section>
+      <section name="Rename for Clarity">
+        <rule>
+          <statement>Use IDE/LSP rename refactoring (not text search-replace) for renaming symbols. Rename when the intent of a variable, function, or class is unclear from its current name.</statement>
+          <rationale>LSP rename updates all references including imports. Text replace misses string-based references; grep-check the entire repo for the old name before claiming done.</rationale>
+        </rule>
+      </section>
+      <section name="Move Method">
+        <rule>
+          <statement>Move a method to the class it talks to most (Feature Envy smell). A method that only uses data from another class belongs in that class.</statement>
+          <rationale>Feature envy creates tight coupling and prevents the moved method from being reused independently.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="Safe Refactoring Workflow">
+      <section name="Workflow Steps">
+        <rule>
+          <statement>Ensure test coverage exists before refactoring. Write characterization tests for uncovered branches first.</statement>
+          <rationale>Without tests, refactoring has no safety net. Characterization tests capture current behavior (even if wrong) so you know if you changed it.</rationale>
+        </rule>
+        <rule>
+          <statement>Apply one named refactor per commit. Commit message names the pattern: "refactor: extract method validate_order".</statement>
+          <rationale>Granular commits are reviewable and revertable. Mixed patterns in one commit make review and rollback intractable.</rationale>
+        </rule>
+        <rule>
+          <statement>Run tests after every micro-edit. If tests fail, revert the change — do not continue refactoring on a red baseline.</statement>
+          <rationale>Accumulating failures hides which change broke what. Always refactor on a green baseline.</rationale>
+        </rule>
+        <rule>
+          <statement>Use IDE/LSP refactoring tools (Extract Method, Rename, Move) over manual edits. They maintain references automatically.</statement>
+          <rationale>Manual edits miss string-based references (JSON keys, DB column names, reflection). IDE tools update all references in a single operation.</rationale>
+        </rule>
+      </section>
+      <section name="Strangler Pattern">
+        <rule>
+          <statement>For large-scale refactors, introduce the new shape alongside the old, redirect callers one by one, then delete the old. Never big-bang rewrite.</statement>
+          <rationale>Parallel coexistence means the system is always deployable. Big-bang rewrites have a long broken period and high integration risk.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="Antipatterns">
+      <section name="Structural Anti-patterns">
+        <antipattern>
+          <description>Big-bang refactoring — changing everything at once across many files</description>
+          <reason>Long broken period, high merge conflict rate, impossible to bisect failures. Apply the strangler pattern instead.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Refactoring without tests — no safety net</description>
+          <reason>Without tests you cannot verify behavior is preserved. The risk of introducing bugs equals a rewrite, not a refactor.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Mixing refactoring with behavior changes in the same commit</description>
+          <reason>Mixed commits violate the refactoring definition (behavior unchanged) and make bisect useless.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Over-engineering: converting a 4-branch if into a 4-class strategy hierarchy</description>
+          <reason>Polymorphism adds indirection cost. Apply only when branches > 4 and each branch is non-trivial and will grow independently.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Incomplete refactoring — leaving the code in a worse intermediate state</description>
+          <reason>Half-extracted methods are harder to understand than the original. Commit only when the refactor is complete.</reason>
+        </antipattern>
+      </section>
+      <section name="Agent-Specific Risks">
+        <antipattern>
+          <description>Agent changes types during refactoring (e.g. int to Decimal) claiming it's "cleanup"</description>
+          <reason>Type changes alter behavior (rounding, comparison, serialization). Forbid type changes inside refactor commits.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Agent renames a symbol but misses string-based references (JSON keys, DB column names, reflection)</description>
+          <reason>Text rename is incomplete. Require a grep of the full repo for the old name before claiming done.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Agent modifies assertion contents inside tests during a refactor commit</description>
+          <reason>Changing assertions during refactoring removes the safety net retroactively. Tests must not change except to add characterization tests for uncovered branches.</reason>
+        </antipattern>
+      </section>
+    </section>
+    <section name="Agent Workflow">
+      <p>Refactoring with agents is a strict loop: characterize → micro-edit → run tests → commit → repeat. Never let the agent batch edits across multiple patterns; one Fowler refactor per commit. Pair an "edit" subagent with a "verify" subagent that runs tests + diff review and rejects the commit if behavior coverage drops or unrelated files were touched. Use git stash and git diff --stat between steps to keep blast radius visible.</p>
+      <section name="Recommended Subagents">
+        <list>
+          <item>faion-sdd-executor-agent — when refactoring is tracked as SDD task with explicit AC ("complexity below N", "no duplicates").</item>
+          <item>simplify skill — built-in, scans changed code for reuse/quality issues; ideal post-feature pass.</item>
+          <item>General-purpose subagent constrained to a single file with a single named refactor (extract_method, replace_conditional_with_polymorphism).</item>
+        </list>
+      </section>
+      <section name="Prompt Pattern">
+        <p>Refactor target: &lt;file&gt;:&lt;symbol&gt;. Pattern: Extract Method. Constraint: behavior must be unchanged. Run pytest -k &lt;symbol&gt; after every micro-edit. Output: one commit per extraction. If tests fail, revert and report. Do not touch other files. Do not modify tests except to add characterization tests for uncovered branches.</p>
+        <p>Audit only: list code smells in &lt;file&gt; (long method, magic numbers, feature envy, primitive obsession). For each: name the Fowler refactor that would address it. Do NOT edit.</p>
+      </section>
+    </section>
+    <section name="Tooling">
+      <section name="CLI Tools">
+        <list>
+          <item>ruff / flake8 (C901) — Cyclomatic complexity threshold</item>
+          <item>radon — Complexity &amp; maintainability index</item>
+          <item>vulture — Dead-code finder</item>
+          <item>jscpd — Cross-language copy-paste detector</item>
+          <item>pylint --disable=all --enable=duplicate-code — Duplication in Python</item>
+          <item>eslint (complexity, max-lines-per-function, no-magic-numbers) — JS/TS smells</item>
+          <item>ast-grep — Structural search/replace</item>
+          <item>comby — Lightweight structural rewrite</item>
+          <item>gopls/rust-analyzer/pyright — LSP-driven extract/rename</item>
+          <item>codemod / jscodeshift — Mass JS/TS AST transforms</item>
+          <item>git rebase -i — Squash micro-commits before merging</item>
+        </list>
+      </section>
+      <section name="Services &amp; Apps">
+        <list>
+          <item>SonarQube / SonarCloud — Long-term smell tracking; rules align with Fowler catalog.</item>
+          <item>Codacy / CodeClimate — Per-PR maintainability scores.</item>
+          <item>GitHub CodeQL — Custom queries for project-specific smells.</item>
+          <item>Refactoring.guru — Visual catalog matching the README.</item>
+          <item>pre-commit framework — Wire ruff, radon, vulture as gates.</item>
+        </list>
+      </section>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>One refactor pattern per commit. Commit message names the pattern (refactor: extract method validate_order).</item>
+        <item>Add characterization tests before touching code you don't fully understand — they are the safety net.</item>
+        <item>Use IDE/LSP refactors over hand edits for rename, extract method, inline, move. Lower error rate.</item>
+        <item>Strangle gradually: introduce the new shape alongside the old, redirect callers, delete the old. Never big-bang rewrite.</item>
+        <item>For polymorphism replacement, add the strategy and switch one caller at a time; keep the conditional and the strategy coexisting briefly.</item>
+        <item>Track maintainability metrics (radon mi, SonarQube debt ratio) before/after to prove improvement, not just "feels cleaner".</item>
+      </list>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <list>
+        <item>Agents over-apply patterns: a 4-branch if becomes a 4-class hierarchy. Cap with a rule like "polymorphism only if branches > 5 AND each is non-trivial".</item>
+        <item>LLMs may "improve" types (e.g. switch int → Decimal) — this changes behavior subtly (rounding, comparison). Forbid type changes inside refactor commits.</item>
+        <item>Renames often miss external references (string-based reflection, JSON keys, DB column names). Require the agent to grep the whole repo for the old name before claiming done.</item>
+        <item>Test pass != behavior preservation if coverage is sparse. Require a coverage delta of zero or positive on the touched files.</item>
+        <item>Agents sometimes "refactor" tests, removing meaningful assertions. Forbid edits to assertion contents during a refactor commit.</item>
+        <item>Human-in-loop checkpoint: any change to a public API signature (parameter list, return type) must be approved before merge.</item>
+        <item>The Replace Magic Numbers example introduces ShippingConfig constants — agents will create a constants class even when one already exists elsewhere. Require a duplicate-search step.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/refactor-scope-guard.sh" purpose="Pre-commit hook: block sprawling refactor commits touching more than 5 files."/>
+    </templates>
+    <see-also>
+      <link href="https://refactoring.com/"/>
+      <link href="https://refactoring.com/catalog/"/>
+      <link href="https://refactoring.guru/refactoring/catalog"/>
+      <link href="https://www.oreilly.com/library/view/working-effectively-with/0131177052/"/>
+      <link href="https://martinfowler.com/articles/preparatory-refactoring-example.html"/>
+      <link href="https://martinfowler.com/bliki/OpportunisticRefactoring.html"/>
+    </see-also>
+  </content>
+</methodology>

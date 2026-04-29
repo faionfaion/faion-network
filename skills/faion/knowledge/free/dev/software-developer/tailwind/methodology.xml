@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tailwind">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Utility-first CSS: atomic classes in markup, design tokens in config, cn() helpers resolve conflicts.</summary>
+    <tags>
+      <tag>tailwind</tag>
+      <tag>css</tag>
+      <tag>styling</tag>
+      <tag>utility-first</tag>
+      <tag>design-tokens</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Tailwind CSS</title>
+    <summary>Utility-first CSS framework where styles are composed from atomic classes directly in markup. JIT compilation ships only the CSS classes actually used, keeping bundle size minimal. Centralizing tokens in config prevents color/spacing drift across components. `cn()` + `tailwind-merge` resolves conflicting utilities and prevents className bugs.</summary>
+    <why>
+      <p>JIT compilation ships only the CSS classes actually used, keeping bundle size minimal. Centralizing tokens in config prevents color/spacing drift across components. `cn()` + `tailwind-merge` resolves conflicting utilities and prevents className bugs. Agents pattern-match Tailwind reliably, making LLM-driven UI work predictable.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Greenfield React / Vue / Svelte / Next.js / Astro projects needing utility-first styling.</item>
+        <item>Design systems that need a single canonical token source.</item>
+        <item>Component libraries built on shadcn/ui / Radix / Headless UI.</item>
+        <item>LLM-driven UI: agents produce consistent Tailwind output.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Rails Asset Pipeline + Sass mixins or other server-rendered CSS architectures — doubles CSS strategy.</item>
+        <item>Highly dynamic class strings (`bg-${color}-500`) — JIT purges them; use CSS Modules instead.</item>
+        <item>Designer-owned codebases where designers write Sass — requires designer fluency in tokens.</item>
+        <item>Print stylesheets — a dedicated `print.css` is cleaner than Tailwind print variants.</item>
+      </list>
+    </when-not-to-use>
+    <section name="utility-first-principles">
+      <rule>
+        <statement>Compose all styles from Tailwind utility classes directly in markup. Do not write custom CSS for component styles.</statement>
+        <rationale>Keeps styling co-located with structure, eliminates naming overhead, and enables JIT to ship only used CSS.</rationale>
+      </rule>
+      <rule>
+        <statement>Define all colors, spacing, typography, and radius values in tailwind.config.ts theme.extend. Do not use arbitrary values for recurrent design values.</statement>
+        <rationale>Single source of truth for tokens prevents drift. Arbitrary values like w-[347px] bypass the design system.</rationale>
+      </rule>
+      <rule>
+        <statement>Cap arbitrary value usage to a documented budget (&lt;5% of utility classes). Refactor recurring arbitrary values into theme tokens.</statement>
+        <rationale>Unconstrained arbitrary values defeat the design system and create maintenance debt.</rationale>
+      </rule>
+    </section>
+    <section name="class-ordering">
+      <rule>
+        <statement>Follow Concentric CSS order: layout/position, box model, borders, background, typography, effects.</statement>
+        <rationale>Consistent order makes class strings scannable; prettier-plugin-tailwindcss enforces it automatically.</rationale>
+      </rule>
+      <rule>
+        <statement>Use prettier-plugin-tailwindcss to auto-sort class order. Do not debate order manually.</statement>
+        <rationale>Automated enforcement eliminates review friction and catches LLM-generated unsorted class lists.</rationale>
+      </rule>
+      <example type="good" title="Ordered class list">
+        <code lang="tsx"><![CDATA[<div className="
+  relative flex flex-col
+  w-full max-w-md p-6 m-4
+  border border-gray-200 rounded-lg
+  bg-white shadow-lg
+  text-gray-900 text-sm font-medium
+  transition-all duration-200 hover:shadow-xl
+" />]]></code>
+        <note>Layout first, then box, border, background, typography, effects.</note>
+      </example>
+    </section>
+    <section name="token-rules">
+      <rule>
+        <statement>Use semantic color tokens (CSS variables) in theme.extend, not hardcoded hex values.</statement>
+        <rationale>Semantic tokens enable dark mode and theming without class duplication.</rationale>
+      </rule>
+      <example type="good" title="Semantic color tokens">
+        <code lang="js"><![CDATA[colors: {
+  background: "hsl(var(--background))",
+  foreground: "hsl(var(--foreground))",
+  primary: {
+    DEFAULT: "hsl(var(--primary))",
+    foreground: "hsl(var(--primary-foreground))",
+  },
+}]]></code>
+      </example>
+    </section>
+    <section name="at-apply-limits">
+      <rule>
+        <statement>Use @apply only inside @layer components for base styles shared with third-party resets. Never use @apply to alias utilities or extract component patterns.</statement>
+        <rationale>@apply increases CSS bundle size, defeats JIT, and recreates Sass partials. Component extraction via JSX is the correct abstraction.</rationale>
+      </rule>
+      <antipattern>
+        <description>.text-big { @apply text-2xl; } — aliases a utility</description>
+        <reason>Defeats JIT, creates an extra class with no benefit over using text-2xl directly.</reason>
+      </antipattern>
+    </section>
+    <section name="cn-helper">
+      <rule>
+        <statement>Use cn() (clsx + tailwind-merge) for all conditional class joining. Forbid template-literal class joins via lint rule.</statement>
+        <rationale>tailwind-merge resolves conflicting utilities (e.g. p-4 and p-6 → p-6). Raw template literals can produce invalid merged strings.</rationale>
+      </rule>
+      <example type="good" title="Proper cn() usage">
+        <code lang="tsx"><![CDATA[<div className={cn(
+  "base-styles",
+  isActive && "active-styles",
+  className
+)} />]]></code>
+      </example>
+      <example type="bad" title="Template literal join">
+        <code lang="tsx"><![CDATA[<div className={`base-styles ${isActive ? "active-styles" : ""} ${className}`} />]]></code>
+        <note>Template literals do not resolve conflicting utilities and cannot be lint-validated.</note>
+      </example>
+    </section>
+    <section name="variant-pattern">
+      <rule>
+        <statement>Use CVA (class-variance-authority) or tailwind-variants for component variant props. Do not scatter variant class strings across usage sites.</statement>
+        <rationale>Centralizing variant class strings makes theme changes a single-file edit and enables agents to extend variants safely.</rationale>
+      </rule>
+      <example type="good" title="Variant centralization">
+        <code lang="tsx"><![CDATA[const variants = {
+  primary: "bg-blue-600 text-white hover:bg-blue-700",
+  secondary: "bg-gray-200 text-gray-900 hover:bg-gray-300",
+  ghost: "bg-transparent hover:bg-gray-100",
+}
+
+<button className={cn("px-4 py-2 rounded", variants[variant])} />]]></code>
+      </example>
+    </section>
+    <section name="responsive-design">
+      <rule>
+        <statement>Apply mobile-first breakpoints: base class is mobile, md: is tablet, lg: is desktop. Never write desktop-first media queries.</statement>
+        <rationale>Mobile-first aligns with Tailwind's breakpoint model and reduces override complexity.</rationale>
+      </rule>
+      <example type="good" title="Mobile-first breakpoints">
+        <code lang="tsx"><![CDATA[<div className="flex flex-col md:flex-row lg:justify-between" />]]></code>
+      </example>
+    </section>
+    <section name="dark-mode">
+      <rule>
+        <statement>Use class strategy dark mode with next-themes (or framework equivalent). Pair every color utility with a dark: variant or use semantic CSS variable tokens.</statement>
+        <rationale>Without a script-in-head theme detection, light-to-dark FOUC occurs. Semantic tokens eliminate the need to add dark: to every class.</rationale>
+      </rule>
+      <example type="good" title="Dark mode with variants">
+        <code lang="tsx"><![CDATA[<div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">]]></code>
+      </example>
+    </section>
+    <section name="common-layout-snippets">
+      <p>Standard patterns agents should reuse verbatim rather than reinvent:</p>
+      <list>
+        <item>Container: mx-auto max-w-7xl px-4 sm:px-6 lg:px-8</item>
+        <item>Card: rounded-lg border bg-card p-6 shadow-sm</item>
+        <item>Stack: flex flex-col gap-4</item>
+        <item>Center: flex items-center justify-center</item>
+        <item>Truncate single line: truncate</item>
+        <item>Truncate multi-line: line-clamp-2</item>
+      </list>
+    </section>
+    <section name="dynamic-class-strings">
+      <antipattern>
+        <description>Constructing class names with template literals: bg-${color}-500</description>
+        <reason>JIT purges classes not present as complete strings in source files. Works in dev, silently broken in prod.</reason>
+      </antipattern>
+      <rule>
+        <statement>When dynamic classes are unavoidable, add the full class strings to the safelist in tailwind.config.ts. Prefer precomputing the full string server-side.</statement>
+        <rationale>JIT scans source files for complete class strings; partial template construction is invisible to the scanner.</rationale>
+      </rule>
+    </section>
+    <section name="inline-styles">
+      <antipattern>
+        <description>style={{ width: 100 }} or style={{ marginTop: 13 }} for one-off values</description>
+        <reason>Mixes two styling layers; bypasses the design system; not picked up by theme changes.</reason>
+      </antipattern>
+      <rule>
+        <statement>Use w-[100px] or a theme token for one-off measurements. Keep all styling in one layer.</statement>
+        <rationale>Single-layer styling makes audits and token migrations tractable.</rationale>
+      </rule>
+    </section>
+    <section name="arbitrary-value-creep">
+      <antipattern>
+        <description>Recurring arbitrary values: w-[37.5px] appearing in multiple components</description>
+        <reason>Bypasses the design system; creates undocumented one-off measurements that diverge over time.</reason>
+      </antipattern>
+    </section>
+    <section name="at-apply-overuse">
+      <antipattern>
+        <description>Extracting utility groups to @apply "for cleanliness": .card { @apply rounded-lg border p-6; }</description>
+        <reason>Increases CSS bundle, defeats JIT tree-shaking, recreates the class-naming problem Tailwind eliminates.</reason>
+      </antipattern>
+    </section>
+    <section name="specificity-fixes">
+      <antipattern>
+        <description>Using important: true in tailwind.config.ts to fix specificity conflicts with third-party CSS</description>
+        <reason>Wins the specificity war but makes the maintenance battle unwinnable. Refactor the source of conflict or use prefix: 'tw-' instead.</reason>
+      </antipattern>
+    </section>
+    <section name="agent-specific-gotchas">
+      <antipattern>
+        <description>Hallucinated utilities: text-3.5xl, bg-primary-500/0.6 (wrong opacity syntax)</description>
+        <reason>Tailwind opacity syntax is bg-primary-500/60 (integer) or bg-primary-500/[0.6] (arbitrary). Build with --strict to fail-fast on unknown classes.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Missing group or peer class on parent when using group-hover: or peer-hover:</description>
+        <reason>Without the group/peer class on the parent, the variant silently has no effect.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Forgetting dark: variants when not using semantic tokens</description>
+        <reason>Component looks correct in light mode, broken in dark mode. Pair every color with dark: or switch to semantic variable tokens.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/tailwind.config.ts" purpose="Config with semantic color tokens (CSS variables), custom spacing, typography, plugins."/>
+      <template path="templates/cn-helper.ts" purpose="`cn()` utility combining `clsx` + `tailwind-merge`."/>
+      <template path="templates/cva-variant.tsx" purpose="CVA-based component variant pattern."/>
+      <template path="templates/css-budget.sh" purpose="CI script: fail build if prod CSS exceeds gzipped budget."/>
+    </templates>
+    <section name="agentic-workflow">
+      <p>Drive Tailwind work in 4 stages: (1) a **token-curator** subagent reviews `tailwind.config.ts` `theme.extend` for brand colors, spacing, typography — adds before any utility class is written; (2) a **utility-author** subagent writes JSX with utilities in concentric order (layout → box → border → bg → typography → effects), keeping arbitrary values less than 5% of total; (3) a **cn-discipline** subagent flags raw template-literal class joins and auto-converts to `cn()` (`clsx` + `tailwind-merge`); (4) a **bundle-audit** subagent runs production build and reports CSS size plus top utility hot spots; flags safelist gaps. Always run `prettier --check` (with `prettier-plugin-tailwindcss`) and `eslint` (`eslint-plugin-tailwindcss`) before commit; LLMs commonly emit unsorted class lists.</p>
+    </section>
+    <section name="recommended-subagents">
+      <p>faion-sdd-executor-agent (agents/faion-sdd-executor-agent.md) — quality gate runs pnpm lint and pnpm build and pnpm test. A purpose-built tailwind-token-agent (worth creating): proposes theme.extend additions when a magic color/spacing recurs 3 or more times in JSX. A class-sort-agent (worth creating): wraps prettier-plugin-tailwindcss and reports/auto-fixes ordering. A safelist-agent (worth creating): scans for dynamic class construction patterns; emits a safelist config. A css-budget-agent (worth creating): builds prod CSS, asserts less than 50KB gzipped; alerts on regressions. An a11y-contrast-agent (worth creating): checks text-foreground vs bg-card resolved colors meet WCAG AA. password-scrubber-agent (agents/password-scrubber-agent.md) — catch any committed .env for build tooling.</p>
+    </section>
+    <section name="class-string-explosion">
+      <p>Components grow to 80+ utilities; readability craters. Use CVA / tailwind-variants to encapsulate. Specificity wars when mixing with library CSS: Bootstrap remnants override Tailwind utilities. important: true is a sledgehammer; prefer scoping prefix: 'tw-' instead. JIT purge false negatives: Dynamically constructed classes get purged when using template literals like bg-${variant}-500. Add to safelist or precompute full strings. Tailwind v4 migration churn: v4 removes tailwind.config.js in favor of CSS-first config; existing tutorials lag. Pin v3.x or fully migrate; don't half-step. Arbitrary values everywhere: w-[37.5px] for one-off measurements bypasses the design system. Cap usage to a budget; refactor common arbitrary values into theme tokens. Dark mode + class strategy + SSR: Without script-in-head theme detection, light-to-dark FOUC occurs. Use next-themes + class strategy; agents skip the script. @apply overuse: "Extracting" patterns to @apply defeats JIT and recreates Sass partials. Always prefer component composition. Plugin churn: @tailwindcss/forms, typography, aspect-ratio add scoped resets that surprise debuggers. Audit conflicts when adopting. Container queries before v3.2 require plugin; agents reach for media queries reflexively. Tooling coupling: PostCSS + autoprefixer + Tailwind requires careful build order. Vite, Next.js, Astro abstract; bare npx tailwindcss does not.</p>
+    </section>
+    <section name="cli-tools">
+      <p>`tailwindcss` — Core JIT engine (https://tailwindcss.com/docs). `@tailwindcss/forms` — Form reset plugin (https://github.com/tailwindlabs/tailwindcss-forms). `@tailwindcss/typography` — Prose styling for markdown (https://tailwindcss.com/docs/typography-plugin). `@tailwindcss/aspect-ratio` — Aspect ratio plugin, pre-v3.2 (https://github.com/tailwindlabs/tailwindcss-aspect-ratio). `@tailwindcss/container-queries` — `@container` queries plugin (https://github.com/tailwindlabs/tailwindcss-container-queries). `prettier-plugin-tailwindcss` — Auto-sort class order (https://github.com/tailwindlabs/prettier-plugin-tailwindcss). `eslint-plugin-tailwindcss` — Lint unused/duplicated classes (https://github.com/francoismassart/eslint-plugin-tailwindcss). `tailwind-merge` — Resolve conflicting utilities (https://github.com/dcastil/tailwind-merge). `clsx` — Conditional joiner (https://github.com/lukeed/clsx). `cva` (class-variance-authority) — Variant API (https://cva.style). `tailwind-variants` (tw-variants) — Alt to CVA with slot support (https://www.tailwind-variants.org). `autoprefixer` — PostCSS prefixer, pair with Tailwind (https://github.com/postcss/autoprefixer). `cssnano` — CSS minifier in build (https://cssnano.co).</p>
+    </section>
+    <section name="services-and-apps">
+      <p>Tailwind Play (SaaS, yes to agents via URL share) — Quick prototyping; agents can paste output for validation. Tailwind UI (SaaS, paid, partial) — Premium component snippets; license-restricted. shadcn/ui registry (OSS, yes) — Tailwind + Radix primitives; `npx shadcn add`. HyperUI (OSS, yes) — Free Tailwind component library. Headless UI (OSS, yes) — Tailwind Labs' unstyled accessible components. daisyUI (OSS, yes) — Component-class library on top of Tailwind. Flowbite (SaaS/OSS, yes) — Tailwind component lib + Pro tier. Vercel / Netlify / Cloudflare Pages (SaaS, yes) — Auto-builds Next.js + Tailwind. Storybook + Tailwind (OSS, yes) — Pair for component sandboxing.</p>
+    </section>
+    <see-also>
+      <ref slug="css-in-js"/>
+      <ref slug="shadcn-ui"/>
+      <ref slug="storybook-setup"/>
+    </see-also>
+  </content>
+</methodology>

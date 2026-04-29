@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tdd-workflow">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Red-Green-Refactor cycle: failing test, minimal code, refactor. Verify test failure before implementation.</summary>
+    <tags>
+      <tag>tdd</tag>
+      <tag>testing</tag>
+      <tag>red-green-refactor</tag>
+      <tag>verification</tag>
+      <tag>workflow</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>TDD Workflow</title>
+    <summary>Red-Green-Refactor cycle for test-driven development: write one failing test, write minimal code to pass it, then improve structure without changing behavior. Agents skip the RED step and write implementation first, then tests that validate what they wrote — this is rationalization, not verification. Without an enforced cycle, code is untestable by design and refactors break silently. TDD forces the interface to be designed from the consumer's perspective before any implementation exists.</summary>
+    <why>
+      <p>Agents skip the RED step and write implementation first, then tests that validate what they wrote — this is rationalization, not verification. Without an enforced cycle, code is untestable by design and refactors break silently. TDD forces the interface to be designed from the consumer's perspective before any implementation exists.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Bug-fix workflow: reproduce the bug as a failing test before touching production code.</item>
+        <item>Pure-function or business-logic implementation where requirements are precise (validators, calculators, parsers).</item>
+        <item>API contract design — tests document the public surface before any handler exists.</item>
+        <item>Library / SDK work where consumers depend on a stable interface.</item>
+        <item>Onboarding an agent to an unfamiliar codebase — writing tests first forces reading the existing API.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Exploratory spikes or research code — feedback loop is faster without tests.</item>
+        <item>UI prototypes where the design changes hourly.</item>
+        <item>Glue scripts and one-off migrations.</item>
+        <item>Code intrinsically hard to test (rendering, hardware drivers, framework internals).</item>
+        <item>Hot-fix under outage pressure — write the fix, add the regression test in a follow-up PR.</item>
+      </list>
+    </when-not-to-use>
+    <section name="cycle-rules">
+      <rule>
+        <statement>Run one behavior per cycle. Do not write multiple failing tests before implementing. Do not implement before seeing the test fail.</statement>
+        <rationale>Running multiple tests before implementing hides which test drives which code. The cycle only works when each test forces exactly one implementation decision.</rationale>
+      </rule>
+      <rule>
+        <statement>Verify RED before proceeding to GREEN. The orchestrating agent must confirm the test runner reports the new test as failing before allowing any implementation writes.</statement>
+        <rationale>The skip-RED failure mode is the most common way agents defeat TDD: they write implementation first, then write tests that pass trivially against it.</rationale>
+      </rule>
+      <rule>
+        <statement>Triangulate: write 2-3 input cases that force the implementation to generalize. A single test case tempts the agent to return a hardcoded value.</statement>
+        <rationale>An agent that can satisfy a test for input=5 by returning 5 will do exactly that. The second test case for a different input forces a general solution.</rationale>
+      </rule>
+      <rule>
+        <statement>Refactor step is mandatory. Run the full suite after every refactor to confirm no regressions. Make refactoring a separate agent invocation with the explicit goal "do not add features."</statement>
+        <rationale>Without isolation, refactors silently break behavior. Separate invocations prevent feature creep.</rationale>
+      </rule>
+    </section>
+    <section name="phase-locked-prompt-patterns">
+      <example type="good" title="RED phase">
+        <note>RED phase prompt: "Output ONLY a new test in [test file]. Do not modify implementation files. Run pytest [path::test] -x. Expected: 1 failed, 0 passed."</note>
+      </example>
+      <example type="good" title="GREEN phase">
+        <note>GREEN phase prompt: "Implement minimum code to make test [name] pass. Do not change other tests. Do not add features not exercised by the failing test. Run pytest [path::test] -x. Expected: 1 passed."</note>
+      </example>
+      <example type="good" title="REFACTOR phase">
+        <note>REFACTOR phase prompt: "Improve [file] without changing public API or test outcomes. Run full suite pytest -q. Expected: same pass count as before. Block if any test now fails."</note>
+      </example>
+    </section>
+    <section name="naming-convention">
+      <rule>
+        <statement>Name tests as test_unit_scenario_expected: e.g. test_validator_rejects_short_password_with_clear_error.</statement>
+        <rationale>Descriptive names make test failure output immediately actionable without reading the test body.</rationale>
+      </rule>
+    </section>
+    <section name="when-to-use-extended">
+      <p>Bug-fix workflow: agent must reproduce the bug as a failing test before touching production code. Pure-function or business-logic implementation where requirements are precise (validators, calculators, parsers, state machines). API contract design — tests document the public surface before any handler exists. Library / SDK work where consumers depend on a stable interface. Onboarding a model into an unfamiliar codebase — writing tests first forces it to read the existing API.</p>
+    </section>
+    <section name="when-not-to-use-extended">
+      <p>Exploratory spikes / research code — feedback loop is faster without tests. UI prototypes where the design changes hourly. Glue scripts and one-off migrations. Code that is intrinsically hard to test (rendering, hardware drivers, framework internals) — invest in integration / characterization tests instead. Hot-fix under outage pressure — write the fix, then add the regression test in a follow-up PR (and label that PR clearly).</p>
+    </section>
+    <section name="where-it-fails">
+      <antipattern>
+        <description>Agents skip the RED step: they write the implementation first, then "tests" that validate what they wrote (rationalization, not verification).</description>
+        <reason>Tests pin internal details and break under any refactor. Force RED by requiring failure output as part of the response.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Tests pin internal details (private methods, exact log strings) and break under any refactor.</description>
+        <reason>Overly specific assertions couple tests to implementation. Write tests against public interfaces only.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Mock-heavy unit tests pass while integration is broken.</description>
+        <reason>Mocks hide real dependency failures. Restrict mocking to clearly external boundaries.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Coverage % becomes the goal; agents game it with assertions on `True`.</description>
+        <reason>Coverage % is a false metric without mutation testing. Pair coverage with mutation testing or branch coverage.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Refactor step is universally skipped — green tests + ugly code is "done" for an LLM unless the loop forces it.</description>
+        <reason>Make refactoring a separate agent invocation with the explicit goal "do not add features".</reason>
+      </antipattern>
+    </section>
+    <section name="agentic-workflow">
+      <p>Drive TDD as a loop subagent invocation per behavior, not per feature: prompt for ONE failing test, run, confirm RED, prompt for minimal pass, run, confirm GREEN, then prompt for refactor, run, confirm still GREEN. The orchestrating agent enforces the cycle by checking the test runner output between steps — if the model jumps ahead (writes both test and impl in one turn), reject the diff. A senior model handles refactor decisions; cheaper models handle GREEN-step boilerplate.</p>
+    </section>
+    <section name="recommended-subagents">
+      <p>`faion-sdd-executor-agent` — already structured around quality gates; pair with explicit RED/GREEN/REFACTOR prompts. `faion-feature-executor` — sequential task execution mode is a natural fit for stepping through the cycle. A `tdd-cycle-enforcer` (custom) — single-purpose: parse `pytest -x` output, decide RED vs GREEN, refuse to advance phase if state is wrong.</p>
+    </section>
+    <section name="cli-tools">
+      <p>pytest + pytest-watch (ptw) for auto re-run tests on save. pytest-cov for coverage; pair with `--cov-fail-under`. mutmut / cosmic-ray for mutation testing — kills "fake" tests that pass against any impl. vitest --watch for JS/TS equivalent. jest --watch for JS/TS equivalent. cargo test + cargo-watch for Rust. go test ./... -count=1 for Go with disabled cache. entr / watchexec for re-running any command on file change.</p>
+    </section>
+    <section name="services-and-apps">
+      <p>GitHub Actions (SaaS, required: status check on each PR; agents read gh pr checks for failure detail). Codecov / Coveralls (SaaS, coverage delta on PR — agent uses to flag uncovered branches). Stryker (OSS, agents can run, but interpreting surviving mutants needs human review). Cursor / Aider TDD modes (SaaS/OSS, some IDEs have RED/GREEN modes baked in). pytest-xdist (OSS, parallelism cuts feedback latency, critical for tight TDD loops).</p>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>One assertion concept per test, but multiple assert statements are fine if they describe the same behaviour.</item>
+        <item>Test names: test_unit_scenario_expected e.g. test_validator_rejects_short_password_with_clear_error.</item>
+        <item>Arrange-Act-Assert visual separation (blank lines), not comments.</item>
+        <item>Use fakes (FakeInventory) over mocks when the dependency has logic; only mock when verifying interaction is the goal.</item>
+        <item>Triangulate: write 2–3 input cases that force the implementation to generalize, otherwise GREEN tempts hardcoded returns.</item>
+        <item>Tests live near code (module.py + test_module.py) for easy navigation; agents are bad at keeping mirrored tests/ trees in sync.</item>
+        <item>Run mutation testing weekly on critical modules — it's the only check that distinguishes "tests exist" from "tests would catch regressions".</item>
+      </list>
+    </section>
+    <section name="ai-agent-gotchas">
+      <p>The "skip RED" failure mode: agent writes a passing test against new code in one turn. Force RED by requiring failure output as part of the response. Agents over-mock: they'll mock `datetime.now`, file I/O, and the system under test. Restrict mocking to clearly external boundaries in the prompt. LLMs invent assertions that don't actually constrain behaviour: `assert result is not None` for a function that returns a fixed string. Reviewer subagent should flag weak assertions. Refactor phase is the highest-value, lowest-attention step for LLMs. Make it a separate agent invocation with the explicit goal "do not add features". Human-in-loop checkpoint: read the failing test before allowing GREEN. The test is the spec; if it's wrong, the implementation that satisfies it is also wrong. Coverage gating works against TDD when set too high — agents add `pragma: no cover` or write trivial tests to clear the bar. Pair coverage with mutation testing or branch coverage. For bug fixes, require the test to reference the issue ID in a docstring; auditing later proves the regression was actually pinned.</p>
+    </section>
+    <templates>
+      <template path="templates/tdd.sh" purpose="Single-behavior loop driver: asserts RED, waits for impl, asserts GREEN, runs full suite for REFACTOR."/>
+    </templates>
+    <see-also>
+      <ref slug="test-fixtures"/>
+      <ref slug="unit-testing"/>
+      <ref slug="testing-patterns"/>
+    </see-also>
+  </content>
+</methodology>

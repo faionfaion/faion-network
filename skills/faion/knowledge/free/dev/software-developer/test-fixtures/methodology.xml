@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="test-fixtures">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Pytest fixtures, factories, and test data: yield cleanup, keyword-only overrides, scope rules, determinism.</summary>
+    <tags>
+      <tag>testing</tag>
+      <tag>fixtures</tag>
+      <tag>factories</tag>
+      <tag>test-data</tag>
+      <tag>isolation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Test Fixtures</title>
+    <summary>Patterns for creating reusable, isolated test data: pytest fixtures with yield-based cleanup, factory functions with keyword-only overrides, database session rollback fixtures, and TypeScript factory helpers. When test setup boilerplate exceeds 30% of test code, fixture consolidation eliminates duplication and prevents cross-test state pollution. Without isolation, one test's mutation causes a neighbor's failure in a random order — a bug that takes hours to isolate.</summary>
+    <why>
+      <p>When test setup boilerplate exceeds 30% of test code, fixture consolidation eliminates duplication and prevents cross-test state pollution. Without isolation, one test's mutation causes a neighbor's failure in a random order — a bug that takes hours to isolate. Factory functions with keyword-only overrides create a single source of truth for test object defaults so that changing a model field breaks only the factory, not 200 tests.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Test suites where setup boilerplate has grown past 30% of test code.</item>
+        <item>Multi-language repos where shared test data shapes (User, Order, Product) recur across dozens of files.</item>
+        <item>Integration/E2E tests needing a seeded DB, authenticated session, or third-party stub server.</item>
+        <item>Property-based testing where factories wrap arbitrary instances with sensible defaults.</item>
+        <item>Agent-written tests — factories prevent LLMs from inventing inconsistent inline data.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>One-off test files where two inline literal objects are clearer than a factory.</item>
+        <item>When a fixture hides the actual scenario under test (magic constants obscure intent).</item>
+        <item>Production-style mocks pretending to be fixtures — keep mocking and fixtures separate.</item>
+        <item>Snapshot tests where the "fixture" is the snapshot file — different concern.</item>
+      </list>
+    </when-not-to-use>
+    <section name="scope-rules">
+      <rule>
+        <statement>Default to `scope="function"` for all fixtures. Widen scope only after profiling shows cost AND the fixture state is provably immutable during the test run.</statement>
+        <rationale>Wider scopes leak mutable state between tests causing order-dependent failures. The failure manifests as "tests pass alone, fail in suite" — one of the hardest bugs to diagnose.</rationale>
+      </rule>
+      <example type="good" title="Appropriate scope use">
+        <code lang="python"><![CDATA[# Appropriate use of different scopes
+@pytest.fixture(scope="function")  # Default — fresh state per test
+def fresh_user():
+    return User(id=str(uuid4()), email=f"u-{uuid4().hex[:8]}@test.com")
+
+@pytest.fixture(scope="session")   # OK — read-only, expensive setup
+def docker_postgres():
+    container = start_postgres_container()
+    yield container
+    container.stop()
+
+@pytest.fixture(scope="module")    # Risky — only if state truly immutable
+def read_only_config():
+    return load_config("tests/fixtures/config.json")]]></code>
+      </example>
+    </section>
+    <section name="yield-based-cleanup">
+      <rule>
+        <statement>Use yield-based fixtures (not return) for any fixture that acquires a resource. Cleanup after yield always runs, even if the test raises.</statement>
+        <rationale>Return-based fixtures cannot clean up on test failure. Yield-based fixtures execute cleanup in a finally block, preventing resource leaks.</rationale>
+      </rule>
+      <example type="good" title="Yield-based fixtures">
+        <code lang="python"><![CDATA[@pytest.fixture
+def temp_directory():
+    temp_dir = Path(tempfile.mkdtemp())
+    yield temp_dir
+    shutil.rmtree(temp_dir)  # Always runs, even on test failure
+
+@pytest.fixture
+def db_session(session_factory):
+    session = session_factory()
+    session.begin_nested()  # Savepoint
+    yield session
+    session.rollback()      # Roll back to savepoint
+    session.close()]]></code>
+        <note>Database fixture uses savepoint rollback: each test gets a clean database state without DROP/CREATE overhead.</note>
+      </example>
+    </section>
+    <section name="conftest-py-organization">
+      <rule>
+        <statement>Place project-wide fixtures in `tests/conftest.py`; module-specific fixtures in `tests/{module}/conftest.py`. Never dump everything in the root conftest.</statement>
+        <rationale>A monolithic root conftest loads all fixtures for every test, including expensive fixtures that are irrelevant to 90% of tests. Per-directory conftests scope cost appropriately.</rationale>
+      </rule>
+    </section>
+    <section name="factory-function-rules">
+      <rule>
+        <statement>Factory functions must use keyword-only arguments with explicit defaults. Never positional arguments.</statement>
+        <rationale>Positional factory arguments drift silently — adding a parameter in the middle breaks all callers. Keyword-only args force explicit naming at call sites.</rationale>
+      </rule>
+      <rule>
+        <statement>Use sequenced determinism by default: `factory.Sequence(lambda n: f"user{n}@example.com")` not `Faker('email')` for fields used in snapshot assertions.</statement>
+        <rationale>Random Faker values produce different output on each run, breaking snapshot tests. Sequences produce `user0@example.com`, `user1@example.com`, etc. — deterministic across runs.</rationale>
+      </rule>
+      <example type="good" title="Keyword-only factory">
+        <code lang="python"><![CDATA[# Keyword-only factory with explicit defaults
+def make_user(
+    *,
+    name: str = "Test User",
+    email: Optional[str] = None,
+    role: str = "user",
+    **kwargs
+) -> User:
+    return User(
+        id=str(uuid4()),
+        name=name,
+        email=email or f"user-{uuid4().hex[:8]}@example.com",
+        role=role,
+        **kwargs
+    )
+
+# Usage: always keyword args
+user = make_user(name="Alice", role="admin")]]></code>
+      </example>
+    </section>
+    <section name="factory-boy">
+      <example type="good" title="factory_boy with traits">
+        <code lang="python"><![CDATA[import factory
+from factory import Faker, Sequence, SubFactory
+
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+
+    id = factory.LazyFunction(uuid4)
+    email = Sequence(lambda n: f"user{n}@example.com")  # Deterministic
+    name = Faker("name")
+    role = "user"
+
+    class Params:
+        admin = factory.Trait(role="admin")
+
+class OrderFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Order
+
+    user = SubFactory(UserFactory)
+    status = "pending"
+    total = Faker("pydecimal", min_value=10, max_value=1000)
+
+# Usage
+user = UserFactory(admin=True)          # Admin trait
+order = OrderFactory(user=user)         # Explicit user]]></code>
+        <note>Traits encapsulate variant configurations. SubFactory creates related objects automatically.</note>
+      </example>
+    </section>
+    <section name="builder-pattern">
+      <p>Use the builder pattern for complex objects with many optional attributes, especially when different test scenarios need different combinations.</p>
+      <example type="good" title="Builder pattern for complex objects">
+        <code lang="python"><![CDATA[@dataclass
+class OrderBuilder:
+    _status: str = "pending"
+    _items: List[OrderItem] = field(default_factory=list)
+    _discount: Optional[Decimal] = None
+
+    def with_item(self, sku: str, price: Decimal, qty: int = 1) -> "OrderBuilder":
+        self._items.append(OrderItem(sku=sku, price=price, quantity=qty))
+        return self
+
+    def with_discount(self, amount: Decimal) -> "OrderBuilder":
+        self._discount = amount
+        return self
+
+    def build(self) -> Order:
+        return Order(items=self._items, status=self._status, discount=self._discount)
+
+# Usage — reads like a spec
+order = (OrderBuilder()
+    .with_item(sku="A", price=Decimal("15.00"), qty=2)
+    .with_discount(Decimal("5.00"))
+    .build())]]></code>
+      </example>
+    </section>
+    <section name="scope-leakage">
+      <antipattern>
+        <description>`scope="module"` fixtures with mutable state cause cross-test pollution. Symptom: tests pass alone, fail in suite.</description>
+        <reason>Default to `function` scope until perf forces wider. Always profile before widening scope.</reason>
+      </antipattern>
+    </section>
+    <section name="yield-cleanup-race">
+      <antipattern>
+        <description>A `yield`-style fixture's cleanup runs in `finally`; if the test panics during teardown, cleanup raises a second exception that masks the original.</description>
+        <reason>Test the teardown path separately if cleanup is complex. Keep cleanup minimal and idempotent.</reason>
+      </antipattern>
+    </section>
+    <section name="factory-drift">
+      <antipattern>
+        <description>`make_user()` defaults change → 200 tests' implicit assumptions silently change.</description>
+        <reason>Pin defaults in a single source of truth and force keyword-only overrides. Use git blame to find callers before changing factory signatures.</reason>
+      </antipattern>
+    </section>
+    <section name="fixture-coupling-to-orm">
+      <antipattern>
+        <description>`db_session` fixture tied to SQLAlchemy → moving to async breaks every fixture transitively.</description>
+        <reason>Keep ORM-specific fixtures in separate conftest files. Use abstract database fixtures where possible.</reason>
+      </antipattern>
+    </section>
+    <section name="lazy-fixture-loading-mismatch">
+      <antipattern>
+        <description>pytest's autouse fixtures evaluated per-test; fixture cost balloons. Mark expensive fixtures `scope="session"` only when truly read-only.</description>
+        <reason>Profile with `pytest --durations=20`. Only widen scope after confirmation of immutability.</reason>
+      </antipattern>
+    </section>
+    <section name="faker-non-determinism">
+      <antipattern>
+        <description>`faker.email()` produces different values each run → snapshot tests flake. Seed faker once per run (`Faker.seed(42)`).</description>
+        <reason>Use sequenced determinism for snapshot-critical fields. Faker is acceptable for non-critical fields only.</reason>
+      </antipattern>
+    </section>
+    <section name="cleanup-order">
+      <antipattern>
+        <description>Pytest reverses fixture finalizers; cross-fixture dependencies that share resources need explicit ordering or `request.addfinalizer`.</description>
+        <reason>Keep fixtures independent. If order matters, it's a sign the fixtures are too coupled.</reason>
+      </antipattern>
+    </section>
+    <section name="parallel-test-runners">
+      <antipattern>
+        <description>pytest-xdist: Module-scope fixtures rebuild per worker; agents assume "session" means cross-process.</description>
+        <reason>Fixtures don't share state across workers. Use a dedicated database fixture for cross-worker state.</reason>
+      </antipattern>
+    </section>
+    <section name="agentic-workflow">
+      <p>Drive fixture work in 3 stages: (1) a **fixture-extractor** subagent reads test files and identifies setup repeated >2 times → proposes a `conftest.py` fixture or factory; (2) a **factory-author** subagent writes a builder/factory function with keyword-only overrides and explicit defaults; (3) a **scope-tuner** subagent profiles test runtime (`pytest --durations=20`) and proposes scope upgrades only when fixture state is provably immutable. Always run the full suite after fixture changes (cross-test pollution is the dominant failure mode); compare `--collect-only` before/after to ensure no test silently dropped.</p>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>`conftest.py` per test directory layer. Project-wide in `tests/conftest.py`; module-specific in `tests/users/conftest.py`. Don't dump everything in root.</item>
+        <item>Fixtures yield, factories return. Resources that need cleanup → `yield` + cleanup. Pure data → factory function.</item>
+        <item>Keyword-only overrides in factories. `def make_user(*, email=None, role="user")` prevents positional drift over time.</item>
+        <item>Sequenced determinism by default. `factory.Sequence(lambda n: f"user{n}@example.com")` over `Faker('email')` for snapshot stability; opt into Faker per-field.</item>
+        <item>`scope="function"` is the safe default. Move to broader scope only with profiling proof + immutability check.</item>
+        <item>Tear down in reverse acquisition order. pytest does this automatically; in JS land (`beforeAll`/`afterAll`) wire it manually.</item>
+        <item>Truncate, don't drop, between integration tests. `TRUNCATE` is 10x faster than `DROP/CREATE`; preserve schema cache.</item>
+        <item>Real DB > in-memory for integration. SQLite-in-place-of-Postgres lies about types; use `testcontainers` for the real thing.</item>
+        <item>Freeze time when asserting timestamps. `freezegun` (Py), `@sinonjs/fake-timers` (JS), `testing-time` (Go) — never assert `now()` ranges.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/conftest-db.py" purpose="SQLAlchemy session fixture with savepoint rollback for isolation."/>
+      <template path="templates/fixture-pollution-check.sh" purpose="Runs pytest with random order seeds to detect order-dependent failures."/>
+    </templates>
+    <section name="fixture-composition">
+      <p>Fixtures can depend on other fixtures. A db_session fixture can depend on a db_engine fixture which handles connection pooling. Fixture dependencies form a dependency graph resolved automatically by pytest. Keep the graph shallow (≤2 levels) to minimize cost and complexity.</p>
+    </section>
+    <section name="agentic-workflow">
+      <p>Drive fixture work in 3 stages: (1) a fixture-extractor subagent reads test files and identifies setup repeated more than 2 times → proposes a conftest.py fixture or factory; (2) a factory-author subagent writes a builder/factory function with keyword-only overrides and explicit defaults; (3) a scope-tuner subagent profiles test runtime (pytest --durations=20) and proposes scope upgrades only when fixture state is provably immutable. Always run the full suite after fixture changes (cross-test pollution is the dominant failure mode); compare --collect-only before/after to ensure no test silently dropped.</p>
+    </section>
+    <section name="recommended-subagents">
+      <p>faion-sdd-executor-agent (agents/faion-sdd-executor-agent.md) — quality gate ensures pytest -p no:cacheprovider --maxfail=1 -q passes after fixture refactor. A purpose-built fixture-extractor-agent (worth creating): given a test file, lists candidate fixtures + scope recommendation + impact analysis (which other tests benefit). A factory-bot-agent (worth creating): converts ad-hoc test object literals into factory_boy/factory-bot/Faker-based factories with traits. A flaky-fixture-agent (worth creating): runs test in random order (pytest-randomly) to detect fixture state leakage; reports the offending fixture + read/write log. password-scrubber-agent (agents/password-scrubber-agent.md) — scrub seed data files (JSON/YAML/SQL) committed alongside fixtures.</p>
+    </section>
+    <section name="cli-tools">
+      <p>pytest (Fixture-aware Python runner). pytest-randomly (Detect order-dependent fixtures). pytest-xdist (Parallel runs; surfaces fixture scope bugs). factory_boy (Python factories). Faker (Fake data generator for Python and JS). factory-bot (Ruby factories). fishery (TypeScript factories). faker-js/faker (TS/JS fake data). freezegun (Freeze time inside fixtures). responses / respx / nock / wiremock (HTTP fixture servers). pytest-postgresql / testcontainers (DB fixtures with real Postgres). vcr.py / polly.js (Record/replay HTTP for fixture replay).</p>
+    </section>
+    <section name="services-and-apps">
+      <p>Mockaroo (SaaS with REST API, generate large fixture datasets in CSV/JSON; agent can post schema and pull file). Mockoon (OSS with CLI, local fixture API server; spec via JSON, no UI required). Beeceptor / RequestBin (SaaS, capture real third-party responses for fixture replay). WireMock Cloud (SaaS, hosted fixture server with API for stub mgmt). Localstack (OSS, AWS-compatible fixtures for S3/SQS/DynamoDB tests). Stripe / Twilio test modes (SaaS, sandbox tenants with fixture cards/numbers; deterministic). Mirage JS / MSW (OSS, in-process fixture servers for browser/Node tests).</p>
+    </section>
+    <see-also>
+      <ref slug="unit-testing"/>
+      <ref slug="tdd-workflow"/>
+      <ref slug="testing-patterns"/>
+    </see-also>
+  </content>
+</methodology>

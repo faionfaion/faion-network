@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 free/dev/software-developer methodologies → methodology.xml (refactoring-patterns, rust-error-handling, rust-ownership; feature-045 batch G)
 - migrate: 3/3 free/dev/testing-developer methodologies → methodology.xml (e2e-testing, integration-testing, mocking-strategies; feature-045 batch 1)
 - migrate: 3/3 free/dev/software-developer methodologies → methodology.xml (python-poetry-setup, python-type-hints, react-hooks; feature-045 batch F)
 - migrate: 3/3 free/dev python/software-developer methodologies → methodology.xml (python-poetry-setup, python-type-hints, mobile-responsive; feature-045 batch C)
