@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/dev/software-developer methodologies → methodology.xml (php-laravel, php-laravel-patterns, php-laravel-queues; feature-045 batch AL)
 - migrate: 3/3 pro/dev/software-developer methodologies → methodology.xml (continuous-delivery, cqrs-pattern, csharp-dotnet-patterns; feature-045 batch AK)
 - migrate: 3/3 pro methodologies → methodology.xml (reliability-architecture, service-mesh, clean-architecture; feature-045 batch AJ)
 - migrate: 3/3 pro/dev/software-architect methodologies → methodology.xml (distributed-patterns, microservices-architecture, observability-architecture; feature-045 batch AH)
