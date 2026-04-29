@@ -28,6 +28,9 @@
         <item>Adding RTL support (Arabic, Hebrew, Persian) — must be designed in, not retrofitted</item>
         <item>Standardising date/number/currency formatting across services</item>
         <item>Creating white-label products requiring locale switching</item>
+        <item>Product is shipping into a second locale or already has user demand from non-English speakers</item>
+        <item>Legal / contractual obligation (EU CRA, French Toubon law, Quebec Bill 96, accessibility regs)</item>
+        <item>Standardising date/number/currency formatting across services (e.g., backend → email → mobile must agree)</item>
       </list>
     </when-to-use>
     <when-not-to-use>
@@ -35,44 +38,336 @@
         <item>Single-locale internal tool with no expansion plan — extraction/build overhead not justified</item>
         <item>Marketing landing pages better handled by a translation CMS (Phrase, Lokalise, Crowdin)</item>
         <item>Domain-specific jargon that does not translate — keep English, localise only UI chrome</item>
-        <item>Using Google Translate at runtime — fluency too low for product UI</item>
+        <item>Using Google Translate at runtime — fluency too low for product UI; only acceptable for user-generated content snippets</item>
       </list>
     </when-not-to-use>
-    <section name="Never-Concatenate Rule">
+
+    <section name="core-principles">
       <rule>
         <statement>Never compose translated text from multiple fragments; one message = one complete sentence with ICU placeholders.</statement>
-        <rationale>Word order differs across languages. Fragment concatenation produces grammatically invalid output in most non-English locales.</rationale>
+        <rationale>Word order differs across languages. "Hello, " + name + "!" becomes "name-san, konnichiwa" in Japanese — fragment concatenation produces grammatically invalid output in most non-English locales.</rationale>
       </rule>
-    </section>
-    <section name="ICU MessageFormat">
+      <example type="bad" title="concatenated fragments">
+        <code lang="python"><![CDATA[
+# WRONG - breaks Japanese, Arabic, German word order
+msg = _("Hello, ") + user.name + _("!")
+]]></code>
+        <note>Fragments cannot be reordered by translators.</note>
+      </example>
+      <example type="good" title="single ICU message with placeholder">
+        <code lang="python"><![CDATA[
+# CORRECT - single ICU message with placeholder
+msg = _("Hello, {name}!").format(name=user.name)
+# or via babel ngettext for plurals:
+msg = _n("{count} item", "{count} items", count).format(count=count)
+]]></code>
+      </example>
       <rule>
-        <statement>Use ICU MessageFormat for plurals and gender/context (select); never write if n == 1 ... else.</statement>
-        <rationale>English has 2 plural forms; Russian/Ukrainian 3; Arabic 6; Welsh 6. if/else breaks for any language beyond English.</rationale>
+        <statement>Use ICU MessageFormat for plurals (plural selector) and gender/context (select); never write if n == 1 ... else.</statement>
+        <rationale>English has 2 plural forms; Russian/Ukrainian 3; Arabic 6; Welsh 6; Irish 5. if/else breaks for any language beyond English.</rationale>
       </rule>
-    </section>
-    <section name="Key Naming">
+      <example type="good" title="ICU plural forms">
+        <code lang="typescript"><![CDATA[
+// react-intl ICU message
+'{count, plural, =0 {No items} one {# item} other {# items}}'
+
+// Ukrainian needs 3 forms
+'{count, plural, one {# елемент} few {# елементи} many {# елементів} other {# елемента}}'
+]]></code>
+      </example>
       <rule>
         <statement>Use hierarchical stable keys (checkout.button.submit), never English text as the key.</statement>
         <rationale>When copy is edited, text-as-key breaks all translation lookups in every locale. Hierarchical keys remain stable through copy changes.</rationale>
       </rule>
-    </section>
-    <section name="RTL Layout">
       <rule>
-        <statement>Use CSS logical properties (margin-inline-start, text-align: start) instead of physical; set dir="rtl" on html element.</statement>
+        <statement>Resolve locale in this order: explicit user setting &gt; account default &gt; Accept-Language &gt; geo-IP &gt; app default. Persist user choice in DB.</statement>
+        <rationale>Accept-Language alone changes per device on multilingual systems. Persisting user choice ensures consistent experience across sessions and devices.</rationale>
+      </rule>
+      <rule>
+        <statement>Format dates, numbers, and currencies through Intl.* (JS) or babel.numbers / babel.dates (Python) — never strftime or string-concat currency symbols.</statement>
+        <rationale>1,234.56 (en-US) vs 1.234,56 (de-DE) vs 1 234,56 (fr-FR). MM/DD/YYYY is local to the US. $amount is wrong for anyone outside USD.</rationale>
+      </rule>
+      <antipattern>
+        <description>Translating technical strings (API errors, log messages).</description>
+        <reason>Log aggregation tools and support engineers need English. Translate only user-visible UI.</reason>
+      </antipattern>
+    </section>
+
+    <section name="python-i18n">
+      <rule>
+        <statement>Cache translation objects with lru_cache; fall back to DEFAULT_LOCALE if the requested locale catalogue is missing.</statement>
+        <rationale>Loading translations from disk on every request is expensive. Missing-locale fallback prevents a KeyError from returning a 500 to users in unsupported locales.</rationale>
+      </rule>
+      <example type="good" title="Babel lru_cache with fallback">
+        <code lang="python"><![CDATA[
+from functools import lru_cache
+from pathlib import Path
+from babel.support import Translations
+
+LOCALES_DIR = Path(__file__).parent / "locales"
+SUPPORTED_LOCALES = ["en", "uk", "de", "fr"]
+DEFAULT_LOCALE = "en"
+
+@lru_cache(maxsize=None)
+def get_translations(locale: str) -> Translations:
+    try:
+        return Translations.load(LOCALES_DIR, [locale])
+    except FileNotFoundError:
+        return Translations.load(LOCALES_DIR, [DEFAULT_LOCALE])
+
+def gettext(message: str, locale: str = DEFAULT_LOCALE) -> str:
+    return get_translations(locale).gettext(message)
+
+def ngettext(singular: str, plural: str, n: int, locale: str = DEFAULT_LOCALE) -> str:
+    return get_translations(locale).ngettext(singular, plural, n)
+]]></code>
+      </example>
+      <reference path="templates/babel-cfg.ini">Babel extraction config for Python + Jinja2 templates</reference>
+      <example type="good" title="FastAPI locale middleware via ContextVar">
+        <code lang="python"><![CDATA[
+from contextvars import ContextVar
+from fastapi import FastAPI, Request
+
+current_locale: ContextVar[str] = ContextVar("locale", default=DEFAULT_LOCALE)
+
+app = FastAPI()
+
+def get_locale_from_request(request: Request) -> str:
+    # 1. Query param
+    if locale := request.query_params.get("lang"):
+        if locale in SUPPORTED_LOCALES:
+            return locale
+    # 2. Accept-Language header
+    accept = request.headers.get("Accept-Language", "")
+    for lang in accept.split(","):
+        code = lang.split(";")[0].strip()[:2]
+        if code in SUPPORTED_LOCALES:
+            return code
+    return DEFAULT_LOCALE
+
+@app.middleware("http")
+async def locale_middleware(request: Request, call_next):
+    locale = get_locale_from_request(request)
+    token = current_locale.set(locale)
+    try:
+        response = await call_next(request)
+        response.headers["Content-Language"] = locale
+        return response
+    finally:
+        current_locale.reset(token)
+]]></code>
+      </example>
+      <rule>
+        <statement>Implement a translation fallback chain: exact locale → base language → default locale → empty string.</statement>
+        <rationale>A user with locale uk-UA should fall back to uk before falling back to en. Without this chain, every unsupported sub-locale returns empty strings.</rationale>
+      </rule>
+      <example type="good" title="Database-driven translation with fallback chain">
+        <code lang="python"><![CDATA[
+class Product(Base):
+    id = Column(String, primary_key=True)
+    translations = relationship("ProductTranslation", back_populates="product")
+
+    def _get_translation(self, locale: str, field: str) -> str:
+        for t in self.translations:
+            if t.locale == locale:
+                return getattr(t, field)
+        base = locale.split("-")[0]
+        for t in self.translations:
+            if t.locale == base:
+                return getattr(t, field)
+        for t in self.translations:
+            if t.locale == DEFAULT_LOCALE:
+                return getattr(t, field)
+        return ""
+]]></code>
+      </example>
+    </section>
+
+    <section name="frontend-i18n">
+      <example type="good" title="react-intl ICU messages with plural forms">
+        <code lang="typescript"><![CDATA[
+// i18n/messages.ts
+export const messages = {
+  en: {
+    'app.welcome': 'Welcome, {name}!',
+    'app.items': '{count, plural, =0 {No items} one {# item} other {# items}}',
+    'order.total': 'Total: {amount, number, currency}',
+  },
+  uk: {
+    'app.welcome': 'Ласкаво просимо, {name}!',
+    'app.items': '{count, plural, one {# елемент} few {# елементи} many {# елементів} other {# елемента}}',
+    'order.total': 'Всього: {amount, number, currency}',
+  },
+};
+
+// App.tsx
+function App() {
+  const [locale, setLocale] = useState('en');
+  return (
+    <IntlProvider locale={locale} messages={messages[locale]}>
+      <Routes />
+    </IntlProvider>
+  );
+}
+
+// Component
+function CartSummary({ itemCount, total }: Props) {
+  return (
+    <div>
+      <FormattedMessage id="app.items" values={{ count: itemCount }} />
+      <FormattedMessage id="order.total" values={{ amount: total }} />
+    </div>
+  );
+}
+]]></code>
+      </example>
+      <rule>
+        <statement>Use CSS logical properties (margin-inline-start, text-align: start) instead of physical (margin-left, text-align: left); set dir="rtl" on the html element.</statement>
         <rationale>Physical properties don't flip in RTL; logical properties do automatically. Flipping text-align: right instead of using start is a common agent mistake.</rationale>
       </rule>
+      <example type="good" title="CSS logical properties for RTL">
+        <code lang="css"><![CDATA[
+.card {
+  margin-inline-start: 1rem;   /* left in LTR, right in RTL */
+  margin-inline-end: 1rem;
+  padding-inline: 1.5rem;
+  text-align: start;           /* not left */
+  border-inline-start: 2px solid blue;
+}
+
+[dir="rtl"] .icon-arrow {
+  transform: scaleX(-1);       /* flip directional icons */
+}
+]]></code>
+      </example>
+      <example type="good" title="RTL direction detection in React">
+        <code lang="typescript"><![CDATA[
+function App() {
+  const intl = useIntl();
+  const isRTL = ['ar', 'he', 'fa'].includes(intl.locale);
+  return <div dir={isRTL ? 'rtl' : 'ltr'}><Content /></div>;
+}
+]]></code>
+      </example>
+      <rule>
+        <statement>Run pseudo-localisation in CI staging permanently to surface hardcoded strings and truncation before translators are involved.</statement>
+        <rationale>German text is ~30% longer than English; Arabic with diacritics can be 200% longer. Without pseudo-loc, truncation bugs are found only after expensive translation rounds.</rationale>
+      </rule>
+      <reference path="templates/pseudo-loc.py">Generate test catalogue with [!!...~~] padding to surface truncation</reference>
+      <antipattern>
+        <description>Allowing HTML inside translated strings as free-form markup.</description>
+        <reason>Translators inject XSS or mangle tags. Use component interpolation with placeholders (e.g., react-intl's values prop with JSX elements) and re-render safely.</reason>
+      </antipattern>
     </section>
-    <section name="Best Practices">
-      <p>One message = one complete sentence; never compose from fragments</p>
-      <p>Use ICU MessageFormat for plurals, gender, select</p>
-      <p>Locale priority: explicit user setting > account default > Accept-Language > geo-IP > app default</p>
-      <p>Keep one source-of-truth catalogue (English) in git</p>
-      <p>Run pseudo-loc in staging — surfaces hardcoded strings, truncation, RTL bugs</p>
-      <p>Format dates/numbers/currencies via Intl.* (JS) / babel.* (Python) — never strftime</p>
+
+    <section name="agentic-workflow">
+      <p>Externalise first: agent runs an extraction pass over the codebase (pybabel extract, i18next-parser, formatjs extract) and inserts t("...") calls; PR is reviewed for missed strings via grep for hardcoded text. CI lints message catalogues for ICU validity (gettext-lint, i18n-ally, formatjs lint). Pseudo-localisation in CI to surface truncation early. Translation memory (Crowdin/Lokalise/Phrase) connected via API; agent uploads new keys, downloads completed translations, and commits the JSON/PO files back. Agent should NEVER auto-translate user-facing strings via LLM into production without human review for tone and terminology.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent drives extraction → key naming → ICU rewrite → catalogue upload sequentially. A custom i18n-extraction-reviewer agent that scans the diff for any literal user-visible string and flags it. simplify skill — collapse duplicate keys after extraction.</p>
+      <prompt purpose="externalize-strings"><![CDATA[
+Externalize all user-visible strings in <path>.
+Constraints:
+- Use ICU MessageFormat: plurals via {n, plural, one{...} other{...}}, gender via select.
+- Key naming: <component>.<element>.<purpose> (e.g., checkout.button.submit).
+- Never concatenate translated parts; one message = one full sentence with placeholders.
+- For dates/numbers/currency, use Intl.DateTimeFormat / Intl.NumberFormat (or babel.numbers) — no strftime.
+- Output: code patch + new entries appended to en.json (others empty).
+]]></prompt>
     </section>
+
+    <section name="limitations">
+      <p>String concatenation: "Hello, " + name + "!" doesn't translate; word order varies (Japanese "name-さん, hello"). Use ICU MessageFormat with placeholders.</p>
+      <p>Plural rules differ wildly (English: 2 forms; Russian/Ukrainian: 3; Arabic: 6). Naive if n == 1 ... else breaks in 90% of locales.</p>
+      <p>Date/number formats: 1,234.56 (en) vs 1.234,56 (de) vs 1 234,56 (fr); MM/DD/YYYY is local to the US. Use ICU / Intl not strftime.</p>
+      <p>Hardcoded widths: 30%+ longer German strings overflow buttons; 200%+ on Arabic/Hebrew with diacritics.</p>
+      <p>Bidirectional text (LTR + RTL mixed) needs dir="auto"/Unicode bidi controls; CSS text-align: left becomes wrong on RTL — use start/end.</p>
+      <p>Locale detection from Accept-Language alone is insecure for user prefs (changes per device); persist a chosen locale per user in DB.</p>
+      <p>Translator return: missing keys, broken placeholders ({name} typed {Name}), HTML re-escaped wrong. Need lint on .po/.json import.</p>
+    </section>
+
+    <section name="cli-tools">
+      <p>Babel (Python): Locale data, pybabel extract/init/update/compile — pip install babel</p>
+      <p>GNU gettext (xgettext, msgfmt, msgmerge): Universal i18n toolchain — system pkg</p>
+      <p>i18next + i18next-parser: JS/TS string extraction + i18next runtime — npm i -D i18next-parser</p>
+      <p>FormatJS (@formatjs/cli): ICU compiler, lint, extract — npm i -D @formatjs/cli</p>
+      <p>react-intl / next-intl / vue-i18n: Framework runtimes — npm</p>
+      <p>Polyglot.js / LinguiJS: Lightweight runtime alternatives — npm</p>
+      <p>ICU4C / icu4j: Reference ICU implementations — system</p>
+      <p>Pseudoloc / psh: Pseudo-localisation generator — npm i -D pseudoloc</p>
+      <p>crowdin-cli / lokalise-cli2 / phrase-cli: TMS sync — npm / brew</p>
+      <p>ftl (Fluent) tools: Mozilla Fluent format — github.com/projectfluent</p>
+    </section>
+
+    <section name="best-practices">
+      <p>One message = one complete sentence; never compose from fragments.</p>
+      <p>Use ICU MessageFormat for plurals, gender, select; do not invent your own placeholder syntax.</p>
+      <p>Key naming: hierarchical and stable (checkout.button.submit), never the English text as the key — refactors break translations.</p>
+      <p>Locale priority: explicit user setting &gt; account default &gt; Accept-Language &gt; geo-IP &gt; app default. Persist user choice in DB.</p>
+      <p>Keep one source-of-truth catalogue (English / source) in git; everything else flows through TMS.</p>
+      <p>Run pseudo-loc in staging permanently — surfaces hardcoded strings, truncation, RTL bugs before translators get involved.</p>
+      <p>Test RTL: dir="rtl" on html flips layout; use start/end (CSS logical properties), not left/right.</p>
+      <p>Number/currency/date through Intl.* (JS) / babel.numbers / babel.dates (Python) / ICU (Java/Go/Rust) — never strftime and never string-concat currency symbols.</p>
+      <p>Don't translate technical strings (API errors, log messages); translate only user-visible UI.</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Agents extract strings but use English as the key (t("Submit order")); breaks when copy is changed slightly. Force hierarchical keys.</p>
+      <p>LLMs concatenate: t("greeting") + " " + name + "!" — fails translation. Force single-string ICU placeholders.</p>
+      <p>"Plural" handling: agents write if (n === 1) ... else ... — wrong for Slavic, Arabic, Welsh. Force ICU {n, plural, ...}.</p>
+      <p>Accept-Language parsing in agent code often picks the first tag without weighting q values; users on multilingual systems get the wrong locale.</p>
+      <p>Currency formatting: f"${amount:.2f}" is wrong for everyone outside USD. Force Intl.NumberFormat("xx-XX", {style:"currency", currency: code}).</p>
+      <p>Auto-translation via LLM: agents will offer to "translate everything to UK" — do NOT ship without human review; tone, formality, false friends.</p>
+      <p>Right-to-left: agents flip text-align: right instead of using logical text-align: end; bidirectional embed tags get lost on copy-paste through the LLM.</p>
+      <p>HTML inside translations: agents allow free-form HTML; translators inject XSS or mangle tags. Use placeholders and re-render.</p>
+      <p>Human-in-loop checkpoint: every catalogue release goes through a native-speaker reviewer; agent's role is to extract, lint, and sync — never to ship strings unreviewed.</p>
+    </section>
+
+    <section name="pseudo-loc-script">
+      <example type="good" title="Pseudo-localisation generator">
+        <code lang="python"><![CDATA[
+# scripts/pseudo_loc.py — generate test catalogue with [Ⱡǿřȅḿ] padding to surface truncation
+import json, sys, pathlib
+EN = pathlib.Path(sys.argv[1])
+OUT = pathlib.Path(sys.argv[2])
+data = json.loads(EN.read_text())
+def pseudo(s: str) -> str:
+    pad = "~~" * max(1, len(s) // 3)  # 30% longer
+    return f"[!!{s}{pad}!!]"
+def walk(obj):
+    if isinstance(obj, dict): return {k: walk(v) for k, v in obj.items()}
+    if isinstance(obj, str):  return pseudo(obj)
+    return obj
+OUT.write_text(json.dumps(walk(data), ensure_ascii=False, indent=2))
+]]></code>
+      </example>
+    </section>
+
+    <section name="services">
+      <p>Crowdin (SaaS, REST + CLI): Branching, glossary, machine-translation suggestions; popular for OSS.</p>
+      <p>Lokalise (SaaS, REST + CLI): Strong API, key-namespacing, screenshot context.</p>
+      <p>Phrase (SaaS, REST + CLI): Enterprise-grade workflow + Memsource integration.</p>
+      <p>Tolgee (OSS + SaaS, REST + CLI): In-context editing; great for solo / small team.</p>
+      <p>Weblate (OSS, REST): Self-host translation platform; OSS-friendly licence.</p>
+      <p>Transifex (SaaS, REST): Long-standing TMS.</p>
+      <p>DeepL API (SaaS, REST): High-quality MT; use as draft, not final.</p>
+      <p>Google Cloud Translation / Azure Translator (SaaS): Lower-cost MT for bulk drafts; QA still needed.</p>
+      <p>Locize (SaaS, REST): Tight i18next integration.</p>
+    </section>
+
     <templates>
       <template path="templates/babel-cfg.ini" purpose="Babel extraction config for Python + Jinja2"/>
-      <template path="templates/pseudo-loc.py" purpose="Pseudo-localisation generator"/>
+      <template path="templates/pseudo-loc.py" purpose="Pseudo-localisation generator to surface truncation in CI"/>
     </templates>
+
+    <see-also>
+      <link href="https://unicode-org.github.io/icu/userguide/">ICU User Guide</link>
+      <link href="https://unicode-org.github.io/icu/userguide/format_parse/messages/">ICU MessageFormat</link>
+      <link href="https://cldr.unicode.org/">CLDR</link>
+      <link href="https://www.w3.org/International/">W3C Internationalization</link>
+      <link href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl">MDN Intl</link>
+      <link href="https://projectfluent.org/">Mozilla Fluent</link>
+      <link href="https://www.i18next.com/">i18next</link>
+      <link href="https://formatjs.io/">FormatJS</link>
+      <link href="https://babel.pocoo.org/">Babel (Python)</link>
+    </see-also>
   </content>
 </methodology>
