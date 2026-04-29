@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="chaos-eval-fault-injection">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Inject fault modes (timeouts, errors, rate limits, corrupted data, disconnects) at random trajectory points to measure agent resilience and distinguish recovery from confident wrong answers.</summary>
+    <tags>
+      <tag>eval</tag>
+      <tag>fault-injection</tag>
+      <tag>reliability</tag>
+      <tag>testing</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Chaos-Eval — Fault Injection on Agent Tools</title>
+    <summary>A standard eval set runs tools that always succeed. Production tools fail: timeouts, 5xx errors, rate limits, corrupted return values, MCP server disconnects. Chaos-eval injects each failure mode at random points along the agent's trajectory and grades not "did it succeed?" but "did it recover, retry intelligently, escalate when blocked, or produce a confidently-wrong answer?". Without it, your reported success rate is a sunny-day distribution that lies the moment the network blinks.</summary>
+    <why>
+      <p>ReliabilityBench (arXiv 2601.06112, 2026) and the agent-chaos benchmark show that agents which pass standard evals at 90%+ frequently collapse below 50% under realistic fault rates of 5-10%. The 2025 work on stress-testing LLM agents (arXiv 2505.03096) replicates this across six frameworks. Chaos-eval is the only way to measure the resilience axis before users do; it also produces the failure-mode catalogue that drives retry policy and escalation design.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any agent past prototype that depends on external tools, web APIs, MCP servers, or remote LLMs.</item>
+        <item>Pre-launch readiness gate alongside outcome and trajectory evals.</item>
+        <item>Regression suite when retry / circuit-breaker / fallback logic changes.</item>
+        <item>Building a "graceful degradation" story for SLAs and post-mortems.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Air-gapped agents with only deterministic local tools (rare in practice).</item>
+        <item>Pure prompt-only generators with zero tool use — there is nothing to fault-inject.</item>
+        <item>Pre-prototype phase — wait until tool surface is stable before investing.</item>
+        <item>Tools whose failure modes are already exercised by record/replay traces from production — chaos-eval is for failure modes you have not yet seen in prod.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Five canonical failure modes for agent tools">
+      <p>Inject these five faults at randomized trajectory points; together they cover the failure distribution observed by ReliabilityBench and agent-chaos.</p>
+      <list>
+        <item>tool_timeout — call hangs past a configured deadline.</item>
+        <item>tool_error — call returns a 4xx/5xx or raises an exception.</item>
+        <item>llm_rate_limit — the LLM provider returns 429 with retry-after.</item>
+        <item>tool_mutate — call returns plausible but corrupted data (wrong type, missing field, slightly-off number).</item>
+        <item>service_disconnect — long-lived connection drops mid-stream (MCP server, websocket, streaming LLM).</item>
+      </list>
+      <rule>
+        <statement>A chaos-eval middleware must be able to inject each of the five canonical faults at a configurable per-call probability AND at a fixed deterministic step index for reproducibility. Both interfaces are required.</statement>
+        <rationale>Probability gives realistic distributions; deterministic step-index gives reproducible regression cases. ReliabilityBench (2026) and agent-chaos both expose both interfaces because random-only injection prevents reliable bug fixing.</rationale>
+      </rule>
+      <example type="good" title="Random and deterministic fault injection">
+        <code lang="python"><![CDATA[
+chaos = ChaosInjector(faults=[
+    Fault("tool_timeout",   p=0.10),
+    Fault("tool_error",     p=0.05, code=500),
+    Fault("llm_rate_limit", p=0.02),
+    Fault("tool_mutate",    p=0.03),
+    Fault("service_disconnect", p=0.01),
+], seed=42)
+# OR deterministic regression:
+chaos = ChaosInjector(injections={"step_4": "tool_timeout"})
+        ]]></code>
+        <note>Both random and deterministic surfaces — usable for fuzzing and for fixed regression cases.</note>
+      </example>
+      <example type="bad" title="Ad-hoc flakiness, not chaos">
+        <code lang="python"><![CDATA[
+if random.random() < 0.1:
+    raise TimeoutError()  # ad-hoc, no seed, no taxonomy, no replay
+        ]]></code>
+        <note>Single failure mode, no determinism, no scoring — not a chaos suite, just flakiness.</note>
+      </example>
+      <antipattern>
+        <description>Injecting only "tool_error" because it is the easiest to simulate.</description>
+        <reason>The most damaging real-world failure is tool_mutate (corrupted data) — agents react to wrong-but-plausible returns with confident wrong answers. Skipping mutate guarantees you never measure that risk.</reason>
+      </antipattern>
+    </section>
+    <section name="Where to inject">
+      <rule>
+        <statement>Faults must be injectable at every tool boundary AND at every LLM call boundary, not only at "user-facing" tools. Hidden internal tools (vector lookup, MCP discovery, schema fetch) are the ones that hurt most when they fail silently.</statement>
+        <rationale>Most production-fragility comes from invisible infra calls; a chaos suite that only fuzzes the visible surface misses the actual failure distribution.</rationale>
+      </rule>
+    </section>
+    <section name="Four outcomes: grading recovery">
+      <p>Under fault injection, "did it succeed?" is the wrong question. Grade each run on a four-outcome rubric so you can tell graceful failure from confident wrongness.</p>
+      <list>
+        <item>recovered — agent retried, succeeded within budget, returned a correct answer.</item>
+        <item>retried_intelligently — agent retried with backoff or alternate tool; outcome may be correct or escalated.</item>
+        <item>escalated_correctly — agent gave up after bounded retries and surfaced an honest "I cannot complete X because Y".</item>
+        <item>wrong_confident — agent produced a confident answer that is wrong because it ignored or papered over the fault.</item>
+      </list>
+      <rule>
+        <statement>Grade each chaos-eval run on the four outcomes; track per-outcome rates over time and treat any non-zero wrong_confident rate as a launch-blocker.</statement>
+        <rationale>Recovered + retried + escalated are all acceptable. Wrong_confident is the failure mode users cannot detect themselves — it silently destroys trust and is easily masked by aggregate "success rate" metrics.</rationale>
+      </rule>
+      <example type="good" title="Four-outcome rubric with launch blocker">
+        <code lang="python"><![CDATA[
+def grade(run):
+    if run.success and run.fault_was_injected:
+        return "recovered"
+    if run.success and run.retry_count > 0:
+        return "retried_intelligently"
+    if run.escalated and run.escalation_reason_matches_fault:
+        return "escalated_correctly"
+    return "wrong_confident"
+
+results = [grade(r) for r in chaos_runs]
+assert results.count("wrong_confident") == 0, "launch blocker"
+        ]]></code>
+        <note>Four buckets, hard gate on wrong_confident.</note>
+      </example>
+      <example type="bad" title="Aggregate rate hides outcomes">
+        <code lang="python"><![CDATA[
+success_rate = sum(r.success for r in chaos_runs) / len(chaos_runs)
+assert success_rate >= 0.85
+        ]]></code>
+        <note>Aggregate rate hides confident-wrong outputs inside the "fail" bucket without separating recoverable failures from silent corruption.</note>
+      </example>
+      <antipattern>
+        <description>Grading chaos-eval with the same boolean "success" used for sunny-day eval.</description>
+        <reason>Sunny-day eval has no faults, so "fail" only means "incorrect". Under fault injection "fail" lumps together honest escalation, retry timeout, and confident wrongness — three completely different reliability stories.</reason>
+      </antipattern>
+    </section>
+    <section name="Tying chaos-eval to retry policy">
+      <rule>
+        <statement>Use chaos-eval results to drive concrete retry-policy parameters: max retries, backoff base, per-fault circuit-breaker thresholds, and escalation triggers. Policy values must be justified by a chaos-eval data point, not by guess.</statement>
+        <rationale>Retry policies tuned without chaos data either retry too much (cost explosion) or too little (avoidable failures). The grading rubric directly produces the parameters needed to converge a stable policy.</rationale>
+      </rule>
+    </section>
+    <templates>
+      <template path="templates/chaos-config.json" purpose="Reusable fault-injection config: per-fault probability, seed, scope (per-tool or global), recovery thresholds."/>
+    </templates>
+    <see-also>
+      <link href="https://arxiv.org/pdf/2601.06112">ReliabilityBench — fault taxonomy and benchmark methodology.</link>
+      <link href="https://github.com/deepankarm/agent-chaos">agent-chaos — open-source chaos middleware for LLM agents.</link>
+      <link href="https://arxiv.org/abs/2505.03096">Stress-testing LLM agents under tool failure (2025).</link>
+    </see-also>
+  </content>
+</methodology>
