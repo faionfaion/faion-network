@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="templates">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>kb-agents-md-context-pyramid</domain>
+    <summary>Templates for the three-tier context pyramid: CLAUDE.md hook, AGENTS.md 20-80 line brief, and .agents/INDEX.md deep references. One source of truth serving Claude Code and standalone agents.</summary>
+    <category>kb</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>documentation</tag>
+      <tag>agents-md</tag>
+      <tag>context-pyramid</tag>
+      <tag>claude-code</tag>
+      <tag>templates</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>AGENTS.md Context Pyramid Templates</title>
+
+    <summary>Reusable templates for implementing the three-tier context pyramid: CLAUDE.md is a one-line hook that references AGENTS.md, AGENTS.md is a 20-80 line essential brief auto-loaded by both Claude Code and standalone agents, and .agents/INDEX.md is the on-demand catalogue of deep references. The convention enforces one source of truth and per-directory agent context calibration.</summary>
+
+    <why>
+      <p>Claude Code only auto-loads CLAUDE.md; standalone agents (Agent SDK, OpenAI Codex, GitHub Copilot Agent, aider) only read AGENTS.md. Putting context in one breaks the other. The CLAUDE.md = @AGENTS.md hook is the single mechanic that lets one source of truth (AGENTS.md) serve both. The 20-80 line cap on AGENTS.md is empirical: above ~5k tokens the routing brief becomes its own context-pollution problem, and below 20 lines it cannot answer "what is this dir + how do I work in it".</p>
+      <p>The per-directory pair ensures an agent that lands in src/auth/ gets auth-specific context (commands, gotchas, key paths), not the repo-wide overview. This is especially important in large monorepos where each subpackage has different test runners, linters, dependencies, and deployment steps.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any repo where multiple agent kinds (Claude Code + Codex + aider + custom Agent SDK) need to share project context.</item>
+        <item>Multi-package monorepos where each subpackage has different commands, gotchas, and dependencies.</item>
+        <item>Long-lived projects where decision history and architecture deep-dives must stay searchable but not auto-loaded.</item>
+        <item>Migrating from a single bloated CLAUDE.md to a routing-friendly layout.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-file scripts or one-off notebooks — the convention's overhead exceeds the benefit.</item>
+        <item>Generated directories (build output, vendored deps) — they get rewritten and the docs would drift.</item>
+        <item>Trivial leaf folders with under three files and no agent-relevant logic — keep the parent's AGENTS.md instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="three-tier-rule">
+      <p>Every directory that contains source code or agent-relevant logic requires the three-tier pair: CLAUDE.md (one-line hook), AGENTS.md (20-80 line essential brief), and optionally .agents/INDEX.md (on-demand catalogue). The 20-80 line cap prevents context bloat while ensuring enough detail for agents to understand how to work in that directory.</p>
+
+      <rule testable="true">
+        <statement>CLAUDE.md is a single line: `@AGENTS.md` (the `@` symbol tells Claude Code to load and inline the target file). No other content.</statement>
+        <rationale>Claude Code only auto-loads CLAUDE.md; the @-ref hook loads AGENTS.md automatically. This is the single mechanic that makes one file (AGENTS.md) serve both Claude Code and standalone agents.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>AGENTS.md is between 20–80 lines (max ~5k tokens). It answers: what is this directory, what commands run here, what are the gotchas, what are the key paths, where are deep references.</statement>
+        <rationale>Below 20 lines, AGENTS.md cannot answer "how do I work in this directory"; above ~80 lines (5k tokens), the routing brief itself becomes context pollution for the agent. Empirically, 20-80 lines covers what agents need to know at entry.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>.agents/INDEX.md lists deep references (architecture, API, decisions, migrations, troubleshooting) as a table. Agents load this only when specifically asked or when a topic is not covered in AGENTS.md.</statement>
+        <rationale>Architecture deep-dives, decision records, and migration guides stay searchable but off the critical path — agents only load them if needed, keeping the hot-path context minimal.</rationale>
+      </rule>
+    </section>
+
+    <section name="per-directory-coverage">
+      <p>The three-tier pair must be in every source directory, not just the repo root. This ensures an agent landing at any depth gets calibrated context. Skip only trivial leaf folders (a single __init__.py file with no logic, a vendored dep, or build output).</p>
+
+      <rule testable="true">
+        <statement>CLAUDE.md + AGENTS.md are required in every directory that contains source code or agent-relevant logic, including subpackages, modules, test dirs, and CLI tool folders. Not just the repo root.</statement>
+        <rationale>A monorepo with src/, test/, scripts/, tools/ requires each subdir to have its own pair so an agent opening src/auth/handlers.py finds auth-specific context without loading repo-root generalities or test-dir irrelevancies.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>CLAUDE.md + AGENTS.md may be skipped only in: empty __init__.py-only directories with no logic, vendored dependencies, generated build output, and trivial leaf folders with less than 3 files and no documented gotchas.</statement>
+        <rationale>The per-directory pair adds overhead; skip it only when the overhead clearly exceeds benefit (a generated folder that gets rewritten, an empty __init__.py marker, or a three-line utility no agent should touch).</rationale>
+      </rule>
+    </section>
+
+    <section name="required-sections-in-agents-md">
+      <p>AGENTS.md must have six sections: a one-paragraph summary (what this dir IS, runtime, language, role), Commands (test, lint, build/deploy), State (phase, health), Key Paths (path/file table), Gotchas (concrete traps, not warnings), and Related (links to .agents/INDEX.md, parent AGENTS.md, product docs).</p>
+
+      <rule testable="true">
+        <statement>AGENTS.md must include, in order: (1) one-paragraph summary, (2) Commands section with at least test and lint, (3) State section with phase and health, (4) Key Paths table, (5) Gotchas section with concrete traps, (6) Related section linking to .agents/INDEX.md and parent brief.</statement>
+        <rationale>This six-section structure ensures AGENTS.md answers what/where/how/when/why for agent onboarding. Missing sections leave agents without critical information (e.g., no Commands = agent doesn't know how to test; no Gotchas = agent learns the hard way).</rationale>
+      </rule>
+
+      <example type="good" title="AGENTS.md skeleton">
+        <code lang="markdown"><![CDATA[
+# <module-name>
+
+<One-paragraph: what this dir IS, runtime, language, role in system>
+
+## Commands
+
+- Test: `<test command>`
+- Lint: `<lint command>`
+- Build / deploy: `<command if relevant>`
+
+## State
+
+- Phase: <bootstrap | active | maintenance | archived>
+- Health: <one-line status; link to dashboard if any>
+
+## Key Paths
+
+| Path | Purpose |
+|------|---------|
+| `<sub/dir>/` | <one-line> |
+
+## Gotchas
+
+- <concrete trap 1; what to NOT do>
+- <concrete trap 2; with reason>
+
+## Related
+
+- Deep references: `.agents/INDEX.md`
+- Parent: `../AGENTS.md`
+        ]]></code>
+        <note>Use this skeleton for every source directory. The six sections are non-negotiable; omitting one breaks agent onboarding.</note>
+      </example>
+    </section>
+
+    <section name="agents-index-md-catalogue">
+      <p>.agents/INDEX.md is an optional but recommended table that lists deep-reference files and directories. Agents load this only when a topic is not covered in the 20-80 line AGENTS.md — it keeps the hot-path context minimal.</p>
+
+      <rule testable="true">
+        <statement>.agents/INDEX.md is a table with two columns: path (directory or filename) and description (one-line). It lists architecture/, api/, decisions/, migrations, troubleshooting, and any other deep reference that AGENTS.md doesn't cover in full.</statement>
+        <rationale>Agents often need architectural context or decision history, but those documents are long and should not bloat AGENTS.md. The INDEX table is a pointer — agents load the specific doc only if needed.</rationale>
+      </rule>
+
+      <example type="good" title=".agents/INDEX.md">
+        <code lang="markdown"><![CDATA[
+# Index — .agents/
+
+Deep-reference docs loaded on demand only.
+
+| Path | Description |
+|------|-------------|
+| `architecture/` | System design, component diagrams, data flow |
+| `decisions/` | ADR-style decision records |
+| `troubleshooting.md` | Symptoms and known fixes |
+| `migrations/` | One-off migration guides |
+        ]]></code>
+        <note>Keep it minimal. The goal is routing, not archiving — deep docs go in these subfolders, not in AGENTS.md.</note>
+      </example>
+    </section>
+
+    <section name="monorepo-nesting">
+      <p>In a monorepo with multiple subpackages (e.g., src/auth/, src/api/, test/, scripts/), each subdir gets its own CLAUDE.md + AGENTS.md pair. The root pair is the "map"; the subdir pairs are the "territory".</p>
+
+      <rule testable="true">
+        <statement>Monorepo root AGENTS.md answers "What is this repo?" and lists subpackages with one-line descriptions. Subpackage AGENTS.md answers "What is this package, how do I test and deploy it here?" Subdir AGENTS.md may inherit from parent if logic is identical, but different-logic subdirs require their own pair.</statement>
+        <rationale>An agent opening src/auth/ needs auth-specific test commands and auth-specific gotchas; it should not have to read the repo root brief to find "cd src/auth &amp;&amp; npm test". Per-dir pairs save context tokens and reduce onboarding time.</rationale>
+      </rule>
+
+      <example type="good" title="Monorepo nesting">
+        <code><![CDATA[
+repo-root/
+├── CLAUDE.md → @AGENTS.md
+├── AGENTS.md (repo overview, lists subpackages)
+├── src/
+│   ├── CLAUDE.md → @AGENTS.md
+│   ├── AGENTS.md (src/ overview, shared build/deploy)
+│   ├── auth/
+│   │   ├── CLAUDE.md → @AGENTS.md
+│   │   └── AGENTS.md (auth-specific commands, gotchas)
+│   └── api/
+│       ├── CLAUDE.md → @AGENTS.md
+│       └── AGENTS.md (api-specific; separate test/deploy path)
+├── test/
+│   ├── CLAUDE.md → @AGENTS.md
+│   └── AGENTS.md (test runner, coverage setup)
+        ]]></code>
+        <note>Each directory has its own pair. Agents opening src/auth/ land in auth-specific context without loading src/ or repo-root generalities.</note>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/CLAUDE.md" purpose="One-line hook file every directory gets verbatim."/>
+      <template path="templates/AGENTS.md" purpose="Skeleton with six required sections for AGENTS.md in any directory."/>
+      <template path="templates/INDEX.md" purpose=".agents/INDEX.md table format for deep-reference docs."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.anthropic.com/en/docs/claude-code"/>
+      <link href="https://docs.anthropic.com/en/docs/build-a-system-with-agents"/>
+    </see-also>
+  </content>
+</methodology>
