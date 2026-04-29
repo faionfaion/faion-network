@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="sdd-workflow-overview">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd</domain>
+    <summary>SDD workflow with CONSTITUTION → SPEC → DESIGN → TEST-PLAN → IMPL-PLAN → TASKS → EXECUTE → REVIEW → DONE phases and confidence thresholds at each transition.</summary>
+    <tags>
+      <tag>sdd</tag>
+      <tag>specification</tag>
+      <tag>workflow</tag>
+      <tag>planning</tag>
+      <tag>quality-gates</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>SDD Workflow Overview</title>
+
+    <summary>Specification-Driven Development: intent is the source of truth. The complete phase sequence is CONSTITUTION → SPEC → DESIGN → TEST-PLAN → IMPL-PLAN → TASKS → EXECUTE → REVIEW → DONE. Spec answers WHAT to build, design answers HOW, test-plan answers HOW to verify (written before impl-plan). Each phase transition requires a confidence threshold (90%+ for spec→design, 95%+ for plan→execute). The "15-minute waterfall" variant covers medium tasks: 5min spec, 5min design, 5min task list.</summary>
+
+    <why>
+      <p>Developers and AI agents start coding immediately without planning, leading to scope creep, wrong implementations, and untestable results. SDD provides the specification as an anti-hallucination anchor: a machine-readable contract that grounds LLM code generation, makes "done" objective (tests from test-plan pass), and creates an audit trail for decisions. Research shows developers confident in AI-generated code are 2.5x more likely to have used specs.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Multi-day features or anything requiring cross-module coordination</item>
+        <item>AI-assisted development where reducing hallucinations is critical</item>
+        <item>Production systems requiring quality assurance and audit trail</item>
+        <item>Team collaboration requiring shared understanding of requirements</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tasks under 2 hours with a clear implementation path — direct implementation</item>
+        <item>Exploratory prototypes where code is discarded — spike with throwaway code</item>
+        <item>Bug fixes with clear root cause — fix + test</item>
+        <item>Project has no .aidocs/ structure and no bandwidth to set it up — use 15-minute waterfall</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="phase-sequence">
+      <p>Complete SDD phase sequence CONSTITUTION → SPEC → DESIGN → TEST-PLAN → IMPL-PLAN → TASKS → EXECUTE → REVIEW → DONE, with artifacts, confidence thresholds, and transition gates for each phase.</p>
+
+      <rule>
+        <statement>Follow the phase order: CONSTITUTION → SPEC → DESIGN → TEST-PLAN → IMPL-PLAN → TASKS → EXECUTE → REVIEW → DONE. Never skip TEST-PLAN before IMPL-PLAN — the test plan shapes the task breakdown. Never begin EXECUTE before IMPL-PLAN reaches 95%+ confidence.</statement>
+        <rationale>Each phase is the input to the next. Skipping TEST-PLAN means tasks cannot be written as testable by design; the implementation plan is then disconnected from verification. The 95%+ confidence gate before EXECUTE prevents starting code that will require rework because the plan is incomplete.</rationale>
+      </rule>
+
+      <list>
+        <item>CONSTITUTION: tech stack, coding standards, architecture principles, quality thresholds. Artifact: constitution.md</item>
+        <item>SPEC: WHAT to build — functional requirements (FR-X), acceptance criteria, non-functional requirements, MVP scope. Artifact: spec.md</item>
+        <item>DESIGN: HOW to build — architecture decisions (AD-X), file structure, API contracts, data models. Artifact: design.md</item>
+        <item>TEST-PLAN: HOW to verify — test case per AC, test type, edge cases, test infrastructure. Artifact: test-plan.md</item>
+        <item>IMPL-PLAN: task breakdown with dependencies, execution waves, quality gates, token estimates. Artifact: implementation-plan.md</item>
+        <item>TASKS: TASK-XXX-*.md files in todo/ → in-progress/ → done/ lifecycle</item>
+        <item>EXECUTE: implement code against spec and design; run quality gates after each task</item>
+        <item>REVIEW: independent reviewers in parallel; merge findings; fix; re-test; max 2 review cycles</item>
+        <item>DONE: all tests green, all review findings resolved, feature delivered</item>
+      </list>
+    </section>
+
+    <section name="confidence-thresholds">
+      <rule>
+        <statement>Before transitioning between phases, validate readiness using confidence thresholds. If confidence is below threshold, identify what is missing and resolve it before proceeding. Never proceed on optimism — a missing AC discovered during implementation costs far more than spending 30 minutes on spec clarification.</statement>
+        <rationale>Confidence thresholds are circuit breakers that prevent cascading rework. Low-confidence transitions create technical debt at the spec and design level that compounds through every downstream phase. The thresholds are asymmetric by design: earlier phases (idea → spec) can proceed at 70% because the cost of rework is low; later phases (impl-plan → execute) require 95%+ because implementation rework is expensive.</rationale>
+      </rule>
+
+      <list>
+        <item>Idea → Spec: 70%+ (problem validation evidence exists)</item>
+        <item>Spec → Design: 90%+ (all FR-X defined with AC, MVP scope clear)</item>
+        <item>Design → Test Plan: 90%+ (architecture clear, API contracts specified)</item>
+        <item>Test Plan → Impl Plan: 90%+ (every AC has at least one test case)</item>
+        <item>Impl Plan → Execute: 95%+ (task dependencies resolved, no blocking open questions)</item>
+        <item>Execute → Review: 100% (all tasks complete, code committed)</item>
+        <item>Review → Done: 100% (all findings fixed, all tests green)</item>
+      </list>
+    </section>
+
+    <section name="spec-phase-gates">
+      <rule>
+        <statement>A spec is complete when: all FR-X are defined with Given/When/Then acceptance criteria, the MVP scope is explicit (in-scope list and out-of-scope list), non-functional requirements are documented, and a responsible human or team has approved. An LLM cannot self-approve a spec — approval requires a human confirming the requirements match the intent.</statement>
+        <rationale>Specs approved without human sign-off drift from real intent. LLMs fill ambiguity with plausible assumptions; only the human who knows the business context can confirm the spec captures the right requirements. The FR/AC structure ensures "done" is objective — tests can verify ACs mechanically.</rationale>
+      </rule>
+    </section>
+
+    <section name="design-phase-gates">
+      <rule>
+        <statement>A design is complete when: every architecture decision (AD-X) is documented with rationale and alternatives, the file structure is defined, all API contracts are specified (not just described), dependencies are identified, and the design doc status is APPROVED. A design doc in DRAFT or IN-REVIEW state cannot proceed to TEST-PLAN.</statement>
+        <rationale>Proceeding to test-plan with an unapproved design means writing tests against an implementation approach that reviewers may reject. The test plan then needs to be rewritten when the design changes. Waiting for design approval is a small delay that prevents a large rework cycle.</rationale>
+      </rule>
+    </section>
+
+    <section name="test-plan-phase-gates">
+      <rule>
+        <statement>A test plan is complete when: every AC has at least one test case, each test case is classified (unit / integration / e2e), edge cases and error scenarios are listed, and test infrastructure requirements (fixtures, mocks, test DB) are documented. Write the test plan before the implementation plan — test requirements shape the task breakdown.</statement>
+        <rationale>Tests written before implementation-plan force each task to be "testable by design." Without this ordering, tasks are written without considering what test infrastructure they need, leading to test retrofitting after implementation — the most expensive form of testing.</rationale>
+      </rule>
+    </section>
+
+    <section name="review-phase">
+      <rule>
+        <statement>Run at least one independent reviewer (fresh context, reads spec+design+test-plan+code) before marking DONE. If multiple review tools are available (Claude subagent, Codex CLI, Kiro), run them in parallel and merge findings. A reviewer that was involved in implementation is not independent — use a fresh context or a different model.</statement>
+        <rationale>The executor has implementation bias: they see what they intended to write, not what they actually wrote. An independent reviewer with fresh context catches assumptions that became invisible during implementation. Multiple models catch different issues — diversity of perspective is the primary value of running reviewers in parallel.</rationale>
+      </rule>
+    </section>
+
+    <section name="sdd-levels">
+      <p>Three SDD implementation levels (Spec-First, Spec-Anchored, Spec-as-Source), the 15-minute waterfall variant for medium tasks, and the decision rule for selecting which level to apply.</p>
+
+      <section name="three-sdd-levels">
+        <rule>
+          <statement>Choose the SDD level based on the scope and lifecycle of the work. Level 1 (Spec-First) is the minimum viable SDD practice — write spec, then code. Level 2 (Spec-Anchored) keeps the spec alive after implementation. Level 3 (Spec-as-Source) makes the spec the only human-edited artifact and generates code from it.</statement>
+          <rationale>Not every project justifies the full Spec-as-Source investment. Level 1 captures 80% of the anti-hallucination benefit with minimal overhead. Level 2 adds maintenance value for long-lived features. Level 3 is viable only when the spec format is machine-readable and tooling can reliably generate valid code from it.</rationale>
+        </rule>
+
+        <list>
+          <item>Level 1 — Spec-First: human writes spec, AI generates code, human reviews. Spec is not maintained after delivery.</item>
+          <item>Level 2 — Spec-Anchored: spec evolves with the codebase across iterations. Code changes require spec updates first.</item>
+          <item>Level 3 — Spec-as-Source: spec is the only human-edited artifact. Humans edit spec; tooling generates and validates code.</item>
+        </list>
+      </section>
+
+      <section name="level-selection">
+        <rule>
+          <statement>Use Level 1 for one-off features where the spec is written to guide a single implementation session. Use Level 2 for production features that will evolve over multiple iterations. Use Level 3 only when: the spec format is machine-readable (OpenAPI, GraphQL SDL, Protobuf), generation tooling is in place, and contract tests enforce alignment.</statement>
+          <rationale>Level 3 requires significant tooling investment. Applying it to a markdown-format spec with no generation tooling creates a spec that quickly drifts from the implementation, making the spec worse than useless — it actively misleads. The level selection rule prevents this by gating Level 3 on concrete tooling prerequisites.</rationale>
+        </rule>
+      </section>
+
+      <section name="when-to-use-full-sdd-vs-ad-hoc">
+        <rule>
+          <statement>Use full SDD for: multi-day features, cross-module coordination, AI-assisted development where reducing hallucinations is critical, production systems requiring audit trail, team collaboration requiring shared understanding. Skip full SDD and implement directly for: tasks under 2 hours with a clear path, bug fixes with known root cause, exploratory prototypes.</statement>
+          <rationale>SDD overhead (spec + design + test-plan) is justified when the cost of building the wrong thing or building it poorly exceeds the planning cost. For a 2-hour bug fix, the planning overhead would dwarf the implementation. For a 2-week feature, the same planning prevents weeks of rework.</rationale>
+        </rule>
+      </section>
+
+      <section name="fifteen-minute-waterfall">
+        <rule>
+          <statement>For medium tasks (too complex for direct implementation, too small for full SDD), use the 15-minute waterfall: 5 minutes writing a quick spec (problem, requirements, acceptance criteria), 5 minutes sketching the design (key decisions, files to change), 5 minutes listing tasks (max 5-7). Then execute with AI assistance.</statement>
+          <rationale>The 15-minute waterfall captures the core anti-hallucination benefit of SDD at minimal cost. Even a rough spec with 3 requirements and 2 ACs grounds LLM code generation far more than an ad-hoc prompt. The time cap prevents over-planning for tasks that do not warrant it.</rationale>
+        </rule>
+
+        <reference path="templates/quick-spec.md">15-minute waterfall quick spec template</reference>
+
+        <example type="good">
+          <code lang="markdown"><![CDATA[# Quick Spec: Add email validation to signup form
+
+## Problem (2 min)
+Signup form accepts malformed emails. Users receive no error until after server-side validation fails.
+
+## Requirements (5 min)
+- R1: Validate email format on blur (not on submit)
+- R2: Show inline error below field when invalid
+- R3: Submit button disabled until email is valid
+
+## Design Sketch (5 min)
+- Files: SignupForm.tsx (modify), useEmailValidation.ts (create)
+- Approach: custom hook with RFC 5322 regex, debounced validation
+
+## Tasks (3 min)
+1. [ ] Create useEmailValidation hook with regex + debounce
+2. [ ] Wire hook into SignupForm email field
+3. [ ] Add inline error component below email field
+
+## Done When
+- Entering "not-an-email" shows inline error
+- Entering "user@example.com" clears error
+- Submit button disabled while error is visible]]></code>
+        </example>
+      </section>
+
+      <section name="spec-as-anti-hallucination-anchor">
+        <rule>
+          <statement>When using LLMs for code generation, always prepend the spec (or relevant sections) as context before the implementation prompt. Explicit requirements, structured AC format, and constraint documentation each reduce the surface area for hallucination. If the LLM generates something that contradicts the spec, the spec wins — update the code, not the spec.</statement>
+          <rationale>LLMs hallucinate when context is insufficient or ambiguous. A spec provides the structured constraints that narrow the generation space. The "spec wins" rule is critical: if code is auto-updated to match LLM output that contradicts the spec, the spec becomes a lie and loses all value as a contract.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <templates>
+      <template path="templates/quick-spec.md" purpose="15-minute waterfall quick spec template"/>
+    </templates>
+  </content>
+</methodology>
