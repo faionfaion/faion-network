@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="testing-pytest">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>testing-developer</domain>
+    <summary>pytest 8.x test suite authoring: fixtures, parametrization, markers, async testing, coverage, and CI integration.</summary>
+    <tags>
+      <tag>pytest</tag>
+      <tag>testing</tag>
+      <tag>python</tag>
+      <tag>fixtures</tag>
+      <tag>parametrize</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Testing with pytest</title>
+
+    <summary>Covers pytest configuration, fixture scopes and composition, parametrize patterns, mocking with unittest.mock/pytest-mock, parallel execution with xdist, async testing, and coverage reporting. Primary testing framework for Python projects.</summary>
+
+    <why>
+      <p>pytest is the de-facto Python test runner. Its fixture injection model, plugin ecosystem, and parametrize decorator eliminate boilerplate and enforce isolation. Knowing scope rules and conftest layering prevents the most common pytest anti-patterns that cause hard-to-debug test pollution.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Writing Python tests with pytest (unit, integration, or functional)</item>
+        <item>Designing fixture hierarchies (scope, composition, yield cleanup)</item>
+        <item>Setting up pytest configuration (pyproject.toml, markers, coverage)</item>
+        <item>Parametrizing tests to cover edge cases without duplication</item>
+        <item>Mocking external dependencies via unittest.mock or pytest-mock</item>
+        <item>Running tests in parallel with pytest-xdist</item>
+        <item>Testing async code with pytest-asyncio</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>E2E browser tests — use e2e-testing</item>
+        <item>Go tests — use testing-go</item>
+        <item>JavaScript tests — use testing-javascript</item>
+        <item>General fixture design patterns (framework-agnostic) — use test-fixtures</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="configuration">
+      <title>pytest Configuration</title>
+
+      <p>pyproject.toml setup, essential plugins, markers, coverage with pytest-cov, parallel execution with xdist, and asyncio mode.</p>
+
+      <section name="essential-plugins">
+        <list>
+          <item>pytest-cov — coverage reporting (replaces coverage run)</item>
+          <item>pytest-xdist — parallel execution with -n auto</item>
+          <item>pytest-mock — Mocker fixture wrapping unittest.mock</item>
+          <item>pytest-asyncio — async test support</item>
+          <item>factory-boy — model factories for fixtures</item>
+        </list>
+        <rule>
+          <statement>Pin plugin versions in requirements-dev.txt or pyproject.toml dev dependencies.</statement>
+        </rule>
+      </section>
+
+      <section name="pyproject-configuration">
+        <example type="good">
+          <code lang="toml"><![CDATA[
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--tb=short",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-fail-under=80",
+]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks integration tests requiring external services",
+    "e2e: marks end-to-end tests",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/migrations/*", "src/settings/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="markers">
+        <rule>
+          <statement>Declare all markers in pyproject.toml with --strict-markers to prevent typos.</statement>
+        </rule>
+        <rule>
+          <statement>Use markers to categorize slow or integration tests and skip them in fast feedback loops.</statement>
+        </rule>
+        <example type="good">
+          <code lang="bash"><![CDATA[
+# Fast unit tests only
+pytest -m "not slow and not integration"
+
+# All including slow
+pytest
+
+# Integration only
+pytest -m integration
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="parallel-execution">
+        <rule>
+          <statement>Use pytest-xdist with -n auto for CPU-bound test suites; be aware of fixture scope issues.</statement>
+        </rule>
+        <rule>
+          <statement>Session-scoped fixtures are NOT shared across xdist workers — use module or function scope, or a tmp_path-based workaround.</statement>
+        </rule>
+        <antipattern>
+          <description>Session-scoped DB fixture breaks under xdist</description>
+          <reason>Each worker gets its own session — database sequences can collide. Use separate DB per worker with worker_id fixture.</reason>
+        </antipattern>
+      </section>
+    </section>
+
+    <section name="fixtures">
+      <title>pytest Fixtures</title>
+
+      <p>Fixture scopes (function/class/module/session), yield cleanup, conftest layering, factory fixtures, and autouse.</p>
+
+      <section name="fixture-scopes">
+        <rule>
+          <statement>Default to function scope — it isolates tests and prevents state leakage.</statement>
+        </rule>
+        <rule>
+          <statement>Use session scope only for expensive, read-only resources (e.g., DB connection pool, loaded ML model).</statement>
+        </rule>
+        <rule>
+          <statement>A fixture can only depend on fixtures of equal or wider scope — never narrow scope from wide.</statement>
+        </rule>
+        <example type="bad">
+          <description>Session fixture depending on function-scoped fixture is invalid</description>
+          <code lang="python"><![CDATA[
+@pytest.fixture(scope="session")
+def app(settings):  # settings is function-scoped — pytest will error
+    return create_app(settings)
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="yield-fixtures-cleanup">
+        <rule>
+          <statement>Use yield fixtures instead of finalizers — the cleanup code is co-located with setup.</statement>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+@pytest.fixture
+def tmp_file(tmp_path):
+    path = tmp_path / "data.csv"
+    path.write_text("col1,col2\n1,2\n")
+    yield path
+    # cleanup — runs even if test fails
+    path.unlink(missing_ok=True)
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="conftest-layering">
+        <rule>
+          <statement>Place shared fixtures in the nearest conftest.py — root conftest for global, subdir conftest for local.</statement>
+        </rule>
+        <rule>
+          <statement>Do not import conftest.py files directly — pytest discovers them automatically.</statement>
+        </rule>
+        <example type="good">
+          <description>Layered conftest structure</description>
+          <code lang="text"><![CDATA[
+tests/
+├── conftest.py          # db_session, settings, api_client
+├── unit/
+│   └── conftest.py      # lightweight mocks only
+└── integration/
+    └── conftest.py      # real DB fixtures
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="factory-fixtures">
+        <rule>
+          <statement>Use factory fixtures (functions returning factory functions) instead of returning pre-built objects.</statement>
+        </rule>
+        <rule>
+          <statement>Factory fixtures allow tests to customize the object while sharing setup code.</statement>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+@pytest.fixture
+def make_user(db):
+    def factory(email="user@example.com", role="user", **kwargs):
+        return User.objects.create(email=email, role=role, **kwargs)
+    return factory
+
+def test_admin_access(make_user):
+    admin = make_user(role="admin")
+    assert admin.can_access_admin_panel()
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="autouse-fixtures">
+        <rule>
+          <statement>Use autouse=True sparingly — only for cross-cutting concerns like resetting global state or patching env vars.</statement>
+        </rule>
+        <rule>
+          <statement>Document autouse fixtures in conftest.py with a comment explaining why they are automatic.</statement>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+@pytest.fixture(autouse=True)
+def reset_cache():
+    """Auto-clear in-memory cache before each test to prevent state leakage."""
+    cache.clear()
+    yield
+    cache.clear()
+          ]]></code>
+        </example>
+      </section>
+    </section>
+
+    <section name="patterns">
+      <title>pytest Test Patterns</title>
+
+      <p>AAA structure, parametrize (basic/IDs/cartesian/indirect), mocking with unittest.mock and pytest-mock, async tests, and debugging.</p>
+
+      <section name="arrange-act-assert">
+        <rule>
+          <statement>Every test follows Arrange → Act → Assert with a blank line between sections.</statement>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+def test_discount_applied_for_premium_user(make_user, cart):
+    # Arrange
+    user = make_user(role="premium")
+    cart.add_item(price=100.0)
+
+    # Act
+    total = cart.calculate_total(user=user)
+
+    # Assert
+    assert total == 80.0  # 20% discount
+          ]]></code>
+        </example>
+      </section>
+
+      <section name="parametrize">
+        <rule>
+          <statement>Use @pytest.mark.parametrize to test multiple cases without code duplication.</statement>
+        </rule>
+        <rule>
+          <statement>Always provide IDs for parametrized cases to make failure messages readable.</statement>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+@pytest.mark.parametrize("email,valid", [
+    ("user@example.com", True),
+    ("invalid-email", False),
+    ("@nodomain.com", False),
+    ("user@.com", False),
+], ids=["valid", "no-at", "no-local", "no-tld"])
+def test_email_validation(email, valid):
+    assert validate_email(email) == valid
+          ]]></code>
+        </example>
+        <rule>
+          <statement>Use indirect parametrize to pass parameters through fixtures when fixture setup depends on the parameter.</statement>
+        </rule>
+      </section>
+
+      <section name="mocking-with-pytest-mock">
+        <rule>
+          <statement>Use mocker.patch() in test body (not conftest) for per-test mocks.</statement>
+        </rule>
+        <rule>
+          <statement>Use mocker.patch.object() when patching a method on a specific instance or class.</statement>
+        </rule>
+        <rule>
+          <statement>Always assert calls on mocks — silent mocks that never fire are useless.</statement>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+def test_send_welcome_email(mocker, make_user):
+    mock_send = mocker.patch("myapp.services.email.send_email")
+    user = make_user(email="new@example.com")
+
+    send_welcome_email(user)
+
+    mock_send.assert_called_once_with(
+        to="new@example.com",
+        subject="Welcome!",
+    )
+          ]]></code>
+        </example>
+        <antipattern>
+          <description>Patching at import location instead of usage location</description>
+          <code lang="python"><![CDATA[
+# BAD: patches the original module, not where it's used
+mocker.patch("myapp.utils.requests.get")
+
+# GOOD: patch where it's imported/used
+mocker.patch("myapp.services.payment.requests.get")
+          ]]></code>
+          <reason>Python looks up names at call time in the namespace where they were imported, not the original module.</reason>
+        </antipattern>
+      </section>
+
+      <section name="async-tests">
+        <rule>
+          <statement>Set asyncio_mode = "auto" in pyproject.toml to avoid decorating every async test.</statement>
+        </rule>
+        <rule>
+          <statement>Use pytest-anyio or pytest-asyncio — never run event loops manually in tests.</statement>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+# asyncio_mode = "auto" in pyproject.toml
+async def test_fetch_user(async_client):
+    response = await async_client.get("/api/users/1")
+    assert response.status_code == 200
+    assert response.json()["id"] == 1
+          ]]></code>
+        </example>
+      </section>
+    </section>
+
+    <templates>
+      <template path="templates/pyproject-pytest.toml" purpose="pytest + coverage + xdist + asyncio config block"/>
+      <template path="templates/conftest-base.py" purpose="Base conftest.py with common fixtures (db, client, factory)"/>
+    </templates>
+
+    <see-also>
+      <ref slug="testing-patterns"/>
+      <ref slug="test-fixtures"/>
+      <ref slug="mocking-strategies"/>
+      <ref slug="unit-testing"/>
+      <ref slug="integration-testing"/>
+      <link href="https://docs.pytest.org/"/>
+      <link href="https://docs.pytest.org/latest/how-to/fixtures.html"/>
+      <link href="https://pytest-xdist.readthedocs.io/"/>
+    </see-also>
+  </content>
+</methodology>
