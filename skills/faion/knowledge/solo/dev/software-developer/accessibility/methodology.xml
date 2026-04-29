@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="accessibility">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>WCAG 2.1/2.2 AA compliance methodology for web UIs covering semantic HTML, ARIA, keyboard navigation, focus management, and automated testing.</summary>
+    <tags>
+      <tag>accessibility</tag>
+      <tag>wcag</tag>
+      <tag>a11y</tag>
+      <tag>web-standards</tag>
+      <tag>inclusive-design</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Accessibility (Web)</title>
+
+    <summary>WCAG 2.1/2.2 AA compliance methodology for web UIs. Covers semantic HTML, ARIA usage (first rule: don't use ARIA), keyboard navigation, focus management, color contrast, form labeling, live regions, and automated testing with axe-core. Treat AA as the minimum for all public-facing work.</summary>
+
+    <why>
+      <p>Automated tools (axe, Lighthouse) catch only 30–40% of accessibility issues; the remainder requires structural patterns — proper semantics, focus traps, live regions, keyboard support. Building in these patterns from the start costs far less than retrofitting them. EU EAA (June 2025) and US Section 508 create legal exposure for non-compliance in many product categories.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>All web development — treat WCAG 2.1 AA as the default minimum.</item>
+        <item>Public-facing applications, e-commerce, fintech, healthcare, government, education.</item>
+        <item>Components in a design system or library (fix once, benefit everywhere).</item>
+        <item>Any flow tied to revenue — accessibility bugs convert into lost sales.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Internal one-off scripts used by 1–2 people who do not use assistive tech (low ROI, still worth doing if cheap).</item>
+        <item>Throwaway experimental prototypes — defer until validated.</item>
+        <item>"Skip a11y" is rarely correct; the question is always which effort level, not whether.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="semantic-html-first">
+      <p>Use semantic HTML elements (header, nav, main, article, button, label, fieldset) before reaching for ARIA. First rule of ARIA: don't use ARIA. Native elements carry built-in semantics, keyboard behavior, and screen-reader support. ARIA can only add or override semantics; it cannot fix non-semantic markup.</p>
+
+      <rule testable="true">
+        <statement>Use semantic HTML elements (`header`, `nav`, `main`, `article`, `button`, `label`, `fieldset`) before reaching for ARIA. First rule of ARIA: don't use ARIA.</statement>
+        <rationale>Native elements carry built-in semantics, keyboard behavior, and screen-reader support. ARIA can only add or override semantics; it cannot fix non-semantic markup.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>`&lt;div onclick="..."&gt;` used as a button.</description>
+        <reason>Divs have no role, no keyboard activation, no focus — screen readers skip them and keyboard users cannot activate them.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Use a single `&lt;h1&gt;` per page; never skip heading levels. Maintain heading hierarchy h1 → h2 → h3 throughout.</statement>
+        <rationale>Screen-reader users navigate by heading level; skipped levels create confusion about the document structure.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Add a visible skip-link to `&lt;main&gt;` at the top of every page.</statement>
+        <rationale>Skip-links are cheap and give keyboard users a way to bypass repetitive header navigation on every page load.</rationale>
+      </rule>
+    </section>
+
+    <section name="aria-usage">
+      <p>ARIA addition and limitations. Add aria-label only to elements whose accessible name is not already provided by visible text or a label. Never duplicate visible text in aria-label. Duplicate labels are redundant and confuse screen readers; they also create maintenance overhead.</p>
+
+      <rule testable="true">
+        <statement>Add `aria-label` only to elements whose accessible name is not already provided by visible text or a `&lt;label&gt;`. Never duplicate visible text in `aria-label`.</statement>
+        <rationale>Duplicate labels are redundant and confuse screen readers; they also create maintenance overhead.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Never add `aria-hidden="true"` to focusable elements. Remove from tab order with `tabIndex={-1}` first.</statement>
+        <rationale>`aria-hidden` on a focusable element hides it from screen readers but not from keyboards, causing a navigation trap.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use `aria-live="polite"` for status updates; `aria-live="assertive"` only for errors. Never use both on the same node. The live region must be in the DOM before content is inserted.</statement>
+        <rationale>Inserting a live region with text already inside it does not trigger an announcement — the region must exist first.</rationale>
+      </rule>
+
+      <note>LLMs over-ARIA: role="button" on button, aria-label duplicating visible text, aria-required on already-required inputs. Trim aggressively.</note>
+    </section>
+
+    <section name="keyboard-navigation-and-focus-management">
+      <p>Keyboard navigation and focus. Every interactive element must be keyboard accessible. Tab order must match visual order. Never use outline: none without a :focus-visible replacement that meets 3:1 contrast against the adjacent color. Removing focus indicators without replacement makes keyboard navigation impossible for users who cannot use a mouse.</p>
+
+      <rule testable="true">
+        <statement>Every interactive element must be keyboard accessible. Tab order must match visual order. Never use `outline: none` without a `:focus-visible` replacement that meets 3:1 contrast against the adjacent color.</statement>
+        <rationale>Removing focus indicators without replacement makes keyboard navigation impossible for users who cannot use a mouse.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Modals must: trap focus within the dialog, restore focus to the trigger on close, set `aria-modal="true"`, label the dialog with `aria-labelledby`, and close on Escape.</statement>
+        <rationale>Without focus trapping, screen reader users and keyboard users can interact with content behind the modal. Without restore, they lose their place after dismissal.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Composite widgets (tabs, listboxes, tree menus) must use roving `tabIndex` (set to 0 for the active item, -1 for the rest) and arrow-key navigation.</statement>
+        <rationale>WAI-ARIA Authoring Practices defines the expected keyboard contract for each widget type; deviating confuses screen reader users.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Touch targets minimum 48×48 CSS pixels on mobile.</statement>
+        <rationale>Smaller targets are difficult to hit accurately, especially for users with motor impairments.</rationale>
+      </rule>
+
+      <note>Focus management is the #1 silent regression — agents add a route change but forget to move focus to the new heading.</note>
+
+      <note>Modal focus traps: agents trap forward Tab but not Shift+Tab; or they trap focus but never restore it on close.</note>
+    </section>
+
+    <section name="color-and-contrast">
+      <p>Color accessibility and contrast. Normal text: minimum 4.5:1 contrast ratio. Large text (18px+ or 14px+ bold): 3:1. UI components and focus indicators: 3:1. Check dark mode separately. WCAG 2.1 AA contrast minima; below these thresholds text is unreadable for users with low vision or in challenging lighting.</p>
+
+      <rule testable="true">
+        <statement>Normal text: minimum 4.5:1 contrast ratio. Large text (18px+ or 14px+ bold): 3:1. UI components and focus indicators: 3:1. Check dark mode separately.</statement>
+        <rationale>WCAG 2.1 AA contrast minima; below these thresholds text is unreadable for users with low vision or in challenging lighting.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Never use color as the sole means of conveying information. Always pair a color indicator with an icon, text label, or pattern.</statement>
+        <rationale>Users with color blindness cannot distinguish red from green; color-only error indicators are invisible to them.</rationale>
+      </rule>
+
+      <note>Color contrast generators give one ratio, but agents forget to check **all** state combinations (hover, focus, disabled, error).</note>
+    </section>
+
+    <section name="form-accessibility">
+      <p>Form accessibility and validation. Every input must have a programmatic label — label htmlFor or aria-labelledby. Placeholders are not labels. Placeholders disappear when the user starts typing, leaving them without context for what the field expects.</p>
+
+      <rule testable="true">
+        <statement>Every `&lt;input&gt;` must have a programmatic label — `&lt;label htmlFor&gt;` or `aria-labelledby`. Placeholders are not labels.</statement>
+        <rationale>Placeholders disappear when the user starts typing, leaving them without context for what the field expects.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use `fieldset` and `legend` for radio button and checkbox groups.</statement>
+        <rationale>Fieldset + legend provides a programmatic group label and description for grouped controls.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>On form validation failure: surface an error summary via `role="alert"`, move focus to it, and link each error to its field via `aria-describedby`.</statement>
+        <rationale>Screen readers announce `role="alert"` automatically; without focus move, keyboard users land at the submit button and cannot see the errors.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Add `aria-invalid="true"` and `aria-required` to form fields as their state changes.</statement>
+        <rationale>Dynamic state indicators help screen-reader users understand the current field validity and requirement state.</rationale>
+      </rule>
+    </section>
+
+    <section name="images-and-media">
+      <p>Image and media accessibility. Meaningful alt text on informational images (not "image of..."). Decorative images: alt="" role="presentation". Complex images: aria-describedby pointing to figcaption with full description. Video: track kind="captions" with both language options. Audio: transcript link adjacent to player.</p>
+
+      <rule testable="true">
+        <statement>Meaningful alt text on informational images (not generic "image of..."). Decorative images: `alt=""` with `role="presentation"`.</statement>
+        <rationale>Screen-reader users depend on alt text for context; generic alt text is useless. Decorative images should be hidden.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Complex images: use `aria-describedby` pointing to a `&lt;figcaption&gt;` with full description.</statement>
+        <rationale>Simple alt text cannot convey complex information (charts, diagrams); a longer description adjacent to the image is required.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Video: include `&lt;track kind="captions"&gt;` with both language options.</statement>
+        <rationale>Captions serve deaf/hard-of-hearing users and non-native speakers; multilingual options support internationalization.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Audio: provide a transcript link adjacent to the player.</statement>
+        <rationale>Transcripts make audio content searchable, referenceable, and accessible to deaf users and non-native speakers.</rationale>
+      </rule>
+
+      <note>Alt text generated by agents is generic ("image of a person"); reject if not contextual.</note>
+    </section>
+
+    <section name="animation-and-motion">
+      <p>Respectful motion and animation. Honour prefers-reduced-motion in every animation: wrap transitions in @media (prefers-reduced-motion: reduce) or use useReducedMotion() in framer-motion. Uncontrolled motion can trigger vestibular disorders; this media query is the standard mechanism for respecting user preferences.</p>
+
+      <rule testable="true">
+        <statement>Honour `prefers-reduced-motion` in every animation: wrap transitions in `@media (prefers-reduced-motion: reduce)` or use `useReducedMotion()` in framer-motion.</statement>
+        <rationale>Uncontrolled motion can trigger vestibular disorders; this media query is the standard mechanism for respecting user preferences.</rationale>
+      </rule>
+
+      <note>prefers-reduced-motion: agents add transitions everywhere then forget the media query.</note>
+    </section>
+
+    <section name="automated-testing">
+      <p>Automated and manual testing. Treat axe-core failures as build failures: set categories:accessibility &gt;= 0.95 in Lighthouse CI and fail the build. Automated tools catch 30–40% of issues; supplement with keyboard-only and screen-reader manual testing. Test with keyboard only **and** with at least one screen reader (NVDA on Win, VoiceOver on macOS/iOS, TalkBack on Android).</p>
+
+      <rule testable="true">
+        <statement>Treat axe-core failures as build failures: set `categories:accessibility >= 0.95` in Lighthouse CI and fail the build. Automated tools catch 30–40% of issues; supplement with keyboard-only and screen-reader manual testing.</statement>
+        <rationale>Automated gating catches regressions continuously; manual testing finds the majority of issues that automation misses.</rationale>
+      </rule>
+
+      <example type="good" title="Playwright axe smoke test">
+        <code lang="typescript"><![CDATA[
+import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+
+const ROUTES = ['/', '/login', '/dashboard', '/settings', '/pricing'];
+
+for (const route of ROUTES) {
+  test(`a11y: ${route}`, async ({ page }) => {
+    await page.goto(route, { waitUntil: 'networkidle' });
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa', 'best-practice'])
+      .disableRules(['color-contrast-enhanced']) // AAA, optional
+      .analyze();
+    expect.soft(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+  });
+}
+]]></code>
+        <note>Drop-in test for the top 10 routes; disableRules can selectively skip stricter checks (AAA, enhanced contrast).</note>
+      </example>
+
+      <rule testable="true">
+        <statement>jest-axe: include `expect(await axe(container)).toHaveNoViolations()` in every component unit test.</statement>
+        <rationale>Component-level testing catches issues early; combined with route-level testing, you get both deep and wide coverage.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Test keyboard-only navigation in E2E (Tab through page, assert focus order and reachability of all interactive elements).</statement>
+        <rationale>Keyboard navigation is the #1 area missed by automated tools; E2E testing ensures order and reachability.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Manual check: test with at least one screen reader (NVDA on Win, VoiceOver on macOS).</statement>
+        <rationale>Screen-reader behavior varies; manual testing on a real tool catches nuances that automation cannot.</rationale>
+      </rule>
+
+      <note>Server-rendered pages with later hydration: focus management bugs only appear on real navigation, not in unit tests. Always add E2E.</note>
+    </section>
+
+    <section name="internationalization-and-accessibility">
+      <p>Internationalization accessibility. Add lang attribute to html; update on language switch. When agents add a language switcher, they forget html lang updates and dir="rtl"/ltr toggling. This breaks screen-reader language detection and text directionality for RTL languages.</p>
+
+      <rule testable="true">
+        <statement>Add `lang` attribute to `&lt;html&gt;`; update on language switch. Update `dir="rtl"` or `dir="ltr"` when switching to RTL languages.</statement>
+        <rationale>Screen readers use the lang attribute to select voices and pronunciation; dir specifies text directionality for proper layout of RTL languages.</rationale>
+      </rule>
+
+      <note>Internationalization + a11y: when agents add a language switcher, they forget lang updates and dir toggling.</note>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Recommended subagent workflow: A planner subagent classifies the work: new component (build accessible from scratch), new page (audit semantics), or remediation (run axe + manual checklist). A scaffolder subagent uses Radix UI / React Aria as the accessible primitive layer when possible (do not roll your own combobox). A test subagent generates jest-axe unit tests, Playwright keyboard-nav tests, and a Lighthouse-CI threshold. A reviewer subagent runs through the WCAG 2.2 AA checklist for changed templates. Human-in-loop checkpoint: WCAG conformance claims (e.g. in marketing copy or VPATs) must be reviewed; agents will overstate compliance.</p>
+    </section>
+
+    <see-also>
+      <link href="https://www.w3.org/WAI/WCAG22/quickref/"/>
+      <link href="https://www.w3.org/WAI/ARIA/apg/"/>
+      <link href="https://www.a11yproject.com/checklist/"/>
+      <link href="https://inclusive-components.design/"/>
+      <link href="https://dequeuniversity.com/"/>
+      <link href="https://webaim.org"/>
+      <link href="https://www.radix-ui.com"/>
+      <link href="https://react-spectrum.adobe.com/react-aria/"/>
+      <link href="https://www.myndex.com/APCA/"/>
+    </see-also>
+  </content>
+</methodology>
