@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="kubernetes-deployment">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Kubernetes deployment strategies (Recreate, Rolling Update, Blue-Green, Canary) with risk/cost/rollback tradeoffs. Choose strategy based on acceptable risk, resource cost, and rollback speed.</summary>
+    <tags>
+      <tag>kubernetes</tag>
+      <tag>deployment</tag>
+      <tag>argo-rollouts</tag>
+      <tag>blue-green</tag>
+      <tag>canary</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+
+  <content>
+    <title>Kubernetes Deployment Strategies</title>
+
+    <summary>Kubernetes offers two built-in strategies (Recreate and Rolling Update) and three advanced strategies via Argo Rollouts (Blue-Green, Canary, A/B Testing). 80% of Kubernetes outages stem from deployment errors. The default Rolling Update is zero-downtime but has medium rollback speed; Blue-Green provides instant rollback at 2x resource cost; Canary is the most risk-averse — it shifts traffic incrementally while Prometheus/Datadog analysis gates each step.</summary>
+
+    <why>
+      <p>Strategy choice directly maps to acceptable risk, resource cost, and rollback speed. Using Recreate in production causes downtime. Using only native Rolling Update for critical services misses the metric-driven auto-rollback that Argo Rollouts provides. Canary analysis with automated success/failure thresholds eliminates manual "watch dashboards during deploy" practice and catches regressions before they reach 100% of traffic.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any production Kubernetes deployment that requires zero downtime (Rolling Update minimum).</item>
+        <item>Critical services needing instant rollback — use Blue-Green.</item>
+        <item>High-traffic systems where a bad deploy must not reach all users — use Canary.</item>
+        <item>GitOps workflows — Argo Rollouts integrates natively with Argo CD.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Applications that cannot run two versions simultaneously (DB schema breaking change) — use Recreate or migrate schema first.</item>
+        <item>Dev/staging environments where downtime is acceptable — Recreate is simpler.</item>
+        <item>Teams without Prometheus metrics or observability — Canary analysis gates require metrics; fall back to Rolling Update.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="strategy-comparison">
+      <p>Strategy comparison table, mechanics of each strategy, Argo Rollouts vs native Kubernetes, and progressive delivery workflow.</p>
+      <list>
+        <item>Recreate: downtime yes, risk high, complexity low, resource cost low, rollback slow — development/migration only</item>
+        <item>Rolling Update: no downtime, risk medium, complexity low, resource medium, rollback medium — standard production default</item>
+        <item>Blue-Green: no downtime, risk low, complexity medium, resource high (2x), rollback instant — critical services needing full validation</item>
+        <item>Canary: no downtime, risk very low, complexity high, resource medium, rollback instant — high-traffic systems with observability</item>
+      </list>
+    </section>
+
+    <section name="rolling-update-configuration">
+      <p>Rolling Update is the default Kubernetes deployment strategy. Configure maxUnavailable and maxSurge explicitly; never rely on defaults for production services.</p>
+      <rule testable="true">
+        <statement>Configure maxUnavailable and maxSurge explicitly; never rely on defaults for production services.</statement>
+        <rationale>Default values (25% each) may cause too-aggressive rollouts for services with tight SLAs. Conservative settings (maxUnavailable: 1, maxSurge: 2) ensure only one pod is unavailable at a time while allowing faster rollout.</rationale>
+      </rule>
+      <example type="good" title="Conservative Rolling Update Configuration">
+        <code lang="yaml"><![CDATA[
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1    # conservative — only 1 pod unavailable at once
+    maxSurge: 2          # 2 extra pods during rollout for speed
+revisionHistoryLimit: 5  # keep 5 revisions for rollback
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="blue-green-with-argo-rollouts">
+      <p>Blue-Green requires Argo Rollouts controller. Two services: activeService (production traffic) and previewService (test traffic). Promotion switches traffic instantly.</p>
+      <example type="good" title="Blue-Green with Argo Rollouts">
+        <code lang="yaml"><![CDATA[
+spec:
+  strategy:
+    blueGreen:
+      activeService: myapp-active
+      previewService: myapp-preview
+      autoPromotionEnabled: false   # require manual promotion for production
+      scaleDownDelaySeconds: 30     # keep blue running 30s after switch for in-flight requests
+      prePromotionAnalysis:         # optional: run analysis before promoting
+        templates:
+          - templateName: success-rate
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="canary-with-metric-driven-promotion">
+      <p>Canary deployment shifts traffic incrementally while analysis gates each step. Always configure an AnalysisTemplate with concrete success thresholds before enabling automated canary promotion.</p>
+      <rule testable="true">
+        <statement>Always configure an AnalysisTemplate with concrete success thresholds before enabling automated canary promotion.</statement>
+        <rationale>Canary without analysis is just a slow rolling update. The value comes from metric-gated promotion: if error rate exceeds threshold during any step, the rollout automatically aborts and reverts to stable.</rationale>
+      </rule>
+      <example type="good" title="Canary Steps with Analysis">
+        <note>Canary steps: 5% for 5min → 25% for 10min → 50% for 15min → 100%. Analysis at each pause checks error rate and p99 latency.</note>
+        <code lang="yaml"><![CDATA[
+spec:
+  strategy:
+    canary:
+      steps:
+        - setWeight: 5
+        - pause: {duration: 5m}
+        - analysis:
+            templates: [{templateName: success-rate}]
+        - setWeight: 25
+        - pause: {duration: 10m}
+        - setWeight: 50
+        - pause: {duration: 15m}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="argo-rollouts-vs-native-kubernetes">
+      <p>Argo Rollouts extends Kubernetes with advanced deployment strategies and automated analysis capabilities.</p>
+      <list>
+        <item>Native K8s: Rolling Update built-in, Blue-Green and Canary require manual scripting, no automated analysis</item>
+        <item>Argo Rollouts: Blue-Green and Canary built-in, traffic management via Ingress or service mesh, automated Prometheus/Datadog analysis, metric-driven rollback, deep ArgoCD integration</item>
+      </list>
+    </section>
+
+    <section name="tool-selection-guide">
+      <p>Choose a deployment strategy based on application characteristics and business requirements.</p>
+      <list>
+        <item>Simple apps, low traffic: Rolling Update with native K8s Deployment</item>
+        <item>Critical apps needing instant rollback: Blue-Green with Argo Rollouts</item>
+        <item>High-traffic, metric-driven: Canary with Argo Rollouts + Istio or NGINX</item>
+        <item>GitOps workflow: any strategy with Argo Rollouts + Argo CD</item>
+      </list>
+    </section>
+
+    <section name="pre-deployment-checklist">
+      <p>Pre-deployment checklist ensures all prerequisites are met before initiating any deployment strategy.</p>
+      <checklist>
+        <check>Image tagged with specific version (NOT latest) and vulnerability-scanned</check>
+        <check>Resource requests and limits defined for every container</check>
+        <check>Liveness, readiness, and startup probes configured and tested</check>
+        <check>Service and Ingress configured; TLS certificates provisioned</check>
+        <check>HPA configured with appropriate metrics</check>
+        <check>Pod Disruption Budget defined to protect against simultaneous evictions</check>
+        <check>Anti-affinity rules set for HA (prefer spreading pods across nodes/zones)</check>
+        <check>Deployment strategy selected and configured</check>
+        <check>Rollback command prepared and documented</check>
+      </checklist>
+    </section>
+
+    <section name="rolling-update-checklist">
+      <p>Rolling Update checklist for safe production rollouts using native Kubernetes.</p>
+      <checklist>
+        <check>Current deployment healthy: kubectl rollout status deployment/name</check>
+        <check>maxUnavailable set to 1 (conservative) or appropriate value</check>
+        <check>maxSurge set to 2-3 for moderate rollout speed</check>
+        <check>revisionHistoryLimit set to 5 for rollback options</check>
+        <check>Monitor pod status during rollout; watch for CrashLoopBackOff</check>
+        <check>Verify metrics (error rate, latency) within SLA after all pods updated</check>
+      </checklist>
+    </section>
+
+    <section name="blue-green-checklist">
+      <p>Blue-Green checklist for deployments requiring instant rollback capability.</p>
+      <checklist>
+        <check>Sufficient resources for 2x replica count during deployment window</check>
+        <check>Preview service routing verified to green environment</check>
+        <check>Smoke tests and integration tests on preview passed before promotion</check>
+        <check>Rollback command prepared: kubectl argo rollouts undo name</check>
+        <check>Monitor error rates and latency for 5+ minutes after traffic switch</check>
+        <check>Old (blue) pods scaled down after scaleDownDelaySeconds</check>
+      </checklist>
+    </section>
+
+    <section name="canary-checklist">
+      <p>Canary checklist for metric-driven progressive delivery deployments.</p>
+      <checklist>
+        <check>Baseline metrics captured before canary deployment</check>
+        <check>AnalysisTemplate configured with success-rate and latency thresholds</check>
+        <check>Traffic management configured: Istio VirtualService or NGINX annotations</check>
+        <check>Verify canary pods receiving correct traffic percentage</check>
+        <check>Confirm analysis metrics being collected and evaluated</check>
+        <check>Abort if needed: kubectl argo rollouts abort name</check>
+      </checklist>
+    </section>
+
+    <section name="rollback-commands">
+      <p>Essential kubectl commands for rolling back deployments using both native Kubernetes and Argo Rollouts.</p>
+      <example type="good" title="Rollback Commands Reference">
+        <code lang="bash"><![CDATA[
+# Native Kubernetes rollback
+kubectl rollout history deployment/<name>
+kubectl rollout undo deployment/<name>
+kubectl rollout undo deployment/<name> --to-revision=<N>
+
+# Argo Rollouts rollback
+kubectl argo rollouts abort <name>      # abort current rollout, revert to stable
+kubectl argo rollouts undo <name>       # undo to previous version
+kubectl argo rollouts promote <name>    # manually promote canary to 100%
+kubectl argo rollouts retry <name>      # retry aborted rollout after fix
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="production-readiness">
+      <p>Production readiness checklist ensures security, observability, and reliability for all deployments.</p>
+      <checklist>
+        <check>Pods running as non-root with read-only root filesystem</check>
+        <check>Capabilities dropped (--cap-drop ALL); only required caps added</check>
+        <check>Network policies restricting inter-service traffic to minimum required</check>
+        <check>Secrets encrypted at rest; no secrets in environment variables or ConfigMaps</check>
+        <check>Prometheus metrics exposed; structured logging implemented; distributed tracing enabled</check>
+        <check>Alerts configured for key metrics (error rate, latency, saturation)</check>
+        <check>Pod anti-affinity and topology spread constraints configured</check>
+        <check>Runbook for common failure modes documented and accessible</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <link href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/"/>
+      <link href="https://argoproj.github.io/argo-rollouts/"/>
+      <link href="https://argoproj.github.io/argo-cd/"/>
+    </see-also>
+  </content>
+</methodology>
