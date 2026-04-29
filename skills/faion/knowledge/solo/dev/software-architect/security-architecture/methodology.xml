@@ -1,0 +1,3695 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="security-architecture">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Design secure systems with defense in depth, Zero Trust principles, and modern auth/authz: FIDO2, OAuth 2.1, RBAC/ABAC/ReBAC. Covers STRIDE, OWASP ASVS 5.0, microservices mTLS.</summary>
+    <tags>
+      <tag>security</tag>
+      <tag>zero-trust</tag>
+      <tag>authentication</tag>
+      <tag>authorization</tag>
+      <tag>threat-modeling</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Security Architecture</title>
+    <summary>Designing secure systems with defense in depth, Zero Trust principles, and modern authentication/authorization patterns. Security architecture is the systematic approach to protecting systems, data, and users through layered defenses. Modern security architecture follows the principle of "never trust, always verify" (Zero Trust) while implementing defense in depth across all layers.</summary>
+    <why>
+      <p>Security failures are architectural failures. A system that handles authentication, authorization, encryption, and secrets correctly at the design level is an order of magnitude harder to compromise than one that patches security on as an afterthought. OWASP ASVS 5.0, Zero Trust (NIST SP 800-207), and modern standards (OAuth 2.1, FIDO2/Passkeys) provide the framework — but they only work when built into the architecture from the start.</p>
+      <p>Without explicit security architecture, teams default to perimeter security that fails under insider threats, compromised credentials, or cloud-native deployments. Zero Trust eliminates implicit trust by treating every request as potentially hostile regardless of network location.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing authentication, authorization, and identity flows for a new product or new tenant model.</item>
+        <item>Threat modeling a new feature, integration, or third-party dependency before code freeze.</item>
+        <item>Compliance-driven design (SOC 2, HIPAA, GDPR, PCI-DSS, ISO 27001) that requires documented controls and evidence.</item>
+        <item>Reviewing existing architecture for Zero Trust gaps, secret-handling failures, or perimeter-only assumptions.</item>
+        <item>Hardening an LLM-augmented system — prompt-injection surface, tool-permission scope, exfiltration paths.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Fixing a single CVE in a dependency — use SCA tooling, not a full architecture loop.</item>
+        <item>Pure secret rotation operational tasks — use Vault/KMS runbooks.</item>
+        <item>UI form validation hygiene only — covered by application-developer methodologies.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-principles">
+      <list>
+        <item>Defense in Depth — Multiple security layers: WAF + Network + Identity + Application + Data.</item>
+        <item>Least Privilege — Minimal permissions required: RBAC/ABAC with granular scopes.</item>
+        <item>Zero Trust — Never trust, always verify: Continuous authentication, mTLS.</item>
+        <item>Fail Secure — Default to deny: Whitelist over blacklist.</item>
+        <item>Separation of Duties — Split responsibilities: Multi-party approval, segregated roles.</item>
+        <item>Assume Breach — Design for compromise: Segmentation, detection, response.</item>
+      </list>
+    </section>
+
+    <section name="security-layers">
+      <list>
+        <item>Perimeter Layer — WAF, DDoS protection, CDN security, Edge computing.</item>
+        <item>Network Layer — Firewalls, VPCs, Network policies, Micro-segmentation.</item>
+        <item>Identity Layer — Authentication (OAuth/OIDC/Passkeys), Authorization.</item>
+        <item>Application Layer — Input validation, Output encoding, OWASP Top 10.</item>
+        <item>Data Layer — Encryption (rest/transit/E2E), Classification, DLP.</item>
+      </list>
+    </section>
+
+    <section name="zero-trust">
+      <p>Zero Trust Architecture is defined in NIST SP 800-207. The 7 pillars:</p>
+      <list>
+        <item>Identity — Verify every user/entity: MFA, SSO, continuous auth, identity governance.</item>
+        <item>Device — Validate device health: EDR, compliance checks, certificate-based identity.</item>
+        <item>Network — Micro-segment access: Software-defined perimeter, east-west encryption.</item>
+        <item>Application — Secure app access: CASB, ZTNA, application-level auth.</item>
+        <item>Data — Protect data everywhere: Classification, DLP, encryption.</item>
+        <item>Infrastructure — Secure compute/storage: IaC scanning, runtime protection.</item>
+        <item>Visibility — Monitor everything: SIEM, XDR, continuous monitoring.</item>
+      </list>
+      <p>Zero Trust implementation: every request must (1) Verify identity (who) — Strong authentication; (2) Verify device (what) — Device posture check; (3) Verify context (where, when) — Risk-based policies; (4) Grant minimal access — Just-in-time, just-enough; (5) Log everything — Continuous monitoring.</p>
+      <note>NIST SP 1800-35 (2025) provides 19 real-world implementation models with technical configurations for building ZTA.</note>
+    </section>
+
+    <section name="authentication-patterns">
+      <list>
+        <item>Passkeys (FIDO2) — Primary auth, passwordless. AAL2 (phishing-resistant).</item>
+        <item>OAuth 2.1 + PKCE — API/app authorization. High (with proper implementation).</item>
+        <item>OIDC — Identity federation. High.</item>
+        <item>mTLS — Service-to-service. Very High.</item>
+        <item>API Keys — Machine-to-machine (limited). Medium (with rotation).</item>
+      </list>
+      <example type="good" title="OAuth 2.1 / OIDC Authorization Code Flow">
+        <code lang="text"><![CDATA[
++--------+                               +---------------+
+|        |--(A)-- Authorization Request->|   Resource    |
+|        |                               |     Owner     |
+|        |<-(B)-- Authorization Grant ---|               |
+|        |                               +---------------+
+|        |
+|        |                               +---------------+
+|        |--(C)-- Authorization Grant -->| Authorization |
+| Client |                               |     Server    |
+|        |<-(D)------ Access Token ------|               |
+|        |                               +---------------+
+|        |
+|        |                               +---------------+
+|        |--(E)------ Access Token ----->|    Resource   |
+|        |                               |     Server    |
+|        |<-(F)---- Protected Resource --|               |
++--------+                               +---------------+
+        ]]></code>
+      </example>
+      <p>OAuth 2.1 Key Requirements (RFC 9700): PKCE required for ALL clients (public and confidential); Exact redirect URI matching; No Implicit grant (response_type=token removed); No Resource Owner Password Credentials grant; Sender-constrained tokens (DPoP or mTLS) recommended; Refresh token rotation for public clients.</p>
+      <example type="good" title="Passkeys registration and authentication flows">
+        <code lang="text"><![CDATA[
+Registration:
+User -> Authenticator -> Generate Key Pair -> Public Key -> Server
+
+Authentication:
+Server -> Challenge -> Authenticator -> Sign with Private Key -> Verify
+        ]]></code>
+        <note>Passkey benefits: Phishing-resistant (origin-bound credentials); No shared secrets; Biometric convenience; NIST AAL2 compliant; 74% consumer awareness (2025).</note>
+      </example>
+    </section>
+
+    <section name="authorization-models">
+      <list>
+        <item>RBAC — Best for static organizations, most apps. Complexity: Low. Flexibility: Low. Scalability: Medium.</item>
+        <item>ABAC — Best for context-aware policies. Complexity: High. Flexibility: Very High. Scalability: Medium.</item>
+        <item>ReBAC — Best for social graphs, hierarchies. Complexity: Medium. Flexibility: High. Scalability: Very High.</item>
+        <item>PBAC — Best for centralized policy management. Complexity: Medium. Flexibility: High. Scalability: High.</item>
+      </list>
+      <example type="good" title="RBAC definition">
+        <code lang="yaml"><![CDATA[
+roles:
+  admin:
+    permissions: [users:*, content:*, settings:*]
+  editor:
+    permissions: [content:read, content:write]
+  viewer:
+    permissions: [content:read]
+
+users:
+  alice:
+    roles: [admin]
+  bob:
+    roles: [editor, viewer]
+        ]]></code>
+      </example>
+      <example type="good" title="ABAC policy">
+        <code lang="yaml"><![CDATA[
+# Policy: Managers can approve discounts > 20% during business hours
+policy:
+  subject:
+    role: manager
+    tenure_years: ">= 2"
+  resource:
+    type: discount
+    amount: "> 20%"
+  environment:
+    time: "09:00-17:00"
+    location: corporate_network
+  action: approve
+        ]]></code>
+      </example>
+      <example type="good" title="ReBAC (OpenFGA/Zanzibar-style)">
+        <code lang="text"><![CDATA[
+# OpenFGA / Zanzibar-style model
+type user
+
+type document
+  relations
+    define owner: [user]
+    define editor: [user] or owner
+    define viewer: [user] or editor
+
+# Tuples
+document:budget.xlsx#owner@user:alice
+document:budget.xlsx#viewer@user:bob
+
+# Check: can bob view budget.xlsx?
+# Result: true (bob is viewer)
+        ]]></code>
+        <note>Popular ReBAC Solutions: OpenFGA (CNCF Sandbox), SpiceDB/AuthZed, Ory Keto, AWS Verified Permissions.</note>
+      </example>
+    </section>
+
+    <section name="api-security">
+      <p>OWASP API Security Top 10 (2023):</p>
+      <list>
+        <item>API1 — Broken Object-Level Authorization: Per-object authorization checks.</item>
+        <item>API2 — Broken Authentication: OAuth 2.1, MFA, rate limiting.</item>
+        <item>API3 — Broken Object Property-Level Auth: Field-level access control.</item>
+        <item>API4 — Unrestricted Resource Consumption: Rate limiting, pagination.</item>
+        <item>API5 — Broken Function-Level Auth: RBAC per endpoint.</item>
+        <item>API6 — Unrestricted Access to Sensitive Flows: Business logic validation.</item>
+        <item>API7 — Server-Side Request Forgery: URL validation, allowlists.</item>
+        <item>API8 — Security Misconfiguration: Hardening, secure defaults.</item>
+        <item>API9 — Improper Inventory Management: API discovery, documentation.</item>
+        <item>API10 — Unsafe Consumption of APIs: Validate third-party data.</item>
+      </list>
+      <p>API Gateway Security Pattern: Client → API Gateway → Backend Services. Gateway enforces: Rate limiting (per client/endpoint), Authentication (OAuth/API key validation), Authorization (scope/role checking), Input validation (schema validation), Request signing (HMAC/JWT), TLS termination, Logging/monitoring.</p>
+    </section>
+
+    <section name="data-security">
+      <list>
+        <item>At Rest — AES-256-GCM: Databases, file storage, backups.</item>
+        <item>In Transit — TLS 1.3: All network communication.</item>
+        <item>End-to-End — Signal Protocol, libsodium: User-to-user messaging.</item>
+        <item>Application — Field-level encryption: Sensitive fields (PII, PCI).</item>
+      </list>
+      <example type="good" title="Key Management Architecture">
+        <code lang="text"><![CDATA[
++------------------------------------------+
+|           Key Management Service          |
+|  +------------------------------------+  |
+|  |      Master Key (HSM-protected)    |  |
+|  +------------------+-----------------+  |
+|                     |                    |
+|  +------------------v-----------------+  |
+|  |    Data Encryption Keys (DEKs)     |  |
+|  |    (encrypted by master key)       |  |
+|  +------------------------------------+  |
+|                                          |
+|  Key Hierarchy:                          |
+|  - Root Key (HSM)                        |
+|    - Master Keys (per tenant/region)     |
+|      - Data Keys (per resource)          |
++------------------------------------------+
+        ]]></code>
+      </example>
+      <p>Key Management Best Practices: Use managed KMS (AWS KMS, GCP KMS, Azure Key Vault, HashiCorp Vault); Rotate keys regularly (90 days for data keys); Separate dev/staging/prod keys; Never store keys in code or config files; Implement key versioning for rotation; Use envelope encryption pattern.</p>
+      <p>Post-Quantum Cryptography — NIST PQC Standards (2024-2025): Kyber — Key encapsulation (replacing RSA/ECDH); Dilithium — Digital signatures (replacing RSA/ECDSA); SPHINCS+ — Hash-based signatures (stateless). Start planning hybrid deployments combining classical + PQC algorithms.</p>
+    </section>
+
+    <section name="secrets-management">
+      <example type="good" title="HashiCorp Vault secrets management pattern">
+        <code lang="text"><![CDATA[
+Application -> Vault Agent -> Vault Server -> Secrets Engine
+                   |              |
+                   |              +-- Auth Methods (K8s, AWS, OIDC)
+                   |              +-- Audit Logging
+                   |              +-- Secret Rotation
+                   |
+                   +-- Automatic token renewal
+                   +-- Secret caching
+                   +-- Template rendering
+        ]]></code>
+      </example>
+      <p>Secrets Management Comparison:</p>
+      <list>
+        <item>HashiCorp Vault — Multi-cloud, dynamic secrets: Dynamic credentials, PKI, encryption-as-service.</item>
+        <item>AWS Secrets Manager — AWS-native applications: RDS rotation, cross-account, Lambda integration.</item>
+        <item>AWS Parameter Store — Simple config/secrets: Free tier, hierarchical, versioning.</item>
+        <item>GCP Secret Manager — GCP applications: IAM integration, automatic replication.</item>
+        <item>Azure Key Vault — Azure applications: HSM-backed, certificate management.</item>
+      </list>
+      <checklist>
+        <check>Centralize all secrets in dedicated vault.</check>
+        <check>Use dynamic secrets over static credentials.</check>
+        <check>Implement short-lived credentials (TTL).</check>
+        <check>Enable automatic rotation.</check>
+        <check>Use RBAC for secret access.</check>
+        <check>Enable comprehensive audit logging.</check>
+        <check>Encrypt secrets at rest and in transit.</check>
+        <check>Use separate secrets for each environment.</check>
+        <check>Never commit secrets to version control.</check>
+        <check>Implement secret scanning in CI/CD.</check>
+        <check>Use application identity (not shared credentials).</check>
+        <check>Implement emergency break-glass procedures.</check>
+        <check>Monitor for secret exposure.</check>
+        <check>Use hardware security modules for root keys.</check>
+        <check>Implement secret versioning.</check>
+        <check>Define secret ownership.</check>
+        <check>Regular access reviews.</check>
+        <check>Incident response plan for compromised secrets.</check>
+      </checklist>
+    </section>
+
+    <section name="microservices-security">
+      <example type="good" title="Service mesh mTLS architecture">
+        <code lang="text"><![CDATA[
++--------------------+     mTLS      +--------------------+
+|    Service A       |<------------->|    Service B       |
+|  +-------------+   |               |   +-------------+  |
+|  |  App Code   |   |               |   |  App Code   |  |
+|  +------+------+   |               |   +------+------+  |
+|         |          |               |          |         |
+|  +------v------+   |               |   +------v------+  |
+|  | Sidecar     |   |               |   | Sidecar     |  |
+|  | (Envoy)     |<--+-- Encrypted --+-->| (Envoy)     |  |
+|  +-------------+   |               |   +-------------+  |
++--------------------+               +--------------------+
+         ^                                     ^
+         |                                     |
+         +------ Istio Control Plane ----------+
+                 (Certificate Management)
+        ]]></code>
+      </example>
+      <p>Service mesh with mTLS: services communicate via Envoy sidecars orchestrated by the Istio control plane for certificate management.</p>
+      <list>
+        <item>mTLS Permissive mode — Accept both mTLS and plaintext: Migration period.</item>
+        <item>mTLS Strict mode — Only accept mTLS traffic: Production.</item>
+        <item>mTLS Disable mode — No mTLS: Legacy integration.</item>
+      </list>
+      <checklist>
+        <check>Service-to-service authentication (mTLS).</check>
+        <check>Service identity (SPIFFE/SPIRE).</check>
+        <check>Network policies (east-west traffic).</check>
+        <check>API gateway for north-south traffic.</check>
+        <check>Secrets injection (no hardcoding).</check>
+        <check>Container image scanning.</check>
+        <check>Runtime security (Falco, etc.).</check>
+        <check>Centralized logging and monitoring.</check>
+        <check>Circuit breakers for resilience.</check>
+        <check>Rate limiting per service.</check>
+      </checklist>
+    </section>
+
+    <section name="threat-modeling">
+      <p>STRIDE Model:</p>
+      <list>
+        <item>Spoofing — Pretending to be someone else: Authentication, digital signatures.</item>
+        <item>Tampering — Modifying data/code: Integrity checks, HMAC, signing.</item>
+        <item>Repudiation — Denying actions: Audit logging, digital signatures.</item>
+        <item>Information Disclosure — Unauthorized data access: Encryption, access control.</item>
+        <item>Denial of Service — Disrupting availability: Rate limiting, scaling, redundancy.</item>
+        <item>Elevation of Privilege — Gaining unauthorized access: Authorization, least privilege.</item>
+      </list>
+      <p>PASTA (Process for Attack Simulation and Threat Analysis) — 7 Stages: (1) Define Objectives — Business impact, compliance, risk tolerance; (2) Define Scope — System boundaries, data flows, trust boundaries; (3) Decompose Application — Architecture diagrams, component mapping; (4) Threat Analysis — STRIDE per component, attack trees; (5) Vulnerability Analysis — Code review, configuration review; (6) Attack Modeling — Simulate attacks, exploit chains; (7) Risk Analysis — Impact/probability, mitigation priorities.</p>
+      <note>When to use: STRIDE for quick threat identification in agile teams; PASTA for comprehensive risk analysis in regulated industries.</note>
+    </section>
+
+    <section name="owasp-asvs">
+      <p>OWASP ASVS 5.0 (May 2025) provides approximately 350 security requirements across 17 categories:</p>
+      <list>
+        <item>V1 — Architecture, Design, and Threat Modeling.</item>
+        <item>V2 — Authentication.</item>
+        <item>V3 — Session Management.</item>
+        <item>V4 — Access Control.</item>
+        <item>V5 — Validation, Sanitization, and Encoding.</item>
+        <item>V6 — Stored Cryptography.</item>
+        <item>V7 — Error Handling and Logging.</item>
+        <item>V8 — Data Protection.</item>
+        <item>V9 — Communication.</item>
+        <item>V10 — Malicious Code.</item>
+        <item>V11 — Business Logic.</item>
+        <item>V12 — Files and Resources.</item>
+        <item>V13 — API and Web Services.</item>
+        <item>V14 — Configuration.</item>
+        <item>V15 — Dependency Management.</item>
+        <item>V16 — Build Pipeline.</item>
+        <item>V17 — Modern Web Application.</item>
+      </list>
+      <list>
+        <item>Level 1 — Low assurance (automated testing).</item>
+        <item>Level 2 — Standard assurance (manual review).</item>
+        <item>Level 3 — High assurance (comprehensive audit).</item>
+      </list>
+    </section>
+
+    <section name="llm-assisted-security">
+      <list>
+        <item>Threat modeling — Generate STRIDE analysis for components.</item>
+        <item>Security requirements — Draft ASVS-based requirements.</item>
+        <item>Architecture review — Identify security gaps in designs.</item>
+        <item>Policy drafting — Create RBAC/ABAC policies.</item>
+        <item>Code review — Identify security vulnerabilities.</item>
+        <item>Documentation — Generate security runbooks.</item>
+      </list>
+      <list>
+        <item>Be specific — Provide context about your stack, compliance requirements.</item>
+        <item>Request structured output — Ask for tables, checklists, diagrams.</item>
+        <item>Iterate — Start broad, then drill down into specifics.</item>
+        <item>Validate — Always review LLM output against authoritative sources.</item>
+        <item>Use as starting point — LLM output is draft, not final.</item>
+      </list>
+      <antipattern>
+        <description>Blindly trusting LLM security recommendations.</description>
+        <reason>LLMs hallucinate plausible-looking auth flows; OAuth/OIDC details (PKCE, audience, JWKS rotation) are frequently wrong. Pin to RFCs and provider docs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using LLM for cryptographic algorithm implementation.</description>
+        <reason>Use established libraries instead. LLMs should not implement crypto algorithms.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Sharing sensitive data (credentials, keys) with LLM.</description>
+        <reason>Always use placeholders: [API_KEY], [SECRET]. Never paste actual secrets.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Skipping human review of security-critical changes.</description>
+        <reason>LLM output is a starting point. Security experts should validate all security-critical changes.</reason>
+      </antipattern>
+    </section>
+
+    <section name="security-design-checklist">
+      <p>Step-by-step checklist for designing secure systems. Use this during architecture design, security reviews, and compliance audits.</p>
+
+      <p>Phase 1: Security Requirements — 1.1 Business Context:</p>
+      <checklist>
+        <check>Identify data classification levels (public, internal, confidential, restricted).</check>
+        <check>Document compliance requirements (GDPR, HIPAA, PCI-DSS, SOC 2, etc.).</check>
+        <check>Define acceptable risk tolerance with stakeholders.</check>
+        <check>Identify regulatory jurisdictions and data residency requirements.</check>
+        <check>Document business continuity and recovery time objectives.</check>
+        <check>Identify critical assets and crown jewels.</check>
+        <check>Identify threat actors relevant to your domain.</check>
+        <check>Review industry-specific threat intelligence.</check>
+        <check>Document previous security incidents (if any).</check>
+        <check>Assess supply chain risks.</check>
+        <check>Consider insider threat scenarios.</check>
+        <check>Define authentication requirements (MFA, passwordless, SSO).</check>
+        <check>Define authorization model (RBAC, ABAC, ReBAC).</check>
+        <check>Specify encryption requirements (at-rest, in-transit, E2E).</check>
+        <check>Define audit logging requirements.</check>
+        <check>Specify data retention and deletion policies.</check>
+        <check>Document incident response requirements.</check>
+      </checklist>
+
+      <p>Phase 2: Threat Modeling — 2.1 System Decomposition:</p>
+      <checklist>
+        <check>Create data flow diagrams (DFD).</check>
+        <check>Identify trust boundaries.</check>
+        <check>Document entry points (APIs, UIs, integrations).</check>
+        <check>Map data stores and sensitivity levels.</check>
+        <check>Identify external dependencies.</check>
+        <check>STRIDE — Spoofing: Can an attacker impersonate users/services?</check>
+        <check>STRIDE — Tampering: Can data be modified in transit or at rest?</check>
+        <check>STRIDE — Repudiation: Can actions be denied without evidence?</check>
+        <check>STRIDE — Information Disclosure: Can sensitive data leak?</check>
+        <check>STRIDE — Denial of Service: Can the system be disrupted?</check>
+        <check>STRIDE — Elevation of Privilege: Can attackers gain unauthorized access?</check>
+        <check>Document all external interfaces.</check>
+        <check>Identify unauthenticated endpoints.</check>
+        <check>Map privileged operations.</check>
+        <check>Review file upload/download capabilities.</check>
+        <check>Assess third-party integrations.</check>
+        <check>Identify debug/admin interfaces.</check>
+        <check>Calculate risk scores (impact x likelihood).</check>
+        <check>Prioritize threats by risk score.</check>
+        <check>Document accepted risks with justification.</check>
+        <check>Define risk treatment plans.</check>
+      </checklist>
+
+      <p>Phase 3: Zero Trust Architecture:</p>
+      <checklist>
+        <check>Implement strong authentication (FIDO2/Passkeys preferred).</check>
+        <check>Enable MFA for all users (phishing-resistant MFA for privileged).</check>
+        <check>Implement SSO with modern protocols (OIDC).</check>
+        <check>Define identity lifecycle management.</check>
+        <check>Implement privileged access management (PAM).</check>
+        <check>Enable continuous authentication for sensitive operations.</check>
+        <check>Implement device health attestation.</check>
+        <check>Require device compliance (EDR, patches, encryption).</check>
+        <check>Implement certificate-based device identity.</check>
+        <check>Define BYOD vs. managed device policies.</check>
+        <check>Enable device posture checking before access.</check>
+        <check>Implement micro-segmentation.</check>
+        <check>Encrypt all east-west traffic (mTLS).</check>
+        <check>Deploy software-defined perimeter.</check>
+        <check>Eliminate implicit trust zones.</check>
+        <check>Implement network access control (NAC).</check>
+        <check>Implement application-level authentication.</check>
+        <check>Use Zero Trust Network Access (ZTNA) over VPN.</check>
+        <check>Deploy Cloud Access Security Broker (CASB).</check>
+        <check>Implement just-in-time access provisioning.</check>
+        <check>Enable application session controls.</check>
+        <check>Classify all data by sensitivity.</check>
+        <check>Implement data loss prevention (DLP).</check>
+        <check>Enable data activity monitoring.</check>
+        <check>Implement encryption for all sensitive data.</check>
+        <check>Define and enforce data handling policies.</check>
+        <check>Centralize security logging (SIEM).</check>
+        <check>Implement user and entity behavior analytics (UEBA).</check>
+        <check>Enable real-time alerting.</check>
+        <check>Define security metrics and KPIs.</check>
+        <check>Implement security orchestration and automation (SOAR).</check>
+      </checklist>
+
+      <p>Phase 4: Authentication Design:</p>
+      <checklist>
+        <check>Implement WebAuthn API integration for Passkeys/FIDO2.</check>
+        <check>Support platform authenticators (Face ID, Windows Hello).</check>
+        <check>Support roaming authenticators (security keys).</check>
+        <check>Implement passkey registration flow.</check>
+        <check>Design account recovery without phishable fallbacks.</check>
+        <check>Support synced passkeys for cross-device.</check>
+        <check>Plan migration path from passwords.</check>
+        <check>Use Authorization Code flow with PKCE for all clients.</check>
+        <check>Implement exact redirect URI matching.</check>
+        <check>Remove any Implicit grant usage.</check>
+        <check>Remove Resource Owner Password Credentials grant.</check>
+        <check>Implement refresh token rotation.</check>
+        <check>Use sender-constrained tokens (DPoP) where possible.</check>
+        <check>Implement token audience restriction.</check>
+        <check>Set appropriate token lifetimes (short-lived access tokens).</check>
+        <check>Generate cryptographically secure session IDs.</check>
+        <check>Implement session timeout (idle and absolute).</check>
+        <check>Bind sessions to client characteristics.</check>
+        <check>Implement secure session storage.</check>
+        <check>Enable concurrent session controls.</check>
+        <check>Implement session revocation on logout.</check>
+        <check>Protect against session fixation.</check>
+        <check>Use OAuth 2.1 for user-delegated access.</check>
+        <check>Implement API key rotation for machine-to-machine.</check>
+        <check>Use mTLS for service-to-service.</check>
+        <check>Avoid API keys in URLs.</check>
+        <check>Implement request signing for critical APIs.</check>
+      </checklist>
+
+      <p>Phase 5: Authorization Design:</p>
+      <checklist>
+        <check>Assess complexity of access control requirements.</check>
+        <check>Choose appropriate model (RBAC/ABAC/ReBAC).</check>
+        <check>Document authorization policies.</check>
+        <check>Design for principle of least privilege.</check>
+        <check>Plan for separation of duties.</check>
+        <check>Define role hierarchy.</check>
+        <check>Map permissions to roles.</check>
+        <check>Implement role assignment workflow.</check>
+        <check>Enable role-based API authorization.</check>
+        <check>Implement UI element visibility by role.</check>
+        <check>Plan for role explosion prevention.</check>
+        <check>Define attribute schema (user, resource, environment) for ABAC/ReBAC.</check>
+        <check>Create policy decision point (PDP).</check>
+        <check>Implement policy enforcement points (PEP).</check>
+        <check>Design policy administration workflow.</check>
+        <check>Test policy edge cases.</check>
+        <check>Implement policy versioning.</check>
+        <check>Design authorization model (types, relations) for OpenFGA/Zanzibar.</check>
+        <check>Define tuple storage strategy.</check>
+        <check>Implement relationship management APIs.</check>
+        <check>Design check API integration.</check>
+        <check>Plan for authorization data consistency.</check>
+        <check>Implement list objects/subjects queries.</check>
+      </checklist>
+
+      <p>Phase 6: API Security:</p>
+      <checklist>
+        <check>Use TLS 1.3 for all endpoints.</check>
+        <check>Implement proper HTTP methods (no GET for mutations).</check>
+        <check>Version APIs appropriately.</check>
+        <check>Design idempotent operations where possible.</check>
+        <check>Avoid sensitive data in URLs.</check>
+        <check>Implement proper error responses (no stack traces).</check>
+        <check>Validate all input parameters.</check>
+        <check>Implement schema validation (OpenAPI/JSON Schema).</check>
+        <check>Sanitize input to prevent injection.</check>
+        <check>Validate content types.</check>
+        <check>Set maximum payload sizes.</check>
+        <check>Validate file uploads (type, size, content).</check>
+        <check>Implement rate limiting per client/API key.</check>
+        <check>Set appropriate limits by endpoint sensitivity.</check>
+        <check>Implement graduated response (warning before block).</check>
+        <check>Use token bucket or sliding window algorithms.</check>
+        <check>Return proper 429 responses with Retry-After.</check>
+        <check>Implement quota management for API products.</check>
+        <check>Deploy API gateway for all external APIs.</check>
+        <check>Implement authentication at gateway.</check>
+        <check>Enable request/response logging.</check>
+        <check>Implement IP allowlisting where appropriate.</check>
+        <check>Enable bot protection.</check>
+        <check>Configure CORS properly.</check>
+      </checklist>
+
+      <p>Phase 7: Data Security:</p>
+      <checklist>
+        <check>Encrypt all databases (transparent data encryption).</check>
+        <check>Encrypt file storage and object storage.</check>
+        <check>Encrypt backups.</check>
+        <check>Use AES-256-GCM or ChaCha20-Poly1305.</check>
+        <check>Implement envelope encryption.</check>
+        <check>Use managed KMS for key storage.</check>
+        <check>Enforce TLS 1.3 (minimum TLS 1.2).</check>
+        <check>Configure strong cipher suites.</check>
+        <check>Implement certificate pinning for mobile apps.</check>
+        <check>Enable HSTS with preload.</check>
+        <check>Use mTLS for internal services.</check>
+        <check>Disable legacy protocols (SSL, TLS 1.0/1.1).</check>
+        <check>Use established protocols (Signal, MLS) for E2E encryption.</check>
+        <check>Implement proper key exchange (X25519/Kyber).</check>
+        <check>Use authenticated encryption (AES-GCM).</check>
+        <check>Implement forward secrecy.</check>
+        <check>Design secure key backup/recovery.</check>
+        <check>Plan for key compromise scenarios.</check>
+        <check>Use HSM for root/master keys.</check>
+        <check>Implement key hierarchy (root -&gt; master -&gt; data).</check>
+        <check>Define key rotation policy (90 days recommended).</check>
+        <check>Implement key versioning.</check>
+        <check>Plan emergency key revocation procedure.</check>
+        <check>Separate keys by environment.</check>
+        <check>Implement field-level encryption for PII.</check>
+        <check>Use tokenization for payment data.</check>
+        <check>Implement data masking for non-production.</check>
+        <check>Enable audit logging for sensitive data access.</check>
+        <check>Implement data retention policies.</check>
+        <check>Plan secure data deletion procedures.</check>
+      </checklist>
+
+      <p>Phase 8: Secrets Management:</p>
+      <checklist>
+        <check>Centralize all secrets in vault (Vault, AWS Secrets Manager).</check>
+        <check>Remove hardcoded secrets from code.</check>
+        <check>Remove secrets from environment variables in production.</check>
+        <check>Encrypt secrets at rest.</check>
+        <check>Implement access control for secrets.</check>
+        <check>Enable audit logging for secret access.</check>
+        <check>Use dynamic database credentials where possible.</check>
+        <check>Implement short-lived credentials (TTL).</check>
+        <check>Use IAM roles instead of static keys (cloud).</check>
+        <check>Implement just-in-time secret provisioning.</check>
+        <check>Enable automatic credential rotation.</check>
+        <check>Define rotation schedules by secret type.</check>
+        <check>Implement zero-downtime rotation.</check>
+        <check>Test rotation procedures regularly.</check>
+        <check>Monitor for rotation failures.</check>
+        <check>Document manual rotation procedures.</check>
+        <check>Implement pre-commit hooks for secret detection.</check>
+        <check>Integrate secret scanning in CI/CD.</check>
+        <check>Use different secrets per environment.</check>
+        <check>Implement secure secret injection in deployments.</check>
+        <check>Document secret request/approval workflow.</check>
+      </checklist>
+
+      <p>Phase 9: Microservices Security:</p>
+      <checklist>
+        <check>Deploy service mesh (Istio, Linkerd).</check>
+        <check>Enable mTLS for all service-to-service traffic.</check>
+        <check>Start with permissive mode, migrate to strict.</check>
+        <check>Implement service identity (SPIFFE).</check>
+        <check>Configure authorization policies.</check>
+        <check>Use minimal base images.</check>
+        <check>Scan images for vulnerabilities.</check>
+        <check>Sign and verify images.</check>
+        <check>Run containers as non-root.</check>
+        <check>Implement read-only root filesystem.</check>
+        <check>Define resource limits.</check>
+        <check>Enable Pod Security Standards (restricted).</check>
+        <check>Implement network policies.</check>
+        <check>Use RBAC for cluster access.</check>
+        <check>Enable audit logging.</check>
+        <check>Secure etcd encryption.</check>
+        <check>Implement admission controllers.</check>
+        <check>Authenticate all service calls.</check>
+        <check>Authorize based on service identity.</check>
+        <check>Encrypt all traffic (mTLS).</check>
+        <check>Implement circuit breakers.</check>
+        <check>Use service mesh for policy enforcement.</check>
+        <check>Log all cross-service calls.</check>
+      </checklist>
+
+      <p>Phase 10: Monitoring and Detection:</p>
+      <checklist>
+        <check>Log authentication events (success, failure, MFA).</check>
+        <check>Log authorization decisions (allow, deny).</check>
+        <check>Log sensitive data access.</check>
+        <check>Log administrative actions.</check>
+        <check>Log security configuration changes.</check>
+        <check>Implement tamper-proof logging.</check>
+        <check>Centralize logs from all sources.</check>
+        <check>Define log retention policies.</check>
+        <check>Create correlation rules.</check>
+        <check>Implement alerting thresholds.</check>
+        <check>Enable threat intelligence feeds.</check>
+        <check>Configure dashboards and reports.</check>
+        <check>Define critical security alerts.</check>
+        <check>Configure alert routing (PagerDuty, Slack).</check>
+        <check>Implement alert deduplication.</check>
+        <check>Create runbooks for common alerts.</check>
+        <check>Test alerting regularly.</check>
+        <check>Review and tune alert thresholds.</check>
+        <check>Document incident response plan.</check>
+        <check>Define severity levels.</check>
+        <check>Establish communication procedures.</check>
+        <check>Create forensic investigation procedures.</check>
+        <check>Plan containment strategies.</check>
+        <check>Schedule regular incident drills.</check>
+      </checklist>
+
+      <p>Phase 11: Compliance and Governance:</p>
+      <checklist>
+        <check>Map requirements to ASVS 5.0 controls.</check>
+        <check>Determine target verification level (L1/L2/L3).</check>
+        <check>Document control implementations.</check>
+        <check>Plan verification/testing approach.</check>
+        <check>Address gaps with remediation plan.</check>
+        <check>Document security architecture.</check>
+        <check>Create security policies.</check>
+        <check>Maintain threat model.</check>
+        <check>Document incident response procedures.</check>
+        <check>Create security training materials.</check>
+        <check>Maintain compliance evidence.</check>
+        <check>Schedule regular architecture reviews.</check>
+        <check>Conduct code security reviews.</check>
+        <check>Perform penetration testing.</check>
+        <check>Run vulnerability assessments.</check>
+        <check>Review third-party dependencies.</check>
+        <check>Assess vendor security.</check>
+        <check>Track security metrics (MTTD, MTTR).</check>
+        <check>Review and learn from incidents.</check>
+        <check>Update threat models regularly.</check>
+        <check>Monitor emerging threats.</check>
+        <check>Update security training.</check>
+        <check>Benchmark against industry standards.</check>
+      </checklist>
+
+      <p>Quick Reference: Priority by Project Phase — MVP/Prototype must have: TLS everywhere, Basic authentication (OAuth 2.1), Input validation, Secrets in environment/vault, Basic logging. Production Launch adds: MFA for all users, Rate limiting, Security monitoring, Incident response plan, Penetration test. Scale/Growth adds: Zero Trust architecture, Fine-grained authorization, Advanced threat detection, Compliance certifications, Security automation (SOAR).</p>
+
+      <p>Quick Reference: Checklist by Role</p>
+      <checklist>
+        <check>Architects: Threat model completed.</check>
+        <check>Architects: Security requirements documented.</check>
+        <check>Architects: Authentication/authorization strategy defined.</check>
+        <check>Architects: Data classification completed.</check>
+        <check>Architects: Compliance requirements mapped.</check>
+        <check>Developers: Secure coding training completed.</check>
+        <check>Developers: Input validation implemented.</check>
+        <check>Developers: No secrets in code.</check>
+        <check>Developers: Dependencies scanned.</check>
+        <check>Developers: Security tests written.</check>
+        <check>DevOps/Platform: Infrastructure hardened.</check>
+        <check>DevOps/Platform: Secrets management configured.</check>
+        <check>DevOps/Platform: Security logging enabled.</check>
+        <check>DevOps/Platform: Container security implemented.</check>
+        <check>DevOps/Platform: Backup/recovery tested.</check>
+        <check>Security Team: Security monitoring configured.</check>
+        <check>Security Team: Alerting tuned.</check>
+        <check>Security Team: Incident response tested.</check>
+        <check>Security Team: Penetration testing scheduled.</check>
+        <check>Security Team: Compliance evidence collected.</check>
+      </checklist>
+    </section>
+
+    <section name="examples">
+      <p>Example 1: SaaS B2B Application — Multi-tenant B2B SaaS platform with sensitive customer data, requiring SOC 2 compliance. Characteristics: multi-tenant architecture, enterprise SSO requirements, role-based access within organizations, API access for integrations, sensitive business data.</p>
+      <example type="good" title="SaaS B2B authentication config">
+        <code lang="yaml"><![CDATA[
+# Primary: Enterprise SSO
+sso:
+  protocols: [OIDC, SAML 2.0]
+  providers:
+    - Okta
+    - Azure AD
+    - Google Workspace
+  mfa: required_for_all_users
+  session_duration: 8h
+  idle_timeout: 30m
+
+# Fallback: Email/Password with MFA
+password_auth:
+  enabled: true
+  requirements:
+    min_length: 12
+    complexity: strong
+  mfa:
+    methods: [totp, webauthn]
+    required: true
+
+# API Access: OAuth 2.1
+api_auth:
+  grant_types: [authorization_code, client_credentials]
+  pkce: required
+  token_lifetime: 1h
+  refresh_token_rotation: true
+        ]]></code>
+      </example>
+      <example type="good" title="Multi-tenant RBAC">
+        <code lang="yaml"><![CDATA[
+# Tenant isolation
+tenants:
+  isolation: schema_per_tenant
+  context_propagation: jwt_claims
+  cross_tenant_access: disabled
+
+# Role hierarchy
+roles:
+  org_owner:
+    inherits: org_admin
+    permissions:
+      - org:delete
+      - billing:manage
+      - sso:configure
+  org_admin:
+    inherits: member
+    permissions:
+      - users:invite
+      - users:remove
+      - roles:assign
+      - settings:manage
+  member:
+    inherits: viewer
+    permissions:
+      - projects:create
+      - projects:edit_own
+      - data:import
+  viewer:
+    permissions:
+      - projects:read
+      - reports:view
+      - data:export_own
+        ]]></code>
+      </example>
+      <example type="good" title="Data protection config">
+        <code lang="yaml"><![CDATA[
+encryption:
+  at_rest:
+    algorithm: AES-256-GCM
+    key_management: AWS KMS
+    key_per_tenant: true
+  in_transit:
+    protocol: TLS 1.3
+    internal: mTLS
+  field_level:
+    pii_fields:
+      - email
+      - phone
+      - ssn
+    algorithm: AES-256-GCM
+    key_derivation: tenant_specific
+
+data_classification:
+  public: []
+  internal: [usage_metrics, feature_flags]
+  confidential: [customer_data, business_metrics]
+  restricted: [credentials, pii, financial_data]
+        ]]></code>
+      </example>
+      <note>SOC 2 Compliance Controls: CC6.1 Logical Access → RBAC, MFA, SSO; CC6.2 Auth Mechanisms → OAuth 2.1, SAML, MFA; CC6.3 Access Removal → Automated deprovisioning via SCIM; CC7.1 Configuration Management → IaC, GitOps, change approval; CC7.2 System Monitoring → SIEM, real-time alerts; CC8.1 Change Management → PR reviews, automated testing.</note>
+
+      <p>Example 2: Healthcare Application (HIPAA) — Patient health records system requiring HIPAA compliance with strict audit requirements. Characteristics: Protected Health Information (PHI), strict access controls, comprehensive audit logging, break-glass emergency access, patient consent management.</p>
+      <example type="good" title="HIPAA authentication config (SMART on FHIR)">
+        <code lang="yaml"><![CDATA[
+# Patient authentication
+patient_auth:
+  protocol: SMART on FHIR
+  identity_verification:
+    - government_id
+    - knowledge_based_auth
+  mfa:
+    required: true
+    methods: [sms, totp, push]
+  consent:
+    required: true
+    granular: true
+
+# Provider authentication
+provider_auth:
+  protocol: OIDC
+  identity_provider: organization_idp
+  mfa:
+    required: true
+    methods: [hardware_token, webauthn]
+  session:
+    duration: 4h
+    re_auth_for_phi: true
+
+# Emergency access (break-glass)
+break_glass:
+  enabled: true
+  requires:
+    - manager_approval_or
+    - emergency_code
+  audit: immediate_alert
+  auto_expire: 4h
+  review: mandatory_within_24h
+        ]]></code>
+      </example>
+      <example type="good" title="HIPAA ABAC authorization with consent">
+        <code lang="yaml"><![CDATA[
+# Attribute-based policies
+policies:
+  patient_record_access:
+    subject:
+      role: [physician, nurse, admin]
+      department: matches_patient_department
+      has_treating_relationship: true
+    resource:
+      type: patient_record
+      sensitivity: [normal, sensitive]
+    environment:
+      location: approved_facility
+      time: during_shift
+    action: [read, write]
+
+  sensitive_record_access:
+    subject:
+      role: [physician]
+      has_treating_relationship: true
+      consent_on_file: true
+    resource:
+      type: patient_record
+      sensitivity: [mental_health, substance_abuse, hiv]
+    action: [read]
+    additional_audit: true
+
+# Patient consent management
+consent:
+  types:
+    - treatment
+    - payment
+    - healthcare_operations
+    - research
+    - marketing
+  granularity: per_record_type
+  revocation: immediate
+        ]]></code>
+      </example>
+      <example type="good" title="PHI protection and audit logging">
+        <code lang="yaml"><![CDATA[
+encryption:
+  at_rest:
+    algorithm: AES-256-GCM
+    key_management: dedicated_hsm
+    key_rotation: 90_days
+  in_transit:
+    protocol: TLS 1.3
+    certificate_pinning: true
+  field_level:
+    phi_fields:
+      - ssn
+      - medical_record_number
+      - diagnosis
+      - treatment
+    algorithm: format_preserving_encryption
+    tokenization: enabled
+access_controls:
+  minimum_necessary: enforced
+  role_based_filtering: enabled
+  data_masking:
+    non_treatment_roles:
+      ssn: "XXX-XX-{last4}"
+      dob: "{year}-XX-XX"
+
+audit_logging:
+  all_phi_access:
+    log_fields:
+      - timestamp
+      - user_id
+      - patient_id
+      - record_type
+      - action
+      - access_reason
+      - ip_address
+      - device_id
+    retention: 7_years
+    storage: immutable_worm
+  alerts:
+    - bulk_record_access: "> 50 records/hour"
+    - after_hours_access: true
+    - break_glass_usage: immediate
+    - failed_auth_attempts: "> 3"
+  reporting:
+    patient_access_report: on_request
+    security_incident_report: within_24h
+    periodic_review: quarterly
+        ]]></code>
+      </example>
+
+      <p>Example 3: Fintech Payment Platform — Payment processing platform handling financial transactions requiring PCI-DSS compliance. Characteristics: credit card processing, financial transactions, regulatory compliance (PCI-DSS, SOX), high-value fraud target, real-time processing.</p>
+      <example type="good" title="Merchant authentication and request signing">
+        <code lang="yaml"><![CDATA[
+# Merchant authentication
+merchant_auth:
+  primary: api_key_with_signature
+  signature:
+    algorithm: HMAC-SHA256
+    timestamp_tolerance: 5m
+    replay_prevention: true
+  oauth:
+    enabled: true
+    grant_types: [client_credentials]
+    scopes:
+      - payments:create
+      - payments:read
+      - refunds:create
+      - reports:read
+    token_binding: certificate
+
+# Merchant portal
+portal_auth:
+  protocol: OIDC
+  mfa:
+    required: true
+    methods: [hardware_token, webauthn]
+  ip_allowlist: per_merchant
+  session_duration: 1h
+        ]]></code>
+      </example>
+      <example type="good" title="Request signing (HMAC-SHA256)">
+        <code lang="python"><![CDATA[
+import hmac
+import hashlib
+import time
+
+def sign_request(api_secret, method, path, body, timestamp):
+    """
+    Create HMAC signature for API request
+    """
+    message = f"{timestamp}.{method}.{path}.{body}"
+    signature = hmac.new(
+        api_secret.encode(),
+        message.encode(),
+        hashlib.sha256
+    ).hexdigest()
+    return signature
+
+# Request headers
+headers = {
+    "X-API-Key": "pk_live_xxxxx",
+    "X-Timestamp": str(int(time.time())),
+    "X-Signature": sign_request(secret, "POST", "/v1/payments", body, timestamp),
+    "Idempotency-Key": "unique-request-id"
+}
+        ]]></code>
+      </example>
+      <example type="good" title="Card data tokenization and fraud detection (PCI-DSS)">
+        <code lang="yaml"><![CDATA[
+# Tokenization strategy
+tokenization:
+  card_numbers:
+    storage: hsm_vault
+    token_format: "tok_{random_32}"
+    mapping: one_to_one
+    detokenization: authorized_services_only
+  cvv:
+    storage: never_stored
+    usage: authorization_only
+
+# PCI scope reduction
+pci_scope:
+  in_scope:
+    - payment_service
+    - card_vault
+    - hsm_cluster
+  out_of_scope:
+    - merchant_portal
+    - fraud_service
+    - analytics
+  network_segmentation:
+    cardholder_data_environment:
+      vlan: isolated
+      firewall: dedicated
+      monitoring: continuous
+
+encryption:
+  at_rest:
+    algorithm: AES-256
+    key_storage: hsm
+    key_rotation: annual
+    dual_control: required
+  in_transit:
+    protocol: TLS 1.3
+    cipher_suites: [TLS_AES_256_GCM_SHA384]
+    certificate_pinning: true
+
+# Real-time fraud scoring
+fraud_detection:
+  ml_models:
+    - transaction_anomaly_detection
+    - velocity_analysis
+    - device_fingerprinting
+    - behavioral_biometrics
+  rule_engine:
+    rules:
+      - high_value_new_card: "amount > 1000 AND card_age < 7d"
+      - velocity_spike: "tx_count_1h > 10"
+      - geo_anomaly: "distance_from_last_tx > 500km AND time < 2h"
+      - known_fraud_indicators: device_fingerprint IN fraud_list
+  actions:
+    score_0_30: approve
+    score_30_70: step_up_auth
+    score_70_90: manual_review
+    score_90_100: decline
+
+# 3D Secure
+3ds:
+  version: "2.2"
+  challenge_preference: risk_based
+  exemptions:
+    - low_value: "< 30 EUR"
+    - trusted_merchant: whitelisted
+    - transaction_risk_analysis: low_risk
+        ]]></code>
+      </example>
+
+      <p>Example 4: Microservices Platform — Modern microservices architecture with service mesh, requiring zero-trust security. Characteristics: 50+ microservices, Kubernetes deployment, multiple development teams, continuous deployment, internal and external APIs.</p>
+      <example type="good" title="SPIFFE/SPIRE service identity">
+        <code lang="yaml"><![CDATA[
+spiffe_ids:
+  format: "spiffe://cluster.local/ns/{namespace}/sa/{service_account}"
+  examples:
+    - "spiffe://cluster.local/ns/orders/sa/orders-api"
+    - "spiffe://cluster.local/ns/payments/sa/payments-processor"
+spire:
+  trust_domain: cluster.local
+  attestation:
+    node:
+      - k8s_psat
+    workload:
+      - k8s
+  svid_ttl: 1h
+        ]]></code>
+      </example>
+      <example type="good" title="Istio mTLS and authorization policy">
+        <code lang="yaml"><![CDATA[
+# Strict mTLS for entire mesh
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: istio-system
+spec:
+  mtls:
+    mode: STRICT
+---
+# Authorization policy for orders service
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: orders-api-policy
+  namespace: orders
+spec:
+  selector:
+    matchLabels:
+      app: orders-api
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/api-gateway/sa/api-gateway"
+              - "cluster.local/ns/payments/sa/payments-processor"
+      to:
+        - operation:
+            methods: ["GET", "POST"]
+            paths: ["/api/v1/orders/*"]
+        ]]></code>
+      </example>
+      <example type="good" title="OPA service-to-service authz">
+        <code lang="text"><![CDATA[
+# OPA policy for service authorization
+package envoy.authz
+
+import input.attributes.request.http as http_request
+import input.attributes.source.principal as source_principal
+
+default allow = false
+
+# Allow API gateway to access all services
+allow {
+    source_principal == "spiffe://cluster.local/ns/api-gateway/sa/api-gateway"
+}
+
+# Allow payments to access orders (for order status updates)
+allow {
+    source_principal == "spiffe://cluster.local/ns/payments/sa/payments-processor"
+    http_request.path == "/api/v1/orders/status"
+    http_request.method == "PUT"
+}
+
+# Allow inventory to access orders (read only)
+allow {
+    source_principal == "spiffe://cluster.local/ns/inventory/sa/inventory-api"
+    glob.match("/api/v1/orders/*", [], http_request.path)
+    http_request.method == "GET"
+}
+        ]]></code>
+      </example>
+      <example type="good" title="Vault secrets injection and Kubernetes network policy">
+        <code lang="yaml"><![CDATA[
+# Vault injector configuration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-api
+spec:
+  template:
+    metadata:
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "orders-api"
+        vault.hashicorp.com/agent-inject-secret-db: "secret/data/orders/database"
+        vault.hashicorp.com/agent-inject-template-db: |
+          {{- with secret "secret/data/orders/database" -}}
+          export DB_HOST="{{ .Data.data.host }}"
+          export DB_USER="{{ .Data.data.username }}"
+          export DB_PASS="{{ .Data.data.password }}"
+          {{- end }}
+    spec:
+      serviceAccountName: orders-api
+      containers:
+        - name: orders-api
+          command: ["sh", "-c", "source /vault/secrets/db && ./app"]
+---
+# Default deny all traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: orders
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Allow orders-api specific traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: orders-api-policy
+  namespace: orders
+spec:
+  podSelector:
+    matchLabels:
+      app: orders-api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: istio-system
+        - namespaceSelector:
+            matchLabels:
+              name: api-gateway
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: orders
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: vault
+        ]]></code>
+      </example>
+      <example type="good" title="Falco runtime security rules">
+        <code lang="yaml"><![CDATA[
+- rule: Unauthorized Process in Orders Container
+  desc: Detect unauthorized processes in orders containers
+  condition: >
+    spawned_process and
+    container.name = "orders-api" and
+    not proc.name in (node, npm, sh)
+  output: >
+    Unauthorized process in orders container
+    (user=%user.name command=%proc.cmdline container=%container.name)
+  priority: WARNING
+
+- rule: Sensitive File Access
+  desc: Detect access to sensitive files
+  condition: >
+    open_read and
+    container and
+    fd.name pmatch (/etc/shadow, /etc/passwd, /root/.ssh/*)
+  output: >
+    Sensitive file accessed (file=%fd.name container=%container.name)
+  priority: CRITICAL
+        ]]></code>
+      </example>
+
+      <p>Example 5: Consumer Mobile Application — Consumer-facing mobile app with passwordless authentication and device trust. Characteristics: iOS and Android apps, passwordless-first authentication, device binding, sensitive personal data, offline capability.</p>
+      <example type="good" title="Passkey registration and device binding">
+        <code lang="yaml"><![CDATA[
+# Passkey registration flow
+registration:
+  steps:
+    1. user_identity_verification:
+        methods: [email_otp, phone_otp]
+    2. device_attestation:
+        ios: device_check
+        android: play_integrity
+    3. passkey_creation:
+        authenticator: platform
+        user_verification: required
+        attestation: indirect
+    4. backup_method:
+        type: recovery_codes
+        count: 8
+
+# Passkey authentication flow
+authentication:
+  challenge:
+    length: 32
+    timeout: 5m
+  user_verification: required
+  backup_eligible: true  # Allow synced passkeys
+
+# Device binding
+device_binding:
+  enabled: true
+  factors:
+    - device_id
+    - passkey_credential_id
+    - device_attestation
+  max_devices: 5
+  suspicious_device_action: step_up_auth
+        ]]></code>
+      </example>
+      <example type="good" title="Device trust: iOS and Android attestation">
+        <code lang="yaml"><![CDATA[
+# iOS Device Attestation
+ios_attestation:
+  device_check:
+    enabled: true
+    app_attest:
+      enabled: true
+      environment: production
+  secure_enclave:
+    key_storage: true
+    biometric_binding: true
+
+# Android Device Attestation
+android_attestation:
+  play_integrity:
+    enabled: true
+    verdict_requirements:
+      device_integrity: MEETS_DEVICE_INTEGRITY
+      app_integrity: MEETS_STRONG_INTEGRITY
+  keystore:
+    hardware_backed: required
+    user_authentication: biometric_or_credential
+    validity_duration: 300  # seconds
+
+# Device risk signals
+risk_assessment:
+  signals:
+    - jailbreak_detection
+    - root_detection
+    - emulator_detection
+    - debugger_detection
+    - app_tampering
+    - hooking_framework_detection
+  action_on_risk:
+    low: log_only
+    medium: step_up_auth
+    high: block_access
+        ]]></code>
+      </example>
+      <example type="good" title="iOS Keychain secure storage">
+        <code lang="text"><![CDATA[
+// iOS Keychain storage
+class SecureStorage {
+    func storeCredential(_ credential: Data, forKey key: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key,
+            kSecValueData as String: credential,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            kSecAttrAccessControl as String: SecAccessControlCreateWithFlags(
+                nil,
+                kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+                [.biometryAny, .devicePasscode],
+                nil
+            )!
+        ]
+        SecItemAdd(query as CFDictionary, nil)
+    }
+}
+        ]]></code>
+      </example>
+      <example type="good" title="Android EncryptedSharedPreferences">
+        <code lang="text"><![CDATA[
+// Android EncryptedSharedPreferences
+class SecureStorage(context: Context) {
+    private val masterKey = MasterKey.Builder(context)
+        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .setUserAuthenticationRequired(true)
+        .setUserAuthenticationParameters(
+            300, // validity duration
+            KeyProperties.AUTH_BIOMETRIC_STRONG or
+            KeyProperties.AUTH_DEVICE_CREDENTIAL
+        )
+        .build()
+
+    private val securePrefs = EncryptedSharedPreferences.create(
+        context,
+        "secure_prefs",
+        masterKey,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
+
+    fun storeCredential(key: String, value: String) {
+        securePrefs.edit().putString(key, value).apply()
+    }
+}
+        ]]></code>
+      </example>
+      <example type="good" title="iOS certificate pinning (TrustKit)">
+        <code lang="text"><![CDATA[
+// iOS certificate pinning with TrustKit
+TrustKit.initSharedInstance(withConfiguration: [
+    kTSKSwizzleNetworkDelegates: true,
+    kTSKPinnedDomains: [
+        "api.example.com": [
+            kTSKEnforcePinning: true,
+            kTSKIncludeSubdomains: true,
+            kTSKPublicKeyHashes: [
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB="  // Backup pin
+            ],
+            kTSKReportUris: ["https://report.example.com/pin-failure"]
+        ]
+    ]
+])
+        ]]></code>
+      </example>
+      <example type="good" title="Mobile API security headers">
+        <code lang="yaml"><![CDATA[
+api_security:
+  headers:
+    required:
+      - X-Device-ID: device_identifier
+      - X-App-Version: semantic_version
+      - X-Platform: ios|android
+      - X-Device-Attestation: base64_attestation
+  rate_limiting:
+    per_device: 100/minute
+    per_user: 1000/minute
+    auth_endpoints: 5/minute
+  response_security:
+    no_sensitive_data_caching: true
+    certificate_transparency: enabled
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="configuration-templates">
+      <p>Copy-paste templates for common security configurations. Customize for your specific requirements.</p>
+
+      <example type="good" title="Keycloak Realm Configuration">
+        <code lang="json"><![CDATA[
+{
+  "realm": "production",
+  "enabled": true,
+  "sslRequired": "all",
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "passwordPolicy": "length(12) and upperCase(1) and lowerCase(1) and specialChars(1) and digits(1) and notUsername and passwordHistory(5)",
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA256",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "webAuthnPolicyRpEntityName": "YourApp",
+  "webAuthnPolicySignatureAlgorithms": ["ES256", "RS256"],
+  "webAuthnPolicyRpId": "yourapp.com",
+  "webAuthnPolicyAttestationConveyancePreference": "indirect",
+  "webAuthnPolicyAuthenticatorAttachment": "platform",
+  "webAuthnPolicyRequireResidentKey": "Yes",
+  "webAuthnPolicyUserVerificationRequirement": "required",
+  "clients": [
+    {
+      "clientId": "web-app",
+      "enabled": true,
+      "redirectUris": ["https://app.yourapp.com/callback"],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "access.token.lifespan": "3600",
+        "client.session.idle.timeout": "1800"
+      }
+    }
+  ]
+}
+        ]]></code>
+      </example>
+
+      <example type="good" title="Auth0 Configuration (Terraform)">
+        <code lang="hcl"><![CDATA[
+resource "auth0_tenant" "main" {
+  friendly_name           = "YourApp Production"
+  support_email           = "security@yourapp.com"
+  default_directory       = "Username-Password-Authentication"
+  session_lifetime        = 168
+  idle_session_lifetime   = 72
+}
+
+resource "auth0_client" "web_app" {
+  name                = "Web Application"
+  app_type            = "spa"
+  oidc_conformant     = true
+  token_endpoint_auth_method = "none"
+  callbacks           = ["https://app.yourapp.com/callback"]
+  allowed_origins     = ["https://app.yourapp.com"]
+  allowed_logout_urls = ["https://app.yourapp.com"]
+  jwt_configuration {
+    alg                 = "RS256"
+    lifetime_in_seconds = 3600
+  }
+  refresh_token {
+    rotation_type                = "rotating"
+    expiration_type              = "expiring"
+    token_lifetime               = 2592000
+    idle_token_lifetime          = 1296000
+  }
+  grant_types = ["authorization_code", "refresh_token"]
+}
+
+resource "auth0_guardian" "mfa" {
+  policy = "all-applications"
+  webauthn_platform { enabled = true }
+  webauthn_roaming { enabled = true }
+  otp { enabled = true }
+}
+        ]]></code>
+      </example>
+
+      <example type="good" title="OIDC Client and Token Verification (Python/FastAPI)">
+        <code lang="python"><![CDATA[
+# FastAPI OIDC configuration
+from authlib.integrations.starlette_client import OAuth
+from fastapi import FastAPI, Depends, HTTPException
+from starlette.config import Config
+
+config = Config(".env")
+oauth = OAuth(config)
+
+# OIDC provider configuration
+oauth.register(
+    name="oidc",
+    server_metadata_url="https://auth.yourapp.com/.well-known/openid-configuration",
+    client_id=config("OIDC_CLIENT_ID"),
+    client_secret=config("OIDC_CLIENT_SECRET"),
+    client_kwargs={
+        "scope": "openid profile email",
+        "code_challenge_method": "S256",  # PKCE
+    },
+)
+
+# Token verification
+from jose import jwt, JWTError
+from functools import lru_cache
+import httpx
+
+@lru_cache()
+def get_jwks():
+    """Fetch and cache JWKS"""
+    response = httpx.get("https://auth.yourapp.com/.well-known/jwks.json")
+    return response.json()
+
+async def verify_token(token: str) -> dict:
+    """Verify JWT token"""
+    try:
+        jwks = get_jwks()
+        unverified_header = jwt.get_unverified_header(token)
+
+        # Find the key
+        rsa_key = None
+        for key in jwks["keys"]:
+            if key["kid"] == unverified_header["kid"]:
+                rsa_key = key
+                break
+
+        if not rsa_key:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        payload = jwt.decode(
+            token,
+            rsa_key,
+            algorithms=["RS256"],
+            audience="https://api.yourapp.com",
+            issuer="https://auth.yourapp.com/",
+            options={
+                "verify_exp": True,
+                "verify_iat": True,
+                "verify_nbf": True,
+            }
+        )
+        return payload
+
+    except JWTError as e:
+        raise HTTPException(status_code=401, detail=f"Token validation failed: {e}")
+        ]]></code>
+      </example>
+
+      <example type="good" title="RBAC Configuration (YAML)">
+        <code lang="yaml"><![CDATA[
+roles:
+  super_admin:
+    description: "Full system access"
+    permissions: ["*:*"]
+    inherits: []
+  org_admin:
+    description: "Organization administrator"
+    permissions:
+      - "org:read"
+      - "org:update"
+      - "users:*"
+      - "teams:*"
+      - "billing:read"
+      - "settings:*"
+    inherits: [member]
+  team_lead:
+    description: "Team leader"
+    permissions:
+      - "team:read"
+      - "team:update"
+      - "team:members:manage"
+      - "projects:create"
+    inherits: [member]
+  member:
+    description: "Organization member"
+    permissions:
+      - "profile:read"
+      - "profile:update"
+      - "projects:read"
+      - "projects:update:own"
+      - "comments:create"
+      - "comments:update:own"
+      - "comments:delete:own"
+    inherits: [viewer]
+  viewer:
+    description: "Read-only access"
+    permissions:
+      - "projects:read"
+      - "comments:read"
+      - "reports:read"
+  api_service:
+    description: "Machine-to-machine API access"
+    permissions: ["api:read", "api:write"]
+    rate_limit: 10000/hour
+        ]]></code>
+      </example>
+
+      <example type="good" title="OpenFGA Authorization Model">
+        <code lang="text"><![CDATA[
+# OpenFGA model for document collaboration
+model
+  schema 1.1
+
+type user
+
+type organization
+  relations
+    define owner: [user]
+    define admin: [user] or owner
+    define member: [user] or admin
+
+type team
+  relations
+    define organization: [organization]
+    define lead: [user]
+    define member: [user] or lead
+    define can_create_project: lead or admin from organization
+
+type project
+  relations
+    define organization: [organization]
+    define team: [team]
+    define owner: [user]
+    define editor: [user] or owner or member from team
+    define viewer: [user] or editor or member from organization
+    define can_delete: owner or admin from organization
+    define can_share: owner or lead from team
+
+type document
+  relations
+    define project: [project]
+    define owner: [user]
+    define editor: [user] or owner or editor from project
+    define viewer: [user] or editor or viewer from project
+    define can_delete: owner or can_delete from project
+        ]]></code>
+      </example>
+
+      <example type="good" title="OpenFGA Python client usage">
+        <code lang="python"><![CDATA[
+# OpenFGA client usage (Python)
+from openfga_sdk import OpenFgaClient, ClientConfiguration
+from openfga_sdk.models import TupleKey, CheckRequest
+
+config = ClientConfiguration(
+    api_url="http://openfga:8080",
+    store_id="your-store-id",
+)
+client = OpenFgaClient(config)
+
+# Write relationship tuple
+async def grant_access(user_id: str, document_id: str, relation: str):
+    await client.write(
+        writes=[
+            TupleKey(
+                user=f"user:{user_id}",
+                relation=relation,
+                object=f"document:{document_id}"
+            )
+        ]
+    )
+
+# Check authorization
+async def can_edit(user_id: str, document_id: str) -> bool:
+    response = await client.check(
+        CheckRequest(
+            tuple_key=TupleKey(
+                user=f"user:{user_id}",
+                relation="editor",
+                object=f"document:{document_id}"
+            )
+        )
+    )
+    return response.allowed
+        ]]></code>
+      </example>
+
+      <example type="good" title="OPA Policy (Rego)">
+        <code lang="text"><![CDATA[
+package api.authz
+
+import rego.v1
+
+default allow := false
+
+# Allow admins full access
+allow if {
+    input.user.roles[_] == "admin"
+}
+
+# Allow users to read their own data
+allow if {
+    input.method == "GET"
+    input.path = ["api", "v1", "users", user_id]
+    input.user.id == user_id
+}
+
+# Allow team members to read team resources
+allow if {
+    input.method == "GET"
+    input.path = ["api", "v1", "teams", team_id, _]
+    input.user.team_memberships[_].team_id == team_id
+}
+
+# Rate limiting check
+rate_limit_exceeded if {
+    input.rate_limit.requests_per_minute > 100
+}
+
+deny["rate limit exceeded"] if {
+    rate_limit_exceeded
+}
+        ]]></code>
+      </example>
+
+      <example type="good" title="Kong API Gateway Configuration">
+        <code lang="yaml"><![CDATA[
+# kong.yaml - Kong declarative configuration
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: users-api
+    url: http://users-service:8080
+    connect_timeout: 5000
+    read_timeout: 60000
+    write_timeout: 60000
+    retries: 3
+
+    routes:
+      - name: users-route
+        paths:
+          - /api/v1/users
+        strip_path: false
+        protocols:
+          - https
+
+    plugins:
+      # JWT validation
+      - name: jwt
+        config:
+          secret_is_base64: false
+          claims_to_verify:
+            - exp
+            - nbf
+          key_claim_name: iss
+          header_names:
+            - Authorization
+
+      # Rate limiting
+      - name: rate-limiting
+        config:
+          minute: 100
+          hour: 1000
+          policy: redis
+          redis_host: redis
+          redis_port: 6379
+
+      # Request size limiting
+      - name: request-size-limiting
+        config:
+          allowed_payload_size: 10  # MB
+
+      # CORS
+      - name: cors
+        config:
+          origins:
+            - https://app.yourapp.com
+          methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+          headers:
+            - Authorization
+            - Content-Type
+          exposed_headers:
+            - X-RateLimit-Remaining
+          credentials: true
+          max_age: 3600
+
+      # IP restriction (for admin endpoints)
+      - name: ip-restriction
+        config:
+          allow:
+            - 10.0.0.0/8
+          status: 403
+          message: "Access denied"
+
+      # Request transformation (remove sensitive headers)
+      - name: request-transformer
+        config:
+          remove:
+            headers:
+              - X-Forwarded-For
+              - X-Real-IP
+
+      # Response transformation
+      - name: response-transformer
+        config:
+          add:
+            headers:
+              - "X-Content-Type-Options:nosniff"
+              - "X-Frame-Options:DENY"
+              - "Strict-Transport-Security:max-age=31536000; includeSubDomains"
+
+# Global plugins
+plugins:
+  - name: prometheus
+    config:
+      per_consumer: true
+
+  - name: file-log
+    config:
+      path: /var/log/kong/access.log
+      reopen: true
+        ]]></code>
+      </example>
+
+      <example type="good" title="FastAPI Security Middleware">
+        <code lang="python"><![CDATA[
+# security.py - FastAPI security configuration
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+import time
+import uuid
+
+app = FastAPI()
+
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://app.yourapp.com"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
+    expose_headers=["X-RateLimit-Remaining", "X-Request-ID"],
+    max_age=3600,
+)
+
+# Trusted hosts
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["api.yourapp.com", "*.yourapp.com"],
+)
+
+# Rate limiting
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+
+# Security headers middleware
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+
+        # Security headers
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+        response.headers["Content-Security-Policy"] = "default-src 'self'"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Request ID middleware
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+        request.state.request_id = request_id
+
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+
+        return response
+
+app.add_middleware(RequestIDMiddleware)
+
+# Input validation
+from pydantic import BaseModel, validator, Field
+from typing import Optional
+import re
+
+class UserCreate(BaseModel):
+    email: str = Field(..., max_length=255)
+    name: str = Field(..., min_length=1, max_length=100)
+    password: str = Field(..., min_length=12, max_length=128)
+
+    @validator("email")
+    def validate_email(cls, v):
+        if not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", v):
+            raise ValueError("Invalid email format")
+        return v.lower()
+
+    @validator("password")
+    def validate_password(cls, v):
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain uppercase letter")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Password must contain lowercase letter")
+        if not re.search(r"\d", v):
+            raise ValueError("Password must contain digit")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
+            raise ValueError("Password must contain special character")
+        return v
+        ]]></code>
+      </example>
+
+      <example type="good" title="HashiCorp Vault Kubernetes Injector">
+        <code lang="yaml"><![CDATA[
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-server
+spec:
+  template:
+    metadata:
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-inject-status: "update"
+        vault.hashicorp.com/role: "api-server"
+        vault.hashicorp.com/agent-inject-secret-db-creds: "database/creds/api-server"
+        vault.hashicorp.com/agent-inject-template-db-creds: |
+          {{- with secret "database/creds/api-server" -}}
+          export DATABASE_URL="postgresql://{{ .Data.username }}:{{ .Data.password }}@db.yourapp.com:5432/api"
+          {{- end }}
+        vault.hashicorp.com/agent-inject-secret-api-keys: "secret/data/api/keys"
+        vault.hashicorp.com/agent-inject-template-api-keys: |
+          {{- with secret "secret/data/api/keys" -}}
+          export STRIPE_API_KEY="{{ .Data.data.stripe_key }}"
+          export SENDGRID_API_KEY="{{ .Data.data.sendgrid_key }}"
+          {{- end }}
+    spec:
+      serviceAccountName: api-server
+      containers:
+        - name: api
+          image: api-server:latest
+          command: ["sh", "-c", "source /vault/secrets/db-creds && source /vault/secrets/api-keys && ./server"]
+        ]]></code>
+      </example>
+
+      <example type="good" title="AWS Secrets Manager with Rotation (Terraform)">
+        <code lang="hcl"><![CDATA[
+# secrets.tf - AWS Secrets Manager configuration
+
+# Database credentials with rotation
+resource "aws_secretsmanager_secret" "db_credentials" {
+  name        = "production/api/database"
+  description = "Production database credentials"
+  kms_key_id  = aws_kms_key.secrets.arn
+
+  tags = {
+    Environment = "production"
+    Application = "api"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "db_credentials" {
+  secret_id = aws_secretsmanager_secret.db_credentials.id
+  secret_string = jsonencode({
+    username = "api_user"
+    password = random_password.db_password.result
+    host     = aws_db_instance.main.address
+    port     = 5432
+    database = "api"
+  })
+}
+
+# Automatic rotation
+resource "aws_secretsmanager_secret_rotation" "db_rotation" {
+  secret_id           = aws_secretsmanager_secret.db_credentials.id
+  rotation_lambda_arn = aws_lambda_function.rotate_secret.arn
+
+  rotation_rules {
+    automatically_after_days = 30
+  }
+}
+
+# KMS key for encryption
+resource "aws_kms_key" "secrets" {
+  description             = "KMS key for secrets encryption"
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "Enable IAM policies"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "Allow Secrets Manager"
+        Effect = "Allow"
+        Principal = {
+          Service = "secretsmanager.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:GenerateDataKey*"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# IAM policy for application access
+resource "aws_iam_policy" "secrets_access" {
+  name        = "api-secrets-access"
+  description = "Allow API to access secrets"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = [
+          aws_secretsmanager_secret.db_credentials.arn,
+          "arn:aws:secretsmanager:*:*:secret:production/api/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt"
+        ]
+        Resource = aws_kms_key.secrets.arn
+      }
+    ]
+  })
+}
+        ]]></code>
+      </example>
+
+      <example type="good" title="Nginx TLS Configuration">
+        <code lang="text"><![CDATA[
+ssl_protocols TLSv1.3 TLSv1.2;
+ssl_prefer_server_ciphers off;
+ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;
+ssl_ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+ssl_protocols TLSv1.3 TLSv1.2;
+ssl_prefer_server_ciphers off;
+
+# TLS 1.3 ciphers (preferred)
+ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;
+
+# TLS 1.2 ciphers (fallback)
+ssl_ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+
+# ECDH curve
+ssl_ecdh_curve X25519:secp384r1;
+
+# Session settings
+ssl_session_timeout 1d;
+ssl_session_cache shared:SSL:50m;
+ssl_session_tickets off;
+
+# OCSP Stapling
+ssl_stapling on;
+ssl_stapling_verify on;
+resolver 8.8.8.8 8.8.4.4 valid=300s;
+resolver_timeout 5s;
+
+# Certificate paths
+ssl_certificate /etc/nginx/certs/fullchain.pem;
+ssl_certificate_key /etc/nginx/certs/privkey.pem;
+ssl_trusted_certificate /etc/nginx/certs/chain.pem;
+
+# DH parameters (if using RSA)
+ssl_dhparam /etc/nginx/certs/dhparam.pem;
+
+# Server block
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name api.yourapp.com;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Content-Security-Policy "default-src 'self'" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Hide server version
+    server_tokens off;
+
+    location / {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Redirect HTTP to HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.yourapp.com;
+    return 301 https://$host$request_uri;
+}
+        ]]></code>
+      </example>
+
+      <example type="good" title="Istio mTLS Configuration">
+        <code lang="yaml"><![CDATA[
+# istio-security.yaml - Istio security configuration
+
+# Strict mTLS for entire mesh
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: istio-system
+spec:
+  mtls:
+    mode: STRICT
+
+---
+# Namespace-specific mTLS (permissive during migration)
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: legacy-services
+spec:
+  mtls:
+    mode: PERMISSIVE
+
+---
+# Authorization policy - deny all by default
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-all
+  namespace: production
+spec:
+  {}  # Empty spec denies all traffic
+
+---
+# Allow traffic from API gateway to services
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-api-gateway
+  namespace: production
+spec:
+  selector:
+    matchLabels:
+      app: user-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"
+      to:
+        - operation:
+            methods: ["GET", "POST", "PUT", "DELETE"]
+            paths: ["/api/v1/*"]
+
+---
+# Allow service-to-service communication
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-order-to-inventory
+  namespace: production
+spec:
+  selector:
+    matchLabels:
+      app: inventory-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/production/sa/order-service"
+      to:
+        - operation:
+            methods: ["GET", "POST"]
+            paths: ["/api/v1/inventory/*"]
+
+---
+# JWT authentication for external requests
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: jwt-auth
+  namespace: production
+spec:
+  selector:
+    matchLabels:
+      app: api-gateway
+  jwtRules:
+    - issuer: "https://auth.yourapp.com/"
+      jwksUri: "https://auth.yourapp.com/.well-known/jwks.json"
+      audiences:
+        - "https://api.yourapp.com"
+      forwardOriginalToken: true
+        ]]></code>
+      </example>
+
+      <example type="good" title="Kubernetes Pod Security and Network Policy">
+        <code lang="yaml"><![CDATA[
+# pod-security.yaml - Pod security configuration
+
+# Namespace with restricted security
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: production
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+
+---
+# Secure deployment example
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-server
+  namespace: production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: api-server
+  template:
+    metadata:
+      labels:
+        app: api-server
+    spec:
+      serviceAccountName: api-server
+      automountServiceAccountToken: false
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: api
+          image: api-server:v1.0.0
+          imagePullPolicy: Always
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /app/cache
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
+
+---
+# Network policy - default deny
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: production
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+
+---
+# Network policy - allow specific traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-server-policy
+  namespace: production
+spec:
+  podSelector:
+    matchLabels:
+      app: api-server
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: istio-system
+        - podSelector:
+            matchLabels:
+              app: istio-ingressgateway
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: vault
+      ports:
+        - protocol: TCP
+          port: 8200
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        ]]></code>
+      </example>
+
+      <example type="good" title="Prometheus Security Alerting Rules">
+        <code lang="yaml"><![CDATA[
+# prometheus-security-rules.yaml - Security alerting rules
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: security-alerts
+  namespace: monitoring
+spec:
+  groups:
+    - name: authentication
+      rules:
+        - alert: HighAuthenticationFailureRate
+          expr: |
+            sum(rate(auth_login_failures_total[5m])) by (service)
+            / sum(rate(auth_login_attempts_total[5m])) by (service) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+            category: security
+          annotations:
+            summary: "High authentication failure rate"
+            description: "{{ $labels.service }} has >10% auth failure rate"
+
+        - alert: BruteForceAttackDetected
+          expr: |
+            sum(rate(auth_login_failures_total[1m])) by (source_ip) > 10
+          for: 2m
+          labels:
+            severity: critical
+            category: security
+          annotations:
+            summary: "Potential brute force attack"
+            description: "IP {{ $labels.source_ip }} has >10 failed logins/min"
+
+    - name: authorization
+      rules:
+        - alert: UnauthorizedAccessAttempts
+          expr: |
+            sum(rate(authz_denied_total[5m])) by (service, resource) > 5
+          for: 5m
+          labels:
+            severity: warning
+            category: security
+          annotations:
+            summary: "High rate of unauthorized access attempts"
+            description: "{{ $labels.service }} denied access to {{ $labels.resource }}"
+
+        - alert: PrivilegeEscalationAttempt
+          expr: |
+            sum(rate(authz_denied_total{reason="privilege_escalation"}[5m])) > 0
+          for: 1m
+          labels:
+            severity: critical
+            category: security
+          annotations:
+            summary: "Privilege escalation attempt detected"
+            description: "Attempted privilege escalation detected"
+
+    - name: data-access
+      rules:
+        - alert: SensitiveDataBulkAccess
+          expr: |
+            sum(rate(sensitive_data_access_total[1h])) by (user, data_type) > 1000
+          for: 10m
+          labels:
+            severity: warning
+            category: security
+          annotations:
+            summary: "Unusual bulk access to sensitive data"
+            description: "User {{ $labels.user }} accessed {{ $value }} {{ $labels.data_type }} records"
+
+    - name: network
+      rules:
+        - alert: SuspiciousOutboundTraffic
+          expr: |
+            sum(rate(network_egress_bytes_total{destination!~"internal.*"}[5m])) by (pod) > 10000000
+          for: 10m
+          labels:
+            severity: warning
+            category: security
+          annotations:
+            summary: "Unusual outbound network traffic"
+            description: "Pod {{ $labels.pod }} sending high volume to external destinations"
+
+    - name: certificates
+      rules:
+        - alert: CertificateExpiringSoon
+          expr: |
+            (cert_expiry_timestamp_seconds - time()) / 86400 < 30
+          for: 1h
+          labels:
+            severity: warning
+            category: security
+          annotations:
+            summary: "Certificate expiring soon"
+            description: "Certificate {{ $labels.cn }} expires in {{ $value }} days"
+
+        - alert: CertificateExpired
+          expr: |
+            cert_expiry_timestamp_seconds < time()
+          for: 0m
+          labels:
+            severity: critical
+            category: security
+          annotations:
+            summary: "Certificate has expired"
+            description: "Certificate {{ $labels.cn }} has expired"
+        ]]></code>
+      </example>
+
+      <example type="good" title="Content Security Policy (Node.js/Express)">
+        <code lang="javascript"><![CDATA[
+// csp-config.js - Content Security Policy configuration
+
+const cspConfig = {
+  // Base policies
+  directives: {
+    // Default - block everything not explicitly allowed
+    defaultSrc: ["'self'"],
+
+    // Scripts
+    scriptSrc: [
+      "'self'",
+      "'strict-dynamic'",  // Allow dynamically created scripts if parent is trusted
+      // Add nonce for inline scripts: `'nonce-${nonce}'`
+    ],
+
+    // Styles
+    styleSrc: [
+      "'self'",
+      "'unsafe-inline'",  // Required for many CSS-in-JS solutions
+    ],
+
+    // Images
+    imgSrc: [
+      "'self'",
+      "data:",
+      "https://cdn.yourapp.com",
+      "https://*.gravatar.com",
+    ],
+
+    // Fonts
+    fontSrc: [
+      "'self'",
+      "https://fonts.gstatic.com",
+    ],
+
+    // Connections (fetch, XHR, WebSocket)
+    connectSrc: [
+      "'self'",
+      "https://api.yourapp.com",
+      "wss://realtime.yourapp.com",
+      "https://analytics.yourapp.com",
+    ],
+
+    // Media (audio, video)
+    mediaSrc: [
+      "'self'",
+      "https://cdn.yourapp.com",
+    ],
+
+    // Object, embed, applet
+    objectSrc: ["'none'"],
+
+    // Frames
+    frameSrc: [
+      "'self'",
+      "https://www.youtube.com",
+      "https://player.vimeo.com",
+    ],
+
+    // Frame ancestors (who can embed this page)
+    frameAncestors: ["'self'"],
+
+    // Form submissions
+    formAction: ["'self'"],
+
+    // Base URI
+    baseUri: ["'self'"],
+
+    // Upgrade insecure requests
+    upgradeInsecureRequests: [],
+
+    // Block mixed content
+    blockAllMixedContent: [],
+
+    // Report violations
+    reportUri: ["/api/csp-report"],
+    reportTo: ["csp-endpoint"],
+  },
+
+  // Report-Only mode for testing
+  reportOnly: false,
+};
+
+// Express middleware
+function cspMiddleware(req, res, next) {
+  const nonce = crypto.randomBytes(16).toString('base64');
+  res.locals.cspNonce = nonce;
+
+  const directives = { ...cspConfig.directives };
+  directives.scriptSrc = [...directives.scriptSrc, `'nonce-${nonce}'`];
+
+  const cspHeader = Object.entries(directives)
+    .map(([key, values]) => {
+      const directive = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+      return `${directive} ${values.join(' ')}`;
+    })
+    .join('; ');
+
+  const headerName = cspConfig.reportOnly
+    ? 'Content-Security-Policy-Report-Only'
+    : 'Content-Security-Policy';
+
+  res.setHeader(headerName, cspHeader);
+  next();
+}
+        ]]></code>
+      </example>
+
+      <example type="good" title="Vault Policies (HCL)">
+        <code lang="hcl"><![CDATA[
+storage "raft" {
+  path    = "/vault/data"
+  node_id = "vault-1"
+}
+
+listener "tcp" {
+  address         = "0.0.0.0:8200"
+  tls_cert_file   = "/vault/certs/vault.crt"
+  tls_key_file    = "/vault/certs/vault.key"
+  tls_min_version = "tls13"
+}
+
+# Application policy
+path "secret/data/{{identity.entity.aliases.auth_kubernetes_*.metadata.service_account_namespace}}/*" {
+  capabilities = ["read"]
+}
+
+path "database/creds/{{identity.entity.aliases.auth_kubernetes_*.metadata.service_account_name}}" {
+  capabilities = ["read"]
+}
+
+# Admin policy
+path "secret/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+path "database/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# PKI policy
+path "pki/issue/web-certs" {
+  capabilities = ["create", "update"]
+}
+        ]]></code>
+      </example>
+
+      <example type="good" title="cert-manager Configuration (Kubernetes)">
+        <code lang="yaml"><![CDATA[
+# cert-manager.yaml - Let's Encrypt certificates
+
+# ClusterIssuer for Let's Encrypt
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: security@yourapp.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+      - dns01:
+          cloudflare:
+            email: admin@yourapp.com
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+
+---
+# Certificate for API
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: api-tls
+  namespace: production
+spec:
+  secretName: api-tls-secret
+  duration: 2160h  # 90 days
+  renewBefore: 360h  # 15 days
+  isCA: false
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+    - api.yourapp.com
+    - "*.api.yourapp.com"
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+
+---
+# Ingress with TLS
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-ingress
+  namespace: production
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+spec:
+  tls:
+    - hosts:
+        - api.yourapp.com
+      secretName: api-tls-secret
+  rules:
+    - host: api.yourapp.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-service
+                port:
+                  number: 80
+        ]]></code>
+      </example>
+
+      <example type="good" title="Security Logging Configuration (Fluent Bit)">
+        <code lang="yaml"><![CDATA[
+# fluent-bit-security.yaml - Security-focused logging
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluent-bit-config
+  namespace: logging
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush         1
+        Log_Level     info
+        Daemon        off
+        Parsers_File  parsers.conf
+
+    [INPUT]
+        Name              tail
+        Path              /var/log/containers/*.log
+        Parser            docker
+        Tag               kube.*
+        Mem_Buf_Limit     5MB
+        Skip_Long_Lines   On
+
+    [FILTER]
+        Name                kubernetes
+        Match               kube.*
+        Kube_URL            https://kubernetes.default.svc:443
+        Kube_CA_File        /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token
+        Merge_Log           On
+        K8S-Logging.Parser  On
+        K8S-Logging.Exclude Off
+
+    # Security event detection
+    [FILTER]
+        Name          grep
+        Match         kube.*
+        Regex         log (authentication|authorization|security|audit|error|failed|denied|blocked)
+
+    # Mask sensitive data
+    [FILTER]
+        Name          lua
+        Match         kube.*
+        Script        mask_sensitive.lua
+        Call          mask_sensitive
+
+    [OUTPUT]
+        Name            es
+        Match           kube.*
+        Host            elasticsearch.logging.svc
+        Port            9200
+        Index           security-logs
+        Type            _doc
+        Logstash_Format On
+        Retry_Limit     False
+
+  mask_sensitive.lua: |
+    function mask_sensitive(tag, timestamp, record)
+        -- Mask passwords
+        if record["log"] then
+            record["log"] = string.gsub(record["log"], "password[\"']?%s*[:=]%s*[\"']?[^\"'%s,}]+", "password=***MASKED***")
+            record["log"] = string.gsub(record["log"], "api[_-]?key[\"']?%s*[:=]%s*[\"']?[^\"'%s,}]+", "api_key=***MASKED***")
+            record["log"] = string.gsub(record["log"], "token[\"']?%s*[:=]%s*[\"']?[^\"'%s,}]+", "token=***MASKED***")
+        end
+        return 1, timestamp, record
+    end
+        ]]></code>
+      </example>
+
+      <example type="good" title="Complete Security Headers (Helmet.js)">
+        <code lang="javascript"><![CDATA[
+// security-headers.js - Complete security headers configuration
+
+const helmet = require('helmet');
+
+const securityHeaders = helmet({
+  // Content Security Policy
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'strict-dynamic'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https://api.yourapp.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'self'"],
+      formAction: ["'self'"],
+      upgradeInsecureRequests: [],
+    },
+  },
+
+  // Strict Transport Security
+  strictTransportSecurity: {
+    maxAge: 31536000,  // 1 year
+    includeSubDomains: true,
+    preload: true,
+  },
+
+  // X-Content-Type-Options
+  xContentTypeOptions: true,  // nosniff
+
+  // X-Frame-Options
+  xFrameOptions: { action: 'deny' },
+
+  // X-XSS-Protection (legacy, but still useful)
+  xXssProtection: true,
+
+  // Referrer-Policy
+  referrerPolicy: {
+    policy: 'strict-origin-when-cross-origin',
+  },
+
+  // Permissions-Policy (formerly Feature-Policy)
+  permittedCrossDomainPolicies: false,
+
+  // DNS Prefetch Control
+  dnsPrefetchControl: { allow: false },
+
+  // Download Options (IE)
+  xDownloadOptions: true,
+
+  // Powered-By (remove)
+  xPoweredBy: false,
+
+  // Origin-Agent-Cluster
+  originAgentCluster: true,
+
+  // Cross-Origin headers
+  crossOriginEmbedderPolicy: { policy: 'require-corp' },
+  crossOriginOpenerPolicy: { policy: 'same-origin' },
+  crossOriginResourcePolicy: { policy: 'same-origin' },
+});
+
+module.exports = securityHeaders;
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="attack-surface-analysis"><![CDATA[
+Analyze the attack surface for:
+
+Application Type: [WEB APP/API/MOBILE/MICROSERVICES]
+Tech Stack: [LIST TECHNOLOGIES]
+Deployment: [CLOUD PROVIDER/ON-PREM]
+User Types: [ANONYMOUS/AUTHENTICATED/ADMIN]
+
+Identify:
+1. All entry points (APIs, UIs, file uploads, webhooks)
+2. Authentication mechanisms and their weaknesses
+3. Data storage locations and sensitivity
+4. Third-party integrations and trust assumptions
+5. Admin/debug interfaces
+
+For each entry point, assess:
+- Required authentication level
+- Input validation requirements
+- Potential attack vectors
+- Recommended security controls
+      ]]></prompt>
+      <prompt purpose="threat-actor-profiling"><![CDATA[
+Create threat actor profiles for:
+
+Industry: [YOUR INDUSTRY]
+Data Types: [WHAT DATA YOU HANDLE]
+Business Model: [B2B/B2C/MARKETPLACE]
+Geographic Presence: [REGIONS]
+
+For each relevant threat actor type, describe:
+1. Motivation (financial, ideological, espionage, disruption)
+2. Capabilities (script kiddie to nation-state)
+3. Likely attack vectors
+4. Potential targets within the system
+5. Detection indicators
+6. Recommended defenses
+
+Consider: opportunistic attackers, competitors, insiders, hacktivists, organized crime, nation-states
+      ]]></prompt>
+      <prompt purpose="pasta-threat-model"><![CDATA[
+Guide me through a PASTA (Process for Attack Simulation and Threat Analysis) for:
+
+Application: [APPLICATION NAME]
+Business Context: [WHAT THE APP DOES]
+Compliance Requirements: [GDPR/HIPAA/PCI-DSS/SOC2]
+
+Walk through all 7 stages:
+
+Stage 1 - Define Objectives:
+- What are the business objectives?
+- What is the risk tolerance?
+
+Stage 2 - Define Scope:
+- What are the technical boundaries?
+- What data flows exist?
+
+Stage 3 - Application Decomposition:
+- What are the architectural components?
+- What are the trust boundaries?
+
+Stage 4 - Threat Analysis:
+- What threats apply to each component?
+- Create attack trees for top threats
+
+Stage 5 - Vulnerability Analysis:
+- What vulnerabilities might exist?
+- How do they map to threats?
+
+Stage 6 - Attack Modeling:
+- How would attacks be executed?
+- What are the exploit chains?
+
+Stage 7 - Risk and Impact Analysis:
+- What is the business impact?
+- How should we prioritize mitigations?
+      ]]></prompt>
+      <prompt purpose="stride-analysis"><![CDATA[
+Perform a STRIDE threat analysis for the following system:
+
+System: [DESCRIBE YOUR SYSTEM]
+- Components: [LIST MAJOR COMPONENTS]
+- Data flows: [DESCRIBE HOW DATA MOVES]
+- Trust boundaries: [WHERE TRUST CHANGES]
+- Entry points: [EXTERNAL INTERFACES]
+
+For each STRIDE category (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege):
+
+1. Identify specific threats relevant to this system
+2. Rate likelihood (Low/Medium/High)
+3. Rate impact (Low/Medium/High)
+4. Suggest mitigations
+
+Format output as a table with: Threat Category | Specific Threat | Likelihood | Impact | Mitigation
+      ]]></prompt>
+      <prompt purpose="authentication-strategy"><![CDATA[
+Design an authentication strategy for:
+
+Application Type: [SPA/MOBILE/API/B2B SAAS]
+User Types: [CONSUMERS/EMPLOYEES/BOTH]
+Compliance: [ANY SPECIFIC REQUIREMENTS]
+Current State: [EXISTING AUTH IF ANY]
+
+Consider and recommend:
+1. Primary authentication method — Why this method? Implementation complexity. User experience impact.
+2. Multi-factor authentication — Required for which users/actions? Which MFA methods to support? Fallback/recovery options.
+3. Session management — Session duration and idle timeout. Session storage approach. Concurrent session handling.
+4. Account recovery — Recovery flow without creating phishing vectors. Identity verification steps.
+5. Enterprise SSO (if B2B) — SAML vs OIDC support. Just-in-time provisioning.
+
+Provide specific technology recommendations.
+      ]]></prompt>
+      <prompt purpose="oauth21-review"><![CDATA[
+Review and improve my OAuth 2.1 implementation:
+
+Current Setup:
+- Client Type: [PUBLIC/CONFIDENTIAL]
+- Grant Types: [AUTHORIZATION_CODE/CLIENT_CREDENTIALS]
+- Token Storage: [WHERE TOKENS ARE STORED]
+- Refresh Token Strategy: [HOW REFRESH WORKS]
+
+Verify compliance with RFC 9700 (OAuth 2.0 Security BCP):
+1. Is PKCE implemented correctly?
+2. Are redirect URIs validated with exact matching?
+3. Is the Implicit grant disabled?
+4. Are refresh tokens rotated (for public clients)?
+5. Are tokens properly scoped and audience-restricted?
+6. Is sender-constraining (DPoP/mTLS) used where appropriate?
+
+Identify gaps and provide specific fixes with code examples.
+      ]]></prompt>
+      <prompt purpose="authorization-model-selection"><![CDATA[
+Help me choose the right authorization model:
+
+Application: [DESCRIBE APPLICATION]
+Access Control Requirements:
+- [REQUIREMENT 1]
+- [REQUIREMENT 2]
+
+Compare these models for my use case:
+1. RBAC (Role-Based Access Control)
+2. ABAC (Attribute-Based Access Control)
+3. ReBAC (Relationship-Based Access Control)
+
+For each, explain:
+- How it would implement my requirements
+- Implementation complexity
+- Scalability characteristics
+- Maintenance burden
+- Technology options (OpenFGA, Casbin, OPA, custom)
+
+Provide a recommendation with justification.
+      ]]></prompt>
+      <prompt purpose="zero-trust-design"><![CDATA[
+Design a Zero Trust architecture for:
+
+Current State:
+- Network: [VPN/DIRECT/HYBRID]
+- Identity: [CURRENT IDP]
+- Applications: [ON-PREM/CLOUD/HYBRID]
+- Users: [REMOTE/OFFICE/BOTH]
+
+Compliance Requirements: [NIST/CISA/INDUSTRY-SPECIFIC]
+
+Design across the 7 pillars: Identity, Device, Network, Application, Data, Infrastructure, Visibility.
+Create a phased implementation roadmap.
+      ]]></prompt>
+      <prompt purpose="architecture-security-review"><![CDATA[
+Review the security of this architecture:
+
+[PASTE ARCHITECTURE DIAGRAM OR DESCRIPTION]
+
+Analyze:
+1. Authentication and Authorization — Are all entry points authenticated? Is authorization enforced consistently? Are there any bypass opportunities?
+2. Data Protection — Is sensitive data encrypted? Are there any data exposure risks? Is data minimization practiced?
+3. Network Security — Are components properly segmented? Is internal traffic encrypted? Are there unnecessary exposed services?
+4. Supply Chain — Third-party dependencies? Trust assumptions? Integration security?
+5. Operational Security — Logging and monitoring? Incident response capability? Backup and recovery?
+
+Provide findings in priority order with specific recommendations.
+      ]]></prompt>
+      <prompt purpose="red-team-critic"><![CDATA[
+ROLE: red-team critic
+TASK: Given the proposed auth design, attempt three concrete attacks:
+(1) account takeover via auth flow abuse,
+(2) privilege escalation via authz bypass,
+(3) data exfiltration via tool/MCP abuse (if LLM agent).
+For each: precondition, exploit steps, detection signal.
+      ]]></prompt>
+      <prompt purpose="passkey-implementation"><![CDATA[
+Help me design a passkey (FIDO2/WebAuthn) implementation for:
+
+Platform: [WEB/MOBILE/BOTH]
+Current Auth: [EXISTING AUTHENTICATION]
+User Base: [CONSUMER/ENTERPRISE/BOTH]
+
+Address:
+
+1. Registration Flow
+   - How to onboard new users with passkeys?
+   - Identity verification before passkey registration?
+   - Support for platform vs roaming authenticators?
+
+2. Authentication Flow
+   - Primary passkey authentication
+   - Handling users without passkeys
+   - Cross-device authentication scenarios
+
+3. Account Recovery
+   - What happens if user loses all passkey devices?
+   - Recovery methods that don't undermine security
+   - Avoid creating phishing vectors
+
+4. Migration Strategy
+   - How to migrate existing password users?
+   - Incentives for adoption
+   - Timeline for deprecating passwords
+
+5. Technical Implementation
+   - WebAuthn API integration
+   - Backend credential storage
+   - Multi-device passkey support (synced passkeys)
+
+Include code examples for critical flows.
+      ]]></prompt>
+      <prompt purpose="rbac-design"><![CDATA[
+Design an RBAC system for:
+
+Application: [APPLICATION TYPE]
+User Types: [LIST USER TYPES]
+Resources: [LIST RESOURCES/ENTITIES]
+Operations: [CRUD + CUSTOM OPERATIONS]
+
+Requirements:
+- [SPECIFIC REQUIREMENT 1]
+- [SPECIFIC REQUIREMENT 2]
+
+Design:
+
+1. Role Hierarchy
+   - Define roles from most to least privileged
+   - Define inheritance relationships
+   - Handle role explosion prevention
+
+2. Permission Schema
+   - Define permission format (resource:action:scope)
+   - List all permissions
+   - Map permissions to roles
+
+3. Implementation
+   - Database schema for roles and permissions
+   - API for role assignment
+   - Permission check middleware
+   - Caching strategy
+
+4. Management
+   - UI for role management
+   - Audit logging
+   - Separation of duties
+
+Provide schema definitions and code examples.
+      ]]></prompt>
+      <prompt purpose="openfga-model-design"><![CDATA[
+Design an OpenFGA authorization model for:
+
+Application: [APPLICATION TYPE]
+Entities: [LIST MAIN ENTITIES]
+Relationships: [DESCRIBE RELATIONSHIPS]
+
+Requirements:
+- [ACCESS CONTROL REQUIREMENT 1]
+- [ACCESS CONTROL REQUIREMENT 2]
+- [ACCESS CONTROL REQUIREMENT 3]
+
+Create:
+
+1. Type definitions for each entity
+
+2. Relations including:
+   - Direct relationships (owner, member, viewer)
+   - Computed relationships (can_edit, can_view)
+   - Relationship inheritance
+
+3. Example tuples showing:
+   - How to grant access
+   - How relationships propagate
+   - Multi-tenancy patterns
+
+4. Check queries for common authorization scenarios
+
+5. List queries (list objects user can access)
+
+Format the model in OpenFGA DSL syntax.
+      ]]></prompt>
+      <prompt purpose="api-security-assessment"><![CDATA[
+Assess API security against OWASP API Security Top 10:
+
+API Description: [DESCRIBE YOUR API]
+Authentication: [CURRENT AUTH METHOD]
+Authorization: [CURRENT AUTHZ METHOD]
+Tech Stack: [FRAMEWORK/LANGUAGE]
+
+For each OWASP API risk:
+
+1. API1:2023 - Broken Object-Level Authorization
+   - Current state
+   - Gaps identified
+   - Remediation steps
+
+2. API2:2023 - Broken Authentication
+   - Current state
+   - Gaps identified
+   - Remediation steps
+
+[Continue for all 10...]
+
+Prioritize findings by risk level and provide actionable fixes.
+      ]]></prompt>
+      <prompt purpose="api-gateway-security-design"><![CDATA[
+Design an API gateway security layer:
+
+Requirements:
+- Backend Services: [LIST SERVICES]
+- Client Types: [WEB/MOBILE/THIRD-PARTY]
+- Traffic Volume: [REQUESTS/SECOND]
+- Compliance: [ANY REQUIREMENTS]
+
+Design the following:
+
+1. Authentication Layer
+   - Token validation approach
+   - API key management
+   - mTLS for service-to-service
+
+2. Rate Limiting Strategy
+   - Per-client limits
+   - Per-endpoint limits
+   - Burst handling
+   - Rate limit headers
+
+3. Input Validation
+   - Request schema validation
+   - Payload size limits
+   - Content type enforcement
+
+4. Security Policies
+   - IP allowlisting/blocklisting
+   - Geo-blocking
+   - Bot protection
+
+5. Logging and Monitoring
+   - Security event logging
+   - Anomaly detection
+   - Alerting rules
+
+Provide configuration examples for [Kong/AWS API Gateway/Nginx/other].
+      ]]></prompt>
+      <prompt purpose="request-signing-design"><![CDATA[
+Design a request signing mechanism for API security:
+
+API Type: [REST/GRAPHQL]
+Clients: [SERVER-TO-SERVER/MOBILE/BROWSER]
+Security Requirements: [INTEGRITY/NON-REPUDIATION/REPLAY-PREVENTION]
+
+Design:
+
+1. Signature Algorithm
+   - HMAC-SHA256 or RSA/ECDSA?
+   - Why this choice?
+
+2. Signed Components
+   - Which request elements to sign?
+   - Timestamp handling
+   - Request body canonicalization
+
+3. Signature Format
+   - Header format
+   - Signature string construction
+   - Example signed request
+
+4. Verification Process
+   - Server-side verification steps
+   - Timestamp tolerance
+   - Replay attack prevention
+
+5. Key Management
+   - Key generation
+   - Key rotation
+   - Key distribution to clients
+
+Provide code examples for both client signing and server verification.
+      ]]></prompt>
+      <prompt purpose="encryption-architecture"><![CDATA[
+Design a data encryption architecture for:
+
+Data Types:
+- [DATA TYPE 1]: [SENSITIVITY LEVEL]
+- [DATA TYPE 2]: [SENSITIVITY LEVEL]
+- [DATA TYPE 3]: [SENSITIVITY LEVEL]
+
+Storage: [DATABASE/OBJECT STORAGE/FILES]
+Compliance: [GDPR/HIPAA/PCI-DSS]
+
+Design:
+
+1. Encryption at Rest
+   - Database encryption (TDE vs application-level)
+   - File/object storage encryption
+   - Key hierarchy (root -> master -> data keys)
+   - KMS selection (AWS KMS/GCP KMS/Vault)
+
+2. Encryption in Transit
+   - TLS configuration
+   - Internal service-to-service encryption
+   - Certificate management
+
+3. Field-Level Encryption
+   - Which fields require additional encryption?
+   - Searchable encryption options
+   - Key-per-tenant vs shared keys
+
+4. Key Management
+   - Key rotation schedule
+   - Key access policies
+   - Key backup and recovery
+   - Audit logging
+
+5. Post-Quantum Considerations
+   - Timeline for PQC migration
+   - Hybrid approach recommendations
+
+Provide implementation examples.
+      ]]></prompt>
+      <prompt purpose="secrets-management-design"><![CDATA[
+Design a secrets management strategy:
+
+Environment: [KUBERNETES/VMS/SERVERLESS]
+Cloud Provider: [AWS/GCP/AZURE/MULTI-CLOUD]
+Secret Types:
+- Database credentials
+- API keys
+- TLS certificates
+- Encryption keys
+
+Current State: [HOW SECRETS ARE MANAGED NOW]
+
+Design:
+
+1. Secrets Storage
+   - Vault vs cloud-native (AWS Secrets Manager, etc.)
+   - Multi-region/multi-cloud considerations
+   - Encryption and access control
+
+2. Secret Injection
+   - How applications receive secrets
+   - Kubernetes integration (CSI driver, sidecar)
+   - Serverless integration
+   - Avoiding secrets in environment variables
+
+3. Dynamic Secrets
+   - Database credential rotation
+   - Cloud IAM temporary credentials
+   - TTL and renewal
+
+4. Static Secret Rotation
+   - Rotation schedule by secret type
+   - Zero-downtime rotation
+   - Notification and monitoring
+
+5. Development Workflow
+   - Local development secrets
+   - CI/CD pipeline secrets
+   - Secret request/approval process
+
+6. Security Controls
+   - Access policies
+   - Audit logging
+   - Secret scanning in code
+
+Provide configuration examples for the recommended solution.
+      ]]></prompt>
+      <prompt purpose="service-mesh-security-design"><![CDATA[
+Design service mesh security for Kubernetes:
+
+Cluster: [SIZE AND CONFIGURATION]
+Services: [NUMBER AND TYPES]
+Current State: [EXISTING SECURITY MEASURES]
+Compliance: [REQUIREMENTS]
+
+Design:
+
+1. mTLS Configuration
+   - Mesh-wide policy (permissive vs strict)
+   - Migration strategy from plaintext
+   - Certificate management (SPIFFE/SPIRE)
+
+2. Authorization Policies
+   - Default deny strategy
+   - Service-to-service policies
+   - JWT validation for external requests
+   - RBAC integration
+
+3. Traffic Policies
+   - Rate limiting
+   - Circuit breakers
+   - Retries and timeouts
+
+4. Observability
+   - Security metrics
+   - Access logs
+   - Distributed tracing for security events
+
+5. Integration
+   - External authorization (OPA/OpenFGA)
+   - Secret injection
+   - Egress control
+
+Provide Istio/Linkerd configuration examples.
+      ]]></prompt>
+      <prompt purpose="code-security-review"><![CDATA[
+Review this code for security issues:
+
+Context:
+- Application Type: [WEB/API/SERVICE]
+- Framework: [FRAMEWORK NAME]
+- Handles: [WHAT DATA/OPERATIONS]
+
+Check for:
+
+1. Injection vulnerabilities (SQL, NoSQL, Command, LDAP)
+2. Authentication/authorization flaws
+3. Cryptographic issues
+4. Sensitive data exposure
+5. Input validation gaps
+6. Error handling issues
+7. Logging security events properly
+8. Hardcoded secrets
+9. Race conditions
+10. Insecure deserialization
+
+For each finding:
+- Severity (Critical/High/Medium/Low)
+- Line numbers affected
+- Explanation of the risk
+- Fixed code example
+
+Also suggest improvements for defense-in-depth.
+      ]]></prompt>
+      <prompt purpose="asvs-mapping"><![CDATA[
+Map my security controls to OWASP ASVS 5.0:
+
+Application: [APPLICATION TYPE]
+Current Security Controls:
+- [CONTROL 1]
+- [CONTROL 2]
+- [CONTROL 3]
+
+Target Level: [L1/L2/L3]
+
+For each ASVS chapter:
+1. List applicable requirements
+2. Map existing controls
+3. Identify gaps
+4. Prioritize remediation
+
+Focus on:
+- V1: Architecture (threat modeling, secure design)
+- V2: Authentication
+- V3: Session Management
+- V4: Access Control
+- V5: Validation, Sanitization
+- V6: Cryptography
+- V7: Error Handling
+- V8: Data Protection
+- V9: Communication
+- V13: API Security
+- V14: Configuration
+
+Create a compliance matrix with status: Compliant/Partial/Non-Compliant/N/A
+      ]]></prompt>
+      <prompt purpose="soc2-controls"><![CDATA[
+Map security architecture to SOC 2 Trust Service Criteria:
+
+System Description: [DESCRIBE SYSTEM]
+Scope: [IN-SCOPE COMPONENTS]
+
+For each relevant criterion:
+
+CC6 - Logical and Physical Access:
+- CC6.1: How is logical access implemented?
+- CC6.2: How are auth credentials managed?
+- CC6.3: How is access removed?
+
+CC7 - System Operations:
+- CC7.1: How are security configs managed?
+- CC7.2: How are vulnerabilities identified?
+
+CC8 - Change Management:
+- CC8.1: How are changes authorized and tested?
+
+For each:
+1. Current implementation
+2. Evidence to collect
+3. Gaps requiring attention
+
+Recommend additional controls for any gaps.
+      ]]></prompt>
+      <prompt purpose="gdpr-data-protection"><![CDATA[
+Design data protection measures for GDPR compliance:
+
+Data Processing Activities:
+- [ACTIVITY 1]: [DATA TYPES]
+- [ACTIVITY 2]: [DATA TYPES]
+
+Data Subjects: [WHO]
+Processing Locations: [COUNTRIES]
+
+Address:
+
+1. Data Protection by Design
+   - Encryption requirements
+   - Pseudonymization approach
+   - Data minimization controls
+
+2. Access Controls
+   - Who can access personal data?
+   - Logging and monitoring access
+   - Purpose limitation enforcement
+
+3. Data Subject Rights
+   - Right of access implementation
+   - Right to erasure (technical approach)
+   - Data portability format
+
+4. Data Transfers
+   - Cross-border transfer mechanisms
+   - Standard contractual clauses
+   - Technical safeguards
+
+5. Breach Detection and Response
+   - Detection capabilities
+   - 72-hour notification process
+   - Documentation requirements
+
+Provide technical implementation guidance for each requirement.
+      ]]></prompt>
+      <prompt purpose="structure-prompts"><![CDATA[
+Structure security prompts for best results:
+
+1. Context First
+   - System/application description
+   - Technology stack
+   - Current security posture
+
+2. Specific Requirements
+   - Compliance needs
+   - Business constraints
+   - Risk tolerance
+
+3. Clear Ask
+   - What output format you want
+   - Level of detail needed
+   - Any specific areas to focus on
+
+4. Constraints
+   - Budget limitations
+   - Team capabilities
+   - Timeline
+      ]]></prompt>
+      <prompt purpose="iterative-refinement"><![CDATA[
+Iterative refinement pattern for security design:
+
+Start Broad:
+"Design authentication for a SaaS application"
+
+Then Narrow:
+"Focus on the OAuth 2.1 implementation details"
+
+Then Specific:
+"Show me the token validation code with all security checks"
+
+Finally Validate:
+"Review this implementation for security gaps"
+      ]]></prompt>
+      <prompt purpose="request-formats"><![CDATA[
+Request formats for different security outputs:
+
+For Documentation: "Create a security design document..."
+For Checklists: "Create a checklist for..."
+For Code: "Provide code examples for..."
+For Review: "Review and identify issues in..."
+For Comparison: "Compare options A and B for..."
+      ]]></prompt>
+      <note>Anti-patterns: do not ask LLMs to implement cryptographic algorithms — use established libraries; never share real credentials/keys; validate security recommendations against authoritative sources; do not use LLM for penetration testing without proper authorization; always have security experts validate LLM output for security-critical changes.</note>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Run a STRIDE threat-modeling agent over a system diagram (C4 L2/L3), an OWASP/CWE mapper agent that proposes controls, a code-side reviewer agent that validates the controls actually exist in the repo, and a critic that argues for the attacker. Always keep human approval at policy boundaries: identity, key management, network egress, third-party data sharing. Persist threat-model output in docs/security/threats/&lt;feature&gt;.md so the next iteration starts from the prior model.</p>
+      <prompt purpose="stride-threat-modeler"><![CDATA[
+ROLE: STRIDE threat modeler
+INPUT: C4 L2 diagram + data classification table.
+TASK: For each component and trust boundary, list threats per STRIDE category.
+Score with DREAD (1-10 each). Produce a top-10 ranked list with concrete
+mitigations citing OWASP/NIST controls. Reject mitigations that are not
+verifiable in code or infra.
+      ]]></prompt>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>LLM-generated JWT validation often skips audience/issuer checks; require explicit aud/iss/exp validation in templates and tests.</item>
+        <item>Agents add CORS '*' "to fix the error" — require a wildcard-ban check in CI.</item>
+        <item>Prompt injection: any agent that ingests untrusted text must operate with reduced tool scope; agents that write code from external tickets are at high risk.</item>
+        <item>Threat-model outputs from LLMs uniformly score "medium/medium" — force differentiation and require a top-N cutoff.</item>
+        <item>Agents pull example secrets ("changeme", "password123") into configs — secret scanning at commit and pre-deploy is mandatory.</item>
+        <item>Human-in-loop gates: identity provider config changes, IAM policy diffs, public surface (egress firewall, public bucket, new third-party integration), key/secret rotation.</item>
+        <item>LLMs hallucinate plausible-looking auth flows; OAuth/OIDC details (PKCE, audience, JWKS rotation) are frequently wrong. Pin to RFCs and provider docs.</item>
+        <item>Threat models become checkbox theatre if no adversary persona is named — agents will list every CWE without prioritization.</item>
+        <item>Zero Trust architectures are expensive to retrofit; agents under-cost the migration of legacy services.</item>
+        <item>"Encrypt everything" is the LLM default; without classification it produces operational pain (key management, recovery) without a real risk reduction.</item>
+        <item>Compliance prompts encourage copy-paste boilerplate that doesn't match the real system; require evidence anchors.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always start with data classification (public / internal / confidential / regulated). Every control is justified by what data it protects.</item>
+        <item>Prefer passkeys/FIDO2 + OIDC over passwords; deny legacy auth (basic, NTLM) at the gateway.</item>
+        <item>Use short-lived credentials everywhere — STS, cert-rotation via SPIFFE/SPIRE, KMS-backed keys with TTL.</item>
+        <item>Enforce least privilege via policy-as-code (OPA/Cedar/OpenFGA), tested with golden cases in CI.</item>
+        <item>Treat the LLM agent as an untrusted insider: scope its tools narrowly, log every tool call, require human-in-loop for destructive or cross-boundary actions.</item>
+        <item>Keep ADRs for every authn/authz decision; security deltas without ADRs are red flags.</item>
+        <item>Rotate secrets via process, not policy; drill the rotation quarterly.</item>
+        <item>Threat model at design time, not post-incident: STRIDE + DREAD takes 2-4 hours upfront and saves weeks of remediation.</item>
+        <item>Security observability is non-negotiable: structured logs, SIEM correlation rules, and runbooks must be in place before go-live.</item>
+        <item>Build a security champion model: one engineer per team owns security reviews, tracks CVEs, escalates to the security team. This scales better than centralised security reviews.</item>
+        <item>Zero Trust is an operating model, not a product: identity-centric, continuous verification, microsegmentation. A single ZTNA appliance without the full model is theater.</item>
+        <item>Penetration testing annually at minimum; high-risk changes (new auth provider, payment integration, admin console) trigger targeted tests sooner.</item>
+      </list>
+    </section>
+
+    <section name="tools">
+      <list>
+        <item>trivy — Container/IaC/SBOM vulnerability scan. https://aquasecurity.github.io/trivy/</item>
+        <item>grype + syft — SBOM + vulnerabilities. https://github.com/anchore/grype</item>
+        <item>semgrep — SAST for code-level controls. https://semgrep.dev/</item>
+        <item>gitleaks / trufflehog — Secret scanning. https://github.com/gitleaks/gitleaks</item>
+        <item>zap-baseline — OWASP ZAP CI scan. https://www.zaproxy.org/</item>
+        <item>nuclei — Templated DAST. https://github.com/projectdiscovery/nuclei</item>
+        <item>checkov / tfsec / kics — IaC security policy. https://www.checkov.io/</item>
+        <item>openssl s_client — TLS posture inspection (bundled).</item>
+        <item>step-cli — mTLS/PKI bootstrap. https://smallstep.com/cli/</item>
+        <item>kubescape / kube-bench — K8s CIS/NSA hardening. https://kubescape.io/</item>
+        <item>Auth0 / Okta / Stytch / Clerk / WorkOS — SaaS IdP, modern OIDC + passkeys; agent-drivable APIs.</item>
+        <item>Keycloak / Authentik / Zitadel / Authelia — OSS self-hosted IdP.</item>
+        <item>HashiCorp Vault / OpenBao — OSS+SaaS secrets, dynamic creds, transit encryption.</item>
+        <item>Cloudflare Zero Trust / Tailscale / Pomerium / Teleport — ZTNA replacing VPNs.</item>
+        <item>OPA / OpenFGA / Cedar — OSS policy-as-code authz; agent can author Rego/Cedar.</item>
+      </list>
+      <note>Secret-guard pre-commit pattern: grep staged diffs for patterns like AKIA[0-9A-Z]{16}, ghp_[A-Za-z0-9]{36}, -----BEGIN PRIVATE KEY-----. If matched, abort. Also run gitleaks protect --staged.</note>
+    </section>
+
+    <section name="agent-selection">
+      <list>
+        <item>Threat modeling — opus: Complex security analysis.</item>
+        <item>Auth system design — sonnet: OAuth/JWT patterns.</item>
+        <item>Security checklist — haiku: Verifying security practices.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://nvlpubs.nist.gov/nistpubs/specialpublications/NIST.SP.800-207.pdf"/>
+      <link href="https://csrc.nist.gov/news/2025/implementing-a-zero-trust-architecture-sp-1800-35"/>
+      <link href="https://owasp.org/www-project-application-security-verification-standard/"/>
+      <link href="https://owasp.org/API-Security/"/>
+      <link href="https://oauth.net/2.1/"/>
+      <link href="https://datatracker.ietf.org/doc/rfc9700/"/>
+      <link href="https://fidoalliance.org/passkeys/"/>
+      <link href="https://openfga.dev/"/>
+      <link href="https://www.vaultproject.io/"/>
+      <link href="https://istio.io/"/>
+      <link href="https://cert-manager.io/"/>
+      <link href="https://falco.org/"/>
+      <link href="https://www.zaproxy.org/"/>
+      <link href="https://cheatsheetseries.owasp.org/"/>
+      <link href="https://research.google/pubs/pub48190/"/>
+      <link href="https://www.cisa.gov/zero-trust-maturity-model"/>
+    </see-also>
+  </content>
+</methodology>
