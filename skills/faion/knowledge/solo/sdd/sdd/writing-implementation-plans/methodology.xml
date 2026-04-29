@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="writing-implementation-plans">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd</domain>
+    <summary>Implementation plans bridge design docs and executable tasks by transforming architectural decisions into ordered, token-budgeted work units with wave analysis for parallel execution.</summary>
+    <tags>
+      <tag>implementation</tag>
+      <tag>planning</tag>
+      <tag>sdd</tag>
+      <tag>tasks</tag>
+      <tag>waves</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Writing Implementation Plans</title>
+    <summary>An implementation plan bridges design docs and executable tasks by transforming architectural decisions (AD-X) into ordered, token-budgeted work units optimized for LLM agent execution. The 100k token rule ensures each task fits within a focused context window. Wave analysis identifies parallel execution opportunities. Every task must trace to an AD-X or FR-X — orphan tasks are a quality gate failure.</summary>
+    <why>
+      <p>Without an implementation plan, agents execute tasks in arbitrary order, creating merge conflicts and dependency violations. Wave analysis enables 1.8-3.5x parallelization speedup. Token budgets prevent context window exhaustion, which is the most common cause of incomplete or broken agent outputs.</p>
+      <p>Planning against an approved design reduces rework. Explicit dependencies prevent hidden coupling. Traceability ensures all design decisions are implemented and no extra work is invented without requirement backing.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>After spec and design are both in Approved status.</item>
+        <item>When feature has 3+ tasks requiring ordered execution.</item>
+        <item>When design doc contains parallel-eligible work (Wave 1 / Wave 2 pattern).</item>
+        <item>When task token estimates exceed 30k (simple tasks may skip formal plan).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Before spec or design are approved — planning against unapproved docs creates rework.</item>
+        <item>For trivial single-file changes that need no coordination.</item>
+        <item>For bug fixes that touch one file and have no dependencies.</item>
+        <item>When design doc has no AD-X decisions (no design = no plan needed).</item>
+      </list>
+    </when-not-to-use>
+    <section name="invest-criteria">
+      <rule>
+        <statement>Every task must pass INVEST: Independent (can start after declared deps complete), Negotiable (implementation flexible), Valuable (traces to FR-X), Estimable (token estimate declared), Small (under 100k tokens), Testable (acceptance criteria are verifiable).</statement>
+        <rationale>Tasks that fail INVEST produce incomplete agent executions. The most common failures are: not Independent (hidden deps cause ordering conflicts), not Small (context exhaustion mid-task), not Testable (no way to validate completion).</rationale>
+      </rule>
+      <antipattern>
+        <description>Task with acceptance criteria that say "works correctly" or "functions as expected".</description>
+        <reason>Vague AC cannot be verified by a test or a quality gate check. Every AC must specify a concrete observable outcome: a status code, a file that exists, a database row, a rendered element.</reason>
+      </antipattern>
+    </section>
+    <section name="token-budget-tiers">
+      <rule>
+        <statement>Assign each task to a tier: Simple (under 30k, single file, clear pattern), Normal (30-60k, multiple files, some exploration), Complex (60-100k, many files, novel solution). Tasks over 100k must be split before execution begins.</statement>
+        <rationale>Agents degrade non-uniformly near context limits. The 100k rule provides a safe margin for most model families. Declaring a tier forces estimation before execution.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="markdown"><![CDATA[### TASK-003: Create user authentication middleware
+
+- **Complexity:** Normal
+- **Tokens:** ~45k
+- **AD-X:** AD-002
+- **FR-X:** FR-005, FR-006
+- **Depends on:** TASK-001 (user model), TASK-002 (JWT utility)
+- **Blocks:** TASK-005 (protected routes)
+
+**Files:**
+- CREATE `src/middleware/auth.py`
+- MODIFY `src/app.py` — register middleware
+
+**Acceptance Criteria:**
+1. Given valid JWT, when request arrives, then `request.user` is populated.
+2. Given expired JWT, when request arrives, then 401 response is returned.
+3. Given missing Authorization header, then 401 is returned.]]></code>
+      </example>
+    </section>
+    <section name="required-task-fields">
+      <p>Every task in the implementation plan must declare these fields:</p>
+      <list>
+        <item>Task ID (TASK-NNN format)</item>
+        <item>Title: action verb + target (e.g., "Create auth middleware")</item>
+        <item>Complexity tier and token estimate</item>
+        <item>AD-X and FR-X trace references (min 1 each)</item>
+        <item>Depends on (explicit list or "None")</item>
+        <item>Blocks (what tasks need this to complete)</item>
+        <item>Files with action (CREATE / MODIFY / DELETE) and purpose</item>
+        <item>Acceptance criteria (min 2, verifiable)</item>
+      </list>
+    </section>
+    <section name="building-the-dag">
+      <rule>
+        <statement>Build the dependency graph from design.md, not from the task list. For each file operation in design.md, ask: what must exist before this file can be created or modified? The answers are dependencies.</statement>
+        <rationale>Inferring dependencies from task descriptions introduces hidden assumptions. Grounding the DAG in design.md file operations produces a complete, objective dependency set.</rationale>
+      </rule>
+      <rule>
+        <statement>Use only Finish-to-Start (FS) dependencies in implementation plans. Document the others (SS, FF) only if they provide a real parallelization opportunity — do not add them for completeness.</statement>
+        <rationale>Non-FS dependencies add complexity without benefit unless agents can actually exploit them. Most agent executors handle only sequential-within-wave execution.</rationale>
+      </rule>
+    </section>
+    <section name="wave-algorithm">
+      <rule>
+        <statement>Wave 1 = all tasks with no dependencies. Wave N = all tasks whose dependencies are entirely in Waves 1 through N-1. Repeat until all tasks are assigned. Tasks in the same wave can be executed in parallel.</statement>
+        <rationale>The wave algorithm is deterministic and reproducible. Agents and humans can verify it independently by inspecting the dependency list of each task.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="markdown"><![CDATA[| Wave | Tasks | Parallel | Token Load |
+|------|-------|----------|------------|
+| 1 | TASK-001, TASK-002 | Yes | 25k + 20k |
+| 2 | TASK-003, TASK-004 | Yes | 45k + 35k |
+| 3 | TASK-005 | No | 50k |
+
+Critical path: TASK-001 → TASK-003 → TASK-005 = 120k tokens]]></code>
+      </example>
+    </section>
+    <section name="critical-path-analysis">
+      <rule>
+        <statement>Identify the longest dependency chain by token sum. Prioritize optimization of critical path tasks — splitting or simplifying them reduces total execution scope more than optimizing off-path tasks.</statement>
+        <rationale>The feature cannot complete faster than its critical path. Off-path task optimization produces no schedule benefit for the overall feature execution.</rationale>
+      </rule>
+      <antipattern>
+        <description>Agent declares all tasks as Wave 1 (no dependencies) to maximize apparent parallelism.</description>
+        <reason>Missing dependencies cause merge conflicts and broken builds when parallel agents overwrite each other's files. Require dependency evidence from design.md for every "no dependencies" claim.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent declares all tasks as depending on the previous one, producing a purely sequential plan.</description>
+        <reason>LLMs default to sequential thinking. A purely sequential plan with more than 3 tasks likely contains false dependencies. Review each FS edge: does the downstream task actually need the upstream file to exist, or is it just logically related?</reason>
+      </antipattern>
+    </section>
+    <section name="traceability-100-percent-rule">
+      <rule>
+        <statement>Every AD-X from design.md must have at least one corresponding task. Every FR-X from spec.md must trace to at least one task. Every task must trace to at least one AD-X or FR-X. Zero orphan tasks permitted.</statement>
+        <rationale>The 100% rule ensures no design decision is left unimplemented and no task was invented without requirement backing. It is the primary completeness check before execution begins.</rationale>
+      </rule>
+      <rule>
+        <statement>Verify traceability by running: `grep -c "AD-" implementation-plan.md` and comparing to the AD-X count in design.md. Do the same for FR-X. Any gap must be resolved before the plan is approved.</statement>
+        <rationale>Manual counting is error-prone. The grep check takes 10 seconds and catches the most common oversight: a design decision that was noted but never assigned to a task.</rationale>
+      </rule>
+    </section>
+    <section name="pre-writing-checklist">
+      <p>Before beginning implementation-plan.md, verify preconditions:</p>
+      <list>
+        <item>spec.md status: Approved</item>
+        <item>design.md status: Approved</item>
+        <item>All AD-X decisions finalized (no "TBD" entries)</item>
+        <item>constitution.md read for project naming and testing standards</item>
+        <item>Completed plans in done/ reviewed for patterns</item>
+      </list>
+      <rule>
+        <statement>Do not write an implementation plan against a design doc with TBD architectural decisions. Resolve all TBDs in design.md first.</statement>
+        <rationale>Planning against unresolved decisions produces tasks that change as soon as the decision is made, wasting the planning work and creating confusion during execution.</rationale>
+      </rule>
+    </section>
+    <section name="common-plan-issues">
+      <antipattern>
+        <description>Task token estimate over 100k with no split.</description>
+        <reason>Declare the task as "Split Required" and decompose into subtasks before proceeding. A 150k task is not one complex task — it is two or three tasks with a shared header.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Task references another task in "Depends on" that does not exist in the plan.</description>
+        <reason>Add the missing task or fix the reference. Missing dependency tasks are the second most common cause of execution failures after token overruns.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Circular dependency (TASK-A → TASK-B → TASK-A).</description>
+        <reason>Restructure the dependency chain. Circular deps indicate a design problem: one of the two tasks needs to be split, or one dependency is false (logically related but not a real FS constraint).</reason>
+      </antipattern>
+      <antipattern>
+        <description>File structure section listing non-existent files or files that cannot be split as declared.</description>
+        <reason>Verify every listed file against the actual codebase. Executor agents will either create orphaned files or fail when files they need do not exist.</reason>
+      </antipattern>
+    </section>
+    <section name="parallel-execution-strategy">
+      <rule>
+        <statement>When executing tasks in a wave, dispatch each task to a separate sub-agent or worktree. After all wave tasks complete, merge results to main branch before starting Wave N+1.</statement>
+        <rationale>Isolated sub-agents prevent merge conflicts during parallel execution. Sequential wave execution with parallel commits ensures dependency ordering.</rationale>
+      </rule>
+      <rule>
+        <statement>Use wave-based token budget: sum all task tokens in a wave. If the total exceeds 400k, split the wave into smaller waves or split some tasks further.</statement>
+        <rationale>A single wave exceeding 400k tokens risks overwhelming orchestrator token budgets. Breaking waves ensures orchestrator agents have budget for coordination overhead.</rationale>
+      </rule>
+    </section>
+    <section name="implementation-plan-template-sections">
+      <p>A complete implementation-plan.md includes these sections:</p>
+      <list>
+        <item>Overview: feature summary, scope statement, success criteria.</item>
+        <item>Spec/Design References: links to approved spec.md and design.md.</item>
+        <item>Wave Table: summary of waves, parallelism, critical path.</item>
+        <item>Critical Path: longest dependency chain by token sum.</item>
+        <item>Task List: one TASK-XXX section per task with all required fields.</item>
+        <item>Traceability Matrix: table verifying FR-X → task and AD-X → task mappings.</item>
+        <item>Risks and Mitigations: known risks and how to handle them.</item>
+      </list>
+    </section>
+    <section name="quality-gates-before-execution">
+      <rule>
+        <statement>Before execution begins, verify: (1) all tasks pass INVEST, (2) all dependencies are explicit and grounded in design.md, (3) 100% traceability to FR-X and AD-X, (4) total tokens ≤ resource budget, (5) all AC are concrete and verifiable.</statement>
+        <rationale>Quality gates at plan approval prevent execution failures. Fixing issues at planning stage is much cheaper than discovering them during task execution.</rationale>
+      </rule>
+    </section>
+    <see-also>
+      <link href="https://en.wikipedia.org/wiki/Critical_path_method"/>
+      <link href="https://www.mountaingoatsoftware.com/agile/user-stories"/>
+    </see-also>
+  </content>
+</methodology>
