@@ -1,0 +1,601 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-goroutines">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Lightweight threads managed by Go runtime. Use for parallel processing, HTTP servers, background tasks. Communicate via channels, not shared memory. Avoid leaks. Use context for cancellation.</summary>
+    <category>backend</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>go</tag>
+      <tag>concurrency</tag>
+      <tag>goroutines</tag>
+      <tag>worker-pools</tag>
+      <tag>synchronization</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Go Goroutines and Worker Patterns</title>
+
+    <summary>Goroutines are lightweight threads managed by Go runtime. Use for parallel processing, HTTP servers, background tasks, and I/O-bound work. Key principle: don't share memory; communicate via channels. Keep lock sections small. Avoid leaks with exit conditions. Use context for cancellation.</summary>
+
+    <why>
+      <p>Goroutines solve the concurrency problem elegantly. Unlike OS threads, which are expensive to create and context-switch, goroutines are cheap (thousands can run on a single machine). They are managed by the Go runtime scheduler, which multiplexes them onto OS threads. The lightweight cost makes it practical to spawn a goroutine per request, per connection, or per concurrent task without overwhelming system resources.</p>
+      <p>The key design principle is communication over shared memory. Instead of protecting shared data with locks, goroutines pass data through channels. This mental model prevents entire classes of bugs: race conditions, deadlocks from lock ordering, and priority inversion. Synchronization primitives (mutex, sync.Once, wait groups) are used only when appropriate, not as a default.</p>
+      <p>Context integration allows cancellation and deadline propagation through call stacks. When an HTTP request times out or is cancelled, context.Done() fires and all goroutines spawned in that call tree can exit gracefully. This prevents goroutine leaks and resource exhaustion.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Parallel processing of data where goroutines can work independently.</item>
+        <item>HTTP servers handling concurrent requests, where each request gets its own goroutine.</item>
+        <item>Background task processing and job queues, dispatching work to worker pools.</item>
+        <item>I/O-bound operations where waiting for network or disk does not block other work.</item>
+        <item>CPU-bound parallel computation on multi-core systems.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple sequential programs where concurrency adds unnecessary complexity.</item>
+        <item>Very hot inner loops where goroutine scheduling overhead is significant compared to work done.</item>
+        <item>Systems where you cannot use channels (e.g., certain legacy C bindings) and must use raw locks.</item>
+        <item>Scenarios where the cost of context propagation (setup, cleanup) exceeds the parallelism benefit.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="key-principles">
+      <rule testable="true">
+        <statement>Don't communicate by sharing memory; share memory by communicating. Use channels as the primary coordination mechanism. Avoid raw shared mutable state protected only by locks.</statement>
+        <rationale>Channel-based communication is easier to reason about and prevents whole categories of race conditions and deadlock scenarios.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use channels for goroutine coordination. Goroutines communicate via channels; the type system enforces correct usage (send-only, receive-only).</statement>
+        <rationale>Explicit channels in function signatures make dependencies clear and the compiler catches misuse.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Keep critical sections small. When you must use mutex, hold the lock for the minimum time necessary. Do not call blocking functions inside a lock.</statement>
+        <rationale>Long critical sections reduce parallelism and increase contention. Blocking inside a lock can deadlock other goroutines waiting for the lock.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Avoid goroutine leaks. Always provide an exit condition for long-lived goroutines. Include context.Done() checks in every loop that may block on I/O or channels.</statement>
+        <rationale>Goroutine leaks exhaust memory and system resources. They are hard to detect in production. Explicit exit conditions prevent them.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use context for cancellation. Propagate context through function signatures so cancellation and deadlines can cascade down call stacks.</statement>
+        <rationale>Context is the standard Go mechanism for managing request lifecycle, timeouts, and cancellation across function boundaries.</rationale>
+      </rule>
+    </section>
+
+    <section name="basic-goroutine-patterns">
+      <p>The simplest pattern: spawn a goroutine with sync.WaitGroup to wait for completion.</p>
+
+      <example type="good" title="Simple goroutine with WaitGroup">
+        <code lang="go"><![CDATA[
+package main
+
+import (
+    "fmt"
+    "sync"
+    "time"
+)
+
+func basicConcurrency() {
+    var wg sync.WaitGroup
+
+    for i := 0; i < 5; i++ {
+        wg.Add(1)
+        go func(n int) {
+            defer wg.Done()
+            fmt.Printf("Worker %d starting\n", n)
+            time.Sleep(time.Second)
+            fmt.Printf("Worker %d done\n", n)
+        }(i)
+    }
+
+    wg.Wait()
+    fmt.Println("All workers completed")
+}
+]]></code>
+        <note>Always pass the loop variable as a parameter to avoid closure bugs. Use defer wg.Done() to ensure cleanup even on panic.</note>
+      </example>
+
+      <example type="good" title="Goroutine with result channel">
+        <code lang="go"><![CDATA[
+func fetchWithResult() {
+    results := make(chan string, 3)
+
+    go func() { results <- fetch("url1") }()
+    go func() { results <- fetch("url2") }()
+    go func() { results <- fetch("url3") }()
+
+    for i := 0; i < 3; i++ {
+        fmt.Println(<-results)
+    }
+}
+]]></code>
+        <note>Buffered channel allows all three sends to complete without blocking. The main goroutine reads all results.</note>
+      </example>
+
+      <antipattern>
+        <description>Capturing loop variables in goroutines without passing them as parameters.</description>
+        <reason>The loop variable changes; all goroutines may see the final value. Always pass as a parameter.</reason>
+      </antipattern>
+    </section>
+
+    <section name="worker-pool-pattern">
+      <p>A fixed number of worker goroutines read jobs from a channel, process them, and send results to an output channel. This pattern prevents unbounded goroutine growth and provides backpressure.</p>
+
+      <rule testable="true">
+        <statement>Worker pool MUST use sync.WaitGroup to track completion. Close the results channel only after all workers have exited. Include context.Done() cases in every select to allow cancellation.</statement>
+        <rationale>WaitGroup ensures we don't close results prematurely. Context allows graceful shutdown. Together they prevent goroutine leaks.</rationale>
+      </rule>
+
+      <example type="good" title="Worker pool with context cancellation">
+        <code lang="go"><![CDATA[
+type Job struct {
+    ID   int
+    Data string
+}
+
+type Result struct {
+    JobID int
+    Value string
+    Err   error
+}
+
+func WorkerPool(ctx context.Context, numWorkers int, jobs <-chan Job) <-chan Result {
+    results := make(chan Result, numWorkers)
+    var wg sync.WaitGroup
+
+    for i := 0; i < numWorkers; i++ {
+        wg.Add(1)
+        go func(workerID int) {
+            defer wg.Done()
+            for {
+                select {
+                case job, ok := <-jobs:
+                    if !ok {
+                        return
+                    }
+                    result := processJob(job)
+                    select {
+                    case results <- result:
+                    case <-ctx.Done():
+                        return
+                    }
+                case <-ctx.Done():
+                    return
+                }
+            }
+        }(i)
+    }
+
+    go func() {
+        wg.Wait()
+        close(results)
+    }()
+
+    return results
+}
+]]></code>
+        <note>Each worker checks context.Done() before sending results. The main goroutine waits for all workers, then closes results.</note>
+      </example>
+    </section>
+
+    <section name="rate-limiting">
+      <p>Rate limit concurrent operations using a token bucket or semaphore pattern. Tokens are added at a fixed rate; operations consume tokens before proceeding.</p>
+
+      <example type="good" title="Token bucket rate limiter">
+        <code lang="go"><![CDATA[
+type RateLimiter struct {
+    tokens chan struct{}
+    ticker *time.Ticker
+    quit   chan struct{}
+}
+
+func NewRateLimiter(rate int, burst int) *RateLimiter {
+    rl := &RateLimiter{
+        tokens: make(chan struct{}, burst),
+        ticker: time.NewTicker(time.Second / time.Duration(rate)),
+        quit:   make(chan struct{}),
+    }
+
+    for i := 0; i < burst; i++ {
+        rl.tokens <- struct{}{}
+    }
+
+    go func() {
+        for {
+            select {
+            case <-rl.ticker.C:
+                select {
+                case rl.tokens <- struct{}{}:
+                default: // Bucket full
+                }
+            case <-rl.quit:
+                return
+            }
+        }
+    }()
+
+    return rl
+}
+
+func (rl *RateLimiter) Wait(ctx context.Context) error {
+    select {
+    case <-rl.tokens:
+        return nil
+    case <-ctx.Done():
+        return ctx.Err()
+    }
+}
+]]></code>
+        <note>Tokens are refilled at a fixed rate. Operations block until a token is available. Burst capacity prevents sudden traffic from stalling.</note>
+      </example>
+    </section>
+
+    <section name="semaphore-pattern">
+      <p>A semaphore limits the number of concurrent operations. Acquire a slot before starting work, release it when done.</p>
+
+      <example type="good" title="Semaphore for bounded concurrency">
+        <code lang="go"><![CDATA[
+type Semaphore chan struct{}
+
+func New(n int) Semaphore {
+    return make(chan struct{}, n)
+}
+
+func (s Semaphore) Acquire(ctx context.Context) error {
+    select {
+    case s <- struct{}{}:
+        return nil
+    case <-ctx.Done():
+        return ctx.Err()
+    }
+}
+
+func (s Semaphore) Release() {
+    <-s
+}
+
+func processUsers(ctx context.Context, users []User) error {
+    sem := New(10) // Max 10 concurrent
+    var wg sync.WaitGroup
+
+    for _, user := range users {
+        wg.Add(1)
+        go func(u User) {
+            defer wg.Done()
+            if err := sem.Acquire(ctx); err != nil {
+                return
+            }
+            defer sem.Release()
+            processUser(ctx, u)
+        }(user)
+    }
+
+    wg.Wait()
+    return nil
+}
+]]></code>
+        <note>Semaphore prevents resource exhaustion by limiting concurrent database connections or network requests.</note>
+      </example>
+    </section>
+
+    <section name="mutex-and-rwmutex">
+      <p>Use sync.Mutex for exclusive access and sync.RWMutex when many readers and few writers are expected.</p>
+
+      <example type="good" title="Thread-safe cache with RWMutex">
+        <code lang="go"><![CDATA[
+type Cache struct {
+    mu    sync.RWMutex
+    items map[string]interface{}
+}
+
+func (c *Cache) Get(key string) (interface{}, bool) {
+    c.mu.RLock()
+    defer c.mu.RUnlock()
+    item, exists := c.items[key]
+    return item, exists
+}
+
+func (c *Cache) Set(key string, value interface{}) {
+    c.mu.Lock()
+    defer c.mu.Unlock()
+    c.items[key] = value
+}
+]]></code>
+        <note>RLock() allows multiple concurrent readers. Lock() is exclusive. Use RLock() for read-heavy workloads.</note>
+      </example>
+    </section>
+
+    <section name="sync-once">
+      <p>sync.Once ensures a function is called exactly once, even if called concurrently. Useful for lazy initialization and singletons.</p>
+
+      <example type="good" title="Singleton with sync.Once">
+        <code lang="go"><![CDATA[
+var (
+    instance *Database
+    once     sync.Once
+)
+
+func GetDatabase() *Database {
+    once.Do(func() {
+        instance = &Database{conn: "connection_string"}
+    })
+    return instance
+}
+]]></code>
+        <note>once.Do() is safe to call from multiple goroutines. The function is executed exactly once; other callers block until completion.</note>
+      </example>
+    </section>
+
+    <section name="common-anti-patterns">
+      <antipattern>
+        <description>Goroutine leaks: spawning goroutines that never exit.</description>
+        <reason>Goroutines are cheap but not free. Leaks accumulate and exhaust memory. Always provide an exit condition.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Data races: concurrent access to shared mutable state without synchronization.</description>
+        <reason>Go detects races with go test -race. Fix them immediately; they cause unpredictable behavior in production.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Blocking inside a lock.</description>
+        <reason>While a goroutine holds a mutex, no other goroutine can acquire it. If you block (wait for I/O, channel receive), other goroutines starve.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Sharing mutable state without channels or locks.</description>
+        <reason>Leads to data races. Always synchronize access to shared data.</reason>
+      </antipattern>
+    </section>
+
+    <section name="production-patterns">
+      <p>Real-world patterns and gotchas from production code:</p>
+
+      <p>Goroutine leaks are silent. Missing context.Done() check keeps workers alive forever after request returns. The RateLimiter uses a refill ticker that never lets the bucket exceed burst; under sustained idle it under-fills (only one token per tick). Fine for moderate traffic, but agents reuse this code for high-burst scenarios and get throttled at startup. The semaphore example collects only the first error; real workloads need all errors or errgroup.WithContext semantics. sync.Once is per-process; agents reach for it in distributed initialization and lose race-safety across replicas. sync.RWMutex has write starvation under read-heavy load: many goroutines blocked on writes if reads never drain; agents rarely benchmark this.</p>
+
+      <p>Implement worker pools with bounded concurrency=N, context-driven shutdown, retry with backoff on transient errors, and metrics hooks (jobs_started, jobs_completed, jobs_failed, queue_depth). Every goroutine MUST have a context exit condition. The results channel MUST be closed exactly once by the goroutine that closes the WaitGroup. No panics must escape; use defer recover with structured logging in fire-and-forget pools.</p>
+
+      <rule testable="true">
+        <statement>Inventory all goroutines spawned in a package. For each: lifetime, exit condition, input owner, output owner, max wait on send, panic policy. Reject any row missing exit condition or panic policy.</statement>
+        <rationale>This audit prevents leaks and makes goroutine lifecycle explicit.</rationale>
+      </rule>
+
+      <p>Tools for production: go test -race is required for any goroutine PR. goleak provides test-time leak assertions. pprof exports live goroutine and heap dumps. gops shows live goroutine count. delve debugs paused goroutines. vegeta and k6 load test worker pools under contention. staticcheck catches time.After in loops and context misuse. errcheck forbids ignored returns inside goroutines.</p>
+
+      <p>Standard libraries and tools: golang.org/x/sync/errgroup is the default for fan-out with errors. golang.org/x/sync/semaphore replaces hand-rolled chan struct{} semaphores. golang.org/x/time/rate provides token-bucket limiting; preferred over hand-rolled code. sourcegraph/conc offers higher-level pool/iter helpers. uber-go/goleak is a test gate that fails CI on leaks. Datadog and OpenTelemetry expose runtime.Goroutines metrics; production canaries track goroutine count. Sentry and Rollbar capture panics from defer recover(), required for fire-and-forget pools. Prometheus exposes pool_jobs_inflight, pool_queue_depth, pool_failed_total.</p>
+    </section>
+
+    <section name="testing-goroutines">
+      <rule testable="true">
+        <statement>Every test that spawns goroutines MUST use defer goleak.VerifyNone(t) to assert no goroutines leak. Run tests with go test -race to detect data races.</statement>
+        <rationale>Race detector finds timing-dependent bugs at runtime. Goleak ensures test cleanup does not leak goroutines.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run with -count=10 on any test that checks concurrency. This disables test caching and reruns the test multiple times, surfacing flaky race conditions.</statement>
+        <rationale>Timing-dependent bugs may only manifest under certain scheduling conditions. Multiple runs increase the chance of detecting them.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Include test cases for cancellation, panic in jobs, and slow consumers. Verify the pool shuts down cleanly and no goroutines leak under all scenarios.</statement>
+        <rationale>These edge cases are where most production bugs hide.</rationale>
+      </rule>
+
+      <example type="good" title="Comprehensive worker pool test">
+        <code lang="go"><![CDATA[
+import (
+    "context"
+    "testing"
+    "go.uber.org/goleak"
+)
+
+func TestWorkerPoolCancellation(t *testing.T) {
+    defer goleak.VerifyNone(t)
+
+    ctx, cancel := context.WithCancel(context.Background())
+    jobs := make(chan Job, 10)
+    results := WorkerPool(ctx, 5, jobs)
+
+    // Send some jobs
+    jobs <- Job{ID: 1, Data: "test"}
+
+    // Read one result
+    <-results
+
+    // Cancel context
+    cancel()
+    close(jobs)
+
+    // Drain remaining results; pool must close
+    for range results {
+    }
+}
+
+func TestWorkerPoolBench(b *testing.B) {
+    ctx := context.Background()
+    jobs := make(chan Job, 1000)
+    results := WorkerPool(ctx, 10, jobs)
+
+    go func() {
+        for i := 0; i < b.N; i++ {
+            jobs <- Job{ID: i, Data: "bench"}
+        }
+        close(jobs)
+    }()
+
+    for range results {
+    }
+}
+]]></code>
+        <note>goleak.VerifyNone ensures no leaks. Cancellation test verifies graceful shutdown. Benchmark measures throughput under load.</note>
+      </example>
+    </section>
+
+    <section name="implementation-reference">
+      <p>Complete reference for implementing safe goroutine-based systems. The recommended pattern is to always include context, use errgroup for fan-out, semaphore for bounded parallelism, and goleak in tests.</p>
+
+      <p>Database schema design and normalization requires architectural decisions and complex trade-offs; use Opus. Implement Go concurrency patterns with Sonnet; it handles coding with existing patterns at medium complexity. Write database migration scripts with Haiku; mechanical task using templates. Review error handling implementation with Sonnet for code review and refactoring. Profile and optimize slow queries with Opus; novel optimization problem requiring deep analysis. Setup Redis caching layer with Sonnet; medium complexity implementation task.</p>
+
+      <p>When to spawn goroutines: parallel processing of data where goroutines work independently. HTTP servers handling concurrent requests (each request gets a goroutine). Background task processing and job queues dispatching work to pools. I/O-bound operations where waiting doesn't block other work. CPU-bound parallel computation on multi-core systems.</p>
+
+      <p>When NOT to use goroutines: simple sequential programs where concurrency adds unnecessary complexity. Very hot inner loops where scheduling overhead exceeds work done. Systems where channels cannot be used and raw locks are required. Scenarios where context propagation cost exceeds parallelism benefit.</p>
+
+      <p>Best practices distilled from production code: the goroutine that creates a channel owns its close; document this on every channel function. Use directional types (send-only and receive-only) in signatures; compiler enforces direction. Replace time.After in long select loops with reused time.NewTimer; time.After leaks until timer fires. Prefer errgroup.WithContext for fan-out with errors; cancels siblings on first failure and bounds goroutines. Set buffer capacity only when naming a backpressure policy; default unbuffered. Add defer goleak.VerifyNone(t) to every test spawning goroutines. Run tests with -race and -count=10 to surface flaky bugs. Include test cases for cancellation, panic in jobs, slow consumers. Verify cleanup under all scenarios.</p>
+
+      <p>Goroutine lifecycle: spawned goroutines should have clear ownership (who created it, who can cancel it, who should close channels). Every goroutine needs an exit condition (context.Done(), channel close, counter reaching zero). Critical sections protected by mutex should be kept as small as possible. Long operations should not hold locks. Errors from goroutines must be collected and handled (use errgroup or explicit error channels). Panics in goroutines must be caught and logged (use defer recover with structured logging in fire-and-forget pools).</p>
+
+      <p>Load testing goroutine code is essential. Use vegeta or k6 to test worker pools under sustained load. Monitor for goroutine leaks in production (Datadog/OTel runtime.Goroutines metrics). Set up Prometheus metrics for pool_jobs_inflight, pool_queue_depth, pool_failed_total. Sentry or Rollbar should capture panics from pools. Continuous profiling with pprof can detect gradual leaks during development.</p>
+
+      <p>Common pitfalls: goroutine leaks from missing context.Done() checks. Data races from concurrent map/slice access without synchronization. Deadlocks from improper lock ordering or blocking inside critical sections. Starvation when high-priority work is blocked behind low-priority goroutines. Thundering herd when all goroutines wake up simultaneously (use jittered backoff). Resource exhaustion when unbounded goroutine growth is allowed. Silent failures from ignored errors in goroutines (use explicit error channels).</p>
+    </section>
+
+    <section name="detailed-checklist">
+      <p>Systematic implementation checklist for goroutine-based systems.</p>
+
+      <p>Phase 1: Requirements Analysis. Document current implementation or identify starting point. List pain points and limitations. Measure baseline metrics. List technical debt. Gather stakeholder requirements. Set performance targets. Define quality attributes. Establish testing requirements. Document constraints. Identify risks and mitigations. Evaluate tool options (Go runtime, Context package, sync primitives). Consider team expertise. Review infrastructure compatibility. Assess maintenance burden. Calculate total cost of ownership.</p>
+
+      <p>Phase 2: Design. Define overall structure. Identify components and boundaries. Plan data flow for goroutine communication. Design error handling strategy and recovery mechanisms. Document key decisions with architecture decision records. Define public APIs and goroutine contracts. Design data models and message types. Plan configuration management. Create integration points with existing systems. Document synchronization contracts (who closes what, exit conditions).</p>
+
+      <p>Phase 3: Implementation. Initialize project structure with appropriate package organization. Configure development environment (Go version, tools). Set up CI/CD pipeline with race detector. Configure linting (golangci-lint) and formatting (gofmt). Initialize testing framework and setup test utilities. Implement main functionality following channel ownership rules. Add error handling with proper logging. Implement observability (metrics, traces, logs). Write documentation of goroutine lifecycle. Integrate with existing systems and establish adapters/bridges. Add feature flags for gradual rollout. Configure deployment strategy.</p>
+
+      <p>Phase 4: Testing. Write unit tests with greater than 80% coverage. Test edge cases (empty input, boundary conditions). Test error scenarios and recovery. Mock external dependencies. Use goleak.VerifyNone() in all goroutine tests. Run with go test -race -count=10 to surface race conditions. Implement integration tests for component interaction. Verify data persistence if applicable. Test external integrations. Validate configuration. Test deployment and rollback processes. Benchmark critical paths. Load test under realistic traffic patterns. Test scaling behavior with varying numbers of goroutines and job queue depths. Identify bottlenecks. Optimize hot paths based on profiling data.</p>
+
+      <p>Phase 5: Deployment. Conduct code reviews with focus on goroutine lifecycle. Run full test suite including race detector. Update documentation before release. Prepare rollback plan in case of issues. Schedule deployment window and notify stakeholders. Deploy to staging environment. Smoke test staging functionality. Deploy to production using canary or blue-green strategy. Monitor metrics during rollout. Verify functionality in production. Monitor error rates and performance. Gather user feedback. Document lessons learned. Plan follow-up improvements based on production behavior.</p>
+
+      <p>Phase 6: Monitoring and Maintenance. Set up structured logging with context correlation IDs. Configure metrics collection (Prometheus, Datadog). Enable distributed tracing where applicable. Create dashboards for goroutine metrics, queue depth, error rates. Set up alerts for abnormal patterns. Monitor for goroutine leaks via runtime metrics. Monitor for resource exhaustion. Address bug reports promptly. Update dependencies on regular schedule. Refactor as needed based on production usage patterns. Optimize performance based on profiling. Maintain code documentation. Update runbooks with operational procedures. Document troubleshooting guides. Share knowledge with team through postmortems and wiki.</p>
+    </section>
+
+    <section name="prompt-patterns">
+      <p>Effective AI agent prompts for goroutine code generation and review:</p>
+
+      <example type="good" title="Architecture design prompt">
+        <code lang="text"><![CDATA[
+Implement a worker pool with: bounded concurrency=N, context-driven shutdown,
+retry with backoff on transient errors, and metrics hook (jobs_started,
+jobs_completed, jobs_failed, queue_depth).
+
+Constraints:
+- No goroutine without context exit condition
+- Results channel closed exactly once by goroutine closing WaitGroup
+- No panics escape (use defer recover with structured logging)
+- All errors collected and returned via errgroup
+
+Deliver:
+- pool.go with WorkerPool function
+- pool_test.go with table-driven tests
+- bench_test.go for performance baseline
+
+Include cancellation, panic-in-job, slow-consumer test cases.
+Run: go test -race -count=10 ./...
+]]></code>
+      </example>
+
+      <example type="good" title="Audit goroutine lifecycle">
+        <code lang="text"><![CDATA[
+Inventory all goroutines spawned in <pkg>. For each:
+- Goroutine name/purpose
+- Lifetime (duration/scope)
+- Exit condition
+- Input channel owner
+- Output channel owner
+- Max wait time on send
+- Panic handling policy
+
+Format as table. Reject any row missing exit condition or panic policy.
+Provide summary of total goroutine count and lifecycle patterns.
+]]></code>
+      </example>
+
+      <example type="good" title="Review for production readiness">
+        <code lang="text"><![CDATA[
+Review this worker pool code for production readiness:
+[paste code]
+
+Verify:
+1. Every goroutine has explicit exit condition
+2. Context cancellation is respected throughout
+3. All errors are collected and handled
+4. Panics are caught and logged in fire-and-forget goroutines
+5. No goroutines leak on cancellation or early exit
+6. Channel ownership is clear (who creates, who closes)
+7. No deadlock risk from lock ordering
+8. Sufficient metrics for operational visibility
+
+Provide list of findings and suggested fixes.
+]]></code>
+      </example>
+
+      <example type="good" title="Load testing and profiling">
+        <code lang="text"><![CDATA[
+Load test this worker pool and identify bottlenecks:
+
+Setup:
+- Concurrency levels: N, 2N, 4N workers
+- Job rates: 1K, 10K, 100K jobs/sec
+- Job durations: 1ms, 10ms, 100ms
+- Error rates: 0%, 5%, 10%
+
+Metrics to track:
+- Throughput (jobs/sec)
+- Latency (p50, p95, p99)
+- Queue depth over time
+- Goroutine count growth
+- Memory allocation rate
+- GC frequency and duration
+
+Run with: go test -bench=. -cpuprofile=cpu.prof -memprofile=mem.prof
+Analyze with: go tool pprof
+
+Report findings and suggest optimizations.
+]]></code>
+      </example>
+    </section>
+
+    <section name="advanced-patterns">
+      <p>Beyond the basics:</p>
+
+      <p>Graceful shutdown: when the application needs to exit, close the input jobs channel, wait for workers to drain the queue, then signal cancellation via context. This ensures work in progress completes before shutdown. Implement a shutdown hook that cancels context and waits for errgroup completion.</p>
+
+      <p>Timeout management: use context.WithTimeout at the entry point (HTTP handler) so all downstream goroutines inherit the deadline. Avoid time.After in loops; it leaks. Use time.NewTimer for recurring timeouts. Propagate context through all function calls.</p>
+
+      <p>Error handling: use errgroup to collect errors from all workers. Alternatively, use buffered error channel with buffer size equal to number of workers. Call errgroup.Wait() or drain the error channel to check if any errors occurred. Log errors with structured logging for debugging. Consider retry logic with exponential backoff for transient errors.</p>
+
+      <p>Metrics and observability: instrument worker pools with counters (jobs_started, jobs_completed, jobs_failed). Track queue depth for backpressure visibility. Export timings (job_duration_ms) as histograms. Use structured logging with fields for job_id, worker_id, error for correlation. Wire context into logging so request IDs flow through logs.</p>
+
+      <p>Testing under contention: run worker pool tests with many more jobs than workers. Use time.Sleep or blocking operations in mock jobs to simulate real work. Test cancellation paths by canceling mid-execution. Use goleak.VerifyTestMain for process-level leaks across all tests. Benchmark the pool with varying worker counts and job queue depths to find optimal configuration.</p>
+
+      <p>Concurrent cache implementation: use sync.RWMutex when reads far outnumber writes. Separate read-heavy paths from write paths. Consider sync.Map for fine-grained locking when contention is high. Implement cache invalidation with explicit channel or time-based eviction. Measure contention with benchmarks before choosing synchronization primitive. sync.Once pattern is useful for lazy initialization of expensive resources shared across goroutines. LazyMap pattern allows per-key initialization without global lock contention.</p>
+
+      <p>Real-world deployment considerations: monitor goroutine count via /debug/pprof/goroutine endpoint or runtime metrics. Set up alerting on goroutine count spikes indicating potential leaks. Use profiling (pprof) regularly to baseline memory and CPU usage. Implement graceful shutdown hooks in HTTP servers and long-running processes. Test shutdown under load to ensure workers drain queues before terminating. Log structured messages with correlation IDs for request tracking across goroutines. Use context.WithValue carefully; avoid storing untyped values. Prefer passing context and values explicitly through function parameters for clarity. Implement circuit breakers for downstream service calls within goroutines to prevent cascading failures. Add bulkhead pattern for isolating different types of work in separate thread pools. Use metrics for pool utilization, job latency, error rates to drive capacity planning. Monitor for retry storms or thundering herd patterns under failure conditions.</p>
+    </section>
+
+    <see-also>
+      <link href="https://go.dev/blog/pipelines"/>
+      <link href="https://go.dev/blog/context"/>
+      <link href="https://go.dev/blog/codelab-share"/>
+      <link href="https://go.dev/blog/io2013-talk-concurrency"/>
+      <link href="https://github.com/uber-go/goleak"/>
+      <link href="https://pkg.go.dev/sync"/>
+      <link href="https://pkg.go.dev/golang.org/x/sync/errgroup"/>
+      <link href="https://pkg.go.dev/golang.org/x/sync/semaphore"/>
+      <link href="https://pkg.go.dev/golang.org/x/time/rate"/>
+      <ref slug="go-channels"/>
+      <ref slug="go-error-handling"/>
+    </see-also>
+  </content>
+</methodology>
