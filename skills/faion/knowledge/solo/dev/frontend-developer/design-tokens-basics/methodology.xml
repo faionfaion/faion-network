@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="design-tokens-basics">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>frontend-developer</domain>
+    <summary>Design tokens are atomic values (colors, spacing, typography) enforcing three-level hierarchy: primitive → semantic → component. Single source of truth compiles to CSS variables, JS, iOS, or Android.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>design-tokens</tag>
+      <tag>design-systems</tag>
+      <tag>theming</tag>
+      <tag>style-dictionary</tag>
+      <tag>figma</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>json</language>
+      <language>css</language>
+      <language>typescript</language>
+    </languages>
+    <related>
+      <ref slug="design-tokens-implementation"/>
+      <ref slug="css-in-js-basics"/>
+      <ref slug="tailwind-css-patterns"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Design Tokens: Basics</title>
+
+    <summary>Design tokens are the atomic values of a design system — colors, spacing, typography, radii, shadows — stored as platform-agnostic data. They enforce a three-level hierarchy: primitive (raw values) → semantic (purpose aliases) → component (per-component overrides), with a single source of truth that compiles to CSS variables, iOS Swift, Android XML, or any target. Without tokens, design decisions scatter across components as hardcoded hex values and magic numbers, making theming and rebrand work O(N) per component. Semantic tokens decouple purpose from value: changing the brand primary color requires one token update, not a grep-and-replace.</summary>
+
+    <why>
+      <p>Without tokens, design decisions scatter across components as hardcoded hex values and magic numbers, making theming and rebrand work O(N) per component. Every component references a different shade of blue; rebranding from blue to green requires touching every file and every hex value. This is expensive, error-prone, and breaks the single source of truth.</p>
+      <p>Semantic tokens decouple purpose from value. Instead of a component directly referencing blue (the value), it references color.action.primary (the purpose). When the brand color changes, only the semantic token value changes; all purpose-based references update automatically. The three-level hierarchy (primitive → semantic → component) prevents circular aliasing while keeping the abstraction clean and maintainable.</p>
+      <p>Design tokens also unify visual language across platforms. The same token system can compile to CSS variables for web, Tailwind configuration for React, Swift for iOS, and XML for Android. One design decision, many outputs.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a design system from scratch — define primitive → semantic → component token tiers before writing components.</item>
+        <item>Migrating ad-hoc CSS variables and hex values to a single source of truth (tokens.json or W3C Design Tokens Format Module).</item>
+        <item>Setting up theming (light/dark, brand white-label) where switching only the semantic layer is enough to change appearance.</item>
+        <item>Bridging Figma variables and code via Tokens Studio and Style Dictionary for design-to-dev handoff.</item>
+        <item>Multi-platform design systems (web, iOS, Android) that need a single token source compiling to each platform's native format.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-off landing page with a single brand and no theming — direct CSS variables suffice.</item>
+        <item>The entire app is built with Tailwind and the team is happy with tailwind.config.ts as the de facto token layer — adding Style Dictionary on top is duplicate work.</item>
+        <item>Product in pre-PMF iteration where design is changing weekly — token churn will be brutal and the abstraction slows experiments.</item>
+        <item>When a third-party component library owns all tokens and override is impractical or not allowed.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="three-level-hierarchy">
+      <p>Design tokens must be structured in three levels: primitive (raw values), semantic (purpose aliases), and component (per-component overrides). Each level builds on the previous. Semantic tokens reference primitives; component tokens reference semantics. Never skip a level or create circular references that would break the alias chain.</p>
+
+      <rule testable="true">
+        <statement>Structure tokens in three levels: primitive (raw values), semantic (purpose aliases), component (per-component overrides). Semantic tokens reference primitives; component tokens reference semantics. Never skip a level or create circular references.</statement>
+        <rationale>The hierarchy decouples value from purpose. Changing a brand colour requires updating one primitive; all semantic aliases that reference it update automatically, propagating to every component token. Breaking the hierarchy creates maintenance debt.</rationale>
+      </rule>
+
+      <p>The three levels are:</p>
+      <list>
+        <item>Primitive: raw values, value-based names — color.blue.500 = #3B82F6, spacing.4 = 1rem, fontSize.base = 1rem</item>
+        <item>Semantic: purpose aliases, purpose-based names — color.action.primary = {color.blue.600}, spacing.content.gap = {spacing.4}, fontSize.body = {fontSize.base}</item>
+        <item>Component: scoped overrides, component-based names — button.bg.primary = {color.action.primary}, button.padding.horizontal = {spacing.4}</item>
+      </list>
+
+      <example type="good" title="Adding dark mode with three-level hierarchy">
+        <code lang="json"><![CDATA[
+// tokens/semantic.json (light theme)
+{
+  "color": {
+    "bg": { "primary": { "value": "{color.gray.50}" } },
+    "text": { "primary": { "value": "{color.gray.900}" } }
+  }
+}
+
+// tokens/semantic-dark.json (dark theme overrides only)
+{
+  "color": {
+    "bg": { "primary": { "value": "{color.gray.900}" } },
+    "text": { "primary": { "value": "{color.gray.50}" } }
+  }
+}
+        ]]></code>
+        <note>Only semantic tokens change between themes. Primitive and component tokens remain the same. This is the power of the hierarchy: swap theme files without touching component code.</note>
+      </example>
+
+      <antipattern>
+        <description>Using value-based names for semantic tokens: color-blue-500 as a semantic token name.</description>
+        <reason>The name encodes the value. When the brand colour changes to green, all usages of "blue-500" are semantically wrong even if they render correctly. The semantic abstraction breaks.</reason>
+      </antipattern>
+    </section>
+
+    <section name="naming-conventions">
+      <p>Each token level has different naming rules. Primitive token names describe what they are (color-blue-500). Semantic token names describe purpose (color-text-primary). Component token names describe the component and property (button-padding-horizontal). Purpose-based names survive redesigns; value-based names break the abstraction as soon as the underlying value changes.</p>
+
+      <rule testable="true">
+        <statement>Primitive token names describe what they are (color-blue-500, spacing-4). Semantic token names describe purpose (color-text-primary, spacing-content-gap). Component token names describe the component and property (button-padding-horizontal).</statement>
+        <rationale>Purpose-based semantic and component names survive redesigns. Value-based names break the abstraction the instant the underlying value changes. Use consistent prefixes across categories.</rationale>
+      </rule>
+
+      <p>Naming examples by level:</p>
+      <list>
+        <item>Primitive: color-gray-50, color-blue-500, spacing-4, spacing-8, font-size-base, font-size-lg, border-radius-md, shadow-md</item>
+        <item>Semantic: color-bg-primary, color-text-secondary, color-status-error, spacing-content-gap, spacing-control-height</item>
+        <item>Component: button-bg-primary, button-padding-horizontal, card-border-radius, input-border-focus</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Use consistent naming prefixes (e.g., color-, spacing-, font-size-) across all token files. Prefix order: category.role.state.</statement>
+        <rationale>Consistent prefixes enable tooling to group and organize tokens automatically. Style Dictionary and Tokens Studio both rely on path structure for platform transforms.</rationale>
+      </rule>
+    </section>
+
+    <section name="token-file-format">
+      <p>Design tokens are defined in JSON using the W3C Design Tokens Format Module structure. Each token is a nested JSON object with a value key. Use {category.scale} reference syntax for aliases to other tokens. Group files by layer: primitive.json, semantic.json, semantic-dark.json, and components/ directory.</p>
+
+      <rule testable="true">
+        <statement>Define each token as a nested JSON object with a value key. Use {category.scale} reference syntax for aliases. Group files by layer: primitive.json, semantic.json, semantic-dark.json, components/.</statement>
+        <rationale>Style Dictionary and Tokens Studio both consume this W3C community group format. Consistent structure enables automated multi-platform compilation and round-tripping.</rationale>
+      </rule>
+
+      <example type="good" title="Primitive spacing scale with W3C format">
+        <code lang="json"><![CDATA[
+{
+  "spacing": {
+    "1": { "value": "0.25rem" },
+    "2": { "value": "0.5rem" },
+    "4": { "value": "1rem" },
+    "8": { "value": "2rem" },
+    "16": { "value": "4rem" }
+  }
+}
+        ]]></code>
+        <note>Using rem units makes the scale device-independent and accessible to font-size changes.</note>
+      </example>
+
+      <example type="good" title="Semantic tokens referencing primitives">
+        <code lang="json"><![CDATA[
+{
+  "color": {
+    "action": {
+      "primary": { "value": "{color.blue.600}" },
+      "primaryHover": { "value": "{color.blue.700}" }
+    },
+    "text": {
+      "primary": { "value": "{color.gray.900}" },
+      "secondary": { "value": "{color.gray.600}" }
+    }
+  }
+}
+        ]]></code>
+        <note>Semantic tokens reference primitives by path. This alias chain allows primitives to change without modifying semantic or component tokens.</note>
+      </example>
+
+      <rule testable="true">
+        <statement>Cover at minimum: color (full scale), spacing (0–20), fontSize (xs–4xl), fontWeight (normal/medium/semibold/bold), borderRadius (none–full), shadow (sm–xl). Add animation/duration tokens when motion is part of the design system.</statement>
+        <rationale>Incomplete token coverage forces developers to hardcode values in components, re-introducing the single-source-of-truth problem the token system was meant to solve.</rationale>
+      </rule>
+
+      <reference path="templates/primitive.json">Full primitive token file: colors, spacing, fontSize, fontWeight, borderRadius, shadow</reference>
+      <reference path="templates/semantic.json">Semantic light theme tokens referencing primitives</reference>
+      <reference path="templates/semantic-dark.json">Dark theme semantic overrides</reference>
+    </section>
+
+    <section name="directory-organization">
+      <p>Token files are stored under tokens/ at the project root, mirroring the three-level hierarchy. Primitive and semantic token files go at the root level; component token files go in tokens/components/ named after the component. A predictable directory structure allows tooling (Style Dictionary transforms) to be configured once and applied to all tokens without per-file overrides.</p>
+
+      <rule testable="true">
+        <statement>Store token files under tokens/ at the project root, mirroring the three-level hierarchy. Component token files go in tokens/components/ named after the component.</statement>
+        <rationale>A predictable directory structure allows tooling (Style Dictionary transforms) to be configured once and applied to all tokens without per-file overrides. Teams can add new component tokens without changing build config.</rationale>
+      </rule>
+
+      <p>Directory structure:</p>
+      <list>
+        <item>tokens/primitive.json — raw values for colors, spacing, fonts, radii, shadows</item>
+        <item>tokens/semantic.json — light theme purpose aliases</item>
+        <item>tokens/semantic-dark.json — dark theme semantic overrides</item>
+        <item>tokens/components/button.json — button-scoped overrides</item>
+        <item>tokens/components/card.json — card-scoped overrides</item>
+        <item>tokens/components/input.json — input-scoped overrides</item>
+      </list>
+
+      <antipattern>
+        <description>Flat tokens/ directory with all tokens in a single file or per-category files (colors.json, spacing.json) without layer separation.</description>
+        <reason>Mixing primitives and semantics in one file makes it impossible to swap theme files without touching the full token set. Per-category without layer structure breaks the hierarchy and makes dark mode painful.</reason>
+      </antipattern>
+    </section>
+
+    <section name="version-control">
+      <p>All token files must be stored in Git alongside application code. This makes token changes reviewable, diffable, and rollback-safe. Design tools (Figma, Sketch) are not the source of truth; they are consumers of tokens via bridges like Tokens Studio.</p>
+
+      <rule testable="true">
+        <statement>Store all token files in Git alongside application code. Apply semantic versioning: breaking value changes = major bump; new tokens = minor; fixes = patch.</statement>
+        <rationale>Tokens in design tools only (Figma, Sketch) are inaccessible to CI/CD and drift from implementation. Version control makes token changes reviewable, diffable, and rollback-safe. Semver enables coordinated upgrades across teams.</rationale>
+      </rule>
+
+      <note>Use Tokens Studio GitHub sync to pull Figma tokens into a branch, review the diff, and merge once verified. Never commit Figma token changes directly to main without review.</note>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Large language models often make mistakes when generating tokens. Common issues include inventing semantic names that don't appear in the project, referencing primitives by raw hex inside semantic layers instead of aliases, and flipping lightness for dark mode without checking contrast.</p>
+
+      <antipattern>
+        <description>LLMs invent semantic names that don't appear in the project (color.brand.fancy); require agents to read existing semantic tokens first.</description>
+        <reason>Without prompt instruction to read existing tokens, agents default to generic names. Generic names scatter across the codebase and make collaboration difficult. Require agents to propose names matching existing conventions.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents reference primitives by raw hex inside semantic layers ({$value: "#3b82f6"}) instead of the alias ({value: "{color.blue.500}"}).</description>
+        <reason>Hardcoding hex defeats the alias abstraction. If the primitive changes, the semantic token stays hardcoded. Require agents to always use the alias syntax.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>When generating dark-mode tokens, agents flip lightness without checking contrast — pair every output with axe-core or a manual contrast check.</description>
+        <reason>Flipping color lightness (light → dark) does not guarantee WCAG AA contrast for text. Dark mode must be tested with a contrast checker before merging.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Style Dictionary transforms are agent-hostile; agents pick transformGroup: 'web' (deprecated) instead of 'css' / 'js'.</description>
+        <reason>Deprecated transform groups may fail silently or produce incorrect output. Require agents to read the current Style Dictionary docs and use recommended transform groups.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>For Tailwind output, agents emit nested objects but Tailwind v3 expects flat 'color-action-primary' keys at some layers — verify by running tailwindcss build after generation.</description>
+        <reason>Tailwind's config shape requirements are unintuitive. Always test Tailwind builds after agents generate token files.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>W3C DTFM $type values are forgotten on numeric tokens (spacing, dimension); some tools error out without them.</description>
+        <reason>W3C Design Tokens Format Module requires $type for W3C-compliant tokens. Tools like Terrazzo and some Style Dictionary configurations enforce this. Require $type on all tokens.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>When using agents to build design token systems, run a "tokens architect" subagent that proposes the three-tier hierarchy from a Figma export or existing CSS audit. Commit primitives first, then semantics, then component tokens — each as its own PR with a Storybook page that renders the swatches. Use Style Dictionary to emit per-platform output (CSS vars, Tailwind config, JS module, iOS/Android if multi-platform). Keep human review on the semantic layer naming — it becomes the public design API.</p>
+
+      <example type="good" title="Agentic workflow for token hierarchy proposal">
+        <code lang="markdown"><![CDATA[
+**Prompt pattern for hierarchy proposal:**
+"Given the Figma design (provided), propose a three-tier token hierarchy. Output: (1) primitive.json with full color scale, spacing, fontSize scales; (2) semantic.json for light theme with purpose-based role names (color.action.primary, color.status.error, etc.); (3) semantic-dark.json with dark theme overrides. Naming must follow category.role.state pattern."
+        ]]></code>
+        <note>Explicit hierarchy instruction + naming pattern forces agents to produce reviewable, consistent output.</note>
+      </example>
+
+      <example type="good" title="Agentic workflow for CSS migration">
+        <code lang="markdown"><![CDATA[
+**Prompt pattern for CSS migration:**
+"Convert the existing :root { --... } CSS variables in src/styles/globals.css into a primitive tokens/primitive.json. Regenerate the CSS via Style Dictionary. Diff before/after must keep the rendered swatches identical. Do not change any values, only move them to tokens."
+        ]]></code>
+        <note>Mechanical migration with verification prevents silent regressions.</note>
+      </example>
+    </section>
+
+    <section name="recommended-subagents">
+      <list>
+        <item>faion-brainstorm — diverge/converge on naming for the semantic layer (e.g., color.action.primary vs color.interactive.primary).</item>
+        <item>faion-feature-executor — once the hierarchy is decided, mechanical primitive/semantic/component generation per category.</item>
+        <item>faion-sdd-executor-agent — full design-system bring-up where tokens are one of several deliverables.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <commands>
+        <command name="style-dictionary install">pnpm add -D style-dictionary</command>
+        <command name="tokens-studio bridge">pnpm dlx @tokens-studio/sd-transforms</command>
+        <command name="w3c tokens validator">pnpm add -D @design-tokens/tokens-validator</command>
+        <command name="terrazzo (modern alternative)">npx terrazzo build</command>
+        <command name="tokens-studio sync">npx tokens-studio sync</command>
+      </commands>
+    </section>
+
+    <section name="services-and-tools">
+      <p>Several services and tools complement token-based design systems. Tokens Studio is a Figma plugin with GitHub sync; Specify is a centralized token store with platform exports; Style Dictionary is the standard for code-first teams; Terrazzo is a smaller TS-native alternative.</p>
+
+      <rule testable="false">
+        <statement>Use Tokens Studio for Figma token editing with GitHub sync, or Specify for centralized management. Fall back to Style Dictionary for code-first token builds.</statement>
+        <rationale>Tokens Studio (free tier + OSS bridge) enables designers to edit tokens in Figma and sync to a GitHub branch for agent/developer review. Specify replaces Style Dictionary entirely if budget allows. Style Dictionary is the default for code-first teams and is trivial to script.</rationale>
+      </rule>
+
+      <list>
+        <item>Tokens Studio (Figma plugin) — SaaS (free tier) + OSS bridge. Designers edit in Figma; agents pull JSON via the sync repo.</item>
+        <item>Specify (SaaS) — Centralized token store with platform exports. Replaces Style Dictionary if budget allows.</item>
+        <item>Knapsack (SaaS) — Heavy enterprise tool. Agent integration limited to docs export.</item>
+        <item>Style Dictionary (OSS) — Default for code-first teams. Trivial to script and extend.</item>
+        <item>Terrazzo (OSS) — Smaller, TS-native, supports W3C DTFM out of the box.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Three tiers, no more, no less. Skipping the semantic layer turns components into hex-code sponges. Skipping component tokens hard-codes states across 50 files.</item>
+        <item>Primitive names describe the value (blue.500, space.4). Semantic names describe the role (color.action.primary). Component names describe the slot (button.bg.primary).</item>
+        <item>Number scales (50/100/.../900) must be perceptually uniform — borrow Tailwind's or Radix Colors' palette before rolling your own.</item>
+        <item>Pin the token format to W3C Design Tokens Format Module ($value, $type, $description) so future tooling switches don't require migration.</item>
+        <item>Keep token files atomic and reviewable — one PR per category change, never "rename 200 tokens" megacommits.</item>
+        <item>For multi-platform systems (web, iOS, Android), build Style Dictionary config once and output to each platform's format (CSS vars, Swift, XML).</item>
+        <item>Dark mode: only semantic tokens change between themes. Primitives and components stay the same. Test dark mode dark-mode output with axe-core for contrast before merging.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/primitive.json" purpose="Primitive token file with full color scale, spacing, fontSize, fontWeight, borderRadius, shadow scales."/>
+      <template path="templates/semantic.json" purpose="Semantic light theme tokens referencing primitives by alias."/>
+      <template path="templates/semantic-dark.json" purpose="Dark theme semantic overrides, showing how only semantic tokens change between themes."/>
+    </templates>
+
+    <see-also>
+      <link href="https://design-tokens.github.io/community-group/format/"/>
+      <link href="https://styledictionary.com"/>
+      <link href="https://tokens.studio"/>
+      <link href="https://www.radix-ui.com/colors"/>
+      <link href="https://bradfrost.com/blog/post/the-many-faces-of-design-tokens/"/>
+      <link href="https://medium.com/eightshapes-llc/naming-tokens-in-design-systems-9e86c7444676"/>
+      <ref slug="design-tokens-implementation"/>
+      <ref slug="css-in-js-basics"/>
+      <ref slug="tailwind-css-patterns"/>
+    </see-also>
+  </content>
+</methodology>
