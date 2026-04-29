@@ -3,6 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+- chore: migrate 3/3 solo/marketing methodologies → methodology.xml (ops-automation-workflow, ops-dashboard-setup, ops-customer-support; feature-045 batch EX)
 - chore: migrate agent-dev-tuning, bash-aliases to methodology.xml format (FEATURE-045 batch EH 2/3)
 - chore: migrate direnv-mise-versions to methodology.xml (FEATURE-045 batch EJ 3/3)
 - chore: migrate deploy-scripts to methodology.xml (FEATURE-045 batch EJ 2/3)
