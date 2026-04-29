@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-fastapi">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Production-grade FastAPI with Pydantic v2 schemas, Depends() injection, async service layer, SQLAlchemy 2 async, and lifespan management for connection pools.</summary>
+    <tags>
+      <tag>fastapi</tag>
+      <tag>python</tag>
+      <tag>async</tag>
+      <tag>pydantic</tag>
+      <tag>sqlalchemy</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>FastAPI Standards</title>
+    <summary>Production-grade FastAPI: Pydantic v2 schemas define the API contract, `Depends()` injects DB sessions and auth, async routes call service functions, lifespan events manage connection pools. Separate request schemas (`UserCreate`) from response schemas (`UserResponse`); keep business logic in services, not routers.</summary>
+    <why>
+      <p>FastAPI's Pydantic + `Depends()` system enforces schema-first design and makes routes thin by construction. Async I/O (SQLAlchemy 2.0 async, `httpx.AsyncClient`) avoids blocking the event loop. `lru_cache` on settings reads `.env` once. Separating request/response schemas prevents accidental write-field exposure and makes partial-update (`PATCH`) clean via `model_dump(exclude_unset=True)`.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building new REST APIs in Python requiring async/await and auto-generated OpenAPI docs</item>
+        <item>Microservices needing high throughput (async I/O, connection pooling)</item>
+        <item>Replacing synchronous Flask / Django REST Framework endpoints with async equivalents</item>
+        <item>Projects where Pydantic v2 validation and `pydantic-settings` config management are already in use</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Existing Django projects with complex ORM relationships — Django REST Framework fits better</item>
+        <item>Simple CRUD with no async I/O needs — Flask or Django may be simpler to operate</item>
+        <item>Projects where the team is unfamiliar with `async/await` — sync bugs in async code are hard to debug</item>
+        <item>GraphQL APIs — FastAPI's OpenAPI tooling conflicts with GraphQL schema conventions</item>
+      </list>
+    </when-not-to-use>
+    <section name="FastAPI Project Structure">
+      <list>
+        <item>app/main.py — FastAPI instance, lifespan, CORS middleware, router inclusion</item>
+        <item>app/config.py — pydantic-settings BaseSettings with lru_cache</item>
+        <item>app/dependencies.py — get_db, get_current_user, DBSession/CurrentUser type aliases</item>
+        <item>app/routers/ — API routes organized by domain</item>
+        <item>app/schemas/ — Pydantic v2 models for request/response</item>
+        <item>app/services/ — business logic functions (async, typed)</item>
+        <item>app/models/ — SQLAlchemy ORM models</item>
+        <item>app/db/ — database connection, session factory</item>
+      </list>
+      <rule>
+        <statement>Use @asynccontextmanager lifespan for startup/shutdown. Never use deprecated @app.on_event("startup"). The lifespan function initializes DB connections and closes them cleanly.</statement>
+        <rationale>on_event is deprecated in FastAPI 0.93+. lifespan is the standard pattern and ensures resources are released even on unhandled exceptions during startup.</rationale>
+      </rule>
+      <example type="good" title="main.py with lifespan">
+        <code lang="python"><![CDATA[from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.config import settings
+from app.db.database import init_db, close_db
+from app.routers import users, orders
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+    await close_db()
+
+
+app = FastAPI(
+    title=settings.app_name,
+    version="1.0.0",
+    lifespan=lifespan,
+    docs_url="/docs" if settings.debug else None,
+)
+
+app.add_middleware(CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
+app.include_router(orders.router, prefix="/api/v1/orders", tags=["orders"])]]></code>
+      </example>
+      <reference path="templates/main.py">Full main.py template</reference>
+    </section>
+    <section name="Configuration with Pydantic Settings">
+      <example type="good" title="Settings with lru_cache">
+        <code lang="python"><![CDATA[from functools import lru_cache
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
+    app_name: str = "My API"
+    debug: bool = False
+    secret_key: str
+    database_url: str
+    cors_origins: list[str] = ["http://localhost:3000"]
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+settings = get_settings()]]></code>
+      </example>
+    </section>
+    <section name="Schemas with Pydantic v2">
+      <rule>
+        <statement>Define separate Base, Create, Update, and Response schemas. Response schema uses ConfigDict(from_attributes=True) for ORM object serialization. Never reuse one schema for all four roles.</statement>
+        <rationale>A single schema cannot express that Create requires password but Response must not expose it, and Update makes all fields optional. Separate schemas make each constraint explicit.</rationale>
+      </rule>
+      <example type="good" title="Schema hierarchy">
+        <code lang="python"><![CDATA[from datetime import datetime
+from uuid import UUID
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
+
+
+class UserBase(BaseModel):
+    email: EmailStr
+    name: str = Field(..., min_length=1, max_length=100)
+
+
+class UserCreate(UserBase):
+    password: str = Field(..., min_length=8, max_length=100)
+
+
+class UserUpdate(BaseModel):
+    email: EmailStr | None = None
+    name: str | None = Field(None, min_length=1, max_length=100)
+
+
+class UserResponse(UserBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    is_active: bool
+    created_at: datetime]]></code>
+      </example>
+      <reference path="templates/schemas.py">Full schema set with pagination response</reference>
+    </section>
+    <section name="Dependency Injection">
+      <rule>
+        <statement>Use Annotated type aliases (DBSession, CurrentUser) for dependencies. This eliminates repeated Depends() boilerplate and makes route signatures readable.</statement>
+        <rationale>Without aliases, every route parameter uses Annotated[AsyncSession, Depends(get_db)] — verbose and hard to update if the dependency changes.</rationale>
+      </rule>
+      <example type="good" title="Type aliases for dependency injection">
+        <code lang="python"><![CDATA[from typing import Annotated
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.database import async_session
+from app.models.user import User
+
+
+async def get_db() -> AsyncSession:
+    async with async_session() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+# Type aliases — use these in route signatures
+DBSession = Annotated[AsyncSession, Depends(get_db)]
+CurrentUser = Annotated[User, Depends(get_current_active_user)]]]></code>
+      </example>
+      <reference path="templates/dependencies.py">Full dependencies.py with auth</reference>
+    </section>
+    <section name="Service Layer with Async Patterns">
+      <rule>
+        <statement>Service functions are async, accept typed parameters, and return ORM model instances or None. Never return raw SQL results or dicts — return the model so the router can serialize via the response schema.</statement>
+        <rationale>Returning models decouples serialization from persistence. Routers pass the model to response_model; tests can inspect model attributes directly.</rationale>
+      </rule>
+      <example type="good" title="Async service functions with SQLAlchemy 2.0">
+        <code lang="python"><![CDATA[from uuid import UUID
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.user import User
+from app.schemas.users import UserCreate, UserUpdate
+from app.utils.security import hash_password
+
+
+async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User | None:
+    result = await db.execute(select(User).where(User.id == user_id))
+    return result.scalar_one_or_none()
+
+
+async def get_users(db: AsyncSession, *, page: int = 1, size: int = 20) -> tuple[list[User], int]:
+    count = (await db.execute(select(func.count(User.id)))).scalar_one()
+    offset = (page - 1) * size
+    users = (await db.execute(
+        select(User).order_by(User.created_at.desc()).offset(offset).limit(size)
+    )).scalars().all()
+    return list(users), count
+
+
+async def create_user(db: AsyncSession, data: UserCreate) -> User:
+    user = User(email=data.email, name=data.name,
+                hashed_password=hash_password(data.password))
+    db.add(user)
+    await db.flush()
+    await db.refresh(user)
+    return user
+
+
+async def update_user(db: AsyncSession, user_id: UUID, data: UserUpdate) -> User | None:
+    user = await get_user_by_id(db, user_id)
+    if not user:
+        return None
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(user, field, value)
+    await db.flush()
+    await db.refresh(user)
+    return user]]></code>
+      </example>
+      <rule>
+        <statement>Use db.flush() + db.refresh(user) after adding a new object to get the generated ID and DB defaults without committing. Commit happens in get_db() when the request succeeds.</statement>
+        <rationale>flush() sends the INSERT to the DB without committing. refresh() reloads the object with server-generated values (UUID, created_at). The outer transaction commits or rolls back at request end.</rationale>
+      </rule>
+    </section>
+    <section name="FastAPI Antipatterns">
+      <antipattern>
+        <description>Calling synchronous I/O (requests.get, psycopg2 queries) inside async route handlers.</description>
+        <reason>Sync calls block the event loop. All other pending requests wait until the blocking call returns. Use httpx.AsyncClient for HTTP and SQLAlchemy async for DB.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Business logic (validation, inventory check, payment) directly in router functions.</description>
+        <reason>Router functions with embedded logic cannot be tested without the HTTP stack, cannot be called from Celery tasks, and cannot be reused across endpoints.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Exposing /docs and /redoc in production (docs_url="/docs" with no guard).</description>
+        <reason>OpenAPI documentation exposes your full API surface, endpoint names, and schema structure. Gate with docs_url="/docs" if settings.debug else None.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Reusing a single Pydantic schema for create, update, and response operations.</description>
+        <reason>Create requires password; response must not expose it; update makes all fields optional. One schema cannot express all three constraints cleanly.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Build FastAPI features in vertical slices: schema → router → service → repository → test. One subagent per slice, with a verifier subagent that runs mypy, ruff, pytest, and uvicorn --check-config (or boots the app via httpx.AsyncClient against app). Always require a route test that goes through the full DI chain (TestClient or AsyncClient) — unit-only tests miss Depends wiring bugs. Keep the agent away from requirements.txt / pyproject.toml edits unless explicitly tasked.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent for SDD task pickup (matches well to vertical-slice tasks), faion-feature-executor for sequential execution with quality gates after each slice, general-purpose subagent restricted to app/routers/&lt;domain&gt;.py + app/schemas/&lt;domain&gt;.py + matching tests, password-scrubber-agent to sweep app/config.py and .env* before commit.</p>
+      <p>Prompt pattern: "Stack: FastAPI + Pydantic v2 + SQLAlchemy 2 async + uvicorn. Layout: app/{routers,schemas,models,services,db/repositories}. Constraints: routes async; Depends() for db session and current user; no business logic in routers; Pydantic v2 only (model_config, field_validator); explicit response_model on every route. After edit: run ruff check, mypy app, and pytest tests/. Stop on first failure."</p>
+      <p>Vertical-slice pattern: "Add endpoint &lt;METHOD&gt; &lt;path&gt;. Vertical slice only: 1) schemas (request + response), 2) router function, 3) service function, 4) repository method, 5) test via httpx.AsyncClient. Do not modify other domains. Do not change DB models in this pass."</p>
+    </section>
+    <section name="Best Practices">
+      <p>Use Pydantic v2 (model_validate, model_dump) and avoid mixing v1/v2 idioms in the same project. Keep route functions thin: validate → call service → serialize. No business logic in routers. Define Settings(BaseSettings) once in app/config.py and inject via Depends(get_settings) (cached). Async DB: SQLAlchemy 2 async + AsyncSession; never call sync ORM in async def routes. Run uvicorn behind gunicorn uvicorn.workers.UvicornWorker in prod; never --reload outside dev. Group routers per domain under app/routers/&lt;domain&gt;.py; mount with explicit prefix and tags.</p>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <p>Agents define def route(...) instead of async def, blocking the event loop. Lint with a custom rule or require async def in the prompt. Calling sync DB code (session.query(...)) inside async def routes silently blocks; agents do this when copy-pasting from Flask/DRF examples. Pin SQLAlchemy 2 async API. Pydantic v1 idioms (class Config:, @validator) creep in from training data. Pin v2 explicitly. BackgroundTasks runs in the same worker — agents push long jobs there and exhaust workers. Route long jobs to Celery/Arq/Taskiq. response_model strips fields not in the schema, including helpful error info; agents forget this and leak server data, or omit response_model altogether and break the OpenAPI spec. DI scope: a session-Depends returning a sync session in an async route is a frequent bug. Use a single async-session dependency. Streaming responses must use StreamingResponse with an async generator; agents return a Response with chunked body and mishandle backpressure. Do not let agents run alembic revision --autogenerate then alembic upgrade head in one shot; review the generated migration first (same trap as Django models).</p>
+    </section>
+    <section name="Tools and Services">
+      <p>Tools: uvicorn (ASGI server), gunicorn with UvicornWorker (process manager in prod), fastapi CLI (built-in dev/run/openapi commands), pydantic v2 (validation), sqlalchemy 2.x (ORM, async), alembic (migrations), httpx AsyncClient (test client + outbound HTTP), respx (mock httpx in tests), pytest-asyncio (async test support), mypy / pyright (static typing), ruff (lint + format), openapi-python-client / datamodel-code-generator (generate clients from /openapi.json), schemathesis (property-based API testing from OpenAPI).</p>
+      <p>Services: Postgres + asyncpg (OSS, default async DB combo), Redis redis.asyncio (OSS, cache + rate limit + pub/sub), Celery / RQ / Arq / Taskiq (OSS, real background jobs; replace BackgroundTasks for long work; Arq + Taskiq are async-native), Sentry (SaaS APM, first-class FastAPI integration), Logfire (Pydantic, structured logging + validation events), OpenTelemetry (OSS, auto-instruments routes), Render / Fly.io / Railway / Vercel (SaaS PaaS with native FastAPI deploy templates), Modal / Beam (SaaS, serverless Python with FastAPI app exposure), Authentik / Keycloak (OSS, OIDC providers; pair with fastapi-users or custom Depends(current_user)).</p>
+    </section>
+    <templates>
+      <template path="templates/main.py" purpose="FastAPI app with lifespan, CORS, and router wiring"/>
+      <template path="templates/schemas.py" purpose="UserBase / UserCreate / UserUpdate / UserResponse Pydantic v2 schema set"/>
+      <template path="templates/dependencies.py" purpose="get_db, get_current_user, CurrentUser / DBSession type aliases"/>
+    </templates>
+    <see-also>
+      <link href="https://fastapi.tiangolo.com/"/>
+      <link href="https://docs.pydantic.dev/latest/migration/"/>
+      <link href="https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html"/>
+      <link href="https://www.uvicorn.org/deployment/"/>
+      <link href="https://github.com/zhanymkanov/fastapi-best-practices"/>
+      <link href="https://schemathesis.readthedocs.io/en/stable/"/>
+      <link href="https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/fastapi/fastapi.html"/>
+      <link href="https://taskiq-python.github.io/"/>
+    </see-also>
+  </content>
+</methodology>
