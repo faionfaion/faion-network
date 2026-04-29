@@ -1,0 +1,640 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="continuous-delivery">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Practice where code changes are automatically prepared for production. Every commit is deployable and release is decoupled from deployment.</summary>
+    <tags>
+      <tag>continuous-integration</tag>
+      <tag>continuous-delivery</tag>
+      <tag>deployment-pipeline</tag>
+      <tag>automation</tag>
+      <tag>feature-flags</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Continuous Delivery (CD)</title>
+    <summary>Continuous Delivery is a software development practice where code changes are automatically prepared for release to production. It expands on Continuous Integration by ensuring that code is always in a deployable state. Every change that passes automated tests can be released to production with the push of a button.</summary>
+    <why>
+      <p>Continuous Delivery decouples deployment from release. Code flows through an automated pipeline in small batches, catching issues early and reducing the blast radius of any individual change. Manual deployments create bottlenecks, delay feedback, and increase human error risk. By automating the entire path from commit to production-ready, teams can release on demand while maintaining quality and auditability.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Web applications and SaaS products needing frequent releases.</item>
+        <item>Teams aiming to reduce deployment risk through smaller batches.</item>
+        <item>When manual deployments cause bottlenecks or slow iteration.</item>
+        <item>Projects requiring rapid iteration and quick feedback loops.</item>
+        <item>Organizations seeking to reduce deployment stress and enable rollback.</item>
+        <item>Regulated environments where audited, automated, repeatable releases beat manual change-control toil.</item>
+        <item>DORA elite targets: deploy daily+, lead-time less than 1 hour, change failure rate less than 15%, MTTR less than 1 hour.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Batched manual release contexts like firmware on shipped hardware or medical devices with formal validation per release.</item>
+        <item>Teams without comprehensive automated tests or with flaky test suites; fix tests first before CD.</item>
+        <item>Pre-MVP or pre-product-market-fit when deployment cost is a single git push; the machinery costs more than the wins.</item>
+        <item>Solo projects with one production environment and no customers; daily local push is sufficient.</item>
+        <item>Schema changes that are not backward-compatible-by-construction; without expand/contract discipline, CD turns bad migrations into downtime.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Prerequisites">
+      <list>
+        <item>Continuous Integration in place with green-on-main as a hard rule.</item>
+        <item>Comprehensive automated testing at unit, integration, and E2E levels.</item>
+        <item>Version control with everything in code, including infrastructure and configuration.</item>
+        <item>Infrastructure as Code for reproducible environments.</item>
+        <item>Feature flags for hiding incomplete features behind runtime toggles.</item>
+      </list>
+    </section>
+    <section name="Key Principles">
+      <rule>
+        <statement>Every Commit Must Be Releasable</statement>
+        <rationale>Automated testing at every stage, no manual testing gates, feature flags for incomplete work, and backward-compatible changes ensure that any passing commit can flow to production.</rationale>
+      </rule>
+      <rule>
+        <statement>Automate Everything in the Pipeline</statement>
+        <rationale>Build process, test execution, environment provisioning, database migrations, configuration management, deployment, monitoring setup, and rollback must all be automatic. Only production deployment trigger (in CD mode) is manual approval; full Continuous Deployment (no approval) is optional.</rationale>
+      </rule>
+      <rule>
+        <statement>Pipeline Stages Flow Left-to-Right with No Gaps</statement>
+        <rationale>Commit → Build → Test (Unit/Integration/E2E) → Stage → Production. Each stage is a gate; failure blocks progression and alerts the team immediately.</rationale>
+      </rule>
+    </section>
+    <section name="CD Pipeline Implementation">
+      <p>A complete CD pipeline includes automated build, test, and deployment stages. Below is a GitHub Actions example covering all five stages: build with unit tests, integration tests, staging deployment with smoke tests, E2E testing on staging, and production deployment with approval.</p>
+      <example type="good" title="GitHub Actions CD Pipeline">
+        <code lang="yaml"><![CDATA[# .github/workflows/cd.yml
+name: CD Pipeline
+
+on:
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Stage 1: Build and Unit Test
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run unit tests
+        run: pytest tests/unit --cov=src --cov-fail-under=80
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+  # Stage 2: Integration Tests
+  integration:
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run integration tests
+        run: pytest tests/integration
+        env:
+          DATABASE_URL: postgresql://postgres:test@localhost:5432/test
+
+  # Stage 3: Deploy to Staging
+  staging:
+    needs: integration
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Deploy to staging
+        run: |
+          kubectl set image deployment/app \
+            app=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --namespace=staging
+
+      - name: Wait for rollout
+        run: kubectl rollout status deployment/app -n staging --timeout=300s
+
+      - name: Run smoke tests
+        run: ./scripts/smoke-tests.sh https://staging.example.com
+
+  # Stage 4: E2E Tests on Staging
+  e2e:
+    needs: staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run E2E tests
+        uses: cypress-io/github-action@v6
+        with:
+          config: baseUrl=https://staging.example.com
+
+  # Stage 5: Deploy to Production (Manual Approval)
+  production:
+    needs: e2e
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy to production
+        run: |
+          kubectl set image deployment/app \
+            app=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --namespace=production
+
+      - name: Wait for rollout
+        run: kubectl rollout status deployment/app -n production --timeout=300s
+
+      - name: Run production smoke tests
+        run: ./scripts/smoke-tests.sh https://example.com
+
+      - name: Notify deployment
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK }} \
+            -d '{"text": "Deployed ${{ github.sha }} to production"}']]></code>
+      </example>
+    </section>
+    <section name="Database Migrations for CD">
+      <p>CD requires backward-compatible migrations. Use the expand-contract pattern: first deploy adds a nullable column, second deploy backfills data, third deploy adds constraints. Never combine incompatible changes in one deployment.</p>
+      <example type="good" title="Backward-Compatible Migration Steps">
+        <code lang="python"><![CDATA[# migrations/versions/001_add_user_email.py
+"""Add email column to users table."""
+
+from alembic import op
+import sqlalchemy as sa
+
+def upgrade():
+    # Step 1: Add nullable column (backward compatible)
+    op.add_column('users', sa.Column('email', sa.String(255), nullable=True))
+
+def downgrade():
+    op.drop_column('users', 'email')
+
+# Next deployment: make required
+# migrations/versions/002_make_email_required.py
+def upgrade():
+    # Step 2: After data migration, add constraint
+    op.alter_column('users', 'email', nullable=False)]]></code>
+      </example>
+    </section>
+    <section name="Feature Flags for CD">
+      <p>Feature flags enable Continuous Delivery by decoupling code deployment from feature release. Code ships to production hidden behind a flag; the product owner enables it when ready. This eliminates the need to coordinate deployment timing with release timing.</p>
+      <example type="good" title="Feature Flag Service with User Targeting">
+        <code lang="python"><![CDATA[# features/flags.py
+from typing import Optional
+import httpx
+
+class FeatureFlagService:
+    """
+    Feature flags enable CD by hiding incomplete features.
+
+    Deployment: Code ships to production
+    Release: Feature becomes visible to users
+    """
+
+    def __init__(self, api_url: str, api_key: str):
+        self.api_url = api_url
+        self.api_key = api_key
+        self._cache: dict[str, bool] = {}
+
+    def is_enabled(
+        self,
+        flag: str,
+        user_id: Optional[str] = None,
+        default: bool = False
+    ) -> bool:
+        """
+        Check if feature flag is enabled.
+
+        Supports:
+        - Global on/off
+        - Percentage rollout
+        - User targeting
+        - Environment targeting
+        """
+        cache_key = f"{flag}:{user_id or 'global'}"
+
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+
+        try:
+            response = httpx.post(
+                f"{self.api_url}/flags/{flag}/evaluate",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                json={"user_id": user_id}
+            )
+            result = response.json().get("enabled", default)
+            self._cache[cache_key] = result
+            return result
+        except Exception:
+            return default
+
+# Usage in code
+feature_flags = FeatureFlagService(
+    api_url=settings.FEATURE_FLAG_URL,
+    api_key=settings.FEATURE_FLAG_API_KEY
+)
+
+@app.get("/dashboard")
+async def dashboard(user: User):
+    data = get_dashboard_data(user)
+
+    # New feature behind flag
+    if feature_flags.is_enabled("new_analytics", user.id):
+        data["analytics"] = get_new_analytics(user)
+
+    return data]]></code>
+      </example>
+    </section>
+    <section name="Deployment Strategies">
+      <p>Different deployment strategies serve different risk profiles. Blue-Green swaps traffic instantly between two identical environments. Canary gradually shifts traffic to detect issues before full rollout. Rolling replaces pods one-by-one with zero downtime.</p>
+      <example type="good" title="Blue-Green Deployment">
+        <code lang="yaml"><![CDATA[# Blue-Green: Two identical environments
+# Switch traffic instantly
+
+# Kubernetes example
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+spec:
+  selector:
+    app: app
+    version: green  # Switch to blue for rollback
+  ports:
+    - port: 80
+
+---
+# Blue deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-blue
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app
+      version: blue
+  template:
+    metadata:
+      labels:
+        app: app
+        version: blue
+    spec:
+      containers:
+        - name: app
+          image: app:v1.0.0
+
+---
+# Green deployment (new version)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-green
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app
+      version: green
+  template:
+    metadata:
+      labels:
+        app: app
+        version: green
+    spec:
+      containers:
+        - name: app
+          image: app:v1.1.0]]></code>
+      </example>
+      <example type="good" title="Canary Deployment">
+        <code lang="yaml"><![CDATA[# Canary: Gradual traffic shift
+# Catch issues before full rollout
+
+# Using Istio for traffic splitting
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: app
+spec:
+  hosts:
+    - app
+  http:
+    - route:
+        # 90% to stable
+        - destination:
+            host: app
+            subset: stable
+          weight: 90
+        # 10% to canary
+        - destination:
+            host: app
+            subset: canary
+          weight: 10
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: app
+spec:
+  host: app
+  subsets:
+    - name: stable
+      labels:
+        version: v1.0.0
+    - name: canary
+      labels:
+        version: v1.1.0]]></code>
+      </example>
+      <example type="good" title="Rolling Deployment">
+        <code lang="yaml"><![CDATA[# Rolling: Gradual pod replacement
+# Default Kubernetes strategy
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  replicas: 6
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2        # Max pods over desired
+      maxUnavailable: 1  # Max pods unavailable
+  template:
+    spec:
+      containers:
+        - name: app
+          image: app:v1.1.0
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20]]></code>
+      </example>
+    </section>
+    <section name="Monitoring and Rollback">
+      <p>Health checks and automatic rollback are essential safety nets. Readiness probes prevent traffic to unhealthy instances. Liveness probes restart crashed containers. Automatic rollback reverts a deployment on failure, restoring availability immediately.</p>
+      <example type="good" title="Health Checks">
+        <code lang="python"><![CDATA[# app/health.py
+from fastapi import APIRouter, Response
+from datetime import datetime
+
+router = APIRouter()
+
+@router.get("/health")
+async def health():
+    """
+    Kubernetes readiness/liveness probe.
+    CD pipeline checks this after deployment.
+    """
+    return {
+        "status": "healthy",
+        "version": settings.APP_VERSION,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+@router.get("/health/ready")
+async def readiness():
+    """
+    Readiness probe: Can accept traffic?
+    Checks all dependencies.
+    """
+    checks = {
+        "database": await check_database(),
+        "redis": await check_redis(),
+        "external_api": await check_external_api(),
+    }
+
+    all_healthy = all(checks.values())
+    status_code = 200 if all_healthy else 503
+
+    return Response(
+        content=json.dumps({"checks": checks, "ready": all_healthy}),
+        status_code=status_code,
+        media_type="application/json"
+    )]]></code>
+      </example>
+      <example type="good" title="Automatic Rollback on Failure">
+        <code lang="yaml"><![CDATA[# Rollback on deployment failure
+# .github/workflows/cd.yml (addition)
+
+production:
+  steps:
+    - name: Deploy
+      id: deploy
+      run: kubectl set image ...
+
+    - name: Wait for rollout
+      id: rollout
+      run: kubectl rollout status ...
+      continue-on-error: true
+
+    - name: Smoke tests
+      id: smoke
+      run: ./scripts/smoke-tests.sh
+      continue-on-error: true
+
+    - name: Rollback on failure
+      if: steps.rollout.outcome == 'failure' || steps.smoke.outcome == 'failure'
+      run: |
+        echo "Deployment failed, rolling back..."
+        kubectl rollout undo deployment/app -n production
+        exit 1]]></code>
+      </example>
+      <example type="good" title="Deployment Metrics for DORA">
+        <code lang="python"><![CDATA[# Track deployment metrics
+# Send to monitoring (Datadog, Prometheus, etc.)
+
+from datadog import statsd
+
+def track_deployment(version: str, success: bool, duration: float):
+    """Track deployment metrics for DORA."""
+
+    # Deployment frequency
+    statsd.increment(
+        "deployment.count",
+        tags=[f"version:{version}", f"success:{success}"]
+    )
+
+    # Lead time (separate tracking from commit time)
+    statsd.histogram(
+        "deployment.duration_seconds",
+        duration,
+        tags=[f"version:{version}"]
+    )
+
+    if not success:
+        # Change failure rate
+        statsd.increment(
+            "deployment.failure",
+            tags=[f"version:{version}"]
+        )]]></code>
+      </example>
+    </section>
+    <section name="CD vs CI vs Continuous Deployment">
+      <p>Continuous Integration (CI) automates building and testing. Continuous Delivery (CD) adds automated deployment to staging and keeps production ready but requires manual approval. Continuous Deployment (fully automated) deploys to production without manual approval. Each step increases automation and risk.</p>
+    </section>
+    <section name="Common Challenges and Solutions">
+      <antipattern>
+        <description>Large batch sizes and manual testing causing bottlenecks prevent frequent deployments.</description>
+        <reason>The release coordinator becomes a bottleneck. Manual testing is unreliable and slow. Multiple changes interact unpredictably, making rollback hard.</reason>
+      </antipattern>
+      <rule>
+        <statement>Keep changes small (less than 200 lines per commit)</statement>
+        <rationale>Small changes are easier to review, test, reason about, and roll back. They reduce the blast radius if deployed defectively.</rationale>
+      </rule>
+      <antipattern>
+        <description>Testing takes too long, blocking the pipeline from flowing.</description>
+        <reason>Serial test execution wastes time. E2E tests are often brittle and slow. Flaky tests are retried, adding latency.</reason>
+      </antipattern>
+      <rule>
+        <statement>Parallelize tests and invert the test pyramid</statement>
+        <rationale>Run unit tests in parallel on multiple cores. Write more unit and integration tests (fast, deterministic) and fewer E2E tests (slow, brittle). Fix or quarantine flaky tests immediately.</rationale>
+      </rule>
+      <antipattern>
+        <description>Database migrations break backward compatibility, causing downtime during deployment.</description>
+        <reason>Non-backward-compatible migrations (adding NOT NULL columns, renaming tables without aliases) conflict with the previous version still running during rolling deploys.</reason>
+      </antipattern>
+      <rule>
+        <statement>Use expand-contract migrations and deploy in multiple phases</statement>
+        <rationale>Add a nullable column first (backward compatible). Deploy the new code. Backfill data. Add constraints. This allows both old and new code to coexist.</rationale>
+      </rule>
+    </section>
+    <section name="DORA Metrics">
+      <p>DORA (DevOps Research and Assessment) metrics measure deployment capability. Elite performers deploy multiple times per day with less than 1-hour lead time, less than 15% change failure rate, and less than 1-hour time to restore. Track these from VCS + deploy events, not self-reports.</p>
+    </section>
+    <section name="Implementation Roadmap">
+      <p>CD adoption typically follows five phases. Phase 1 establishes automated build and unit testing. Phase 2 adds integration and E2E testing with parallelization. Phase 3 adds automated staging deployment. Phase 4 adds production deployment with strategies and rollback. Phase 5 (optional) fully automates production deployment.</p>
+    </section>
+    <section name="Failure Modes and Limitations">
+      <p>CD implementations often stumble on predictable issues. Test pyramid inversion causes slow CI. Teams write E2E tests because they feel comprehensive, but 30-minute CI runs and flaky suites kill CD adoption before it starts. The solution: more unit tests, fewer E2E tests, run E2E only on staging.</p>
+      <p>Migrations that aren't backward-compatible break CD immediately. A command handler in the old version still running after deployment will read from the new schema and crash. The expand-contract pattern—add nullable column, deploy, backfill, add constraint, deploy again—is the only safe way.</p>
+      <p>Feature flags rot when no one owns them or sets expiration dates. After a year, 200 stale flags litter the codebase. Nobody knows what's live. Kill-dates and owners prevent this decay.</p>
+      <p>Smoke tests that only check /health pass even when checkout is broken. If a 10% canary all hits the broken UI and never reaches the API, the 5xx rate looks fine and the canary gate passes. Smoke tests must hit business paths: login, place order, retrieve data.</p>
+      <p>Rollback that doesn't roll back state: the app rolls back, but the schema migration doesn't. The old app version now reads against a future schema and crashes. Migrations must be independently rollback-safe.</p>
+      <p>Deploy is not release. Without feature flags, every deploy is a release. Risk stays high. With flags, code goes to production hidden; the product owner enables it when ready. This decouples engineering from business timing.</p>
+      <p>Pipeline as bottleneck: a single shared pipeline serializes all deploys. Multiple services competing for the same build queue cause backup. Per-service pipelines with concurrency control allow parallel deployment.</p>
+      <p>DORA gaming: counting CI runs as "deploys" or partial rollbacks as "no failure." Numbers go up, reality doesn't. Track actual deploy events from VCS + deploy logs, not self-reports.</p>
+    </section>
+    <section name="Agentic Workflow for CD Adoption">
+      <p>Drive CD adoption as a six-stage pipeline. (1) A baseline agent scores the current pipeline against maturity phases 1–5. (2) A CI agent fixes the unit/integration test base: parallelization, flake quarantine, coverage gates. (3) A deploy agent codifies environments: staging mirrors production, Infrastructure as Code, secrets externalized. (4) A strategy agent picks blue-green, canary, or rolling deployment per service and writes the manifests. (5) A flag agent installs feature flags plus a kill-date convention. (6) A metrics agent wires DORA metrics and business metrics into the canary gate. Use SDD executor to land each phase as a task. Persist the maturity matrix in a living document so progress is visible and auditable. Pair tightly with infrastructure-engineer and cicd-engineer skill methodologies for pipeline mechanics.</p>
+      <p>Recommended subagents: SDD executor agent (one task per CD-phase upgrade, e.g., "add staging smoke tests," "wire automatic rollback"). Use Sonnet for routine pipeline edits; Opus for deploy-strategy redesign. A password-scrubber agent scans CI YAML for secrets leaks. A cd-review-agent flags CD anti-patterns: missing rollback steps, missing smoke tests, branch triggers that aren't main on prod jobs, hardcoded secrets, migrations before app deploy, no concurrency locks. Feature-executor skill for sequential dependencies: migration → app deploy → flag flip → bake → flag remove. Out-of-order equals outage.</p>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <antipattern>
+        <description>Agents invent GitHub Actions or Argo Rollouts fields that don't exist.</description>
+        <reason>LLMs hallucinate plausible-sounding YAML schemas. Invalid YAML passes local testing but fails in CI.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents couple database migrations and app deployment in one job.</description>
+        <reason>If the app crashes after migration but before rollback is called, the migration is not rolled back. Data is now in a future schema the old app cannot read.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents emit a deploy job and forget the rollback step.</description>
+        <reason>Deployment fails silently or partially. Manual intervention required at 3 a.m. Always require an `if: failure()` rollback step or equivalent.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Smoke tests only check the /health endpoint.</description>
+        <reason>A 200 OK on /health doesn't prove checkout works. The app could have crashed the critical path and still be technically "healthy."</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents add feature flags without an expiration date or owner.</description>
+        <reason>Flags accumulate. After a year, 200 stale flags litter the codebase. Developers don't know what's live.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Multiple pull requests merge to main simultaneously, causing parallel deploys.</description>
+        <reason>Two deploys race. The second one overwrites the first without knowing it happened. Use concurrency locks per environment.</reason>
+      </antipattern>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Trunk-based development: short-lived branches (less than 1 day), merged behind feature flags. Long-lived release branches and CD don't coexist.</item>
+        <item>Expand-contract migrations: always two or three deploys. Add, backfill, constrain. Never combine incompatible changes.</item>
+        <item>Smoke tests hit business paths: login, place order, view dashboard. Not just /health.</item>
+        <item>Canary gate on user-facing metrics: 5xx rate, p99 latency, conversion delta. Health-check pass alone is not a gate.</item>
+        <item>Per-service concurrency: `concurrency: deploy-orders-prod`. Prevents overlapping deploys.</item>
+        <item>Feature flags own a kill-date and an owner. Without expiry, flags become permanent.</item>
+        <item>Deploy is not release. Code goes to prod hidden behind a flag; product owner enables it. Decouples engineering from product timing.</item>
+        <item>Automated rollback on signal. SLO burn triggers rollout undo. Don't wait for a human paged at 3 a.m.</item>
+        <item>DORA tracking from VCS + deploy events. Don't self-report; pull from Actions/CI + observability.</item>
+        <item>One artifact, many environments. Build once on main, promote the same image hash through staging and prod. No "rebuild for prod."</item>
+        <item>Secrets in vaults, refs in pipelines. GitHub OIDC → cloud roles → Vault dynamic creds. No long-lived static keys.</item>
+        <item>Database changes have their own pipeline. Migrations are deployable independently and tested with both old and new app versions running simultaneously.</item>
+      </list>
+    </section>
+    <checklist>
+      <check>Automated builds on every commit to main.</check>
+      <check>Unit tests with greater than 70% code coverage, running in under 5 minutes.</check>
+      <check>Integration tests covering critical paths, running in under 15 minutes.</check>
+      <check>Staging environment mirrors production exactly (same load balancer, same database engine, same cache).</check>
+      <check>Smoke tests on staging covering login, primary workflow, and data retrieval.</check>
+      <check>E2E tests on staging covering the complete user journey.</check>
+      <check>Feature flags for incomplete features, each with an owner and kill date.</check>
+      <check>Database migrations following expand-contract pattern.</check>
+      <check>Blue-green, canary, or rolling deployment strategy defined per service.</check>
+      <check>Automatic rollback on deployment failure or canary signals.</check>
+      <check>Health checks (readiness and liveness probes) on all services.</check>
+      <check>DORA metrics (deployment frequency, lead time, change failure rate, MTTR) tracked automatically.</check>
+      <check>Secrets stored in a vault, not in code or CI YAML.</check>
+      <check>Concurrency locks preventing simultaneous deploys to the same environment.</check>
+    </checklist>
+    <section name="Tools and Services for CD">
+      <p>Numerous tools support different aspects of CD. GitHub Actions is the default for most teams; agents own .github/workflows/*.yml directly. GitLab CI/CD has strong built-in environments and manual approvals. Argo CD and Argo Rollouts implement GitOps with canary CRDs; agents declare desired state via manifests. Flux plus Flagger is an alternative for progressive delivery on service meshes. Harness is a SaaS pipeline-as-code platform with built-in deployment verification. LaunchDarkly, Statsig, Unleash, and Flagsmith are feature flag platforms with APIs for programmatic control. Datadog, New Relic, and Honeycomb enable deploy markers and SLO-based canary analysis. Sentry tracks release crashes. Snyk, Trivy, and Grype scan container images as a deploy gate. Cloudflare and Fastly offer instant cache purge and atomic config rollouts. AWS CodeDeploy and CodePipeline integrate tightly with AWS infrastructure. Kamal is a single-binary alternative for non-Kubernetes shops. PagerDuty and Opsgenie wire incident response to deploy events and auto-rollback hooks. Choose tools that fit your team's expertise and cloud provider; avoid tool sprawl.</p>
+    </section>
+    <section name="Prompt Patterns for CD Coaching">
+      <p>Maturity assessment: You are a CD coach. Read the repository's CI/CD config (.github/workflows, .gitlab-ci.yml, Helm, Kustomize manifests, scripts/deploy*). Score against the 5 phases in the implementation roadmap. For each phase, report status (done/partial/missing), evidence (file:line), and next-task list (≤3 items, smallest viable). Output as a markdown table; do not propose architecture overhauls.</p>
+      <p>Pipeline review: You are reviewing a CD pipeline PR. Flag: (1) production deploy job triggered by anything other than main or explicit release tag, (2) deploy step without rollback step on failure, (3) migration applied at the same step as app deploy (must be separate, expand-only migration ahead of deploy), (4) smoke-test job that only checks /health and not a business path, (5) no concurrency: group on the production environment, (6) secrets referenced as plaintext, not env vars from a vault, (7) feature-flag added without a kill-date or owner. Cite file:line. No fixes—only flags.</p>
+    </section>
+    <section name="CLI Tools for Agents">
+      <p>Agents interact with CD systems via CLI tools. gh (GitHub CLI) triggers and inspects Actions runs. glab (GitLab CLI) manages pipelines and merge requests. act runs GitHub Actions locally. kubectl, helm, and kustomize apply Kubernetes manifests. argocd CLI manages GitOps sync and app-of-apps patterns. flux CLI is the Flux toolkit alternative. argo rollouts plugin enables canary and blue-green CRDs with analysis. flagger is for progressive delivery on Istio/NGINX/Linkerd. flyway, liquibase, sqitch, dbmate, and goose handle schema migrations. gitleaks and trufflehog scan for secret leaks. cosign, syft, and grype sign images, generate SBOMs, and scan CVEs. k6 and vegeta run synthetic load as a deploy gate. dora toolkits compute DORA metrics from VCS and CI logs. LaunchDarkly, Statsig, Unleash, and Flagsmith CLIs manage feature flags from pipelines.</p>
+    </section>
+    <see-also>
+      <ref slug="cqrs-pattern"/>
+      <ref slug="csharp-dotnet-patterns"/>
+      <link href="https://continuousdelivery.com/"/>
+      <link href="https://martinfowler.com/bliki/ContinuousDelivery.html"/>
+      <link href="https://www.devops-research.com/research.html"/>
+      <link href="https://cli.github.com"/>
+      <link href="https://kubernetes.io"/>
+      <link href="https://argo-cd.readthedocs.io"/>
+      <link href="https://fluxcd.io"/>
+      <link href="https://argoproj.github.io/argo-rollouts"/>
+    </see-also>
+  </content>
+</methodology>
