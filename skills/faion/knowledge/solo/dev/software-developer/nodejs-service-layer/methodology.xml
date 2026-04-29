@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="nodejs-service-layer">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Controller-Service-Repository pattern for Node.js backends. Controllers validate input and map errors; services own business logic; repositories encapsulate ORM/SQL.</summary>
+    <tags>
+      <tag>nodejs</tag>
+      <tag>typescript</tag>
+      <tag>architecture</tag>
+      <tag>layered</tag>
+      <tag>service-layer</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Node.js Service Layer</title>
+    <summary>Controller-Service-Repository pattern for Node.js/TypeScript backends. Controllers validate input with Zod and map errors to HTTP; services own all business logic and throw typed domain errors; repositories encapsulate ORM/SQL. Each layer has a single responsibility and no cross-layer imports (controller never imports repository).</summary>
+    <why>
+      <p>Thin controllers and pure services are unit-testable without an HTTP server. Repository abstraction lets the service layer swap DB implementations. Domain errors — not HTTP codes — inside services mean the same logic can be invoked from HTTP, gRPC, queues, or CLIs. eslint-plugin-boundaries + dependency-cruiser enforce the layering automatically.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Express, Fastify, NestJS, or Hono services with non-trivial domain logic.</item>
+        <item>Multi-entry backends (HTTP + gRPC + queue consumers) reusing the same service.</item>
+        <item>Projects targeting high unit-test coverage — controller-heavy code resists testing.</item>
+        <item>LLM-driven implementation: three specific shapes (controller/service/repository) reduce free decisions and bugs.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Toy CRUD apps where every handler is db.find().lean() — extra layers add ceremony with no payoff.</item>
+        <item>Edge functions / serverless with strict cold-start budgets — DI containers slow boot.</item>
+        <item>Pure proxies / BFFs with no domain logic — route → fetch → respond is enough.</item>
+        <item>Realtime-heavy apps (WebSocket gaming, MQTT) where event handlers don't fit request-response shape.</item>
+      </list>
+    </when-not-to-use>
+    <section name="layer-responsibilities">
+      <rule testable="true">
+        <statement>Controllers do exactly four things: validate input (Zod/TypeBox), call one service method, map errors via central ErrorMapper, return DTO. Any logic beyond this belongs in the service.</statement>
+        <rationale>Thin controllers are stateless and trivially testable; fat controllers resist unit testing because they require an HTTP context.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Services accept and return domain types; they never import Express/Fastify Request or Response, and they throw typed domain errors — not HTTP status codes.</statement>
+        <rationale>Framework-agnostic services can be called from HTTP handlers, gRPC, queue consumers, and CLIs without modification.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Repositories expose intention-revealing methods (findActiveByUserId) over generic find(filter); they own all ORM/SQL logic and never leak query builders to callers.</statement>
+        <rationale>Generic find(filter) enables callers to compose unindexed filters at runtime, causing silent full-table scans.</rationale>
+      </rule>
+    </section>
+    <section name="dependency-direction">
+      <rule testable="true">
+        <statement>Dependencies must only flow downward: Controller → Service → Repository. Cross-layer imports (controller → repository, service → framework) are a hard violation caught by eslint-plugin-boundaries.</statement>
+        <rationale>Upward or cross-layer imports break testability and couple business logic to transport details.</rationale>
+      </rule>
+      <example type="bad" title="Direct repository import in controller">
+        <code lang="typescript"><![CDATA[
+// BAD: controller directly imports repository
+import { userRepository } from '../repositories/users.repository';
+
+app.post('/users', async (req, res) => {
+  const existing = await userRepository.findByEmail(req.body.email);
+  // business logic here...
+});
+        ]]></code>
+      </example>
+      <example type="good" title="Service delegation from controller">
+        <code lang="typescript"><![CDATA[
+// GOOD: controller delegates to service
+app.post('/users', async (req, res, next) => {
+  try {
+    const user = await userService.createUser(req.body);
+    res.status(201).json({ data: user });
+  } catch (error) {
+    next(error);
+  }
+});
+        ]]></code>
+      </example>
+    </section>
+    <section name="dependency-injection">
+      <rule testable="true">
+        <statement>Wire dependencies through constructor injection; never use module-level singletons or static service locators in files that need to be unit-tested.</statement>
+        <rationale>Constructor injection makes dependencies explicit and replaceable with mocks in unit tests.</rationale>
+      </rule>
+      <example type="good" title="Manual DI container setup">
+        <code lang="typescript"><![CDATA[
+// container.ts — manual DI for small apps
+const prisma = new PrismaClient();
+const userRepository = new UserRepository(prisma);
+const userService = new UserService(userRepository);
+const userController = new UserController(userService);
+        ]]></code>
+      </example>
+      <reference path="templates/user-repository.ts">IUserRepository interface + Prisma implementation</reference>
+      <reference path="templates/user-service.ts">UserService with DI, domain errors, business logic</reference>
+      <reference path="templates/user-controller.ts">Thin Express controller skeleton</reference>
+    </section>
+    <section name="domain-error-classes">
+      <rule testable="true">
+        <statement>Define a typed AppError hierarchy (NotFoundError, ConflictError, UnauthorizedError, ValidationError); services throw domain errors, never raw Error or HTTP status codes.</statement>
+        <rationale>Typed domain errors give the central ErrorMapper precise mapping targets; raw errors produce generic 500s and lose observability.</rationale>
+      </rule>
+      <example type="good" title="AppError hierarchy">
+        <code lang="typescript"><![CDATA[
+export class AppError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number = 500,
+    public code: string = 'INTERNAL_ERROR',
+    public isOperational: boolean = true,
+  ) {
+    super(message);
+    this.name = this.constructor.name;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+export class NotFoundError extends AppError {
+  constructor(message = 'Resource not found') { super(message, 404, 'NOT_FOUND'); }
+}
+
+export class ConflictError extends AppError {
+  constructor(message = 'Resource conflict') { super(message, 409, 'CONFLICT'); }
+}
+
+export class UnauthorizedError extends AppError {
+  constructor(message = 'Unauthorized') { super(message, 401, 'UNAUTHORIZED'); }
+}
+        ]]></code>
+      </example>
+      <reference path="templates/errors.ts">Full AppError hierarchy + central ErrorMapper middleware</reference>
+    </section>
+    <section name="central-error-mapper">
+      <rule testable="true">
+        <statement>Translate domain errors to HTTP responses in a single Express errorHandler middleware; never translate domain errors inside individual controllers.</statement>
+        <rationale>Per-handler translation diverges over time; a central mapper ensures consistent status codes, response shapes, and logging across all endpoints.</rationale>
+      </rule>
+      <example type="good" title="Express error handler middleware">
+        <code lang="typescript"><![CDATA[
+import { ErrorRequestHandler } from 'express';
+import { ZodError } from 'zod';
+import { AppError } from '../utils/errors';
+
+export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
+  if (err instanceof ZodError) {
+    return res.status(400).json({ error: 'Validation failed', details: err.flatten().fieldErrors });
+  }
+  if (err instanceof AppError && err.isOperational) {
+    return res.status(err.statusCode).json({ error: err.message, code: err.code });
+  }
+  return res.status(500).json({ error: 'Internal server error', code: 'INTERNAL_ERROR' });
+};
+        ]]></code>
+      </example>
+    </section>
+    <section name="antipatterns">
+      <antipattern>
+        <description>Business logic (hashing passwords, checking duplicates, sending emails) placed directly in Express route handlers.</description>
+        <reason>Route handlers cannot be unit-tested without an HTTP server; logic cannot be reused from queue consumers or CLIs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Service methods importing and calling Prisma/Sequelize/Knex directly instead of through a repository interface.</description>
+        <reason>Direct ORM usage in services couples business logic to the DB layer, preventing mock-based unit tests and storage swaps.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Generic repository method findAll(filter) where callers compose unindexed filter predicates.</description>
+        <reason>Runtime-composed filters produce full-table scans that only appear under production load; index coverage cannot be verified statically.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Per-controller try/catch that wraps all errors in res.status(500).json(), swallowing domain error context.</description>
+        <reason>Swallowing domain errors loses error code, stack trace, and structured detail; the central ErrorMapper must handle translation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Zod schema updated without regenerating the inferred TypeScript type (or vice versa), causing runtime/type divergence.</description>
+        <reason>Schema and type out of sync means the compiler approves code that fails at runtime validation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Service class registered as singleton in the DI container while carrying request-scoped state (auth context, tenant ID).</description>
+        <reason>Singleton services with mutable request-scoped fields leak state across concurrent requests.</reason>
+      </antipattern>
+    </section>
+    <section name="boundary-enforcement">
+      <rule testable="true">
+        <statement>Run dependency-cruiser and eslint-plugin-boundaries in CI to block controller→repository and service→framework imports automatically.</statement>
+        <rationale>Human review alone misses import violations in large PRs; automated tools enforce the contract on every change.</rationale>
+      </rule>
+      <reference path="templates/layer-check.sh">CI script using dependency-cruiser to block cross-layer imports</reference>
+    </section>
+    <section name="agentic-workflow">
+      <p>A four-stage flow per feature. (1) Spec → DTOs: an agent generates Zod / TypeBox schemas for request, response, and domain entities; controllers and services derive types from the schemas. (2) Service skeleton: agent creates &lt;feature&gt;.service.ts with constructor injection of repository + clients, returns domain types only. (3) Controller: thin handler validates with the schema, calls the service, maps domain errors to HTTP via a central error mapper. (4) Tests: unit tests for the service with mocked repo, integration tests for the controller using supertest or light-my-request (Fastify). faion-sdd-executor-agent enforces "controller has no business logic; service has no req/res" as a structural rule.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-sdd-executor-agent — gates: controllers don't import repos, services don't import Request/Response, every public service method has unit tests with ≥1 happy + ≥1 error path.</item>
+        <item>A layer-linter subagent (worth creating): walks the dependency graph and fails when controller→repo or service→framework imports appear. Cheap to run with dependency-cruiser / eslint-plugin-boundaries.</item>
+        <item>A DTO-from-schema subagent: given Zod / TypeBox schemas, generates request/response types and OpenAPI fragments.</item>
+        <item>faion-feature-executor (skill) — sequence schema → service → repo → controller → tests as ordered SDD tasks.</item>
+        <item>password-scrubber-agent — scrub fixture data and example logs before publishing.</item>
+      </list>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Controllers do four things: validate input (Zod/TypeBox), call one service method, map errors via a central mapper, return DTO. Anything else is a smell.</item>
+        <item>Services own business logic, accept and return domain types, throw domain errors. They never know about Request, Response, or HTTP status codes.</item>
+        <item>Repositories own SQL / ORM specifics. Expose intention-revealing methods (findActiveByUserId) over generic find(filter) to keep performance in your hands.</item>
+        <item>Use a DI container (awilix, tsyringe, NestJS) once you exceed ~10 services; manual wiring becomes a tax.</item>
+        <item>Validate at the edges: Zod / TypeBox at controllers, infer types throughout. No any, no as unknown as T.</item>
+        <item>Log with pino and a request-scoped child logger (req.log); propagate trace IDs into services so logs join up.</item>
+        <item>Use a central ErrorMapper translating domain errors to HTTP. Every new domain error gets a registered mapping or a CI lint failure.</item>
+        <item>Transactions: thread an unitOfWork (Drizzle / Prisma $transaction callback) through service methods that span repos.</item>
+        <item>Test pyramids: heavy on service unit tests with mocked repos, plus integration tests using a real DB (Testcontainers) for repos and route-level tests for controllers.</item>
+        <item>Don't reach for NestJS unless you'll use modules, guards, interceptors, and pipes; otherwise its DI and decorators are pure overhead.</item>
+      </list>
+    </section>
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents move HTTP concerns into services (res.status(404).json(...)) because that's the dominant pattern in the training set. Reject and require domain errors.</item>
+        <item>LLMs invent generic findAll(filter) repository methods, encouraging callers to compose unindexed filters at runtime. Force intention-revealing names.</item>
+        <item>Agents skip dependency injection and import repositories directly inside services, defeating testability. The boundary check above catches this.</item>
+        <item>DTO drift: agents update Zod schemas without regenerating types or vice versa. Use z.infer&lt;typeof schema&gt; and lint for divergence.</item>
+        <item>as any / @ts-ignore proliferation. Add eslint-rule-ban-ts-comment and no-explicit-any and treat them as errors.</item>
+        <item>Async error swallowing: agents wrap service calls in try { ... } catch { res.status(500) } and lose stack + context. Centralize via the error mapper, never per-handler.</item>
+        <item>Agents over-mock in service tests, ending up testing the mocks. Require ≥1 integration test per public service method using a real DB.</item>
+        <item>DI container misuse: agents register everything as singleton; request-scoped state (auth, tenant) leaks across requests. Pin lifetimes in the container.</item>
+        <item>Agents introduce cyclic deps when a service imports another service that imports the first. madge --circular in CI prevents.</item>
+        <item>Human-in-loop checkpoint: any change to the central error mapper or the DI container registration must be human-approved — both have system-wide impact.</item>
+      </list>
+    </section>
+    <section name="limitations">
+      <p>Anaemic services: every method is repo.findById-and-return; the layer adds cost without value. A symptom, not the pattern's fault.</p>
+      <p>Manual DI bowls of spaghetti: hand-wired constructors get unmanageable past ~30 services; tools like tsyringe, awilix, or NestJS DI become necessary.</p>
+      <p>Repository over-abstraction: hiding ORM features (eager loading, query builders, transactions) behind generic find(filter) cripples performance and forces leaky workarounds.</p>
+      <p>Cross-service transactions: two services calling two repos can't rely on a request-scoped DB transaction unless explicitly threaded; bugs manifest as partial writes.</p>
+      <p>TypeScript boundaries: agents widen DTOs to any to "make it compile"; runtime payloads diverge from types.</p>
+      <p>Error-mapping leaks: domain errors end up as 500s because controllers don't translate them to HTTP — kills observability.</p>
+      <p>Test fixtures explode: every service test mocks 3 repos; brittle and slow. Symptom of poor seam design.</p>
+      <p>"Service" becomes "the place I dump utility functions" — naming rot.</p>
+    </section>
+    <section name="references">
+      <see-also>
+        <link href="https://docs.nestjs.com">NestJS docs</link>
+        <link href="https://fastify.dev">Fastify docs (plugins / decorators)</link>
+        <link href="https://github.com/jeffijoe/awilix">Awilix docs</link>
+        <link href="https://orm.drizzle.team">Drizzle ORM docs</link>
+      </see-also>
+    </section>
+    <templates>
+      <template path="templates/user-repository.ts" purpose="IUserRepository interface + Prisma implementation"/>
+      <template path="templates/user-service.ts" purpose="UserService with DI, domain errors, business logic"/>
+      <template path="templates/user-controller.ts" purpose="Thin Express controller — validate, call service, map errors"/>
+      <template path="templates/errors.ts" purpose="AppError hierarchy + central ErrorMapper"/>
+      <template path="templates/layer-check.sh" purpose="Bash script using dependency-cruiser to block cross-layer imports in CI"/>
+    </templates>
+  </content>
+</methodology>
