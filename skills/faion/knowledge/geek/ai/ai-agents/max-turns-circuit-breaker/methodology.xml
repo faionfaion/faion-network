@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="max-turns-circuit-breaker">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Set an explicit max_turns on every production agent run and CATCH the resulting exception as a structured fallback instead of a 500 error.</summary>
+    <tags>
+      <tag>agent-patterns</tag>
+      <tag>resilience</tag>
+      <tag>error-handling</tag>
+      <tag>production-deployment</tag>
+      <tag>cost-control</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Max-Turns as Circuit Breaker, Not Error</title>
+    <summary>Set an explicit max_turns on every production agent run (5-10 for retrieval, 15-20 for coding agents) and CATCH the resulting MaxTurnsExceeded exception. On catch, hand the partial trajectory to a cheap recovery model that summarizes what was tried and asks the user to clarify, instead of bubbling a 500. Hard turn caps are the only deterministic stop for tool-calling loops that fail by silently consuming budget.</summary>
+    <why>
+      <p>Tool-calling loops fail open: each tool result still looks like "progress" to the model, so it keeps proposing actions ("call search → no results → call search again with same query"). Token spend grows linearly per turn while the user sees nothing. The OpenAI Agents SDK default of max_turns=10 (Python) / 25 (JS) is a footgun — too low for coding agents, too high for retrieval. A turn cap paired with an exception handler converts a runaway loop into a structured fallback: partial trace preserved for debugging, graceful answer for the user, no 500.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Every Runner.run / agent-loop invocation that calls tools.</item>
+        <item>Retrieval agents (cap 5-10 turns) and code-editing agents (cap 15-20).</item>
+        <item>Production deployments where budget is finite and silent loops drain credit.</item>
+        <item>Multi-tenant SaaS where one stuck loop can starve others of rate-limit headroom.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Long-running async coding agents in sandboxes designed for hundreds of turns — use checkpoint + human approval instead, not a single max-turns.</item>
+        <item>Chat completions with no tool use — the model already terminates on first non-tool reply.</item>
+        <item>Workflows where the cap is an unrecoverable error (DB transaction half-applied) — solve with idempotency, not a turn cap.</item>
+      </list>
+    </when-not-to-use>
+    <section name="cap-and-catch">
+      <p>Tool-calling agents do not detect their own non-progress: from the model's view, every tool result is forward motion. Only an external counter stops a stuck loop deterministically.</p>
+      <rule testable="true">
+        <statement>Set max_turns explicitly on every production agent invocation (5-10 retrieval, 15-20 coding) and wrap the call in a try/except that handles MaxTurnsExceeded by summarizing the partial trajectory with a cheap model and returning a graceful reply.</statement>
+        <rationale>Tool loops fail by silent budget burn — the LLM treats each tool result as progress regardless of whether the goal is closer. A hard cap is the only deterministic stop. Catching the exception (instead of letting it bubble) preserves the partial trace and turns a 500 into a usable answer.</rationale>
+      </rule>
+      <example type="good" title="Cap with recovery handler">
+        <code lang="python"><![CDATA[
+try:
+    res = await Runner.run(agent, user_msg, max_turns=8)
+    return res.final_output
+except MaxTurnsExceeded as e:
+    summary = await Runner.run(
+        recovery_agent,                       # cheap model
+        e.run_data.to_input_list(),
+        max_turns=1,
+    )
+    return f"I got stuck. Here is what I tried: {summary.final_output}"
+        ]]></code>
+        <note>Cap is explicit, exception is caught, partial trace feeds a 1-turn recovery summarizer.</note>
+      </example>
+      <example type="bad" title="Uncaught default cap">
+        <code lang="python"><![CDATA[
+res = await Runner.run(agent, user_msg)  # default max_turns, uncaught
+return res.final_output
+        ]]></code>
+        <note>Default cap fires without warning, exception bubbles to a 500, partial trajectory is lost.</note>
+      </example>
+      <antipattern>
+        <description>Raising max_turns to 100+ to "stop hitting the cap".</description>
+        <reason>Hides the underlying loop bug (bad tool, missing termination signal) and multiplies wasted spend. Fix the loop, do not extend the leash.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Catching MaxTurnsExceeded and silently returning empty string.</description>
+        <reason>User sees a blank reply, ops loses the trace. Always emit either a recovery summary or a typed error with the partial trajectory id.</reason>
+      </antipattern>
+      <reference path="templates/recovery_handler.py">Reference handler that summarizes the partial trajectory with a cheap model.</reference>
+    </section>
+    <section name="sizing-the-cap">
+      <list>
+        <item>Retrieval / Q&amp;A agent: 5-10 turns. One search + one read + answer is typical 3 turns; 10 covers retries.</item>
+        <item>Code-editing agent (Read+Grep+Edit+Bash): 15-20 turns. Larger because tests-fix cycles can take 6-8 iterations alone.</item>
+        <item>Multi-agent supervisor: cap each subagent independently, plus a global cap on the supervisor (≤2× sum of subagent caps).</item>
+        <item>Long-horizon coding sandboxes: do NOT use max_turns; use checkpointing + human approval gates instead.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/recovery_handler.py" purpose="Reference pattern: catch MaxTurnsExceeded, summarize trajectory with cheap model, return graceful reply."/>
+    </templates>
+  </content>
+</methodology>
