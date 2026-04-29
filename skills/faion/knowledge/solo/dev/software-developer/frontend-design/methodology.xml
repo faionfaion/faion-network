@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="frontend-design">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Solopreneur UI workflow: diverge into 3-5 distinct design variants, select one, scaffold Storybook with design tokens, deliver colocated components. Tokens first to prevent color hardcoding.</summary>
+    <category>design</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+    <tags>
+      <tag>frontend-design</tag>
+      <tag>ui-design</tag>
+      <tag>design-tokens</tag>
+      <tag>storybook</tag>
+      <tag>component-library</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>javascript</language>
+      <language>typescript</language>
+      <language>html</language>
+      <language>css</language>
+    </languages>
+    <frameworks>
+      <framework>react</framework>
+      <framework>tailwind</framework>
+      <framework>storybook</framework>
+    </frameworks>
+    <related>
+      <ref slug="design-tokens-basics"/>
+      <ref slug="storybook-setup"/>
+      <ref slug="accessibility"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Frontend Design</title>
+
+    <summary>A multi-phase workflow for solopreneur-scale UI projects: fix requirements (type, style, tech), generate 3-5 truly distinct design variants differing in navigation pattern and information density, render them to screenshots for comparison, select one based on human taste, define design tokens before components, scaffold Storybook with pinned versions, and deliver components colocated with stories and tests. Tokens come first; components inherit from them to prevent color hardcoding and post-hoc drift.</summary>
+
+    <why>
+      <p>Solopreneurs collapse designer and developer into one role. Without a structured diverge-then-converge process, the first idea ships without exploring alternatives. Generating variants forces comparison and refinement. However, brainstorming without constraints produces irrelevant noise (trendy effects that ignore brand voice) or lookalikes (five minor color variations of the same layout).</p>
+      <p>The token-first discipline prevents the most common failure: components that hardcode colors, forcing expensive refactors when the brand palette changes. Design tokens (W3C format, compiled by style-dictionary to CSS vars, JS, iOS, Android) keep Figma, CSS, and Storybook in sync. Storybook version pinning and CSF3 discipline prevent silent CSS isolation breakage from updates. Screenshot rendering (Playwright) beats code-only review because LLM assessments of rendered quality are unreliable.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield frontend (landing, dashboard, marketing site) where visual direction is open.</item>
+        <item>Component library bootstrap before product features land (storybook.faion.net pattern).</item>
+        <item>Rebrand / redesign passes that need 3-5 explored variants before committing.</item>
+        <item>Solopreneur-scale projects (faion.net portfolio sites: ruslan, viktoria, art) — designer + dev are the same person + agents.</item>
+        <item>Translating brand brief or PRD into concrete tokens (colors, type scale, spacing) and components.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Active production UI with established design system — variant brainstorming is wasted; iterate on tokens instead.</item>
+        <item>Pure backend or CLI projects.</item>
+        <item>Brownfield refactors where scope is "make this page faster", not "redesign".</item>
+        <item>Native mobile (iOS/Android) — patterns assume web (HTML/CSS/JSX); use platform-native tools.</item>
+        <item>Engineering-driven internal admin tools where utility outweighs aesthetics.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="phase-1-requirements">
+      <p>Before any design work, lock down three parameters: the page type (landing, dashboard, form, component library), the style direction (minimalist, bold, corporate, playful), and the technology stack (React+TS+Tailwind, Vue, HTML/CSS, etc.). These constraints cut the variant space to a tractable size and prevent brainstorming from diverging into irrelevant directions.</p>
+
+      <rule>
+        <statement>Fix type (Landing/Dashboard/Form/Components), style (Minimalist/Bold/Corporate/Playful), and tech stack before any design work begins.</statement>
+        <rationale>Unconstrained brainstorming produces trendy noise. Three locked parameters cut the variant space to a tractable size.</rationale>
+      </rule>
+    </section>
+
+    <section name="phase-2-brainstorm-variants">
+      <p>Generate 3-5 design variants, each representing a genuinely distinct approach. Variants must differ on structural axes (navigation pattern, hero composition, information density), not superficial axes (color palette, font family). Each variant is a runnable HTML/JSX artifact with inline tokens and a rationale document explaining its unique thesis.</p>
+
+      <rule>
+        <statement>Each variant must differ in (a) primary navigation pattern, (b) hero composition, and (c) information density. Variants that differ only in color or typography are rejected.</statement>
+        <rationale>Without a distinctness contract, agents produce five minor variations of the same layout. The three-axis rule forces genuine divergence.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Each variant ships as a runnable HTML/JSX file in designs/variant-N-name/ with inline design tokens and a rationale.md explaining its unique thesis.</statement>
+        <rationale>Rationale files kill lookalikes by forcing justification; runnable files enable screenshot rendering rather than vibes-based review.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Cap variants at 5. Run Playwright screenshots at 1440x900 and 375x812 after each. Run an a11y audit (pa11y / axe-core) on every variant; reject any failing WCAG AA (contrast ratio &lt; 4.5:1, missing focus rings).</statement>
+        <rationale>More than 5 options causes decision paralysis. A11y gate prevents shipping inaccessible variants to the selection step.</rationale>
+      </rule>
+
+      <example type="good" title="Prompt that enforces distinctness">
+        <code lang="text"><![CDATA[
+Brief: <copy from .product/brief.md>. Tech: React+TS+Tailwind. Style: minimalist.
+Generate 5 DISTINCT layout variants. Each must differ in:
+(a) primary navigation pattern, (b) hero composition, (c) information density.
+Output to designs/variant-{1..5}-<name>/index.html with inline tokens.
+After each, run Playwright screenshot at 1440x900 + 375x812.
+Show me screenshot grid. Do not iterate yet.
+        ]]></code>
+      </example>
+
+      <scripts>
+        <script path="scripts/render-variants.sh" purpose="Render all design variants to PNG grid at desktop and mobile for review"/>
+      </scripts>
+    </section>
+
+    <section name="phase-3-selection-and-refinement">
+      <p>Variant selection is a human decision, not an agent decision. Agents rank variants by accessibility and brand-voice alignment, but humans choose the direction. This separation preserves intentionality and prevents agent defaults (minimalist with gradient hero, modern sans-serif) from overriding brand voice.</p>
+
+      <rule>
+        <statement>Variant selection is a human decision, not an agent decision. The agent ranks variants by a11y and brand-voice match, but the human picks.</statement>
+        <rationale>Design choice is taste, not logic. Agent rankings serve as inputs, not verdicts.</rationale>
+      </rule>
+
+      <list>
+        <item>Refine the chosen variant by iterating on spacing, typography, and component details.</item>
+        <item>Re-run a11y audits to ensure WCAG AA compliance throughout refinement.</item>
+        <item>Capture decisions in designs/DECISIONS.md so the next iteration knows why alternatives were rejected.</item>
+      </list>
+    </section>
+
+    <section name="phase-4-tokens-and-storybook">
+      <p>Design tokens are the canonical source of truth for colors, typography, spacing, and other design properties. Define them in a single source file (tokens.json or tokens/ in W3C design-tokens format) and compile them to CSS variables, JavaScript objects, and any other target via style-dictionary. This prevents components from hardcoding hex values and ensures Figma, CSS, and Storybook stay in sync.</p>
+
+      <rule>
+        <statement>Define design tokens (colors, typography, spacing) before generating any component. Tokens must live in a single source file (tokens.json or tokens/ folder in W3C design-tokens format) compiled by style-dictionary to CSS vars, JS, and any other target.</statement>
+        <rationale>Token-first prevents components from hardcoding hex values. Post-hoc token extraction is painful and produces drift between Figma, CSS, and Storybook.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Pin Storybook to a specific major version and use CSF3 format for all stories. Do not upgrade Storybook mid-project without a dedicated migration task.</statement>
+        <rationale>Storybook 6/7/8 differ substantially; agents pull stale tutorials causing silent CSS isolation breakage.</rationale>
+      </rule>
+
+      <list>
+        <item>Install style-dictionary: npm i -D style-dictionary</item>
+        <item>Create tokens.json in W3C design-tokens format with color, typography, spacing objects.</item>
+        <item>Configure style-dictionary to compile to src/tokens.css (CSS variables) and src/tokens.js (JavaScript exports).</item>
+        <item>Scaffold Storybook with npx storybook init — select React + TypeScript + Tailwind.</item>
+        <item>Install Storybook a11y addon: npm i -D @storybook/addon-a11y.</item>
+        <item>Pin versions in package.json; do not allow automatic upgrades.</item>
+      </list>
+    </section>
+
+    <section name="phase-5-components">
+      <p>Components are generated after tokens and Storybook setup. Each component is colocated with its test, story, and styles in a dedicated folder. An explicit components-needed.md list prevents agents from implementing scope creep (agents commonly implement 30 components when 8 are needed).</p>
+
+      <rule>
+        <statement>Colocate every component with its test, story, styles, and index: Component/, Component/Component.tsx, Component/Component.test.tsx, Component/Component.stories.tsx, Component/Component.module.css (if CSS Modules), Component/index.ts.</statement>
+        <rationale>Colocation makes renames mechanical and keeps context local. Scattered files are the #1 cause of stale imports after refactors.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Maintain an explicit components-needed.md list. Refuse any component the agent proposes that is not on the list.</statement>
+        <rationale>Agents implement 30 components when 8 are needed. Scope creep from agents is fast and silent.</rationale>
+      </rule>
+
+      <example type="good" title="Component colocation structure">
+        <code lang="text"><![CDATA[
+src/components/Button/
+├── Button.tsx
+├── Button.test.tsx
+├── Button.stories.tsx
+├── Button.module.css
+└── index.ts
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <p>Frontend design with LLM agents introduces several failure modes when disciplines are not enforced. The most common: tokens defined post-hoc (after components), no a11y gate on variants, hardcoded colors in components, outdated Storybook formats, and variant lookalikes.</p>
+
+      <antipattern>
+        <description>Tokens defined post-hoc after components already exist.</description>
+        <reason>Each component defines its own colors and spacing; extracting them later produces drift between Figma, CSS variables, and Storybook themes that compounds with every new component.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>No a11y gate on design variants before human review.</description>
+        <reason>Agents ship variants with poor color contrast (ratio &lt; 4.5:1) and missing focus states. Catching these after selection wastes the refine phase on accessibility remediation instead of design improvement.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LLM generates JSX components with hardcoded hex colors instead of CSS variable or token references.</description>
+        <reason>Every color must change when the token changes, but hardcoded values silently diverge. Enforce with a stylelint custom rule that bans raw hex in component files.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Storybook story files generated by LLMs using outdated CSF2 format.</description>
+        <reason>CSF2 stories fail or behave differently in Storybook 8. Pin CSF version explicitly in the prompt and add a CI check that verifies story imports compile.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent produces "5 variants" that are 5 minor color/font variations of the same layout.</description>
+        <reason>Without a distinctness contract (navigation pattern, hero composition, information density), agents default to familiar minimal variations. This makes selection meaningless and wastes the brainstorm phase.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Reviewing variant quality from code alone without rendering to screenshot.</description>
+        <reason>LLM "looks good" reviews of JSX are unreliable; visual quality must be judged from rendered output. Always run Playwright screenshots before presenting options to the human.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent adds aria-label to already-accessible elements and omits it from icon-only buttons.</description>
+        <reason>Misplaced aria-label pollutes the accessibility tree; missing labels on icon-only controls break screen readers. Run pa11y on every variant to catch both errors programmatically.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>LLMs make predictable mistakes in frontend design work. Explicit constraints in prompts and CI gates catch most of them.</p>
+
+      <antipattern>
+        <description>LLMs default to "modern minimalist with gradient hero" — explicitly forbid clichés in the prompt.</description>
+        <reason>Agents have strong defaults learned from training data. Counter with explicit directives in the prompt about what NOT to do.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Variant rationales tend to all sound the same; ask for distinctness criteria upfront.</description>
+        <reason>Agents need explicit axes of difference (navigation, hero, density) to diverge. Without them, variants blur together.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents copy Tailwind class soup without abstracting tokens — break out colors/spacing first, then components.</description>
+        <reason>CSS abstractions must come before JSX. Generate tokens.json, then components that reference them.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Visual quality cannot be judged from code alone — always render to screenshot before shipping; LLM "looks good" reviews of code are unreliable.</description>
+        <reason>Rendered output is the source of truth. Code review is a secondary check.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents producing JSX often hardcode hex colors instead of CSS vars / token references — add lint rule (stylelint, custom) to forbid raw colors.</description>
+        <reason>Automated enforcement with CI blocks drift at commit time.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>A11y: agents add aria-label on already-accessible elements (icon button has visible text) and skip it on icon-only buttons. Run pa11y on each variant.</description>
+        <reason>Misplaced accessibility attributes are common. Programmatic audits catch both false positives and false negatives.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Human-in-loop checkpoint: variant selection — design choice is taste, not logic. Agent ranks but human picks.</description>
+        <reason>Preserve intentionality in design decisions. Agents can offer data-driven rankings; humans decide.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Component library scope creep: agents implement 30 components when you need 8. Maintain explicit components-needed.md list and refuse new ones.</description>
+        <reason>Enforce a whitelist. Every new component adds maintenance burden; agents do not feel this cost.</reason>
+      </antipattern>
+    </section>
+
+    <section name="tools-and-services">
+      <p>Frontend design workflows rely on a stack of tools: design systems (Figma), component rendering (Storybook), token compilation (style-dictionary), visual regression (Playwright), and accessibility audits (pa11y, axe-core).</p>
+
+      <list>
+        <item>Figma + Dev Mode (SaaS) — source of truth for tokens; agent reads via figma-rest API.</item>
+        <item>Penpot (OSS) — self-hostable Figma alternative; faion-stack friendly.</item>
+        <item>Storybook (OSS, self-hosted at storybook.faion.net) — component library + visual regression.</item>
+        <item>style-dictionary (npm i -D style-dictionary) — compile tokens.json to CSS, JS, iOS, Android.</item>
+        <item>Tailwind CSS (npm i -D tailwindcss) — utility-first CSS framework for rapid prototyping.</item>
+        <item>Playwright (npm i -D @playwright/test) — visual regression, screenshot diff, cross-browser testing.</item>
+        <item>pa11y / axe-core (npm i -g pa11y) — CLI accessibility audits, CI integration.</item>
+        <item>Chromatic (SaaS + npm i --save-dev chromatic) — visual review SaaS for Storybook PRs.</item>
+        <item>Lighthouse CI / lhci (npm i -g @lhci/cli) — perf / a11y / best-practice budget gates.</item>
+        <item>shadcn/ui (OSS, npm i shadcn-ui) — copy-paste primitive components; perfect for solo.</item>
+        <item>Tailwind UI (SaaS, license) — premium component snippets.</item>
+        <item>Builder.io (SaaS) — visual page builder + code export.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <p>These disciplines ensure variant brainstorms produce genuine divergence, tokens stay canonical, and components remain maintainable as the library grows.</p>
+
+      <list>
+        <item>Tokens first, components second; never let components define their own colors.</item>
+        <item>Use style-dictionary (or W3C design-tokens format) — single JSON source compiles to all targets.</item>
+        <item>Lock variants to 5 max; more options = decision paralysis, not better outcome.</item>
+        <item>Each variant must justify its existence in 2-3 sentences (rationale.md); kills lookalikes.</item>
+        <item>Run a11y audit on every variant; reject those failing AA before showing to human.</item>
+        <item>Co-locate stories with components (Button.tsx + Button.stories.tsx).</item>
+        <item>Use Storybook a11y addon (@storybook/addon-a11y) — surfaces violations during review.</item>
+        <item>Pin Storybook + Tailwind versions; updates routinely break CSS isolation.</item>
+        <item>Brand voice → tone → tokens → components — top-down. Bottom-up component-first builds drift.</item>
+        <item>Capture decisions in designs/DECISIONS.md so the next iteration knows why variant-2 was rejected.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="design-tokens-basics"/>
+      <ref slug="storybook-setup"/>
+      <ref slug="accessibility"/>
+      <ref slug="component-architecture"/>
+      <link href="https://storybook.js.org/docs/writing-stories">Storybook docs (CSF3)</link>
+      <link href="https://www.w3.org/community/design-tokens/">W3C Design Tokens spec</link>
+      <link href="https://tailwindcss.com/docs">Tailwind CSS docs</link>
+      <link href="https://ui.shadcn.com">shadcn/ui</link>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/computer-use">Anthropic computer-use + UI gen</link>
+      <link href="https://m3.material.io">Material Design 3 system</link>
+      <link href="https://inclusive-components.design">Inclusive Components</link>
+      <link href="https://www.w3.org/WAI/ARIA/apg/">A11y patterns: WAI-ARIA APG</link>
+    </see-also>
+  </content>
+</methodology>
