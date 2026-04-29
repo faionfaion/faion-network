@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/marketing/gtm-strategist methodologies → methodology.xml (ops-contractor-basics, ops-contractor-management, ops-customer-success-basics; feature-045 batch BK)
 - migrate: 3/3 pro/marketing methodologies → methodology.xml (activation-metrics, viral-metrics; pro/marketing/gtm-strategist/growth-affiliate-marketing; feature-045 batch BJ)
 - migrate: 3/3 pro/marketing/growth-marketer methodologies → methodology.xml (aarrr-pirate-metrics, ab-testing-basics, activation-metrics; feature-045 batch BG)
 - migrate: 3/3 pro/marketing/growth-marketer methodologies → methodology.xml (activation-tactics, growth-loops, north-star-metric; feature-045 batch BH)
