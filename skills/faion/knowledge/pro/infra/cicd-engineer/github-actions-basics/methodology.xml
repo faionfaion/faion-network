@@ -1,0 +1,1481 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="github-actions-basics">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>GitHub Actions CI/CD platform integrated into GitHub repos: automated workflows, matrix builds, reusable workflows, OIDC auth, and security-hardened pipelines.</summary>
+    <tags>
+      <tag>github-actions</tag>
+      <tag>ci-cd</tag>
+      <tag>automation</tag>
+      <tag>workflows</tag>
+      <tag>devops</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <version>2.0.0</version>
+  </metadata>
+  <content>
+    <title>GitHub Actions Basics</title>
+    <summary>GitHub Actions is a CI/CD platform integrated directly into GitHub repositories. It enables automated workflows triggered by events like pushes, pull requests, and releases, with support for matrix builds, reusable workflows, and extensive marketplace actions. Platform Scale (2025): 11.5 billion minutes used in public/open source projects (35% YoY growth), powering 71 million jobs per day.</summary>
+    <why>
+      <p>GitHub Actions eliminates the need for external CI/CD infrastructure for GitHub-hosted projects. Workflows live in the repository as YAML files under .github/workflows/, version-controlled alongside the code they test and deploy. Native integration with GitHub events (push, PR, release, issue comment), secrets management, environments with approval gates, and the marketplace with 20,000+ actions removes the integration overhead of separate CI systems. For open source projects, public repo runs are free — no runners to manage.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Projects hosted on GitHub</item>
+        <item>Open source projects needing free CI/CD</item>
+        <item>Teams already using GitHub ecosystem</item>
+        <item>Workflows requiring GitHub integration (issues, PRs, releases)</item>
+        <item>Multi-platform builds (Linux, Windows, macOS)</item>
+        <item>Repos hosted on GitHub: GHA is the path of least resistance for CI</item>
+        <item>Open source projects — public repos run free, including Linux/Win/Mac matrix</item>
+        <item>Teams that want PR checks, status badges, and release automation tied directly to GitHub events</item>
+        <item>Simple-to-medium pipelines (build, test, lint, deploy) — most workflows fit comfortably in a single .github/workflows/ci.yml</item>
+        <item>First CI/CD setup for a project: GHA's marketplace + minimal config gets a green build in minutes</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Code on GitLab/Bitbucket — the native CI is a better fit</item>
+        <item>Complex multi-team multi-repo orchestration where reusable workflows / composite actions strain — at that point evaluate true workflow engines</item>
+        <item>Heavy long-running batch (greater than 6h on hosted runners; greater than 35 days on self-hosted with ARC) — use Argo Workflows / Airflow / Prefect</item>
+        <item>Deeply customized agents needing persistent state — GHA runners are ephemeral; engineering around that is more work than picking a different tool</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="key-concepts">
+      <list>
+        <item>Workflow — Automated process defined in YAML (.github/workflows/)</item>
+        <item>Job — Set of steps running on same runner</item>
+        <item>Step — Individual task (action or shell command)</item>
+        <item>Action — Reusable unit of code (marketplace or custom)</item>
+        <item>Runner — Server executing workflows (GitHub-hosted or self-hosted)</item>
+        <item>Event — Trigger that starts workflow (push, PR, schedule, etc.)</item>
+        <item>Artifact — Files persisted between jobs</item>
+        <item>Secret — Encrypted environment variable</item>
+      </list>
+    </section>
+
+    <section name="workflow-structure">
+      <p>Repository layout: .github/workflows/ci.yml (CI pipeline), .github/workflows/cd.yml (CD pipeline), .github/workflows/release.yml (Release workflow), .github/workflows/scheduled.yml (Scheduled tasks), .github/actions/custom-action/action.yml (Custom composite action), .github/CODEOWNERS (Code review assignments).</p>
+    </section>
+
+    <section name="core-workflow-events">
+      <list>
+        <item>push — Code pushed to branch</item>
+        <item>pull_request — PR opened, updated, or closed</item>
+        <item>workflow_dispatch — Manual trigger via UI/API</item>
+        <item>schedule — Cron-based scheduling</item>
+        <item>release — Release created/published</item>
+        <item>workflow_call — Called by another workflow</item>
+        <item>repository_dispatch — External API trigger</item>
+      </list>
+    </section>
+
+    <section name="pricing-2026">
+      <list>
+        <item>GitHub-hosted runners: Up to 39% price reduction (Jan 2026)</item>
+        <item>Self-hosted runners: $0.002/min cloud platform charge (Mar 2026)</item>
+        <item>Public repos: Free</item>
+      </list>
+    </section>
+
+    <section name="upcoming-features">
+      <list>
+        <item>Timezone support for scheduled jobs</item>
+        <item>Schedule reliability improvements</item>
+        <item>Parallel steps — most requested feature, targeting mid-2026</item>
+      </list>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <list>
+        <item>Default permissions: New repos default to read-only GITHUB_TOKEN, but old workflows still inherit write-all. Always set permissions: explicitly.</item>
+        <item>actions/checkout@v4 with default settings fetches with persist-credentials: true — credentials persist on disk, accessible to subsequent steps. Force persist-credentials: false unless needed.</item>
+        <item>workflow_dispatch inputs unsanitized in run: steps — ${{ inputs.tag }} interpolation = shell injection. Always pass via env var.</item>
+        <item>schedule: triggers run on default branch only. Agents put scheduled jobs on a feature branch and wonder why they never fire.</item>
+        <item>Free-tier minutes burn on private repos. A test matrix multiplies fast: 3 OSes x 4 versions x 5 minutes = 60 minutes per push. 2000 free min/month exhausted in days.</item>
+        <item>runs-on: ubuntu-latest drifts: a workflow stable for months breaks when GHA rolls a new image (Node ABI change, glibc bump). Pin ubuntu-22.04 for stability.</item>
+        <item>Action Marketplace risk: Anyone can publish an action. Tag refs (@v3) can be moved silently (Tj-actions, March 2025). Always pin to SHA.</item>
+        <item>Concurrency without environment scoping: concurrency: ${{ github.workflow }}-${{ github.ref }} cancels in-progress runs on same ref — desirable for PRs, dangerous for main deploys. Group correctly.</item>
+        <item>Self-hosted runner exposure: runs-on: self-hosted on a public repo allows fork PRs to execute on your runner. Always pair with org-level approval requirement + ephemeral ARC pods.</item>
+        <item>Cache size limits: 10 GB per repo; old caches evicted LRU. Agents cache node_modules plus .next/cache plus .docker and the cache thrashes — net slowdown.</item>
+        <item>needs: fan-out limit: Hard limit ~256 jobs in a workflow run. Big matrix + per-platform deploy hits it.</item>
+        <item>Reusable workflow + secrets: Default does NOT pass secrets; either explicit list or secrets: inherit. Agents pick inherit for convenience and over-share.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Start small. Have one agent generate a single ci.yml (build + test + lint) covering the actual matrix needed and nothing else; classify what's CI vs. CD vs. release and split into multiple workflows only when you have a reason. Pin all action SHAs from day one (Renovate keeps them current). A reviewer agent runs actionlint + a permissions check on every change to .github/. For deploys, prefer workflow_dispatch (manual) before automating; only graduate to push triggers after a clean dry run. Agents must never put long-lived cloud creds in repo secrets — wire OIDC instead, even for "basic" workflows.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent for quality gate running actionlint + checking all uses: are SHA-pinned + verifying permissions: is explicit; password-scrubber-agent for workflow files attracting embedded tokens, deploy keys, registry creds; custom gha-cost-projector (Haiku) estimating monthly minutes; custom gha-permissions-auditor (Sonnet) flagging broad permissions.</p>
+    </section>
+
+    <section name="agent-selection">
+      <list>
+        <item>Set up GitHub Actions workflow from template — haiku: Pattern application, simple configuration</item>
+        <item>Design CI/CD pipeline architecture — opus: Complex system design with many variables</item>
+        <item>Write terraform code for infrastructure — sonnet: Implementation with moderate complexity</item>
+        <item>Debug failing pipeline step — sonnet: Debugging and problem-solving</item>
+        <item>Implement AIOps anomaly detection — opus: Novel ML approach, complex decision</item>
+        <item>Configure webhook and secret management — haiku: Mechanical setup using checklists</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <rules>
+        <rule>
+          <statement>One workflow per concern (ci.yml, cd.yml, release.yml, scheduled.yml); don't cram everything into one giant file.</statement>
+          <rationale>Single-concern workflows are easier to audit for security, reuse across repos, and debug when failing.</rationale>
+        </rule>
+        <rule>
+          <statement>Set permissions: contents: read at workflow level; expand per-job only when needed.</statement>
+          <rationale>Minimal GITHUB_TOKEN scope limits blast radius of supply-chain compromise or workflow injection.</rationale>
+        </rule>
+        <rule>
+          <statement>Pin every uses: to a 40-char SHA + version comment. Use Renovate to keep them fresh.</statement>
+          <rationale>Tag refs can be moved silently; SHA pinning ensures the exact code that was reviewed continues to run.</rationale>
+        </rule>
+        <rule>
+          <statement>Use actions/checkout with persist-credentials: false unless a later step needs git operations.</statement>
+          <rationale>Credentials persisting on disk post-checkout are accessible to any subsequent step, including malicious dependencies.</rationale>
+        </rule>
+        <rule>
+          <statement>Pin runner OS (ubuntu-22.04, not ubuntu-latest) for reproducibility.</statement>
+          <rationale>ubuntu-latest rolls periodically and silently breaks builds due to pre-installed tool version changes.</rationale>
+        </rule>
+        <rule>
+          <statement>Set concurrency per (workflow, ref); cancel-in-progress for PRs, off for prod deploys.</statement>
+          <rationale>Cancelling in-progress deploys to production causes partial rollouts; only cancel dev/PR runs.</rationale>
+        </rule>
+        <rule>
+          <statement>Set timeout-minutes: on every job (15-30 typical, 60 max for builds).</statement>
+          <rationale>Without timeouts, hung workflows consume minutes quota silently for hours.</rationale>
+        </rule>
+        <rule>
+          <statement>Use fail-fast: false on test matrices so all platforms report.</statement>
+          <rationale>Default fail-fast: true cancels remaining matrix legs on first failure, hiding platform-specific issues.</rationale>
+        </rule>
+        <rule>
+          <statement>Cache with lockfile-hash key + restore-keys fallback; one cache per ecosystem.</statement>
+          <rationale>Lockfile-keyed caches are invalidated when dependencies change; restore-keys provide a warm fallback.</rationale>
+        </rule>
+        <rule>
+          <statement>Use OIDC for cloud auth from day one; never put AWS_ACCESS_KEY_ID as a secret.</statement>
+          <rationale>Static credentials in secrets can be exfiltrated in workflow logs or via compromised actions; OIDC tokens are short-lived.</rationale>
+        </rule>
+        <rule>
+          <statement>Add step-security/harden-runner as the first step of every job — at least audit mode.</statement>
+          <rationale>Harden-runner detects and optionally blocks unexpected egress, protecting against malicious dependencies phoning home.</rationale>
+        </rule>
+        <rule>
+          <statement>Enable Dependabot or Renovate for github-actions ecosystem to keep SHAs current.</statement>
+          <rationale>Manual SHA updates are error-prone and frequently skipped; bots automate this with PRs.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents copy actions/checkout@v4 everywhere — tag refs are mutable. Force SHA pinning from the very first PR.</item>
+        <item>${{ github.event.pull_request.title }} (or any user input) inside run: = shell injection. Always pass through env: and reference $VAR.</item>
+        <item>pull_request_target looks innocent but runs in target repo context with secrets — agents enable it for fork PRs and create RCE-with-secrets. Forbid unless the workflow has env protection + base-ref-only checkout + read-only token.</item>
+        <item>Reusable workflow secrets: inherit over-shares; agents use it because it "just works". Pass explicit list only.</item>
+        <item>Cron schedule: runs on default branch — agents test on feature branch and never see it fire. Document in PR description.</item>
+        <item>Cache hit does not equal correctness: a cached node_modules from before a package.json engines bump will install but break at runtime. Always include lockfile hash in cache key.</item>
+        <item>Self-hosted runner registration on a public repo + fork PR = remote code execution on your infra. Use ARC ephemeral runners or org-level approval.</item>
+        <item>${{ secrets.X }} in PR-triggered workflows for forks: secrets are NOT passed to fork PRs by default — agents debug "why is my deploy step empty" and don't realize this is intentional.</item>
+        <item>GHA cache writes from PR can poison caches restored by main. Scope cache keys per branch when threat model demands.</item>
+        <item>Human-in-loop checkpoints: enabling self-hosted runners, granting new OIDC trust, lowering env protection, adding org-level secrets. All credential-equivalent.</item>
+        <item>Workflow files in .github/workflows/ from a fork PR run on hosted runners only by default — but pull_request_target flips this. Read the docs every time.</item>
+        <item>${{ env.X }} vs. ${{ vars.X }} vs. ${{ secrets.X }} — agents conflate them, exposing repo variables thinking they're secrets, or vice versa.</item>
+      </list>
+    </section>
+
+    <section name="pre-implementation-checklist">
+      <checklist>
+        <check>Repository is hosted on GitHub</check>
+        <check>.github/workflows/ directory exists</check>
+        <check>Required secrets configured in repository settings</check>
+        <check>Branch protection rules defined</check>
+      </checklist>
+    </section>
+
+    <section name="workflow-configuration-checklist">
+      <checklist>
+        <check>Pin actions to full SHA — not @main or @v1, use @a5ac77e...</check>
+        <check>GITHUB_TOKEN minimal permissions — set permissions: block explicitly</check>
+        <check>Secrets in GitHub Secrets — never hardcode in YAML</check>
+        <check>Rotate secrets regularly — quarterly minimum</check>
+        <check>Audit third-party actions — review source before using</check>
+        <check>No secrets in logs — use add-mask for dynamic secrets</check>
+        <check>Enable caching — actions/cache@v4 for dependencies</check>
+        <check>Use concurrency groups — prevent duplicate runs</check>
+        <check>Set job timeouts — timeout-minutes: on each job</check>
+        <check>Matrix builds with fail-fast — consider fail-fast: false for coverage</check>
+        <check>Conditional jobs — use if: to skip unnecessary runs</check>
+        <check>workflow_dispatch enabled — for manual debugging</check>
+        <check>Clear job names — descriptive name: fields</check>
+        <check>Logical job dependencies — use needs: correctly</check>
+        <check>Environment variables — use env: at workflow level for shared values</check>
+        <check>Reusable workflows — extract common patterns</check>
+      </checklist>
+    </section>
+
+    <section name="ci-pipeline-checklist">
+      <checklist>
+        <check>Lint job runs first</check>
+        <check>Tests run with services (if needed)</check>
+        <check>Build job depends on lint + test</check>
+        <check>Coverage uploaded</check>
+        <check>Security scan included</check>
+        <check>Artifacts uploaded with retention</check>
+      </checklist>
+    </section>
+
+    <section name="cd-pipeline-checklist">
+      <checklist>
+        <check>Environment protection rules set</check>
+        <check>OIDC configured for cloud auth (no long-lived secrets)</check>
+        <check>Deployment approval gates</check>
+        <check>Rollback strategy documented</check>
+        <check>Smoke tests after deployment</check>
+        <check>Notifications configured</check>
+      </checklist>
+    </section>
+
+    <section name="secrets-management-checklist">
+      <checklist>
+        <check>Use repository secrets for repo-specific values</check>
+        <check>Use organization secrets for shared values</check>
+        <check>Use environment secrets for env-specific values</check>
+        <check>OIDC for AWS/GCP/Azure (preferred over access keys)</check>
+        <check>Document which secrets are needed in README</check>
+      </checklist>
+    </section>
+
+    <section name="post-implementation-checklist">
+      <checklist>
+        <check>Workflows tested on feature branch</check>
+        <check>PR checks pass consistently</check>
+        <check>Build times acceptable (under 10 min for CI)</check>
+        <check>Flaky tests addressed</check>
+        <check>Team trained on workflow usage</check>
+        <check>Documentation updated</check>
+      </checklist>
+    </section>
+
+    <section name="example-ci-full">
+      <example type="good" title="Full CI pipeline: lint, test with services, build, security, Docker">
+        <code lang="yaml"><![CDATA[# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.12'
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run Prettier
+        run: npm run format:check
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: lint
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit -- --coverage
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Run integration tests
+        run: npm run test:integration
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@c16abc29c95fcf9174b58eb7e1abf4c866893bc8 # v4.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          fail_ci_if_error: true
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [lint, test]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        with:
+          name: build
+          path: dist/
+          retention-days: 7
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: lint
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@062f2592684a31eb3aa050cc61e7ca1451cecd3d # 0.18.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@1b1aada464948af03b950897e5eb522f92603cc2 # v3.24.9
+        with:
+          languages: javascript
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@1b1aada464948af03b950897e5eb522f92603cc2 # v3.24.9
+
+  docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build-push.outputs.digest }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@68827325e0b33c7199eb31dd4e31fbe9023e06e3 # v3.0.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@2b51285047da1547ffb1b2203d8be4c0af6b1f20 # v3.2.0
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v3.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push
+        id: build-push
+        uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 # v5.3.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true]]></code>
+      </example>
+    </section>
+
+    <section name="example-matrix-build">
+      <example type="good" title="Matrix build across OS and Node versions">
+        <code lang="yaml"><![CDATA[# .github/workflows/matrix.yml
+name: Matrix Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [18, 20, 22]
+        exclude:
+          - os: windows-latest
+            node: 18
+        include:
+          - os: ubuntu-latest
+            node: 20
+            coverage: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Node.js ${{ matrix.node }}
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test -- ${{ matrix.coverage && '--coverage' || '' }}
+
+      - name: Upload coverage
+        if: matrix.coverage
+        uses: codecov/codecov-action@c16abc29c95fcf9174b58eb7e1abf4c866893bc8 # v4.1.1]]></code>
+      </example>
+    </section>
+
+    <section name="example-composite-action">
+      <example type="good" title="Custom composite action for project setup">
+        <code lang="yaml"><![CDATA[# .github/actions/setup-project/action.yml
+name: 'Setup Project'
+description: 'Setup Node.js environment with caching'
+
+inputs:
+  node-version:
+    description: 'Node.js version'
+    required: false
+    default: '20'
+  install-deps:
+    description: 'Install dependencies'
+    required: false
+    default: 'true'
+
+outputs:
+  cache-hit:
+    description: 'Whether cache was hit'
+    value: ${{ steps.cache.outputs.cache-hit }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Get npm cache directory
+      id: npm-cache-dir
+      shell: bash
+      run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
+
+    - name: Cache npm dependencies
+      id: cache
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      with:
+        path: |
+          ${{ steps.npm-cache-dir.outputs.dir }}
+          node_modules
+        key: ${{ runner.os }}-node-${{ inputs.node-version }}-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-${{ inputs.node-version }}-
+
+    - name: Install dependencies
+      if: inputs.install-deps == 'true' && steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: npm ci]]></code>
+      </example>
+    </section>
+
+    <section name="example-reusable-workflow">
+      <example type="good" title="Reusable deploy workflow with OIDC">
+        <code lang="yaml"><![CDATA[# .github/workflows/reusable-deploy.yml
+name: Reusable Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      image-tag:
+        required: true
+        type: string
+    secrets:
+      AWS_ROLE_ARN:
+        required: true
+      SLACK_WEBHOOK:
+        required: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service \
+            --cluster ${{ inputs.environment }}-cluster \
+            --service app-service \
+            --force-new-deployment
+
+      - name: Notify Slack
+        if: always() && secrets.SLACK_WEBHOOK != ''
+        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
+        with:
+          payload: |
+            {
+              "text": "Deployment to ${{ inputs.environment }}: ${{ job.status }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}]]></code>
+      </example>
+    </section>
+
+    <section name="example-oidc-aws">
+      <example type="good" title="OIDC authentication with AWS">
+        <code lang="yaml"><![CDATA[# .github/workflows/oidc-aws.yml
+name: Deploy with OIDC
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-role
+          aws-region: us-east-1
+
+      - name: Deploy
+        run: |
+          aws s3 sync ./dist s3://my-bucket/]]></code>
+      </example>
+    </section>
+
+    <section name="example-release-workflow">
+      <example type="good" title="Release workflow with changelog and npm publish">
+        <code lang="yaml"><![CDATA[# .github/workflows/release.yml
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: '20'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          npx conventional-changelog-cli -p angular -r 2 > CHANGELOG.md
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat CHANGELOG.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@69320dbe05506a9a39fc8ae11030b214ec2d1f87 # v2.0.2
+        with:
+          body: ${{ steps.changelog.outputs.changelog }}
+          generate_release_notes: true
+
+      - name: Publish to npm
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}]]></code>
+      </example>
+    </section>
+
+    <section name="template-minimal-ci">
+      <example type="good" title="Minimal CI template">
+        <code lang="yaml"><![CDATA[name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build]]></code>
+      </example>
+    </section>
+
+    <section name="template-nodejs-ci-full">
+      <example type="good" title="Node.js CI full template">
+        <code lang="yaml"><![CDATA[name: CI
+
+on:
+  push:
+    branches: [{MAIN_BRANCH}]
+  pull_request:
+    branches: [{MAIN_BRANCH}]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '{NODE_VERSION}'
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test -- --coverage
+      - uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: dist/
+          retention-days: 7]]></code>
+      </example>
+    </section>
+
+    <section name="template-python-ci">
+      <example type="good" title="Python CI template">
+        <code lang="yaml"><![CDATA[name: CI
+
+on:
+  push:
+    branches: [{MAIN_BRANCH}]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '{PYTHON_VERSION}'
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      - run: pip install ruff mypy
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy .
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      - run: pip install -e ".[dev]"
+      - run: pytest --cov --cov-report=xml
+      - uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}]]></code>
+      </example>
+    </section>
+
+    <section name="template-docker-build">
+      <example type="good" title="Docker build and push template">
+        <code lang="yaml"><![CDATA[name: Docker
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max]]></code>
+      </example>
+    </section>
+
+    <section name="template-reusable-caller">
+      <example type="good" title="Reusable workflow caller">
+        <code lang="yaml"><![CDATA[name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-staging:
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      environment: staging
+      image-tag: ${{ github.sha }}
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+
+  deploy-production:
+    needs: deploy-staging
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      environment: production
+      image-tag: ${{ github.sha }}
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_PRODUCTION }}]]></code>
+      </example>
+    </section>
+
+    <section name="template-security-hardened-starter">
+      <example type="good" title="Minimal security-hardened CI starter">
+        <code lang="yaml"><![CDATA[# .github/workflows/ci.yml
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: step-security/harden-runner@0080882f6c36860b6ba35c610c98ce87d4e2f26f # v2.10.2
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint]]></code>
+      </example>
+    </section>
+
+    <section name="template-scheduled">
+      <example type="good" title="Scheduled workflow template">
+        <code lang="yaml"><![CDATA[name: Scheduled
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scheduled:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/daily-task.sh]]></code>
+      </example>
+    </section>
+
+    <section name="template-dependabot-auto-merge">
+      <example type="good" title="Dependabot auto-merge for patch updates">
+        <code lang="yaml"><![CDATA[name: Dependabot Auto-Merge
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - uses: dependabot/fetch-metadata@v2
+        id: metadata
+      - if: steps.metadata.outputs.update-type == 'version-update:semver-patch'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}]]></code>
+      </example>
+    </section>
+
+    <section name="llm-prompts-workflow-generation">
+      <prompt purpose="create-ci-pipeline"><![CDATA[Create a GitHub Actions CI workflow for a {LANGUAGE} project with:
+- Linting
+- Unit tests with coverage
+- Build step
+- Artifact upload
+
+Requirements:
+- Use concurrency groups to cancel outdated runs
+- Enable workflow_dispatch for manual triggering
+- Cache dependencies
+- Set appropriate timeouts
+- Pin actions to specific versions (not @main or @v1)
+- Use minimal GITHUB_TOKEN permissions
+
+Output: Complete .github/workflows/ci.yml]]></prompt>
+      <prompt purpose="create-cd-pipeline"><![CDATA[Create a GitHub Actions CD workflow that deploys to {CLOUD_PROVIDER} with:
+- Environment protection rules
+- OIDC authentication (no long-lived secrets)
+- Deployment approval gates
+- Rollback capability
+- Slack/Teams notifications
+
+Target environments: staging, production
+Deployment method: {DEPLOYMENT_METHOD}
+
+Output: Complete .github/workflows/cd.yml]]></prompt>
+      <prompt purpose="create-docker-workflow"><![CDATA[Create a GitHub Actions workflow for Docker image builds:
+- Multi-platform support (amd64, arm64)
+- Push to GitHub Container Registry
+- Semantic versioning tags
+- Build cache optimization
+- SBOM and provenance attestation
+
+Trigger: Push to main branch and tags
+
+Output: Complete .github/workflows/docker.yml]]></prompt>
+    </section>
+
+    <section name="llm-prompts-analysis">
+      <prompt purpose="review-workflow-security"><![CDATA[Review this GitHub Actions workflow for security issues:
+
+{PASTE_WORKFLOW_YAML}
+
+Check for:
+1. Unpinned actions (should use SHA, not @main or @v1)
+2. GITHUB_TOKEN permissions (should be minimal)
+3. Hardcoded secrets
+4. Command injection vulnerabilities
+5. Third-party action risks
+6. Missing concurrency controls
+
+Output: Security findings with severity and remediation steps]]></prompt>
+      <prompt purpose="optimize-workflow-performance"><![CDATA[Analyze this GitHub Actions workflow for performance improvements:
+
+{PASTE_WORKFLOW_YAML}
+
+Check for:
+1. Missing dependency caching
+2. Unnecessary sequential jobs (could be parallel)
+3. Missing fail-fast strategy in matrices
+4. Inefficient artifact handling
+5. Missing job timeouts
+6. Redundant steps
+
+Output: Performance recommendations with expected impact]]></prompt>
+      <prompt purpose="debug-workflow-failure"><![CDATA[This GitHub Actions workflow is failing with the following error:
+
+Workflow: {PASTE_WORKFLOW_YAML}
+
+Error output:
+{PASTE_ERROR_LOG}
+
+Context:
+- Repository: {REPO_URL}
+- Branch: {BRANCH}
+- Recent changes: {CHANGES_DESCRIPTION}
+
+Analyze the error and provide:
+1. Root cause
+2. Step-by-step fix
+3. Prevention measures]]></prompt>
+    </section>
+
+    <section name="llm-prompts-specific-tasks">
+      <prompt purpose="convert-pipeline"><![CDATA[Convert this {SOURCE_CI_SYSTEM} pipeline to GitHub Actions:
+
+{PASTE_SOURCE_PIPELINE}
+
+Requirements:
+- Preserve all functionality
+- Use GitHub Actions best practices
+- Add caching where appropriate
+- Use native GitHub features (environments, secrets)
+
+Output: Complete .github/workflows/*.yml files]]></prompt>
+      <prompt purpose="add-matrix-build"><![CDATA[Add matrix testing to this workflow:
+
+{PASTE_WORKFLOW_YAML}
+
+Matrix dimensions:
+- Operating systems: {OS_LIST}
+- Language versions: {VERSION_LIST}
+
+Requirements:
+- Use fail-fast: false
+- Add exclusions for known incompatible combinations
+- Enable coverage on one combination only
+
+Output: Updated workflow with matrix strategy]]></prompt>
+      <prompt purpose="add-security-scanning"><![CDATA[Add security scanning to this CI workflow:
+
+{PASTE_WORKFLOW_YAML}
+
+Include:
+1. Dependency vulnerability scanning (Trivy/Snyk)
+2. Static code analysis (CodeQL/Semgrep)
+3. Secret detection (GitLeaks/TruffleHog)
+4. Container scanning (if Docker)
+
+Requirements:
+- Run in parallel with existing jobs
+- Fail on critical/high vulnerabilities
+- Upload results to GitHub Security tab
+
+Output: Updated workflow with security jobs]]></prompt>
+      <prompt purpose="system-context"><![CDATA[You are a GitHub Actions expert. Follow these guidelines:
+- Always pin actions to full commit SHA
+- Use minimal GITHUB_TOKEN permissions
+- Enable concurrency controls
+- Cache dependencies appropriately
+- Set job timeouts
+- Never hardcode secrets
+- Prefer OIDC for cloud authentication]]></prompt>
+      <prompt purpose="audit-workflow"><![CDATA[Audit: parse .github/workflows/*.yml. For each workflow emit JSON {file, on[], jobs: [{name, runs_on, permissions, uses_actions: [{ref, sha_pinned}], secrets_referenced[], oidc_used, on_pr_or_pr_target}]}. Reject if any (uses ref not 40-char SHA) OR (permissions == "write-all") OR (secrets referenced AND on includes pull_request_target without environment protection).]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>gh — Official GitHub CLI: workflows, runs, secrets, env — https://cli.github.com</item>
+        <item>gh workflow run name -f input=value — Manual trigger via CLI; agent-driven runs — built-in</item>
+        <item>gh run list / gh run watch / gh run view --log — Tail workflow runs from CLI — built-in</item>
+        <item>actionlint — Static analysis of workflow files (catches 90% of bugs) — https://github.com/rhysd/actionlint</item>
+        <item>act — Run GHA workflows locally in Docker for fast iteration — https://github.com/nektos/act</item>
+        <item>gh secret set / gh variable set — Manage repo/env secrets and variables — built-in</item>
+        <item>gh attestation verify — Verify build provenance / SBOM attestations — https://docs.github.com/en/actions/security-guides/using-artifact-attestations</item>
+        <item>Renovate / dependabot — Bot for action SHA updates — https://docs.renovatebot.com</item>
+        <item>step-security/harden-runner — Egress filter on workflow runners — https://github.com/step-security/harden-runner</item>
+        <item>yamllint + pre-commit GHA hook — Catch YAML errors before push — https://yamllint.readthedocs.io</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>GitHub-hosted runners — SaaS, agent-friendly — Default, ephemeral, 4-vCPU/16GB; price reduced 39% Jan 2026</item>
+        <item>Larger runners (8/16/32-vCPU + GPU) — SaaS, agent-friendly — runs-on: ubuntu-latest-8-cores; matters for ML / compile</item>
+        <item>Self-hosted runners + ARC — OSS, partial agent-friendly — K8s-based ephemeral runners; never long-lived VMs on public repos</item>
+        <item>GitHub Marketplace actions — OSS / SaaS, partial agent-friendly — Audit + SHA-pin every action; treat unknown publishers as risk</item>
+        <item>Reusable workflows — OSS, agent-friendly — workflow_call for cross-repo / cross-job sharing</item>
+        <item>Composite actions — OSS, agent-friendly — Local .github/actions/foo/action.yml for shared steps</item>
+        <item>GitHub Environments — SaaS, agent-friendly — Approval gates, env secrets, branch protection</item>
+        <item>OIDC providers (AWS/GCP/Azure/Vault) — SaaS, agent-friendly — Default for cloud auth; replaces static *_ACCESS_KEY secrets</item>
+        <item>GitHub Container Registry (GHCR) — SaaS, agent-friendly — Free for public; OIDC-auth in workflows trivially</item>
+        <item>Codecov / SonarCloud / similar — SaaS, agent-friendly — Standard PR-comment integrations</item>
+        <item>Step Security Harden Runner — SaaS / OSS, agent-friendly — Audit / block egress; defense against malicious deps</item>
+      </list>
+    </section>
+
+    <section name="llm-prompts-maintenance">
+      <prompt purpose="update-action-versions"><![CDATA[Update all actions in this workflow to latest secure versions:
+
+{PASTE_WORKFLOW_YAML}
+
+Requirements:
+- Pin to full commit SHA
+- Include version comment (e.g., # v4.1.1)
+- Verify compatibility
+- List breaking changes
+
+Output: Updated workflow with version comments]]></prompt>
+      <prompt purpose="add-observability"><![CDATA[Add observability to this workflow:
+
+{PASTE_WORKFLOW_YAML}
+
+Include:
+1. Job summary with key metrics
+2. Annotations for warnings/errors
+3. Build time tracking
+4. Custom metrics output
+
+Output: Updated workflow with observability steps]]></prompt>
+      <prompt purpose="create-composite-action"><![CDATA[Create a composite action that encapsulates:
+
+{DESCRIBE_COMMON_STEPS}
+
+Requirements:
+- Accept configurable inputs
+- Provide useful outputs
+- Include proper documentation
+- Handle errors gracefully
+
+Output: .github/actions/{ACTION_NAME}/action.yml]]></prompt>
+      <prompt purpose="extract-reusable-workflow"><![CDATA[Extract reusable workflow from these workflows:
+
+Workflow 1: {PASTE_WORKFLOW_1}
+Workflow 2: {PASTE_WORKFLOW_2}
+
+Identify common patterns and create:
+1. Reusable workflow (.github/workflows/reusable-*.yml)
+2. Updated caller workflows
+
+Requirements:
+- Proper input/secret definitions
+- Output passing between jobs
+- Environment support]]></prompt>
+      <prompt purpose="iteration-pattern"><![CDATA[I need to iterate on a GitHub Actions workflow.
+
+Current workflow:
+{PASTE_CURRENT_YAML}
+
+Change requested:
+{DESCRIBE_CHANGE}
+
+Constraints:
+{ANY_CONSTRAINTS}
+
+Output: Updated workflow with changes highlighted]]></prompt>
+      <prompt purpose="output-format"><![CDATA[Respond with:
+1. Complete YAML workflow (code block)
+2. Brief explanation of key decisions
+3. Security considerations
+4. Required secrets/variables to configure]]></prompt>
+      <prompt purpose="starter-workflow"><![CDATA[Generate a starter GHA workflow for <repo>. Inputs: language, test framework, OS+version matrix, lint tools, deploy target (or "none"), public-or-private repo.
+Output: (1) `.github/workflows/ci.yml` with explicit `permissions:`, SHA-pinned actions, matrix with `fail-fast: false`, `timeout-minutes: 15`, lockfile-keyed cache, (2) optional `cd.yml` (only if deploy target given) with OIDC auth and environment protection, (3) `.github/dependabot.yml` for action updates, (4) projected monthly minutes at current PR + main commit cadence.
+Forbid: actions referenced by tag (must be SHA), `permissions: write-all`, secrets in PR-trigger jobs, `runs-on: ubuntu-latest` in production workflow (pin to specific version), `${{ ... }}` interpolation inside `run:` (use env vars).]]></prompt>
+    </section>
+
+    <section name="template-pr-labeler">
+      <example type="good" title="PR Labeler workflow">
+        <code lang="yaml"><![CDATA[name: PR Labeler
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}]]></code>
+      </example>
+    </section>
+
+    <section name="template-matrix">
+      <example type="good" title="Matrix build template">
+        <code lang="yaml"><![CDATA[name: Matrix
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [18, 20, 22]
+        exclude:
+          - os: windows-latest
+            node: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test]]></code>
+      </example>
+    </section>
+
+    <section name="template-composite-action">
+      <example type="good" title="Composite action template">
+        <code lang="yaml"><![CDATA[# .github/actions/setup-project/action.yml
+name: 'Setup Project'
+description: 'Setup project environment'
+
+inputs:
+  node-version:
+    description: 'Node.js version'
+    default: '20'
+
+outputs:
+  cache-hit:
+    description: 'Cache hit'
+    value: ${{ steps.cache.outputs.cache-hit }}
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+    - id: cache
+      uses: actions/cache@v4
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+    - if: steps.cache.outputs.cache-hit != 'true'
+      run: npm ci
+      shell: bash]]></code>
+      </example>
+    </section>
+
+    <section name="template-reusable-callee">
+      <example type="good" title="Reusable workflow callee template">
+        <code lang="yaml"><![CDATA[name: Reusable Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      image-tag:
+        required: true
+        type: string
+    secrets:
+      AWS_ROLE_ARN:
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: {AWS_REGION}
+      - run: |
+          # Deploy commands here
+          echo "Deploying ${{ inputs.image-tag }} to ${{ inputs.environment }}"]]></code>
+      </example>
+    </section>
+
+    <section name="placeholder-reference">
+      <list>
+        <item>{MAIN_BRANCH} — example: main, master</item>
+        <item>{NODE_VERSION} — example: 20, 22</item>
+        <item>{PYTHON_VERSION} — example: 3.12, 3.13</item>
+        <item>{AWS_REGION} — example: us-east-1, eu-west-1</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://docs.github.com/en/actions">GitHub Actions Documentation</link>
+      <link href="https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions">Security hardening</link>
+      <link href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect">OIDC overview</link>
+      <link href="https://docs.github.com/en/actions/using-workflows/reusing-workflows">Reusable workflows</link>
+      <link href="https://github.com/rhysd/actionlint">actionlint</link>
+      <link href="https://github.com/nektos/act">act</link>
+      <link href="https://www.stepsecurity.io/blog">StepSecurity blog</link>
+      <link href="https://www.stepsecurity.io/blog/harden-runner-detection-tj-actions-changed-files-action-is-compromised">Tj-actions postmortem</link>
+      <link href="https://github.com/actions/actions-runner-controller">ARC for self-hosted runners</link>
+      <link href="https://github.blog/changelog/2025-12-16-coming-soon-simpler-pricing-and-a-better-experience-for-github-actions/">GitHub Pricing 2026</link>
+      <link href="https://github.blog/news-insights/product-news/lets-talk-about-github-actions/">Let's talk about GitHub Actions</link>
+      <link href="https://exercism.org/docs/building/github/gha-best-practices">GitHub Actions Best Practices - Exercism</link>
+      <link href="https://blog.gitguardian.com/github-actions-security-cheat-sheet/">GitHub Actions Security Best Practices - GitGuardian</link>
+    </see-also>
+  </content>
+</methodology>
