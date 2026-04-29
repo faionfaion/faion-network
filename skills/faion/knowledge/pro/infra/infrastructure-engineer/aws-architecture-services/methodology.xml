@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="aws-architecture-services">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Production AWS service selection (serverless vs containers), hybrid architecture, event-driven patterns, and pre-deployment checklists.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>aws</tag>
+      <tag>architecture</tag>
+      <tag>serverless</tag>
+      <tag>containers</tag>
+      <tag>well-architected</tag>
+    </tags>
+  </metadata>
+
+  <content>
+    <title>AWS Architecture Services</title>
+
+    <summary>Production-ready patterns for AWS service selection, integration, and deployment. Covers the serverless vs containers decision, event-driven architecture with EventBridge, the AWS Well-Architected Framework six pillars, and Terraform configurations for EKS, RDS Aurora, ALB, S3+CloudFront, and API Gateway. 78% of teams now use hybrid architectures — the concrete rule is: choose Lambda for variable/spiky traffic under 15 minutes; choose containers for steady high-volume 24/7 workloads.</summary>
+
+    <why>
+      <p>Choosing the wrong compute service leads to wasted cost (over-provisioned containers) or reliability failures (Lambda timeouts on long-running jobs). Explicit decision criteria and production Terraform examples eliminate guesswork and encode security defaults (no public S3, encrypted RDS, KMS keys, multi-AZ).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Selecting compute service (Lambda vs ECS/EKS/Fargate) for a new workload</item>
+        <item>Designing event-driven architectures with EventBridge, SNS, SQS, or Step Functions</item>
+        <item>Applying AWS Well-Architected Framework review to existing infrastructure</item>
+        <item>Writing Terraform for EKS clusters, Aurora, ALB, CloudFront, or API Gateway</item>
+        <item>Performing cost optimization (Graviton, Spot, Reserved, Instance Scheduler)</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>GCP or Azure architecture decisions — use gcp-arch-patterns or the Azure methodology instead</item>
+        <item>Terraform syntax basics — use terraform-basics for HCL fundamentals</item>
+        <item>VPC and networking design — use aws-networking for subnet, SG, and TGW patterns</item>
+        <item>S3 bucket policies and lifecycle rules — use aws-s3-storage for storage-specific patterns</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="compute-decision">
+      <rule testable="true">
+        <statement>Choose Lambda when traffic is variable or spiky, execution is under 15 minutes, cold start is acceptable, and GPU is not required.</statement>
+        <rationale>Lambda costs per invocation; idle time costs nothing. Containers cost per provisioned hour regardless of traffic.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Choose containers (EKS/ECS/Fargate) for steady 24/7 workloads, long-running processes, GPU requirements, or when Kubernetes ecosystem is needed.</statement>
+        <rationale>Reserved container capacity is cheaper than Lambda at high sustained throughput. GPU workloads require EC2-backed compute.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Default to a hybrid architecture: Lambda for event-driven and sporadic workloads, containers for always-on services.</statement>
+        <rationale>78% of engineering teams run hybrid architectures. The question is which workload belongs where, not a binary choice.</rationale>
+      </rule>
+      <example type="good" title="E-commerce hybrid architecture">
+        <note>E-commerce: EKS for the main web API (steady traffic), Lambda for order notifications (spiky), Step Functions for payment workflow (stateful).</note>
+      </example>
+      <antipattern>
+        <description>Running all workloads as Lambda including a websocket server or ML inference service.</description>
+        <reason>Lambda has a 15-minute timeout, no persistent connections, and no GPU support.</reason>
+      </antipattern>
+    </section>
+
+    <section name="container-orchestration-selection">
+      <rule testable="true">
+        <statement>Choose Fargate (ECS or EKS) when the team lacks Kubernetes expertise or wants to avoid node management overhead.</statement>
+        <rationale>Fargate is fully managed; no patching, scaling, or capacity planning for nodes.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Choose EKS when multi-cloud portability, Helm ecosystem, or advanced scheduling is required.</statement>
+        <rationale>EKS uses standard Kubernetes APIs, enabling migration to other clouds or on-prem clusters.</rationale>
+      </rule>
+    </section>
+
+    <section name="database-selection">
+      <rule testable="true">
+        <statement>Use RDS Aurora for relational OLTP workloads; use DynamoDB for key-value or document access patterns requiring single-digit millisecond latency at any scale.</statement>
+        <rationale>Aurora provides Aurora PostgreSQL compatibility with auto-scaling storage. DynamoDB avoids connection pooling limits at high concurrency.</rationale>
+      </rule>
+    </section>
+
+    <section name="integration-patterns">
+      <rule testable="true">
+        <statement>Use EventBridge for decoupled cross-service routing; use Step Functions for stateful orchestration; use SQS for async buffering with retry; use SNS for fan-out notifications.</statement>
+        <rationale>Each service solves a distinct coordination problem. Using SQS for routing or SNS for stateful workflows creates operational complexity.</rationale>
+      </rule>
+    </section>
+
+    <section name="well-architected-pillars">
+      <rule testable="true">
+        <statement>Apply all six Well-Architected pillars: Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, Sustainability.</statement>
+        <rationale>Skipping any pillar creates technical debt: missing Security leads to breaches; missing Cost Optimization leads to uncontrolled spend.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Default to Graviton (ARM64) instances for all new compute resources; justify x86 explicitly.</statement>
+        <rationale>Graviton provides 20% lower cost and comparable or better performance for most workloads.</rationale>
+      </rule>
+    </section>
+
+    <section name="eventbridge">
+      <rule testable="true">
+        <statement>Use a custom event bus (not default) for application events; enable event archive with 30-day retention for replay capability.</statement>
+        <rationale>The default event bus mixes AWS service events with application events. Archiving enables replay during outages.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Always configure a dead-letter queue and retry policy on every EventBridge target rule.</statement>
+        <rationale>Without DLQ, failed event deliveries are silently dropped. EventBridge retries up to 185 times over 24 hours by default.</rationale>
+      </rule>
+      <example type="good" title="EventBridge target with DLQ and retry policy">
+        <code lang="hcl"><![CDATA[
+resource "aws_cloudwatch_event_target" "notify" {
+  rule           = aws_cloudwatch_event_rule.order_created.name
+  event_bus_name = aws_cloudwatch_event_bus.main.name
+  target_id      = "notify-customer"
+  arn            = aws_lambda_function.notify.arn
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 3
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="sqs-vs-sns-vs-step-functions">
+      <rule testable="true">
+        <statement>Use SQS Standard for async decoupling with at-least-once delivery; use SQS FIFO when message ordering matters; use SNS for fan-out to multiple subscribers.</statement>
+        <rationale>SQS provides buffering and retry; SNS delivers immediately to all subscribers without buffering.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use Step Functions for workflows with more than 2 sequential steps, error handling, or human approval gates.</statement>
+        <rationale>Chaining Lambda functions directly via code creates invisible retry logic and poor observability. Step Functions provides visual state machines with built-in retry/catch.</rationale>
+      </rule>
+      <antipattern>
+        <description>Using SNS as a queue replacement for a single consumer.</description>
+        <reason>SNS has no retention — if the consumer is down, messages are lost. Use SQS for single-consumer reliable delivery.</reason>
+      </antipattern>
+    </section>
+
+    <section name="choreography-vs-orchestration">
+      <rule testable="true">
+        <statement>Use EventBridge choreography for loosely coupled, independently deployable services; use Step Functions orchestration for multi-step transactions requiring compensation (saga pattern).</statement>
+        <rationale>Choreography reduces coupling but makes flow hard to trace. Orchestration centralizes visibility at the cost of coupling to the orchestrator.</rationale>
+      </rule>
+    </section>
+
+    <section name="eks-cluster">
+      <rule testable="true">
+        <statement>Deploy EKS cluster in private subnets with IRSA enabled, secrets encryption via KMS, and managed node groups using Graviton instances.</statement>
+        <rationale>Private subnets prevent direct internet exposure. IRSA eliminates long-lived access keys on nodes. KMS encryption protects secrets in etcd.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Enable at least CoreDNS, kube-proxy, VPC CNI, and EBS CSI driver as managed add-ons.</statement>
+        <rationale>Managed add-ons receive security patches automatically without manual intervention.</rationale>
+      </rule>
+    </section>
+
+    <section name="rds-aurora">
+      <rule testable="true">
+        <statement>Always deploy Aurora with Multi-AZ (minimum 2 instances), encryption at rest via KMS, IAM authentication enabled, and deletion protection on prod.</statement>
+        <rationale>Single-instance Aurora has no automatic failover. Deletion protection prevents accidental data loss in production.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Set backup retention to 30 days in production; enable Performance Insights and Enhanced Monitoring.</statement>
+        <rationale>30-day retention meets most compliance requirements. Performance Insights identifies slow queries proactively.</rationale>
+      </rule>
+    </section>
+
+    <section name="alb-and-cloudfront">
+      <rule testable="true">
+        <statement>Redirect HTTP port 80 to HTTPS 443 with SSL policy ELBSecurityPolicy-TLS13-1-2-2021-06; enable access logs to S3.</statement>
+        <rationale>TLS 1.3 policy disables weak cipher suites. Access logs are required for security audits and debugging.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use CloudFront Origin Access Control (OAC) for S3 origins, not legacy OAI; enable HTTP/2 and HTTP/3.</statement>
+        <rationale>OAC uses SigV4 signing and supports SSE-KMS, which OAI does not.</rationale>
+      </rule>
+    </section>
+
+    <section name="security-and-cost">
+      <rule testable="true">
+        <statement>Tag all resources with Project, Environment, Owner, and ManagedBy=terraform; enable CloudTrail and AWS Config.</statement>
+        <rationale>Tags enable cost allocation and compliance reporting. CloudTrail provides the audit trail required for SOC2/PCI.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use Spot instances for fault-tolerant batch workloads, Reserved capacity for steady-state, and Instance Scheduler to stop non-prod environments overnight.</statement>
+        <rationale>Instance Scheduler can save up to 75% on non-prod costs. Spot pricing is 60-90% cheaper than On-Demand for interruptible workloads.</rationale>
+      </rule>
+      <antipattern>
+        <description>Overly permissive IAM with wildcard (*) resource ARNs in production.</description>
+        <reason>Wildcards grant unintended access to all resources, violating least privilege and failing security audits.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Single-AZ deployments for critical workloads.</description>
+        <reason>An AZ outage takes the entire workload offline. Multi-AZ is required for any SLA above 99.9%.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/variables.tf" purpose="Common Terraform variables (project, environment, region, VPC CIDR, AZs)"/>
+      <template path="templates/locals.tf" purpose="Common tags and name prefix locals"/>
+      <template path="templates/vpc.tf" purpose="VPC module with NAT gateway, flow logs, Kubernetes subnet tags"/>
+      <template path="templates/kms.tf" purpose="KMS keys for EKS, RDS, S3 encryption"/>
+      <template path="templates/security-groups.tf" purpose="ALB, app, Lambda, RDS security group templates"/>
+      <template path="templates/iam.tf" purpose="ECS task execution, ECS task, Step Functions IAM role templates"/>
+      <template path="templates/alarms.tf" purpose="CloudWatch alarms for ALB, RDS, Lambda with SNS topic"/>
+    </templates>
+
+    <see-also>
+      <link href="https://aws.amazon.com/architecture/well-architected/"/>
+      <link href="https://aws.amazon.com/containers/"/>
+      <link href="https://aws.amazon.com/lambda/"/>
+      <link href="https://aws.amazon.com/rds/aurora/"/>
+      <link href="https://aws.amazon.com/events/"/>
+    </see-also>
+  </content>
+</methodology>
