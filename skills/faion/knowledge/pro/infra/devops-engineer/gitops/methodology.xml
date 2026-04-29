@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gitops">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>GitOps uses Git as single source of truth for declarative infrastructure. Pull-based operators (ArgoCD, FluxCD) reconcile live state with Git, providing drift detection and audit trails.</summary>
+    <category>gitops</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>gitops</tag>
+      <tag>kubernetes</tag>
+      <tag>argocd</tag>
+      <tag>fluxcd</tag>
+      <tag>infrastructure</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>GitOps</title>
+
+    <summary>GitOps uses a Git repository as the single source of truth for declarative infrastructure and applications. A pull-based operator (ArgoCD, FluxCD) running inside the cluster continuously reconciles live state with the desired state in Git, providing automatic drift detection and correction. The recommended pattern is hybrid: CI pipeline builds and pushes image tags / manifest updates to Git; the GitOps agent pulls and applies. Use folders (not branches) for environment separation.</summary>
+
+    <why>
+      <p>Pull-based GitOps eliminates cluster credentials from CI pipelines, creates an immutable audit trail of every change, and enables automatic drift correction without manual intervention. 90%+ of Kubernetes deployments now use GitOps (2025 data); 80%+ of adopters report higher reliability. The audit trail satisfies compliance requirements that push-based pipelines cannot easily provide.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Kubernetes-native deployments requiring drift detection and automatic reconciliation.</item>
+        <item>Multi-cluster/multi-environment setups where consistency must be enforced.</item>
+        <item>Compliance or audit requirements where every config change needs a Git trail.</item>
+        <item>Progressive delivery (canary/blue-green) with automated metric-driven promotion.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Non-containerized legacy systems — GitOps tooling is Kubernetes-native.</item>
+        <item>Teams with no Kubernetes experience — the learning curve adds cost before value.</item>
+        <item>Tight deployment sequencing needs where push-based CI gives finer control.</item>
+        <item>Small teams (&lt;5 engineers) with a single environment and simple deploy pipeline.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-principles">
+      <p>Four OpenGitOps principles form the foundation of GitOps practice.</p>
+
+      <list>
+        <item>Declarative: infrastructure and applications defined as code in YAML/JSON</item>
+        <item>Versioned and immutable: all configuration stored in Git with full history</item>
+        <item>Pulled automatically: agents inside clusters pull changes from Git (not pushed by CI)</item>
+        <item>Continuously reconciled: automatic drift detection and correction without manual triggers</item>
+      </list>
+    </section>
+
+    <section name="pull-vs-push-model">
+      <p>Understanding the trade-offs between pull-based and push-based deployment models is critical for GitOps success.</p>
+
+      <rule testable="true">
+        <statement>Prefer pull-based GitOps for security-focused, multi-cluster, or compliance-driven environments.</statement>
+        <rationale>Pull-based (ArgoCD, FluxCD) eliminates cluster credentials from CI pipelines — the agent inside the cluster only needs read access to the Git repo. Push-based requires exposing cluster API credentials to external CI systems, which must be rotated and audited separately.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use the hybrid model (CI pushes manifest updates to Git, GitOps agent applies) for most new deployments.</statement>
+        <rationale>Hybrid combines push-model velocity for image builds and tag updates with pull-model safety for apply and drift detection. CI never has cluster credentials; the GitOps agent reconciles from Git state.</rationale>
+      </rule>
+
+      <list>
+        <item>Pull advantages: no external cluster credentials, autonomous drift correction, multi-cluster native, audit trail built-in</item>
+        <item>Push advantages: familiar CI/CD patterns, tight sequencing control, simpler initial setup</item>
+        <item>Tools (pull): ArgoCD (60% K8s adoption 2025), FluxCD (CNCF graduated), Kargo (multi-env promotion)</item>
+        <item>Tools (push): GitHub Actions, GitLab CI, Jenkins</item>
+      </list>
+    </section>
+
+    <section name="repository-structure">
+      <p>Repository layout and environment separation strategy is essential for GitOps maintainability and scalability.</p>
+
+      <rule testable="true">
+        <statement>Use folder-per-environment, not branch-per-environment, for environment separation.</statement>
+        <rationale>Branch-based environments require cross-branch cherry-picks for config changes and make diff visibility hard. Folder-based environments (apps/{app}/overlays/{staging,prod}) keep all environments in one PR diff and enable Kustomize overlays without branching complexity.</rationale>
+      </rule>
+
+      <example type="good" title="Monorepo folder structure">
+        <code lang="text"><![CDATA[
+gitops-repo/
+├── apps/
+│   └── {app-name}/
+│       ├── base/              # kustomization.yaml, deployment.yaml, service.yaml
+│       └── overlays/
+│           ├── staging/       # kustomization.yaml with staging-specific patches
+│           └── production/
+├── infrastructure/            # cert-manager, ingress-nginx, external-secrets
+├── clusters/
+│   ├── staging/
+│   └── production/
+└── projects/
+    └── team-*.yaml           # RBAC and project scoping
+]]></code>
+        <note>Monorepo pattern recommended for organizations with fewer than 50 applications. Larger orgs may use app-per-repo with a central GitOps orchestrator.</note>
+      </example>
+    </section>
+
+    <section name="progressive-delivery">
+      <p>Progressive delivery strategies enable gradual rollouts with automated rollback on metric thresholds.</p>
+
+      <list>
+        <item>Canary: gradually shifts traffic percentage (5% → 25% → 50% → 100%) while analyzing Prometheus metrics at each step; auto-rollback on threshold breach</item>
+        <item>Blue-Green: runs two identical environments; instant traffic switch after validation; requires 2x resources during deployment window</item>
+        <item>Argo Rollouts: native controller for canary and blue-green with metric-driven promotion; integrates with ArgoCD</item>
+        <item>Flagger: progressive delivery controller for FluxCD with Istio/NGINX traffic splitting</item>
+      </list>
+    </section>
+
+    <section name="sync-policy-guidelines">
+      <p>Sync policies define how aggressively the GitOps agent reconciles state and whether it auto-corrects drift.</p>
+
+      <list>
+        <item>Development: auto-sync enabled, self-heal enabled, prune enabled</item>
+        <item>Staging: auto-sync enabled, self-heal enabled, prune enabled</item>
+        <item>Production: auto-sync disabled (manual promotion with approval), self-heal enabled, prune disabled or PruneLast</item>
+      </list>
+    </section>
+
+    <section name="implementation-checklist">
+      <p>Ordered checklist from model selection and repository setup through security, application configuration, monitoring, and disaster recovery.</p>
+
+      <section name="model-and-tool-selection">
+        <list>
+          <item>Evaluate push vs pull vs hybrid model based on security requirements, multi-cluster needs, audit requirements</item>
+          <item>Select GitOps tool: ArgoCD (UI-heavy, multi-cluster, RBAC/SSO) or FluxCD (lightweight, modular, multi-source)</item>
+          <item>Evaluate progressive delivery needs: Argo Rollouts (with ArgoCD) or Flagger (with Flux)</item>
+          <item>Document decision rationale</item>
+        </list>
+      </section>
+
+      <section name="repository-setup-checklist">
+        <list>
+          <item>Create GitOps repository separate from application source code</item>
+          <item>Choose folder-based environment strategy (not branch-based)</item>
+          <item>Set up folder structure: apps/, infrastructure/, clusters/, projects/</item>
+          <item>Configure branch protection: require PR reviews, status checks, no direct pushes to main</item>
+          <item>Set up CODEOWNERS for team-based approval requirements</item>
+          <item>Enable signed commits</item>
+          <item>Add pre-commit validation (OPA/Conftest for policy checks)</item>
+        </list>
+      </section>
+
+      <section name="agent-installation">
+        <list>
+          <item>Verify Kubernetes cluster running v1.24+, kubectl configured, Helm v3 installed</item>
+          <item>Create dedicated namespace for GitOps agent</item>
+          <item>Install with HA for production: multiple replicas, resource limits, PDB configured</item>
+          <item>Configure GitOps repository authentication: SSH key (recommended) or GitHub App</item>
+          <item>Verify sync works end-to-end with a test application</item>
+        </list>
+      </section>
+
+      <section name="security-configuration">
+        <list>
+          <item>Disable default admin account in production</item>
+          <item>Configure SSO/OIDC integration</item>
+          <item>Create projects per team with role-based policies</item>
+          <item>Choose secrets solution: External Secrets Operator, Sealed Secrets, or SOPS</item>
+          <item>Verify no secrets committed to Git repository</item>
+          <item>Enable TLS for all connections between GitOps agent and Git/cluster</item>
+          <item>Enable webhook signature verification</item>
+        </list>
+      </section>
+
+      <section name="monitoring-and-disaster-recovery">
+        <list>
+          <item>Configure alerts: sync failures, health degradation, drift detected, resource quota</item>
+          <item>Integrate with log aggregation and set up audit logging</item>
+          <item>Define maintenance windows and deny windows for production</item>
+          <item>Document backup procedure for GitOps tool configuration</item>
+          <item>Test restore process quarterly</item>
+          <item>Document rollback procedure and test it before first production deployment</item>
+        </list>
+      </section>
+    </section>
+
+    <see-also>
+      <link href="https://opengitops.dev/"/>
+      <link href="https://argoproj.github.io/cd/"/>
+      <link href="https://fluxcd.io/"/>
+      <link href="https://kargo.akuity.io/"/>
+    </see-also>
+  </content>
+</methodology>
