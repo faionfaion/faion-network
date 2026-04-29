@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="previous-response-id-reasoning-reuse">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Pass previous_response_id on Responses API to preserve reasoning items between turns. Avoids reconstruction of Chat-Completions message arrays.</summary>
+    <tags>
+      <tag>reasoning</tag>
+      <tag>responses-api</tag>
+      <tag>agent-continuity</tag>
+      <tag>cache-optimization</tag>
+      <tag>multi-turn</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>previous_response_id — Reasoning-Item Reuse on the Responses API</title>
+    <summary>When chaining turns of an OpenAI reasoning model (o3, o4-mini, gpt-5) on the Responses API, pass previous_response_id=&lt;prior.id&gt; instead of reconstructing a Chat-Completions–style message array. The Responses API keeps reasoning items adjacent to their function calls server-side, keyed by id; supplying the id reattaches them on the next turn. This preserves the model's mid-loop "thinking", lifts cache-hit rate, and cuts both latency and tokens. Under ZDR (store=false), use the encrypted-content variant instead — previous_response_id is silently ignored.</summary>
+    <why>
+      <p>Reasoning items are not just chat messages — they are intermediate scratchpad tokens the model produced between tool calls. The legacy approach (Chat Completions) flattens them away and the model "thinks from scratch" on every turn, producing a 20-40% regression on agentic benchmarks (OpenAI cookbook + community measurements). The Responses API was specifically designed to keep these items co-located with the call/response pair they justify; opting in via previous_response_id is the only supported way to inherit them on the next turn for stateful (store=true) deployments.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Multi-turn agent loops on o3, o4-mini, or gpt-5 where the model calls tools and you feed results back.</item>
+        <item>Conversational reasoning agents where consecutive user turns continue the same task.</item>
+        <item>Long planning loops where mid-trajectory thoughts inform later decisions.</item>
+        <item>Anywhere you previously paid for "re-thinking" by reconstructing message arrays manually.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Non-reasoning models (gpt-4.1, gpt-4.1-mini) — there are no reasoning items to reuse.</item>
+        <item>ZDR / store=false deployments — the id is silently ignored; use include=["reasoning.encrypted_content"] and round-trip the blob (see encrypted-reasoning pattern).</item>
+        <item>First turn of a session — there is no prior id yet; pass the user message normally.</item>
+        <item>Cross-session continuation — reasoning items expire; do not assume yesterday's id still resolves.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Chain reasoning turns by id, not by message array">
+      <p>On the Responses API, pass previous_response_id to inherit reasoning items between turns; Chat-Completions–style message reconstruction drops them.</p>
+      <rule>
+        <statement>For multi-turn loops on a reasoning model (o3, o4-mini, gpt-5) using the Responses API with default storage, every turn after the first MUST set previous_response_id=&lt;prior.id&gt; and pass ONLY the new input items (user message, tool results) — never reconstruct the full message history manually.</statement>
+        <rationale>The Responses API stores reasoning items adjacent to their function calls server-side; previous_response_id is the documented mechanism to reattach them. Reconstructing messages from .output drops the reasoning blocks (the SDK silently strips them in Chat-Completions format), and the model loses 20-40% on agentic benchmarks because each turn re-derives plans it had already produced.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+r1 = client.responses.create(
+    model="o4-mini",
+    input=user_msg,
+    tools=tools,
+)
+# … application executes the tool call …
+r2 = client.responses.create(
+    model="o4-mini",
+    previous_response_id=r1.id,
+    input=[
+        {"type": "function_call_output",
+         "call_id": call_id, "output": tool_result}
+    ],
+)
+        ]]></code>
+        <note>Only the new tool result is passed in; reasoning items from r1 are reattached server-side via the id.</note>
+      </example>
+      <example type="bad">
+        <code lang="python"><![CDATA[
+# Anti-pattern: rebuild a message array every turn.
+messages = [{"role": "user", "content": user_msg}]
+r1 = client.responses.create(model="o4-mini", input=messages, tools=tools)
+messages.extend([m for m in r1.output if m.type != "reasoning"])  # drops reasoning
+messages.append({"type": "function_call_output", "call_id": ..., "output": ...})
+r2 = client.responses.create(model="o4-mini", input=messages)
+        ]]></code>
+        <note>The filter strips reasoning items; even without the explicit filter, manual message reconstruction is documented to lose them.</note>
+      </example>
+      <p>Reasoning models emit a hidden chain of thought (the "reasoning" item type) between user input and final output, including between tool calls. Those items are not chat messages — they are scratchpad tokens the model produced to justify the next action. They cannot be reproduced from text alone.</p>
+      <antipattern>
+        <description>Treating .output items like chat completions and storing only the assistant text plus tool calls.</description>
+        <reason>Reasoning items are the part the model needs to continue its thought; without them every turn restarts cognition.</reason>
+      </antipattern>
+      <reference path="templates/responses-loop.py">Reference loop showing both stored and ZDR variants.</reference>
+      <link href="https://cookbook.openai.com/examples/responses_api/reasoning_items">OpenAI cookbook — reasoning items in the Responses API.</link>
+      <link href="https://platform.openai.com/docs/guides/conversation-state">OpenAI docs — conversation state via previous_response_id.</link>
+      <link href="https://developers.openai.com/api/docs/guides/migrate-to-responses">Migrate from Chat Completions to Responses.</link>
+    </section>
+    <section name="ZDR fallback — encrypted reasoning content">
+      <p>Under store=false, previous_response_id is silently ignored; round-trip include=["reasoning.encrypted_content"] yourself.</p>
+      <rule>
+        <statement>When the request has store=false (Zero Data Retention), set include=["reasoning.encrypted_content"] on every Responses call and append the encrypted reasoning items from the prior response into the next call's input array; do not pass previous_response_id — it is ignored without a server-side store.</statement>
+        <rationale>ZDR contractually disallows server-side persistence, so the API has nothing to look up by id. The encrypted-content opt-in returns reasoning items as opaque blobs that the next call decrypts in-process only — preserving reasoning continuity without retaining anything at rest.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+r1 = client.responses.create(
+    model="o4-mini", input=user_msg, store=False,
+    include=["reasoning.encrypted_content"],
+)
+encrypted_items = [i for i in r1.output if i.type == "reasoning"]
+
+r2 = client.responses.create(
+    model="o4-mini", store=False,
+    include=["reasoning.encrypted_content"],
+    input=encrypted_items + [
+        {"type": "function_call_output",
+         "call_id": call_id, "output": tool_result}
+    ],
+)
+        ]]></code>
+        <note>Encrypted blobs are passed back literally; the server decrypts in-memory and reattaches to the new turn.</note>
+      </example>
+      <p>Encrypted reasoning items are larger than their unencrypted counterparts. Expect ~5-15% input-token overhead vs the stored variant.</p>
+      <antipattern>
+        <description>Using encrypted-content round-trip when the deployment does NOT have a ZDR requirement.</description>
+        <reason>Pays the encryption tax for no compliance benefit; previous_response_id is cheaper and equivalent for stored deployments.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Passing previous_response_id with store=false and assuming reasoning carries forward.</description>
+        <reason>The id resolves to nothing because nothing was stored; the call succeeds but reasoning is lost — silent regression on quality.</reason>
+      </antipattern>
+      <link href="https://community.openai.com/t/how-to-use-reasoning-encrypted-content-with-store-false-stateless/1286934">OpenAI community thread — encrypted_content with store=false.</link>
+      <link href="https://github.com/openai/openai-agents-python/issues/2063">openai-agents-python issue #2063 — ZDR + reasoning continuity.</link>
+    </section>
+    <templates>
+      <template path="templates/responses-loop.py" purpose="Working agent loop using previous_response_id plus a ZDR fallback branch."/>
+    </templates>
+  </content>
+</methodology>
