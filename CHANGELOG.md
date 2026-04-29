@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/dev/backend-systems methodologies → methodology.xml (go-channels, go-goroutines, sql-optimization; feature-045 batch AG)
 - migrate: reranking → methodology.xml (feature-045 sonnet-retry AG; 80%+ parity)
 - migrate: 3/3 pro/dev/backend-enterprise methodologies → methodology.xml (php-phpunit-testing, ruby-activerecord, go-backend; feature-045 batch AF)
 - migrate: 3/3 geek/pm/pro/ba methodologies → methodology.xml (ai-in-project-management, kb-agents-md-context-pyramid/templates, requirements-prioritization; feature-045 batch AE)

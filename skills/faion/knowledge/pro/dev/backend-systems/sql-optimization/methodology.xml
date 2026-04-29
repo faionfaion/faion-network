@@ -1,0 +1,569 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="sql-optimization">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Improve database queries with EXPLAIN ANALYZE. Optimize indexes for patterns. Rewrite N+1 and join problems. Tune connection pooling. Focus on frequent high-impact queries, not just slow ones.</summary>
+    <category>database</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>sql</tag>
+      <tag>database</tag>
+      <tag>performance</tag>
+      <tag>query-optimization</tag>
+      <tag>indexing</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>SQL Optimization</title>
+
+    <summary>SQL optimization is the practice of analyzing and improving database queries to reduce execution time, minimize resource consumption, and improve application responsiveness. Measure with EXPLAIN ANALYZE before optimizing. Optimize the right queries: frequent ones and those consuming most database resources. Remember that indexes are not free: they speed reads but slow writes. Always filter data early, join smartly, and fetch only needed columns. Consider the full picture: query optimization, connection pooling, caching, and materialized views.</summary>
+
+    <why>
+      <p>Databases are often the bottleneck in application performance. A slow query running frequently can consume all available database CPU and disk I/O, starving other operations. Optimizing queries has outsized impact: a 10x speedup on a critical query frees resources for 10x more user traffic. The key to effective optimization is measurement: EXPLAIN ANALYZE shows real execution time, not estimates. Optimization is not one-time; it must be ongoing as data grows and access patterns change.</p>
+      <p>Index design is critical but non-obvious. A well-designed index can make a slow query instant. A poorly designed index can slow writes without speeding reads. Understanding how the query optimizer chooses indexes (cardinality estimates, selectivity, join order) allows you to design queries and indexes that cooperate instead of fighting. Understanding join types (nested loop vs hash join vs merge join) lets you structure queries so the database picks the right algorithm.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Slow query complaints from users or monitoring alerts.</item>
+        <item>Database CPU or I/O consistently high, indicating resource bottleneck.</item>
+        <item>Application response times degrading under load, especially under high concurrency.</item>
+        <item>Before deploying new features with complex or unknown performance characteristics.</item>
+        <item>Regular performance audits and maintenance as data grows.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Premature optimization before establishing actual bottleneck with profiling.</item>
+        <item>Over-optimizing rarely-run queries; effort should focus on high-traffic paths.</item>
+        <item>Over-indexing (more indexes = slower writes without proportional read speedup).</item>
+        <item>Replacing simple working queries with complex optimizations without benchmarking trade-offs.</item>
+        <item>Caching strategy that defeats database optimizations (e.g., caching and stale reads).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="key-principles">
+      <rule testable="true">
+        <statement>Measure before optimizing. Use EXPLAIN ANALYZE to understand actual query performance, not guesses. Identify which plans are slow (full table scans, bitmap scans, sorts), not just which queries take long.</statement>
+        <rationale>Without measurement, optimization efforts target the wrong queries. EXPLAIN ANALYZE shows actual buffers used, rows scanned, and bottlenecks.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Optimize the right queries. Focus on frequent queries and those consuming most database resources (CPU, I/O), not just slow ones. A query that runs 10K times a day, taking 100ms, is more important than a nightly batch query taking 10 seconds.</statement>
+        <rationale>Database resources are finite. Optimize for total impact, not individual query time.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Indexes are not free. They speed reads but slow writes. Before adding an index, estimate write cost (slower inserts, updates, deletes) and read benefit. Don't add indexes speculatively.</statement>
+        <rationale>Over-indexing degrades write performance without guaranteed read benefit. Every index is a bet.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Reduce data movement. Filter early (WHERE clause on largest table first), join smart (avoid Cartesian products), fetch only needed columns (not SELECT *).</statement>
+        <rationale>Moving data between tables and across network is expensive. Keeping dataset small at each stage is usually more effective than optimizing individual operations.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Consider the full picture. Query optimization alone is incomplete. Connection pooling prevents query stalls from connection overhead. Caching prevents queries altogether. Materialized views pre-compute expensive aggregations. All are parts of the strategy.</statement>
+        <rationale>Micro-optimizing queries without macro-level strategy is inefficient. Sometimes adding cache is faster than optimizing a query.</rationale>
+      </rule>
+    </section>
+
+    <section name="explain-analyze">
+      <p>EXPLAIN ANALYZE is the primary tool for understanding query performance. It shows the actual execution plan, how many rows passed through each stage, buffers used, and real timing.</p>
+
+      <rule testable="true">
+        <statement>Use EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT). ANALYZE runs the query and shows actual row counts. BUFFERS shows cache hits and disk I/O. TEXT format is readable; JSON is parseable by tools.</statement>
+        <rationale>ANALYZE is more accurate than EXPLAIN estimate alone. Estimates can be wildly wrong; actual execution data drives good decisions. BUFFERS reveals cache efficiency.</rationale>
+      </rule>
+
+      <example type="good" title="Query analysis with EXPLAIN ANALYZE">
+        <code lang="sql"><![CDATA[
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT o.id, o.total_amount, u.email
+FROM orders o
+JOIN users u ON u.id = o.user_id
+WHERE o.status = 'pending'
+  AND o.created_at > NOW() - INTERVAL '7 days'
+ORDER BY o.created_at DESC
+LIMIT 100;
+
+-- Output interpretation:
+-- Seq Scan = full table scan (usually bad for large tables)
+-- Index Scan = using index (good)
+-- Bitmap Index Scan = combining multiple indexes
+-- Nested Loop = for each row in outer, scan inner (watch for large outer sets)
+-- Hash Join = build hash table, probe (good for larger datasets)
+-- Sort = in-memory or disk sort (watch for high cost, can spill to disk)
+-- Planning time: time to choose query plan (usually <10ms)
+-- Execution time: actual query runtime
+]]></code>
+        <note>Always run against representative data. A query fast on small test data may be slow on production data. Row count estimates shown in EXPLAIN may differ from actual rows shown in ANALYZE.</note>
+      </example>
+
+      <antipattern>
+        <description>Trusting EXPLAIN estimates without running ANALYZE on production-sized data.</description>
+        <reason>Estimates can be wrong by orders of magnitude if table statistics are stale or data distribution differs from estimate.</reason>
+      </antipattern>
+    </section>
+
+    <section name="index-optimization">
+      <p>Well-designed indexes make queries fast. Poorly designed indexes consume space and slow writes without speeding reads.</p>
+
+      <rule testable="true">
+        <statement>For WHERE clauses with multiple equality conditions, create a composite index matching the query: CREATE INDEX idx ON table(col1, col2) for queries on col1 AND col2. Order columns by selectivity: most selective first in equality conditions.</statement>
+        <rationale>Database optimizer can use the index for all conditions if they match the index order. If conditions are in wrong order, optimizer may use index for only the first, then scan for the rest.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>For range queries (greater-than, less-than), put equality columns before range columns in the index: CREATE INDEX idx ON table(user_id, created_at) for WHERE user_id = ? AND created_at > ?</statement>
+        <rationale>Optimizer can use the equality part to narrow the range, then scan the range column. If range column comes first, the entire range is scanned then filtered by user_id.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use covering indexes (INCLUDE clause) to avoid table lookups: CREATE INDEX idx ON table(col1, col2) INCLUDE (col3, col4) for queries selecting all four columns.</statement>
+        <rationale>Without INCLUDE, the index scan must look up the table to fetch non-indexed columns. Covering index makes index-only scan possible, eliminating a table access.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use partial indexes for common filters: CREATE INDEX idx ON table(created_at) WHERE status = 'pending' for queries filtering on status = 'pending'.</statement>
+        <rationale>Partial index is smaller and faster to scan if only a fraction of rows match the filter. Saves space when most rows don't match the filter.</rationale>
+      </rule>
+
+      <example type="good" title="Index design for common query patterns">
+        <code lang="sql"><![CDATA[
+-- Query pattern: find orders by user and status
+SELECT * FROM orders
+WHERE user_id = ? AND status = 'pending';
+
+-- Index design: composite index on user_id, status
+CREATE INDEX idx_orders_user_status ON orders(user_id, status);
+
+-- Query pattern: find orders by user in a date range
+SELECT * FROM orders
+WHERE user_id = ? AND created_at BETWEEN ? AND ?;
+
+-- Index design: user_id first (equality), then created_at (range)
+CREATE INDEX idx_orders_user_created ON orders(user_id, created_at);
+
+-- Query pattern: get count, total, and order IDs for user (all queries select same columns)
+SELECT o.id, o.total_amount FROM orders o
+WHERE o.user_id = ? AND o.status = 'completed';
+
+-- Index design: covering index includes columns in SELECT
+CREATE INDEX idx_orders_covering ON orders(user_id, status)
+    INCLUDE (id, total_amount);
+
+-- Query pattern: recent pending orders (most rows are 'completed' or 'cancelled')
+SELECT * FROM orders
+WHERE status = 'pending' AND created_at > NOW() - INTERVAL '7 days';
+
+-- Index design: partial index on small subset
+CREATE INDEX idx_orders_pending ON orders(created_at)
+    WHERE status = 'pending';
+]]></code>
+        <note>Each index is a bet on future queries. Before adding, verify the query is actually slow and the index will be used (EXPLAIN shows Index Scan, not Seq Scan).</note>
+      </example>
+
+      <antipattern>
+        <description>Adding indexes speculatively "in case they help" without profiling queries.</description>
+        <reason>Unused indexes slow writes and consume disk space without benefit. Every index adds cost to inserts, updates, deletes. Add indexes only for queries that are actually slow.</reason>
+      </antipattern>
+    </section>
+
+    <section name="query-rewriting">
+      <p>Some queries are inherently slow due to their structure. Rewriting them can be more effective than indexing.</p>
+
+      <example type="bad" title="N+1 subquery problem">
+        <code lang="sql"><![CDATA[
+-- BAD: Subquery in SELECT runs for every row (N+1 queries)
+SELECT
+    o.id,
+    (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as item_count
+FROM orders o;
+
+-- This runs as: SELECT * FROM orders (1 query) then
+-- SELECT COUNT(*) FROM order_items WHERE order_id = ? (N queries, one per order)
+]]></code>
+      </example>
+
+      <example type="good" title="Join with aggregation">
+        <code lang="sql"><![CDATA[
+-- GOOD: Single query with JOIN and GROUP BY
+SELECT o.id, COUNT(oi.id) as item_count
+FROM orders o
+LEFT JOIN order_items oi ON oi.order_id = o.id
+GROUP BY o.id;
+
+-- This is one query, not N+1. Database optimizer chooses join algorithm.
+]]></code>
+      </example>
+
+      <example type="bad" title="OR preventing index use">
+        <code lang="sql"><![CDATA[
+-- BAD: OR with multiple equality conditions
+SELECT * FROM products
+WHERE category_id = 1 OR category_id = 2 OR category_id = 3;
+
+-- Optimizer must scan multiple index branches or do full table scan
+]]></code>
+      </example>
+
+      <example type="good" title="IN clause for multiple values">
+        <code lang="sql"><![CDATA[
+-- GOOD: IN clause for set of values
+SELECT * FROM products
+WHERE category_id IN (1, 2, 3);
+
+-- Optimizer can use a single index scan or bitmap for the set
+]]></code>
+      </example>
+
+      <example type="bad" title="Function on indexed column">
+        <code lang="sql"><![CDATA[
+-- BAD: Function on indexed column prevents index use
+SELECT * FROM users WHERE LOWER(email) = 'test@example.com';
+
+-- Optimizer cannot use email index because the column is transformed
+]]></code>
+      </example>
+
+      <example type="good" title="Expression index or application-level fix">
+        <code lang="sql"><![CDATA[
+-- GOOD OPTION 1: Create expression index matching the query
+CREATE INDEX idx_users_email_lower ON users(LOWER(email));
+
+-- GOOD OPTION 2: Store normalized data in the column
+-- In application: always store/compare lowercase email
+-- Query becomes: WHERE email = 'test@example.com' (uses regular index)
+]]></code>
+      </example>
+    </section>
+
+    <section name="pagination-optimization">
+      <p>Large OFFSET values are slow because the database must scan and discard rows. Cursor-based pagination is faster.</p>
+
+      <example type="bad" title="OFFSET pagination on large datasets">
+        <code lang="sql"><![CDATA[
+-- BAD: Deep pagination with OFFSET 10000
+SELECT * FROM products ORDER BY created_at DESC LIMIT 20 OFFSET 10000;
+
+-- Database must scan and discard the first 10000 rows, then return 20
+-- With large OFFSET, this gets exponentially slower
+]]></code>
+      </example>
+
+      <example type="good" title="Cursor/keyset pagination">
+        <code lang="sql"><![CDATA[
+-- GOOD: Keyset pagination using last seen value
+-- First page: no cursor
+SELECT * FROM products ORDER BY created_at DESC LIMIT 20;
+
+-- Second page: cursor is created_at value from last row of previous page
+SELECT * FROM products
+WHERE created_at < '2024-01-15 10:30:00'
+ORDER BY created_at DESC
+LIMIT 20;
+
+-- Supports index scan directly to the position; no need to scan 10000 rows
+]]></code>
+      </example>
+
+      <example type="good" title="Complex cursor for tie-breaking">
+        <code lang="sql"><![CDATA[
+-- For complex sorting with ties, use composite cursor
+SELECT * FROM products
+WHERE (created_at, id) < ('2024-01-15 10:30:00', 'uuid-here')
+ORDER BY created_at DESC, id DESC
+LIMIT 20;
+
+-- Uniqueness: combination of created_at and id is unique cursor
+-- Database can jump directly to the position; no scan required
+]]></code>
+      </example>
+    </section>
+
+    <section name="batch-operations">
+      <p>Batching insert, update, and delete operations reduces overhead and network round-trips.</p>
+
+      <example type="bad" title="Individual inserts in a loop">
+        <code lang="sql"><![CDATA[
+-- BAD: Individual inserts repeated in application loop
+INSERT INTO logs (message) VALUES ('log1');
+INSERT INTO logs (message) VALUES ('log2');
+INSERT INTO logs (message) VALUES ('log3');
+-- ... repeated 1000 times
+
+-- This is 1000 network round-trips and 1000 transaction overheads
+]]></code>
+      </example>
+
+      <example type="good" title="Batch insert">
+        <code lang="sql"><![CDATA[
+-- GOOD: Multi-row insert in single statement
+INSERT INTO logs (message) VALUES
+    ('log1'), ('log2'), ('log3'), ... ('log1000');
+
+-- Single network round-trip, single transaction, much faster
+]]></code>
+      </example>
+
+      <example type="good" title="COPY for bulk loading">
+        <code lang="sql"><![CDATA[
+-- GOOD: COPY statement for very large bulk loads
+COPY logs(message) FROM '/path/to/data.csv' WITH CSV;
+
+-- COPY is optimized for bulk loading, fastest option for large datasets
+-- Also works with stdin from application for pipes
+]]></code>
+      </example>
+
+      <example type="good" title="Batch updates with CTE">
+        <code lang="sql"><![CDATA[
+-- GOOD: Use CTE to batch updates
+WITH to_update AS (
+    SELECT id FROM orders
+    WHERE status = 'pending'
+      AND created_at < NOW() - INTERVAL '30 days'
+    LIMIT 1000
+)
+UPDATE orders SET status = 'expired'
+WHERE id IN (SELECT id FROM to_update);
+
+-- Limits update to 1000 rows at a time, prevents lock contention
+-- Can be run repeatedly in a loop for large update workloads
+]]></code>
+      </example>
+    </section>
+
+    <section name="connection-and-query-pooling">
+      <p>Connection pooling prevents connection overhead from dominating query time. Query caching (if appropriate) prevents queries altogether.</p>
+
+      <rule testable="true">
+        <statement>Use connection pooling with reasonable pool size (20-50 depending on workload). Set pool_pre_ping=True to verify connections before use. Set pool_recycle to recycle stale connections periodically.</statement>
+        <rationale>Creating a new database connection is expensive (TCP handshake, authentication, initialization). Reusing pooled connections is much faster. Pre-ping catches dropped connections early.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use server-side cursors or result streaming for large result sets instead of loading all rows into memory.</statement>
+        <rationale>Large result sets that don't fit in memory can cause OOM. Streaming allows processing results in batches.</rationale>
+      </rule>
+
+      <example type="good" title="Connection pooling configuration">
+        <code lang="text"><![CDATA[
+# SQLAlchemy example
+engine = create_engine(
+    "postgresql://user:pass@localhost/db",
+    pool_size=20,           # Maintain 20 connections
+    max_overflow=10,        # Allow 10 additional when busy
+    pool_pre_ping=True,     # Verify connections before use
+    pool_recycle=3600,      # Recycle connections after 1 hour
+)
+
+# pool_size=20: 20 connections always available
+# max_overflow=10: up to 30 total if more are needed temporarily
+# pool_pre_ping: SELECT 1 before using connection; catches dropped connections
+# pool_recycle: recycle after 1 hour to avoid idle timeout from database
+]]></code>
+      </example>
+    </section>
+
+    <section name="materialized-views">
+      <p>Pre-compute expensive aggregations in materialized views, then refresh periodically instead of computing on every query.</p>
+
+      <example type="good" title="Materialized view for dashboard stats">
+        <code lang="sql"><![CDATA[
+-- Create materialized view for expensive aggregation
+CREATE MATERIALIZED VIEW daily_sales_stats AS
+SELECT
+    DATE(created_at) as sale_date,
+    COUNT(*) as order_count,
+    SUM(total_amount) as total_revenue,
+    AVG(total_amount) as avg_order_value
+FROM orders
+WHERE status = 'delivered'
+GROUP BY DATE(created_at);
+
+-- Create index on materialized view for fast queries
+CREATE INDEX idx_sales_stats_date ON daily_sales_stats(sale_date);
+
+-- Refresh periodically (CONCURRENTLY avoids locking)
+REFRESH MATERIALIZED VIEW CONCURRENTLY daily_sales_stats;
+
+-- Now dashboard queries are fast: they query the view, not the raw table
+SELECT * FROM daily_sales_stats WHERE sale_date = CURRENT_DATE;
+]]></code>
+        <note>Materialized views trade write complexity (need to refresh) for read speed. Use when queries are expensive but don't need real-time data.</note>
+      </example>
+    </section>
+
+    <section name="common-anti-patterns">
+      <antipattern>
+        <description>SELECT * instead of selecting specific columns.</description>
+        <reason>Fetches unnecessary columns, increases network bandwidth, may prevent index-only scans. Always specify needed columns.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>N+1 queries: one query returns rows, then a loop runs individual queries for each row.</description>
+        <reason>Causes many network round-trips and transaction overhead. Use JOIN with GROUP BY or batch loading instead.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Missing WHERE clause on UPDATE or DELETE operations.</description>
+        <reason>Updates or deletes the entire table. Always include WHERE to limit scope. Consider soft deletes or archiving instead.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Implicit type conversion in WHERE clause causes index bypass.</description>
+        <reason>WHERE varchar_col = 123 converts 123 to string, preventing index use. Use correct types in queries and applications.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LIKE '%pattern%' for substring search on large tables.</description>
+        <reason>Full-text search is needed. LIKE with leading wildcard cannot use index and scans the entire table.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using DISTINCT as a band-aid for JOIN problems.</description>
+        <reason>DISTINCT hides the real problem: wrong join or missing WHERE. Fix the join instead.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>ORDER BY RAND() to shuffle results on large tables.</description>
+        <reason>Extremely slow; RAND() must be evaluated for every row and the result set must be sorted. Use OFFSET/LIMIT with a random starting point instead.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Not using prepared statements or parameterized queries.</description>
+        <reason>Security risk (SQL injection) and performance issue (query plan not cached). Always parameterize.</reason>
+      </antipattern>
+    </section>
+
+    <section name="monitoring-and-maintenance">
+      <p>SQL optimization is ongoing, not one-time. As data grows, access patterns change, and tables evolve, queries that were fast become slow.</p>
+
+      <rule testable="true">
+        <statement>Monitor slow queries regularly using database logs or slow query log. Set a threshold (e.g., >100ms) and review queries exceeding it. Use monitoring tools to track query frequency and total time spent in each query.</statement>
+        <rationale>Queries change over time as data grows. A query fast on small data becomes slow on large data. Regular monitoring catches regressions early.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Update table statistics (ANALYZE in PostgreSQL, ANALYZE TABLE in MySQL) after bulk loads or significant schema changes. Stale statistics cause optimizer to make bad decisions.</statement>
+        <rationale>Optimizer relies on cardinality estimates. Stale stats can cause the optimizer to choose a bad plan, especially after bulk data changes.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Index maintenance: drop unused indexes (dead weight on writes), rebuild fragmented indexes if they slow down, review index columns for selectivity.</statement>
+        <rationale>Unused indexes slow writes without benefit. Fragmented indexes degrade performance. Periodic maintenance keeps the system healthy.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Test query changes on production-sized data before deployment. A query fast on test data may be slow on production data with different distribution.</statement>
+        <rationale>Test data is often too small to reveal performance issues. Always validate on realistic data sizes.</rationale>
+      </rule>
+
+      <p>Common tuning parameters: work_mem (PostgreSQL) controls memory available for sorts and hash tables. Increasing it can avoid disk spills but consumes memory. effective_cache_size tells the planner how much data fits in cache; overestimate it and planner favors index scans when sequential scan is faster. random_page_cost controls the cost model; lower it on fast SSDs, higher on slow HDDs. These should be set once for your hardware and left alone; query-specific tuning should be done through queries and indexes, not global parameters.</p>
+    </section>
+
+    <section name="case-studies">
+      <p>Real optimization scenarios and outcomes:</p>
+
+      <p>E-commerce platform reporting page was taking 30 seconds to generate daily sales summary. EXPLAIN ANALYZE showed a sequential scan of 10M order rows, filtering and aggregating. Solution: created materialized view with daily aggregation, refreshed overnight. Report query now takes 10ms. Trade-off: report is one day behind. Acceptable because dashboards don't need real-time accuracy.</p>
+
+      <p>User search was slow on tags table with 5M rows. Queries filtered by tag name. Analysis showed no index on the tag_name column. Adding index reduced query time from 2 seconds to 5ms. Index size was 50MB, acceptable for write performance gain. No additional tuning needed.</p>
+
+      <p>Analytics query joined orders, order_items, products across 50M rows. EXPLAIN showed nested loop join (slow for large outer set). Adding index on order_items(order_id) changed plan to hash join. Query time dropped from 20 seconds to 2 seconds. This is the difference between join algorithms; sometimes indexes matter less than plan choice.</p>
+
+      <p>Batch processing was hitting transaction locks on accounts table during high concurrency. Increasing pool_size from 10 to 30 connections reduced wait times and improved throughput. Adding more connections relieved connection starvation without changing queries. Sometimes the bottleneck is not queries but resource contention.</p>
+    </section>
+
+    <section name="tools-and-resources">
+      <p>EXPLAIN ANALYZE is the primary tool for understanding query performance. It shows actual execution plans, row counts, and buffer statistics. For deeper analysis, pgAdmin provides visual EXPLAIN plans that are easier to read than text output. pgMustard is a commercial tool that analyzes EXPLAIN output and suggests optimizations. Percona Toolkit for MySQL offers pt-query-digest for analyzing slow query logs. Use these tools to build a culture of measurement before optimization; never optimize without data.</p>
+
+      <p>Index size and usage monitoring: PostgreSQL pg_stat_user_indexes shows index size, number of scans, and unused indexes. Unused indexes are dead weight on writes and should be dropped. MySQL information_schema.statistics shows similar information. Monitor regularly to keep indexes lean and remove those that don't earn their cost. Index bloat from updates can degrade performance; periodic rebuilds may be necessary depending on workload.</p>
+
+      <p>Query plan caching: some databases cache compiled query plans. PostgreSQL always caches (prepared statements). MySQL behavior depends on driver and configuration. Parameterized queries benefit from plan caching; the same query with different parameters reuses the plan. Non-parameterized queries (dynamic SQL) bust the cache and force recompilation, wasting CPU. Always use parameterized queries for performance and security.</p>
+
+      <p>Replication and read scaling: if read queries are routed to replicas to scale horizontally, ensure data is fresh enough for the use case. Stale read replicas can give confusing results (reading old data). Monitor replication lag between primary and replicas. Set alerts if lag exceeds SLA (e.g., lag greater than 1 second). For analytics queries that tolerate staleness, routing to replicas is OK. For real-time user queries, route to primary or use replicas only after lag is acceptable.</p>
+
+      <p>Database-specific tuning: PostgreSQL has work_mem (memory for sorts/hashes), effective_cache_size (cache size hint to planner), and random_page_cost (cost model). MySQL has sort_buffer_size, read_rnd_buffer_size, and query_cache. These global settings tune the database engine behavior. Most tuning should be at the query level (using indexes, rewriting queries) not at the global parameter level. Set parameters once for your hardware profile and focus on queries.</p>
+
+      <p>Profiling and benchmarking: use tools like pgBench (PostgreSQL) or sysbench (MySQL) to benchmark database performance under load. Run before/after comparisons to measure improvement from optimizations. Load testing reveals problems that static analysis misses: lock contention, cache effectiveness, and connection pool adequacy only appear under sustained traffic.</p>
+    </section>
+
+    <section name="systematic-optimization-workflow">
+      <p>Follow this process to systematically optimize database performance:</p>
+
+      <p>Step 1: Identify the bottleneck. Use monitoring tools to track slow queries, database CPU/IO usage, and application response times. Collect metrics over time to establish baseline and trends. Identify which queries consume the most total time (frequency times duration). This is your starting point; ignore one-off slow queries and focus on high-volume paths.</p>
+
+      <p>Step 2: Baseline the query. Run EXPLAIN ANALYZE on the slow query against production-sized data. Understand the execution plan: are table scans sequential or indexed? Are joins nested loop or hash? Where is time spent? This tells you what to optimize. Use BUFFERS to see cache behavior. Compare actual row counts to planned; large discrepancies mean statistics are stale and need ANALYZE.</p>
+
+      <p>Step 3: Test hypotheses. Common fixes: adding an index, rewriting to avoid subqueries, batching inserts, or increasing connection pool. For each change, make one fix at a time, benchmark the result, and keep or revert based on improvement. Avoid shotgun optimization where many changes are made together; you won't know what helped.</p>
+
+      <p>Step 4: Validate on production-sized data. Optimization on 1M rows of test data may not work on 1B rows of production data. Run tests with realistic data sizes, distributions, and access patterns. Use EXPLAIN ANALYZE on production-sized data to validate. If the plan changes, the optimization may not transfer.</p>
+
+      <p>Step 5: Deploy carefully. Optimize on replica or read-only copy first. Deploy the change (new index, query rewrite, pool size) to staging and load test. Monitor production deployment for unexpected behavior (different plan on different hardware, cardinality surprises). Have a rollback plan if performance degrades.</p>
+
+      <p>Step 6: Monitor ongoing. Keep monitoring after optimization to verify sustained improvement. Revert if new patterns emerge or performance degrades. Set up alerts for regression. Database performance degrades over time as data grows and access patterns change; optimization is continuous, not one-time.</p>
+
+      <p>Common pitfalls: optimizing without measurement (guessing what's slow). Optimizing the wrong queries (one-off slow queries instead of high-volume paths). Adding indexes speculatively without verifying they're used. Optimizing on test data that doesn't match production distribution. Changing multiple things at once and not knowing what helped. Not monitoring after deployment. Assuming optimization sticks forever as data grows.</p>
+    </section>
+
+    <section name="advanced-techniques">
+      <p>Beyond basic index and query optimization, these advanced techniques handle complex scenarios:</p>
+
+      <p>Window functions for complex aggregations: instead of joining aggregated subqueries, use window functions (ROW_NUMBER, RANK, SUM() OVER) to compute aggregates efficiently in a single pass. Window functions can be slower than explicit joins in some cases but are often clearer and allow better query plans.</p>
+
+      <p>CTEs (Common Table Expressions) for query composition: break complex queries into smaller CTEs for readability and sometimes better performance. PostgreSQL optimizes CTEs aggressively; MySQL depends on version. CTEs are useful for breaking N+1 patterns (building a list of IDs then filtering by them) into a single query.</p>
+
+      <p>JSON/array operations: some databases optimize JSON queries and array operations. Using JSON columns instead of separate tables can reduce joins. Use JSONB in PostgreSQL for better indexing. Trade-off: JSON is less normalized but can be faster when accessing sub-fields frequently.</p>
+
+      <p>Partitioning large tables: split huge tables into partitions by range (date, ID) or hash. Queries can then scan only the relevant partitions, avoiding full table scans. Partitioning adds complexity and only helps if queries consistently filter on the partition key. Use when a single table exceeds 1-10GB depending on queries.</p>
+
+      <p>Denormalization and redundant storage: adding computed columns or duplicating data across tables to avoid expensive joins. Classic example: storing user name on every order row instead of joining users table. Denormalization trades storage and write complexity for read speed. Use when reads far outnumber writes and the join is a bottleneck. Keep denormalized data in sync with the source (triggers, periodic batch updates).</p>
+
+      <p>Caching at the application layer: if queries are expensive and data doesn't change frequently, cache results in memory (Redis, Memcached) instead of querying the database every time. Caching trades complexity (invalidation strategy) for speed. Set cache TTL to balance freshness and hit rate. Monitor cache hit rates; low hit rates mean caching isn't helping.</p>
+
+      <p>Asynchronous queries and background jobs: for expensive queries that don't need real-time results, compute them asynchronously in background jobs. Store results in a table and serve from there. Users get fast responses; database gets time to compute accurately. Useful for reports, analytics, recommendations. Trade-off: results are slightly stale.</p>
+
+      <p>Read replicas for scale: route read-heavy queries to replicas to distribute load. Replicas lag the primary by milliseconds to seconds; choose based on acceptable staleness. Write queries must go to primary. Monitor replica lag and alert if it exceeds SLA. Replication adds operational complexity; only use if primary is truly saturated.</p>
+
+      <p>Sharding and horizontal scaling: split data across multiple database instances. Each shard handles a subset of data (by user ID, tenant, geographic region). Queries are routed to the relevant shard. Sharding is complex (resharding on growth, distributed transactions, cross-shard joins become expensive) and should be last resort after vertical scaling and caching are exhausted.</p>
+    </section>
+
+    <section name="best-practices-checklist">
+      <p>Before deploying any database change, verify:</p>
+
+      <list>
+        <item>Query performance measured and baselined with EXPLAIN ANALYZE on production-sized data with realistic distributions.</item>
+        <item>New indexes verified to be used by the optimizer (EXPLAIN shows Index Scan, not Seq Scan). Confirm no unused indexes remain.</item>
+        <item>Query rewritten and compared against original; new version must be faster on production data. No performance regression on other queries.</item>
+        <item>Connection pooling configured appropriately for workload (pool_size, max_overflow, pre_ping). Test pool under concurrent load.</item>
+        <item>Table statistics up-to-date (ANALYZE run recently). Optimizer estimates should match actual row counts from ANALYZE.</item>
+        <item>Slow query logging enabled to catch regressions. Configure threshold to log queries slower than expected. Monitor slow log regularly.</item>
+        <item>Monitoring and alerting set up for query performance and database resource usage (CPU, I/O, memory). Track queries that change behavior after deployment.</item>
+        <item>Load test passed on staging environment before production deployment. Reproduce production access patterns and data sizes.</item>
+        <item>Rollback plan documented in case optimization degrades performance. Know how to revert indexes, drop connections, or restore query versions.</item>
+        <item>Documentation updated with rationale for any schema or query changes. Why the index was added, expected benefit, queries it helps, any trade-offs.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://www.postgresql.org/docs/current/performance-tips.html"/>
+      <link href="https://use-the-index-luke.com/"/>
+      <link href="https://www.pgmustard.com/"/>
+      <link href="https://www.percona.com/blog/"/>
+      <link href="https://explain.depesz.com/"/>
+      <link href="https://www.postgresql.org/docs/current/sql-explain.html"/>
+      <ref slug="database-design"/>
+    </see-also>
+  </content>
+</methodology>
