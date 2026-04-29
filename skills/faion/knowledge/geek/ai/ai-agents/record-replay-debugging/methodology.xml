@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="record-replay-debugging">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Architect agents with record and replay modes: record captures every LLM call and tool interaction to trace; replay re-runs deterministically from trace with zero external IO.</summary>
+    <tags>
+      <tag>debugging</tag>
+      <tag>determinism</tag>
+      <tag>testing</tag>
+      <tag>reproducibility</tag>
+      <tag>agents</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Record / Replay — Deterministic Agent Debugging</title>
+    <summary>Architect every agent with two interchangeable modes: record captures every LLM call, every tool input/output, and every state transition into a single trace file; replay re-runs the exact decision path serving LLM and tool responses from that trace, with zero external network IO. Replay is the only way to debug a 1-in-N production failure deterministically and the only way to mutate one variable (prompt, tool stub, system message) and verify the fix.</summary>
+    <why>
+      <p>Logs and OTel traces tell you what happened, not why a specific LLM decision was made. Non-deterministic agents (temperature > 0, retries, race conditions in parallel tool calls, MCP server flakiness) cannot be debugged by re-running the same input — you get a different decision tree every time. Record/replay is the standard answer in trustworthy-AI literature (Sakura Sky 2026, debugg.ai 2025) and is implemented natively by LangGraph time-travel checkpoints, Phoenix replay sessions, and AgentOps. Without it, post-mortems devolve into log archaeology and "could not reproduce" tickets.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Production debugging of intermittent agent failures.</item>
+        <item>Building eval sets from real traffic — record once, replay many times with mutations.</item>
+        <item>Fix verification — change one prompt token, replay, confirm the bug path is gone.</item>
+        <item>Regression testing across model versions — replay last month's traces against the new model.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure stateless single-call generators (one LLM call, no tools) — replay overhead is not justified.</item>
+        <item>Outputs containing PII you cannot persist — either redact in record, or skip.</item>
+        <item>Quick prototypes where you have not yet stabilised the agent shape — instrument once the API surface is fixed.</item>
+        <item>Tools that must hit external state (sending email, taking payment) — record but mark sideeffects as non-replayable.</item>
+      </list>
+    </when-not-to-use>
+    <section name="The record / replay contract">
+      <p>Record captures every nondeterministic boundary; replay serves them back from disk so the agent's decision path is bit-for-bit reproducible.</p>
+      <section name="What record must capture">
+        <list>
+          <item>Every LLM request: full messages array, model, temperature, seed, tool definitions, response, timestamps.</item>
+          <item>Every tool call: tool name, arguments, return value (or exception), wallclock timestamp.</item>
+          <item>Every clock read, RNG draw, and uuid generation — the agent's "small" sources of nondeterminism.</item>
+          <item>Every external state read (file mtime, environment variable, MCP server handshake) used in a decision.</item>
+        </list>
+        <rule>
+          <statement>In replay mode, the agent process must make zero outbound network calls; LLM and tool boundaries are served from the recorded trace, and an attempt to call an unrecorded boundary must raise immediately.</statement>
+          <rationale>Silent fallthrough to live network calls is the failure mode that destroys reproducibility — Sakura Sky's 2026 trustworthy-AI primer flags this as the single most common bug in DIY replay harnesses.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[class ReplayLLM:
+    def __init__(self, trace):
+        self._events = iter(trace["llm_calls"])
+    def call(self, messages, **kw):
+        ev = next(self._events)
+        if ev["request"]["messages"] != messages:
+            raise ReplayMismatch("LLM input drifted from trace")
+        return ev["response"]]]></code>
+          <note>Strict input-match guard catches drift the moment a prompt edit changes the path.</note>
+        </example>
+        <example type="bad">
+          <code lang="python"><![CDATA[class ReplayLLM:
+    def call(self, messages, **kw):
+        try:
+            return self._cache[hash(messages)]
+        except KeyError:
+            return live_anthropic.call(messages, **kw)  # silent fallthrough]]></code>
+          <note>Cache miss falls back to a live call; replay is no longer deterministic and silently drifts.</note>
+        </example>
+        <antipattern>
+          <description>Recording only the final answer and a few "important" intermediate steps.</description>
+          <reason>Any unrecorded nondeterminism (retry timing, RNG, tool order in parallel calls) breaks replay; you find out the bug is unreproducible the moment you need it most.</reason>
+        </antipattern>
+      </section>
+      <section name="Side-effects and the replay boundary">
+        <rule>
+          <statement>Tools that mutate external state (send email, charge card, post webhook) must be tagged side_effect=true in the trace; replay short-circuits these to a recorded stub return value and never re-executes the side effect.</statement>
+          <rationale>Without the tag, replaying a production trace re-sends real emails or re-charges real cards. Tagging is required by every mature replay system (Phoenix, AgentOps, LangGraph time-travel).</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="Mutation-replay: verifying a fix by changing one variable">
+      <p>Replay is more useful as a fix-verification harness than as a reproduction tool: you change one variable in a recorded trace and re-run to confirm the bug path is gone.</p>
+      <section name="The mutation loop">
+        <p>Once a trace reproduces a bug, the value of replay is that you can mutate any single boundary and observe whether the bug persists — without re-running the full agent against live infrastructure.</p>
+        <rule>
+          <statement>Treat each recorded trace as a fixture and parametrise the replay harness over four mutation axes: prompt text, tool stub return value, model identifier, system instruction. Each fix is verified by mutating exactly ONE axis and asserting the bug path is gone while other paths remain unchanged.</statement>
+          <rationale>One-variable mutations isolate cause from coincidence. Mutating multiple axes at once produces correlated changes that look like a fix but mask the real defect — the same lesson as one-variable-at-a-time experiments in classical debugging.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[def replay_with_mutation(trace, *, prompt=None, tool_stub=None, model=None):
+    h = ReplayHarness(trace)
+    if prompt is not None: h.override_system_prompt(prompt)
+    if tool_stub is not None: h.override_tool(tool_stub.name, tool_stub.fn)
+    if model is not None: h.override_model(model)
+    return h.run()
+
+# Verify fix: only the system prompt changed
+fixed = replay_with_mutation(bug_trace, prompt=NEW_PROMPT)
+assert "WrongToolCall" not in fixed.events]]></code>
+          <note>One mutation, one assertion — clean causal claim.</note>
+        </example>
+        <example type="bad">
+          <code lang="python"><![CDATA[fixed = replay_with_mutation(
+    bug_trace, prompt=NEW_PROMPT, model="opus", tool_stub=stub
+)
+assert fixed.success]]></code>
+          <note>Three variables changed at once; you cannot tell which one removed the bug.</note>
+        </example>
+        <antipattern>
+          <description>Treating replay as a record-once / replay-once correctness check.</description>
+          <reason>Wastes the main affordance of replay. The harness pays for itself only when one trace is replayed dozens of times under controlled mutations.</reason>
+        </antipattern>
+      </section>
+      <section name="Trace-to-eval promotion">
+        <rule>
+          <statement>Whenever a recorded trace surfaces a real production bug, promote it to the eval suite as a regression case: keep the trace plus the asserted "must-not-happen" event signature; the regression test is replay + assertion.</statement>
+          <rationale>Eval suites grow most reliably from real incidents (Anthropic's eval guide). Replay traces are already the perfect, deterministic, full-fidelity test fixture.</rationale>
+        </rule>
+      </section>
+    </section>
+    <templates>
+      <template path="templates/trace-schema.json" purpose="JSON-schema for a single recorded run — events, ordering, nondeterminism markers."/>
+    </templates>
+    <see-also>
+      <link href="https://www.sakurasky.com/blog/missing-primitives-for-trustworthy-ai-part-8/">Sakura Sky 2026 — record/replay as a missing primitive.</link>
+      <link href="https://debugg.ai/resources/deterministic-replay-meets-debug-ai-time-travel-debugging-llm-reproduce">debugg.ai 2025 — time-travel debugging for LLM agents.</link>
+      <link href="https://dev.to/sreeni5018/debugging-non-deterministic-llm-agents-implementing-checkpoint-based-state-replay-with-langgraph-5171">LangGraph checkpoint-based state replay tutorial.</link>
+      <link href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Anthropic — eval-from-incident growth pattern.</link>
+    </see-also>
+  </content>
+</methodology>
