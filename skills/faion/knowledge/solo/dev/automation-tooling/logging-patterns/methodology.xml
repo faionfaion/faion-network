@@ -1,0 +1,805 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="logging-patterns">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Structured JSON logging with request tracking, PII redaction, and performance visibility.</summary>
+    <tags>
+      <tag>logging</tag>
+      <tag>structured-logging</tag>
+      <tag>observability</tag>
+      <tag>monitoring</tag>
+      <tag>json</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-24</created>
+  </metadata>
+
+  <content>
+    <title>Logging Patterns</title>
+
+    <summary>Structured JSON logging with request tracking, PII redaction, and performance visibility.</summary>
+
+    <why>
+      <p>Logging provides visibility into application behavior for debugging, monitoring, and auditing. Effective logging balances information capture with performance and storage considerations, using structured formats for machine processing. Unstructured logs (print() statements, free-text English) are unsearchable and unmachine-parseable, leading to lost visibility during incidents. Structured fields (request_id, user_id, latency_ms, event_type) enable alerting, dashboards, and correlation across microservices.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Standing up a new service that will hit production: structured JSON from day one.</item>
+        <item>Migrating from print() / console.log to a real logger before observability rollout.</item>
+        <item>Adding correlation IDs to a multi-service flow so a single trace can be reconstructed.</item>
+        <item>Compliance domains needing audit trails (who did what, when, with what payload hash).</item>
+        <item>Debugging async/concurrent code where order of execution is non-trivial.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-off CLI scripts where stderr/stdout suffices.</item>
+        <item>Hot loops (&gt;1M iterations/sec) — even structured logging is too slow; use sampling or metrics counters.</item>
+        <item>Replacing tracing — logs answer "what happened", traces answer "how long and where". Use both.</item>
+        <item>High-PII contexts without scrubbing infra in place — better to not log than to leak.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="structured-logging-config">
+      <p>Logging configuration for JSON output and multiple handlers.</p>
+      <rule testable="true">
+        <statement>One config file (logging_config.py / logger.ts) imported everywhere; never call getLogger configuration inline.</statement>
+        <rationale>Scattered configuration is hard to audit and audit trail setup, making it impossible to enforce redaction or field presence globally.</rationale>
+      </rule>
+      <example type="good" title="Python logging configuration with JSON formatter">
+        <code lang="python"><![CDATA[
+import logging
+import logging.config
+from pythonjsonlogger import jsonlogger
+
+LOGGING_CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "format": "%(timestamp)s %(level)s %(name)s %(message)s"
+        },
+        "standard": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json",
+            "stream": "ext://sys.stdout"
+        }
+    },
+    "loggers": {
+        "": {
+            "handlers": ["console"],
+            "level": "INFO"
+        }
+    }
+}
+
+logging.config.dictConfig(LOGGING_CONFIG)
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="structlog-context-logging">
+      <p>Using structlog with context variables for request tracking.</p>
+      <rule testable="true">
+        <statement>Use structlog for structured logging; bind request context (request_id, user_id) via ContextVar so all downstream code logs with correlation IDs without explicit parameter passing.</statement>
+        <rationale>Passing context as function parameters is fragile; ContextVar provides implicit request-scoped data safe for async frameworks.</rationale>
+      </rule>
+      <example type="good" title="structlog with context binding">
+        <code lang="python"><![CDATA[
+import structlog
+from contextvars import ContextVar
+from typing import Optional
+import uuid
+
+request_id_var: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
+user_id_var: ContextVar[Optional[str]] = ContextVar("user_id", default=None)
+
+def add_context(logger, method_name, event_dict):
+    """Add request context to all log entries."""
+    event_dict["request_id"] = request_id_var.get()
+    event_dict["user_id"] = user_id_var.get()
+    return event_dict
+
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+        add_context,
+        structlog.processors.JSONRenderer()
+    ],
+    wrapper_class=structlog.stdlib.BoundLogger,
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    cache_logger_on_first_use=True,
+)
+
+logger = structlog.get_logger()
+
+# Usage
+logger.info(
+    "Order processed",
+    order_id="ord-123",
+    total=99.99,
+    items_count=3
+)
+# Output includes auto-bound request_id and user_id from ContextVar
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="log-levels-guide">
+      <p>When and how to use each log level appropriately.</p>
+      <rule testable="true">
+        <statement>Use DEBUG for detailed troubleshooting (dev/staging), INFO for business events and state changes, WARNING for recoverable anomalies, ERROR for actionable failures, and CRITICAL for service-threatening conditions only.</statement>
+        <rationale>Over-logging at ERROR saturates alerting and desensitizes on-call responders; under-logging at INFO hides the breadcrumb trail needed for post-incident analysis.</rationale>
+      </rule>
+      <example type="good" title="Log level usage examples">
+        <code lang="python"><![CDATA[
+import logging
+
+logger = logging.getLogger(__name__)
+
+# DEBUG: Detailed information for diagnosing problems
+logger.debug(
+    "Processing item",
+    extra={"item_id": item.id, "step": "validation", "data": item.to_dict()}
+)
+
+# INFO: Confirmation that things are working as expected
+logger.info(
+    "User registered",
+    extra={"user_id": user.id, "email_domain": user.email.split("@")[1]}
+)
+
+# WARNING: Something unexpected but not necessarily wrong
+logger.warning(
+    "Rate limit approaching",
+    extra={"user_id": user.id, "current": 95, "limit": 100}
+)
+
+# ERROR: An error occurred that should be investigated
+logger.error(
+    "Payment processing failed",
+    extra={"order_id": order.id, "error_code": e.code},
+    exc_info=True
+)
+
+# CRITICAL: Application cannot continue
+logger.critical(
+    "Database connection lost",
+    extra={"host": db_host, "last_error": str(e)},
+    exc_info=True
+)
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="request-logging-middleware">
+      <p>HTTP middleware for request/response logging with timing.</p>
+      <rule testable="true">
+        <statement>Add request logging middleware (FastAPI, Flask, Express) that captures request_id, method, path, user_id, duration_ms, and status_code; propagate request_id to response headers.</statement>
+        <rationale>HTTP logging at the framework boundary gives a complete view of request lifecycle and enables correlation across service boundaries.</rationale>
+      </rule>
+      <example type="good" title="FastAPI request logging middleware">
+        <code lang="python"><![CDATA[
+from fastapi import FastAPI, Request
+from starlette.middleware.base import BaseHTTPMiddleware
+import structlog
+import time
+import uuid
+
+logger = structlog.get_logger()
+
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+        request_id_var.set(request_id)
+
+        user_id = getattr(request.state, "user_id", None)
+        user_id_var.set(user_id)
+
+        start_time = time.perf_counter()
+        logger.info(
+            "Request started",
+            method=request.method,
+            path=request.url.path,
+            query=str(request.query_params),
+            client_ip=request.client.host,
+        )
+
+        try:
+            response = await call_next(request)
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            logger.info(
+                "Request completed",
+                method=request.method,
+                path=request.url.path,
+                status_code=response.status_code,
+                duration_ms=round(duration_ms, 2),
+            )
+            response.headers["X-Request-ID"] = request_id
+            return response
+        except Exception as e:
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            logger.error(
+                "Request failed",
+                method=request.method,
+                path=request.url.path,
+                duration_ms=round(duration_ms, 2),
+                error=str(e),
+                exc_info=True,
+            )
+            raise
+
+app = FastAPI()
+app.add_middleware(RequestLoggingMiddleware)
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="business-event-logging">
+      <p>Logging business events for audit and analytics.</p>
+      <rule testable="true">
+        <statement>Define an EventType enum and log business events (user.registered, order.paid, payment.failed) with entity_type, entity_id, and relevant context; never log raw request/response bodies — that leaks PII and costs log storage.</statement>
+        <rationale>Business events provide an audit trail and enable reconstruction of user journeys; raw payloads are searchable only by exact value and contain sensitive data that should be redacted.</rationale>
+      </rule>
+      <example type="good" title="Business event enum and logging">
+        <code lang="python"><![CDATA[
+from enum import Enum
+from dataclasses import dataclass
+from datetime import datetime
+import structlog
+
+logger = structlog.get_logger()
+
+class EventType(Enum):
+    USER_REGISTERED = "user.registered"
+    ORDER_CREATED = "order.created"
+    PAYMENT_COMPLETED = "payment.completed"
+    PAYMENT_FAILED = "payment.failed"
+
+@dataclass
+class BusinessEvent:
+    event_type: EventType
+    entity_type: str
+    entity_id: str
+    data: dict
+    timestamp: datetime = None
+
+    def __post_init__(self):
+        if self.timestamp is None:
+            self.timestamp = datetime.utcnow()
+
+def log_business_event(event: BusinessEvent):
+    """Log a business event for audit and analytics."""
+    logger.info(
+        event.event_type.value,
+        entity_type=event.entity_type,
+        entity_id=event.entity_id,
+        timestamp=event.timestamp.isoformat(),
+        **event.data
+    )
+
+# Usage
+log_business_event(BusinessEvent(
+    event_type=EventType.PAYMENT_COMPLETED,
+    entity_type="order",
+    entity_id=order.id,
+    data={
+        "customer_id": order.customer_id,
+        "total": float(order.total),
+        "items_count": len(order.items),
+        "payment_method": order.payment_method,
+    }
+))
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="sensitive-data-redaction">
+      <p>Masking passwords, tokens, credit cards, and PII.</p>
+      <rule testable="true">
+        <statement>Define a redact-list constant (password, secret, token, api_key, ssn, credit_card, authorization) and apply a redaction processor to all log events; never log raw request/response payloads or auth headers.</statement>
+        <rationale>Accidental logging of secrets (API keys, passwords) and PII (SSN, credit cards) creates compliance violations and security risks. Redaction must happen in the formatter, not at call sites, to catch accidental leaks.</rationale>
+      </rule>
+      <example type="good" title="Sensitive data masking in structlog">
+        <code lang="python"><![CDATA[
+import re
+from typing import Any
+import structlog
+
+SENSITIVE_PATTERNS = [
+    (r'\b\d{16}\b', '****-****-****-****'),  # Credit card
+    (r'\b\d{3}-\d{2}-\d{4}\b', '***-**-****'),  # SSN
+    (r'password["\s:=]+["\']?([^"\'\s]+)', 'password: [REDACTED]'),
+    (r'api[_-]?key["\s:=]+["\']?([^"\'\s]+)', 'api_key: [REDACTED]'),
+]
+
+SENSITIVE_FIELDS = {'password', 'secret', 'token', 'api_key', 'ssn', 'credit_card'}
+
+def mask_sensitive_dict(data: dict) -> dict:
+    """Recursively mask sensitive fields in dictionaries."""
+    masked = {}
+    for key, value in data.items():
+        if key.lower() in SENSITIVE_FIELDS:
+            masked[key] = "[REDACTED]"
+        elif isinstance(value, dict):
+            masked[key] = mask_sensitive_dict(value)
+        elif isinstance(value, str):
+            masked[key] = re.sub(
+                '|'.join(p[0] for p in SENSITIVE_PATTERNS),
+                lambda m: next(r for p, r in SENSITIVE_PATTERNS if re.search(p, m.group())),
+                value,
+                flags=re.IGNORECASE
+            )
+        else:
+            masked[key] = value
+    return masked
+
+def sensitive_data_processor(logger, method_name, event_dict):
+    """structlog processor to mask sensitive data."""
+    return mask_sensitive_dict(event_dict)
+
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        sensitive_data_processor,
+        structlog.processors.JSONRenderer()
+    ]
+)
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="performance-timing-logging">
+      <p>Logging operation duration for performance visibility.</p>
+      <rule testable="true">
+        <statement>Use context managers or decorators to log operation duration (database_query, cache_lookup, external_api_call); flag operations exceeding a threshold (100ms for DB, 200ms for API).</statement>
+        <rationale>Performance logging captures real-world latency and enables correlation between slow logs and alerts; threshold-based warnings surface degradation early.</rationale>
+      </rule>
+      <example type="good" title="Timing decorator and context manager">
+        <code lang="python"><![CDATA[
+import time
+from contextlib import contextmanager
+from functools import wraps
+import structlog
+
+logger = structlog.get_logger()
+
+@contextmanager
+def log_timing(operation: str, **context):
+    """Context manager to log operation timing."""
+    start = time.perf_counter()
+    try:
+        yield
+    finally:
+        duration_ms = (time.perf_counter() - start) * 1000
+        logger.info(
+            f"{operation} completed",
+            duration_ms=round(duration_ms, 2),
+            **context
+        )
+
+def log_slow_operations(threshold_ms: float = 100):
+    """Decorator to log slow operations."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            start = time.perf_counter()
+            result = func(*args, **kwargs)
+            duration_ms = (time.perf_counter() - start) * 1000
+
+            if duration_ms > threshold_ms:
+                logger.warning(
+                    "Slow operation detected",
+                    function=func.__name__,
+                    duration_ms=round(duration_ms, 2),
+                    threshold_ms=threshold_ms
+                )
+
+            return result
+        return wrapper
+    return decorator
+
+# Usage
+@log_slow_operations(threshold_ms=50)
+def process_data(data: list) -> list:
+    return [transform(item) for item in data]
+
+with log_timing("database_query", table="users", query_type="select"):
+    users = db.query(User).filter(User.active == True).all()
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="no-print-enforcement">
+      <p>Pre-commit enforcement against print() and console.log.</p>
+      <rule testable="true">
+        <statement>Enforce no print() in production code via ruff T20 rule; agents that add print() for debugging must remove it before committing.</statement>
+        <rationale>print() bypasses the log aggregation stack, lacks structured fields, and clutters stdout in containers where stdout is parsed as structured JSON.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Enforce no console.log in production TypeScript/JavaScript via ESLint no-console rule.</statement>
+        <rationale>console.log sends to stderr, bypassing structured logging, and cannot be filtered, sampled, or redacted at the formatter level.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <p>Key patterns and anti-patterns for production logging.</p>
+      <rule testable="true">
+        <statement>Use event names like user.login.failed, not free-text English. Enables grep + dashboards without regex.</statement>
+        <rationale>Consistent event naming enables dashboard queries and alerting without fragile regex patterns.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Always include request_id, user_id, tenant_id (when applicable) on every log line via context-vars.</statement>
+        <rationale>Context-bound fields enable correlation across logs for the same request without repeating them at every call site.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Redact list as a constant: password|token|secret|authorization|set-cookie|card_number|cvv — apply in formatter, not at call sites.</statement>
+        <rationale>Redaction in the formatter catches accidental leaks at the source; call-site redaction is fragile and incomplete.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Sample DEBUG in prod (1%); never sample ERROR/WARN. Tag environment, service, version on every line — ops will need them.</statement>
+        <rationale>ERROR/WARN sampling loses the events you most need; DEBUG sampling reduces cost while preserving critical information.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Prefer logger.exception (Python) / err field (pino) so stack traces are structured, not stringified.</statement>
+        <rationale>Structured stack traces are searchable and can be parsed by log aggregators; stringified tracebacks are opaque blobs.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-integration">
+      <p>Agentic workflow for logging adoption and incident analysis.</p>
+      <p>A logging agent scans repo for print/console.log (ruff T20, eslint no-console), proposes replacements with a chosen logger, adds context binding (request_id, user_id), and ensures a single config module is the source of truth. For new services, it reads templates.md and emits a logging.py / logger.ts module. For incident replay, an agent can pull JSON logs by request_id and reconstruct a timeline.</p>
+      <rule testable="true">
+        <statement>When adopting structured logging, run ruff check . --select T20 and ESLint no-console to find all print/console.log statements and replace with structured logger calls.</statement>
+        <rationale>Print statements bypass structured logging; converting them is a prerequisite for observability.</rationale>
+      </rule>
+    </section>
+
+    <section name="common-pitfalls">
+      <p>Mistakes agents make when implementing logging.</p>
+      <rule testable="true">
+        <statement>Agents love f"{user}" format strings — they bypass structured logging. Force logger.info("event", user_id=user.id).</statement>
+        <rationale>Format strings are unsearchable and unstructured; keyword arguments create indexable fields.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Agents log full request/response bodies "for debugging" — costs explode and PII leaks. Set max-payload-size in formatter.</statement>
+        <rationale>Full payloads are high-volume and contain PII; log only relevant summary fields with size limits.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Auth headers in requests.headers get logged when an agent dumps dict(req). Add a header allowlist.</statement>
+        <rationale>Authorization headers are credentials; they must never appear in logs.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Async context loss: agents add asyncio.create_task(work()) without copy_context() — request_id disappears mid-flow.</statement>
+        <rationale>Context variables do not propagate across task boundaries; copy_context() must be used explicitly.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Multi-line tracebacks break Loki/Vector parsers if not collapsed; an agent's "just print the exception" creates 50 unrelated log entries.</statement>
+        <rationale>Multi-line raw tracebacks confuse log parsers; they must be structured as a single log entry.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations">
+      <p>Edge cases and limitations in logging infrastructure.</p>
+      <rule testable="true">
+        <statement>Logger config drift between dev/prod (text vs JSON) means dev logs look different and devs don't trust prod format.</statement>
+        <rationale>Config must be identical; use feature flags to switch format if needed, not environment-specific config.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Python logging is global mutable state — multiple dictConfig calls clobber each other; agents iterating on configs hit this.</statement>
+        <rationale>Only initialize logging once at startup; changes to config must happen before any logger is created.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>structlog contextvars lost across asyncio.create_task boundaries unless explicitly propagated.</statement>
+        <rationale>Async task creation does not copy context; must use copy_context() to preserve context-bound fields.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Sampling sensitive log lines for cost reasons drops the one line you needed during an incident.</statement>
+        <rationale>Never sample ERROR/WARN; sample DEBUG only in production.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Forwarders (Vector, Fluent Bit) parse-fail on multi-line tracebacks unless multiline.parser is configured.</statement>
+        <rationale>Structured exception handling prevents parse failures; agents must use logger.exception, not string concatenation.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Log-volume cost in Datadog/New Relic balloons silently; one DEBUG-in-prod incident costs $5k.</statement>
+        <rationale>Set strict log-level guards and per-logger filtering to prevent cost surprises.</rationale>
+      </rule>
+    </section>
+
+    <section name="services-and-tools">
+      <p>Logging backends and associated tooling for structured log retrieval and analysis.</p>
+      <rule testable="true">
+        <statement>For large-scale observability, use a managed log aggregator: Datadog Logs (fast but expensive), Grafana Loki (label-based, cheap), Better Stack (solo-friendly), Axiom (AI-friendly queries), or AWS CloudWatch Logs Insights (for AWS workloads).</statement>
+        <rationale>Self-hosted solutions (Elastic, OpenSearch) require significant ops burden; managed services are worth the cost for uptime and reliability.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>For log analysis from the command line, use jq (slice JSON), lnav (TUI navigator), gron (make JSON greppable), humanlog (pretty-print), pino-pretty (Node formatter).</statement>
+        <rationale>CLI tools enable rapid incident investigation without logging into the SaaS portal.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>For shipping logs at scale (Kubernetes), use Vector (high-perf, Wasm-scriptable), Fluent Bit (lightweight, K8s-native), or OpenTelemetry Logs API (future-proof).</statement>
+        <rationale>These handle high log volume, backpressure, and retries better than raw file tailing.</rationale>
+      </rule>
+    </section>
+
+    <section name="incident-analysis">
+      <p>Using structured logs to reconstruct timelines and triage incidents.</p>
+      <rule testable="true">
+        <statement>For incident timeline reconstruction, query logs by request_id across all services; emit a chronological table of timestamp, service, level, event, context_keys; highlight ERROR/WARN and the 3 INFO events preceding them.</statement>
+        <rationale>Structured request IDs enable end-to-end request tracing without manual log correlation.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use service tags (environment, service_name, version, region, instance_id) on every log entry so filtering by deployment is possible during triage.</statement>
+        <rationale>Missing metadata makes it impossible to correlate logs with deployment versions or regional outages.</rationale>
+      </rule>
+    </section>
+
+    <section name="sensitive-data-processor">
+      <p>Detailed pattern matching and recursive field redaction.</p>
+      <p>The sensitive data processor examines every log event and masks known PII patterns (credit cards, SSNs, API keys) using regex and field-level redaction. Sensitive fields include password, secret, token, api_key, ssn, and credit_card. Patterns include digit sequences matching credit card formats (16 digits), SSN format (3-2-4), and common secret field names. Recursively process dictionaries and lists to handle nested structures. The processor runs as a structlog processor in the logging pipeline, ensuring redaction is applied uniformly regardless of where logging calls originate.</p>
+      <example type="good" title="Recursive sensitive dict masking">
+        <code lang="python"><![CDATA[
+def mask_sensitive_dict(data: dict) -> dict:
+    """Recursively mask sensitive fields in dictionaries."""
+    masked = {}
+    for key, value in data.items():
+        if key.lower() in SENSITIVE_FIELDS:
+            masked[key] = "[REDACTED]"
+        elif isinstance(value, dict):
+            masked[key] = mask_sensitive_dict(value)
+        elif isinstance(value, str):
+            masked[key] = mask_sensitive_string(value)
+        elif isinstance(value, list):
+            masked[key] = [
+                mask_sensitive_dict(item) if isinstance(item, dict)
+                else mask_sensitive_string(item) if isinstance(item, str)
+                else item
+                for item in value
+            ]
+        else:
+            masked[key] = value
+    return masked
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="pre-commit-enforcement">
+      <p>Git hooks to prevent print() and console.log from entering the codebase.</p>
+      <p>Pre-commit hooks ensure that no logging shortcuts bypass the structured logging infrastructure. For Python, ruff T20 detects print() statements. For TypeScript/JavaScript, ESLint no-console detects console.log. These checks run automatically on every commit; if they fail, the commit is rejected and the developer must fix the issue. Configure them in .pre-commit-config.yaml (Python) or .husky/pre-commit (Node).</p>
+      <example type="good" title="Pre-commit config for logging enforcement">
+        <code lang="yaml"><![CDATA[
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+      - id: ruff
+        args: [--select, T20, --fix]
+  - repo: local
+    hooks:
+      - id: no-console-log
+        name: no console.log in src
+        entry: bash -c '! grep -RIn "console\.log" src/'
+        language: system
+        files: \.(ts|tsx|js|jsx)$
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="contextvar-patterns">
+      <p>Request-scoped context binding without explicit parameter passing.</p>
+      <p>ContextVar enables implicit request-scoped state without threading context as parameters through every function. Define ContextVar instances for request_id and user_id at module level. In middleware or at request entry points, set these variables from the incoming request. All downstream code can read these variables synchronously without explicit parameter passing. For async code, copy context when spawning tasks to preserve context across boundaries.</p>
+      <example type="good" title="ContextVar for request tracking">
+        <code lang="python"><![CDATA[
+from contextvars import ContextVar
+from typing import Optional
+
+request_id_var: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
+user_id_var: ContextVar[Optional[str]] = ContextVar("user_id", default=None)
+
+# In middleware:
+request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+request_id_var.set(request_id)
+
+user_id = extract_user_from_auth(request)
+user_id_var.set(user_id)
+
+# In downstream code:
+logger.info("event", extra_field=value)
+# request_id and user_id are automatically bound by structlog
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="compliance-and-audit">
+      <p>Logging for regulatory compliance and audit trails.</p>
+      <rule testable="true">
+        <statement>Compliance domains needing audit trails must log who did what, when, with what payload hash. Include actor (user_id or service), action (verb), object (entity), timestamp, and a hash of the request/response.</statement>
+        <rationale>Audit logs are the evidence trail for compliance audits; weak logging undermines regulatory compliance.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Store audit logs in an append-only format with integrity checks (signed checksums); never allow deletion or modification after the fact.</statement>
+        <rationale>Audit logs are evidence; modifiability or deletability makes them inadmissible in audits.</rationale>
+      </rule>
+    </section>
+
+    <section name="performance-considerations">
+      <p>Balancing log volume with cost and performance.</p>
+      <rule testable="true">
+        <statement>For hot loops (&gt;1M iterations/sec), metrics (counters, histograms) are more efficient than individual log entries. Sample high-volume logs sparingly (DEBUG at 1%, never ERROR/WARN).</statement>
+        <rationale>Logging every iteration balloons I/O and cost; metrics aggregation is more efficient for performance-critical paths.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Set log level per logger to prevent uncontrolled verbosity. Root logger at INFO, app-specific at DEBUG only when needed.</statement>
+        <rationale>DEBUG logging everywhere costs significant I/O and storage; granular control prevents runaway costs.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Combine logs and metrics: logs answer "what happened", metrics answer "how much/often/where". Use both, not one or the other.</statement>
+        <rationale>Logs provide event-level detail; metrics provide aggregated visibility. Together they give complete observability.</rationale>
+      </rule>
+    </section>
+
+    <section name="logging-config-details">
+      <p>Full configuration patterns for production-grade logging setup.</p>
+      <p>A complete logging configuration includes formatters (JSON in prod, human-readable in dev), multiple handlers (console, file, rotating file), per-module logger levels, and context processors. Configure it once at startup and import the configured logger everywhere. Python uses dictConfig; Node uses pino with multiple transports. For production, ensure console handler outputs JSON to stdout so Kubernetes log collectors can parse and forward to the aggregator. For files, use rotating handlers to prevent disk exhaustion. Silence verbose third-party loggers (SQLAlchemy, uvicorn, boto3) unless actively debugging.</p>
+      <example type="good" title="Full Python logging config with dict setup">
+        <code lang="python"><![CDATA[
+LOGGING_CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "format": "%(timestamp)s %(level)s %(name)s %(message)s"
+        },
+        "standard": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json" if ENVIRONMENT == "production" else "standard",
+            "stream": "ext://sys.stdout"
+        },
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "formatter": "json",
+            "filename": "/var/log/app/app.log",
+            "maxBytes": 10485760,
+            "backupCount": 5
+        }
+    },
+    "loggers": {
+        "": {
+            "handlers": ["console", "file"],
+            "level": "INFO"
+        },
+        "app": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
+            "propagate": False
+        },
+        "sqlalchemy.engine": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False
+        },
+        "uvicorn": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False
+        }
+    }
+}
+
+logging.config.dictConfig(LOGGING_CONFIG)
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="recommended-subagents">
+      <p>Agent-specific logging patterns and workflows.</p>
+      <rule testable="true">
+        <statement>faion-sdd-executor-agent enforces the "no print" gate via ruff check . --select T20 and ESLint no-console.</statement>
+        <rationale>Quality gates ensure logging compliance before code reaches production.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>A password-scrubber-agent scans logs/code for accidental secret prints before commit. Rejects commits with hardcoded API keys, passwords, or tokens in log statements or config.</statement>
+        <rationale>Automated scrubbing prevents accidental secrets from leaking into logs.</rationale>
+      </rule>
+    </section>
+
+    <section name="field-naming-conventions">
+      <p>Standardizing field names across all log events for consistency and searchability.</p>
+      <rule testable="true">
+        <statement>Use snake_case for all log field names. Standard fields: event (verb), actor (user_id or service), object (entity_id), latency_ms (duration), correlation_id (request trace), source (module name), environment (prod/staging/dev).</statement>
+        <rationale>Consistent field names make dashboards, queries, and alerting rules reusable across the codebase.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Never nest the same field at different depths. If request_id appears in logs, it must always be at the top level, not nested inside a context object.</statement>
+        <rationale>Inconsistent nesting breaks log aggregator queries and makes correlation difficult.</rationale>
+      </rule>
+    </section>
+
+    <section name="cli-tools-reference">
+      <p>Command-line tools for log inspection and analysis.</p>
+      <rule testable="true">
+        <statement>Use jq for JSON log slicing: jq '.[] | select(.level=="ERROR")' logs.json. Use lnav for interactive TUI navigation. Use gron to make JSON greppable: gron logs.json | grep request_id.</statement>
+        <rationale>CLI tools enable rapid incident investigation without the SaaS portal.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>humanlog (Go) and pino-pretty (Node) pretty-print JSON logs during development. Set JSON_LOG=false env var in dev to switch to human-readable format.</statement>
+        <rationale>Human-readable format aids development debugging; JSON format is required for production forwarding.</rationale>
+      </rule>
+    </section>
+
+    <section name="examples-summary">
+      <p>Full working examples of logging patterns in practice.</p>
+      <p>Logging patterns covered in this methodology include: logging configuration (dictConfig in Python, pino in Node), structured logging with structlog/pino, request logging middleware, business event tracking with enums, sensitive data masking with regex and recursive dict traversal, performance timing with context managers and decorators, and pre-commit enforcement of no-print rules. Each example is production-ready and includes error handling, context binding, and sensitive data redaction. Integration with structured logging backends (Datadog, Grafana Loki, CloudWatch) follows standard JSON forwarding via stdout; agents can retrieve logs by request_id for incident replay. All examples follow 12-Factor App principles: logs go to stdout, configuration is environment-driven, and the log format is JSON in production.</p>
+    </section>
+
+    <section name="when-to-use-what-log-level">
+      <p>Detailed decision rules for choosing the correct log level on every log statement.</p>
+      <rule testable="true">
+        <statement>DEBUG: Detailed troubleshooting information (variable values, loop iterations, method entry/exit). Use in dev/staging only; never in production steady-state. Examples: "Processing item 42", "Cache hit for key X", "Step 3 of migration completed".</statement>
+        <rationale>DEBUG is verbose and high-volume; production deployment should have DEBUG disabled or sampled at 1%.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>INFO: Business events and expected state transitions (user registered, order created, payment succeeded). INFO is the expected log level in production; every INFO message should answer "what important thing just happened".</statement>
+        <rationale>INFO logs are the audit trail; they should be useful post-incident without being noisy.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>WARNING: Unexpected but non-critical conditions (deprecated API usage, rate limit approaching, slow query detected). Warnings should trigger investigation but not automated page.</statement>
+        <rationale>Warnings are signals to humans that something needs attention; over-warning desensitizes responders.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>ERROR: A failure that disrupted a specific request or operation (payment failed, database connection lost, validation error on user input). ERROR should include context (user_id, order_id, error_code) and be actionable by an engineer.</statement>
+        <rationale>ERRORs are the primary alerting signal; they should be specific enough to guide investigation.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>CRITICAL: System-level failures that prevent the service from operating (out of disk space, database unreachable, inability to start, data corruption detected). CRITICAL is reserved for issues that require immediate remediation.</statement>
+        <rationale>CRITICAL should be rare; every CRITICAL event is a page to on-call.</rationale>
+      </rule>
+    </section>
+
+    <section name="async-logging-gotchas">
+      <p>Pitfalls specific to async frameworks like FastAPI, asyncio, and Node.js.</p>
+      <rule testable="true">
+        <statement>In asyncio, context variables (request_id, user_id) are NOT automatically propagated across task boundaries. Use asyncio.create_task(coro) only with copy_context() wrapping, else context is lost.</statement>
+        <rationale>Async task creation is a boundary; context must be explicitly copied.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>In FastAPI, always set context vars in the middleware BEFORE calling call_next(request). Setting them AFTER the response will miss logs from the request handler.</statement>
+        <rationale>Middleware order and timing is critical for context propagation.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>In Node.js with AsyncLocalStorage, the same applies: create the store at module level, set it in middleware before invoking the request handler, and propagate it across async task boundaries explicitly.</statement>
+        <rationale>JS async context is not inherited; it must be explicitly threaded through promises and async functions.</rationale>
+      </rule>
+    </section>
+
+    <see-also>
+      <link href="https://12factor.net/logs">12-Factor App, Logs</link>
+      <link href="https://www.structlog.org/">structlog documentation</link>
+      <link href="https://getpino.io/">pino (Node.js logging)</link>
+      <link href="https://opentelemetry.io/docs/specs/otel/logs/data-model/">OpenTelemetry Logs Data Model</link>
+      <link href="https://www.oreilly.com/library/view/distributed-systems-observability/9781492033431/">Distributed Systems Observability (book)</link>
+      <ref slug="dev-methodologies-architecture"/>
+    </see-also>
+  </content>
+</methodology>
