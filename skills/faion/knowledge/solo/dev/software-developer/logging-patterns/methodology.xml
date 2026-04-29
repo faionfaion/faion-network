@@ -39,6 +39,13 @@
         <item>Adding audit trails for compliance (payments, auth events)</item>
         <item>Integrating with OpenTelemetry for distributed tracing</item>
         <item>Diagnosing production incidents where correlation is required</item>
+        <item>New service or module: agent scaffolds a structured-logging baseline (JSON formatter, contextvars, request middleware) before any business logic ships.</item>
+        <item>Refactor of legacy print / console.log / fmt.Println debris into structured logs.</item>
+        <item>Adding distributed tracing: pair trace_id / request_id injection across services so logs join with spans.</item>
+        <item>Compliance/audit (SOC2, HIPAA, PCI): structured logs with retention policy and PII redaction.</item>
+        <item>Onboarding a log aggregator (Loki, ELK, Datadog, CloudWatch): agents map fields to indices and dashboards.</item>
+        <item>After a P1 incident: postmortems revealing missing logs become input for an agent that proposes new log calls and levels.</item>
+        <item>Cost reduction: agents identify high-volume, low-value log lines and propose level downgrades or sampling.</item>
       </list>
     </when-to-use>
 
@@ -47,6 +54,10 @@
         <item>Short scripts or one-shot jobs — standard print/stderr is fine</item>
         <item>Test output — pytest captures output; structured logs add noise</item>
         <item>Very high-frequency inner loops — log outside the loop or sample</item>
+        <item>Tiny throwaway scripts where stderr suffices.</item>
+        <item>Hot paths where logging cost is measurable (per-row inside a 100k iteration loop) — sample or move to metrics.</item>
+        <item>Security-sensitive code paths where any log line is a leak risk (raw payloads, secrets) — emit metric counters instead.</item>
+        <item>Real-time / latency-critical signal paths (audio, video, trading) — buffered async logging only; never block.</item>
       </list>
     </when-not-to-use>
 
@@ -142,6 +153,170 @@ logger.info(
         <statement>Use a context manager or decorator to log operation duration; emit a WARNING when duration exceeds a configured threshold.</statement>
         <rationale>Threshold-based warnings surface slow operations automatically without requiring manual timing instrumentation everywhere.</rationale>
       </rule>
+    </section>
+
+    <section name="limitations">
+      <p>Where this methodology fails or has known gaps.</p>
+      <list>
+        <item>Structured-but-not-really: teams emit JSON with one giant message field that contains a sprintf'd English sentence; defeats query.</item>
+        <item>Context loss across async boundaries: Python contextvars work for asyncio; thread pools / Celery workers / FastAPI background tasks lose the request_id silently.</item>
+        <item>Level abuse: everything logged at INFO; or warnings used for routine events. Alerting becomes noise and is ignored.</item>
+        <item>PII / secret leakage: documentation mentions "no sensitive info" but does not provide a redaction pipeline. JWTs, emails, tokens, full user objects end up in logs.</item>
+        <item>Unbounded cardinality: user_id, request_id as labels in metrics-friendly log indexers (Loki, Splunk) blow up costs. Methodology does not warn about this.</item>
+        <item>Cost blindness: retention defaults to 30/90 days; no per-environment policy in templates.</item>
+        <item>Local vs production formatter drift: dev sees pretty stdout, prod gets JSON — but configs differ in ways nobody reviews.</item>
+        <item>Error logs without exc_info: agents emit logger.error("oops") with no traceback; useless during incident.</item>
+        <item>Multi-language consistency: Python uses structlog, Go uses zerolog, Node uses pino. Without a shared field convention, joining logs across services is painful.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive logging hygiene as a four-pass agent flow: (1) bootstrap agent generates the structured-logging config (formatter, contextvars, middleware) per language using templates; (2) migrator agent finds print / fmt.Println / console.log and rewrites to logger.level(...) with proper kwargs; (3) redactor agent wraps log calls with a PII filter (auto-mask emails, tokens, card numbers, JWT) before they hit handlers; (4) noise reducer agent runs weekly against aggregator data, identifies log lines whose volume:value ratio is bad, and proposes level downgrades or sampling. Persist a docs/logging.md field convention (must include service, env, version, request_id, trace_id, user_id_hash, event).</p>
+
+      <section name="recommended-subagents">
+        <p>Subagents useful for logging automation and enforcement.</p>
+        <list>
+          <item>faion-sdd-executor-agent (agents/faion-sdd-executor-agent.md) — converts logging-migration work into SDD tasks (one task per service, one per logger module).</item>
+          <item>A PII-redactor agent (purpose-built, worth creating): regex + LLM pass that wraps log records before serialization; ships a denylist + allowlist.</item>
+          <item>A field-convention enforcer agent: reads project conventions; flags any new log call missing required keys (event, service, request_id).</item>
+          <item>A noise-reduction agent: queries Loki/Datadog/Splunk via API for top-N log lines by volume, scores them, proposes downgrade/drop.</item>
+          <item>password-scrubber-agent (agents/password-scrubber-agent.md) — last-mile scrub of log files before they leave the network (e.g., into a bug report).</item>
+        </list>
+      </section>
+
+      <section name="prompt-patterns">
+        <p>Reusable LLM prompt patterns for logging tasks.</p>
+
+        <prompt purpose="bootstrap-python"><![CDATA[
+Generate a Python logging baseline for service "<name>" using
+structlog. Requirements from
+solo/dev/software-developer/logging-patterns/README.md:
+- JSON output in production, key=value pretty in dev.
+- contextvars for request_id, trace_id, user_id_hash.
+- FastAPI middleware that binds those at request start, unbinds at end.
+- Auto-mask PII (email, phone, JWT, card number) before render.
+- Log level configurable via env (LOG_LEVEL).
+Output: logging.py + middleware.py + sample handler showing usage.
+]]></prompt>
+
+        <prompt purpose="migration"><![CDATA[
+Read <PR diff>. Replace any print/fmt.Println/console.log with the
+project's structured logger:
+- Pick correct level (DEBUG/INFO/WARNING/ERROR/CRITICAL) from the
+  README's level guide.
+- Convert string interpolation to keyword args (no f-strings inside
+  log calls).
+- Add exc_info=True for any error log inside an except block.
+Output as a unified diff.
+]]></prompt>
+
+        <prompt purpose="pii-redaction-check"><![CDATA[
+Given the following candidate log entries, identify any value that
+might be PII or a secret (email, phone, full name, token, JWT,
+SSN/EIN, credit-card-like). For each: field name, why it's risky,
+and a safe replacement (hash, mask, drop). Output as table.
+]]></prompt>
+      </section>
+    </section>
+
+    <section name="cli-tools">
+      <p>CLI tools for structured logging setup and operations.</p>
+      <list>
+        <item>structlog (Python) — Canonical structured logger; agent-friendly contextvars. Install: pip install structlog</item>
+        <item>pythonjsonlogger — JSON formatter for stdlib logging. Install: pip install python-json-logger</item>
+        <item>loguru — Alternative Python logger with simpler API. Install: pip install loguru</item>
+        <item>pino (Node) — Fast JSON logger, default for NestJS/Fastify. Install: npm i pino</item>
+        <item>winston (Node) — Multi-transport logger. Install: npm i winston</item>
+        <item>zerolog / zap (Go) — High-performance Go structured loggers. https://github.com/rs/zerolog / https://github.com/uber-go/zap</item>
+        <item>slog (Go stdlib, 1.21+) — Built-in structured logging. https://pkg.go.dev/log/slog</item>
+        <item>tracing + tracing-subscriber (Rust) — Structured logs + spans. https://tracing.rs</item>
+        <item>jq — Local query of JSON log files. Install: apt install jq</item>
+        <item>lnav — Log viewer that auto-parses JSON. https://lnav.org</item>
+        <item>vector.dev — Reshape, filter, redact, route logs at the edge. https://vector.dev</item>
+        <item>fluent-bit — Lightweight log shipper with redact filter. https://fluentbit.io</item>
+        <item>logcli (Loki) — Query Loki from agents. https://grafana.com/docs/loki/latest/tools/logcli/</item>
+        <item>claude (Anthropic CLI) — Run migrator/redactor/noise-reducer headless. https://docs.anthropic.com</item>
+      </list>
+    </section>
+
+    <section name="services">
+      <p>Log aggregation services and applications.</p>
+      <list>
+        <item>Grafana Loki + Promtail/Vector (OSS) — Cheapest log aggregator for solo teams; agent-callable via Loki HTTP API.</item>
+        <item>Elastic Stack (Elasticsearch + Kibana + Beats) (OSS / SaaS) — Full-text + structured; expensive at scale.</item>
+        <item>Datadog Logs (SaaS) — Best UX, integrated with APM/traces; agent-driven via API + Terraform.</item>
+        <item>New Relic Logs (SaaS) — Same niche as Datadog; price-competitive.</item>
+        <item>Splunk Cloud / Enterprise (SaaS / self-host) — Enterprise default; SPL queryable from agents.</item>
+        <item>AWS CloudWatch Logs + Logs Insights (SaaS) — Default for AWS-heavy stacks.</item>
+        <item>GCP Cloud Logging (SaaS) — Default for GCP.</item>
+        <item>Honeycomb (SaaS) — Treats logs as wide events; great for high-cardinality fields.</item>
+        <item>Better Stack / Logtail (SaaS) — Solo-priced; live-tail UX.</item>
+        <item>OpenTelemetry Logs (OSS spec) — Vendor-neutral; bridge from existing loggers.</item>
+        <item>Sentry breadcrumbs (SaaS) — Pairs error events with last N log lines for context.</item>
+      </list>
+    </section>
+
+    <section name="pii-redaction-processor">
+      <p>Drop-in structlog PII redaction processor for any pipeline. Add to processors before JSONRenderer.</p>
+      <example type="good" title="structlog PII redaction processor">
+        <code lang="python"><![CDATA[
+# logging_redact.py — structlog processor masking PII before JSON render.
+# Add to processors before JSONRenderer:
+#   structlog.configure(processors=[..., redact_pii, JSONRenderer()])
+import re
+EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+PHONE = re.compile(r"\+?\d[\d\s().-]{8,}\d")
+JWT   = re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+")
+CARD  = re.compile(r"\b(?:\d[ -]*?){13,19}\b")
+SECRETS = re.compile(r"(?i)\b(sk_live_[A-Za-z0-9]+|gh[pousr]_[A-Za-z0-9]{30,}|xox[bopars]-[A-Za-z0-9-]+)\b")
+DENY_KEYS = {"password", "passwd", "pwd", "secret", "token", "api_key", "authorization", "ssn", "set-cookie", "cookie"}
+def _mask(value: object) -> object:
+    if isinstance(value, str):
+        v = value
+        v = EMAIL.sub("***@***", v)
+        v = PHONE.sub("***-PHONE-***", v)
+        v = JWT.sub("***JWT***", v)
+        v = CARD.sub("***CARD***", v)
+        v = SECRETS.sub("***SECRET***", v)
+        return v
+    if isinstance(value, dict):
+        return {k: ("***" if k.lower() in DENY_KEYS else _mask(v)) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return type(value)(_mask(x) for x in value)
+    return value
+def redact_pii(_logger, _name, event_dict):
+    return {k: ("***" if k.lower() in DENY_KEYS else _mask(v)) for k, v in event_dict.items()}
+]]></code>
+        <note>Equivalent processors exist for Go (zerolog.HookFunc) and Node (pino redact option). The redactor agent should propose project-specific rules to extend this baseline.</note>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <p>Field convention and operational best practices.</p>
+      <list>
+        <item>One field convention per org: service, env, version, request_id, trace_id, user_id_hash (never raw user_id), event (snake_case noun-verb), plus domain fields. Lint it.</item>
+        <item>Always pass kwargs, never f-strings inside log calls (logger.info("user_signed_up", user_id=...), not logger.info(f"User {id} signed up")). Keeps cardinality controlled and indexable.</item>
+        <item>DEBUG locally, INFO for business events, WARNING for recoverable degradations, ERROR for actionable failures, CRITICAL for "page on-call". No personal interpretation.</item>
+        <item>Always exc_info=True (or equivalent) in error/critical paths — methodology shows the pattern; enforce it via lint.</item>
+        <item>Log only the minimum needed for triage. If a sensitive value is required, hash it (hashlib.sha256(user_id).hexdigest()[:12]).</item>
+        <item>Pair every alert with the exact log query that fires it; pair every dashboard panel with a single field convention.</item>
+        <item>Sampling for high-volume INFO events: add a counter every N events plus full sampling at WARNING+.</item>
+        <item>Test logging like code: assert structured fields in unit tests when behavior depends on them (e.g., security audit events).</item>
+        <item>Keep dev formatter close to prod (just pretty=True); avoid dual-format bugs where dev parses fine but prod does not.</item>
+      </list>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common mistakes AI agents make with logging implementations.</p>
+      <list>
+        <item>LLMs default to f-strings inside log calls (cardinality bombs). Pin a rule that any logger.X("...{...}...") is rewritten to logger.X("event", **kwargs).</item>
+        <item>Agents drop exc_info=True constantly. Add a lint or PR check; otherwise debug context is gone forever.</item>
+        <item>Agents add new fields without registering them; cardinality grows unbounded. Require any new log key to update docs/logging.md + the field schema.</item>
+        <item>Agents propose logging full request bodies "for completeness." Block via redactor + size cap.</item>
+        <item>Long async chains lose context — verify that the request_id appears in every log line of a single request via integration test.</item>
+        <item>Agents reach for loguru or winston defaults that bypass project config. Pin the logger module path in CONVENTIONS.md.</item>
+        <item>Human-in-loop checkpoints: (1) any change to the logging schema (downstream parsers may break), (2) any new field that could be PII, (3) sampling/dropping rules in production paths — these are all silent-failure prone.</item>
+      </list>
     </section>
 
     <section name="antipatterns">
