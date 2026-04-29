@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/infra/devops-engineer methodologies → methodology.xml (finops, gcp, github-actions-cicd; feature-045 batch AS)
 - migrate: 3/3 pro/infra/devops-engineer methodologies → methodology.xml (backup-strategies, docker, dora-metrics; feature-045 batch AR)
 - migrate: 3/3 pro/infra methodologies → methodology.xml (load-balancing-concepts, nginx-configuration, azure-architecture; feature-045 batch AQ)
 - migrate: 3/3 pro/infra methodologies → methodology.xml (platform-engineering, aiops, argocd-gitops; feature-045 batch AP)
