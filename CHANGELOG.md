@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 methodologies → methodology.xml (unit-testing, array-items-wrapper-extraction, auto-evict-tool-results; feature-045 batch L)
 - migrate: 3/3 free/dev/testing-developer methodologies → methodology.xml (testing-javascript, testing-patterns, testing-pytest; feature-045 batch K)
 - migrate: 3/3 free/dev/testing-developer methodologies → methodology.xml (tdd-workflow, test-fixtures, testing-go; feature-045 batch J)
 - migrate: 3/3 free/dev/software-developer methodologies → methodology.xml (tailwind, tdd-workflow, test-fixtures; feature-045 batch H)
