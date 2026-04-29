@@ -1,8 +1,9 @@
 # Changelog
 
 ## [Unreleased]
-- migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (gateway-fallback-chain, generator-critic-bounded-loop, handoff-id-payload; feature-045 batch P)
+- migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (llm-judge-rubric-evidence-first, manifest-then-fetch, map-reduce-send-fanout; feature-045 batch R)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (headless-cli-four-guards, idempotent-write-tools, inverted-header-content-first; feature-045 batch Q)
+- migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (gateway-fallback-chain, generator-critic-bounded-loop, handoff-id-payload; feature-045 batch P)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (claude-code-headless-default, compaction-preserve-refs, decimal-as-string-pattern; feature-045 batch N)
 - migrate: 3/3 geek/ai/ai-agents methodologies → methodology.xml (discriminated-union-output, enum-constraints-closed-vocabularies, filesystem-as-working-memory; feature-045 batch O)
 - migrate: 3/3 methodologies → methodology.xml (unit-testing, array-items-wrapper-extraction, auto-evict-tool-results; feature-045 batch L)
