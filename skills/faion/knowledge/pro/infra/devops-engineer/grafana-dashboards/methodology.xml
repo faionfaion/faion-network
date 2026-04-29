@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="grafana-dashboards">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Grafana observability platform visualizes metrics, logs, traces. Use RED for services, USE for infrastructure. Provision dashboards as code via ConfigMaps or GitOps.</summary>
+    <category>monitoring</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>grafana</tag>
+      <tag>monitoring</tag>
+      <tag>observability</tag>
+      <tag>dashboards</tag>
+      <tag>prometheus</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Grafana Dashboards</title>
+
+    <summary>Grafana is the leading open-source observability platform for visualizing metrics, logs, and traces. Use the RED method (Rate, Errors, Duration) for service dashboards and the USE method (Utilization, Saturation, Errors) for infrastructure. Provision dashboards as code via ConfigMaps or GitOps — never rely on UI-only dashboards that vanish on pod restart.</summary>
+
+    <why>
+      <p>Ad-hoc dashboard creation leads to sprawl, inconsistent metrics, and no version history. A maturity model approach (Low → Medium → High) moves teams from reactive to systematic observability: variables for dynamic filtering, hierarchical drill-downs (cluster → namespace → pod), and GitOps provisioning that survives cluster rebuilds.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Visualizing Prometheus, Loki, or Elasticsearch data for ops teams.</item>
+        <item>Building SLO dashboards showing error budgets alongside availability.</item>
+        <item>Creating on-call runbook dashboards with annotated deployment markers.</item>
+        <item>Standardizing observability across microservices with shared dashboard templates.</item>
+        <item>Grafana 12+: using Tabs to segment large dashboards without splitting metrics.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Business intelligence / analytics — use dedicated BI tools (Looker, Metabase).</item>
+        <item>Alerting without Alertmanager/Grafana Alerting configured — dashboards alone do not page.</item>
+        <item>Replacing application logging — Grafana shows metrics, not log content (use Explore for that).</item>
+        <item>Public customer-facing status pages — use Statuspage or similar.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="observability-frameworks">
+      <p>RED and USE are complementary frameworks for different types of observability questions.</p>
+
+      <rule testable="true">
+        <statement>Use RED (Rate, Errors, Duration) for service dashboards and USE (Utilization, Saturation, Errors) for infrastructure/hardware dashboards. Do not mix them in the same row.</statement>
+        <rationale>RED answers "is the service healthy from the user's perspective?" USE answers "is the infrastructure saturating?" Mixing them creates cognitive overhead for on-call engineers who need fast answers.</rationale>
+      </rule>
+
+      <list>
+        <item>RED Rate: requests per second — sum(rate(http_requests_total[5m]))</item>
+        <item>RED Errors: failed request percentage — rate of 5xx / total rate</item>
+        <item>RED Duration: request latency P50/P90/P99 via histogram_quantile</item>
+        <item>USE Utilization: resource busy percentage (CPU, memory, disk)</item>
+        <item>USE Saturation: queue/wait length (load average, memory pressure)</item>
+        <item>USE Errors: hardware or driver error events</item>
+      </list>
+
+      <p>Four Golden Signals (Google SRE) = Latency + Traffic + Errors + Saturation. Equivalent to RED + Saturation from USE. Prefer RED/USE for clarity of purpose.</p>
+    </section>
+
+    <section name="dashboard-structure-rules">
+      <p>Effective dashboard structure enables fast diagnosis during incidents.</p>
+
+      <rule testable="true">
+        <statement>Structure dashboards hierarchically: summary row at top (stat panels), detail rows below (time series). Use Grafana 12 Tabs to segment cluster/namespace/pod views without splitting into separate dashboards.</statement>
+        <rationale>On-call engineers need the summary answer in under 5 seconds. Separate dashboards require navigation time; tabs keep context while segregating detail.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Every dashboard must have at minimum three variables: datasource (type: datasource), namespace (type: query), and interval (type: interval with auto).</statement>
+        <rationale>Datasource variable enables multi-cluster reuse. Namespace variable enables team-specific scoping. Interval variable prevents fixed time windows from producing misleading rates.</rationale>
+      </rule>
+    </section>
+
+    <section name="variable-types">
+      <p>Dashboard variables enable dynamic filtering and multi-cluster reuse.</p>
+
+      <list>
+        <item>Query: dynamic values from data source (e.g., label_values for namespace, pod). Use refresh=1 (on dashboard load) for slow-changing values.</item>
+        <item>Interval: time aggregation (1m, 5m, 15m, 1h). Set auto_min to avoid over-querying at short time ranges.</item>
+        <item>Datasource: allows switching Prometheus instances; enables multi-cluster dashboard reuse.</item>
+        <item>Custom: predefined static list. Use for environment selector (prod/staging) when values are known.</item>
+        <item>Constant: hidden configuration value (e.g., SLO threshold). Avoids hardcoding in every panel expression.</item>
+      </list>
+    </section>
+
+    <section name="visualization-selection">
+      <p>Choosing the right panel type prevents mental transformation overhead.</p>
+
+      <rule testable="true">
+        <statement>Use Stat panels for current values needing instant color-coded status. Use Time series for trends. Use Gauge for percentage values with min/max bounds (SLO compliance, error budget). Use Table for multi-dimensional comparisons.</statement>
+        <rationale>Choosing the wrong panel type forces users to mentally transform data. A Stat panel for a time-based trend loses context; a Time series for a single current value adds unnecessary visual noise.</rationale>
+      </rule>
+
+      <list>
+        <item>Time series metrics: Time series panel with smooth line interpolation</item>
+        <item>Current single value with thresholds: Stat panel with colorMode=value</item>
+        <item>Percentage with min/max: Gauge panel</item>
+        <item>Ranked comparison: Bar gauge or Table</item>
+        <item>Distribution over time: Heatmap (ideal for latency histograms)</item>
+        <item>Log streams: Logs panel (Loki datasource)</item>
+      </list>
+    </section>
+
+    <section name="provisioning-via-configmap">
+      <p>Dashboard-as-code ensures dashboards survive pod restarts and cluster rebuilds.</p>
+
+      <rule testable="true">
+        <statement>Provision all production dashboards as Kubernetes ConfigMaps with the grafana_dashboard=1 label. Never rely on UI-created dashboards in production.</statement>
+        <rationale>UI dashboards are lost on pod restart or cluster recreation. ConfigMap-provisioned dashboards are version-controlled, reviewed in PRs, and survive infra events. The label triggers automatic discovery by Grafana's sidecar.</rationale>
+      </rule>
+
+      <example type="good" title="ConfigMap-based dashboard provisioning">
+        <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-service-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  my-service.json: |
+    {
+      "title": "My Service",
+      "uid": "my-service-v1",
+      "schemaVersion": 38,
+      "version": 1,
+      "panels": []
+    }
+]]></code>
+        <note>Set a stable uid in the dashboard JSON. UIDs are used in links between dashboards and must not change after initial provisioning.</note>
+      </example>
+
+      <rule testable="true">
+        <statement>Configure Grafana to load dashboards from a folder mounted via the sidecar. Set allowUiUpdates: false in production to prevent UI drift from the Git-managed source.</statement>
+        <rationale>allowUiUpdates: true allows operators to save UI changes that are then lost on the next pod restart (they are not written back to the ConfigMap). Disabling it enforces the GitOps workflow.</rationale>
+      </rule>
+
+      <example type="good" title="Grafana provisioning configuration">
+        <code lang="yaml"><![CDATA[
+# grafana-provisioning/dashboards/default.yaml
+apiVersion: 1
+providers:
+  - name: default
+    orgId: 1
+    type: file
+    disableDeletion: false
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true
+]]></code>
+      </example>
+    </section>
+
+    <section name="dashboard-maturity-model">
+      <p>Move teams from Low to High maturity deliberately — do not attempt to jump directly to High without foundations in place.</p>
+
+      <list>
+        <item>Low: ad-hoc creation in UI, no variables, hard-coded data source names, no version control. Dashboard sprawl; nobody knows which dashboard is authoritative.</item>
+        <item>Medium: variables for namespace/pod, consistent naming conventions, dashboards organized by service/team, basic GitOps (manual export to Git). Reliable for known services.</item>
+        <item>High: all dashboards provisioned via GitOps, shared template dashboards for new services, usage tracking to retire stale dashboards, automated dashboard generation from service metadata. Dashboards survive cluster rebuilds.</item>
+      </list>
+    </section>
+
+    <section name="annotations-for-context">
+      <p>Annotations correlate metric changes with the events that caused them.</p>
+
+      <rule testable="true">
+        <statement>Add deployment and alert annotations to all service dashboards. Annotations correlate metric changes with the events that caused them.</statement>
+        <rationale>Without deployment markers, engineers spend minutes correlating a latency spike to the release that caused it. Annotations make the correlation instant and reduce MTTR.</rationale>
+      </rule>
+
+      <example type="good" title="Deployment annotation configuration">
+        <code lang="json"><![CDATA[
+{
+  "name": "Deployments",
+  "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+  "enable": true,
+  "expr": "changes(kube_deployment_status_observed_generation{namespace=\"$namespace\"}[5m]) > 0",
+  "titleFormat": "Deploy: {{ deployment }}",
+  "iconColor": "blue"
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="dashboard-variables-examples">
+      <p>Standard variable definitions enable multi-cluster reuse and dynamic filtering.</p>
+
+      <example type="good" title="Standard dashboard variables">
+        <code lang="json"><![CDATA[
+[
+  {
+    "name": "datasource",
+    "type": "datasource",
+    "query": "prometheus"
+  },
+  {
+    "name": "namespace",
+    "type": "query",
+    "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+    "query": "label_values(kube_namespace_labels, namespace)",
+    "refresh": 1,
+    "sort": 1
+  },
+  {
+    "name": "interval",
+    "type": "interval",
+    "auto": true,
+    "auto_min": "1m",
+    "options": [
+      {"text": "1m", "value": "1m"},
+      {"text": "5m", "value": "5m"},
+      {"text": "15m", "value": "15m"},
+      {"text": "1h", "value": "1h"}
+    ]
+  }
+]
+]]></code>
+      </example>
+    </section>
+
+    <section name="red-method-stat-panels">
+      <p>RED method stat panels answer "is the service healthy?" at a glance.</p>
+
+      <example type="good" title="RED method stat panels">
+        <code lang="json"><![CDATA[
+[
+  {
+    "type": "stat",
+    "title": "Request Rate",
+    "targets": [{"expr": "sum(rate(http_requests_total{namespace=\"$namespace\"}[$interval]))", "legendFormat": "req/s"}],
+    "fieldConfig": {"defaults": {"unit": "reqps", "thresholds": {"steps": [
+      {"color": "green", "value": null},
+      {"color": "yellow", "value": 1000},
+      {"color": "red", "value": 5000}
+    ]}}}
+  },
+  {
+    "type": "stat",
+    "title": "Error Rate",
+    "targets": [{"expr": "sum(rate(http_requests_total{namespace=\"$namespace\",status=~\"5..\"}[$interval])) / sum(rate(http_requests_total{namespace=\"$namespace\"}[$interval])) * 100"}],
+    "fieldConfig": {"defaults": {"unit": "percent", "thresholds": {"steps": [
+      {"color": "green", "value": null},
+      {"color": "yellow", "value": 1},
+      {"color": "red", "value": 5}
+    ]}}}
+  },
+  {
+    "type": "stat",
+    "title": "P99 Latency",
+    "targets": [{"expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$interval])) by (le))"}],
+    "fieldConfig": {"defaults": {"unit": "s", "thresholds": {"steps": [
+      {"color": "green", "value": null},
+      {"color": "yellow", "value": 0.5},
+      {"color": "red", "value": 1}
+    ]}}}
+  }
+]
+]]></code>
+      </example>
+    </section>
+
+    <section name="slo-availability-gauge">
+      <p>Gauge panels show SLO compliance and error budget at a glance.</p>
+
+      <example type="good" title="SLO availability gauge">
+        <code lang="json"><![CDATA[
+{
+  "type": "gauge",
+  "title": "Availability SLO (99.9%)",
+  "description": "30-day rolling availability against 99.9% SLO target",
+  "targets": [{
+    "expr": "(1 - sum(rate(http_requests_total{namespace=\"$namespace\",status=~\"5..\"}[30d])) / sum(rate(http_requests_total{namespace=\"$namespace\"}[30d]))) * 100"
+  }],
+  "options": {"showThresholdMarkers": true},
+  "fieldConfig": {
+    "defaults": {
+      "unit": "percent",
+      "min": 99,
+      "max": 100,
+      "thresholds": {"mode": "absolute", "steps": [
+        {"color": "red", "value": null},
+        {"color": "yellow", "value": 99.5},
+        {"color": "green", "value": 99.9}
+      ]}
+    }
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="latency-percentiles-time-series">
+      <p>Time series panels show latency trends and distribution over time.</p>
+
+      <example type="good" title="Latency percentiles time series">
+        <code lang="json"><![CDATA[
+{
+  "type": "timeseries",
+  "title": "Latency Distribution",
+  "targets": [
+    {"expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$interval])) by (le))", "legendFormat": "P50"},
+    {"expr": "histogram_quantile(0.90, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$interval])) by (le))", "legendFormat": "P90"},
+    {"expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$interval])) by (le))", "legendFormat": "P99"}
+  ],
+  "fieldConfig": {
+    "defaults": {"unit": "s", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10}},
+    "overrides": [
+      {"matcher": {"id": "byName", "options": "P50"}, "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]},
+      {"matcher": {"id": "byName", "options": "P99"}, "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]}
+    ]
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/prompt-create-dashboard.txt" purpose="LLM prompt for generating a Grafana dashboard for a given service."/>
+    </templates>
+
+    <see-also>
+      <link href="https://grafana.com/"/>
+      <link href="https://grafana.com/docs/grafana/latest/"/>
+      <link href="https://prometheus.io/docs/"/>
+      <link href="https://grafana.com/docs/grafana/latest/fundamentals/timeseries/"/>
+    </see-also>
+  </content>
+</methodology>
