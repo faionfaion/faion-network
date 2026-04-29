@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="data-pipeline-design">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Designing data ingestion, transformation, and storage pipelines for batch and streaming workloads with medallion architecture, orchestration, and quality gates.</summary>
+    <tags>
+      <tag>data</tag>
+      <tag>pipeline</tag>
+      <tag>etl</tag>
+      <tag>orchestration</tag>
+      <tag>dbt</tag>
+      <tag>airflow</tag>
+      <tag>streaming</tag>
+      <tag>data-quality</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Data Pipeline Design</title>
+    <summary>Poor pipeline design causes data quality failures that propagate silently into dashboards and ML models. The medallion architecture enforces explicit data quality tiers: raw bronze preserves source fidelity, silver enforces schema and deduplication, gold delivers business-ready assets. Idempotent tasks and DLQs ensure reruns after failures produce identical results without duplicates.</summary>
+    <why>
+      <p>Poor pipeline design causes data quality failures that propagate silently into dashboards and ML models. The medallion architecture enforces explicit data quality tiers: raw bronze preserves source fidelity, silver enforces schema and deduplication, gold delivers business-ready assets. Idempotent tasks and DLQs ensure reruns after failures produce identical results without duplicates.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Designing a new analytical or operational data pipeline from scratch</item>
+        <item>Choosing between batch vs streaming processing for a latency requirement</item>
+        <item>Migrating from custom ETL scripts to a managed orchestrator (Airflow, Dagster)</item>
+        <item>Adding data quality validation gates to an existing pipeline</item>
+        <item>Reviewing pipeline reliability: retries, dead letter queues, schema evolution</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Direct OLTP query optimisation — this is about data movement, not query tuning</item>
+        <item>Real-time API response paths — use caching/CDN patterns instead</item>
+        <item>Small one-off data exports — a SQL script or dbt run is sufficient</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pipeline-type-selection">
+      <rule>
+        <statement>Choose streaming only when the use case genuinely requires sub-second latency; default to batch for all other analytical workloads.</statement>
+        <rationale>Streaming is significantly more complex to operate (exactly-once semantics, schema evolution, consumer lag monitoring). Batch pipelines are easier to debug, backfill, and test. Reserve streaming for fraud detection, real-time dashboards, and monitoring pipelines.</rationale>
+      </rule>
+      <list>
+        <item>Batch: minutes-to-hours latency, Spark/Airflow/dbt. Use for ML training, reporting, historical analysis.</item>
+        <item>Streaming: milliseconds-to-seconds, Kafka/Flink/Spark Streaming. Use for fraud detection, real-time analytics, CDC replication.</item>
+        <item>Lambda: batch layer for accuracy + speed layer for freshness. Higher complexity; consider Kappa first.</item>
+        <item>Kappa: streaming-only with event replay. Simpler than Lambda; use when all historical reprocessing can be done via stream replay.</item>
+      </list>
+    </section>
+
+    <section name="etl-vs-elt">
+      <rule>
+        <statement>Prefer ELT over ETL for cloud warehouse environments (Snowflake, BigQuery, Databricks) where warehouse compute is elastic.</statement>
+        <rationale>ELT preserves raw source data in the bronze layer, enabling re-transformation when business rules change without re-ingesting from source. ETL discards raw data after transformation.</rationale>
+      </rule>
+      <list>
+        <item>Use ETL when: strict compliance requires data anonymisation before storage (HIPAA/GDPR), legacy target systems have limited compute, small data volume with complex transforms.</item>
+        <item>Use ELT when: cloud-native warehouse available, large volumes needing distributed compute, need raw data preservation for future use cases.</item>
+      </list>
+    </section>
+
+    <section name="medallion-architecture">
+      <rule>
+        <statement>Implement Bronze/Silver/Gold medallion layers where each layer has an explicit owner, quality contract, and materialisation strategy.</statement>
+        <rationale>Without explicit layer contracts, data quality issues propagate silently from ingestion to analytics. 68% of cloud-first enterprises use this pattern (2025) precisely because it enforces quality gates at each transformation boundary.</rationale>
+      </rule>
+      <list>
+        <item>Bronze: raw ingestion, unprocessed as-is from source, append-only, never delete</item>
+        <item>Silver: standardised schema, deduplicated, type-enforced, no business logic</item>
+        <item>Gold: aggregated, enriched, business-ready, optimised for query patterns</item>
+      </list>
+    </section>
+
+    <section name="modern-data-stack">
+      <p>Component map by function: Ingestion (Airbyte, Fivetran, Debezium), Storage (S3/GCS/ADLS), Warehouse (Snowflake/BigQuery/Databricks), Transformation (dbt/Spark), Orchestration (Airflow/Dagster/Prefect), Quality (Great Expectations/Soda/dbt tests), Catalog (Atlan/Alation).</p>
+    </section>
+
+    <section name="orchestration-tool-selection">
+      <rule>
+        <statement>Choose the orchestrator based on team size and whether asset lineage or task scheduling is the primary concern.</statement>
+        <rationale>Airflow's operator-first model is mature for time-based scheduling but has a steep learning curve. Dagster's asset-first model makes lineage and testing first-class, which is more maintainable for data product teams. Prefect offers the fastest onboarding for small teams.</rationale>
+      </rule>
+      <list>
+        <item>Airflow: large-scale production, 600+ operators, complex time-based scheduling, enterprise with dedicated platform team.</item>
+        <item>Dagster: asset-centric approach, strong testing (pytest integration), data lineage critical, modern developer experience priority.</item>
+        <item>Prefect: small-to-mid team, rapid development, dynamic event-driven workflows, minimal infrastructure overhead.</item>
+      </list>
+    </section>
+
+    <section name="dag-design-rules">
+      <rule>
+        <statement>Design every task to be idempotent: running it twice with the same inputs must produce the same outputs without side effects.</statement>
+        <rationale>Pipeline failures trigger retries. Non-idempotent tasks create duplicates or corrupt state on retry. Idempotency is the foundation of reliable pipeline operations.</rationale>
+      </rule>
+      <rule>
+        <statement>Do not make tasks too granular (one row per task) or too coarse (entire pipeline in one task); size tasks to represent one logical transformation step.</statement>
+        <rationale>Too granular: scheduler overhead dominates. Too coarse: partial failure requires full re-run. One logical step per task enables precise failure isolation and minimal re-work.</rationale>
+      </rule>
+      <antipattern>
+        <description>Using Python operators with external API calls that have no retry or timeout configuration.</description>
+        <reason>Network failures cause permanent task failure without retry. Uncapped retries without backoff hammer the API and trigger rate limiting.</reason>
+      </antipattern>
+    </section>
+
+    <section name="ingestion-patterns">
+      <list>
+        <item>Full Load: initial data load, small dimension tables, sources without reliable change tracking. Truncate and reload.</item>
+        <item>Incremental Load: large fact tables, event/transaction data. Use watermark (updated_at column or sequence ID) to load only new/changed rows.</item>
+        <item>CDC (Change Data Capture): near-real-time replication capturing inserts, updates, and deletes. Tools: Debezium, Fivetran. Use when delete propagation is required.</item>
+        <item>Event Streaming: real-time event ingestion via Kafka producers. Configure topic partitioning on the natural partition key (user_id, tenant_id).</item>
+      </list>
+      <rule>
+        <statement>Implement a schema registry for all streaming ingestion pipelines and enforce backward-compatible schema evolution.</statement>
+        <rationale>Schema drift (source adds, removes, or changes a field) breaks downstream consumers. A registry enforces compatibility rules and prevents silent data corruption at the consumer.</rationale>
+      </rule>
+    </section>
+
+    <section name="dbt-model-conventions">
+      <rule>
+        <statement>Follow the stg_ / int_ / fct_ / dim_ naming convention and never reference raw source tables directly from intermediate or mart models.</statement>
+        <rationale>Bypassing staging models means business logic depends on raw source schema — any upstream schema change breaks downstream models. Staging models create a stable abstraction layer.</rationale>
+      </rule>
+      <list>
+        <item>stg_&lt;source&gt;__&lt;entity&gt;.sql: one model per source table, light transforms only (rename, cast, dedupe). Materialise as view or ephemeral.</item>
+        <item>int_&lt;verb&gt;_&lt;entity&gt;.sql: business logic groupings. Use verbs: int_orders_joined, int_users_aggregated. Materialise as view or ephemeral.</item>
+        <item>fct_&lt;entity&gt;.sql: fact tables, append-only events. Materialise as table or incremental.</item>
+        <item>dim_&lt;entity&gt;.sql: dimension tables, frequently accessed. Materialise as table.</item>
+      </list>
+      <rule>
+        <statement>Use incremental materialisation for large fact tables; always define the unique_key and on_schema_change strategy.</statement>
+        <rationale>Full-table refresh of a 1B-row fact table takes hours and wastes warehouse compute. Incremental processes only new/changed rows. Without unique_key, incremental runs can produce duplicates.</rationale>
+      </rule>
+    </section>
+
+    <section name="data-quality-tool-selection">
+      <rule>
+        <statement>Apply dbt tests at the transformation layer for structural integrity (not_null, unique, relationships); use Great Expectations or Soda for business rule validation at ingestion boundaries.</statement>
+        <rationale>dbt tests run after transformation and catch model logic errors. Great Expectations / Soda run at ingestion and catch upstream source quality issues before they reach the warehouse.</rationale>
+      </rule>
+      <list>
+        <item>dbt tests: not_null/unique on keys, accepted_values for enums, relationships for foreign keys. Integrated with dbt run.</item>
+        <item>Great Expectations: Python-first, 300+ expectations, data docs generation, complex compliance validation.</item>
+        <item>Soda: YAML-first (SodaCL), accessible for non-engineers, continuous monitoring with anomaly detection alerts.</item>
+      </list>
+    </section>
+
+    <section name="error-handling-patterns">
+      <rule>
+        <statement>Route failed records to a Dead Letter Queue (DLQ) rather than discarding them or halting the pipeline.</statement>
+        <rationale>Discarding failed records causes silent data loss. Halting the pipeline blocks all downstream consumers. DLQ preserves the failed records for manual review and reprocessing without blocking the healthy path.</rationale>
+      </rule>
+      <list>
+        <item>DLQ message: include original topic, partition, offset, timestamp, original key/value, error time, retry count.</item>
+        <item>Retry strategy: exponential backoff for transient failures (network, API limits); fixed delay for known recovery times; circuit breaker for cascade prevention.</item>
+        <item>Idempotency check: before processing, check if record_id was already successfully processed; skip duplicates.</item>
+      </list>
+      <antipattern>
+        <description>Silently dropping records that fail schema validation or business rule checks.</description>
+        <reason>Silent drops make data quality failures invisible. The pipeline reports 100% success while data completeness degrades, which only surfaces when a report is wrong.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/dbt-model-staging.sql" purpose="Canonical staging model with source() reference, type casting, and row_number() deduplication"/>
+      <template path="templates/airflow-dag.py" purpose="DAG skeleton with exponential backoff retry, SLA miss callback, and idempotent task pattern"/>
+    </templates>
+
+    <see-also>
+      <link href="https://databricks.com/blog/2023/01/03/delta-lake-medallion-architecture-best-practices-part-1.html"/>
+      <link href="https://www.getdbt.com/"/>
+      <link href="https://airflow.apache.org/"/>
+      <link href="https://dagster.io/"/>
+      <link href="https://www.prefect.io/"/>
+    </see-also>
+  </content>
+</methodology>
