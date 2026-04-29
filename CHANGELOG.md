@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 solo/comms/communicator methodologies → methodology.xml (business-storytelling, conflict-resolution, difficult-conversations; feature-045 batch CO)
 - migrate: 3/3 pro pm/product methodologies → methodology.xml (resource-management, mlp-planning, portfolio-strategy; feature-045 batch CC)
 - migrate: 3/3 solo/comms/communicator methodologies → methodology.xml (active-listening, brainstorming-ideation, brainstorming-techniques; feature-045 batch CN)
 - migrate: 3/3 pro/pm/project-manager methodologies → methodology.xml (azure-devops-boards, benefits-realization, change-control; feature-045 batch CA)
