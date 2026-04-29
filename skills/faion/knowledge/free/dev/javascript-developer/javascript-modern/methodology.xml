@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="javascript-modern">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>javascript-developer</domain>
+    <summary>JS/TS core principles: TypeScript-first strict mode, named exports, pnpm package manager, ESLint 9.x flat config, code placement rules for Node.js 22, Bun, and browsers.</summary>
+    <tags>
+      <tag>typescript</tag>
+      <tag>javascript</tag>
+      <tag>standards</tag>
+      <tag>eslint</tag>
+      <tag>package-manager</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Modern JavaScript/TypeScript Standards</title>
+    <summary>Core principles for new JS/TS projects in 2025-2026: TypeScript-first with strict mode, named exports, explicit public API types, pnpm as default package manager, ESLint 9.x flat config, and a code placement decision tree. Supported runtimes: Node.js 22 LTS, Bun 1.x, browser ES2022+.</summary>
+    <why>
+      <p>JavaScript's ecosystem has consolidated around TypeScript, ESM, and flat ESLint config. Deviating from these defaults (using CJS, legacy .eslintrc, default exports everywhere) creates friction with modern tools, bundlers, and TypeScript inference. Named exports make refactoring and search trivially correct; pnpm enforces strict dep resolution that catches phantom dependency bugs.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Bootstrapping any new Node.js, Bun, or browser project</item>
+        <item>Setting up ESLint in a TypeScript project for the first time</item>
+        <item>Deciding whether to use default or named exports</item>
+        <item>Choosing a package manager</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Existing projects with established tooling — migrate incrementally, not all at once</item>
+        <item>AWS Lambda with vendor-locked Node.js 18 — use Node.js target, skip Bun</item>
+        <item>Projects where Yarn 4.x workspaces are already in production</item>
+      </list>
+    </when-not-to-use>
+    <section name="Modern JavaScript/TypeScript Core Principles">
+      <rule>
+        <statement>Every new project starts with TypeScript and strict: true; plain .js files are not created unless a tool requires it.</statement>
+        <rationale>TypeScript's static analysis catches contract violations, null errors, and import mistakes before runtime; retrofitting types later is 10x more expensive.</rationale>
+      </rule>
+      <rule>
+        <statement>Prefer const over let; use arrow functions for callbacks and short functions; use regular function declarations for request handlers and named exports where hoisting is needed.</statement>
+        <rationale>const communicates immutability intent; arrow functions capture this lexically, avoiding bind/call confusion in callbacks.</rationale>
+      </rule>
+      <example type="good" title="Const and Arrow Functions">
+        <code lang="typescript"><![CDATA[
+const users = ['Alice', 'Bob'];
+const double = (n: number) => n * 2;
+const getUser = async (id: string) => db.users.findById(id);
+
+// Regular function for top-level handler (hoisted, shows name in traces)
+function handleRequest(req: Request, res: Response) { /* ... */ }
+]]></code>
+      </example>
+      <rule>
+        <statement>Use named exports for all functions, constants, and types; reserve default exports only for framework requirements (Next.js page components).</statement>
+        <rationale>Named exports enable accurate IDE rename refactoring, tree-shaking, and import autocomplete; default exports allow callers to import under any name, causing fragmentation.</rationale>
+      </rule>
+      <example type="good" title="Named Exports">
+        <code lang="typescript"><![CDATA[
+export function createUser(data: UserData): User { /* ... */ return {} as User; }
+export const USER_ROLES = ['admin', 'user'] as const;
+export type UserRole = typeof USER_ROLES[number];
+
+// Framework exception only:
+export default function Page() { return null; }
+]]></code>
+      </example>
+      <rule>
+        <statement>Annotate function parameters and return types for all exported functions; let TypeScript infer types for internal variables.</statement>
+        <rationale>Explicit public API types serve as documentation and prevent accidental widening; inference keeps internal code concise.</rationale>
+      </rule>
+      <example type="good" title="Explicit Types for Public APIs">
+        <code lang="typescript"><![CDATA[
+function processOrder(
+  order: Order,
+  options?: ProcessOptions,
+): Promise<ProcessResult> { /* ... */ return Promise.resolve({} as ProcessResult); }
+
+const count = 0;        // inferred number — fine
+const items: Item[] = []; // explicit needed — [] infers never[]
+]]></code>
+      </example>
+    </section>
+    <section name="Package Manager, Linting, and Code Placement">
+      <rule>
+        <statement>Use pnpm for new projects; Bun's package manager for Bun-runtime projects; npm only for maximum compatibility with legacy tooling.</statement>
+        <rationale>pnpm's strict symlink structure prevents phantom dependency access bugs that npm's hoisting permits; Bun's built-in installer is 10x faster for Bun projects.</rationale>
+      </rule>
+      <list>
+        <item>pnpm — default; strict, disk-efficient, monorepo-ready</item>
+        <item>bun — Bun runtime projects; maximum install speed</item>
+        <item>npm — legacy projects; maximum compatibility</item>
+        <item>yarn — existing Yarn 4.x workspaces only</item>
+      </list>
+      <rule>
+        <statement>Use ESLint 9.x flat config (eslint.config.js) with typescript-eslint strictTypeChecked and react-hooks plugins.</statement>
+        <rationale>The legacy .eslintrc format is deprecated in ESLint 9; flat config enables explicit file scoping, eliminating hidden cascade bugs.</rationale>
+      </rule>
+      <templates>
+        <template path="templates/eslint.config.js" purpose="ESLint 9.x flat config for TypeScript + React"/>
+        <template path="templates/prettierrc.json" purpose="Prettier baseline config"/>
+      </templates>
+      <rule>
+        <statement>Place code in the folder that matches its role: rendering → components/, shared state logic → hooks/, API calls → services/ or api/, pure transformations → utils/, third-party wrappers → lib/.</statement>
+        <rationale>Consistent placement makes files discoverable without reading every import; mixed placement forces grep-driven archaeology.</rationale>
+      </rule>
+      <list>
+        <item>UI rendering → components/</item>
+        <item>Shared state logic → hooks/</item>
+        <item>API calls → services/ or api/</item>
+        <item>Data transformation → utils/</item>
+        <item>Type definitions → types/ or colocated</item>
+        <item>Third-party wrappers → lib/</item>
+      </list>
+    </section>
+  </content>
+</methodology>
