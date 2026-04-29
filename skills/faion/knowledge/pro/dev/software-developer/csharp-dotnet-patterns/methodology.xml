@@ -1,0 +1,694 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="csharp-dotnet-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>.NET patterns: clean architecture, dependency injection, CQRS with MediatR, domain-driven design for building scalable microservices and APIs.</summary>
+    <tags>
+      <tag>csharp</tag>
+      <tag>dotnet</tag>
+      <tag>aspnet-core</tag>
+      <tag>clean-architecture</tag>
+      <tag>domain-driven-design</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>C# .NET Patterns</title>
+    <summary>.NET is a modern, cross-platform framework for building web APIs, microservices, and enterprise applications. This methodology covers ASP.NET Core patterns, clean architecture, domain-driven design, and best practices for C# development including dependency injection, middleware pipelines, configuration management, and async-first design.</summary>
+    <why>
+      <p>.NET provides a mature, performant, and productive platform for enterprise development. Its built-in features—dependency injection, structured logging, configuration management, and async/await support—eliminate boilerplate and encourage correct patterns. Clean architecture and domain-driven design principles separate concerns, improve testability, and make systems easier to understand and maintain. Adopting proven patterns reduces cognitive load and increases team velocity.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Enterprise web applications requiring high performance and scalability.</item>
+        <item>Microservices architecture with event-driven communication.</item>
+        <item>REST and gRPC APIs with complex business logic.</item>
+        <item>Cloud-native applications (Azure, AWS) with tight integration requirements.</item>
+        <item>Applications requiring strong typing and compile-time error detection.</item>
+        <item>Teams familiar with C# and wanting to leverage the .NET ecosystem.</item>
+        <item>Greenfield ASP.NET Core service where Clean Architecture is mandated and scaffolding is needed fast.</item>
+        <item>Brownfield migration from legacy .NET Framework or classic Web API to .NET 8/9 minimal APIs with MediatR.</item>
+        <item>Cross-cutting addition of MediatR pipelines (validation, logging, transactions, caching) to existing ASP.NET Core.</item>
+        <item>Enforcing DTO boundaries when a codebase has leaked EF Core entities through controllers.</item>
+        <item>Refactoring anemic services into rich aggregates with private setters, factory methods, and domain events.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Greenfield projects with no prior .NET experience and tight delivery timelines.</item>
+        <item>JavaScript-only teams with no C# expertise.</item>
+        <item>Applications locked into specific language ecosystems (Java-only, Python-only).</item>
+        <item>Simple CRUD applications where Django or Rails may be more lightweight.</item>
+        <item>Console apps, single-file utilities, Azure Functions with one HTTP trigger. Clean Architecture's four-project split is overkill.</item>
+        <item>Razor Pages or MVC monoliths where teams have no MediatR experience. Adding the bus creates a parallel architecture nobody owns.</item>
+        <item>Game or Unity C# work. DI container, MediatR, and EF Core are wrong tools; prefer ECS patterns.</item>
+        <item>Lambda or serverless functions with cold-start budgets under 300ms. MediatR and AutoMapper add startup overhead that breaks SLOs.</item>
+        <item>Teams without DDD literacy. Rich-domain-model rules degrade into "private setters with no behavior," which is anemic with ceremony.</item>
+      </list>
+    </when-not-to-use>
+    <section name="Core Principles">
+      <rule>
+        <statement>Dependency Injection is built-in and mandatory</statement>
+        <rationale>The DI container manages the lifetime and resolution of dependencies. This decouples layers, improves testability, and makes configuration explicit.</rationale>
+      </rule>
+      <rule>
+        <statement>Middleware pipeline processes all requests uniformly</statement>
+        <rationale>Logging, authentication, error handling, and compression are wired once in Program.cs and apply to all routes. Middleware is composable and order-dependent.</rationale>
+      </rule>
+      <rule>
+        <statement>Configuration is environment-based and externalized</statement>
+        <rationale>appsettings.json + environment-specific overrides (appsettings.Development.json) let the same binary run in dev, staging, and production without recompilation.</rationale>
+      </rule>
+      <rule>
+        <statement>Async by default—use async/await everywhere</statement>
+        <rationale>.NET's async/await is lightweight and enables high concurrency. Blocking calls are rare; even I/O is async. This is not a choice but a pattern.</rationale>
+      </rule>
+      <rule>
+        <statement>Domain logic lives in entities and aggregates, not services</statement>
+        <rationale>Rich domain models encapsulate invariants and business rules. Services orchestrate but don't decide; entities decide.</rationale>
+      </rule>
+    </section>
+    <section name="Clean Architecture Overview">
+      <p>Clean Architecture organizes code into concentric layers: Domain (core rules), Application (use cases), Infrastructure (external services), and Presentation (API/UI). Each layer depends inward; outer layers depend on inner layers, not vice versa.</p>
+      <example type="good" title="Clean Architecture Project Structure">
+        <code lang="text"><![CDATA[src/
+├── MyApp.Api/                      # Presentation layer
+│   ├── Controllers/
+│   ├── Filters/
+│   ├── Middleware/
+│   └── Program.cs
+│
+├── MyApp.Application/              # Application layer
+│   ├── Common/
+│   │   ├── Behaviors/
+│   │   ├── Interfaces/
+│   │   └── Mappings/
+│   ├── Users/
+│   │   ├── Commands/
+│   │   ├── Queries/
+│   │   └── EventHandlers/
+│   └── DependencyInjection.cs
+│
+├── MyApp.Domain/                   # Domain layer
+│   ├── Entities/
+│   ├── ValueObjects/
+│   ├── Enums/
+│   ├── Events/
+│   ├── Exceptions/
+│   └── Interfaces/
+│
+├── MyApp.Infrastructure/           # Infrastructure layer
+│   ├── Persistence/
+│   ├── Services/
+│   └── DependencyInjection.cs
+│
+└── tests/
+    ├── MyApp.Application.Tests/
+    ├── MyApp.Domain.Tests/
+    └── MyApp.Api.Tests/]]></code>
+      </example>
+    </section>
+    <section name="Domain Layer">
+      <p>The domain layer contains entities, value objects, and business logic. Entities have identity and mutable state. Value objects are immutable and defined by their attributes. Both enforce domain invariants and publish domain events.</p>
+      <example type="good" title="Base Entity with Domain Events">
+        <code lang="csharp"><![CDATA[// Domain/Entities/BaseEntity.cs
+namespace MyApp.Domain.Entities;
+
+public abstract class BaseEntity
+{
+    public Guid Id { get; protected set; } = Guid.NewGuid();
+    public DateTime CreatedAt { get; protected set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; protected set; } = DateTime.UtcNow;
+
+    private readonly List<IDomainEvent> _domainEvents = new();
+    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+
+    public void AddDomainEvent(IDomainEvent domainEvent)
+    {
+        _domainEvents.Add(domainEvent);
+    }
+
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
+    }
+}]]></code>
+      </example>
+      <example type="good" title="Rich Domain Entity">
+        <code lang="csharp"><![CDATA[// Domain/Entities/User.cs
+namespace MyApp.Domain.Entities;
+
+public class User : BaseEntity
+{
+    public string Name { get; private set; } = string.Empty;
+    public Email Email { get; private set; } = null!;
+    public string PasswordHash { get; private set; } = string.Empty;
+    public UserRole Role { get; private set; }
+    public bool IsActive { get; private set; } = true;
+    public Guid OrganizationId { get; private set; }
+    public Organization Organization { get; private set; } = null!;
+
+    private readonly List<Post> _posts = new();
+    public IReadOnlyCollection<Post> Posts => _posts.AsReadOnly();
+
+    private User() { } // For EF Core
+
+    public static User Create(string name, Email email, string passwordHash, Guid organizationId)
+    {
+        var user = new User
+        {
+            Name = name,
+            Email = email,
+            PasswordHash = passwordHash,
+            OrganizationId = organizationId,
+            Role = UserRole.Member
+        };
+
+        user.AddDomainEvent(new UserCreatedEvent(user.Id, user.Email.Value));
+        return user;
+    }
+
+    public void UpdateProfile(string name, Email email)
+    {
+        Name = name;
+        Email = email;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Promote()
+    {
+        if (Role == UserRole.Admin)
+            throw new DomainException("User is already an admin");
+
+        Role = UserRole.Admin;
+        AddDomainEvent(new UserPromotedEvent(Id));
+    }
+
+    public void Deactivate()
+    {
+        IsActive = false;
+        AddDomainEvent(new UserDeactivatedEvent(Id));
+    }
+}]]></code>
+      </example>
+      <example type="good" title="Value Object with Validation">
+        <code lang="csharp"><![CDATA[// Domain/ValueObjects/Email.cs
+namespace MyApp.Domain.ValueObjects;
+
+public sealed class Email : ValueObject
+{
+    public string Value { get; }
+
+    private Email(string value) => Value = value;
+
+    public static Email Create(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            throw new DomainException("Email cannot be empty");
+
+        if (!IsValidEmail(email))
+            throw new DomainException("Invalid email format");
+
+        return new Email(email.ToLowerInvariant());
+    }
+
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    protected override IEnumerable<object> GetEqualityComponents()
+    {
+        yield return Value;
+    }
+
+    public static implicit operator string(Email email) => email.Value;
+}]]></code>
+      </example>
+    </section>
+    <section name="Application Layer with CQRS and MediatR">
+      <p>The application layer orchestrates domain objects to fulfill use cases. Commands mutate state; queries read state. MediatR dispatches them to handlers. Validators enforce request validity. AutoMapper projects domain objects to DTOs.</p>
+      <example type="good" title="Command with Validation">
+        <code lang="csharp"><![CDATA[// Application/Users/Commands/CreateUser/CreateUserCommand.cs
+namespace MyApp.Application.Users.Commands.CreateUser;
+
+public record CreateUserCommand(
+    string Name,
+    string Email,
+    string Password,
+    Guid OrganizationId
+) : IRequest<Guid>;
+
+public class CreateUserCommandValidator : AbstractValidator<CreateUserCommand>
+{
+    public CreateUserCommandValidator()
+    {
+        RuleFor(x => x.Name)
+            .NotEmpty()
+            .MinimumLength(2)
+            .MaximumLength(100);
+
+        RuleFor(x => x.Email)
+            .NotEmpty()
+            .EmailAddress();
+
+        RuleFor(x => x.Password)
+            .NotEmpty()
+            .MinimumLength(8);
+    }
+}
+
+public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Guid>
+{
+    private readonly IApplicationDbContext _context;
+    private readonly IPasswordHasher _passwordHasher;
+
+    public CreateUserCommandHandler(
+        IApplicationDbContext context,
+        IPasswordHasher passwordHasher)
+    {
+        _context = context;
+        _passwordHasher = passwordHasher;
+    }
+
+    public async Task<Guid> Handle(CreateUserCommand request, CancellationToken cancellationToken)
+    {
+        var email = Email.Create(request.Email);
+
+        var exists = await _context.Users
+            .AnyAsync(u => u.Email == email && u.OrganizationId == request.OrganizationId,
+                     cancellationToken);
+
+        if (exists)
+            throw new ConflictException("User with this email already exists");
+
+        var passwordHash = _passwordHasher.Hash(request.Password);
+
+        var user = User.Create(
+            request.Name,
+            email,
+            passwordHash,
+            request.OrganizationId
+        );
+
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return user.Id;
+    }
+}]]></code>
+      </example>
+      <example type="good" title="Query Handler with Projection">
+        <code lang="csharp"><![CDATA[// Application/Users/Queries/GetUsers/GetUsersQuery.cs
+namespace MyApp.Application.Users.Queries.GetUsers;
+
+public record GetUsersQuery(
+    Guid OrganizationId,
+    string? Search,
+    string? Role,
+    int Page = 1,
+    int PageSize = 20
+) : IRequest<PaginatedList<UserDto>>;
+
+public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, PaginatedList<UserDto>>
+{
+    private readonly IApplicationDbContext _context;
+    private readonly IMapper _mapper;
+
+    public GetUsersQueryHandler(IApplicationDbContext context, IMapper mapper)
+    {
+        _context = context;
+        _mapper = mapper;
+    }
+
+    public async Task<PaginatedList<UserDto>> Handle(
+        GetUsersQuery request,
+        CancellationToken cancellationToken)
+    {
+        var query = _context.Users
+            .AsNoTracking()
+            .Where(u => u.OrganizationId == request.OrganizationId && u.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.ToLower();
+            query = query.Where(u =>
+                u.Name.ToLower().Contains(search) ||
+                u.Email.Value.ToLower().Contains(search));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Role) &&
+            Enum.TryParse<UserRole>(request.Role, true, out var role))
+        {
+            query = query.Where(u => u.Role == role);
+        }
+
+        return await query
+            .OrderByDescending(u => u.CreatedAt)
+            .ProjectTo<UserDto>(_mapper.ConfigurationProvider)
+            .PaginatedListAsync(request.Page, request.PageSize, cancellationToken);
+    }
+}
+
+public record UserDto
+{
+    public Guid Id { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public string Email { get; init; } = string.Empty;
+    public string Role { get; init; } = string.Empty;
+    public bool IsActive { get; init; }
+    public DateTime CreatedAt { get; init; }
+
+    private class Mapping : Profile
+    {
+        public Mapping()
+        {
+            CreateMap<User, UserDto>()
+                .ForMember(d => d.Email, opt => opt.MapFrom(s => s.Email.Value))
+                .ForMember(d => d.Role, opt => opt.MapFrom(s => s.Role.ToString()));
+        }
+    }
+}]]></code>
+      </example>
+    </section>
+    <section name="Infrastructure Layer">
+      <p>The infrastructure layer implements data persistence, external service integration, and technical concerns. DbContext configures the domain model and intercepts SaveChangesAsync to dispatch domain events.</p>
+      <example type="good" title="DbContext with Domain Event Dispatch">
+        <code lang="csharp"><![CDATA[// Infrastructure/Persistence/ApplicationDbContext.cs
+namespace MyApp.Infrastructure.Persistence;
+
+public class ApplicationDbContext : DbContext, IApplicationDbContext
+{
+    private readonly IMediator _mediator;
+
+    public ApplicationDbContext(
+        DbContextOptions<ApplicationDbContext> options,
+        IMediator mediator) : base(options)
+    {
+        _mediator = mediator;
+    }
+
+    public DbSet<User> Users => Set<User>();
+    public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<Post> Posts => Set<Post>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+        base.OnModelCreating(modelBuilder);
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        // Dispatch domain events
+        var entities = ChangeTracker
+            .Entries<BaseEntity>()
+            .Where(e => e.Entity.DomainEvents.Any())
+            .Select(e => e.Entity)
+            .ToList();
+
+        var domainEvents = entities
+            .SelectMany(e => e.DomainEvents)
+            .ToList();
+
+        entities.ForEach(e => e.ClearDomainEvents());
+
+        foreach (var domainEvent in domainEvents)
+        {
+            await _mediator.Publish(domainEvent, cancellationToken);
+        }
+
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+}]]></code>
+      </example>
+      <example type="good" title="Entity Configuration with FluentApi">
+        <code lang="csharp"><![CDATA[// Infrastructure/Persistence/Configurations/UserConfiguration.cs
+namespace MyApp.Infrastructure.Persistence.Configurations;
+
+public class UserConfiguration : IEntityTypeConfiguration<User>
+{
+    public void Configure(EntityTypeBuilder<User> builder)
+    {
+        builder.ToTable("Users");
+
+        builder.HasKey(u => u.Id);
+
+        builder.Property(u => u.Name)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.OwnsOne(u => u.Email, email =>
+        {
+            email.Property(e => e.Value)
+                .HasColumnName("Email")
+                .HasMaxLength(256)
+                .IsRequired();
+
+            email.HasIndex(e => e.Value).IsUnique();
+        });
+
+        builder.Property(u => u.PasswordHash)
+            .HasMaxLength(256)
+            .IsRequired();
+
+        builder.Property(u => u.Role)
+            .HasConversion<string>()
+            .HasMaxLength(50);
+
+        builder.HasOne(u => u.Organization)
+            .WithMany(o => o.Users)
+            .HasForeignKey(u => u.OrganizationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasMany(u => u.Posts)
+            .WithOne(p => p.Author)
+            .HasForeignKey(p => p.AuthorId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(u => new { u.Email, u.OrganizationId });
+    }
+}]]></code>
+      </example>
+    </section>
+    <section name="Presentation Layer (API)">
+      <p>The presentation layer exposes functionality via REST or gRPC endpoints. Controllers or minimal API endpoints deserialize requests, dispatch commands/queries, and format responses. All business logic stays in domain and application layers.</p>
+      <example type="good" title="Controller Using MediatR">
+        <code lang="csharp"><![CDATA[// Api/Controllers/UsersController.cs
+namespace MyApp.Api.Controllers;
+
+[ApiController]
+[Route("api/v1/[controller]")]
+[Authorize]
+public class UsersController : ControllerBase
+{
+    private readonly ISender _mediator;
+
+    public UsersController(ISender mediator)
+    {
+        _mediator = mediator;
+    }
+
+    [HttpGet]
+    [ProducesResponseType(typeof(PaginatedList<UserDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUsers(
+        [FromQuery] string? search,
+        [FromQuery] string? role,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var organizationId = User.GetOrganizationId();
+        var query = new GetUsersQuery(organizationId, search, role, page, pageSize);
+        var result = await _mediator.Send(query, cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreateUser(
+        [FromBody] CreateUserRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var organizationId = User.GetOrganizationId();
+        var command = new CreateUserCommand(
+            request.Name,
+            request.Email,
+            request.Password,
+            organizationId
+        );
+
+        var id = await _mediator.Send(command, cancellationToken);
+        return CreatedAtAction(nameof(GetUser), new { id }, id);
+    }
+}]]></code>
+      </example>
+      <example type="good" title="Minimal API Setup">
+        <code lang="csharp"><![CDATA[// Api/Program.cs (Minimal API alternative)
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+
+var app = builder.Build();
+
+app.MapGet("/api/v1/users", async (
+    ISender mediator,
+    [FromQuery] string? search,
+    [FromQuery] int page = 1,
+    CancellationToken ct = default) =>
+{
+    var query = new GetUsersQuery(search, page);
+    return Results.Ok(await mediator.Send(query, ct));
+});
+
+app.MapPost("/api/v1/users", async (
+    ISender mediator,
+    CreateUserRequest request,
+    CancellationToken ct = default) =>
+{
+    var command = new CreateUserCommand(request.Name, request.Email, request.Password);
+    var id = await mediator.Send(command, ct);
+    return Results.Created($"/api/v1/users/{id}", id);
+});
+
+app.Run();]]></code>
+      </example>
+    </section>
+    <section name="Failure Modes and Limitations">
+      <p>MediatR became commercial (v12+) and requires a paid license for organizations with revenue greater than 1 million dollars (announced 2024). Plan migration to Mediator (source-gen, free) or hand-rolled mediator before adoption in commercial products. AutoMapper also became commercial with the same vendor and license model. The README's ProjectTo examples assume AutoMapper; agents must prefer Mapperly (source-gen, free) or manual mapping.</p>
+      <p>SaveChangesAsync dispatching domain events is racy. Events fire after commit in the README sample but inside the same SaveChangesAsync call—handlers cannot transactionally enlist. Use the Outbox pattern for at-least-once delivery; the README does not show this.</p>
+      <p>Owned types (OwnsOne for value objects) leak into queries. EF Core 8 partially fixed this; EF Core 6 and 7 generate 2x JOINs and break AsNoTracking projections. Verify the generated SQL before shipping.</p>
+      <p>Controller bloat returns. Teams move logic out of controllers into commands but keep DTO mapping, auth, and header parsing inline—controllers grow back. Enforce a controller-line-count budget.</p>
+      <p>Pipeline ordering is invisible. IPipelineBehavior registration order depends on DI registration order; mis-registration silently disables validation. Static composition root plus tests for ordering are required.</p>
+      <p>Minimal API plus MediatR loses OpenAPI metadata that controllers get for free. Teams discover this when integrating Swagger UI or NSwag.</p>
+    </section>
+    <section name="Agentic Workflow for .NET Architecture">
+      <p>Drive .NET pattern application as a four-pass pipeline. (1) A structure agent verifies the four-project split exists, creates missing projects, and wires DependencyInjection.cs per layer. (2) A feature-slice agent generates Command/CommandHandler/Validator/Query/QueryHandler/DTO/Controller for one vertical (e.g., Users). (3) An EF agent emits IEntityTypeConfiguration&lt;T&gt; and migrations. (4) An anti-pattern review agent runs the anti-patterns checklist: entity returned from controller, public setters on aggregates, business logic in services. Persist the per-feature inventory in a living document (dotnet-features.md). Use SDD executor to drive each vertical slice as one task.</p>
+      <p>Recommended subagents: SDD executor with Opus model (Clean Architecture decisions about where code lives are non-trivial). Password-scrubber to scan appsettings and seed data for leaked connection strings, JWT keys, Azure resource IDs. A purpose-built dotnet-clean-arch-lint agent: grep-based linter for canonical anti-patterns (controller returns Task&lt;User&gt; instead of Task&lt;UserDto&gt;, aggregate with public set, domain project referencing EF Core, application project referencing AspNetCore). Pair with sibling csharp-entity-framework methodology for EF Core changes; gate migration generation behind human review. Code-review agent reading `dotnet build /warnaserror` output—nullable reference type warnings are signal-rich and agents miss them.</p>
+    </section>
+    <section name="Anti-Patterns">
+      <antipattern>
+        <description>Anemic domain model: entities are data containers; logic lives in services</description>
+        <reason>Logic scatters across services, making invariants hard to reason about. Multiple services may mutate the same entity inconsistently. Domain rules leak into application and presentation layers.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Exposing domain entities directly in API responses</description>
+        <reason>API becomes tightly coupled to the domain schema. Changing the domain (adding a field, renaming a property) breaks all clients. It also exposes internal state that shouldn't be visible.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Synchronous request/response for all operations</description>
+        <reason>Long-running operations block the request thread. Use async/await and consider background jobs for heavy work.</reason>
+      </antipattern>
+      <antipattern>
+        <description>No validation at the boundary</description>
+        <reason>Invalid data reaches the domain, requiring defensive coding everywhere. Validators in handlers catch invalid requests early and return 400 Bad Request.</reason>
+      </antipattern>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Keep domain layer pure: no dependencies on infrastructure, application, or presentation.</item>
+        <item>Use value objects to model domain concepts (Email, PhoneNumber, Money) instead of primitives.</item>
+        <item>Publish domain events from entities; let application handlers react asynchronously.</item>
+        <item>Use FluentValidation for request validation; fail fast at the boundary.</item>
+        <item>Use AutoMapper to project domain entities to DTOs; never expose entities.</item>
+        <item>Use records for DTOs and commands; they are immutable by convention.</item>
+        <item>Leverage EF Core's shadow properties and owned entities for rich domain modeling.</item>
+        <item>Use CancellationToken throughout the async chain; respect cancellation requests.</item>
+        <item>Make all I/O async; even reading from memory can be deferred with async patterns.</item>
+        <item>Use IApplicationDbContext interface for testability; mock or use InMemory provider in tests.</item>
+      </list>
+    </section>
+    <checklist>
+      <check>Domain layer has no external dependencies (HTTP, DB, file system).</check>
+      <check>Entities enforce business invariants in their methods.</check>
+      <check>Value objects are immutable and compared by value.</check>
+      <check>All handlers in Application layer are async.</check>
+      <check>Commands return void or a simple ID; never domain objects.</check>
+      <check>Queries return DTOs, not domain entities.</check>
+      <check>Validators run before handlers, returning validation errors.</check>
+      <check>DbContext uses FluentAPI or DataAnnotations to configure mappings.</check>
+      <check>Domain events are published from entities and handled asynchronously.</check>
+      <check>API layer returns DTOs only, never domain entities.</check>
+      <check>Program.cs wires up DI, logging, and middleware in correct order.</check>
+      <check>All async methods use CancellationToken.</check>
+      <check>Per-layer DependencyInjection.cs extension methods (AddApplication, AddInfrastructure, AddInfrastructure) keep Program.cs short.</check>
+      <check>IApplicationDbContext interface in Application; concrete ApplicationDbContext in Infrastructure.</check>
+      <check>Owned types (value objects) properly configured with OwnsOne; SQL output verified for JOIN explosion.</check>
+      <check>Pagination applied inside query handlers; IQueryable not exposed from Application.</check>
+      <check>Pipeline behaviors tested for correct ordering: Logging → Validation → Authorization → UnitOfWork → Caching → Handler.</check>
+      <check>One DTO per query (no shared DTOs across endpoints).</check>
+      <check>AsNoTracking() on all read queries by default.</check>
+      <check>Source-gen enabled for Mapperly, Mediator, System.Text.Json.</check>
+    </checklist>
+    <section name="Tools and CLIs">
+      <p>The dotnet SDK provides project create, build, test, and EF migrations. dotnet ef enables EF Core migrations, scaffolding, and database updates. Jason Taylor's Clean Architecture template (dotnet new clean-architecture) scaffolds a four-project solution. Ardalis variant offers different layer naming. dotnet format enforces code style via .editorconfig. dotnet test with coverlet.collector collects coverage. dotnet outdated finds stale NuGet references. Microsoft.OpenApi.OData and Swashbuckle generate OpenAPI specs. Aspire enables cloud-native composition for Clean Architecture services. dotnet-counters and dotnet-trace profile runtime performance.</p>
+    </section>
+    <section name="Services and Libraries for .NET">
+      <p>MediatR (now commercial, verify license) is the reference command/query mediator. Mediator (OSS, MIT) is a free alternative with source-gen handler resolution. Mapperly (OSS, Apache-2.0) is a free AutoMapper alternative via source-gen. FluentValidation chains validators as MediatR pipeline behaviors. Serilog with Seq provides structured logging. OpenTelemetry .NET replaces Application Insights SDK in OTel-first organizations. Azure App Service and Container Apps are default deploy targets with scriptable `az` CLI. AWS Lambda plus API Gateway have cold-start tax but work for containerized deployments. Refit and Flurl provide typed HTTP clients for IXService injection. MassTransit and Wolverine add bus, saga, and outbox layers for cross-aggregate work. EF Core with Postgres or SQL Server is the default Infrastructure persistence. xUnit, FluentAssertions, and Testcontainers form the standard test stack. BenchmarkDotNet is required for any "this is fast" claim.</p>
+    </section>
+    <section name="Best Practices Summary">
+      <list>
+        <item>Composition root in Program.cs only. Per-layer DependencyInjection.cs extension methods (AddApplication, AddInfrastructure) keep Program.cs short.</item>
+        <item>IRequest&lt;TResponse&gt; is your contract. Reading any handler signature tells the full input/output schema. Never read HttpContext in handlers.</item>
+        <item>Domain events live on the aggregate in factory methods. Dispatched in SaveChangesAsync, but use Outbox table for at-least-once semantics.</item>
+        <item>EF Core in Infrastructure only. IApplicationDbContext interface in Application, concrete ApplicationDbContext in Infrastructure.</item>
+        <item>Result&lt;T&gt; over exceptions for expected failures. DomainException is fine for invariant violations; "user not found" return Result.NotFound().</item>
+        <item>Pipeline behaviors in known order: Logging → Validation → Authorization → UnitOfWork → Caching → Handler. Test the ordering.</item>
+        <item>One DTO per query, no shared DTOs. GetUsersListItemDto and GetUserDetailDto are two types even if 80% overlap.</item>
+        <item>AsNoTracking() by default in queries. Tracking on read paths is the number-one EF Core performance pitfall.</item>
+        <item>Never expose IQueryable&lt;T&gt; from Application. Apply paging and projection inside handlers; return materialized DTOs.</item>
+        <item>Source-gen everything: Mapperly for mapping, Mediator for the bus, System.Text.Json for serialization. Cuts cold-start.</item>
+      </list>
+    </section>
+    <section name="Prompt Patterns for .NET Agents">
+      <p>Vertical-slice generation: You are a .NET architect implementing one feature slice in Clean Architecture (Api/Application/Domain/Infrastructure). Given the entity with fields, generate: Domain/Entities/&lt;Entity&gt;.cs (rich model, private setters, factory method, domain events); Application/&lt;Entity&gt;s/Commands/Create&lt;Entity&gt;/* (Command record, Validator, Handler); Application/&lt;Entity&gt;s/Queries/Get&lt;Entity&gt;s/* (Query record, Handler, Dto with AutoMapper Profile); Api/Controllers/&lt;Entity&gt;sController.cs. Use IRequest from MediatR. No public setters. Handler returns Guid for Create, Dto for Get. No EF Core types in Domain/Application.</p>
+      <p>Anti-pattern review: You are reviewing a PR in Clean Architecture. Flag: (1) controller method whose return type is a Domain entity instead of a Dto; (2) aggregate with public set (except Id); (3) Domain/ project referencing EntityFrameworkCore or AspNetCore; (4) services.AddScoped&lt;UserService&gt; with business logic that should live on the aggregate; (5) Command without FluentValidation Validator. Cite file:line. Do not fix.</p>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <antipattern>
+        <description>MediatR and AutoMapper hallucinations: agents emit code against old API versions</description>
+        <reason>Agents use APIs from MediatR v9, AutoMapper v10. Both are now commercial. Pin versions in the prompt and reject IRequestPostProcessor. Better: specify which library (MediatR vs Mediator vs Wolverine)—they have incompatible APIs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Anemic-domain regression when asked to add behavior</description>
+        <reason>Agents produce UserService.Promote(user) instead of user.Promote(). Constrain with structured output: where_does_this_live: aggregate|service|handler and reject service for state-transition logic.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Public setters return despite CQRS patterns</description>
+        <reason>Code-gen agents emit `public string Name { get; set; }` because that's the training-data norm. Force `private set;` via prompt example; lint catches the rest.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Controllers with business logic inline</description>
+        <reason>Agents inline auth checks, mapping, and calls into controller actions. Always require: action signature → mediator.Send → return. Nothing else.</reason>
+      </antipattern>
+      <antipattern>
+        <description>EF Core entities leak into API responses</description>
+        <reason>Agents return entities to skip the DTO step. Always pair the controller change with Dto, AutoMapper Profile, and Query handler; reject PRs without them.</reason>
+      </antipattern>
+    </section>
+    <see-also>
+      <ref slug="continuous-delivery"/>
+      <ref slug="cqrs-pattern"/>
+      <link href="https://docs.microsoft.com/aspnet/core"/>
+      <link href="https://github.com/jasontaylordev/CleanArchitecture"/>
+      <link href="https://github.com/jbogard/MediatR"/>
+      <link href="https://docs.fluentvalidation.net/"/>
+      <link href="https://mapperly.riok.app"/>
+      <link href="https://github.com/martinothamar/Mediator"/>
+      <link href="https://wolverinefx.net"/>
+    </see-also>
+  </content>
+</methodology>
