@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="internationalization">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Externalize strings to ICU MessageFormat keys, route dates/numbers/currency through locale-aware APIs, use logical CSS for RTL, and validate key drift in CI per locale.</summary>
+    <tags>
+      <tag>i18n</tag>
+      <tag>localization</tag>
+      <tag>rtl</tag>
+      <tag>icu-messageformat</tag>
+      <tag>multi-locale</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Internationalization (i18n)</title>
+
+    <summary>Extract user-facing strings to ICU MessageFormat keys, format dates/numbers/currency through locale-aware APIs (Intl/Babel), use logical CSS properties for RTL support, and validate key drift in CI. Sync with a Translation Management System (TMS) like Lokalise or Crowdin for team translation workflows.</summary>
+
+    <why>
+      <p>Hardcoded strings, manual date formatting, and physical CSS (margin-left) silently break when adding a second locale. ICU MessageFormat handles plurals, gender, and select clauses that gettext-style _n() cannot express cleanly. Catching key drift in CI (diff of key paths) costs one bash script; fixing production translation gaps costs days.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Externalizing hardcoded strings in an existing single-locale codebase (Python/FastAPI, Django, React/Next, Vue, mobile).</item>
+        <item>Adding a second/third locale (especially RTL) and needing to scan layouts for physical CSS properties, fixed widths, hardcoded date/number formats.</item>
+        <item>Generating ICU MessageFormat plural/select rules for a target locale (Slavic/Arabic plurals are agent-trap territory).</item>
+        <item>Extracting messages, syncing with a TMS (Lokalise/Crowdin/Phrase/Tolgee), and merging back into the repo.</item>
+        <item>Bootstrapping pybabel, i18next, react-intl, or next-intl configuration end-to-end.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>True one-locale-forever apps (internal admin tools, regulated single-market products) — the i18n tax outweighs the value.</item>
+        <item>For copywriting/localization quality. Agents extract and wire keys; native human translators decide tone, register, dialect.</item>
+        <item>For legal/medical/financial copy in regulated markets — those need certified translators, not LLM output.</item>
+        <item>For RTL bidirectional text rendering bugs in libraries — agents can flag them but fixing requires Unicode BIDI expertise.</item>
+        <item>When the project uses a proprietary framework with no public message-extraction tooling.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="string-externalization">
+      <p>Key naming conventions (dotted), ICU MessageFormat plurals/select, Python Babel setup, FastAPI locale middleware.</p>
+      <rule testable="true">
+        <statement>Use stable dotted keys (feature.surface.intent) for all user-facing strings; never auto-generate hash keys or use the EN string as the key.</statement>
+        <rationale>Stable keys survive copy edits; hash keys change when content changes, invalidating all translations. String-as-key forces re-translation on wording tweaks.</rationale>
+      </rule>
+      <example type="bad" title="Hash key antipattern">
+        <code lang="json"><![CDATA[
+{ "3f4a9b": "Submit order" }
+        ]]></code>
+      </example>
+      <example type="good" title="Stable dotted key convention">
+        <code lang="json"><![CDATA[
+{ "checkout.order_summary.submit_cta": "Submit order" }
+        ]]></code>
+      </example>
+      <rule testable="true">
+        <statement>Use ICU MessageFormat for all plurals and gender/select — never gettext-style ngettext for new code; emit all CLDR-required plural categories for the target locale.</statement>
+        <rationale>EN has only one/other; Ukrainian requires one/few/many/other; Arabic requires zero/one/two/few/many/other. Missing categories produce wrong strings for specific numbers.</rationale>
+      </rule>
+      <example type="good" title="ICU plural rules for multiple locales">
+        <code lang="json"><![CDATA[
+{
+  "app.items.en": "{count, plural, =0 {No items} one {# item} other {# items}}",
+  "app.items.uk": "{count, plural, =0 {Немає} one {# елемент} few {# елементи} many {# елементів} other {# елементів}}"
+}
+        ]]></code>
+      </example>
+      <antipattern>
+        <description>Emitting only one/other plural categories for Ukrainian, Polish, Russian, or Arabic.</description>
+        <reason>These languages require additional CLDR plural categories; emitting only one/other produces grammatically wrong strings for numbers like 2, 3, 11, 21.</reason>
+      </antipattern>
+      <rule testable="true">
+        <statement>Use pybabel extract to pull strings into messages.pot; compile to binary .mo files before deployment — gettext only reads compiled catalogues.</statement>
+        <rationale>Shipping uncompiled .po files means the translation layer silently falls back to EN; the compile step must be part of the build, not manual.</rationale>
+      </rule>
+      <example type="good" title="Python Babel workflow">
+        <code lang="bash"><![CDATA[
+pybabel extract -F babel.cfg -o locales/messages.pot .
+pybabel update -i locales/messages.pot -d locales
+pybabel compile -d locales
+        ]]></code>
+      </example>
+      <rule testable="true">
+        <statement>Detect locale from request in priority order: query param, Accept-Language header, user preference; store in a ContextVar so all downstream code reads the correct locale without passing it explicitly.</statement>
+        <rationale>Passing locale as a function parameter through every layer is fragile and verbose; ContextVar provides an implicit request-scoped locale that is safe for async frameworks.</rationale>
+      </rule>
+    </section>
+
+    <section name="formatting-and-rtl">
+      <p>Locale-aware date/number/currency formatting, logical CSS properties, RTL detection in React.</p>
+      <rule testable="true">
+        <statement>Always format dates, numbers, and currencies through Intl.DateTimeFormat / Intl.NumberFormat (JS) or babel.dates / babel.numbers (Python) — never via string concatenation or manual separator insertion.</statement>
+        <rationale>Decimal separators differ (1,000 US vs 1.000 DE vs 1 000 FR vs ١٬٠٠٠ AR); calendar systems differ (Gregorian vs Hijri). Manual formatting produces wrong output for non-EN locales.</rationale>
+      </rule>
+      <example type="bad" title="Manual string formatting (locale-unsafe)">
+        <code lang="python"><![CDATA[
+f"${amount:.2f}"  # always US format
+        ]]></code>
+      </example>
+      <example type="good" title="Babel locale-aware formatting">
+        <code lang="python"><![CDATA[
+from babel.numbers import format_currency
+format_currency(amount, "USD", locale="en_US")  # $1,234.56
+format_currency(amount, "EUR", locale="de_DE")  # 1.234,56 €
+format_currency(amount, "UAH", locale="uk_UA")  # 1 234,56 ₴
+        ]]></code>
+      </example>
+      <rule testable="true">
+        <statement>Use logical CSS properties (margin-inline-start, padding-block, text-align: start, border-inline-start) instead of physical properties (margin-left, padding-top, text-align: left) in all new UI components.</statement>
+        <rationale>Physical properties do not flip for RTL languages; logical properties automatically map to the correct physical direction based on writing-mode and dir attributes.</rationale>
+      </rule>
+      <example type="bad" title="Physical CSS (RTL-unsafe)">
+        <code lang="css"><![CDATA[
+.card { margin-left: 1rem; text-align: left; }
+        ]]></code>
+      </example>
+      <example type="good" title="Logical CSS properties">
+        <code lang="css"><![CDATA[
+.card { margin-inline-start: 1rem; text-align: start; }
+        ]]></code>
+      </example>
+      <rule testable="true">
+        <statement>Set dir="rtl" at the root element for RTL locales; use dir="ltr" on code blocks, phone numbers, and other LTR-only content within RTL pages.</statement>
+        <rationale>Without dir="ltr" on code blocks, browsers apply RTL text layout to code, mangling indentation and operator reading order.</rationale>
+      </rule>
+      <example type="good" title="RTL detection and dir attribute">
+        <code lang="tsx"><![CDATA[
+const isRTL = ['ar', 'he', 'fa'].includes(locale);
+return <div dir={isRTL ? 'rtl' : 'ltr'}>{children}</div>;
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="workflow-and-validation">
+      <p>Extract-TMS-sync-validate CI cycle, key-drift check, and translator context requirements.</p>
+      <rule testable="true">
+        <statement>Treat the EN catalogue as the source of truth; push only EN to the TMS and pull only translations back — never allow the TMS to overwrite EN entries.</statement>
+        <rationale>Bidirectional sync can clobber human-reviewed EN copy with TMS auto-suggestions. One-directional push preserves EN as the authoritative source.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Fail the build if any locale's key set differs from EN; check that ICU placeholder names match exactly across all locales.</statement>
+        <rationale>A missing key silently falls back to EN; a renamed placeholder ({userName} vs {ім'яКористувача}) produces a broken string with the literal placeholder name visible.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Provide a description or @context comment for every ambiguous string; include a screenshot or UI description — "Open" as a verb and "Open" as an adjective translate differently in most languages.</statement>
+        <rationale>Context-free strings cause polysemy errors. For "Open" in Japanese, the wrong word choice is over 50% likely without UI context.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Run pseudo-localization (replace characters with accented variants like Hello → Ḫèĺĺō) during development to surface unwrapped strings, fixed widths, and RTL bleeds before real translation.</statement>
+        <rationale>Pseudo-localization catches i18n gaps cheaply in dev; real translation is expensive and slow. Finding a hardcoded string in pseudo-locale review costs minutes; finding it post-launch costs weeks.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p>Common failure modes and agent pitfalls in i18n work.</p>
+      <rule testable="true">
+        <statement>LLM translation quality is non-uniform: strong on EN/ES/DE/FR/UK, weak on low-resource locales (Hausa, Tagalog, Khmer).</statement>
+        <rationale>For low-resource locales, professional human translation is essential; LLM output is unreliable.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Plural rules: LLMs often emit only one/other and miss few/many/two for Slavic, Arabic, Welsh.</statement>
+        <rationale>CLDR plural categories must be verified against official rules; LLMs hallucinate category completeness.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Context loss: same EN string ("Open") reused as verb and adjective will be mistranslated without screenshots / @context comments.</statement>
+        <rationale>Polysemy requires context; isolated strings produce wrong translations 50%+ of the time.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Concatenation refactors: agents may turn "Hello " + name into f"Hello {name}" instead of an ICU template — they must use {name} placeholders inside the message string.</statement>
+        <rationale>String interpolation at the call site prevents translators from reordering words for grammar; ICU templates allow word order changes.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>RTL: agents tend to flip layouts globally instead of relying on logical CSS properties; can break LTR rendering.</statement>
+        <rationale>Logical CSS handles bidirectional automatically; manual flips break LTR content like code blocks.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Date/number formatting: agents fall back to toLocaleString() without specifying calendar, numbering system, or hourCycle.</statement>
+        <rationale>Explicit Intl options ensure consistent formatting across browsers and prevent ambiguous dates.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Key collisions across modules when no namespace convention exists.</statement>
+        <rationale>Dotted keys (feature.surface.intent) prevent collisions and enable modular key management.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-integration">
+      <p>Agentic workflow for i18n adoption and maintenance.</p>
+      <p>Run a two-pass agent: pass 1 extracts strings into messages with stable, dotted keys (e.g. checkout.cta.pay_now) and inserts placeholders/ICU; pass 2 validates that no placeholders were dropped, plural rules cover the target locales, and dates/numbers route through Intl/Babel formatters. Sync to a TMS via its CLI/API, let humans translate, then pull back and run a build that fails on missing keys. Always check a snapshot of the rendered UI in each locale (Storybook, Percy, Playwright screenshots) — agents cannot judge truncation.</p>
+      <rule testable="true">
+        <statement>Two-pass agent workflow: pass 1 extracts and externalizes strings; pass 2 validates plural categories, placeholder matching, and Intl usage.</statement>
+        <rationale>Separation of concerns reduces risk; each pass can be reviewed and tested independently.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <p>Proven patterns for i18n adoption and maintenance.</p>
+      <rule testable="true">
+        <statement>Use ICU MessageFormat from day one — gettext-style _n cannot express gender/select cleanly.</statement>
+        <rationale>ICU is strictly more expressive; starting with it avoids costly migration later.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Stable dotted keys (feature.surface.intent) survive copy edits; auto-generated hash keys do not.</statement>
+        <rationale>Copy changes invalidate hash-based keys; stable keys preserve translation investment.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Reserve 30-50% layout headroom — DE/RU/UK strings expand significantly vs EN.</statement>
+        <rationale>Fixed widths break on expansion; flexbox with headroom prevents truncation.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use logical CSS properties (margin-inline-start, padding-block) and dir="auto" on neutral content; gate manual overrides behind [dir="rtl"].</statement>
+        <rationale>Logical properties are future-proof; manual overrides are fragile and hard to test.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Format dates/numbers/currency through Intl (JS) or Babel (Python), never manual string concat — locale-specific separators differ.</statement>
+        <rationale>Intl handles all formatting edge cases; manual concatenation is error-prone.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Treat the EN catalogue as source of truth, version it in Git, and make the TMS a one-way sync target except for translations.</statement>
+        <rationale>EN is the reference; TMS is a delivery channel. One-way sync prevents confusion and clobbering.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Validate on every PR: every key in EN exists in every shipped locale; ICU placeholders match across locales.</statement>
+        <rationale>Build-time validation catches drift before users see broken strings.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/check-i18n.sh" purpose="CI script that diffs EN key paths against every shipped locale and fails on drift."/>
+      <template path="templates/extract-push.sh" purpose="i18next-parser extract + Lokalise push/pull cycle for TS/React projects."/>
+    </templates>
+
+    <see-also>
+      <link href="https://cldr.unicode.org/index/cldr-spec/plural-rules">Unicode CLDR plural rules</link>
+      <link href="https://unicode-org.github.io/icu/userguide/format_parse/messages/">ICU Message Format specification</link>
+      <link href="https://babel.pocoo.org/">Babel (Python i18n) documentation</link>
+      <link href="https://formatjs.io/docs/react-intl/">FormatJS / react-intl documentation</link>
+      <link href="https://www.i18next.com/">i18next framework</link>
+      <link href="https://next-intl.dev/">next-intl for Next.js</link>
+      <link href="https://www.w3.org/International/">W3C Internationalization checker</link>
+      <link href="https://projectfluent.org/">Mozilla Project Fluent (alternative to ICU)</link>
+    </see-also>
+  </content>
+</methodology>
