@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="finops">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Cloud cost management cycle (Inform → Optimize → Operate). FinOps achieves 10-20x ROI by making costs visible, eliminating waste, and optimizing commitments.</summary>
+    <tags>
+      <tag>finops</tag>
+      <tag>cloud-cost</tag>
+      <tag>aws</tag>
+      <tag>gcp</tag>
+      <tag>tagging</tag>
+    </tags>
+    <category>finops</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>FinOps</title>
+    <summary>Cloud Financial Operations: the Inform → Optimize → Operate cycle for cloud cost management. Organizations waste 32% of cloud spend (~$200B/year globally). FinOps teams achieve 10-20x ROI within 30-60 days by making cost visible (tagging), eliminating waste (rightsizing, idle resources), and committing (Savings Plans/Reserved Instances).</summary>
+    <why>
+      <p>Cloud bills grow unchecked without ownership. FinOps assigns cost accountability to engineering teams via mandatory tags (Environment, Owner, Project, CostCenter), automated anomaly detection, and per-team budget alerts. AI/ML workloads are a special case: GPU costs are 5-10x standard compute, requiring checkpointing + spot instances for training and batching/caching for inference.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Cloud monthly spend exceeds $10k and cost attribution is unclear</item>
+        <item>Engineering teams have no visibility into their own cloud costs</item>
+        <item>Preparing Savings Plan or Reserved Instance purchases (need 30+ days baseline)</item>
+        <item>Rightsizing instances where avg CPU is below 20% or memory below 30%</item>
+        <item>AI/ML training workloads where GPU instances run on-demand without checkpointing</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pre-production environments with no steady-state usage patterns — optimization signal is noisy</item>
+        <item>When cost data is less than 30 days old — too early for commitment recommendations</item>
+        <item>As a substitute for architecture decisions (e.g., using FinOps to offset a fundamentally overprovisioned design)</item>
+      </list>
+    </when-not-to-use>
+    <section name="phase-1-inform">
+      <p>Enable billing exports (AWS CUR, GCP BigQuery, Azure Cost Management) with daily refresh. Target &gt;90% tag coverage for cost attribution.</p>
+      <rule>
+        <statement>Enable billing exports (AWS CUR, GCP BigQuery, Azure Cost Management) with daily refresh. Target &gt;90% tag coverage for cost attribution.</statement>
+        <rationale>You cannot optimize what you cannot see. 100% tag coverage is unrealistic due to untaggable resources; 90%+ is the mature target.</rationale>
+      </rule>
+      <rule>
+        <statement>Mandatory tags: Environment, Owner, Project, CostCenter. Enforce via SCP/Policy to block untagged resource creation.</statement>
+        <rationale>Four tags enable attribution by env, person, product, and finance. SCPs prevent drift by requiring tags at creation time, not retroactively.</rationale>
+      </rule>
+    </section>
+    <section name="phase-2-optimize">
+      <p>Expected savings by strategy (2025 benchmarks):</p>
+      <list>
+        <item>Rightsizing — 15-30%</item>
+        <item>Spot/Preemptible instances — 70-90%</item>
+        <item>Reserved Instances / Savings Plans — 30-60%</item>
+        <item>Storage lifecycle policies — 20-40%</item>
+        <item>Idle resource termination — 10-25%</item>
+      </list>
+      <rule>
+        <statement>Purchase Savings Plans only after 30+ days of usage data. Commit to 80% of baseline usage to maintain flexibility.</statement>
+        <rationale>Committing to more than baseline usage results in unused commitments (negative ROI). 80% baseline leaves 20% buffer for workload changes.</rationale>
+      </rule>
+    </section>
+    <section name="phase-3-operate">
+      <rule>
+        <statement>Set budget alerts at 50%, 80%, 100%, and 120% thresholds. Include a forecasted-overage alert at 100%.</statement>
+        <rationale>Multi-threshold alerts give teams early warning (50%) and escalation path (100%+). Forecasted alerts enable proactive action before the month ends.</rationale>
+      </rule>
+      <rule>
+        <statement>Conduct weekly cost reviews at team level and monthly reviews with optimization action items and savings tracking.</statement>
+        <rationale>Weekly cadence keeps cost accountability active; monthly review measures ROI and adjusts targets.</rationale>
+      </rule>
+    </section>
+    <section name="ai-ml-cost-optimization">
+      <rule>
+        <statement>For training jobs: use Spot instances with checkpoint-based restart. Checkpoint every 100-500 steps to S3/GCS.</statement>
+        <rationale>Spot instances cost 70-90% less than on-demand. Checkpointing ensures a spot interruption loses at most one checkpoint interval of work.</rationale>
+      </rule>
+      <example type="good" title="Training loop with S3 checkpointing">
+        <code lang="python"><![CDATA[
+# Training loop with S3 checkpointing
+def train_with_checkpoints(model, optimizer, dataloader, checkpoint_interval=100):
+    for epoch in range(num_epochs):
+        for step, batch in enumerate(dataloader):
+            # ... training logic ...
+            if step % checkpoint_interval == 0:
+                torch.save({
+                    'epoch': epoch, 'step': step,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                }, f's3://checkpoints/model_{epoch}_{step}.pt')
+]]></code>
+      </example>
+      <rule>
+        <statement>For inference: implement response caching (20-60% savings) and request batching. Evaluate model quantization (50% cost, 2x speed).</statement>
+        <rationale>Inference at scale is dominated by repeated identical requests and underutilized GPU batch capacity.</rationale>
+      </rule>
+    </section>
+    <section name="finops-implementation-checklist">
+      <p>Ordered checklist for implementing FinOps Inform, Optimize, and Operate phases.</p>
+      <section name="inform-phase">
+        <rule>
+          <statement>Enable detailed billing exports with daily refresh before starting any optimization work.</statement>
+          <rationale>Optimization decisions made without current data cause savings estimates to be wrong and commitments to be over-purchased.</rationale>
+        </rule>
+        <list>
+          <item>Enable AWS CUR / GCP BigQuery export / Azure Cost Management export</item>
+          <item>Define mandatory tag schema: Environment, Owner, Project, CostCenter</item>
+          <item>Implement tag enforcement policies (SCP/Policy) to block untagged launches</item>
+          <item>Create untagged resource report and assign remediation owners</item>
+          <item>Enable cloud-native anomaly detection with Slack/email routing</item>
+          <item>Build team-level cost dashboards with daily/weekly reports</item>
+          <item>Target &gt;80% tag coverage initially; &gt;90% at mature stage</item>
+        </list>
+      </section>
+      <section name="optimize-phase">
+        <list>
+          <item>Run weekly rightsizing analysis: flag instances with avg CPU &lt;20% or memory &lt;30%</item>
+          <item>Identify idle instances (&gt;7 days &lt;5% CPU): schedule termination or stop</item>
+          <item>Implement auto-shutdown tags for non-production resources</item>
+          <item>Analyze 30+ days of usage before purchasing Savings Plans or Reserved Instances</item>
+          <item>Delete orphaned snapshots, unattached EBS volumes, unused Elastic IPs</item>
+          <item>Implement S3 lifecycle policies: Standard-IA at 30d, Glacier at 90d, Deep Archive at 365d</item>
+          <item>For AI/ML training: migrate on-demand GPU to Spot with checkpointing</item>
+          <item>For AI/ML inference: implement caching and batching before scaling GPU instances</item>
+        </list>
+      </section>
+      <section name="operate-phase">
+        <rule>
+          <statement>Establish per-team budgets with 50/80/100/120% alerts and a forecasted-overage alert. Review forecast accuracy monthly.</statement>
+          <rationale>Teams that never see their costs have no incentive to optimize. Multi-threshold alerts create early warning before budgets are blown.</rationale>
+        </rule>
+        <list>
+          <item>Set monthly/quarterly budgets per team and environment</item>
+          <item>Configure budget alerts at 50%, 80%, 100%, 120% thresholds</item>
+          <item>Add forecasted-overage alert at 100% (fires before month end)</item>
+          <item>Conduct monthly cost reviews with action items and savings tracking</item>
+          <item>Track cost per unit of work (cost per 100k tokens, cost per transaction)</item>
+          <item>Automate tagging remediation for new untagged resources</item>
+        </list>
+      </section>
+      <section name="maturity-levels">
+        <list>
+          <item>Crawl: basic visibility, initial tagging, manual reviews, reactive</item>
+          <item>Walk: &gt;80% tags, regular reviews, some automation, proactive rightsizing</item>
+          <item>Run: &gt;90% tags, automated optimization, real-time visibility, cost-aware culture</item>
+        </list>
+      </section>
+    </section>
+    <section name="implementation-examples">
+      <section name="idle-instance-detection">
+        <example type="good" title="Find idle EC2 instances">
+          <code lang="bash"><![CDATA[
+#!/bin/bash
+# Find idle EC2 instances: avg CPU < 5% over 7 days
+INSTANCES=$(aws ec2 describe-instances \
+  --filters "Name=instance-state-name,Values=running" \
+  --query "Reservations[].Instances[].InstanceId" --output text)
+
+for INSTANCE_ID in $INSTANCES; do
+  AVG_CPU=$(aws cloudwatch get-metric-statistics \
+    --namespace AWS/EC2 --metric-name CPUUtilization \
+    --dimensions Name=InstanceId,Value=$INSTANCE_ID \
+    --start-time $(date -d '7 days ago' --iso-8601=seconds) \
+    --end-time $(date --iso-8601=seconds) \
+    --period 86400 --statistics Average \
+    --query 'Datapoints[].Average | avg(@)' --output text)
+
+  if (( $(echo "$AVG_CPU < 5" | bc -l) )); then
+    echo "IDLE: $INSTANCE_ID (Avg CPU: $AVG_CPU%)"
+  fi
+done
+]]></code>
+          <note>Run weekly; pipe output to a Jira ticket or Slack alert for owner assignment.</note>
+        </example>
+      </section>
+      <section name="savings-plan-calculation">
+        <p>Example: $100k/month on EC2 on-demand. Usage pattern: 60% steady baseline, 25% predictable peaks, 15% variable.</p>
+        <example type="good" title="Savings plan pricing example">
+          <code lang="text"><![CDATA[
+Baseline (60%):   $60,000 * 0.66 (34% discount) = $39,600
+Predictable (25%): $25,000 * 0.62 (38% discount) = $15,500
+Variable (15%):   $15,000 * 1.00 (on-demand)    = $15,000
+-----------------------------------------------------------
+New monthly cost:  $70,100
+Monthly savings:   $29,900 (29.9%)
+Annual savings:    $358,800
+]]></code>
+          <note>Use Compute Savings Plans (region-flexible) for baseline, EC2 Instance SP for predictable peaks.</note>
+        </example>
+      </section>
+      <section name="s3-lifecycle-optimization">
+        <example type="good" title="Tiered S3 storage configuration">
+          <code lang="json"><![CDATA[
+{
+  "Rules": [{
+    "ID": "tiered-storage",
+    "Status": "Enabled",
+    "Filter": {},
+    "Transitions": [
+      { "Days": 30,  "StorageClass": "STANDARD_IA" },
+      { "Days": 90,  "StorageClass": "GLACIER_IR" },
+      { "Days": 365, "StorageClass": "DEEP_ARCHIVE" }
+    ]
+  }]
+}
+]]></code>
+          <note>For 50TB: Standard $1,150/mo → $487/mo after tiering (58% reduction)</note>
+        </example>
+      </section>
+      <section name="scp-for-budget-governance">
+        <rule>
+          <statement>Use AWS Organizations SCPs to require mandatory tags at resource creation time and deny expensive instance families without approval.</statement>
+          <rationale>SCPs prevent untagged or oversized resource creation at the API level, eliminating the need for retroactive remediation.</rationale>
+        </rule>
+        <example type="good" title="SCP requiring tags at creation">
+          <code lang="json"><![CDATA[
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "RequireTagging",
+      "Effect": "Deny",
+      "Action": ["ec2:RunInstances", "rds:CreateDBInstance"],
+      "Resource": "*",
+      "Condition": {
+        "Null": {
+          "aws:RequestTag/Environment": "true",
+          "aws:RequestTag/Owner": "true"
+        }
+      }
+    }
+  ]
+}
+]]></code>
+        </example>
+      </section>
+    </section>
+    <templates>
+      <template path="templates/tagging-policy.yaml" purpose="Mandatory tag schema: Environment, Owner, Project, CostCenter with allowed values"/>
+      <template path="templates/budget.tf" purpose="Terraform AWS budget with 50/80/100/120% alerts and forecasted overage alert"/>
+      <template path="templates/cost-report.md" purpose="Monthly cloud cost report template with team breakdown and optimization table"/>
+      <template path="templates/prompt-cost-analysis.txt" purpose="LLM prompt for cost breakdown and rightsizing recommendations"/>
+    </templates>
+  </content>
+</methodology>
