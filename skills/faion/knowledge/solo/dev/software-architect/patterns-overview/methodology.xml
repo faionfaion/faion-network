@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="patterns-overview">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Design patterns overview: GoF Creational/Structural/Behavioral catalog, Architectural and Distributed/Cloud-Native patterns, routing layer for pattern selection.</summary>
+    <tags>
+      <tag>design-patterns</tag>
+      <tag>gof</tag>
+      <tag>architectural-patterns</tag>
+      <tag>distributed-patterns</tag>
+      <tag>pattern-selection</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Design Patterns Overview</title>
+    <summary>Design patterns are language-agnostic solutions to recurring software design problems, grouped into three GoF categories (Creational, Structural, Behavioral) plus Architectural and Distributed/Cloud-Native patterns. This overview is the routing layer: it maps problems to pattern categories and points to the deep-dive methodologies for each category. Use it to select a pattern; use the category-specific methodology to implement it.</summary>
+    <why>
+      <p>Without a shared pattern vocabulary, teams rediscover the same solutions inconsistently, accumulate coupling, and resist change. Patterns encode decades of proven trade-off decisions — knowing that "add behavior without subclassing" maps to Decorator, not inheritance, prevents entire classes of design mistakes. Modern language features (first-class functions, module systems, DI frameworks) have replaced some classic patterns but the structural vocabulary remains the fastest shared communication tool.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Identifying which pattern applies to a new design problem</item>
+        <item>Reviewing code for pattern misuse or missed pattern opportunities</item>
+        <item>Communicating design intent to teammates using shared vocabulary</item>
+        <item>Choosing between similar patterns (Adapter vs Facade, Proxy vs Decorator)</item>
+        <item>Understanding architectural patterns (Clean, Hexagonal, Layered) before selecting one</item>
+        <item>Learning which distributed patterns (CQRS, Saga, Outbox, Circuit Breaker) address a given distributed-system concern</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Applying a pattern because it sounds sophisticated — only apply when the problem it solves actually exists</item>
+        <item>When a simple function or module achieves the same goal as a class-based pattern</item>
+        <item>Forcing GoF patterns onto functional or reactive codebases where first-class functions already solve the problem</item>
+        <item>Using this overview as a substitute for the category-specific methodology when implementing (load creational-patterns, structural-patterns, or behavioral-patterns instead)</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="gof-catalog">
+      <rule>
+        <statement>Use creational patterns to decouple object creation from the code that uses the objects. Prefer Dependency Injection containers over manual Factory or Singleton implementations in modern frameworks.</statement>
+        <rationale>Modern DI frameworks (Spring, FastAPI Depends, NestJS) already implement Factory and Singleton lifecycles. Manual Factory and Singleton add boilerplate without adding control.</rationale>
+      </rule>
+      <list>
+        <item>Factory Method: single creation point, concrete type varies at runtime — PaymentProcessor, NotificationService</item>
+        <item>Abstract Factory: create related object families together — UI toolkit (Windows/Mac), database drivers</item>
+        <item>Builder: construct a complex object step by step — QueryBuilder, HttpRequest, ConfigBuilder</item>
+        <item>Prototype: clone an expensive-to-create object — game object spawning, document template cloning</item>
+        <item>Singleton: guarantee one instance globally — Logger, connection pool (prefer DI scope over manual Singleton)</item>
+      </list>
+      <rule>
+        <statement>Distinguish the four wrapping patterns by purpose: Adapter converts an interface, Proxy controls access, Decorator adds behavior, Bridge separates abstraction from implementation before design.</statement>
+        <rationale>Teams frequently confuse Adapter, Proxy, and Decorator because all three wrap an object. The selection criterion is the problem being solved, not the structural similarity.</rationale>
+      </rule>
+      <list>
+        <item>Adapter: convert interface A to interface B for a legacy or third-party class — payment gateway wrapper</item>
+        <item>Bridge: independent hierarchies of abstraction and implementation — Notification (Email/SMS) x (Urgent/Normal)</item>
+        <item>Composite: tree of same-typed nodes, uniform leaf/branch interface — file systems, UI component trees</item>
+        <item>Decorator: stack cross-cutting behavior dynamically — logging, caching, auth middleware</item>
+        <item>Facade: single simplified entry point to a complex subsystem — PaymentService hiding card/fraud/ledger</item>
+        <item>Flyweight: share intrinsic state across thousands of instances — character rendering, game particles</item>
+        <item>Proxy: control access to an object — lazy loading, caching proxy, access control, remote object stub</item>
+      </list>
+      <rule>
+        <statement>Use behavioral patterns to decouple senders from receivers and make algorithms swappable. Prefer composition over class hierarchies for behavioral variation.</statement>
+        <rationale>Class-based behavioral variation (switch/if on type) creates coupling and violates OCP. Strategy, Command, and State externalize the varying behavior.</rationale>
+      </rule>
+      <list>
+        <item>Strategy: swap algorithms at runtime — payment methods, sorting, pricing rules</item>
+        <item>Observer: notify multiple listeners of state changes — event systems, pub/sub, reactive UIs</item>
+        <item>Command: encapsulate a request as an object — undo/redo, job queues, transaction logging</item>
+        <item>State: change behavior when internal state changes — order lifecycle, media player, workflow engine</item>
+        <item>Chain of Responsibility: pass request along a handler chain — middleware, validation, approval flows</item>
+        <item>Template Method: skeleton algorithm with deferred steps — test frameworks, ETL pipelines</item>
+        <item>Iterator: traverse a collection without exposing its internals — database cursors, pagination</item>
+        <item>Mediator: centralize interactions between objects — chat rooms, event buses, form orchestration</item>
+        <item>Visitor: add operations to an object graph without modifying classes — AST processing, report generation</item>
+        <item>Memento: capture and restore object state — undo mechanisms, save points, snapshots</item>
+        <item>Interpreter: grammar for a simple language — expression parsers, rule engines (rare in modern systems)</item>
+      </list>
+    </section>
+
+    <section name="architectural-patterns">
+      <rule>
+        <statement>Use Layered Architecture for traditional CRUD web applications where the domain logic is thin and team familiarity with the pattern is high. Enforce a strict dependency rule: each layer may only depend on the layer directly below it.</statement>
+        <rationale>Layered architecture is the most widely understood pattern, minimizing onboarding friction. However, it encourages "anemic domain models" when business logic leaks into the service layer and then the repository layer.</rationale>
+      </rule>
+      <list>
+        <item>Presentation: controllers, views, DTOs, API endpoints</item>
+        <item>Application: use cases, services, orchestration, transaction coordination</item>
+        <item>Domain: entities, value objects, business rules, domain services</item>
+        <item>Infrastructure: repositories, ORM adapters, external API clients, messaging</item>
+      </list>
+      <antipattern>
+        <description>Business logic in the database (stored procedures) or in controllers</description>
+        <reason>Makes the domain untestable without a running database and couples business rules to infrastructure details</reason>
+      </antipattern>
+      <rule>
+        <statement>Use Clean or Hexagonal Architecture when the domain is complex and must be testable independently of the database, framework, and external APIs. The dependency rule is absolute: inner layers never import outer layers; outer layers depend on inner via abstractions (ports).</statement>
+        <rationale>Dependency inversion at the architectural level means the domain can be tested with in-memory repositories and mock adapters, reducing integration test surface. Framework and database upgrades do not touch domain logic.</rationale>
+      </rule>
+      <list>
+        <item>Entities: enterprise business rules, stable core, no external dependencies</item>
+        <item>Use Cases: application-specific business rules, orchestrate entities</item>
+        <item>Interface Adapters: controllers, gateways, presenters — convert from use-case format to external format</item>
+        <item>Frameworks and Drivers: web frameworks, databases, UI — the outermost ring, most volatile</item>
+        <item>Ports: abstract interfaces defined by the domain, implemented by adapters (Hexagonal variant)</item>
+      </list>
+      <example type="good">
+        <note>Dependency direction: all arrows point inward</note>
+        <code lang="text"><![CDATA[
+PostgresUserRepository  →  implements  →  UserRepository (port in domain)
+DjangoController        →  calls       →  CreateUserUseCase (application)
+CreateUserUseCase       →  uses        →  User (entity) + UserRepository (port)
+User (entity)           →  depends on  →  nothing external
+]]></code>
+      </example>
+      <rule>
+        <statement>Use Vertical Slice Architecture when features are developed by small cross-functional teams and the priority is minimizing merge conflicts and maximizing feature cohesion. Each slice owns its full stack from HTTP handler to database query.</statement>
+        <rationale>Horizontal layers cause high coupling across features (changes to the user service cascade across all layers). Vertical slices contain change: adding a feature means adding a new slice, not modifying existing shared layers.</rationale>
+      </rule>
+      <list>
+        <item>Each feature folder contains its own handler, service, repository, and DTOs</item>
+        <item>Cross-cutting concerns (auth, logging, tracing) are handled by middleware, not by shared service layers</item>
+        <item>Slices share the database schema but not application code</item>
+        <item>Trade-off: some code duplication across slices in exchange for isolated changeability</item>
+      </list>
+    </section>
+
+    <section name="distributed-patterns">
+      <rule>
+        <statement>Apply resilience patterns defensively at every external service boundary. The minimum set for any production service call is: Timeout + Retry with exponential backoff + Circuit Breaker. Add Bulkhead when one downstream service must not starve others.</statement>
+        <rationale>Without timeouts, slow downstream services exhaust thread pools. Without circuit breakers, retries amplify load on an already-failing service. Without bulkheads, one slow dependency cascades to all consumers sharing the same thread pool.</rationale>
+      </rule>
+      <list>
+        <item>Circuit Breaker: 3 states (Closed/Open/Half-Open); opens after N failures; probes recovery via half-open — prevents cascade failure to failing services</item>
+        <item>Bulkhead: separate thread pools or semaphores per downstream service — isolates one failure from starving others</item>
+        <item>Retry: limited retries with exponential backoff and jitter — only for idempotent calls; never retry non-idempotent writes without idempotency keys</item>
+        <item>Timeout: hard deadline on every external call — prevent slow callee from holding caller's thread indefinitely</item>
+        <item>Fallback: degrade gracefully when a dependency fails — return cached result, empty list, or feature-flagged default</item>
+      </list>
+      <rule>
+        <statement>In microservices, use Saga for distributed transactions across services. Use the Outbox pattern to guarantee that a database write and a message publish succeed or fail together. Use CQRS when read and write models must scale or evolve independently.</statement>
+        <rationale>Distributed 2-phase commit (2PC) is impractical in microservices due to availability coupling. Sagas replace 2PC with compensating transactions. The Outbox pattern replaces dual-write (DB + message broker) with an atomic local transaction.</rationale>
+      </rule>
+      <list>
+        <item>Saga: long-running transaction across services; two flavors: Choreography (events) and Orchestration (central coordinator); each step has a compensating transaction for rollback</item>
+        <item>Outbox: write domain event to outbox table in same DB transaction as the domain record; relay process publishes from outbox to broker — guarantees exactly-once publish</item>
+        <item>CQRS: separate Command (write) model from Query (read) model; read model updated by events from write model; enables independent scaling and read-optimized projections</item>
+        <item>Event Sourcing: store all state changes as an append-only event log; current state = replay of events; pairs with CQRS for read projections</item>
+        <item>Repository: abstract data access behind a collection-like interface; domain layer depends only on the interface, infrastructure provides the implementation</item>
+      </list>
+      <antipattern>
+        <description>Dual-write: writing to database and message broker in two separate operations</description>
+        <reason>If the service crashes between the DB write and the broker publish, the two systems diverge permanently. Use the Outbox pattern instead.</reason>
+      </antipattern>
+    </section>
+
+    <section name="selection-guide">
+      <rule>
+        <statement>Select a pattern by the problem it solves, not by its name. Identify the exact mismatch or design pressure first, then map it to a pattern. Never apply a pattern because it sounds appropriate.</statement>
+        <rationale>Pattern misapplication is more harmful than no pattern: a Singleton used for "shared state" introduces global mutable state; a Facade used as a catch-all creates a God Object.</rationale>
+      </rule>
+      <list>
+        <item>"Integrate legacy/third-party API with incompatible interface" → Adapter</item>
+        <item>"Add behavior (logging, caching) without subclassing" → Decorator</item>
+        <item>"Simplify complex subsystem for callers" → Facade</item>
+        <item>"Control access: lazy loading, auth, caching proxy" → Proxy</item>
+        <item>"Tree structure with uniform leaf/branch treatment" → Composite</item>
+        <item>"Swap algorithm at runtime" → Strategy</item>
+        <item>"React to state changes across multiple objects" → Observer</item>
+        <item>"Encapsulate request for undo/redo/queuing" → Command</item>
+        <item>"Behavior changes as object moves through states" → State</item>
+        <item>"Distributed transaction across services" → Saga</item>
+        <item>"Atomic DB write + message publish" → Outbox</item>
+        <item>"Independent read/write scaling" → CQRS</item>
+        <item>"Prevent cascade failure to failing downstream" → Circuit Breaker</item>
+      </list>
+      <section name="modern-alternatives">
+        <list>
+          <item>Strategy → first-class functions or lambdas (Python, JS, Go); pass behavior as a function parameter</item>
+          <item>Command → async job queue with a serialized payload (Celery, BullMQ, Temporal); Command object = queue message</item>
+          <item>Observer → native event emitters (Node.js EventEmitter, Python asyncio events, RxJS Observables)</item>
+          <item>Iterator → generator functions (Python yield, JS function*, Go channel range); no Iterator class needed</item>
+          <item>Singleton → DI container scoped as singleton (FastAPI Depends with singleton scope, Spring @Bean, NestJS providers)</item>
+          <item>Factory → DI container resolves concrete types; explicit Factory only needed for runtime-determined types</item>
+          <item>Template Method → function composition in FP languages; higher-order functions pass the varying steps</item>
+        </list>
+      </section>
+      <section name="ai-influenced-patterns">
+        <list>
+          <item>RAG (Retrieval-Augmented Generation): Repository pattern for vector search + Facade hiding embedding/retrieval/rerank — a Facade + Repository combination</item>
+          <item>Agent Tool Use: Command pattern — each tool is a Command with an execute() method; the agent is the Invoker</item>
+          <item>Guardrail: Chain of Responsibility — a sequence of validation handlers applied to every LLM input/output</item>
+          <item>Model Router: Strategy — select the model (fast/cheap vs capable/expensive) based on query classification at runtime</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="agent-integration">
+      <note>Use this overview as a router: agent reads it, identifies the category, then opens the specific pattern's methodology. Default model is sonnet for category selection; haiku for descending into a specific pattern's implementation; opus only when combining patterns across categories (e.g., CQRS + Event Sourcing + Outbox). Always pair with architectural-patterns when the question is "where does this pattern live in our layered architecture?".</note>
+      <prompt purpose="pattern-category-selection"><![CDATA[
+Pick a design pattern category for this problem: <description>.
+Constraints: <language, framework, perf, testability>.
+Use the patterns-overview README as the map. Output:
+1) Category (Creational/Structural/Behavioral/Distributed/Architectural),
+2) Top 2 candidate patterns with one-sentence rationale each,
+3) Modern language alternative if it would be simpler,
+4) Pointer to the specific methodology folder to drill into next.
+]]></prompt>
+      <prompt purpose="pattern-audit"><![CDATA[
+Audit this module for pattern misuse using patterns-overview as the lens.
+Report: applied patterns (with confidence), missing patterns that would help, and
+"pattern bingo" (over-engineered) cases. Each finding <= 2 lines.
+]]></prompt>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Pick a category first, pattern second. Most arguments about "Strategy vs Command" go away when the category is clear.</item>
+        <item>Always state the alternative — "we picked Decorator over inheritance because…". Without the alternative the choice is ceremony.</item>
+        <item>Modern language features replace many GoF patterns; don't use a pattern when a function, generator, or DI container already provides it.</item>
+        <item>A pattern is justified by at least 2 reasons: testability, extension, multi-implementation, removal of duplication. One reason is usually not enough.</item>
+        <item>Document patterns at the top of the file/module (one-line comment), not in a separate Wiki — keeps future agents from reinventing.</item>
+        <item>Prefer composition of small patterns over deep hierarchies; agent code with 4 inheritance levels is a smell.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>"Pattern bingo": agent suggests Factory + Builder + Singleton + Adapter for a 30-line class. Demand a single pattern unless multi-pattern is justified.</item>
+        <item>Mislabeling: agents call any class with a create_* method a "Factory"; verify it actually decouples creation from use.</item>
+        <item>Naming: agent renames classes to *Factory, *Manager, *Service without changing structure — surface the actual relationship in the diagram, not the suffix.</item>
+        <item>"Modern alternative" trap: agent eliminates a pattern by inlining a lambda, losing the documented intent. Push back when the pattern was load-bearing.</item>
+        <item>Cloud-native patterns conflated with code patterns: agent suggests "use Sidecar for this database call" — that's not what Sidecar is.</item>
+        <item>Anti-patterns missed: God Object, Anemic Domain Model, Service Locator (often called "DI" wrongly). Always ask agent for anti-patterns before patterns.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>ruff / eslint / golangci-lint: surface pattern-implementation smells (unused params, overlong constructors) — per language</item>
+        <item>radon / lizard: cyclomatic complexity (high CC often signals missing pattern) — pip install radon lizard</item>
+        <item>dependency-cruiser: TS/JS module-relation rules (catches Decorator/Adapter overuse) — npm i -D dependency-cruiser</item>
+        <item>import-linter: Python import boundaries (Repository pattern enforcement) — pip install import-linter</item>
+        <item>archunit: Java pattern compliance tests — https://www.archunit.org/</item>
+        <item>mermaid-cli: render pattern collaboration diagrams for ADRs — npm i -g @mermaid-js/mermaid-cli</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://refactoring.guru/design-patterns"/>
+      <link href="https://www.patterns.dev/"/>
+      <link href="https://learn.microsoft.com/en-us/azure/architecture/patterns/"/>
+      <link href="https://www.enterpriseintegrationpatterns.com/"/>
+    </see-also>
+  </content>
+</methodology>
