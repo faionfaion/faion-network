@@ -1,0 +1,1395 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="iac-basics">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>IaC fundamentals: declarative vs imperative, tool comparison (Terraform/Pulumi/Crossplane), GitOps integration, state management, and testing strategy for infrastructure code.</summary>
+    <tags>
+      <tag>infrastructure-as-code</tag>
+      <tag>terraform</tag>
+      <tag>gitops</tag>
+      <tag>iac</tag>
+      <tag>pulumi</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Infrastructure as Code (IaC) Fundamentals</title>
+    <summary>Infrastructure as Code applies software engineering practices to infrastructure management through declarative or imperative code definitions. This enables version control, testing, automation, and consistency across environments. IaC market projected to reach USD 6.14 billion by 2033, growing at 22%+ CAGR (2025-2033).</summary>
+    <why>
+      <p>Infrastructure as Code applies software engineering practices — version control, testing, code review, automation — to the management of infrastructure. Without IaC, environments drift over time as engineers apply manual changes without documentation. Drift leads to subtle bugs that only reproduce in production, failed deployments because staging and prod differ, and inability to recover quickly after an incident. IaC solves this by making infrastructure definitions the source of truth: any change goes through a PR, is tested in CI, and is applied idempotently.</p>
+      <p>The declarative model (Terraform, CloudFormation) lets operators specify what infrastructure should exist rather than how to create it, while the tool handles sequencing, dependencies, and drift detection. The imperative model (Ansible, scripts) explicitly codes the execution path, offering flexibility at the cost of idempotency guarantees.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Provisioning cloud infrastructure (VPCs, clusters, databases, storage) that will change over time and must remain consistent across environments.</item>
+        <item>Team environments where multiple engineers apply infrastructure changes and concurrent access must be serialized via state locking.</item>
+        <item>Compliance and audit requirements that mandate a full change history for infrastructure modifications.</item>
+        <item>Disaster recovery scenarios where an entire environment must be reproducible from code.</item>
+        <item>Multi-environment setups (dev/staging/prod) where parity between environments is critical.</item>
+        <item>GitOps workflows where infrastructure changes are triggered by PR merges, not ad-hoc CLI commands.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Throwaway personal experiments where overhead exceeds value — use cloud console or CLI directly.</item>
+        <item>Pure configuration management on existing machines — use Ansible or Chef rather than Terraform.</item>
+        <item>Kubernetes resource management inside an existing cluster — use Helm/Kustomize rather than Terraform for K8s objects.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-principles">
+      <rule>
+        <statement>Define infrastructure declaratively whenever possible — specify the desired end-state and let the tool determine the execution path.</statement>
+        <rationale>Declarative definitions are idempotent by construction: repeated applies produce the same result. Imperative scripts require manual idempotency logic and tend to accumulate special cases.</rationale>
+      </rule>
+      <rule>
+        <statement>Follow the immutability principle: replace infrastructure rather than modifying it in-place. Use blue-green or rolling replacement patterns.</statement>
+        <rationale>Mutable infrastructure accumulates undocumented state. Replacement ensures the new instance matches the IaC definition exactly and eliminates configuration drift.</rationale>
+      </rule>
+      <rule>
+        <statement>Store all infrastructure definitions in version control with full commit history and PR-based review.</statement>
+        <rationale>Git provides the audit trail required for compliance, enables rollback to known-good states, and enforces peer review before any change reaches production.</rationale>
+      </rule>
+      <rule>
+        <statement>Build modular, reusable components: decompose infrastructure into composable modules with defined inputs and outputs.</statement>
+        <rationale>Modules prevent copy-paste proliferation and allow a single, tested definition to be reused across environments with different variable values.</rationale>
+      </rule>
+    </section>
+
+    <section name="declarative-vs-imperative">
+      <p>Declarative IaC (Terraform, CloudFormation, Pulumi) defines what the final state should be. The tool computes a plan showing the delta between current state and desired state, then executes only the necessary operations. Idempotency is built-in.</p>
+      <p>Imperative IaC (Ansible, shell scripts) defines the sequence of steps to reach the desired state. Idempotency must be implemented manually with conditional logic. Imperative tools excel at configuration management on existing machines and ad-hoc orchestration tasks.</p>
+      <p>Declarative tools handle drift automatically: on the next plan/apply cycle, any out-of-band change is detected and corrected. Imperative tools require explicit drift detection logic.</p>
+    </section>
+
+    <section name="tool-selection">
+      <rule>
+        <statement>For multi-cloud environments, prefer Terraform (BSL license) or OpenTofu (MPL 2.0, open-source fork). For AWS-only, CloudFormation or AWS CDK are viable. For K8s-native infrastructure, use Crossplane.</statement>
+        <rationale>Multi-cloud tools provide a single workflow and state model across providers. Cloud-native tools offer deeper integration but create vendor lock-in to a single cloud's tooling and state format.</rationale>
+      </rule>
+      <p>Multi-cloud tool comparison:</p>
+      <list>
+        <item>Terraform (HCL, BSL): multi-cloud, mature ecosystem, strong state management, BSL license concerns since v1.6.</item>
+        <item>OpenTofu (HCL, MPL 2.0): open-source Terraform fork, adds state encryption, community-driven, smaller ecosystem than Terraform.</item>
+        <item>Pulumi (Python/Go/TypeScript, Apache 2.0): real programming languages with loops and functions, steeper learning curve for ops teams.</item>
+        <item>Crossplane (YAML, Apache 2.0): K8s-native, managed via kubectl, requires an existing K8s cluster as control plane.</item>
+      </list>
+      <p>Cloud-native tools: AWS CloudFormation (YAML/JSON, AWS-only), AWS CDK (Python/TS/Java, developer-friendly constructs), Azure Bicep (Azure-only), Google Cloud Deployment Manager (GCP-only). Configuration management: Ansible (agentless, YAML), Chef (agent-based, Ruby DSL), Puppet (agent-based, large-scale), SaltStack (event-driven).</p>
+    </section>
+
+    <section name="gitops-integration">
+      <rule>
+        <statement>Implement PR-based IaC workflow: commit triggers plan, plan output posts to PR comment, merge triggers apply. Never apply from a local workstation against production.</statement>
+        <rationale>PR-based workflow enforces review before apply, provides a complete audit trail in the PR history, and prevents divergence between what was reviewed and what was applied.</rationale>
+      </rule>
+      <p>GitOps tools integration:</p>
+      <list>
+        <item>Atlantis: PR-based Terraform/OpenTofu, plan output in PR comments, apply on PR merge. Best for teams already using GitHub/GitLab PRs.</item>
+        <item>Flux: continuous reconciliation with Helm, Kustomize, Terraform. Reconciles cluster state from git on every commit.</item>
+        <item>ArgoCD: continuous reconciliation for K8s. Integrates with Helm and Kustomize. Strong UI for visualizing sync status.</item>
+        <item>Spacelift: policy-driven, supports Terraform/Pulumi/CloudFormation. Enterprise drift detection and policy enforcement.</item>
+        <item>env0: workflow-based, supports Terraform/Pulumi. Self-service infrastructure with cost visibility.</item>
+      </list>
+    </section>
+
+    <section name="state-management">
+      <rule>
+        <statement>Always use a remote backend with state locking enabled; never use local state for team or CI environments. For AWS use S3+DynamoDB; for GCP use GCS; for Azure use Azure Blob.</statement>
+        <rationale>Local state cannot be shared, has no locking, and is lost if the engineer's machine fails. Remote backends serialize concurrent operations via locking, preventing state corruption.</rationale>
+      </rule>
+      <rule>
+        <statement>Never commit state files to Git; always enable encryption at rest; enable bucket versioning for rollback capability; restrict state access via IAM to CI/CD roles only.</statement>
+        <rationale>State files contain plaintext passwords, connection strings, and private keys. Once committed to git, secrets cannot be fully purged. Versioning enables recovery after corruption.</rationale>
+      </rule>
+      <p>Remote state best practices summary: use remote storage (S3, GCS, Azure Blob, Terraform Cloud), enable state locking (DynamoDB for AWS, built-in for GCS), enable encryption at rest and in transit, enable bucket versioning for rollback, apply least-privilege IAM policies, configure automated snapshots and cross-region replication.</p>
+    </section>
+
+    <section name="project-structure">
+      <p>Recommended infrastructure project layout:</p>
+      <code lang="text"><![CDATA[
+infrastructure/
+├── environments/
+│   ├── dev/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   ├── terraform.tfvars
+│   │   └── backend.tf
+│   ├── staging/
+│   └── prod/
+├── modules/
+│   ├── networking/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   └── README.md
+│   ├── compute/
+│   ├── database/
+│   └── storage/
+├── policies/
+│   ├── sentinel/
+│   └── opa/
+└── scripts/
+    ├── bootstrap.sh
+    └── validate.sh
+]]></code>
+      <rule>
+        <statement>Separate state per environment (dev/staging/prod) and per component (networking/compute/database) using the key pattern {env}/{component}/terraform.tfstate.</statement>
+        <rationale>Single-state configurations have large blast radius — one mistake can destroy all production infrastructure. Component separation limits each apply's scope to a specific subsystem.</rationale>
+      </rule>
+    </section>
+
+    <section name="testing-strategy">
+      <p>IaC testing layers:</p>
+      <list>
+        <item>Static analysis (tflint, checkov): syntax checking and security best-practice enforcement without cloud API calls. Fast, runs in pre-commit and CI.</item>
+        <item>Unit tests (Terratest, pytest): test individual module functionality by provisioning real resources in an isolated test account and asserting outputs.</item>
+        <item>Integration tests (Terratest): verify cross-module interaction — e.g., that a networking module and compute module can communicate as expected.</item>
+        <item>Policy tests (OPA, Sentinel): validate compliance rules such as required tags, allowed regions, and encryption requirements before apply.</item>
+        <item>Security scanning (tfsec, Snyk): detect misconfigurations like open security groups, unencrypted storage, and missing logging.</item>
+        <item>Cost estimation (Infracost): estimate monthly cost impact of a proposed change before it is applied. Integrates with PR comments.</item>
+      </list>
+    </section>
+
+    <section name="implementation-checklist">
+      <checklist>
+        <check>Version control repository initialized with .gitignore excluding state files, secrets, and .terraform/ directory.</check>
+        <check>Pre-commit hooks installed for formatting and linting (terraform fmt, tflint).</check>
+        <check>CI/CD pipeline configured with plan-on-PR and apply-on-merge workflow.</check>
+        <check>Remote backend configured with encryption at rest and state locking.</check>
+        <check>State infrastructure provisioned as a separate bootstrapped Terraform configuration.</check>
+        <check>Environment separation implemented (dev/staging/prod with separate state files).</check>
+        <check>Module structure defined with naming conventions documented.</check>
+        <check>No hardcoded credentials anywhere in IaC code; secrets management integrated (Vault, AWS Secrets Manager).</check>
+        <check>Security scanning in CI/CD (tfsec, checkov).</check>
+        <check>Least-privilege IAM policies defined for all CI/CD roles.</check>
+        <check>Audit logging enabled on state storage.</check>
+        <check>Static analysis (tflint) and policy tests (OPA/Sentinel) configured.</check>
+        <check>Module README files with input/output documentation.</check>
+        <check>Drift detection scheduled as recurring CI job.</check>
+        <check>Disaster recovery procedure documented and tested.</check>
+        <check>Required tags enforced via policy; network security policies defined.</check>
+      </checklist>
+    </section>
+
+    <section name="agent-selection">
+      <list>
+        <item>IaC tool selection: sonnet — evaluation of multi-dimensional trade-offs across tools.</item>
+        <item>GitOps integration planning: sonnet — workflow design and pipeline architecture.</item>
+        <item>Version control strategy: haiku — standard practices with well-established patterns.</item>
+      </list>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="multi-cloud-architecture-design"><![CDATA[
+Design infrastructure for [APPLICATION TYPE] with the following requirements:
+
+**Functional Requirements:**
+- [List functional requirements]
+
+**Non-Functional Requirements:**
+- Availability: [e.g., 99.9%]
+- Regions: [e.g., EU, US]
+- Scale: [e.g., 10K requests/sec]
+- Compliance: [e.g., GDPR, SOC2]
+
+**Constraints:**
+- Budget: [e.g., $X/month]
+- Team expertise: [e.g., AWS experience]
+- Timeline: [e.g., 3 months]
+
+**Output Requirements:**
+1. Architecture diagram (text-based)
+2. Component list with cloud services
+3. Terraform module structure
+4. Cost estimation breakdown
+5. Security considerations
+6. Disaster recovery approach
+]]></prompt>
+      <prompt purpose="iac-tool-selection"><![CDATA[
+Help me select the right IaC tool for:
+
+**Project Context:**
+- Cloud providers: [AWS only / multi-cloud / hybrid]
+- Team size: [X engineers]
+- Team experience: [Terraform / programming languages / K8s]
+- Existing tooling: [current tools]
+
+**Requirements:**
+- [ ] Multi-cloud support
+- [ ] State encryption
+- [ ] Policy enforcement
+- [ ] Cost management
+- [ ] GitOps integration
+- [ ] Programming language support
+
+**Evaluate:**
+1. Terraform vs OpenTofu
+2. Pulumi (if team prefers programming)
+3. Crossplane (if K8s-native)
+4. Cloud-native options
+
+Provide comparison table and recommendation with reasoning.
+]]></prompt>
+      <prompt purpose="module-development"><![CDATA[
+Create a Terraform module for [RESOURCE TYPE]:
+
+**Requirements:**
+- Cloud provider: [AWS/GCP/Azure]
+- Resource type: [e.g., VPC, EKS cluster, RDS]
+- Environment support: dev/staging/prod
+- Security: [encryption, IAM, network isolation]
+
+**Module should include:**
+1. main.tf - resource definitions
+2. variables.tf - with validation rules
+3. outputs.tf - useful outputs for consuming modules
+4. versions.tf - provider version constraints
+5. README.md - documentation with examples
+
+**Patterns to follow:**
+- Use for_each over count where appropriate
+- Implement dynamic blocks for flexible configuration
+- Add lifecycle rules for critical resources
+- Include default tags
+- Handle sensitive outputs appropriately
+]]></prompt>
+      <prompt purpose="security-scanning-setup"><![CDATA[
+Set up IaC security scanning for:
+
+**Repository:**
+- IaC tool: [Terraform/Pulumi/CloudFormation]
+- CI/CD: [GitHub Actions/GitLab CI/Jenkins]
+- Cloud: [AWS/GCP/Azure]
+
+**Required checks:**
+- [ ] Secret detection
+- [ ] Misconfiguration detection
+- [ ] Compliance policy checks
+- [ ] Cost estimation
+
+**Tools to configure:**
+1. tfsec or checkov for security
+2. OPA/Sentinel for policy
+3. Infracost for cost
+4. Pre-commit hooks
+
+Provide complete CI/CD configuration.
+]]></prompt>
+      <prompt purpose="policy-as-code"><![CDATA[
+Create OPA/Rego policies for:
+
+**Policy Requirements:**
+1. Required tags: [Environment, Project, Team, CostCenter]
+2. Allowed instance types: [t3.*, m5.*, c5.*]
+3. Encryption required: [S3, RDS, EBS]
+4. Network restrictions: [no 0.0.0.0/0 ingress on SSH/RDP]
+5. Region restrictions: [eu-central-1, eu-west-1]
+
+**Output:**
+1. Individual policy files
+2. Test cases for each policy
+3. CI/CD integration configuration
+4. Documentation for developers
+]]></prompt>
+      <prompt purpose="atlantis-setup"><![CDATA[
+Configure Atlantis for Terraform GitOps:
+
+**Environment:**
+- Git platform: [GitHub/GitLab/Bitbucket]
+- Cloud: [AWS/GCP/Azure]
+- Terraform version: [X.X.X]
+- Repository structure: [monorepo/multi-repo]
+
+**Requirements:**
+1. atlantis.yaml configuration
+2. Repository settings (webhooks, branch protection)
+3. Server deployment (K8s/Docker/VM)
+4. AWS IAM role for Atlantis
+5. Security best practices
+6. Team workflow documentation
+]]></prompt>
+      <prompt purpose="drift-detection"><![CDATA[
+Set up drift detection for infrastructure:
+
+**Infrastructure:**
+- IaC tool: [Terraform/Pulumi]
+- Resources: [approximately X resources]
+- Environments: [list environments]
+
+**Requirements:**
+1. Automated drift detection schedule
+2. Notification on drift (Slack/email)
+3. Drift report generation
+4. Auto-remediation options
+5. False positive handling
+
+**Provide:**
+1. Detection script/workflow
+2. CI/CD integration
+3. Alert configuration
+4. Remediation runbook
+]]></prompt>
+      <prompt purpose="disaster-recovery-infrastructure"><![CDATA[
+Design disaster recovery infrastructure:
+
+**Primary Region:** [e.g., eu-central-1]
+**DR Region:** [e.g., eu-west-1]
+
+**RPO:** [e.g., 1 hour]
+**RTO:** [e.g., 4 hours]
+
+**Components:**
+- [List critical components]
+
+**Requirements:**
+1. DR architecture design
+2. Terraform modules for DR resources
+3. Replication configuration
+4. Failover automation
+5. Failback procedure
+6. Testing runbook
+7. Cost estimation for DR
+]]></prompt>
+    </section>
+
+    <section name="examples">
+      <example type="good" title="Terraform provider with default tags">
+        <code lang="hcl"><![CDATA[
+terraform {
+  required_version = ">= 1.6.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.25"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+
+  default_tags {
+    tags = {
+      Environment = var.environment
+      ManagedBy   = "terraform"
+      Project     = var.project_name
+      Team        = var.team
+    }
+  }
+}
+]]></code>
+      </example>
+      <example type="good" title="Remote backend with locking">
+        <code lang="hcl"><![CDATA[
+terraform {
+  backend "s3" {
+    bucket         = "company-terraform-state"
+    key            = "environments/prod/terraform.tfstate"
+    region         = "eu-central-1"
+    encrypt        = true
+    dynamodb_table = "terraform-state-lock"
+
+    # Cross-account access
+    # role_arn = "arn:aws:iam::123456789012:role/TerraformRole"
+  }
+}
+]]></code>
+      </example>
+      <example type="good" title="Variable validation">
+        <code lang="hcl"><![CDATA[
+variable "environment" {
+  description = "Deployment environment"
+  type        = string
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be dev, staging, or prod."
+  }
+}
+
+variable "instance_type" {
+  description = "EC2 instance type"
+  type        = string
+
+  validation {
+    condition     = can(regex("^t3\\.", var.instance_type)) || can(regex("^m5\\.", var.instance_type))
+    error_message = "Instance type must be t3.* or m5.* family."
+  }
+}
+
+variable "vpc_cidr" {
+  description = "VPC CIDR block"
+  type        = string
+
+  validation {
+    condition     = can(cidrhost(var.vpc_cidr, 0))
+    error_message = "VPC CIDR must be a valid IPv4 CIDR block."
+  }
+}
+]]></code>
+      </example>
+      <example type="good" title="Reusable VPC module">
+        <code lang="hcl"><![CDATA[
+# modules/vpc/main.tf
+resource "aws_vpc" "main" {
+  cidr_block           = var.cidr_block
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Name = "${var.name_prefix}-vpc"
+  }
+}
+
+resource "aws_subnet" "public" {
+  count             = length(var.availability_zones)
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(var.cidr_block, 8, count.index)
+  availability_zone = var.availability_zones[count.index]
+
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "${var.name_prefix}-public-${count.index + 1}"
+    Type = "public"
+  }
+}
+
+resource "aws_subnet" "private" {
+  count             = length(var.availability_zones)
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(var.cidr_block, 8, count.index + 100)
+  availability_zone = var.availability_zones[count.index]
+
+  tags = {
+    Name = "${var.name_prefix}-private-${count.index + 1}"
+    Type = "private"
+  }
+}
+
+# modules/vpc/variables.tf
+variable "name_prefix" {
+  description = "Prefix for resource names"
+  type        = string
+}
+
+variable "cidr_block" {
+  description = "VPC CIDR block"
+  type        = string
+}
+
+variable "availability_zones" {
+  description = "List of availability zones"
+  type        = list(string)
+}
+
+# modules/vpc/outputs.tf
+output "vpc_id" {
+  description = "VPC ID"
+  value       = aws_vpc.main.id
+}
+
+output "public_subnet_ids" {
+  description = "List of public subnet IDs"
+  value       = aws_subnet.public[*].id
+}
+
+output "private_subnet_ids" {
+  description = "List of private subnet IDs"
+  value       = aws_subnet.private[*].id
+}
+]]></code>
+      </example>
+      <example type="good" title="Module composition with depends_on">
+        <code lang="hcl"><![CDATA[
+module "vpc" {
+  source = "../../modules/vpc"
+
+  name_prefix        = "${var.project_name}-${var.environment}"
+  cidr_block         = var.vpc_cidr
+  availability_zones = var.availability_zones
+}
+
+module "eks" {
+  source = "../../modules/eks"
+
+  cluster_name       = "${var.project_name}-${var.environment}"
+  cluster_version    = var.eks_version
+  vpc_id             = module.vpc.vpc_id
+  subnet_ids         = module.vpc.private_subnet_ids
+  node_groups        = var.node_groups
+
+  depends_on = [module.vpc]
+}
+]]></code>
+      </example>
+      <example type="good" title="Dynamic blocks for flexible configuration">
+        <code lang="hcl"><![CDATA[
+resource "aws_security_group" "app" {
+  name        = "${var.name_prefix}-app-sg"
+  description = "Application security group"
+  vpc_id      = var.vpc_id
+
+  dynamic "ingress" {
+    for_each = var.ingress_rules
+    content {
+      description     = ingress.value.description
+      from_port       = ingress.value.port
+      to_port         = ingress.value.port
+      protocol        = ingress.value.protocol
+      cidr_blocks     = ingress.value.cidr_blocks
+      security_groups = ingress.value.security_groups
+    }
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+variable "ingress_rules" {
+  description = "List of ingress rules"
+  type = list(object({
+    description     = string
+    port            = number
+    protocol        = string
+    cidr_blocks     = optional(list(string), [])
+    security_groups = optional(list(string), [])
+  }))
+  default = []
+}
+]]></code>
+      </example>
+      <example type="good" title="Data sources and locals">
+        <code lang="hcl"><![CDATA[
+# Fetch latest AMI
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["al2023-ami-*-x86_64"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+# Fetch existing VPC
+data "aws_vpc" "existing" {
+  filter {
+    name   = "tag:Name"
+    values = ["main-vpc"]
+  }
+}
+
+# Fetch current caller identity
+data "aws_caller_identity" "current" {}
+
+# Fetch available AZs
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+locals {
+  common_tags = {
+    Environment = var.environment
+    Project     = var.project_name
+    ManagedBy   = "terraform"
+    CostCenter  = var.cost_center
+  }
+
+  is_production = var.environment == "prod"
+
+  instance_type = local.is_production ? "m5.large" : "t3.medium"
+
+  availability_zones = slice(data.aws_availability_zones.available.names, 0, 3)
+
+  subnet_cidrs = {
+    for idx, az in local.availability_zones :
+    az => cidrsubnet(var.vpc_cidr, 8, idx)
+  }
+}
+]]></code>
+      </example>
+      <example type="good" title="OpenTofu state encryption">
+        <code lang="hcl"><![CDATA[
+terraform {
+  encryption {
+    method "aes_gcm" "default" {
+      keys = key_provider.pbkdf2.default
+    }
+
+    key_provider "pbkdf2" "default" {
+      passphrase = var.state_encryption_passphrase
+    }
+
+    state {
+      method   = method.aes_gcm.default
+      enforced = true
+    }
+  }
+}
+]]></code>
+      </example>
+      <example type="good" title="Pulumi Python infrastructure">
+        <code lang="python"><![CDATA[
+import pulumi
+import pulumi_aws as aws
+
+# Create VPC
+vpc = aws.ec2.Vpc("main-vpc",
+    cidr_block="10.0.0.0/16",
+    enable_dns_hostnames=True,
+    enable_dns_support=True,
+    tags={
+        "Name": f"{pulumi.get_project()}-vpc",
+        "Environment": pulumi.get_stack(),
+    }
+)
+
+# Create subnets using loops
+availability_zones = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
+public_subnets = []
+
+for i, az in enumerate(availability_zones):
+    subnet = aws.ec2.Subnet(f"public-subnet-{i}",
+        vpc_id=vpc.id,
+        cidr_block=f"10.0.{i}.0/24",
+        availability_zone=az,
+        map_public_ip_on_launch=True,
+        tags={
+            "Name": f"public-subnet-{i+1}",
+            "Type": "public",
+        }
+    )
+    public_subnets.append(subnet)
+
+# Export outputs
+pulumi.export("vpc_id", vpc.id)
+pulumi.export("public_subnet_ids", [s.id for s in public_subnets])
+]]></code>
+      </example>
+      <example type="good" title="Crossplane VPC and Composite Resource Definition">
+        <code lang="yaml"><![CDATA[
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: VPC
+metadata:
+  name: main-vpc
+spec:
+  forProvider:
+    region: eu-central-1
+    cidrBlock: 10.0.0.0/16
+    enableDnsHostNames: true
+    enableDnsSupport: true
+    tags:
+      - key: Name
+        value: main-vpc
+      - key: ManagedBy
+        value: crossplane
+  providerConfigRef:
+    name: aws-provider
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xnetworks.infrastructure.example.com
+spec:
+  group: infrastructure.example.com
+  names:
+    kind: XNetwork
+    plural: xnetworks
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                region:
+                  type: string
+                cidrBlock:
+                  type: string
+                availabilityZones:
+                  type: array
+                  items:
+                    type: string
+]]></code>
+      </example>
+      <example type="good" title="GitHub Actions Terraform workflow">
+        <code lang="yaml"><![CDATA[
+name: Terraform
+
+on:
+  push:
+    branches: [main]
+    paths: ['infrastructure/**']
+  pull_request:
+    branches: [main]
+    paths: ['infrastructure/**']
+
+env:
+  TF_VERSION: '1.6.0'
+  AWS_REGION: 'eu-central-1'
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        working-directory: infrastructure/environments/prod
+        run: terraform init
+
+      - name: Terraform Format
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        working-directory: infrastructure/environments/prod
+        run: terraform validate
+
+      - name: tfsec Security Scan
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: infrastructure
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: infrastructure/environments/prod
+        run: |
+          terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
+          echo "plan<<EOF" >> $GITHUB_OUTPUT
+          cat plan.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const plan = `${{ steps.plan.outputs.plan }}`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Terraform Plan\n\`\`\`\n${plan}\n\`\`\``
+            });
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        working-directory: infrastructure/environments/prod
+        run: terraform apply -auto-approve tfplan
+]]></code>
+      </example>
+      <example type="good" title="Atlantis configuration">
+        <code lang="yaml"><![CDATA[
+# atlantis.yaml
+version: 3
+projects:
+  - name: prod
+    dir: infrastructure/environments/prod
+    workspace: default
+    terraform_version: v1.6.0
+    autoplan:
+      when_modified: ["*.tf", "../modules/**/*.tf"]
+      enabled: true
+    apply_requirements: [approved, mergeable]
+    workflow: custom
+
+workflows:
+  custom:
+    plan:
+      steps:
+        - init
+        - run: tflint
+        - run: tfsec . --soft-fail
+        - plan
+    apply:
+      steps:
+        - apply
+]]></code>
+      </example>
+      <example type="good" title="OPA policy for required tags">
+        <code lang="rego"><![CDATA[
+# policies/required-tags.rego
+package terraform.policies.required_tags
+
+import rego.v1
+
+required_tags := ["Environment", "Project", "ManagedBy", "Team"]
+
+deny contains msg if {
+    resource := input.resource_changes[_]
+    resource.change.actions[_] == "create"
+    tags := resource.change.after.tags
+
+    missing := {tag | tag := required_tags[_]; not tags[tag]}
+    count(missing) > 0
+
+    msg := sprintf(
+        "Resource %s is missing required tags: %v",
+        [resource.address, missing]
+    )
+}
+
+deny contains msg if {
+    resource := input.resource_changes[_]
+    resource.change.actions[_] == "create"
+    not resource.change.after.tags
+
+    msg := sprintf(
+        "Resource %s has no tags defined",
+        [resource.address]
+    )
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="templates">
+      <p>Terraform project template — directory structure:</p>
+      <code lang="text"><![CDATA[
+infrastructure/
+├── .gitignore
+├── .pre-commit-config.yaml
+├── .tflint.hcl
+├── README.md
+├── environments/
+│   ├── dev/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   ├── terraform.tfvars
+│   │   └── backend.tf
+│   ├── staging/
+│   └── prod/
+├── modules/
+│   └── [module-name]/
+│       ├── main.tf
+│       ├── variables.tf
+│       ├── outputs.tf
+│       └── README.md
+└── policies/
+    └── [policy-name].rego
+]]></code>
+      <example type="good" title=".gitignore for Terraform">
+        <code lang="gitignore"><![CDATA[
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Secrets
+*.pem
+*.key
+.env
+.env.*
+secrets.tfvars
+*-secrets.tfvars
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+terraform-test-*/
+]]></code>
+      </example>
+      <example type="good" title="Pre-commit configuration for Terraform">
+        <code lang="yaml"><![CDATA[
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.86.0
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_validate
+      - id: terraform_docs
+        args:
+          - --hook-config=--path-to-file=README.md
+          - --hook-config=--add-to-existing-file=true
+          - --hook-config=--create-file-if-not-exist=true
+      - id: terraform_tflint
+        args:
+          - --args=--config=__GIT_WORKING_DIR__/.tflint.hcl
+      - id: terraform_tfsec
+]]></code>
+      </example>
+      <example type="good" title="TFLint configuration">
+        <code lang="hcl"><![CDATA[
+# .tflint.hcl
+config {
+  module = true
+}
+
+plugin "terraform" {
+  enabled = true
+  preset  = "recommended"
+}
+
+plugin "aws" {
+  enabled = true
+  version = "0.28.0"
+  source  = "github.com/terraform-linters/tflint-ruleset-aws"
+}
+
+rule "terraform_naming_convention" {
+  enabled = true
+  format  = "snake_case"
+}
+
+rule "terraform_documented_variables" {
+  enabled = true
+}
+
+rule "terraform_documented_outputs" {
+  enabled = true
+}
+
+rule "terraform_standard_module_structure" {
+  enabled = true
+}
+]]></code>
+      </example>
+      <example type="good" title="Backend configuration template">
+        <code lang="hcl"><![CDATA[
+# backend.tf
+terraform {
+  required_version = ">= 1.6.0"
+
+  backend "s3" {
+    bucket         = "COMPANY-terraform-state"
+    key            = "environments/ENV/terraform.tfstate"
+    region         = "eu-central-1"
+    encrypt        = true
+    dynamodb_table = "terraform-state-lock"
+  }
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+
+  default_tags {
+    tags = {
+      Environment = var.environment
+      ManagedBy   = "terraform"
+      Project     = var.project_name
+      Team        = var.team
+    }
+  }
+}
+]]></code>
+      </example>
+      <example type="good" title="Variables template">
+        <code lang="hcl"><![CDATA[
+# variables.tf
+variable "environment" {
+  description = "Deployment environment (dev, staging, prod)"
+  type        = string
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be dev, staging, or prod."
+  }
+}
+
+variable "aws_region" {
+  description = "AWS region for deployment"
+  type        = string
+  default     = "eu-central-1"
+}
+
+variable "project_name" {
+  description = "Project name for resource naming and tagging"
+  type        = string
+}
+
+variable "team" {
+  description = "Team responsible for these resources"
+  type        = string
+}
+
+variable "vpc_cidr" {
+  description = "CIDR block for VPC"
+  type        = string
+  default     = "10.0.0.0/16"
+
+  validation {
+    condition     = can(cidrhost(var.vpc_cidr, 0))
+    error_message = "VPC CIDR must be a valid IPv4 CIDR block."
+  }
+}
+
+variable "availability_zones" {
+  description = "List of availability zones to use"
+  type        = list(string)
+  default     = []
+}
+]]></code>
+      </example>
+      <example type="good" title="Outputs template">
+        <code lang="hcl"><![CDATA[
+# outputs.tf
+output "vpc_id" {
+  description = "ID of the VPC"
+  value       = module.vpc.vpc_id
+}
+
+output "public_subnet_ids" {
+  description = "List of public subnet IDs"
+  value       = module.vpc.public_subnet_ids
+}
+
+output "private_subnet_ids" {
+  description = "List of private subnet IDs"
+  value       = module.vpc.private_subnet_ids
+}
+
+output "cluster_endpoint" {
+  description = "Kubernetes cluster endpoint"
+  value       = module.eks.cluster_endpoint
+  sensitive   = true
+}
+
+output "cluster_name" {
+  description = "Kubernetes cluster name"
+  value       = module.eks.cluster_name
+}
+]]></code>
+      </example>
+      <example type="good" title="tfvars template">
+        <code lang="hcl"><![CDATA[
+# terraform.tfvars
+environment = "dev"
+aws_region  = "eu-central-1"
+project_name = "myproject"
+team         = "platform"
+
+vpc_cidr = "10.0.0.0/16"
+
+availability_zones = [
+  "eu-central-1a",
+  "eu-central-1b",
+  "eu-central-1c"
+]
+
+# EKS configuration
+eks_cluster_version = "1.29"
+eks_node_groups = {
+  general = {
+    instance_types = ["t3.medium"]
+    min_size       = 2
+    max_size       = 10
+    desired_size   = 3
+    disk_size      = 50
+    labels = {
+      role = "general"
+    }
+    taints = []
+  }
+}
+
+# RDS configuration
+rds_config = {
+  engine_version    = "16.1"
+  instance_class    = "db.t3.medium"
+  allocated_storage = 100
+  multi_az          = false
+}
+]]></code>
+      </example>
+      <p>Module structure:</p>
+      <code lang="text"><![CDATA[
+modules/[name]/
+├── main.tf
+├── variables.tf
+├── outputs.tf
+├── versions.tf
+├── README.md
+└── examples/
+    └── basic/
+        ├── main.tf
+        └── outputs.tf
+]]></code>
+      <example type="good" title="Module main.tf template">
+        <code lang="hcl"><![CDATA[
+# main.tf
+resource "aws_RESOURCE" "main" {
+  name = var.name
+
+  dynamic "BLOCK" {
+    for_each = var.BLOCK_config
+    content {
+      key   = BLOCK.value.key
+      value = BLOCK.value.value
+    }
+  }
+
+  tags = merge(
+    var.tags,
+    {
+      Name = var.name
+    }
+  )
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+]]></code>
+      </example>
+      <example type="good" title="Module versions.tf template">
+        <code lang="hcl"><![CDATA[
+# versions.tf
+terraform {
+  required_version = ">= 1.6.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
+    }
+  }
+}
+]]></code>
+      </example>
+      <example type="good" title="GitHub Actions full workflow template">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/terraform.yml
+name: Terraform
+
+on:
+  push:
+    branches: [main]
+    paths: ['infrastructure/**']
+  pull_request:
+    branches: [main]
+    paths: ['infrastructure/**']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+env:
+  TF_VERSION: '1.6.0'
+  AWS_REGION: 'eu-central-1'
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: Run TFLint
+        run: tflint --recursive
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: infrastructure
+
+  plan:
+    name: Plan
+    needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [dev, staging, prod]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        working-directory: infrastructure/environments/${{ matrix.environment }}
+        run: terraform init
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: infrastructure/environments/${{ matrix.environment }}
+        run: terraform plan -no-color -out=tfplan
+
+      - name: Upload Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ matrix.environment }}
+          path: infrastructure/environments/${{ matrix.environment }}/tfplan
+
+  apply:
+    name: Apply
+    needs: plan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Download Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-prod
+          path: infrastructure/environments/prod
+
+      - name: Terraform Init
+        working-directory: infrastructure/environments/prod
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: infrastructure/environments/prod
+        run: terraform apply -auto-approve tfplan
+]]></code>
+      </example>
+      <example type="good" title="Makefile template">
+        <code lang="makefile"><![CDATA[
+# Makefile
+.PHONY: init plan apply destroy fmt validate lint security test
+
+ENV ?= dev
+TF_DIR = infrastructure/environments/$(ENV)
+
+init:
+	cd $(TF_DIR) && terraform init
+
+plan:
+	cd $(TF_DIR) && terraform plan -out=tfplan
+
+apply:
+	cd $(TF_DIR) && terraform apply tfplan
+
+destroy:
+	cd $(TF_DIR) && terraform destroy
+
+fmt:
+	terraform fmt -recursive
+
+validate:
+	cd $(TF_DIR) && terraform validate
+
+lint:
+	tflint --recursive
+
+security:
+	tfsec infrastructure/
+
+test:
+	cd tests && go test -v -timeout 30m
+
+clean:
+	find . -name "*.tfplan" -delete
+	find . -name ".terraform" -type d -exec rm -rf {} +
+]]></code>
+      </example>
+    </section>
+
+    <see-also>
+      <link href="https://developer.hashicorp.com/terraform/docs"/>
+      <link href="https://opentofu.org/docs/"/>
+      <link href="https://www.pulumi.com/docs/"/>
+      <link href="https://docs.crossplane.io/"/>
+      <link href="https://opengitops.dev/"/>
+      <link href="https://spacelift.io/blog/infrastructure-as-code"/>
+      <link href="https://spacelift.io/blog/infrastructure-as-code-tools"/>
+      <link href="https://cycode.com/blog/8-best-practices-for-securing-infrastructure-as-code/"/>
+    </see-also>
+  </content>
+</methodology>
