@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cd-basics">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Continuous Delivery (CD) is the practice of keeping every commit in a deployable state so that production releases require only a manual trigger — not a manual testing campaign.</summary>
+    <tags>
+      <tag>continuous-delivery</tag>
+      <tag>ci-cd</tag>
+      <tag>deployment</tag>
+      <tag>feature-flags</tag>
+      <tag>releasable-commits</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Continuous Delivery Basics</title>
+    <summary>Continuous Delivery (CD) is the practice of keeping every commit in a deployable state so that production releases require only a manual trigger — not a manual testing campaign. Prerequisites: CI in place, comprehensive automated tests, feature flags, backward-compatible migrations, and IaC. Every change ships through an automated pipeline; the only human gate is the final production deploy button.</summary>
+    <why>
+      <p>Manual deployments batch risk: the larger the batch, the harder the rollback. CD forces small batches (&lt;200 LOC per PR), which reduces lead time, lowers change failure rate, and makes rollback trivial. DORA research (Accelerate) shows elite teams deploy on-demand with p95 lead time &lt;1 hour and MTTR &lt;1 hour — achieved through CD, not heroics.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Team currently does manual deployments and wants a phased CD roadmap.</item>
+        <item>Auditing an existing pipeline against the CI / CD (Delivery) / CD (Deployment) matrix.</item>
+        <item>Designing backward-compatible schema migrations (expand-contract pattern) to decouple deploy from data changes.</item>
+        <item>Introducing feature flags as the bridge between "code shipped" and "feature released."</item>
+        <item>Diagnosing CD blockers: large batches, slow tests, manual gates, non-backward-compatible migrations.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pipeline YAML and deployment strategy mechanics — read `cd-pipelines/` instead.</item>
+        <item>Full GitOps (Argo/Flux) — `pro/infra/cicd-engineer` territory.</item>
+        <item>Mobile app store releases — review/policy gates dominate; CD principles apply but tooling diverges.</item>
+        <item>Environments with mandatory regulatory release boards — CD is achievable but heavier; this methodology does not cover evidence-capture automation.</item>
+        <item>When CI is not yet in place — fix prerequisites first.</item>
+      </list>
+    </when-not-to-use>
+    <section name="CD Core Principles">
+      <section name="Every Commit Must Be Releasable">
+        <rule>
+          <statement>Every commit that passes automated tests must be deployable to production without manual testing or code changes.</statement>
+          <rationale>Manual testing gates batch risk into releases; eliminating them forces small, backward-compatible changes and reduces deployment stress.</rationale>
+        </rule>
+        <rule>
+          <statement>Use feature flags to ship code dark — deploy code to production without making the feature visible to users.</statement>
+          <rationale>Decoupling deployment from release eliminates the biggest CD obstacle: incomplete features blocking ship dates. Deploy is an engineering event; release is a product event.</rationale>
+        </rule>
+        <rule>
+          <statement>Keep all database migrations backward-compatible; split schema changes from application changes across separate deployments.</statement>
+          <rationale>Non-backward-compatible migrations require coordinated application+schema deploys, creating a manual gate that breaks CD.</rationale>
+        </rule>
+      </section>
+      <section name="Deployment Pipeline Stages">
+        <rule>
+          <statement>The pipeline must flow: Commit → Build → Test (unit + integration + E2E) → Stage → Production. No stage may be skipped; each stage gates the next.</statement>
+          <rationale>Skipping stages creates a false sense of coverage and produces the same batching problem CD is designed to prevent.</rationale>
+        </rule>
+        <rule>
+          <statement>Keep total pipeline time under 15 minutes p95; longer pipelines incentivize batching commits to reduce pipeline frequency.</statement>
+          <rationale>A 45-minute pipeline creates pressure to wait until "the pipeline slot is worth it," which reintroduces large batches.</rationale>
+        </rule>
+        <rule>
+          <statement>Store pipeline YAML in the same repository as the application code; no out-of-band CI jobs managed separately from the codebase.</statement>
+          <rationale>Out-of-band pipelines cannot be reviewed in PRs, cannot be tested in branches, and diverge from the application they serve.</rationale>
+        </rule>
+      </section>
+      <section name="Automation Scope">
+        <rule>
+          <statement>Automate: build, test execution, environment provisioning, database migrations, configuration management, deployment, monitoring setup, and rollback. Manual steps are only production deploy trigger (CD) or nothing (Continuous Deployment).</statement>
+          <rationale>Any unautomated step becomes a bottleneck, a source of human error, and a reason teams defer releases.</rationale>
+        </rule>
+        <rule>
+          <statement>Every deployment must have a trivial, tested rollback path; require rollback rehearsal before considering a service CD-ready.</statement>
+          <rationale>CD without rollback is high-risk; the ability to undo any deployment in minutes is what makes frequent deploys safe.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="Migrations and CD Blockers">
+      <section name="Expand-Contract Migrations">
+        <rule>
+          <statement>Use the expand-contract pattern for schema changes: Deploy 1 adds nullable column (backward compatible). Deploy 2 backfills data. Deploy 3 makes column required. Never combine expand and contract in one deployment.</statement>
+          <rationale>Combining schema and application changes in one deploy creates a window where the old application version is incompatible with the new schema, requiring a coordinated cutover that defeats CD.</rationale>
+        </rule>
+        <rule>
+          <statement>Require two separate PRs for expand and contract phases; agents that merge them into one PR must be blocked by review policy.</statement>
+          <rationale>The single-PR "shortcut" is the most common way CD-adopting teams reintroduce risky coordinated deployments.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="python"><![CDATA[
+# Deploy 1: Add nullable column (backward compatible — old code works)
+def upgrade():
+    op.add_column('users', sa.Column('email', sa.String(255), nullable=True))
+
+def downgrade():
+    op.drop_column('users', 'email')
+
+# Deploy 2 (separate PR): Backfill data in a data migration
+# Deploy 3 (separate PR): Make column required after all rows have values
+def upgrade():
+    op.alter_column('users', 'email', nullable=False)
+]]></code>
+          <note>Each deploy can be rolled back independently. Old application versions continue working during the transition.</note>
+        </example>
+      </section>
+      <section name="CD Blockers and Solutions">
+        <rule>
+          <statement>Target &lt;200 LOC per PR; large PRs are the #1 CD blocker. Implement PR size linting in CI (fail on &gt;500 LOC changes outside generated files).</statement>
+          <rationale>Large PRs take longer to review, accumulate more conflicts, and carry more deployment risk than small ones. The discipline must be enforced, not just recommended.</rationale>
+        </rule>
+        <rule>
+          <statement>Parallelize tests; run E2E only on staging, not on every branch. Use contract testing instead of full E2E for service boundaries.</statement>
+          <rationale>Serial test execution and full E2E on every commit are the two most common reasons pipelines exceed the 15-minute budget and teams start batching.</rationale>
+        </rule>
+        <rule>
+          <statement>Fix or quarantine flaky tests immediately; a flaky test in the critical path destroys confidence in CD and encourages manual overrides.</statement>
+          <rationale>Once engineers learn to ignore a red pipeline step, they stop treating it as a gate — the entire CD discipline erodes.</rationale>
+        </rule>
+      </section>
+      <antipattern>
+        <description>Agents copy "Phase X: Y weeks" timelines from planning documents into roadmaps.</description>
+        <reason>Project policy prohibits time estimates in SDD documents. Replace with complexity tiers (Low/Medium/High) and token estimates.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using the in-process feature flag cache from the README in production (in-process dict cache).</description>
+        <reason>An in-process cache hides flag changes for hours or until the process restarts. Use an SSE/WebSocket-based flag SDK or a very short TTL (under 60 seconds) in production.</reason>
+      </antipattern>
+    </section>
+    <section name="DORA Metrics and Adoption Roadmap">
+      <section name="CI vs CD vs Continuous Deployment Matrix">
+        <rule>
+          <statement>When explaining the distinction between CI, CD (Delivery), and CD (Deployment), quote the matrix verbatim — agents and teams confuse them constantly.</statement>
+          <rationale>Teams that conflate Continuous Delivery and Continuous Deployment enable auto-deploy on services without the safety nets (canary analysis, SLO gating) that auto-deploy requires.</rationale>
+        </rule>
+        <p>Build automation: CI yes, CD yes, CDeployment yes.</p>
+        <p>Automated tests: CI yes, CD yes, CDeployment yes.</p>
+        <p>Deploy to staging: CI no, CD yes, CDeployment yes.</p>
+        <p>Production-ready: CI no, CD yes, CDeployment yes.</p>
+        <p>Auto-deploy to prod: CI no, CD no (manual trigger), CDeployment yes (automatic).</p>
+      </section>
+      <section name="DORA Elite Targets">
+        <rule>
+          <statement>Pair DORA elite targets with measurement instructions; quoting numbers without instrumentation creates false expectations.</statement>
+          <rationale>Teams that adopt DORA targets without wiring deploy events to a metrics store cannot tell whether they are measuring correctly, and typically over-report their performance.</rationale>
+        </rule>
+        <rule>
+          <statement>Measure deploy frequency from successful production deployment events in the CD pipeline, not from git push events.</statement>
+          <rationale>A push that fails in CI or staging is not a production deployment; counting pushes inflates the frequency metric.</rationale>
+        </rule>
+        <list>
+          <item>Deployment frequency (elite): on-demand, multiple per day.</item>
+          <item>Lead time for changes (elite): under 1 hour from commit to production.</item>
+          <item>Change failure rate (elite): 0-15% of deployments cause incidents.</item>
+          <item>Time to restore (elite): under 1 hour from incident detection to recovery.</item>
+        </list>
+      </section>
+      <section name="Five-Phase Adoption Roadmap">
+        <rule>
+          <statement>Use complexity tiers (Low/Medium/High) and token estimates for phases, never time estimates.</statement>
+          <rationale>Project policy prohibits time estimates in SDD documents; complexity tiers communicate effort without false precision.</rationale>
+        </rule>
+        <list>
+          <item>Phase 1 (Foundation): automated builds on every commit, unit tests in pipeline (&gt;70% coverage), lint/type-check gates, artifacts stored. Complexity: Low.</item>
+          <item>Phase 2 (Automated Testing): integration tests automated, E2E on staging, test parallelization, pipeline p95 under 15 minutes. Complexity: Medium.</item>
+          <item>Phase 3 (Staging Deployment): auto-deploy to staging, staging mirrors production, smoke tests automated, feature flags implemented. Complexity: Medium.</item>
+          <item>Phase 4 (Production Deployment): one-click production deploy, rolling/canary deployment strategy, automated rollback, monitoring and alerting. Complexity: High.</item>
+          <item>Phase 5 (Continuous Deployment, optional): auto-deploy to production gated by SLO burn-rate, canary analysis automated, progressive delivery. Complexity: High.</item>
+        </list>
+        <rule>
+          <statement>Do not advance to Phase 5 (Continuous Deployment) without canary analysis and SLO-based rollout gates in place; enabling auto-prod-deploy without these safety nets is high-risk.</statement>
+          <rationale>Continuous Deployment requires a stronger safety net than Continuous Delivery: automated canary analysis, real-time monitoring tied to deploy events, and SLO burn-rate-based rollback.</rationale>
+        </rule>
+      </section>
+    </section>
+    <section name="Agent Integration Guidance">
+      <how-to>
+        <step>Use this methodology as a maturity-assessment lens before any pipeline work. The agent reads the team's current pipeline + deploy story, scores against the CD vs CD matrix and DORA elite targets, and outputs a phased roadmap of concrete tasks.</step>
+        <step>Drop time estimates from any phase planning; use complexity tiers (Low/Medium/High) and token estimates per project policy.</step>
+        <step>Hand off to the `cd-pipelines/` agent for YAML implementation, to `feature-flags/` for flag system, and to `trunk-based-dev-*` for branch-strategy work.</step>
+        <step>Never treat "we can't deploy that often" as a tooling problem alone — include checklist items for batch-size discipline and test-pyramid rebalancing in the roadmap.</step>
+      </how-to>
+      <section name="Recommended Subagents">
+        <list>
+          <item>`general-purpose` — assessment, roadmap drafting, single-doc edits.</item>
+          <item>`faion-sdd-executor-agent` — when CD adoption is captured as SDD features over many tasks.</item>
+          <item>A narrow `migration-planner` task agent — given a schema change request, outputs the expand-contract sequence (deploys 1..N) with reversibility notes.</item>
+          <item>A `release-notes-bot` task agent — generates release notes from commits between two SHAs to lubricate frequent deploys.</item>
+        </list>
+      </section>
+      <section name="AI-Agent Gotchas">
+        <antipattern>
+          <description>Agents will copy the methodology's "Phase X: Y weeks" verbatim.</description>
+          <reason>Project policy bans time estimates. Strip and replace with complexity tiers.</reason>
+        </antipattern>
+        <antipattern>
+          <description>"Implement feature flags" prompts produce the methodology's in-process cache snippet; in production this hides flag changes for hours.</description>
+          <reason>Use SSE/WebSocket-based flag SDK or short TTL (under 60 seconds).</reason>
+        </antipattern>
+        <antipattern>
+          <description>Agents conflate Continuous Delivery and Continuous Deployment.</description>
+          <reason>The matrix in this methodology is the source of truth — quote it back.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Migration: agents merge expand and contract into one PR ("less work").</description>
+          <reason>Force two-PR rule; each deploy must be independently rollback-safe.</reason>
+        </antipattern>
+        <antipattern>
+          <description>DORA: agents will compute "deploy frequency" from `git push` events.</description>
+          <reason>Correct definition is successful production deployments. Wire to the deploy job, not push.</reason>
+        </antipattern>
+        <antipattern>
+          <description>"Reduce E2E to make CI faster" — agents will delete tests rather than parallelize.</description>
+          <reason>Add a CI-time budget and a coverage floor; parallelize instead.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Release boards / change tickets: agents will paste the same boilerplate ticket per deploy.</description>
+          <reason>Templatize once and link the deploy SHA, don't regenerate.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Health checks: agents merge `/health` and `/health/ready`.</description>
+          <reason>Readiness should fail when dependencies are down; liveness should not. Keep them separate.</reason>
+        </antipattern>
+      </section>
+    </section>
+    <section name="CLI Tools and Services">
+      <section name="Automation Tools">
+        <list>
+          <item>`gh` / `glab` — Read merge cadence, PR size, deploy frequency from CI runs (github CLI / gitlab CLI).</item>
+          <item>`dora-team/fourkeys` — Compute DORA metrics from CI + incident events (github.com/dora-team/fourkeys).</item>
+          <item>`git log --since` + custom scripts — Estimate lead time per commit.</item>
+          <item>`liquibase` / `flyway` / `alembic` / `sqitch` — Versioned schema migrations (tool docs).</item>
+          <item>`pre-commit` — Enforce small-batch hygiene (lint, secret scan) before merge (pre-commit.com).</item>
+          <item>`release-please` / `semantic-release` — Automated versioning + changelog (googleapis/release-please, semantic-release).</item>
+          <item>`conventional-commits-parser` — Detect breaking-change commits to gate releases (npm).</item>
+          <item>`lefthook` / `husky` — Git hooks orchestrators (tool docs).</item>
+          <item>`gh deploy` (custom) / `gh api repos/.../deployments` — Mark deployment events (gh CLI).</item>
+          <item>`gitleaks` / `trufflehog` — Block secrets; CD requires no secrets in repo (tool docs).</item>
+        </list>
+      </section>
+      <section name="Feature Flag and Metrics Services">
+        <list>
+          <item>LaunchDarkly (SaaS) — Mature flag system; necessary for CD.</item>
+          <item>Unleash (OSS) — Self-host; OpenAPI for agents.</item>
+          <item>Flagsmith (OSS + SaaS) — Open-source friendly.</item>
+          <item>GrowthBook (OSS) — Flags + experiments in one.</item>
+          <item>Statsig (SaaS) — Flags + experiments + analytics.</item>
+          <item>Sleuth.io (SaaS) — DORA metrics out of the box.</item>
+          <item>LinearB (SaaS) — DORA + dev efficiency dashboards.</item>
+          <item>Faros AI / Apiiro (SaaS) — DORA + risk; code-to-prod observability.</item>
+        </list>
+      </section>
+      <section name="Infrastructure and Deployment Services">
+        <list>
+          <item>GitHub Environments / GitLab Environments (SaaS) — Required-reviewer gates fit "manual approval" CD.</item>
+          <item>Atlassian Compass (SaaS) — DORA scorecards, opinionated.</item>
+          <item>Honeycomb / Datadog / Grafana (SaaS / OSS) — SLO burn-rate as auto-rollback signal.</item>
+          <item>StatusGator / Statuspage (SaaS) — Surface deploy events to users.</item>
+        </list>
+      </section>
+    </section>
+    <section name="Best Practices and Deployment Strategy">
+      <list>
+        <item>Trunk-based small batches: target &lt;200 LOC per PR; large PRs are the #1 CD blocker.</item>
+        <item>Every migration is reversible; expand → migrate data → contract spans multiple deploys.</item>
+        <item>Decouple deploy from release: ship code dark behind a flag; release by toggling, not deploying.</item>
+        <item>Track deploy outcomes (success/fail) and incidents in the same store so DORA metrics stay honest.</item>
+        <item>Make failed deploys cheap: trivial rollback, automatic rollback on smoke-test failure, no DB lock-in.</item>
+        <item>Keep CI under 15 minutes p95; longer pipelines cause batching.</item>
+        <item>Pipeline-as-code in the same repo as the app; no out-of-band Jenkins jobs.</item>
+        <item>Run staging traffic against the same DB schema migration order as prod will use; surface "expand" vs "contract" timing bugs early.</item>
+      </list>
+    </section>
+    <section name="Limitations and Coverage">
+      <list>
+        <item>"Phase X: 2-4 weeks" timelines in predecessor docs contradict project policy "no time estimates" — agents must drop those when generating roadmaps.</item>
+        <item>Feature-flag snippet uses an in-process cache that defeats real-time targeting; treat it as a sketch.</item>
+        <item>Migration example is single-step "add nullable" then "make required" — real expand-contract has 3-4 deploys with a backfill in between.</item>
+        <item>DORA metric definitions are correct but compact; many teams misread "lead time for changes" as cycle time.</item>
+        <item>"Common Challenges" gives causes + solutions but doesn't address culture/management blockers (release boards, change advisory boards).</item>
+        <item>No coverage of release notes automation, semantic versioning, or rollback comms — all relevant to CD in practice.</item>
+        <item>Health-check pattern is fine for stateless services; for services with warm-up (model loading, JIT), readiness needs a longer initialDelay.</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/cd-readiness.yaml" purpose="Per-service scorecard: CI, tests, IaC, release, DORA metrics, gaps, next phase."/>
+      <template path="templates/feature-flag-service.py" purpose="Minimal Python FeatureFlagService with cache, httpx evaluation, and usage example."/>
+    </templates>
+  </content>
+</methodology>

@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 API developer methodologies → methodology.xml (api-rate-limiting, api-rest-design, api-testing; feature-045 batch CT)
 - migrate: 3/3 pro methodologies → methodology.xml (product-lifecycle, business-model-planning, business-model-research; feature-045 batch CE)
 - migrate: 3/3 solo/comms/communicator methodologies → methodology.xml (business-storytelling, conflict-resolution, difficult-conversations; feature-045 batch CO)
 - migrate: 3/3 pro pm/product methodologies → methodology.xml (resource-management, mlp-planning, portfolio-strategy; feature-045 batch CC)
