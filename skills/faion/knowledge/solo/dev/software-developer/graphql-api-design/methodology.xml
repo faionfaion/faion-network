@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="graphql-api-design">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Schema-first GraphQL with SDL as source of truth, codegen-driven types, typed mutation payloads, per-request DataLoader for lists, and field-level authorization.</summary>
+    <tags>
+      <tag>graphql</tag>
+      <tag>schema-design</tag>
+      <tag>api-design</tag>
+      <tag>dataloader</tag>
+      <tag>authorization</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>GraphQL API Design</title>
+    <summary>Schema-first GraphQL design where the SDL is the source of truth, codegen drives client and server types, and every mutation returns a typed MutationNamePayload with a userErrors array. Core rule: every list-returning resolver must use a DataLoader instantiated per-request; every field with sensitive data must have explicit field-level authorization.</summary>
+    <why>
+      <p>Schema-first with codegen eliminates type drift between client and server. DataLoader prevents N+1 query explosions — the canonical GraphQL performance failure. Typed mutation payloads surface business errors structurally rather than as exceptions, enabling partial-success handling that REST cannot express. Query depth and cost limits prevent DoS from malicious nested queries.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Multiple clients (web + iOS + Android + partner) with divergent field needs over the same domain</item>
+        <item>Highly relational data where REST would force N+1 round-trips or sprawling ?expand= params</item>
+        <item>Schema-first development where the contract is the source of truth and codegen drives types</item>
+        <item>Subscriptions for live dashboards, chat, or collaborative editing</item>
+        <item>Federated services (Apollo Federation, GraphQL Hive) with one supergraph over many teams</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Public cache-heavy CDN-fronted APIs — REST + HTTP cache headers wins</item>
+        <item>File upload or streaming binary payloads — multipart REST or signed URLs are simpler</item>
+        <item>Tiny CRUD app with a single client — schema overhead and N+1 traps are not worth it</item>
+        <item>Latency-sensitive RPC inside a cluster — gRPC is faster and stricter</item>
+        <item>When your team has zero GraphQL experience and the deadline is tight; learning curve hits hard at the resolver-and-dataloader stage</item>
+      </list>
+    </when-not-to-use>
+    <section name="Schema-First Rule">
+      <rule>
+        <statement>Treat schema.graphql (SDL) as the source of truth. Run codegen in CI and fail if generated files drift from the committed schema.</statement>
+        <rationale>SDL-first ensures the API contract is reviewed before any implementation. Committing generated files by hand allows them to diverge from the schema silently.</rationale>
+      </rule>
+    </section>
+    <section name="Type Design">
+      <rule>
+        <statement>Every root type should implement Node (with id: ID!) and Timestamped (with createdAt, updatedAt). This enables consistent caching and relay compliance.</statement>
+        <rationale>Relay client caching is keyed by id. Without a consistent id field, clients cannot normalize the cache. Timestamps are universally needed for auditing and display.</rationale>
+      </rule>
+      <rule>
+        <statement>Every mutation must return a typed payload: MutationNamePayload containing the result object and a userErrors: [Error!]! array. Never throw exceptions for business errors.</statement>
+        <rationale>HTTP always returns 200 for GraphQL. Exceptions become opaque errors[] entries. Typed payloads allow clients to handle business errors (validation, conflicts) structurally in the same type system as success responses.</rationale>
+      </rule>
+    </section>
+    <section name="Relay Connections">
+      <rule>
+        <statement>Use Relay cursor connections for every list field that could grow beyond 10 items. Never expose offset/limit pagination in the public schema.</statement>
+        <rationale>Offset pagination is unstable when items are inserted or deleted mid-page. Cursor pagination returns consistent results regardless of concurrent modifications. Relay clients depend on PageInfo for infinite scroll.</rationale>
+      </rule>
+      <reference path="templates/schema.graphql">Full reference schema with Connection types and mutation payloads</reference>
+    </section>
+    <section name="Best Practices">
+      <p>DataLoader per request, not per process; keys identity-equal to actual fetch key</p>
+      <p>Make every mutation return a typed MutationNamePayload with userErrors array</p>
+      <p>Persisted queries in production; reject unknown query hashes</p>
+      <p>Disable introspection in prod or gate behind admin auth</p>
+      <p>Field-level auth via policy layer, never sprinkle checks in resolvers</p>
+    </section>
+    <templates>
+      <template path="templates/schema.graphql" purpose="Full reference schema with Connection types"/>
+      <template path="templates/dataloader.py" purpose="Strawberry DataLoader batch_load_fn"/>
+    </templates>
+  </content>
+</methodology>
