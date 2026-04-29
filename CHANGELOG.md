@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - chore: migrate openapi-specification, performance-testing, pwa-development to methodology.xml format (FEATURE-045 batch EE 3/3)
 - chore: migrate caching-strategy, contract-first-development, database-design to methodology.xml format (FEATURE-045 batch DW 3/3)
 - migrate: 3/3 solo/infra/server-craft methodologies → methodology.xml (kernel-tuning, monitoring-logging, multi-project-hosting; feature-045 batch EN)
+- migrate: api-openapi-spec, docker-compose-patterns, dotfiles-management → methodology.xml (feature-045 batch EL)
 - migrate: 3/3 solo/dev methodologies → methodology.xml (xp-extreme-programming, accessibility, css-in-js-advanced; feature-045 batch DR)
 - migrate: 3/3 solo/dev/software-developer API methodologies → methodology.xml (api-graphql, api-openapi-spec, api-rate-limiting; feature-045 batch DT)
 - migrate: 3/3 python-developer/software-architect methodologies → methodology.xml (django-celery, django-services, architecture-decision-records; feature-045 batch DV)
