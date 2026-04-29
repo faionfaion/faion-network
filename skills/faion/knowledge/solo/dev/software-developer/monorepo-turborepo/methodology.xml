@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="monorepo-turborepo">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>High-performance build system for JS/TS monorepos with intelligent caching and parallel execution. Every cacheable task must declare explicit outputs and dependsOn.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>monorepo</tag>
+      <tag>turborepo</tag>
+      <tag>build-system</tag>
+      <tag>task-pipeline</tag>
+      <tag>workspace</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>typescript</language>
+      <language>javascript</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Monorepo Setup with Turborepo</title>
+
+    <summary>Turborepo is a high-performance build system for JavaScript/TypeScript monorepos. It provides intelligent caching, parallel task execution, and incremental builds across multiple packages and apps. The core rule: every cacheable task must declare explicit outputs and dependsOn; omitting either causes stale or no-cache builds.</summary>
+
+    <why>
+      <p>Monorepos with shared packages waste CI time rebuilding unchanged code. Turborepo's content-hashed task cache eliminates redundant rebuilds — a 5-minute CI step becomes 5 seconds after the first run. Task pipeline declaration (dependsOn: ["^build"]) ensures correct execution order across workspace packages.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>2+ JS/TS apps sharing UI components, types, or utility packages</item>
+        <item>Solo or small team running web + admin + marketing site from one repo with shared lint/format/CI</item>
+        <item>Projects where CI build time is dominated by re-running unchanged work</item>
+        <item>Microservices in TS/JS where shared types (zod schemas, OpenAPI clients) need a single source of truth</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single app, no shared code — Turbo overhead exceeds benefit</item>
+        <item>Polyglot monorepos (Go + TS + Python) — Turbo only orchestrates JS scripts; use Bazel, Pants, or Moon instead</item>
+        <item>Projects needing sophisticated dependency graphs (codegen → build → release) — Nx or Bazel scales further</item>
+        <item>Teams already on Lerna or Yarn Workspaces with no perf pain — migration cost may not pay back</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="workspace-layout">
+      <p>Turborepo workspace structure with apps/, packages/, and root configuration.</p>
+
+      <rule>
+        <statement>Separate apps (runnable services) from packages (shared libraries) at the workspace root.</statement>
+        <rationale>Apps are app-shaped (no exports field); packages are library-shaped (with exports). Mixing them confuses Turborepo's dependency graph and publishing workflows.</rationale>
+      </rule>
+
+      <example type="good" title="Monorepo directory structure">
+        <code lang="text"><![CDATA[
+monorepo/
+├── turbo.json
+├── package.json          # root: scripts delegate to turbo
+├── pnpm-workspace.yaml
+├── apps/
+│   ├── web/              # Next.js app — no exports, private: true
+│   └── api/              # Express/Fastify service — no exports
+└── packages/
+    ├── ui/               # shared React components — has exports map
+    ├── config/           # eslint, tsconfig presets — versionless
+    ├── types/            # shared TS types — has exports map
+    └── utils/            # shared utilities — has exports map
+]]></code>
+      </example>
+    </section>
+
+    <section name="package-manager">
+      <p>Package manager selection and workspace protocol configuration.</p>
+
+      <rule>
+        <statement>Use pnpm with a pinned version in the root package.json packageManager field and add an engines.pnpm constraint.</statement>
+        <rationale>pnpm has the best workspace protocol support (workspace:*). Pinning prevents version drift across machines and CI. npm workspace hoisting causes phantom dependency bugs.</rationale>
+      </rule>
+
+      <reference path="templates/pnpm-workspace.yaml">pnpm workspace glob configuration</reference>
+    </section>
+
+    <section name="shared-package-conventions">
+      <p>Rules for managing shared packages within the workspace.</p>
+
+      <rule>
+        <statement>Keep config packages (eslint preset, tsconfig) at version 0.0.0 with private: true. Never publish them.</statement>
+        <rationale>Config packages are build-time tools consumed via workspace:*. Versioning them creates unnecessary churn; publishing them leaks internal configs.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use workspace:* for internal dependencies in pnpm. Never use relative paths (../../packages/ui/src) — always @org/ui.</statement>
+        <rationale>Relative imports cross app/package boundaries and break when packages are moved or published. @org/ui via workspace:* resolves correctly in all contexts.</rationale>
+      </rule>
+
+      <reference path="templates/tsconfig-base.json">Shared TypeScript base config for library and app packages</reference>
+    </section>
+
+    <section name="core-pipeline-rules">
+      <p>Essential turbo.json configuration for correct caching and task execution.</p>
+
+      <rule>
+        <statement>Every cacheable task must declare explicit outputs. Without outputs, Turborepo caches nothing useful and returns empty directories on cache hit.</statement>
+        <rationale>Turbo stores the file set listed in outputs as the cache artifact. An empty outputs: [] stores nothing; subsequent runs fetch an empty result and rebuild silently.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Declare every environment variable that affects build output in env (per-task) or globalEnv (all tasks). Undeclared env vars cause stale cache hits across configurations.</statement>
+        <rationale>If NODE_ENV or API_URL changes the build output but is not listed, Turbo returns the cached prod artifact for a dev build — a silent correctness bug.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Mark dev and start tasks with "cache": false, "persistent": true. Never cache long-running processes.</statement>
+        <rationale>Dev servers are non-deterministic and never complete. Caching them stores incomplete state; persistent: true tells Turbo to keep the process alive indefinitely.</rationale>
+      </rule>
+    </section>
+
+    <section name="dependson-patterns">
+      <p>Task dependency declaration patterns for correct build order.</p>
+
+      <rule>
+        <statement>Use "dependsOn": ["^build"] (caret prefix) for tasks that need upstream packages built first. Use "dependsOn": ["build"] (no caret) for tasks that need the same package built first.</statement>
+        <rationale>The caret ^ means "all dependencies of this package must complete this task first." Without caret, typecheck might run before the upstream package emits its type declarations, causing false errors.</rationale>
+      </rule>
+
+      <example type="good" title="Correct Turbo task pipeline">
+        <code lang="json"><![CDATA[
+{
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "test": {
+      "dependsOn": ["build"],
+      "outputs": ["coverage/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}
+]]></code>
+        <note>Turbo v2+ uses tasks key; v1 used pipeline. Always check the installed version before copy-pasting examples.</note>
+      </example>
+
+      <example type="bad" title="Missing dependsOn causes false errors">
+        <code lang="json"><![CDATA[
+{
+  "tasks": {
+    "typecheck": {}
+  }
+}
+]]></code>
+        <note>Missing dependsOn: typecheck may run before upstream packages emit declarations, producing false type errors.</note>
+      </example>
+    </section>
+
+    <section name="cache-configuration">
+      <p>Output paths and environment variable management for cache correctness.</p>
+
+      <rule>
+        <statement>Ensure output paths in turbo.json match exactly what the build tool emits. Use --summarize to inspect what was actually cached.</statement>
+        <rationale>Turborepo caches an empty directory if outputs mismatch. Future CI runs get a cache hit with no files, then fail during the next task that consumes the outputs.</rationale>
+      </rule>
+
+      <example type="good" title="Cache configuration with env vars">
+        <code lang="json"><![CDATA[
+{
+  "tasks": {
+    "build": {
+      "env": ["NODE_ENV", "NEXT_PUBLIC_API_URL"],
+      "outputs": ["dist/**"]
+    }
+  }
+}
+]]></code>
+      </example>
+
+      <rule>
+        <statement>Set up remote cache from day one and enable signature verification ("signature": true) in shared environments.</statement>
+        <rationale>Without remote cache, every CI machine rebuilds from scratch. Without signature verification, a corrupt artifact uploaded by one machine breaks every consumer until manually purged.</rationale>
+      </rule>
+
+      <reference path="templates/turbo.json">Reference turbo.json with correct pipeline, cache flags, and env declarations</reference>
+    </section>
+
+    <section name="structural-antipatterns">
+      <p>Common structural mistakes in monorepo setup.</p>
+
+      <antipattern>
+        <description>Circular package dependencies: packages/a depends on packages/b, which depends on packages/a.</description>
+        <reason>Turborepo cannot compute a valid execution order for a cycle; the build hangs or fails with an opaque error. Extract the shared code into a third package with no internal dependencies.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Phantom dependencies: package uses a library that works in development because it is hoisted to the root node_modules, but the package.json does not declare it as a dependency.</description>
+        <reason>The build works locally but fails on a clean install or after publishing because the transitive dep is no longer guaranteed to be present. Always declare every import as an explicit dependency.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Hardcoded relative imports across packages: import { Button } from '../../../packages/ui/src/button'.</description>
+        <reason>Relative cross-package imports bypass the exports map, break on publish, and are invisible to Turborepo's dependency graph. Always use the package name: import { Button } from '@org/ui'.</reason>
+      </antipattern>
+    </section>
+
+    <section name="cache-antipatterns">
+      <p>Common caching mistakes that cause stale builds and silent correctness bugs.</p>
+
+      <antipattern>
+        <description>Outputs path mismatch: turbo.json declares outputs: ["dist/**"] but the build tool emits to out/.</description>
+        <reason>Turborepo caches an empty directory. Future CI runs get a cache hit with no files, then fail during the next task that consumes the outputs. Use --summarize to inspect what was actually cached.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Undeclared environment variables in env / globalEnv that affect the build output.</description>
+        <reason>The same task hash is computed for both NODE_ENV=development and NODE_ENV=production builds, so the prod artifact gets served as the dev build (or vice versa). Every env var that changes output must be declared.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Caching dev and start tasks, or caching non-deterministic tasks.</description>
+        <reason>Dev servers are non-deterministic and never complete. Caching them stores incomplete state and breaks subsequent runs that depend on the server being available.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Caching tasks as dev when they should not be cached because they have side effects or random output.</description>
+        <reason>Any task with "cache": false must also have "persistent": true to prevent Turborepo from treating the task as one-shot.</reason>
+      </antipattern>
+    </section>
+
+    <section name="limitations-and-gotchas">
+      <p>Known constraints and version-specific issues with Turborepo.</p>
+
+      <rule>
+        <statement>Be aware that cache key bugs (missing inputs or wrong outputs in turbo.json) cause stale or no-cache builds; debugging requires --summarize and reading hashes.</statement>
+        <rationale>Cache correctness is invisible until a build fails mysteriously; always use --summarize to verify caching behavior.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Be aware that remote cache poisoning occurs when a corrupt artifact uploaded by one machine breaks every other consumer until manually purged.</statement>
+        <rationale>Enable signature verification in production environments to prevent this.</rationale>
+      </rule>
+
+      <rule>
+        <statement>GlobalDependencies misconfig means env vars not declared cause silent cache hits across configs (e.g., prod build cached as dev).</statement>
+        <rationale>Every env var affecting output must be explicitly listed.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Be aware that task pipeline drift occurs when agents add dev tasks that get cached because they forgot "cache": false.</statement>
+        <rationale>Audit turbo.json after any agent modifications.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Workspace protocol gotchas: workspace:* works in pnpm/yarn but not npm &lt;7; agents may pick the wrong package manager.</statement>
+        <rationale>Require pnpm or npm 7+ for workspace protocol support.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Be aware that Turbo v1 vs v2 config differs significantly (pipeline key removed, replaced by tasks); agents may copy stale examples.</statement>
+        <rationale>Always verify the installed Turborepo version before copy-pasting examples from the web.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Multi-agent workflow for monorepo scaffolding and configuration.</p>
+
+      <rule>
+        <statement>Use a subagent to scaffold the workspace via npx create-turbo@latest or pnpm dlx create-turbo.</statement>
+        <rationale>Scaffolding generates correct baseline configuration and prevents manual errors.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use a "move + replace imports" agent to extract shared packages from apps, updating package.json deps and tsconfig paths.</statement>
+        <rationale>Package extraction is mechanical and suitable for agent automation.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use an agent to define turbo.json task pipeline + outputs based on the workspace layout.</statement>
+        <rationale>Pipeline definition is rule-based and can be automated.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Always have the agent run turbo build --dry-run after config changes — the dry-run output is the source of truth for cache hashing.</statement>
+        <rationale>Dry-run output reveals cache correctness without actually building.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use an agent to wire CI with remote cache (Vercel or self-hosted).</statement>
+        <rationale>Remote cache setup is straightforward and improves CI speed significantly.</rationale>
+      </rule>
+    </section>
+
+    <section name="cli-tools">
+      <p>Command-line tools and utilities for monorepo management.</p>
+
+      <list>
+        <item>turbo: Task runner + cache. Install: npm i -D turbo or pnpm dlx create-turbo</item>
+        <item>pnpm: Recommended package manager (best workspace support). Docs: https://pnpm.io</item>
+        <item>changesets: Versioning + publish workflow. Install: npm i -D @changesets/cli</item>
+        <item>tsup: Library bundler (esm + cjs + d.ts). Install: npm i -D tsup</item>
+        <item>syncpack: Keep dep versions aligned across packages. Install: npm i -D syncpack</item>
+        <item>manypkg check: Sanity checks on workspace structure. Install: npm i -D @manypkg/cli</item>
+        <item>turbo-ignore: Skip CI on packages without changes. Docs: https://turbo.build/repo/docs/reference/turbo-ignore</item>
+        <item>lefthook / husky: Run scoped lints on changed files. Docs: https://github.com/evilmartians/lefthook</item>
+        <item>nx (alternative): Larger DX feature set. Docs: https://nx.dev</item>
+        <item>moonrepo (alternative): Polyglot, Rust-based runner. Docs: https://moonrepo.dev</item>
+      </list>
+    </section>
+
+    <section name="services">
+      <p>Remote cache services and related platforms for monorepo infrastructure.</p>
+
+      <rule>
+        <statement>Vercel Remote Cache (SaaS) is the first-party Turborepo cache service with zero configuration.</statement>
+        <rationale>Simplest path for teams already using Vercel.</rationale>
+      </rule>
+
+      <rule>
+        <statement>self-hosted remote cache (OSS) works for air-gapped environments and teams with existing artifact storage.</statement>
+        <rationale>Requires S3-compatible storage but avoids vendor lock-in.</rationale>
+      </rule>
+
+      <rule>
+        <statement>pnpm has first-class workspace support and is the recommended package manager for Turborepo.</statement>
+        <rationale>npm workspace hoisting and Yarn instability make pnpm the most reliable choice.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/turbo.json" purpose="Reference turbo.json with correct pipeline, cache flags, and env declarations"/>
+      <template path="templates/pnpm-workspace.yaml" purpose="pnpm workspace glob configuration"/>
+      <template path="templates/tsconfig-base.json" purpose="Shared TypeScript base config for library and app packages"/>
+    </templates>
+
+    <see-also>
+      <link href="https://turbo.build/"/>
+      <link href="https://pnpm.io/workspaces"/>
+      <link href="https://turbo.build/repo/docs/core-concepts/caching"/>
+      <link href="https://turbo.build/repo/docs/core-concepts/monorepos"/>
+      <link href="https://nx.dev/"/>
+      <link href="https://moonrepo.dev/"/>
+    </see-also>
+  </content>
+</methodology>

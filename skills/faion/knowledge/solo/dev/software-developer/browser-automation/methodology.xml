@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="browser-automation">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Headless browser automation with Playwright or Puppeteer for testing, scraping, and form automation. Use role=/text= locators, condition waits, and auth persistence.</summary>
+    <tags>
+      <tag>browser</tag>
+      <tag>automation</tag>
+      <tag>testing</tag>
+      <tag>scraping</tag>
+      <tag>playwright</tag>
+      <tag>puppeteer</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>Browser Automation</title>
+    <summary>Headless browser automation using Playwright (preferred) or Puppeteer for E2E testing, web scraping, screenshot/PDF generation, and form automation. Use role= and text= locators; always wait on conditions, never fixed timeouts; persist auth via context.storageState; block images/fonts/analytics on scraping runs.</summary>
+    <why>
+      <p>Browser automation handles dynamic SPAs, JavaScript-rendered content, and complex user flows that HTTP-only scrapers cannot reach. Playwright's auto-waiting and locator API reduce flakiness compared to manually timed waits. Page Object Model keeps selector changes isolated.</p>
+      <p>Many modern sites require JavaScript execution to render content; a headless browser is the only way to access them. Automating full user journeys ensures end-to-end correctness that unit and integration tests cannot achieve.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>E2E testing of web apps (Playwright test suite, preview verification).</item>
+        <item>Scraping public sites that have no usable API.</item>
+        <item>Programmatic screenshot/PDF generation for reports, OG cards, invoice rendering.</item>
+        <item>Form fill and submit automation for portals lacking an API.</item>
+        <item>Visual regression on component library builds.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>The site offers a REST/GraphQL/RSS API — always prefer the API; browser automation is brittle and slow.</item>
+        <item>Sites with strong anti-bot protection (Cloudflare Turnstile, PerimeterX) — fight cost exceeds value.</item>
+        <item>High-throughput scraping (&gt;100 pages/sec) — use HTTP-only (httpx, scrapy) instead.</item>
+        <item>Tasks requiring credentials you don't legitimately own.</item>
+        <item>Behind-VPN or zero-trust portals where headless browser fingerprint trips MFA.</item>
+      </list>
+    </when-not-to-use>
+    <section name="locator-strategy">
+      <rule>
+        <statement>Use role= and text= locators before CSS selectors; never use CSS class-based selectors in automation scripts.</statement>
+        <rationale>CSS class selectors break on every UI refactor, especially with Tailwind JIT; accessibility role and text selectors are refactor-stable.</rationale>
+      </rule>
+      <example type="good" title="Accessibility-based locators">
+        <code lang="javascript"><![CDATA[
+await page.click('role=button[name="Submit"]');
+await page.click('text=Sign in');
+await page.click('button[type="submit"]');
+]]></code>
+        <note>Role selectors survive styling refactors; text selectors work across component reimplementations.</note>
+      </example>
+    </section>
+    <section name="auto-waiting">
+      <p>Playwright's auto-wait feature eliminates most flakiness. Always rely on condition-based waits.</p>
+      <rule>
+        <statement>Never use page.waitForTimeout(N); always use condition-based waits (waitForSelector, waitForResponse, waitForURL, expect.poll).</statement>
+        <rationale>Fixed timeouts are either too short (flaky) or too long (slow); condition-based waits complete as soon as the condition is met.</rationale>
+      </rule>
+      <example type="good" title="Condition-based waiting">
+        <code lang="javascript"><![CDATA[
+await page.click('#button');
+await page.fill('#input', 'text');
+await page.waitForSelector('#dynamic-element');
+await page.waitForLoadState('networkidle');
+]]></code>
+      </example>
+    </section>
+    <section name="auth-state-persistence">
+      <rule>
+        <statement>Persist auth state via context.storageState({ path }) and reuse it across test sessions; never re-run the login flow in every test.</statement>
+        <rationale>Login flows are fragile and slow; running them per-test multiplies flakiness and execution time.</rationale>
+      </rule>
+      <example type="good" title="Save and restore session">
+        <code lang="javascript"><![CDATA[
+await context.storageState({ path: 'auth.json' });
+const context = await browser.newContext({ storageState: 'auth.json' });
+]]></code>
+      </example>
+    </section>
+    <section name="network-interception">
+      <rule>
+        <statement>Block images, fonts, and analytics scripts on all scraping runs; they add latency and bandwidth without data value.</statement>
+        <rationale>Blocking non-essential resources reduces page load time by 3-5x and drops bandwidth ~80%.</rationale>
+      </rule>
+      <example type="good" title="Block images and analytics">
+        <code lang="javascript"><![CDATA[
+await page.route('**/*.{png,jpg,jpeg,svg,woff2,gif}', route => route.abort());
+await page.route('**/(analytics|gtm|hotjar)**', route => route.abort());
+]]></code>
+      </example>
+    </section>
+    <section name="playwright-vs-puppeteer">
+      <p>Playwright has become the de facto standard for new projects due to superior API design and multi-browser support.</p>
+      <rule>
+        <statement>In containerized/CI environments, always pass --no-sandbox, --disable-dev-shm-usage, and --disable-gpu in Puppeteer launch options.</statement>
+        <rationale>Docker containers lack sandbox support; without these flags Chromium crashes on launch.</rationale>
+      </rule>
+      <example type="good" title="Puppeteer launch for Docker">
+        <code lang="javascript"><![CDATA[
+const browser = await puppeteer.launch({
+  headless: 'new',
+  args: ['--no-sandbox', '--disable-setuid-sandbox',
+         '--disable-dev-shm-usage', '--disable-gpu']
+});
+]]></code>
+      </example>
+    </section>
+    <section name="data-extraction">
+      <rule>
+        <statement>Define a JSON Schema or Zod schema for the extracted data before writing the extractor; validate every extracted row against the schema and skip/log invalid rows.</statement>
+        <rationale>LLMs invent field names not present in the source HTML; a schema makes invalid extractions visible immediately rather than silently producing bad data.</rationale>
+      </rule>
+      <example type="good" title="Zod schema validation">
+        <code lang="javascript"><![CDATA[
+const Item = z.object({
+  title: z.string().min(1),
+  price: z.number().positive(),
+  url: z.string().url(),
+});
+
+const items = raw.map((r, i) => {
+  const result = Item.safeParse(r);
+  if (!result.success) console.error(`row ${i} skipped:`, result.error.flatten());
+  return result.success ? result.data : null;
+}).filter(Boolean);
+]]></code>
+      </example>
+    </section>
+    <section name="pagination-patterns">
+      <example type="good" title="Next-button pagination">
+        <code lang="javascript"><![CDATA[
+async function scrapeAllPages(page) {
+  const allData = [];
+  while (true) {
+    const data = await page.$$eval('.item', items => items.map(i => i.textContent));
+    allData.push(...data);
+    const next = await page.$('a.next:not(.disabled)');
+    if (!next) break;
+    await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), next.click()]);
+  }
+  return allData;
+}
+]]></code>
+      </example>
+    </section>
+    <section name="concurrency-limiting">
+      <rule>
+        <statement>Use p-limit or a custom semaphore to cap concurrent page instances at 3-5; close each page in a finally block.</statement>
+        <rationale>Uncapped page creation OOMs the host; each Chromium page consumes ~50-100MB RAM.</rationale>
+      </rule>
+      <example type="good" title="Concurrent scraping with semaphore">
+        <code lang="javascript"><![CDATA[
+const pLimit = require('p-limit');
+const limit = pLimit(3);
+
+const tasks = urls.map(url =>
+  limit(async () => {
+    const page = await browser.newPage();
+    try {
+      await page.goto(url);
+      return await extractData(page);
+    } finally {
+      await page.close();
+    }
+  })
+);
+
+return Promise.all(tasks);
+]]></code>
+      </example>
+    </section>
+    <section name="antipattern-fixed-timeouts">
+      <antipattern>
+        <description>Using page.waitForTimeout(2000) or sleep() as the primary wait strategy.</description>
+        <reason>Fixed timeouts are either too short (flaky on slow CI) or too long (slow overall); condition-based waits are correct and faster.</reason>
+      </antipattern>
+    </section>
+    <section name="antipattern-imagined-selectors">
+      <antipattern>
+        <description>Generating selectors from imagined HTML without feeding the agent actual DOM or accessibility tree.</description>
+        <reason>LLMs invent plausible-looking selectors that don't match the real page; feeding page.content() prevents this.</reason>
+      </antipattern>
+    </section>
+    <section name="antipattern-unbounded-concurrency">
+      <antipattern>
+        <description>Spawning N browsers in retry loops without a concurrency cap, causing OOM on the host.</description>
+        <reason>Each headless Chromium instance consumes ~50-100MB RAM; uncapped retries exhaust memory within minutes.</reason>
+      </antipattern>
+    </section>
+    <section name="antipattern-class-selectors">
+      <antipattern>
+        <description>Using CSS class selectors (e.g., .bg-blue-600) in automation scripts on Tailwind-styled sites.</description>
+        <reason>Tailwind JIT classes change on refactors; role= and text= selectors survive styling changes.</reason>
+      </antipattern>
+    </section>
+    <section name="antipattern-context-reuse">
+      <antipattern>
+        <description>Reusing one browser context across multiple scraping tasks, causing auth state leakage.</description>
+        <reason>Cookies and localStorage persist; auth from task A bleeds into task B, causing wrong-user actions.</reason>
+      </antipattern>
+    </section>
+    <section name="antipattern-no-human-loop">
+      <antipattern>
+        <description>Automating payment, account creation, or destructive form submission without human-in-the-loop confirmation.</description>
+        <reason>Irreversible actions must be confirmed by a human seeing the rendered form before submission.</reason>
+      </antipattern>
+    </section>
+    <section name="debugging-and-tracing">
+      <rule>
+        <statement>Run headed in development (PWDEBUG=1), headless in CI; never debug a headless flake without trace: 'on-first-retry' enabled.</statement>
+        <rationale>Headless flakes are invisible without a trace; Playwright Trace Viewer provides timeline, screenshots, and network events.</rationale>
+      </rule>
+    </section>
+    <section name="best-practices">
+      <p>Prefer role= and text= locators over CSS. Always pass waitUntil: 'networkidle' for SPAs. Block images/fonts/analytics on scraping runs. Persist auth and reuse across sessions. Wrap every action in retry-with-backoff. Run headed in dev, headless in CI. Keep one POM file per page. Set slowMo only for demo/recording. Use --shard=N/M for CI parallelism. Honor robots.txt for scraping.</p>
+    </section>
+    <templates>
+      <template path="templates/page-object.js" purpose="Page Object Model class scaffold for Playwright"/>
+      <template path="templates/extract.js" purpose="Minimal Playwright extractor with Zod schema validation"/>
+    </templates>
+    <see-also>
+      <link href="https://playwright.dev">Playwright official documentation</link>
+      <link href="https://pptr.dev">Puppeteer official documentation</link>
+      <link href="https://playwright.dev/docs/trace-viewer">Playwright Trace Viewer</link>
+    </see-also>
+  </content>
+</methodology>

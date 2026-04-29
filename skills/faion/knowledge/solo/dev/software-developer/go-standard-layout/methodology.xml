@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-standard-layout">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Go project layout with cmd/, internal/, pkg/, migrations/. Layered architecture: handler/service/repository with interfaces at consumer side. Enforces import boundaries with toolchain and linters.</summary>
+    <tags>
+      <tag>go</tag>
+      <tag>architecture</tag>
+      <tag>layering</tag>
+      <tag>best-practices</tag>
+      <tag>package-design</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Go Standard Layout</title>
+    <summary>Organizes a Go project into cmd/, internal/, pkg/, and migrations/ directories. internal/ enforces package privacy at the Go toolchain level, cmd/ supports multiple binary entry points, and sub-packages (handler/, service/, repository/, model/) enforce a layered architecture with dependency flow from handler down to repository.</summary>
+    <why>
+      <p>Go's internal/ keyword prevents other modules from importing your private packages — the compiler enforces it, not convention. Splitting concerns into layers prevents circular dependencies, makes testing with mocks straightforward (interfaces at the consumer side), and scales naturally from one binary to many.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Starting any new Go service or CLI tool</item>
+        <item>Refactoring a flat Go codebase that has grown beyond 3-4 files</item>
+        <item>Adding a second binary to an existing project</item>
+        <item>Setting up a project intended to be imported by external modules (pkg/)</item>
+        <item>Bootstrapping a new Go service or CLI: agent scaffolds cmd/ + internal/ + pkg/ plus go.mod, Makefile, Dockerfile, and CI</item>
+        <item>Refactoring a flat single-package Go project that has outgrown a single directory</item>
+        <item>Multi-binary repos (API + worker + CLI sharing a domain)</item>
+        <item>Enforcing import boundaries in a modular monolith written in Go (internal/ + per-feature subpackages)</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-file scripts or one-shot utilities — overhead is not justified</item>
+        <item>Prototypes under 200 LOC — premature structure adds friction before requirements settle</item>
+        <item>Generated code output directories — follow the generator's own conventions</item>
+        <item>Tiny utility CLI / library with &lt;5 files — keep it flat</item>
+        <item>Strict adherence to the unofficial golang-standards/project-layout repo</item>
+        <item>Polyglot monorepos where a Go package is one of many — adapt to monorepo conventions (Bazel, Nx)</item>
+        <item>One-shot Lambdas / small Cloud Functions where main.go next to the manifest beats deep folders</item>
+        <item>Plugin systems requiring pure pkg/ exports — internal/ would block third-party integrators by design</item>
+      </list>
+    </when-not-to-use>
+    <section name="Directory Roles">
+      <rule>
+        <statement>Place each binary entry point under cmd/&lt;binary-name&gt;/main.go.</statement>
+        <rationale>Multiple binaries in one module share internal packages without duplication. The directory name becomes the binary name.</rationale>
+      </rule>
+      <rule>
+        <statement>Put all application code under internal/ to prevent external modules from importing it.</statement>
+        <rationale>The Go toolchain enforces internal/ visibility at compile time — no documentation or convention can be ignored accidentally.</rationale>
+      </rule>
+      <rule>
+        <statement>Use pkg/ only for packages intended to be imported by external modules.</statement>
+        <rationale>pkg/ signals a public API contract. Putting application-specific logic here creates unintended coupling.</rationale>
+      </rule>
+      <rule>
+        <statement>Organize internal/ into handler/, service/, repository/, model/, middleware/, config/ sub-packages.</statement>
+        <rationale>Each layer has one responsibility. Dependency flows handler → service → repository; no layer imports one above it.</rationale>
+      </rule>
+    </section>
+    <section name="Layer Responsibilities">
+      <rule>
+        <statement>handler/ translates HTTP requests to service calls and HTTP responses; no business logic.</statement>
+        <rationale>Mixing HTTP concerns with business logic makes unit testing require a full HTTP stack.</rationale>
+      </rule>
+      <rule>
+        <statement>service/ contains all business logic; accepts and returns domain types; no HTTP or DB primitives.</statement>
+        <rationale>Services must be testable without a network or database — only domain types and interfaces allowed.</rationale>
+      </rule>
+      <rule>
+        <statement>repository/ owns all database access; returns model types; no business logic.</statement>
+        <rationale>Isolating DB access enables swapping storage backends and testing with in-memory fakes.</rationale>
+      </rule>
+      <rule>
+        <statement>Define interfaces in the consumer package, not the provider package.</statement>
+        <rationale>Consumer-side interfaces enforce the minimal surface needed and prevent import cycles.</rationale>
+      </rule>
+    </section>
+    <section name="Where It Fails / Limitations">
+      <p>pkg/ overuse: teams dump everything under pkg/ to "make it reusable"; methodology warns flatness but pattern persists. Result: stable surface that nobody actually consumes outside the repo.</p>
+      <p>Interface placement drift: the guidance says "interfaces at consumer side"; agents and humans default to declaring them next to the implementation, leading to import cycles.</p>
+      <p>internal/ package balloon: without sub-package discipline, internal/ becomes a 200-file dump where nothing is encapsulated.</p>
+      <p>Service vs handler boundary: example shows handler calling service directly via concrete type — fine for small apps, breaks for testability when the team adds DI later.</p>
+      <p>Migrations in migrations/: layout shows it but doesn't say which tool (golang-migrate, goose, atlas); ambiguity = inconsistent adoption.</p>
+      <p>Multi-module repos: unclear how to split if you need separate go.mod per service — methodology doesn't address it.</p>
+      <p>Versioned API folders absent: REST/gRPC versioning (internal/handler/v1, v2) is not in the template.</p>
+    </section>
+    <section name="Antipatterns">
+      <antipattern>
+        <description>All code in a single package at the repo root (flat structure).</description>
+        <reason>No package boundaries means any file can call any function. Adding internal/ later requires touching every import.</reason>
+      </antipattern>
+      <antipattern>
+        <description>A single "utils" or "common" package that grows into a God package imported by everyone.</description>
+        <reason>God packages create circular dependency risks and make the codebase harder to understand and test in isolation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Importing a parent layer from a child (e.g. repository importing service).</description>
+        <reason>Reverse dependencies create circular import errors or force awkward interface gymnastics to break the cycle.</reason>
+      </antipattern>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Drive Go layout as a three-pass agent flow: (1) scaffolder agent generates the standard tree from the methodology + a one-page brief (service name, deps, deploy target); (2) layout-linter agent runs in CI and rejects PRs that put new code under pkg/ without justification, or import internal/ from outside the module, or declare interfaces at the producer side; (3) boundary refactorer agent flags handler ⇄ service ⇄ repository violations (e.g., handler importing repository directly) and proposes the smallest patch. Pair with architecture-decision-records/ so any deviation from the layout is recorded in an ADR.</p>
+    </section>
+    <section name="Recommended Subagents">
+      <list>
+        <item>faion-sdd-executor-agent — converts layout-refactor work into SDD todo/ tasks (one task per package boundary)</item>
+        <item>A Go-scaffolder agent (purpose-built, worth creating): given service name + dependencies, emits the full tree + Makefile + Dockerfile + GitHub Actions workflow + golangci-lint config in one pass</item>
+        <item>A layout-linter agent (purpose-built): wraps go-cleanarch, golangci-lint, custom depguard rules; explains every violation in plain English</item>
+        <item>A migration-tool ADR agent: forces an ADR on the choice of golang-migrate vs goose vs atlas so the migrations/ folder doesn't drift across services</item>
+      </list>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Treat pkg/ as guilty-until-proven-innocent: every new package needs an ADR justifying public API</item>
+        <item>Default interfaces to consumer side (internal/service declares the UserRepo interface it needs; internal/repository implements it). Catches via go-cleanarch</item>
+        <item>One binary = one cmd/&lt;name&gt;/main.go containing only wiring; business logic stays in internal/</item>
+        <item>Pin a single migration tool repo-wide; record in ADR-0001</item>
+        <item>Multi-stage Docker build with scratch or distroless; cmd/&lt;name&gt; becomes the only COPY</item>
+        <item>Makefile (or mage) is the source of truth for lint, test, build, migrate, run — scaffold both forms once</item>
+        <item>Add go vet ./... and golangci-lint run to a make ci target and to pre-commit</item>
+        <item>Versioned API folders (internal/handler/v1) when you go past one external consumer</item>
+      </list>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <p>LLMs love copying the unofficial golang-standards/project-layout (with its many extra folders). Force the prompt to use this methodology's smaller subset.</p>
+      <p>Generated code often declares interfaces in the producer package, causing import cycles when humans add tests. Add a lint rule plus an explicit prompt instruction.</p>
+      <p>pkg/ bloat: agents auto-export everything as "best practice." Block via depguard and require ADR.</p>
+      <p>Migrations get scattered across db/, migrations/, internal/db/migrations/ if you don't pin in the prompt.</p>
+      <p>Generated Dockerfiles tend to use golang:latest (rebuilds break) and skip CGO_ENABLED=0 (binary won't run on scratch). Pin Go version + CGO flags in the prompt.</p>
+      <p>Long Go modules blow context; feed agents one package + go.mod + golangci.yml at a time.</p>
+      <p>Human-in-loop checkpoints: (1) any new top-level folder, (2) any pkg/ addition, (3) module split (introducing a second go.mod) — these are hard to reverse cleanly.</p>
+    </section>
+    <templates>
+      <template path="templates/handler.go" purpose="minimal handler with constructor and interface injection"/>
+    </templates>
+    <see-also>
+      <link href="https://go.dev/doc/modules/layout">Go Modules layout (official)</link>
+      <link href="https://github.com/golang-standards/project-layout/issues/117">Russ Cox / Go team commentary</link>
+      <link href="https://go.dev/doc/effective_go">Effective Go</link>
+      <link href="https://dave.cheney.net/practical-go/presentations/qcon-china.html">Practical Go: Real World Advice</link>
+      <link href="https://github.com/golang-standards/project-layout">Standard Go Project Layout (community)</link>
+      <link href="https://github.com/roblaszczak/go-cleanarch">go-cleanarch</link>
+      <link href="https://golangci-lint.run">golangci-lint</link>
+      <link href="https://github.com/OpenPeeDeeP/depguard">depguard</link>
+    </see-also>
+  </content>
+</methodology>

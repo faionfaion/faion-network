@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="logging-patterns">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Emit structured JSON logs with correlation IDs, mask sensitive fields, use log levels properly, attach context via middleware, prevent PII leaks.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>logging</tag>
+      <tag>structured-logs</tag>
+      <tag>observability</tag>
+      <tag>json</tag>
+      <tag>correlation-id</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>python</language>
+      <language>typescript</language>
+      <language>go</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Structured Logging Patterns</title>
+
+    <summary>Emit structured JSON logs with correlation IDs, mask sensitive fields, use appropriate log levels, attach context via middleware, integrate with aggregators, prevent PII leaks.</summary>
+
+    <why>
+      <p>Structured logs are machine-parseable — log aggregators (Datadog, Loki, CloudWatch) can filter and alert on JSON fields without regex. A missing request ID makes distributed debugging nearly impossible. Sensitive data in logs (passwords, tokens, PII) creates compliance and security incidents. Excessive DEBUG logs in hot paths degrade throughput.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up logging for any new service (Python or TypeScript)</item>
+        <item>Adding audit trails for compliance (payments, auth events)</item>
+        <item>Integrating with OpenTelemetry for distributed tracing</item>
+        <item>Diagnosing production incidents where correlation is required</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Short scripts or one-shot jobs — standard print/stderr is fine</item>
+        <item>Test output — pytest captures output; structured logs add noise</item>
+        <item>Very high-frequency inner loops — log outside the loop or sample</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="logging-format">
+      <p>Structural rules for log format, levels, sensitive data, and context attachment.</p>
+
+      <rule>
+        <statement>Emit structured JSON logs in production; human-readable format only in development.</statement>
+        <rationale>JSON logs are parseable by aggregators (Datadog, Loki, CloudWatch) without regex. Human-readable logs are faster to scan interactively.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Attach correlation ID (request_id) to every log entry via context variable, not per-call argument.</statement>
+        <rationale>Per-call arguments are forgotten; a context variable propagates automatically through the call stack once set at request entry.</rationale>
+      </rule>
+    </section>
+
+    <section name="log-levels">
+      <p>Appropriate log levels guide signal-to-noise ratio and alerting thresholds.</p>
+
+      <rule>
+        <statement>Use DEBUG for diagnostic data only active during development; INFO for normal business events; WARNING for recoverable anomalies; ERROR for failures requiring investigation; CRITICAL for system-stopping conditions.</statement>
+        <rationale>Treating INFO as the default for everything drowns signal in noise and raises alerting thresholds unnecessarily.</rationale>
+      </rule>
+    </section>
+
+    <section name="sensitive-data">
+      <p>Protecting sensitive information in logs prevents credential leaks and compliance violations.</p>
+
+      <rule>
+        <statement>Never log passwords, tokens, API keys, credit card numbers, SSNs, or full PII. Mask before writing using a structlog processor or Pino redact config.</statement>
+        <rationale>Log aggregators are often less secured than the primary database. A leaked log dump becomes a credential dump.</rationale>
+      </rule>
+    </section>
+
+    <section name="performance">
+      <p>Logging overhead in hot paths can dominate execution time.</p>
+
+      <rule>
+        <statement>Do not log inside tight loops or hot paths. Log the aggregate result after the loop completes.</statement>
+        <rationale>Each log call serializes a JSON object and may involve I/O. Inside a loop processing 100k items this dominates execution time.</rationale>
+      </rule>
+    </section>
+
+    <section name="structlog-setup">
+      <p>Configuration pattern for the structlog library.</p>
+
+      <rule>
+        <statement>Configure structlog once at application startup with: contextvars merge, log level, ISO timestamp, sensitive data processor, and JSON renderer.</statement>
+        <rationale>Processor order matters — merge context before masking sensitive data, render JSON last.</rationale>
+      </rule>
+
+      <reference path="templates/structlog-config.py">Production structlog setup with context vars and sensitive data processor</reference>
+    </section>
+
+    <section name="request-middleware">
+      <p>Middleware-based context propagation ensures request IDs reach all log calls.</p>
+
+      <rule>
+        <statement>Set request_id and user_id context variables in middleware at request entry; never pass them as function arguments.</statement>
+        <rationale>Middleware runs before any handler; setting context vars here means all downstream log calls automatically include them.</rationale>
+      </rule>
+
+      <reference path="templates/request-middleware.py">FastAPI request logging middleware</reference>
+    </section>
+
+    <section name="business-events">
+      <p>Structured logging of domain-specific state changes creates audit trails and analytics foundations.</p>
+
+      <rule>
+        <statement>Log every significant business state change (order paid, user registered, payment failed) as a structured event with entity_type, entity_id, and relevant domain fields.</statement>
+        <rationale>Business event logs serve as an audit trail and analytics source. They must be queryable by entity ID and event type.</rationale>
+      </rule>
+
+      <example type="good" title="Business event log">
+        <code lang="python"><![CDATA[
+logger.info(
+    "order.paid",
+    entity_type="order",
+    entity_id=order.id,
+    customer_id=order.customer_id,
+    total=float(order.total),
+    items_count=len(order.items),
+)
+]]></code>
+      </example>
+    </section>
+
+    <section name="performance-logging">
+      <p>Threshold-based alerts surface slow operations automatically.</p>
+
+      <rule>
+        <statement>Use a context manager or decorator to log operation duration; emit a WARNING when duration exceeds a configured threshold.</statement>
+        <rationale>Threshold-based warnings surface slow operations automatically without requiring manual timing instrumentation everywhere.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <p>Common failure modes in logging implementations.</p>
+
+      <antipattern>
+        <description>Log an error then immediately re-throw it (log-and-throw).</description>
+        <reason>The same error is logged twice — once at the origin and once at the outer handler — creating duplicate entries that inflate error counts and confuse incident timelines.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Log passwords, tokens, authorization headers, or credit card numbers without masking.</description>
+        <reason>Log aggregators and log shipping pipelines often have weaker access controls than primary storage. A single log export leaks all credentials.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mix structured and unstructured log lines in the same service (some JSON, some plain text).</description>
+        <reason>Log parsers must handle two formats. A single unstructured line breaks field-level alerting for the entire log stream.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Log entries with no request ID, user ID, or entity ID (no context).</description>
+        <reason>Contextless logs cannot be correlated to a specific request or user. Debugging requires guessing from timestamps alone.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Build log message strings with f-strings or concatenation before passing to the logger.</description>
+        <reason>The string is constructed even when the log level is filtered out. Pass structured key-value pairs — the logger skips serialization entirely for filtered levels.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/structlog-config.py" purpose="Production-ready structlog setup with context vars and sensitive data processor"/>
+      <template path="templates/request-middleware.py" purpose="FastAPI request logging middleware with request ID propagation"/>
+    </templates>
+
+    <see-also>
+      <link href="https://12factor.net/logs"/>
+      <link href="https://www.structlog.org"/>
+      <link href="https://pkg.go.dev/log/slog"/>
+      <link href="https://getpino.io"/>
+      <link href="https://opentelemetry.io/docs/specs/otel/logs/"/>
+      <link href="https://sre.google/workbook/monitoring/"/>
+      <link href="https://grafana.com/docs/loki/latest/best-practices/"/>
+      <link href="https://www.datadoghq.com/blog/log-cost-optimization/"/>
+      <link href="https://charity.wtf/2018/10/27/observability-a-3-year-retrospective/"/>
+    </see-also>
+  </content>
+</methodology>

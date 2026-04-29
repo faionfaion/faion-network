@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="message-queues">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Asynchronous message passing with idempotent consumers, dead-letter queues with alerts, manual acknowledgment, and explicit retry policies. Every consumer must check idempotency before processing.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+    <tags>
+      <tag>message-queues</tag>
+      <tag>async</tag>
+      <tag>idempotency</tag>
+      <tag>dlq</tag>
+      <tag>reliability</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>python</language>
+      <language>typescript</language>
+      <language>go</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Message Queue Patterns and Implementation</title>
+
+    <summary>Asynchronous message passing between services using brokers (RabbitMQ, Redis Streams, Celery, SQS) with mandatory idempotent consumers, dead-letter queues (DLQ) with alerts, manual acknowledgment, and explicit retry policies. Every consumer must implement an idempotency key check before processing; every queue must have a paired DLQ with max-receive-count 3-5.</summary>
+
+    <why>
+      <p>Distributed async processing fails silently when consumers are not idempotent and DLQs are absent. "At-least-once" delivery is the practical guarantee of every broker; without idempotency, duplicate messages corrupt data. Without DLQ and alert, poison messages block queues indefinitely. The outbox pattern prevents message loss when publishing inside DB transactions.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Decoupling producer and consumer services with different throughput or availability profiles.</item>
+        <item>Background work: emails, image processing, LLM calls, webhook fan-out.</item>
+        <item>Load leveling during traffic spikes.</item>
+        <item>Event-driven architectures: one publish → multiple independent subscribers.</item>
+        <item>Reliable delivery with retry + dead-letter for at-least-once processing.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Hard real-time request/response (chat, payment confirmation in user UI) — use sync HTTP/RPC.</item>
+        <item>Single-process workers — asyncio.Queue or goroutines are simpler.</item>
+        <item>Multi-step transactional flows where ordering and exactly-once matter — use a workflow engine (Temporal, Airflow).</item>
+        <item>Streaming analytics with windowing — use Kafka + Flink/ksqlDB.</item>
+        <item>Storing large blobs — queues are for references; put bytes in S3/object storage.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-patterns">
+      <p>Fundamental messaging patterns for distributed systems.</p>
+
+      <section name="work-queue">
+        <p>One producer, one consumer group. Each message processed by exactly one consumer. Best for background jobs: email, image processing, report generation.</p>
+      </section>
+
+      <section name="publish-subscribe">
+        <p>One producer, multiple independent consumer groups. Each group receives every message. Best for event-driven fan-out: order-placed to invoice + shipping + analytics.</p>
+      </section>
+
+      <section name="dead-letter-queue">
+        <p>Messages that exceed max-receive-count are routed to the DLQ instead of being re-queued infinitely. DLQ must have an alert on depth greater than 0 and a replay process.</p>
+
+        <rule>
+          <statement>Every queue must have a paired DLQ with max-receive-count 3-5. Add an alert when DLQ depth exceeds 0. Without a DLQ, failed messages retry until they block the queue or are silently discarded.</statement>
+          <rationale>Poison messages block FIFO queues indefinitely when there is no DLQ. Without an alert, the DLQ becomes a silent black hole where failed messages accumulate unnoticed.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="broker-selection">
+      <p>Choosing a message broker by guarantee and operational cost.</p>
+
+      <rule>
+        <statement>Pick the broker by the weakest guarantee you can accept: Redis Streams for lightweight at-least-once with consumer groups; RabbitMQ for flexible routing, DLX, and TTL; SQS for fully managed with built-in DLQ; Kafka only when ordered replay across multiple consumer groups is critical.</statement>
+        <rationale>Kafka adds significant operational overhead (partition rebalancing, KRaft/ZooKeeper management). For most solo SaaS workloads, Redis Streams or RabbitMQ provide sufficient guarantees at lower operational cost.</rationale>
+      </rule>
+
+      <list>
+        <item>Redis Streams / Valkey: lightweight, consumer groups, ack model. Already running on faion-net.</item>
+        <item>RabbitMQ: mature, DLX + TTL patterns, flexible routing (direct/topic/fanout/headers).</item>
+        <item>AWS SQS: fully managed, Standard (at-least-once) or FIFO (exactly-once ordered), built-in DLQ.</item>
+        <item>Celery (broker: Redis/RabbitMQ): Python task queue with chains, groups, chords, beat scheduler.</item>
+        <item>Kafka: pick only when ordered replay across N independent consumer groups is the core requirement.</item>
+      </list>
+    </section>
+
+    <section name="rabbitmq-implementation">
+      <p>RabbitMQ producer and consumer patterns with delivery guarantees.</p>
+
+      <rule>
+        <statement>Set delivery_mode=2 (persistent) for all durable queue messages. Set basic_qos(prefetch_count=10) to prevent one worker hogging all messages. Use manual ack (auto_ack=False) with ack after successful processing.</statement>
+        <rationale>Non-persistent messages survive only in memory; a broker restart loses them. High prefetch without manual ack means one slow consumer starves others. Auto-ack before processing causes message loss on consumer crash mid-handler.</rationale>
+      </rule>
+
+      <reference path="templates/rabbitmq-client.py">RabbitMQ producer + consumer with DLQ and persistent delivery</reference>
+    </section>
+
+    <section name="celery-implementation">
+      <p>Python Celery task queue configuration and best practices.</p>
+
+      <rule>
+        <statement>Set task_acks_late=True and task_reject_on_worker_lost=True in Celery config. Set worker_prefetch_multiplier=1 for slow handlers. Without task_acks_late, a message is acked when the worker receives it, not when processing completes; a crash loses the task.</statement>
+        <rationale>Default Celery acks on receipt. A worker that crashes mid-task has already acked; the task is lost. task_acks_late defers ack to completion, enabling safe replay on crash.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use transaction.on_commit() (Django) or an outbox pattern when calling apply_async() from inside a DB transaction. A commit that follows apply_async() but before the DB commit means consumers race the writer.</statement>
+        <rationale>If apply_async() is called inside a transaction that later rolls back, the task still runs and processes data that was never committed. Outbox pattern publishes the task as part of the DB commit.</rationale>
+      </rule>
+
+      <example type="good" title="Celery task with retry backoff and failure handler">
+        <code lang="python"><![CDATA[
+from celery import Celery, Task
+
+app = Celery('tasks', broker='redis://localhost:6379/0',
+             backend='redis://localhost:6379/1')
+
+app.conf.update(
+    task_serializer='json',
+    accept_content=['json'],
+    task_acks_late=True,
+    task_reject_on_worker_lost=True,
+    worker_prefetch_multiplier=1,
+)
+
+class BaseTask(Task):
+    autoretry_for = (Exception,)
+    retry_backoff = True
+    retry_backoff_max = 600
+    retry_jitter = True
+    max_retries = 5
+
+@app.task(base=BaseTask, bind=True)
+def process_order(self, order_id: str):
+    order = get_order(order_id)
+    charge_payment(order)
+    send_confirmation(order)
+    return {"status": "completed", "order_id": order_id}
+]]></code>
+      </example>
+    </section>
+
+    <section name="idempotency-requirement">
+      <p>Essential pattern for safe at-least-once delivery semantics.</p>
+
+      <rule>
+        <statement>Every message consumer must implement idempotency: check a processed-messages table for the idempotency key before processing. Use INSERT ... ON CONFLICT DO NOTHING to claim the key atomically. Design for at-least-once delivery and rely on the idempotency check, not broker guarantees, for exactly-once semantics.</statement>
+        <rationale>"Exactly once" is a marketing claim. Every broker delivers at-least-once under failure conditions. Idempotent consumers produce correct results regardless of delivery count.</rationale>
+      </rule>
+
+      <reference path="scripts/idempotent-handler.py">DB-backed idempotency key claim with ON CONFLICT DO NOTHING</reference>
+    </section>
+
+    <section name="antipatterns">
+      <p>Common failure modes in message queue usage.</p>
+
+      <antipattern>
+        <description>Consumer without idempotency: assumes each message is delivered exactly once.</description>
+        <reason>Every broker delivers at-least-once under network failure, consumer crash, or rebalancing. Without idempotency, duplicate messages produce duplicate DB rows, double-charged payments, or double-sent emails.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using auto_ack=True (RabbitMQ) or acknowledging before processing.</description>
+        <reason>Auto-ack removes the message from the queue before the handler runs. A crash mid-handler means the message is permanently lost. Use manual ack after successful processing.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Celery without task_acks_late=True.</description>
+        <reason>Default acks on receipt. A worker crash after receipt but before completion silently drops the task. task_acks_late defers ack to completion, enabling safe replay.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Calling Celery apply_async() inside a DB transaction before the commit.</description>
+        <reason>The task fires immediately. If the transaction rolls back after the task fires, the consumer processes data that never existed. Use transaction.on_commit() or the outbox pattern.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>SQS visibility timeout shorter than the p99 handler runtime.</description>
+        <reason>If processing takes longer than the visibility timeout, SQS makes the message visible again while the first consumer is still processing it. Two consumers process the same message in parallel, requiring idempotency to prevent double effects.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>RabbitMQ DLX/DLQ declared with mismatched arguments on different broker restarts.</description>
+        <reason>RabbitMQ queue arguments are immutable after declaration. A mismatch between the arguments in code and those on the broker produces a passive-declare error, silently routing to a different queue or failing to declare DLQ routing. Always test by publishing a known-bad message and checking the DLQ.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Fan-out via app code (for sub in subs: queue.publish(...)) instead of exchange/topic routing.</description>
+        <reason>If the publisher crashes mid-loop, some subscribers receive the message and others do not. Exchange-based fan-out is atomic from the broker's perspective.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/rabbitmq-client.py" purpose="RabbitMQ producer + consumer with DLQ and persistent delivery"/>
+    </templates>
+
+    <scripts>
+      <script path="scripts/idempotent-handler.py" purpose="DB-backed idempotency key claim with ON CONFLICT DO NOTHING"/>
+    </scripts>
+
+    <see-also>
+      <link href="https://www.rabbitmq.com/"/>
+      <link href="https://redis.io/docs/data-types/streams/"/>
+      <link href="https://docs.aws.amazon.com/sqs/"/>
+      <link href="https://kafka.apache.org/"/>
+      <link href="https://docs.celeryproject.org/"/>
+      <link href="https://www.temporal.io/"/>
+    </see-also>
+  </content>
+</methodology>

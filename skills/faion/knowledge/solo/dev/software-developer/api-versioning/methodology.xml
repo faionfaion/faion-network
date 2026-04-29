@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-versioning">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Manage breaking API changes with URL path versioning (/api/v1/, /api/v2/). Announce deprecation via headers 180+ days before removal. Maintain shared service layer for behavioral consistency.</summary>
+    <tags>
+      <tag>api</tag>
+      <tag>versioning</tag>
+      <tag>breaking-changes</tag>
+      <tag>deprecation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+  </metadata>
+  <content>
+    <title>API Versioning</title>
+    <summary>A methodology for managing breaking changes in HTTP APIs. Use URL path versioning (/api/v1/, /api/v2/) for public REST APIs. Announce deprecation via Deprecation, Sunset, and Link headers at least 180 days before removal. Classify every change as additive, behavioral, or breaking. Maintain at least two concurrent versions; implement v(n+1) atop shared services, never by copying v(n).</summary>
+    <why>
+      <p>External consumers — mobile apps, B2B SDKs, LLM tool schemas — cannot move in lockstep with your deploys. Without versioning, any breaking change silently breaks clients.</p>
+      <p>Deprecation headers give programmatic notice to API consumers and automated monitors. The shared-service architecture prevents silent behavioral drift between versions. Version-aware clients can track usage patterns and plan migrations.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Public APIs with external consumers who can't deploy atomically with you.</item>
+        <item>Mobile apps where old client versions stay in the wild for months.</item>
+        <item>B2B integrations where SDKs are pinned per customer.</item>
+        <item>Any breaking change to a stable resource shape, status code, or auth scheme.</item>
+        <item>LLM tool-use scenarios — pin a stable version so an agent's training-time tool schema keeps working.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Internal-only APIs where you control all consumers and can deploy atomically — prefer expand-then-contract without versions.</item>
+        <item>Pre-1.0 / pre-launch — version churn is fine; commit to v1 only when an external user exists.</item>
+        <item>Pure additive changes (new optional field, new endpoint) — no version bump needed; signal via OpenAPI changelog.</item>
+        <item>Experimental endpoints behind feature flags — the flag is the version axis, not URL/header.</item>
+      </list>
+    </when-not-to-use>
+    <section name="strategy-selection">
+      <p>Different versioning strategies suit different contexts. The choice impacts caching, logging, visibility, and client convenience.</p>
+      <rule>
+        <statement>Use URL path versioning (/api/v1/, /api/v2/) for public REST APIs. Use header versioning (Accept-Version or X-API-Version) for internal APIs where URL pollution matters. Pick one strategy per surface and never mix.</statement>
+        <rationale>URL versioning is cacheable by CDN, visible in logs, and discoverable by humans. Mixing strategies creates client confusion and cache invalidation bugs.</rationale>
+      </rule>
+      <p>Strategy comparison: URL Path (/v1/users): clear, cacheable, pollutes URLs. Header (Accept-Version: v1): clean URLs, invisible to logs and CDN. Query Param (?v=1): easy to test, breaks cache — reject for public APIs. Content-Type (vnd.api+json;v=1): standards-based, poor tooling support.</p>
+    </section>
+    <section name="change-classification">
+      <p>Every API change must be classified before shipping to decide whether a version bump is warranted.</p>
+      <rule>
+        <statement>Classify every API change before shipping: additive (new optional field, new endpoint) requires no version bump; behavioral (changed semantics on existing field) requires a deprecation warning; breaking (removed field, changed type, auth change) requires a new version.</statement>
+        <rationale>Bumping versions for additive changes wastes the support window. Missing a version bump for a breaking change silently breaks external clients.</rationale>
+      </rule>
+    </section>
+    <section name="deprecation-protocol">
+      <p>Deprecation headers provide machine-readable signals to clients. Proactive communication is equally important.</p>
+      <rule>
+        <statement>When introducing v(n+1), add Deprecation, Sunset, and Link: rel="successor-version" headers to all v(n) responses. Set Sunset to at least 180 days from the deprecation date. Announce the sunset in writing to known consumers.</statement>
+        <rationale>Deprecation headers give programmatic notice. 180 days is the minimum for B2B consumers with quarterly release cycles. Headers alone are insufficient — proactive outreach is mandatory.</rationale>
+      </rule>
+      <example type="good" title="Deprecation headers on v1 responses">
+        <code lang="http"><![CDATA[
+HTTP/1.1 200 OK
+Deprecation: Wed, 01 Jan 2026 00:00:00 GMT
+Sunset: Wed, 01 Jul 2026 00:00:00 GMT
+Link: </api/v2/users>; rel="successor-version"
+]]></code>
+        <note>All three headers signal to clients and intermediaries that this version will end at a known date.</note>
+      </example>
+    </section>
+    <section name="shared-service-architecture">
+      <p>Behavioral consistency across versions requires a shared service layer. Copy-paste handlers lead to divergent logic and doubled test surface.</p>
+      <rule>
+        <statement>Implement v(n+1) on top of shared services. Never copy a v(n) handler to create v(n+1) — both copies drift silently and the shared service layer becomes the only source of truth.</statement>
+        <rationale>Copy-paste handlers diverge within weeks. Bug fixes applied to v2 don't reach v1; regression testing must cover both paths doubling the surface area.</rationale>
+      </rule>
+      <example type="good" title="Shared service with version-specific formatters">
+        <code lang="python"><![CDATA[
+class UserService:
+    def get_user(self, user_id: str) -> User: ...
+
+@v1.get("/users/{user_id}")
+async def get_user_v1(user_id: str, svc: UserService = Depends()):
+    user = svc.get_user(user_id)
+    return {"id": user.id, "name": user.name}
+
+@v2.get("/users/{user_id}")
+async def get_user_v2(user_id: str, svc: UserService = Depends()):
+    user = svc.get_user(user_id)
+    return {"data": {"id": user.id, "name": user.name}, "meta": {"v": 2}}
+]]></code>
+        <note>Both handlers call the same UserService.get_user(), ensuring consistent business logic. Only the response shape differs.</note>
+      </example>
+      <reference path="templates/versioning.py">FastAPI multi-version router with deprecation middleware</reference>
+    </section>
+    <section name="concurrent-version-support">
+      <p>Supporting multiple versions requires tracking usage metrics to make data-driven sunset decisions.</p>
+      <rule>
+        <statement>Maintain at least two concurrent API versions. Track per-version usage metrics (http.request.version label). Schedule sunset only after v(n) usage drops below a defined threshold with traffic data attached to the decision.</statement>
+        <rationale>Sunsetting before usage drops to near-zero breaks real consumers. Infrequent users are invisible in daily traffic but break catastrophically on sunset. Usage metrics make the sunset decision objective.</rationale>
+      </rule>
+    </section>
+    <section name="antipattern-copy-paste-handlers">
+      <antipattern>
+        <description>Creating v2 by copying the entire v1 handler file and editing the copy.</description>
+        <reason>Both copies diverge immediately. Bug fixes applied to v2 never reach v1. Shared behavior must live in a service layer.</reason>
+      </antipattern>
+    </section>
+    <section name="antipattern-missing-headers">
+      <antipattern>
+        <description>Introducing a new API version without adding Deprecation, Sunset, and Link headers to old version responses.</description>
+        <reason>Without machine-readable deprecation signals, client developers only learn about sunsets when their integration breaks.</reason>
+      </antipattern>
+    </section>
+    <section name="antipattern-query-param-versioning">
+      <antipattern>
+        <description>Using ?v=1 or ?version=2 query parameters for public API versioning.</description>
+        <reason>Query parameters invalidate CDN cache keys, cause logging blind spots, and are easily missed in SDK generation.</reason>
+      </antipattern>
+    </section>
+    <section name="antipattern-missing-vary-header">
+      <antipattern>
+        <description>Using header-based versioning (Accept-Version) without adding Vary: Accept-Version to responses.</description>
+        <reason>CDNs cache based on URL by default. Without Vary, v1 and v2 responses serve interchangeably, causing cross-version contamination.</reason>
+      </antipattern>
+    </section>
+    <section name="antipattern-additive-version-bump">
+      <antipattern>
+        <description>Creating a new API version when the change is purely additive (new optional field, new endpoint).</description>
+        <reason>Version bumps consume the support window budget. Additive changes are backward-compatible. Signal via OpenAPI changelog, not version.</reason>
+      </antipattern>
+    </section>
+    <section name="antipattern-sunset-without-data">
+      <antipattern>
+        <description>Scheduling API version sunset based on time elapsed rather than measured consumer usage.</description>
+        <reason>Infrequent users are invisible in daily traffic but break catastrophically on sunset. Require traffic-data approval for sunsets.</reason>
+      </antipattern>
+    </section>
+    <section name="best-practices">
+      <p>Consolidated best practices for robust multi-version API management.</p>
+      <p>Pick one strategy per surface and never mix: URL for public REST, header for internal APIs and webhooks. Default to latest version when none specified; document clearly. Pin SDKs to specific version. Communicate sunsets with headers and email. Maintain at least two versions concurrently; schedule sunset 6+ months out. Use feature flags to roll consumers per-tenant before broad sunset. Implement v(n+1) atop shared services. Track per-version usage metrics and alert on anomalies. Provide versioned OpenAPI spec per version. Human-in-loop checkpoint: any version sunset requires explicit go/no-go review with usage data.</p>
+    </section>
+    <templates>
+      <template path="templates/versioning.py" purpose="FastAPI multi-version router with deprecation middleware"/>
+      <template path="templates/spectral-rules.yaml" purpose="Spectral lint rules for version prefix and deprecation headers"/>
+    </templates>
+    <see-also>
+      <ref slug="api-rest-design"/>
+      <ref slug="api-contract-first"/>
+      <ref slug="api-openapi-spec"/>
+    </see-also>
+  </content>
+</methodology>
