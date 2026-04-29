@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 paths to methodology.xml (storytelling, api-authentication, api-contract-first; feature-045 batch 3-final)
 - migrate: 3/3 pro/research/researcher methodologies → methodology.xml (methodologies-index, opportunity-solution-trees, risk-assessment; feature-045 batch CJ)
 - migrate: 3/3 pro/pm/pm-traditional methodologies → methodology.xml (schedule-development, scope-management, stakeholder-engagement; feature-045 batch 1)
 - migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (ads-meta-reporting, ads-meta-targeting, ads-retargeting; feature-045 batch BO)
