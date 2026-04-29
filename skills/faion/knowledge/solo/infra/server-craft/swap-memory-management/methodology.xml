@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="swap-memory-management">
+  <metadata>
+    <tier>solo</tier>
+    <group>infra</group>
+    <domain>server-craft</domain>
+    <summary>Swap file setup, vm.swappiness tuning, OOM killer priority (oom_score_adj, OOMScoreAdjust), and systemd cgroup memory limits (MemoryMax, MemoryHigh) for VPS servers running multi-service AI platforms.</summary>
+    <tags>
+      <tag>swap</tag>
+      <tag>memory</tag>
+      <tag>oom</tag>
+      <tag>systemd</tag>
+      <tag>cgroups</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Swap and Memory Management</title>
+    <summary>Configure swap files, tune vm.swappiness, set OOM killer priorities, and apply systemd cgroup memory limits to prevent unbounded growth and ensure predictable failure modes on memory-constrained servers.</summary>
+    <why>
+      <p>Default swappiness=60 causes aggressive paging even when 20GB RAM is free, creating latency spikes during LLM API responses. Without MemoryMax in systemd services, a Celery worker processing a large context window can grow unbounded and trigger the kernel OOM killer — which then kills a random process, often the wrong one. Explicit OOMScoreAdjust values ensure that if OOM must kill something, it kills the least critical service first.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>New server setup — create swap file and tune swappiness before deploying services</item>
+        <item>OOM kills appearing in dmesg/journalctl — set MemoryMax and OOMScoreAdjust per service</item>
+        <item>Server swapping despite available RAM — reduce swappiness</item>
+        <item>Planning memory allocation for a multi-service platform</item>
+        <item>Celery workers or LLM services have unbounded memory growth</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Managed Kubernetes (memory limits belong in Pod specs, not host sysctl)</item>
+        <item>Servers with only 1-2GB RAM where swap is a primary resource (different sizing rules apply)</item>
+        <item>When Docker manages the services — set mem_limit in compose instead of systemd MemoryMax</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="swap-file-sizing">
+      <rule testable="true">
+        <statement>For a server with 16–32 GB RAM, create a 4 GB swap file. Swap is a safety net — it prevents OOM kills under burst conditions but should rarely be used during normal operation.</statement>
+        <rationale>Large swap on a RAM-rich server does not improve performance. With swappiness=10, the kernel will only start using swap when RAM is nearly exhausted, so 4 GB covers burst situations without wasting disk on idle swap space.</rationale>
+      </rule>
+      <example type="good" title="Swap sizing guidelines">
+        <code lang="text"><![CDATA[
+RAM          Swap
+1–2 GB    →  2–4 GB   (2× RAM; small VPS needs breathing room)
+4–8 GB    →  4–8 GB   (equal to RAM)
+16–32 GB  →  4 GB     (safety net only)
+32+ GB    →  1–2 GB   (minimal; mainly for hibernation)
+]]></code>
+      </example>
+    </section>
+
+    <section name="creating-swap-file">
+      <rule testable="true">
+        <statement>Use fallocate to create the swap file; set chmod 600 before mkswap; add to /etc/fstab; verify with findmnt --verify to guard against a typo that prevents boot.</statement>
+        <rationale>A swap file with world-readable permissions leaks RAM content to unprivileged users. An invalid /etc/fstab entry can render the server unbootable. findmnt --verify catches syntax errors before reboot.</rationale>
+      </rule>
+      <example type="good" title="Creating and persisting a swap file">
+        <code lang="bash"><![CDATA[
+sudo fallocate -l 4G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+
+# Persist across reboots
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+# Verify fstab (broken entry can prevent boot)
+sudo findmnt --verify
+
+# Confirm swap is active
+swapon --show
+free -h
+]]></code>
+      </example>
+    </section>
+
+    <section name="vm-swappiness-tuning">
+      <rule testable="true">
+        <statement>Set vm.swappiness = 10 on servers with 8 GB+ RAM. Never set it to 0 — value 0 means the kernel will not swap at all and may OOM-kill instead of using the swap safety net.</statement>
+        <rationale>Default swappiness=60 causes the kernel to start swapping when 40% of RAM is used, creating latency spikes during LLM API calls. Value 10 delays swapping until RAM is almost full while still keeping the swap safety valve functional.</rationale>
+      </rule>
+      <example type="good" title="Setting persistent swappiness">
+        <code lang="bash"><![CDATA[
+# Persist via sysctl.d
+echo 'vm.swappiness=10' | sudo tee /etc/sysctl.d/60-memory.conf
+sudo sysctl vm.swappiness=10  # apply immediately without reboot
+
+# Verify
+sysctl vm.swappiness
+# vm.swappiness = 10
+]]></code>
+      </example>
+      <antipattern>
+        <description>Setting vm.swappiness = 0</description>
+        <reason>With swappiness=0 the kernel will never use swap and will OOM-kill processes instead. A value of 10 keeps the safety valve open.</reason>
+      </antipattern>
+    </section>
+
+    <section name="additional-vm-parameters">
+      <rule testable="true">
+        <statement>Pair swappiness tuning with vm.dirty_ratio=15, vm.dirty_background_ratio=5, and vm.vfs_cache_pressure=50 for stable I/O behavior and longer inode/dentry cache retention.</statement>
+        <rationale>dirty_background_ratio=5 starts background writeback early, preventing a sudden I/O spike when dirty_ratio=15 is reached. vfs_cache_pressure=50 tells the kernel to reclaim page cache before dentry/inode caches, keeping filesystem metadata resident.</rationale>
+      </rule>
+      <example type="good" title="Comprehensive memory tuning in sysctl.d">
+        <code lang="ini"><![CDATA[
+# /etc/sysctl.d/60-memory.conf
+vm.swappiness = 10
+vm.dirty_ratio = 15
+vm.dirty_background_ratio = 5
+vm.vfs_cache_pressure = 50
+vm.max_map_count = 1048576
+vm.overcommit_memory = 0
+]]></code>
+      </example>
+    </section>
+
+    <section name="oom-killer-scoring">
+      <rule testable="true">
+        <statement>Set OOMScoreAdjust in systemd unit files to control kill order. Databases: −900. Core API: −300. Celery workers: 0. Static file servers: +100. Never set −1000 for application services — reserve that for kernel threads.</statement>
+        <rationale>Without explicit OOM priorities the kernel picks victims by memory usage alone, often killing the database instead of a worker. Explicit priorities ensure that if OOM must kill something, it kills the least critical service first, in a deterministic order.</rationale>
+      </rule>
+      <example type="good" title="OOM scoring priority table">
+        <code lang="text"><![CDATA[
+Service              OOMScoreAdjust   Rationale
+PostgreSQL           -900             Data integrity paramount
+Redis                -700             Losing context cache is expensive
+RabbitMQ             -600             Message broker must stay up
+nero-channel-web     -300             User-facing API gateway
+nero-channel-tg      -200             Telegram bridge
+nero-core (Celery)    0               Workers can be restarted
+nero-web              +100            Static server, instant restart
+]]></code>
+      </example>
+      <example type="good" title="Setting OOMScoreAdjust in a service file">
+        <code lang="ini"><![CDATA[
+# In the [Service] section of any .service file
+OOMScoreAdjust=-300
+]]></code>
+      </example>
+    </section>
+
+    <section name="systemd-memory-limits">
+      <rule testable="true">
+        <statement>Set MemoryMax (hard kill limit) and MemoryHigh (soft throttle limit) on every service. Without limits, a Celery worker processing a large context window grows unbounded and triggers the kernel OOM killer against the wrong process.</statement>
+        <rationale>MemoryHigh causes the kernel to throttle the cgroup and activate memory reclaim before hitting MemoryMax. This gives the service a chance to release memory gracefully. MemoryMax is the hard backstop — the process receives SIGKILL when it exceeds this.</rationale>
+      </rule>
+      <example type="good" title="Systemd service memory limits">
+        <code lang="ini"><![CDATA[
+[Service]
+MemoryMax=8G
+MemoryHigh=6G
+MemorySwapMax=512M
+OOMScoreAdjust=0
+OOMPolicy=stop
+]]></code>
+      </example>
+    </section>
+
+    <section name="recommended-limits-nero">
+      <example type="good" title="Recommended Memory Limits for NERO Platform">
+        <code lang="text"><![CDATA[
+Service              MemoryMax   MemoryHigh   Notes
+nero-core (Celery)   8G          6G           LLM responses can be large
+nero-channel-web     2G          1500M        FastAPI + connection pool
+nero-channel-tg      1G          768M         Lightweight bot bridge
+nero-web (static)    512M        384M         nginx-like static serving
+PostgreSQL           8G          6G           shared_buffers + work_mem
+Redis                4G          3G           context cache
+RabbitMQ             2G          1500M        message queues
+]]></code>
+      </example>
+    </section>
+
+    <section name="cgroup-memory-monitoring">
+      <rule testable="true">
+        <statement>Monitor cgroup memory usage via systemctl status and the cgroup fs at /sys/fs/cgroup/. Use systemd-cgtop for a live overview of all services.</statement>
+        <rationale>High-water-mark memory usage is not visible in free -h — it is scoped to the cgroup. Checking memory.peak (if available) or watching memory.current reveals whether a service is regularly approaching its MemoryHigh limit and needs an increase.</rationale>
+      </rule>
+      <example type="good" title="Monitoring cgroup memory usage">
+        <code lang="bash"><![CDATA[
+# Live overview of all user cgroups by memory
+systemd-cgtop
+
+# Current memory for a specific service (systemd user services)
+UID=$(id -u)
+CGROUP="/sys/fs/cgroup/user.slice/user-${UID}.slice/user@${UID}.service/nero-core.service"
+cat "$CGROUP/memory.current"   # bytes currently used
+cat "$CGROUP/memory.max"       # hard limit
+
+# Per-process memory sorted by RSS
+ps aux --sort=-%mem | head -15
+
+# Swap usage by process
+for f in /proc/[0-9]*/status; do
+    awk '/VmSwap|Name/{printf $2 " " $3}END{print ""}' "$f"
+done | sort -k2 -rn | head -10
+]]></code>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/swap-create.sh" purpose="Idempotent swap file creation and fstab persistence"/>
+      <template path="templates/99-memory.conf" purpose="/etc/sysctl.d/ drop-in for swappiness and dirty page tuning"/>
+      <template path="templates/nero-core.service.snippet" purpose="systemd service memory limit and OOM policy directives"/>
+      <template path="templates/memory-alert.sh" purpose="Alert when RAM or swap exceeds threshold"/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.kernel.org/doc/html/latest/admin-guide/mm/index.html">Linux Kernel Memory Management Guide</link>
+      <link href="https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html">systemd.resource-control manual</link>
+    </see-also>
+  </content>
+</methodology>
