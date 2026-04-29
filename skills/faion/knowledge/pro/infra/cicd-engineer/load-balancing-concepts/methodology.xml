@@ -1,0 +1,2096 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="load-balancing-concepts">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Load balancing strategies, algorithms, health checks, session persistence, and L4 vs L7 architecture patterns for high availability and performance.</summary>
+    <tags>
+      <tag>load-balancing</tag>
+      <tag>high-availability</tag>
+      <tag>networking</tag>
+      <tag>infrastructure</tag>
+      <tag>health-checks</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Load Balancing Concepts</title>
+    <summary>Load balancing distributes network traffic across multiple servers to ensure high availability, reliability, and performance. This methodology covers load balancing strategies, algorithms, health checks, session persistence, and L4 vs L7 architecture patterns.</summary>
+    <why>
+      <p>Load balancing is fundamental to building resilient, scalable systems. Without it, a single server failure takes down the entire application. With it, traffic is distributed across multiple healthy instances, enabling zero-downtime deployments, auto-scaling, and geographic distribution — all while maintaining session continuity and meeting SLA targets.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Scaling applications horizontally</item>
+        <item>Ensuring high availability (HA)</item>
+        <item>Improving application performance</item>
+        <item>Implementing zero-downtime deployments</item>
+        <item>Managing traffic spikes</item>
+        <item>Distributing workloads across regions</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-server development environments where overhead is not justified</item>
+        <item>Internal tools with minimal traffic and no HA requirements</item>
+        <item>Stateful applications that cannot be refactored to share state externally — sticky sessions are a workaround, not a solution</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="load-balancer-types">
+      <rule>
+        <statement>Choose load balancer type based on OSI layer requirements: L4 for high-throughput TCP/UDP with protocol-agnostic routing; L7 for HTTP content-based routing, SSL termination, and API gateway features.</statement>
+        <rationale>L4 operates at the transport layer (TCP/UDP), offering lower latency and less CPU overhead. L7 operates at the application layer (HTTP), enabling URL routing, header manipulation, SSL offload, and A/B testing — but with higher resource usage.</rationale>
+      </rule>
+      <section name="l4-vs-l7-comparison">
+        <p>Load balancer type comparison by aspect:</p>
+        <list>
+          <item>OSI Layer — L4: Transport; L7: Application</item>
+          <item>Routing basis — L4: IP address, TCP/UDP port; L7: HTTP headers, URL, cookies, content</item>
+          <item>Performance — L4: Faster, less CPU-intensive; L7: Slower, more resource-intensive</item>
+          <item>SSL/TLS — L4: Pass-through; L7: Termination supported</item>
+          <item>Content inspection — L4: No; L7: Yes</item>
+          <item>Use cases — L4: High-throughput, simple routing; L7: Content routing, API gateway</item>
+          <item>Features — L4: Basic forwarding; L7: URL rewriting, header manipulation</item>
+        </list>
+      </section>
+      <section name="when-to-use-l4">
+        <list>
+          <item>Maximum performance is critical</item>
+          <item>Simple TCP/UDP load balancing</item>
+          <item>SSL pass-through required</item>
+          <item>Protocol-agnostic routing</item>
+        </list>
+      </section>
+      <section name="when-to-use-l7">
+        <list>
+          <item>Content-based routing needed</item>
+          <item>SSL termination at load balancer</item>
+          <item>HTTP header manipulation</item>
+          <item>API gateway functionality</item>
+          <item>A/B testing, canary deployments</item>
+        </list>
+      </section>
+      <section name="load-balancer-market-types">
+        <list>
+          <item>L4 (Transport) — OSI Layer 4, TCP/UDP routing, fast, low latency — Use case: High throughput, gaming, streaming</item>
+          <item>L7 (Application) — OSI Layer 7, HTTP routing, SSL termination, content-based — Use case: Web applications, APIs, microservices</item>
+          <item>DNS — Layer 3, geographic distribution — Use case: Global load balancing</item>
+          <item>Global — Multi-layer, cross-region failover — Use case: Multi-cloud, disaster recovery</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="algorithms">
+      <rule>
+        <statement>Select static algorithms (Round Robin, IP Hash) for stateless workloads with uniform server capacity; select dynamic algorithms (Least Connections, Least Response Time) for stateful or long-lived connections and mixed-capacity backends.</statement>
+        <rationale>Static algorithms have no runtime overhead but cannot adapt to actual server load. Dynamic algorithms track connection state and route to the healthiest instance, improving distribution under variable load at the cost of minor tracking overhead.</rationale>
+      </rule>
+      <section name="static-algorithms">
+        <list>
+          <item>Round Robin — Sequential distribution. Pros: Simple, fair. Cons: Ignores server load. Use: Equal capacity servers</item>
+          <item>Weighted Round Robin — Round robin with weights. Pros: Accounts for capacity. Cons: Static weights. Use: Mixed capacity servers</item>
+          <item>IP Hash — Routes based on client IP. Pros: Sticky sessions. Cons: Uneven distribution. Use: Session persistence</item>
+          <item>Random — Random server selection. Pros: Simple, no state. Cons: May cause uneven distribution. Use: Stateless applications</item>
+        </list>
+      </section>
+      <section name="dynamic-algorithms">
+        <list>
+          <item>Least Connections — Fewest active connections. Pros: Adapts to load. Cons: Connection tracking overhead. Use: Long-lived connections</item>
+          <item>Weighted Least Connections — Least connections + weights. Pros: Best overall distribution. Cons: Complex calculation. Use: Mixed capacity, long connections</item>
+          <item>Least Response Time — Fastest responding server. Pros: Optimizes response time. Cons: Requires health probes. Use: Performance critical</item>
+          <item>Resource Based — Based on server resources. Pros: Optimal utilization. Cons: Agent required. Use: Heterogeneous environments</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="health-checks">
+      <rule>
+        <statement>Configure health checks with interval 10-30s, timeout 5s, healthy threshold 2-3 consecutive successes, and unhealthy threshold 2-3 consecutive failures; use HTTP/HTTPS checks with a dedicated /health endpoint rather than TCP-only for web applications.</statement>
+        <rationale>TCP checks only verify the port is open; the application may be deadlocked. HTTP checks verify application-layer responsiveness. Thresholds prevent flapping from transient network blips while still detecting genuine outages quickly.</rationale>
+      </rule>
+      <section name="health-check-types">
+        <list>
+          <item>TCP — TCP connection. Use case: Basic connectivity. Depth: Shallow</item>
+          <item>HTTP/HTTPS — HTTP request. Use case: Web application health. Depth: Medium</item>
+          <item>gRPC — gRPC health protocol. Use case: gRPC services. Depth: Medium</item>
+          <item>Custom Script — Application-specific. Use case: Complex health logic. Depth: Deep</item>
+        </list>
+      </section>
+      <section name="health-check-parameters">
+        <list>
+          <item>Interval — Time between checks. Typical value: 10-30 seconds</item>
+          <item>Timeout — Response timeout. Typical value: 5 seconds</item>
+          <item>Healthy Threshold — Consecutive successes to mark healthy. Typical value: 2-3</item>
+          <item>Unhealthy Threshold — Consecutive failures to mark unhealthy. Typical value: 2-3</item>
+          <item>Path — HTTP health check endpoint. Typical value: /health, /healthz</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="session-persistence">
+      <rule>
+        <statement>Prefer externalizing session state (Redis, database) over sticky sessions; use sticky sessions only when the application cannot be refactored and always pair with a fallback strategy for backend failures.</statement>
+        <rationale>Sticky sessions break even distribution and create single points of failure per user — if their assigned backend dies, their session is lost. Externalized session storage makes any backend interchangeable, enabling true horizontal scaling and simplifying auto-scaling.</rationale>
+      </rule>
+      <section name="persistence-methods">
+        <list>
+          <item>Source IP — Based on client IP. Pros: Simple, no cookies. Cons: NAT issues, uneven distribution</item>
+          <item>Cookie-based — LB-generated cookie. Pros: Accurate, configurable. Cons: Cookie overhead</item>
+          <item>Application Cookie — App-generated cookie. Pros: Application control. Cons: Requires app changes</item>
+          <item>SSL Session ID — Based on SSL session. Pros: Secure. Cons: Limited to SSL traffic</item>
+        </list>
+      </section>
+      <section name="sticky-sessions-when-to-use">
+        <p>Use sticky sessions when:</p>
+        <list>
+          <item>Application stores session state locally</item>
+          <item>Shopping carts, login sessions</item>
+          <item>In-memory caching per server</item>
+          <item>WebSocket connections</item>
+        </list>
+        <p>Avoid sticky sessions when:</p>
+        <list>
+          <item>Stateless applications</item>
+          <item>Centralized session storage (Redis)</item>
+          <item>Maximum distribution needed</item>
+          <item>Auto-scaling environments</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="architecture-patterns">
+      <section name="single-region">
+        <p>Single region pattern: Internet connects to a Load Balancer which distributes to a pool of backend servers (S1, S2, S3, S4). All servers are in the same availability zone or region.</p>
+      </section>
+      <section name="multi-region-gslb">
+        <p>Multi-region with GSLB pattern: A DNS/GSLB layer routes to regional load balancers. Each regional LB (e.g. US-East, EU-West) distributes to its local server pool. Geographic routing reduces latency and enables regional failover.</p>
+      </section>
+      <section name="high-availability">
+        <p>High availability pattern: An Active LB and Standby LB operate in active-passive (or active-active) mode with health checks between them. Both connect to the same backend server pool (S1, S2, S3), ensuring no single point of failure at the load balancer tier.</p>
+      </section>
+    </section>
+
+    <section name="best-practices">
+      <section name="high-availability-practices">
+        <list>
+          <item>Avoid single points of failure — Use active-active or active-passive LB pairs</item>
+          <item>Zone redundancy — Deploy across availability zones</item>
+          <item>Minimum 2 healthy instances per backend pool</item>
+          <item>Health check endpoints — Deeper checks (API endpoints) over basic pings</item>
+        </list>
+      </section>
+      <section name="performance-practices">
+        <list>
+          <item>Use HTTP/2 or HTTP/3 — Better pipelining and connection handling</item>
+          <item>Enable connection keepalive — Reduce connection overhead</item>
+          <item>SSL/TLS offloading — Let LB handle encryption</item>
+          <item>Connection draining — Graceful backend removal</item>
+        </list>
+      </section>
+      <section name="security-practices">
+        <list>
+          <item>TLS 1.2 minimum — Disable older protocols</item>
+          <item>DDoS protection — Rate limiting, connection limits</item>
+          <item>Web Application Firewall (WAF) — For L7 load balancers</item>
+          <item>Private backend networks — Backend servers not publicly accessible</item>
+        </list>
+      </section>
+      <section name="monitoring-practices">
+        <list>
+          <item>Active and passive health checks — Combine for faster detection</item>
+          <item>Connection metrics — Track active connections per server</item>
+          <item>Latency monitoring — Response time per backend</item>
+          <item>Error rate tracking — 4xx/5xx responses</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="market-share-2025">
+      <list>
+        <item>AWS ELB — ~67% market share — Type: Cloud managed</item>
+        <item>Nginx — ~15% market share — Type: Open source / Plus</item>
+        <item>HAProxy — ~8% market share — Type: Open source / Enterprise</item>
+        <item>F5 BIG-IP — ~5% market share — Type: Enterprise hardware/software</item>
+        <item>Traefik — ~3% market share — Type: Cloud native</item>
+        <item>Others — ~2% market share — Type: Various</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Identify traffic patterns (steady, bursty, predictable)</check>
+      <check>Estimate peak concurrent connections</check>
+      <check>Determine protocol requirements (HTTP, HTTPS, TCP, UDP, gRPC)</check>
+      <check>Identify session persistence requirements</check>
+      <check>Define availability requirements (99.9%, 99.99%)</check>
+      <check>Document geographic distribution needs</check>
+      <check>List compliance requirements (PCI-DSS, HIPAA, SOC2)</check>
+      <check>Choose L4 vs L7 based on requirements</check>
+      <check>Select load balancing algorithm</check>
+      <check>Decide on managed vs self-hosted</check>
+      <check>Plan for high availability (active-active vs active-passive)</check>
+      <check>Determine zone/region redundancy strategy</check>
+      <check>Plan backend scaling approach</check>
+      <check>Define health check endpoint (/health, /healthz, /api/health)</check>
+      <check>Set appropriate interval (10-30s for production)</check>
+      <check>Configure timeout (typically 5s)</check>
+      <check>Set healthy threshold (2-3 consecutive successes)</check>
+      <check>Set unhealthy threshold (2-3 consecutive failures)</check>
+      <check>Application stores session state locally? Can centralize instead?</check>
+      <check>WebSocket connections needed? Evaluate impact on load distribution</check>
+      <check>Enable TLS 1.2 minimum (disable TLS 1.0, 1.1)</check>
+      <check>Enable TLS 1.3 where supported</check>
+      <check>Configure strong cipher suites</check>
+      <check>Enable HSTS headers</check>
+      <check>Configure OCSP stapling</check>
+      <check>Deploy multiple LB instances</check>
+      <check>Configure failover (active-passive or active-active)</check>
+      <check>Test failover scenarios</check>
+      <check>Enable connection draining and set drain timeout (30-300s)</check>
+      <check>Monitor active connections per backend</check>
+      <check>Monitor request rate (RPS) and error rate (4xx, 5xx)</check>
+      <check>Monitor response time / latency (p50, p95, p99)</check>
+      <check>Alert on backend unhealthy (immediate), high error rate (&gt; 1%), certificate expiring (&lt; 30 days)</check>
+      <check>Place backends in private subnets</check>
+      <check>Enable rate limiting and connection limits</check>
+      <check>Enable WAF for public-facing apps (L7)</check>
+      <check>Verify traffic distribution and health check behavior</check>
+      <check>Test single backend failure and multiple backend failures</check>
+      <check>Load test at expected peak and 2x expected peak</check>
+      <check>Store configuration in version control</check>
+      <check>Create disaster recovery plan and document rollback procedures</check>
+    </checklist>
+
+    <section name="examples">
+      <example type="good" title="HAProxy L7 load balancer with SSL, sticky sessions, health checks">
+        <code lang="haproxy"><![CDATA[# /etc/haproxy/haproxy.cfg
+
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+
+    # SSL/TLS settings (TLS 1.2+)
+    ssl-default-bind-ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
+    ssl-default-bind-options ssl-min-ver TLSv1.2 no-tls-tickets
+    tune.ssl.default-dh-param 2048
+
+defaults
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    option  forwardfor
+    option  http-server-close
+    timeout connect 5s
+    timeout client  30s
+    timeout server  30s
+    timeout http-keep-alive 10s
+
+# Stats dashboard
+listen stats
+    bind *:8404
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+    stats admin if LOCALHOST
+
+# HTTP to HTTPS redirect
+frontend http_front
+    bind *:80
+    redirect scheme https code 301 if !{ ssl_fc }
+
+# HTTPS frontend
+frontend https_front
+    bind *:443 ssl crt /etc/haproxy/certs/example.com.pem
+    http-request add-header X-Forwarded-Proto https
+
+    # ACL routing
+    acl is_api path_beg /api
+    acl is_static path_beg /static
+
+    use_backend api_servers if is_api
+    use_backend static_servers if is_static
+    default_backend web_servers
+
+# Web backend - Round Robin
+backend web_servers
+    balance roundrobin
+    option httpchk GET /health
+    http-check expect status 200
+
+    server web1 10.0.0.1:8080 check weight 5
+    server web2 10.0.0.2:8080 check weight 5
+    server web3 10.0.0.3:8080 check weight 3 backup
+
+# API backend - Least Connections with Sticky Sessions
+backend api_servers
+    balance leastconn
+    option httpchk GET /api/health
+    http-check expect status 200
+
+    # Cookie-based sticky sessions
+    cookie SERVERID insert indirect nocache
+
+    server api1 10.0.1.1:8000 check cookie api1
+    server api2 10.0.1.2:8000 check cookie api2
+    server api3 10.0.1.3:8000 check cookie api3
+
+# Static backend - Round Robin
+backend static_servers
+    balance roundrobin
+    option httpchk GET /health
+
+    server static1 10.0.2.1:80 check
+    server static2 10.0.2.2:80 check]]></code>
+      </example>
+      <example type="good" title="HAProxy L4 TCP load balancer for databases">
+        <code lang="haproxy"><![CDATA[# /etc/haproxy/haproxy-l4.cfg
+
+global
+    log /dev/log local0
+    chroot /var/lib/haproxy
+    user haproxy
+    group haproxy
+    daemon
+
+defaults
+    log     global
+    mode    tcp
+    option  tcplog
+    timeout connect 5s
+    timeout client  30s
+    timeout server  30s
+
+# Database load balancing
+frontend db_front
+    bind *:5432
+    default_backend postgres_servers
+
+backend postgres_servers
+    balance leastconn
+    option tcp-check
+
+    server db1 10.0.3.1:5432 check
+    server db2 10.0.3.2:5432 check
+    server db3 10.0.3.3:5432 check backup
+
+# Redis cluster
+frontend redis_front
+    bind *:6379
+    default_backend redis_servers
+
+backend redis_servers
+    balance roundrobin
+    option tcp-check
+
+    server redis1 10.0.4.1:6379 check
+    server redis2 10.0.4.2:6379 check]]></code>
+      </example>
+      <example type="good" title="Nginx upstream load balancer with health checks and sticky sessions">
+        <code lang="nginx"><![CDATA[# /etc/nginx/nginx.conf
+
+upstream web_backend {
+    least_conn;
+
+    server 10.0.0.1:8080 weight=5 max_fails=3 fail_timeout=30s;
+    server 10.0.0.2:8080 weight=5 max_fails=3 fail_timeout=30s;
+    server 10.0.0.3:8080 weight=2 backup;
+
+    keepalive 32;
+}
+
+upstream api_backend {
+    ip_hash;  # Sticky sessions
+
+    server 10.0.1.1:8000 max_fails=3 fail_timeout=30s;
+    server 10.0.1.2:8000 max_fails=3 fail_timeout=30s;
+    server 10.0.1.3:8000 max_fails=3 fail_timeout=30s;
+
+    keepalive 16;
+}
+
+server {
+    listen 80;
+    server_name example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name example.com;
+
+    ssl_certificate /etc/nginx/ssl/example.com.crt;
+    ssl_certificate_key /etc/nginx/ssl/example.com.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
+    ssl_prefer_server_ciphers off;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options DENY;
+
+    location / {
+        proxy_pass http://web_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+
+        proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;
+        proxy_next_upstream_tries 3;
+        proxy_next_upstream_timeout 10s;
+    }
+
+    location /api {
+        proxy_pass http://api_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+}]]></code>
+      </example>
+      <example type="good" title="Nginx Stream L4 load balancer for PostgreSQL and Redis">
+        <code lang="nginx"><![CDATA[# /etc/nginx/stream.conf
+
+stream {
+    upstream postgres_backend {
+        least_conn;
+        server 10.0.3.1:5432 weight=5;
+        server 10.0.3.2:5432 weight=5;
+        server 10.0.3.3:5432 backup;
+    }
+
+    upstream redis_backend {
+        hash $remote_addr consistent;
+        server 10.0.4.1:6379;
+        server 10.0.4.2:6379;
+    }
+
+    server {
+        listen 5432;
+        proxy_pass postgres_backend;
+        proxy_connect_timeout 5s;
+        proxy_timeout 1h;
+    }
+
+    server {
+        listen 6379;
+        proxy_pass redis_backend;
+        proxy_connect_timeout 5s;
+        proxy_timeout 1h;
+    }
+}]]></code>
+      </example>
+      <example type="good" title="AWS ALB with HTTPS listener, target groups, and health checks (Terraform)">
+        <code lang="hcl"><![CDATA[# alb.tf
+
+resource "aws_lb" "main" {
+  name               = "my-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = var.public_subnet_ids
+
+  enable_deletion_protection = true
+  enable_http2              = true
+
+  access_logs {
+    bucket  = aws_s3_bucket.lb_logs.id
+    prefix  = "alb"
+    enabled = true
+  }
+
+  tags = {
+    Environment = "production"
+  }
+}
+
+# HTTPS Listener
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
+  certificate_arn   = aws_acm_certificate.main.arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.web.arn
+  }
+}
+
+# HTTP to HTTPS redirect
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+# Web Target Group
+resource "aws_lb_target_group" "web" {
+  name     = "web-targets"
+  port     = 8080
+  protocol = "HTTP"
+  vpc_id   = var.vpc_id
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    path                = "/health"
+    protocol            = "HTTP"
+    matcher             = "200"
+  }
+
+  stickiness {
+    type            = "lb_cookie"
+    cookie_duration = 86400
+    enabled         = true
+  }
+
+  deregistration_delay = 30
+
+  tags = {
+    Name = "web-targets"
+  }
+}
+
+# API Target Group
+resource "aws_lb_target_group" "api" {
+  name     = "api-targets"
+  port     = 8000
+  protocol = "HTTP"
+  vpc_id   = var.vpc_id
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    path                = "/api/health"
+    protocol            = "HTTP"
+    matcher             = "200"
+  }
+
+  tags = {
+    Name = "api-targets"
+  }
+}
+
+# Listener Rule for API
+resource "aws_lb_listener_rule" "api" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 10
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.api.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*"]
+    }
+  }
+}
+
+# Security Group
+resource "aws_security_group" "alb" {
+  name        = "alb-sg"
+  description = "ALB security group"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "alb-sg"
+  }
+}]]></code>
+      </example>
+      <example type="good" title="AWS NLB (Terraform)">
+        <code lang="hcl"><![CDATA[# nlb.tf
+
+resource "aws_lb" "nlb" {
+  name               = "my-nlb"
+  internal           = false
+  load_balancer_type = "network"
+  subnets            = var.public_subnet_ids
+
+  enable_deletion_protection = true
+  enable_cross_zone_load_balancing = true
+
+  tags = {
+    Environment = "production"
+  }
+}
+
+resource "aws_lb_listener" "tcp" {
+  load_balancer_arn = aws_lb.nlb.arn
+  port              = "443"
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.tcp.arn
+  }
+}
+
+resource "aws_lb_target_group" "tcp" {
+  name        = "tcp-targets"
+  port        = 8080
+  protocol    = "TCP"
+  vpc_id      = var.vpc_id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    interval            = 10
+    protocol            = "TCP"
+  }
+
+  stickiness {
+    type    = "source_ip"
+    enabled = true
+  }
+
+  tags = {
+    Name = "tcp-targets"
+  }
+}]]></code>
+      </example>
+      <example type="good" title="Kubernetes Service types and Ingress with Nginx controller">
+        <code lang="yaml"><![CDATA[# ClusterIP (internal only)
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+spec:
+  type: ClusterIP
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+# NodePort (external via node ports)
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-nodeport
+spec:
+  type: NodePort
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 8080
+      nodePort: 30080
+---
+# LoadBalancer (cloud provider LB)
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-loadbalancer
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+spec:
+  type: LoadBalancer
+  selector:
+    app: web
+  ports:
+    - port: 443
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "SERVERID"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "86400"
+spec:
+  tls:
+    - hosts:
+        - example.com
+      secretName: example-tls
+  rules:
+    - host: example.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-service
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-service
+                port:
+                  number: 80]]></code>
+      </example>
+      <example type="good" title="Health check endpoint - Python FastAPI">
+        <code lang="python"><![CDATA[from fastapi import FastAPI, Response
+import redis
+import psycopg2
+import os
+
+app = FastAPI()
+
+@app.get("/health")
+async def health_check():
+    """Basic health check"""
+    return {"status": "healthy"}
+
+@app.get("/health/ready")
+async def readiness_check():
+    """Readiness check with dependencies"""
+    checks = {
+        "status": "healthy",
+        "checks": {}
+    }
+
+    # Database check
+    try:
+        conn = psycopg2.connect(os.environ["DATABASE_URL"])
+        conn.close()
+        checks["checks"]["database"] = "healthy"
+    except Exception as e:
+        checks["checks"]["database"] = f"unhealthy: {str(e)}"
+        checks["status"] = "unhealthy"
+
+    # Redis check
+    try:
+        r = redis.from_url(os.environ["REDIS_URL"])
+        r.ping()
+        checks["checks"]["redis"] = "healthy"
+    except Exception as e:
+        checks["checks"]["redis"] = f"unhealthy: {str(e)}"
+        checks["status"] = "unhealthy"
+
+    status_code = 200 if checks["status"] == "healthy" else 503
+    return Response(
+        content=json.dumps(checks),
+        status_code=status_code,
+        media_type="application/json"
+    )
+
+@app.get("/health/live")
+async def liveness_check():
+    """Liveness check (is the process alive?)"""
+    return {"status": "alive"}]]></code>
+      </example>
+      <example type="good" title="Health check endpoint - Node.js Express">
+        <code lang="javascript"><![CDATA[const express = require('express');
+const { Pool } = require('pg');
+const Redis = require('ioredis');
+
+const app = express();
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy' });
+});
+
+app.get('/health/ready', async (req, res) => {
+  const checks = {
+    status: 'healthy',
+    checks: {}
+  };
+
+  // Database check
+  try {
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    await pool.query('SELECT 1');
+    await pool.end();
+    checks.checks.database = 'healthy';
+  } catch (error) {
+    checks.checks.database = `unhealthy: ${error.message}`;
+    checks.status = 'unhealthy';
+  }
+
+  // Redis check
+  try {
+    const redis = new Redis(process.env.REDIS_URL);
+    await redis.ping();
+    await redis.quit();
+    checks.checks.redis = 'healthy';
+  } catch (error) {
+    checks.checks.redis = `unhealthy: ${error.message}`;
+    checks.status = 'unhealthy';
+  }
+
+  const statusCode = checks.status === 'healthy' ? 200 : 503;
+  res.status(statusCode).json(checks);
+});
+
+app.get('/health/live', (req, res) => {
+  res.json({ status: 'alive' });
+});]]></code>
+      </example>
+      <example type="good" title="Health check endpoint - Go">
+        <code lang="go"><![CDATA[package main
+
+import (
+    "database/sql"
+    "encoding/json"
+    "net/http"
+    "os"
+
+    "github.com/go-redis/redis/v8"
+    _ "github.com/lib/pq"
+)
+
+type HealthResponse struct {
+    Status string            `json:"status"`
+    Checks map[string]string `json:"checks,omitempty"`
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+    json.NewEncoder(w).Encode(HealthResponse{Status: "healthy"})
+}
+
+func readinessHandler(w http.ResponseWriter, r *http.Request) {
+    response := HealthResponse{
+        Status: "healthy",
+        Checks: make(map[string]string),
+    }
+
+    // Database check
+    db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
+    if err != nil {
+        response.Checks["database"] = "unhealthy: " + err.Error()
+        response.Status = "unhealthy"
+    } else {
+        defer db.Close()
+        if err := db.Ping(); err != nil {
+            response.Checks["database"] = "unhealthy: " + err.Error()
+            response.Status = "unhealthy"
+        } else {
+            response.Checks["database"] = "healthy"
+        }
+    }
+
+    // Redis check
+    rdb := redis.NewClient(&redis.Options{
+        Addr: os.Getenv("REDIS_URL"),
+    })
+    defer rdb.Close()
+    if _, err := rdb.Ping(r.Context()).Result(); err != nil {
+        response.Checks["redis"] = "unhealthy: " + err.Error()
+        response.Status = "unhealthy"
+    } else {
+        response.Checks["redis"] = "healthy"
+    }
+
+    if response.Status == "unhealthy" {
+        w.WriteHeader(http.StatusServiceUnavailable)
+    }
+    json.NewEncoder(w).Encode(response)
+}
+
+func livenessHandler(w http.ResponseWriter, r *http.Request) {
+    json.NewEncoder(w).Encode(HealthResponse{Status: "alive"})
+}
+
+func main() {
+    http.HandleFunc("/health", healthHandler)
+    http.HandleFunc("/health/ready", readinessHandler)
+    http.HandleFunc("/health/live", livenessHandler)
+    http.ListenAndServe(":8080", nil)
+}]]></code>
+      </example>
+    </section>
+
+    <section name="prompts">
+      <prompt purpose="design-load-balancing-architecture"><![CDATA[Design a load balancing architecture for the following requirements:
+
+Application Details:
+- Type: [web app / API / microservices / streaming]
+- Expected traffic: [RPS / concurrent users]
+- Protocol: [HTTP/HTTPS / TCP / UDP / WebSocket / gRPC]
+- Session requirements: [stateless / stateful / sticky sessions needed]
+
+Infrastructure:
+- Cloud provider: [AWS / GCP / Azure / on-premise / hybrid]
+- Current setup: [single server / multiple servers / Kubernetes]
+- Geographic distribution: [single region / multi-region / global]
+
+Requirements:
+- Availability SLA: [99.9% / 99.99% / 99.999%]
+- Latency requirements: [p99 latency target]
+- Budget constraints: [if any]
+
+Please provide:
+1. Recommended load balancer type (L4 vs L7)
+2. Load balancing algorithm
+3. Health check strategy
+4. Session persistence approach (if needed)
+5. High availability design
+6. Architecture diagram
+7. Estimated costs (if cloud-based)]]></prompt>
+      <prompt purpose="l4-vs-l7-decision"><![CDATA[Help me decide between Layer 4 and Layer 7 load balancing:
+
+My application:
+- Protocol: [describe protocols used]
+- Need content-based routing: [yes/no]
+- Need SSL termination at LB: [yes/no]
+- Need HTTP header manipulation: [yes/no]
+- Need URL path routing: [yes/no]
+- Performance requirements: [describe latency/throughput needs]
+- WebSocket support needed: [yes/no]
+
+Current challenges:
+[Describe any current issues]
+
+Please analyze and recommend:
+1. Which layer is more appropriate and why
+2. Trade-offs of each option
+3. Specific implementation recommendations
+4. Migration path if changing layers]]></prompt>
+      <prompt purpose="choose-algorithm"><![CDATA[Help me select the optimal load balancing algorithm:
+
+Backend servers:
+- Number of servers: [count]
+- Server capacity: [same / different capacities - describe]
+- Current utilization: [describe]
+
+Traffic characteristics:
+- Connection duration: [short-lived / long-lived / mixed]
+- Request processing time: [uniform / variable]
+- Traffic pattern: [steady / bursty / time-based peaks]
+
+Application requirements:
+- Session persistence: [required / not required]
+- Latency sensitivity: [high / medium / low]
+- Stateless: [yes / no]
+
+Current algorithm (if any): [current algorithm]
+Current issues: [describe problems]
+
+Please recommend:
+1. Best algorithm and why
+2. Configuration parameters
+3. Fallback strategies
+4. Monitoring metrics to track]]></prompt>
+      <prompt purpose="design-health-check-strategy"><![CDATA[Design a comprehensive health check strategy:
+
+Application:
+- Type: [web / API / microservices / database proxy]
+- Framework: [specify]
+- Critical dependencies: [database, cache, external APIs, etc.]
+
+Current health endpoint: [describe or none]
+
+Requirements:
+- Detection time for failures: [target seconds]
+- False positive tolerance: [low / medium / high]
+- Graceful degradation: [required / not required]
+
+Load balancer: [HAProxy / Nginx / AWS ALB / etc.]
+
+Please provide:
+1. Health check endpoint design
+2. What to check (and what NOT to check)
+3. Threshold configuration (intervals, timeouts, thresholds)
+4. Response format
+5. Sample implementation code
+6. Monitoring and alerting recommendations]]></prompt>
+      <prompt purpose="troubleshoot-health-checks"><![CDATA[Help troubleshoot health check problems:
+
+Symptoms:
+- [Describe what's happening - flapping, false positives, etc.]
+
+Current configuration:
+- Health check type: [TCP / HTTP / HTTPS]
+- Endpoint: [path]
+- Interval: [seconds]
+- Timeout: [seconds]
+- Healthy threshold: [count]
+- Unhealthy threshold: [count]
+
+Load balancer: [type]
+Backend health check code: [if available]
+
+Recent changes: [any recent changes]
+
+Please analyze:
+1. Likely root causes
+2. Diagnostic steps
+3. Configuration adjustments
+4. Best practices violations
+5. Recommended fixes]]></prompt>
+      <prompt purpose="design-session-persistence"><![CDATA[Design a session persistence strategy:
+
+Application requirements:
+- Why persistence needed: [shopping cart / login session / WebSocket / other]
+- Session data location: [in-memory / local file / database / cache]
+- Session duration: [short / long / indefinite]
+
+User behavior:
+- Average session duration: [estimate]
+- Multiple tabs/windows: [common / rare]
+- Mobile + desktop: [same user on different devices?]
+
+Infrastructure:
+- Load balancer: [type]
+- Can modify application: [yes / no]
+- Can add shared session store: [yes / no]
+
+Constraints:
+- Auto-scaling: [yes / no]
+- Even distribution importance: [high / medium / low]
+
+Please recommend:
+1. Persistence method (IP / cookie / application cookie)
+2. Configuration details
+3. Trade-offs and limitations
+4. Alternative approaches (externalized sessions)
+5. Migration path if changing approach]]></prompt>
+      <prompt purpose="review-configuration"><![CDATA[Review my load balancer configuration for issues and improvements:
+
+Configuration:
+[Paste your HAProxy/Nginx/etc configuration here]
+
+Context:
+- Traffic volume: [RPS]
+- Backend count: [number]
+- Environment: [production / staging / development]
+- Known issues: [any current problems]
+
+Please review for:
+1. Security issues
+2. Performance optimizations
+3. High availability concerns
+4. Best practices violations
+5. Missing configurations
+6. Timeout tuning
+7. Logging adequacy]]></prompt>
+      <prompt purpose="optimize-performance"><![CDATA[Help optimize load balancer performance:
+
+Current setup:
+- Load balancer: [type and version]
+- Configuration: [paste or describe]
+- Hardware/instance type: [specs]
+
+Traffic:
+- Current RPS: [number]
+- Peak RPS: [number]
+- Connection type: [short/long-lived]
+- Average request size: [KB]
+- Average response size: [KB]
+
+Current metrics:
+- CPU utilization: [%]
+- Memory utilization: [%]
+- Connection count: [number]
+- Latency (p50/p95/p99): [ms]
+
+Issues:
+- [Describe performance problems]
+
+Please provide:
+1. Bottleneck analysis
+2. Configuration optimizations
+3. Scaling recommendations
+4. Connection tuning
+5. Caching opportunities
+6. Expected improvements]]></prompt>
+      <prompt purpose="plan-migration"><![CDATA[Help plan a load balancer migration:
+
+Current setup:
+- Load balancer: [current type/version]
+- Configuration complexity: [simple / moderate / complex]
+- Traffic volume: [RPS]
+- Downtime tolerance: [zero / minimal / maintenance window OK]
+
+Target:
+- New load balancer: [target type]
+- Reason for migration: [describe]
+
+Constraints:
+- Timeline: [target date]
+- Team expertise: [familiar / learning new tech]
+- Budget: [if relevant]
+
+Please provide:
+1. Migration strategy (big bang / gradual / blue-green)
+2. Risk assessment
+3. Rollback plan
+4. Testing checklist
+5. Cutover procedure
+6. Post-migration validation]]></prompt>
+      <prompt purpose="diagnose-issues"><![CDATA[Help diagnose load balancer issues:
+
+Symptoms:
+- [Describe the problem in detail]
+- When started: [time/date]
+- Frequency: [constant / intermittent / pattern-based]
+- Affected users: [all / some / specific regions]
+
+Error messages:
+- [Any error messages or codes]
+
+Recent changes:
+- [List any recent changes to LB, backends, or network]
+
+Current metrics:
+- Error rate: [%]
+- Latency: [ms]
+- Backend health: [healthy/unhealthy counts]
+
+Configuration:
+- [Paste relevant configuration]
+
+Please help:
+1. Identify likely root causes
+2. Provide diagnostic commands
+3. Suggest immediate mitigations
+4. Recommend permanent fixes
+5. Prevention strategies]]></prompt>
+      <prompt purpose="debug-connection-issues"><![CDATA[Debug load balancer connection issues:
+
+Problem:
+- [Connection timeouts / refused / reset / etc.]
+- Client-side or server-side: [if known]
+- Error rate: [%]
+
+Network path:
+Client -> [describe path] -> Load Balancer -> Backend
+
+Configuration:
+- Timeout settings: [list timeouts]
+- Max connections: [limits]
+- Keepalive: [enabled/disabled, settings]
+
+What I've checked:
+- [List what you've already verified]
+
+Please help:
+1. Additional diagnostic steps
+2. Common causes for this pattern
+3. Configuration adjustments
+4. Network-level checks
+5. Application-level checks]]></prompt>
+      <prompt purpose="capacity-planning"><![CDATA[Help with load balancer capacity planning:
+
+Current state:
+- Load balancer: [type]
+- Instance/hardware: [specs]
+- Current traffic: [RPS, connections, bandwidth]
+- Current utilization: [CPU, memory, connections]
+
+Growth projections:
+- Expected traffic growth: [% per month/year]
+- Peak events: [describe any known peaks]
+- New features impact: [any features that will increase traffic]
+
+Requirements:
+- Headroom desired: [% buffer]
+- Scaling approach: [vertical / horizontal / both]
+- Budget constraints: [if any]
+
+Please provide:
+1. Capacity analysis
+2. Scaling recommendations
+3. Timeline for upgrades
+4. Cost estimates
+5. Monitoring thresholds
+6. Auto-scaling strategy (if applicable)]]></prompt>
+      <prompt purpose="optimize-costs"><![CDATA[Help optimize load balancing costs:
+
+Current setup:
+- Cloud provider: [AWS / GCP / Azure]
+- Load balancer type: [ALB / NLB / etc.]
+- Configuration: [describe]
+- Monthly cost: [current spend]
+
+Traffic patterns:
+- Average traffic: [RPS/bandwidth]
+- Peak traffic: [RPS/bandwidth]
+- Off-peak periods: [describe]
+- Geographic distribution: [regions]
+
+Usage details:
+- Data processed: [GB/month]
+- Rules/listeners: [count]
+- Target groups: [count]
+
+Please analyze:
+1. Cost breakdown
+2. Optimization opportunities
+3. Alternative architectures
+4. Reserved capacity options
+5. Expected savings
+6. Trade-offs to consider]]></prompt>
+    </section>
+
+    <section name="agent-selection">
+      <list>
+        <item>Set up GitHub Actions workflow from template — Model: haiku — Rationale: Pattern application, simple configuration</item>
+        <item>Design CI/CD pipeline architecture — Model: opus — Rationale: Complex system design with many variables</item>
+        <item>Write terraform code for infrastructure — Model: sonnet — Rationale: Implementation with moderate complexity</item>
+        <item>Debug failing pipeline step — Model: sonnet — Rationale: Debugging and problem-solving</item>
+        <item>Implement AIOps anomaly detection — Model: opus — Rationale: Novel ML approach, complex decision</item>
+        <item>Configure webhook and secret management — Model: haiku — Rationale: Mechanical setup using checklists</item>
+      </list>
+    </section>
+
+    <section name="agent-integration">
+      <section name="agentic-workflow">
+        <p>This is a "decide before configure" methodology. The agent's job is to convert a business + traffic profile (RPS, conn count, p99 latency target, geographic spread, statefulness, growth curve) into a recommended LB topology document — not config files. Output a short Architecture Decision Record: chosen layer (L4/L7/both), algorithm, persistence policy, health-check depth, HA pattern, expected failure modes. Pair the result with load-balancing-implementation/ for the actual rollout.</p>
+        <p>Recommended subagents: faion-sdd-executor-agent — produce ADR documents, design diffs, review cycles. faion-brainstorm — diverge/converge on topology options when traffic profile is unusual. Custom lb-architect — takes traffic profile JSON, returns ADR markdown with explicit trade-offs.</p>
+      </section>
+      <section name="prompt-pattern">
+        <prompt purpose="lb-architect-adr"><![CDATA[You are an LB architect. Input: {p99_target_ms, rps, concurrent_conn, regions, stateful: bool, websocket: bool, tls_termination: edge|reencrypt|passthrough}. Output an ADR with sections: Decision (one sentence), Layer (L4/L7/L4+L7), Algorithm, Persistence (none|cookie|ip-hash|app), Health Check (TCP|HTTP|gRPC, interval/threshold), HA (single|active-passive|active-active|GSLB), Risks. Refuse if RPS > 100k and stateful=true — recommend stateless redesign first.]]></prompt>
+      </section>
+      <section name="limitations">
+        <list>
+          <item>Algorithm choice on paper rarely survives real traffic: round-robin can starve hot CPUs; least-conn is great until backends have wildly different request times.</item>
+          <item>Sticky sessions are an anti-pattern for stateless services — agents who recommend them often hide a missing session store (Redis).</item>
+          <item>IP hash + NAT/VPN clients = uneven distribution and "thundering herd" on a single backend.</item>
+          <item>Health checks at L4 don't catch app-level failures (e.g., DB connection pool exhausted with healthy TCP socket).</item>
+          <item>L4 vs L7 is not binary — modern stacks use L4 (NLB/HAProxy) in front of L7 (Ingress/Envoy) and agents conflate the two.</item>
+          <item>GSLB DNS TTLs are honored unevenly by clients; failover takes 30s–5min in practice.</item>
+        </list>
+      </section>
+      <section name="ai-agent-gotchas">
+        <list>
+          <item>LLMs default to "round-robin is fairest" — push for least-connections or response-time-aware unless backends are uniform.</item>
+          <item>"Sticky sessions" gets recommended for any state issue — flag it and ask whether a Redis/Memcached session store is the real fix.</item>
+          <item>L4 vs L7 confusion: agents propose "L4 for performance" then list L7 features (path routing, header rewrite); reject the inconsistency.</item>
+          <item>GSLB latency claims: agents quote sub-second failover; real DNS TTL behavior is 30s–5min — set realistic SLOs.</item>
+          <item>Health check intervals: agents pick 1s aggressively; on large fleets this DDoSes backends with health probes — scale interval with fleet size.</item>
+          <item>Algorithm + autoscaling interaction: ip-hash + frequent scale events causes constant re-distribution; agents miss this.</item>
+          <item>Capacity math: agents forget that LB CPU itself becomes the bottleneck for TLS-heavy or regex-heavy L7 — size the LB tier explicitly.</item>
+        </list>
+      </section>
+      <section name="cli-tools">
+        <list>
+          <item>vegeta, wrk2, oha, k6 — Drive synthetic traffic to validate algorithm choice — https://k6.io/</item>
+          <item>mtr, traceroute, dig +trace — Verify GSLB / DNS routing</item>
+          <item>dnsperf — Measure GSLB lookup latency — https://www.dns-oarc.net/tools/dnsperf</item>
+          <item>iperf3 — L4 throughput baseline — https://iperf.fr/</item>
+          <item>tc qdisc (Linux netem) — Inject latency/loss to test failover</item>
+          <item>httpx — L7 probing — TLS, headers, ALPN — https://github.com/projectdiscovery/httpx</item>
+        </list>
+      </section>
+      <section name="services-and-tools">
+        <list>
+          <item>AWS Route 53 (latency/geo routing) — SaaS, Agent-friendly: Yes API — DNS-based GSLB</item>
+          <item>Cloudflare Load Balancing — SaaS, Agent-friendly: Yes API — Global anycast + health checks</item>
+          <item>NS1 / Akamai GTM — SaaS, Agent-friendly: Yes API — Enterprise GSLB</item>
+          <item>AWS Global Accelerator — SaaS, Agent-friendly: Yes API — Anycast L4 in front of regional LBs</item>
+          <item>GCP Global Load Balancer — SaaS, Agent-friendly: Yes — Single anycast IP, multi-region</item>
+          <item>Azure Traffic Manager + Front Door — SaaS, Agent-friendly: Yes — DNS GSLB + edge L7</item>
+          <item>keepalived + VRRP — OSS, Agent-friendly: Yes — Active/passive VIP failover, classic on-prem</item>
+          <item>Pacemaker/Corosync — OSS, Agent-friendly: Partial — Heavy cluster manager, niche today</item>
+        </list>
+      </section>
+      <section name="traffic-shape-script">
+        <p>Quick traffic profile from access logs to feed LB design:</p>
+        <code lang="bash"><![CDATA[#!/usr/bin/env bash
+# traffic-shape.sh — quick traffic profile from access logs to feed LB design
+LOG=${1:?nginx access log}
+echo "Total reqs:    $(wc -l < "$LOG")"
+echo "Unique IPs:    $(awk '{print $1}' "$LOG" | sort -u | wc -l)"
+echo "Top 5 paths:"
+awk '{print $7}' "$LOG" | sort | uniq -c | sort -rn | head -5
+echo "Status mix:"
+awk '{print $9}' "$LOG" | sort | uniq -c | sort -rn
+echo "p50/p95/p99 req/s (1s buckets):"
+awk '{print substr($4,2,20)}' "$LOG" | uniq -c | awk '{print $1}' \
+  | sort -n | awk 'BEGIN{c=0} {a[c++]=$1} END{print a[int(c*0.5)],a[int(c*0.95)],a[int(c*0.99)]}']]></code>
+      </section>
+      <section name="decision-best-practices">
+        <list>
+          <item>Decide statefulness first: if you can avoid sticky sessions, the design simplifies dramatically.</item>
+          <item>Default to L7 with HTTP health checks for web/API; drop to L4 only when L7 features are unused or you measured the CPU cost.</item>
+          <item>Use least-connections (or weighted least-conn) over round-robin for variable-cost endpoints; round-robin is fine for uniform short requests.</item>
+          <item>Health check depth: a /healthz that touches the critical dependency (DB ping with timeout) is worth its cost.</item>
+          <item>Thresholds: 2 of 3 consecutive failures, 10s interval, 5s timeout — start there, tune from outage data.</item>
+          <item>For zero-downtime deploys: connection draining + readiness probe matched to LB de-register lag.</item>
+          <item>Multi-region: prefer anycast (Global Accelerator, Cloudflare, GCP GLB) over DNS-based failover — clients respect TTL poorly.</item>
+          <item>Document the chosen pattern in an ADR; revisit when traffic doubles or new region is added.</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="templates">
+      <section name="haproxy-production-template">
+        <p>Production HAProxy Configuration Template. Replace: {{DOMAIN}}, {{CERT_PATH}}, {{BACKEND_*}}</p>
+        <code lang="haproxy"><![CDATA[# /etc/haproxy/haproxy.cfg
+# Template: Production L7 Load Balancer
+# Replace: {{DOMAIN}}, {{CERT_PATH}}, {{BACKEND_*}}
+
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin expose-fd listeners
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+    maxconn 50000
+
+    # Modern TLS settings
+    ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
+    ssl-default-bind-options ssl-min-ver TLSv1.2 no-tls-tickets
+    ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
+    ssl-default-server-options ssl-min-ver TLSv1.2 no-tls-tickets
+    tune.ssl.default-dh-param 2048
+
+defaults
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    option  forwardfor
+    option  http-server-close
+    option  redispatch
+    retries 3
+    timeout connect 5s
+    timeout client  30s
+    timeout server  30s
+    timeout http-keep-alive 10s
+    timeout http-request 10s
+    timeout queue 30s
+    maxconn 10000
+
+    # Error pages
+    errorfile 400 /etc/haproxy/errors/400.http
+    errorfile 403 /etc/haproxy/errors/403.http
+    errorfile 408 /etc/haproxy/errors/408.http
+    errorfile 500 /etc/haproxy/errors/500.http
+    errorfile 502 /etc/haproxy/errors/502.http
+    errorfile 503 /etc/haproxy/errors/503.http
+    errorfile 504 /etc/haproxy/errors/504.http
+
+# Stats dashboard (restrict in production)
+listen stats
+    bind *:8404
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+    stats admin if LOCALHOST
+    stats auth admin:{{STATS_PASSWORD}}
+
+# HTTP to HTTPS redirect
+frontend http_front
+    bind *:80
+    http-request redirect scheme https code 301 unless { ssl_fc }
+
+# HTTPS frontend
+frontend https_front
+    bind *:443 ssl crt {{CERT_PATH}}/{{DOMAIN}}.pem alpn h2,http/1.1
+
+    # Security headers
+    http-response set-header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    http-response set-header X-Content-Type-Options nosniff
+    http-response set-header X-Frame-Options DENY
+    http-response set-header X-XSS-Protection "1; mode=block"
+
+    # Forwarded headers
+    http-request set-header X-Forwarded-Proto https
+    http-request set-header X-Real-IP %[src]
+
+    # Rate limiting (100 req/10s per IP)
+    stick-table type ip size 100k expire 30s store http_req_rate(10s)
+    http-request track-sc0 src
+    http-request deny deny_status 429 if { sc_http_req_rate(0) gt 100 }
+
+    # Routing ACLs
+    acl is_api path_beg /api
+    acl is_ws hdr(Upgrade) -i websocket
+
+    use_backend ws_servers if is_ws
+    use_backend api_servers if is_api
+    default_backend web_servers
+
+# Web backend
+backend web_servers
+    balance roundrobin
+    option httpchk GET /health
+    http-check expect status 200
+
+    # Connection draining
+    default-server inter 10s fall 3 rise 2 on-marked-down shutdown-sessions
+
+    server web1 {{BACKEND_WEB1}}:8080 check weight 100
+    server web2 {{BACKEND_WEB2}}:8080 check weight 100
+    server web3 {{BACKEND_WEB3}}:8080 check weight 50 backup
+
+# API backend with sticky sessions
+backend api_servers
+    balance leastconn
+    option httpchk GET /api/health
+    http-check expect status 200
+
+    # Sticky sessions via cookie
+    cookie SERVERID insert indirect nocache httponly secure
+
+    default-server inter 10s fall 3 rise 2
+
+    server api1 {{BACKEND_API1}}:8000 check cookie api1
+    server api2 {{BACKEND_API2}}:8000 check cookie api2
+    server api3 {{BACKEND_API3}}:8000 check cookie api3
+
+# WebSocket backend
+backend ws_servers
+    balance source
+    option httpchk GET /health
+
+    # WebSocket timeouts
+    timeout tunnel 1h
+
+    server ws1 {{BACKEND_WS1}}:8080 check
+    server ws2 {{BACKEND_WS2}}:8080 check]]></code>
+      </section>
+      <section name="haproxy-l4-tcp-template">
+        <p>HAProxy L4 TCP Load Balancer Template. Replace: {{SERVICE}}, {{PORT}}, {{BACKEND_*}}</p>
+        <code lang="haproxy"><![CDATA[# /etc/haproxy/haproxy-tcp.cfg
+# Template: L4 TCP Load Balancer
+# Replace: {{SERVICE}}, {{PORT}}, {{BACKEND_*}}
+
+global
+    log /dev/log local0
+    chroot /var/lib/haproxy
+    user haproxy
+    group haproxy
+    daemon
+    maxconn 50000
+
+defaults
+    log     global
+    mode    tcp
+    option  tcplog
+    option  dontlognull
+    timeout connect 5s
+    timeout client  1h
+    timeout server  1h
+    maxconn 10000
+
+# {{SERVICE}} Load Balancer
+frontend {{SERVICE}}_front
+    bind *:{{PORT}}
+    default_backend {{SERVICE}}_servers
+
+backend {{SERVICE}}_servers
+    balance leastconn
+    option tcp-check
+
+    # Health check
+    tcp-check connect
+
+    default-server inter 10s fall 3 rise 2
+
+    server {{SERVICE}}1 {{BACKEND_1}}:{{PORT}} check
+    server {{SERVICE}}2 {{BACKEND_2}}:{{PORT}} check
+    server {{SERVICE}}3 {{BACKEND_3}}:{{PORT}} check backup]]></code>
+      </section>
+      <section name="nginx-production-lb-template">
+        <p>Production Nginx Load Balancer Template. Replace: {{DOMAIN}}, {{UPSTREAM_*}}</p>
+        <code lang="nginx"><![CDATA[# /etc/nginx/nginx.conf
+# Template: Production L7 Load Balancer
+# Replace: {{DOMAIN}}, {{UPSTREAM_*}}
+
+user nginx;
+worker_processes auto;
+worker_rlimit_nofile 65535;
+error_log /var/log/nginx/error.log warn;
+pid /run/nginx.pid;
+
+events {
+    worker_connections 10240;
+    use epoll;
+    multi_accept on;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # Logging
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for" '
+                    'rt=$request_time uct="$upstream_connect_time" '
+                    'uht="$upstream_header_time" urt="$upstream_response_time"';
+
+    access_log /var/log/nginx/access.log main buffer=16k;
+
+    # Performance
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+
+    # Gzip
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css text/xml application/json application/javascript
+               application/xml application/xml+rss text/javascript;
+
+    # Rate limiting
+    limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+    limit_conn_zone $binary_remote_addr zone=conn_limit:10m;
+
+    # Upstreams
+    upstream web_backend {
+        least_conn;
+        keepalive 32;
+
+        server {{UPSTREAM_WEB1}}:8080 weight=5 max_fails=3 fail_timeout=30s;
+        server {{UPSTREAM_WEB2}}:8080 weight=5 max_fails=3 fail_timeout=30s;
+        server {{UPSTREAM_WEB3}}:8080 weight=2 backup;
+    }
+
+    upstream api_backend {
+        ip_hash;
+        keepalive 16;
+
+        server {{UPSTREAM_API1}}:8000 max_fails=3 fail_timeout=30s;
+        server {{UPSTREAM_API2}}:8000 max_fails=3 fail_timeout=30s;
+        server {{UPSTREAM_API3}}:8000 max_fails=3 fail_timeout=30s;
+    }
+
+    # HTTP to HTTPS redirect
+    server {
+        listen 80;
+        listen [::]:80;
+        server_name {{DOMAIN}};
+        return 301 https://$host$request_uri;
+    }
+
+    # HTTPS server
+    server {
+        listen 443 ssl http2;
+        listen [::]:443 ssl http2;
+        server_name {{DOMAIN}};
+
+        # SSL
+        ssl_certificate /etc/nginx/ssl/{{DOMAIN}}.crt;
+        ssl_certificate_key /etc/nginx/ssl/{{DOMAIN}}.key;
+        ssl_session_timeout 1d;
+        ssl_session_cache shared:SSL:50m;
+        ssl_session_tickets off;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+        ssl_prefer_server_ciphers off;
+
+        # Security headers
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header X-XSS-Protection "1; mode=block" always;
+
+        # Connection limits
+        limit_conn conn_limit 20;
+
+        # Proxy settings
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Web application
+        location / {
+            proxy_pass http://web_backend;
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 60s;
+            proxy_read_timeout 60s;
+            proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;
+            proxy_next_upstream_tries 3;
+        }
+
+        # API
+        location /api {
+            limit_req zone=api_limit burst=20 nodelay;
+
+            proxy_pass http://api_backend;
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 60s;
+            proxy_read_timeout 60s;
+        }
+
+        # Health check endpoint
+        location /health {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+    }
+}]]></code>
+      </section>
+      <section name="aws-alb-terraform-template">
+        <p>AWS ALB Terraform Template. Replace: {{PROJECT}}, {{ENVIRONMENT}}, {{VPC_ID}}, {{SUBNET_IDS}}, {{CERTIFICATE_ARN}}</p>
+        <code lang="hcl"><![CDATA[# alb.tf
+# Template: AWS Application Load Balancer
+# Replace: {{PROJECT}}, {{ENVIRONMENT}}, {{VPC_ID}}, {{SUBNET_IDS}}, {{CERTIFICATE_ARN}}
+
+variable "project" {
+  default = "{{PROJECT}}"
+}
+
+variable "environment" {
+  default = "{{ENVIRONMENT}}"
+}
+
+variable "vpc_id" {
+  default = "{{VPC_ID}}"
+}
+
+variable "public_subnet_ids" {
+  type    = list(string)
+  default = {{SUBNET_IDS}}
+}
+
+variable "certificate_arn" {
+  default = "{{CERTIFICATE_ARN}}"
+}
+
+# ALB
+resource "aws_lb" "main" {
+  name               = "${var.project}-${var.environment}-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = var.public_subnet_ids
+
+  enable_deletion_protection = var.environment == "production" ? true : false
+  enable_http2              = true
+  idle_timeout              = 60
+
+  access_logs {
+    bucket  = aws_s3_bucket.lb_logs.id
+    prefix  = "alb"
+    enabled = true
+  }
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-alb"
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+# HTTPS Listener
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.web.arn
+  }
+}
+
+# HTTP Redirect
+resource "aws_lb_listener" "http_redirect" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+# Web Target Group
+resource "aws_lb_target_group" "web" {
+  name                 = "${var.project}-${var.environment}-web"
+  port                 = 8080
+  protocol             = "HTTP"
+  vpc_id               = var.vpc_id
+  target_type          = "instance"
+  deregistration_delay = 30
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    path                = "/health"
+    protocol            = "HTTP"
+    matcher             = "200"
+  }
+
+  stickiness {
+    type            = "lb_cookie"
+    cookie_duration = 86400
+    enabled         = false
+  }
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-web"
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+# API Target Group
+resource "aws_lb_target_group" "api" {
+  name                 = "${var.project}-${var.environment}-api"
+  port                 = 8000
+  protocol             = "HTTP"
+  vpc_id               = var.vpc_id
+  target_type          = "instance"
+  deregistration_delay = 30
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    path                = "/api/health"
+    protocol            = "HTTP"
+    matcher             = "200"
+  }
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-api"
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+# API Listener Rule
+resource "aws_lb_listener_rule" "api" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 10
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.api.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*"]
+    }
+  }
+}
+
+# Security Group
+resource "aws_security_group" "alb" {
+  name        = "${var.project}-${var.environment}-alb-sg"
+  description = "ALB security group"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    description = "HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTP (redirect only)"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-alb-sg"
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+# S3 Bucket for logs
+resource "aws_s3_bucket" "lb_logs" {
+  bucket = "${var.project}-${var.environment}-alb-logs"
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-alb-logs"
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+# Outputs
+output "alb_dns_name" {
+  value = aws_lb.main.dns_name
+}
+
+output "alb_zone_id" {
+  value = aws_lb.main.zone_id
+}
+
+output "web_target_group_arn" {
+  value = aws_lb_target_group.web.arn
+}
+
+output "api_target_group_arn" {
+  value = aws_lb_target_group.api.arn
+}]]></code>
+      </section>
+      <section name="kubernetes-ingress-template">
+        <p>Kubernetes Ingress with Nginx Controller Template. Replace: {{DOMAIN}}, {{TLS_SECRET}}, {{NAMESPACE}}</p>
+        <code lang="yaml"><![CDATA[# ingress.yaml
+# Template: Kubernetes Ingress with Nginx
+# Replace: {{DOMAIN}}, {{TLS_SECRET}}, {{NAMESPACE}}
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: main-ingress
+  namespace: {{NAMESPACE}}
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "5"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "20"
+    # Sticky sessions (optional)
+    # nginx.ingress.kubernetes.io/affinity: "cookie"
+    # nginx.ingress.kubernetes.io/session-cookie-name: "SERVERID"
+    # nginx.ingress.kubernetes.io/session-cookie-max-age: "86400"
+spec:
+  tls:
+    - hosts:
+        - {{DOMAIN}}
+      secretName: {{TLS_SECRET}}
+  rules:
+    - host: {{DOMAIN}}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-service
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-service
+                port:
+                  number: 80]]></code>
+      </section>
+      <section name="kubernetes-service-lb-template">
+        <p>Kubernetes Service with Cloud Load Balancer Template. Replace: {{APP_NAME}}, {{NAMESPACE}}, {{PORT}}, {{TARGET_PORT}}</p>
+        <code lang="yaml"><![CDATA[# service-lb.yaml
+# Template: Kubernetes Service with Cloud Load Balancer
+# Replace: {{APP_NAME}}, {{NAMESPACE}}, {{PORT}}, {{TARGET_PORT}}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{APP_NAME}}-lb
+  namespace: {{NAMESPACE}}
+  annotations:
+    # AWS NLB
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-connection-draining-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-connection-draining-timeout: "30"
+    # GCP (uncomment if using GCP)
+    # cloud.google.com/load-balancer-type: "Internal"
+    # Azure (uncomment if using Azure)
+    # service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+spec:
+  type: LoadBalancer
+  selector:
+    app: {{APP_NAME}}
+  ports:
+    - name: http
+      port: {{PORT}}
+      targetPort: {{TARGET_PORT}}
+      protocol: TCP
+  sessionAffinity: None  # or "ClientIP" for sticky sessions
+  externalTrafficPolicy: Local  # Preserves client IP]]></code>
+      </section>
+      <section name="health-check-fastapi-template">
+        <p>Comprehensive Health Check Endpoint Template (Python/FastAPI). Replace: {{DATABASE_URL}}, {{REDIS_URL}}, {{APP_NAME}}</p>
+        <code lang="python"><![CDATA[# health.py
+# Template: Comprehensive Health Check Endpoint
+# Replace: {{DATABASE_URL}}, {{REDIS_URL}}, {{APP_NAME}}
+
+from fastapi import FastAPI, Response
+from pydantic import BaseModel
+from typing import Dict, Optional
+import asyncio
+import aioredis
+import asyncpg
+import os
+import time
+
+app = FastAPI()
+
+class HealthStatus(BaseModel):
+    status: str
+    version: str
+    checks: Dict[str, str]
+    latency_ms: Optional[int] = None
+
+APP_VERSION = os.getenv("APP_VERSION", "unknown")
+DATABASE_URL = os.getenv("DATABASE_URL", "{{DATABASE_URL}}")
+REDIS_URL = os.getenv("REDIS_URL", "{{REDIS_URL}}")
+
+@app.get("/health")
+async def health():
+    """Basic health check - always returns 200 if app is running"""
+    return {"status": "healthy", "app": "{{APP_NAME}}"}
+
+@app.get("/health/live")
+async def liveness():
+    """Liveness probe - is the process alive?"""
+    return {"status": "alive"}
+
+@app.get("/health/ready", response_model=HealthStatus)
+async def readiness(response: Response):
+    """Readiness probe - is the app ready to serve traffic?"""
+    start = time.time()
+    checks = {}
+    status = "healthy"
+
+    # Database check
+    try:
+        conn = await asyncpg.connect(DATABASE_URL)
+        await conn.fetchval("SELECT 1")
+        await conn.close()
+        checks["database"] = "healthy"
+    except Exception as e:
+        checks["database"] = f"unhealthy: {str(e)[:50]}"
+        status = "unhealthy"
+
+    # Redis check
+    try:
+        redis = await aioredis.from_url(REDIS_URL)
+        await redis.ping()
+        await redis.close()
+        checks["redis"] = "healthy"
+    except Exception as e:
+        checks["redis"] = f"unhealthy: {str(e)[:50]}"
+        status = "unhealthy"
+
+    latency_ms = int((time.time() - start) * 1000)
+
+    if status == "unhealthy":
+        response.status_code = 503
+
+    return HealthStatus(
+        status=status,
+        version=APP_VERSION,
+        checks=checks,
+        latency_ms=latency_ms
+    )
+
+@app.get("/health/startup")
+async def startup():
+    """Startup probe - has the app finished initializing?"""
+    # Add any initialization checks here
+    return {"status": "started", "version": APP_VERSION}]]></code>
+      </section>
+    </section>
+
+    <see-also>
+      <link href="https://kemptechnologies.com/blog/load-balancing-best-practices">Kemp - Load Balancing Best Practices</link>
+      <link href="https://cloud.google.com/load-balancing/docs/https/http-load-balancing-best-practices">Google Cloud - Load Balancing Best Practices</link>
+      <link href="https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer-best-practices">Azure - Load Balancer Best Practices</link>
+      <link href="https://gcore.com/learning/load-balancing-algorithms">Gcore - Load Balancing Algorithms</link>
+      <link href="https://www.haproxy.com/blog/layer-4-vs-layer-7-load-balancing">HAProxy - L4 vs L7</link>
+      <link href="https://www.haproxy.com/blog/load-balancing-affinity-persistence-sticky-sessions-what-you-need-to-know">HAProxy - Sticky Sessions</link>
+      <link href="https://www.a10networks.com/glossary/how-do-layer-4-and-layer-7-load-balancing-differ/">A10 Networks - L4 vs L7</link>
+      <link href="https://www.cloudflare.com/learning/performance/types-of-load-balancing-algorithms/">Cloudflare - Load Balancing Algorithms</link>
+      <link href="https://docs.aws.amazon.com/elasticloadbalancing/latest/application/target-group-health-checks.html">AWS - Health Checks</link>
+    </see-also>
+  </content>
+</methodology>
