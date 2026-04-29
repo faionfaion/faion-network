@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro methodologies → methodology.xml (reliability-architecture, service-mesh, clean-architecture; feature-045 batch AJ)
 - migrate: 3/3 pro/dev/software-architect methodologies → methodology.xml (distributed-patterns, microservices-architecture, observability-architecture; feature-045 batch AH)
 - migrate: 3/3 pro/dev/backend-systems methodologies → methodology.xml (go-channels, go-goroutines, sql-optimization; feature-045 batch AG)
 - migrate: reranking → methodology.xml (feature-045 sonnet-retry AG; 80%+ parity)
