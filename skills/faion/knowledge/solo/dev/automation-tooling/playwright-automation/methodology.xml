@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="playwright-automation">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Cross-browser automation library (Chromium/Firefox/WebKit) for E2E testing, agentic web tasks, and headless scraping with auth reuse via storageState.</summary>
+    <tags>
+      <tag>playwright</tag>
+      <tag>e2e-testing</tag>
+      <tag>browser-automation</tag>
+      <tag>scraping</tag>
+      <tag>testing</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Playwright Automation</title>
+    <summary>Cross-browser automation library (Chromium/Firefox/WebKit) for E2E testing, agentic web tasks, and headless scraping with auth reuse via storageState. The concrete rule: always prefer getByRole > getByLabel > getByText > CSS selectors — role-based locators survive UI tweaks; CSS selectors die on the next sprint. Never use page.waitForTimeout; use locator auto-wait or expect(locator).toBeVisible({timeout}).</summary>
+    <why>
+      <p>Playwright's auto-wait model and trace viewer (screenshots + network + DOM snapshots per action) dramatically reduce flaky test debugging. storageState lets an agent authenticate once and reuse the session across hundreds of headless runs without re-login overhead. For agentic web tasks, Microsoft's playwright-mcp exposes the accessibility tree to LLMs — more reliable than raw DOM dumps.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Cross-browser E2E tests (Chromium/Firefox/WebKit) with auto-waiting and trace viewer</item>
+        <item>Agentic web tasks: login flows, form filling, scraping requiring JS execution</item>
+        <item>Visual regression testing via toHaveScreenshot() snapshots</item>
+        <item>API testing alongside UI in one session (page.request)</item>
+        <item>Replacing legacy Selenium/Cypress suites for speed and reliability</item>
+        <item>Authenticating once, reusing storageState across many headless agent runs</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure HTTP scraping where the target renders server-side (use httpx/fetch, 100x cheaper)</item>
+        <item>Mobile-app E2E testing (use Appium, Detox, Maestro)</item>
+        <item>Sub-millisecond unit tests of UI components (use Vitest + Testing Library)</item>
+        <item>Targets with hard bot-detection (Cloudflare Turnstile aggressive mode)</item>
+        <item>Long-lived stateful sessions (hours): better suited to a real browser profile</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-api">
+      <section name="locator-priority">
+        <rule>
+          <statement>Always prefer locators in this order: getByRole > getByLabel > getByText > getByTestId > CSS selectors. Role-based locators survive UI refactors; CSS selectors break on next sprint.</statement>
+          <rationale>getByRole uses the accessibility tree — the same API screen readers use. Accessibility-tree selectors are resilient to class renames, DOM restructuring, and style changes. CSS selectors break when any of these change.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="javascript"><![CDATA[
+// Good: role-based — survives class renames and DOM moves
+await page.getByRole('button', { name: 'Submit' }).click();
+await page.getByLabel('Email address').fill('user@example.com');
+await page.getByText('Sign in').click();
+
+// Only use CSS when no semantic role exists
+await page.locator('[data-testid="custom-widget"]').click();
+]]></code>
+        </example>
+        <antipattern>
+          <description>Using CSS selectors from codegen output (.btn-primary, #form-submit) without converting to role locators.</description>
+          <reason>Codegen generates CSS as a lowest-common-denominator fallback. These selectors die when styling changes, causing flaky tests that have nothing to do with functionality.</reason>
+        </antipattern>
+      </section>
+
+      <section name="auto-wait">
+        <p>Playwright automatically waits for elements to be actionable (visible, enabled, stable) before click/fill/check. No explicit waits needed for most operations.</p>
+        <rule>
+          <statement>Never use page.waitForTimeout(). Use expect(locator).toBeVisible({timeout}) or page.waitForLoadState() instead.</statement>
+          <rationale>waitForTimeout is a fixed sleep that causes flaky tests — too short on slow machines, too long on fast ones. Locator auto-wait adapts to actual readiness.</rationale>
+        </rule>
+        <example type="good">
+          <code lang="javascript"><![CDATA[
+// Good: auto-wait built into locator actions
+await page.getByRole('button', { name: 'Load' }).click();
+await expect(page.getByRole('table')).toBeVisible();
+
+// Good: explicit wait when load state matters
+await page.goto('/dashboard');
+await page.waitForLoadState('networkidle');
+]]></code>
+        </example>
+      </section>
+
+      <section name="network-interception">
+        <p>Block resources: await page.route('**/*.{png,jpg}', route => route.abort())</p>
+        <p>Mock responses: await page.route('**/api/users', route => route.fulfill({status:200, body:...}))</p>
+        <p>Wait for specific response: const resp = page.waitForResponse('**/api/data'); await page.click('#load'); const data = await (await resp).json();</p>
+      </section>
+
+      <section name="auth-reuse">
+        <rule>
+          <statement>Authenticate once via global setup and save to storageState. Reuse across all tests. Never login per-test — it adds 5x slowdown and rate-limit risk.</statement>
+          <rationale>Login per-test is the most common source of Playwright test suite slowdown. storageState serializes cookies and localStorage; subsequent tests start already authenticated.</rationale>
+        </rule>
+        <p>Save: await context.storageState({ path: 'auth.json' })</p>
+        <p>Load: browser.newContext({ storageState: 'auth.json' })</p>
+        <p>Add auth.json to .gitignore — it contains session tokens that must not be committed to git.</p>
+      </section>
+    </section>
+
+    <section name="testing-patterns">
+      <section name="test-structure">
+        <p>Use @playwright/test runner: test.describe for grouping, test.beforeEach for navigation, test for individual behaviors.</p>
+        <p>One assertion per behavior. Soft assertions (expect.soft) let remaining assertions run after a failure — useful for form validation checks.</p>
+        <example type="good">
+          <code lang="javascript"><![CDATA[
+const { test, expect } = require('@playwright/test');
+
+test.describe('Login', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/login');
+  });
+
+  test('successful login redirects to dashboard', async ({ page }) => {
+    await page.getByLabel('Email').fill('user@example.com');
+    await page.getByLabel('Password').fill('password123');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page).toHaveURL(/.*dashboard/);
+  });
+});
+]]></code>
+        </example>
+      </section>
+
+      <section name="fixtures-for-auth">
+        <p>Extend test with fixtures: base.extend({ authenticatedPage: async ({ browser }, use) => { ... } }) to provide pre-authenticated page objects without per-test login.</p>
+      </section>
+
+      <section name="page-object-model">
+        <p>Extract page classes for complex flows: class LoginPage { constructor(page) {...} async login(user, pass) {...} }. Use locator constants as class properties. This separates selector management from test logic.</p>
+        <rule>
+          <statement>In Page Objects, store locators as class properties using page.getByRole/Label, not CSS strings. Locator objects update lazily — they're re-evaluated on each action.</statement>
+          <rationale>Locator objects created at page load time are not stale references; they re-query on use. CSS strings stored as class properties are not locators — they're just strings and need repeated calls to page.locator().</rationale>
+        </rule>
+      </section>
+
+      <section name="advanced-patterns">
+        <p>Multi-tab: const [newPage] = await Promise.all([context.waitForEvent('page'), page.click('a[target="_blank"]')])</p>
+        <p>iFrame: page.frameLocator('iframe#id').locator('#button-inside').click()</p>
+        <p>Dialog: page.on('dialog', dialog => dialog.accept()) before triggering the dialog.</p>
+        <p>Download: const dl = page.waitForEvent('download'); await page.click('#download'); const path = await (await dl).path();</p>
+        <p>Mobile emulation: browser.newContext({ ...devices['iPhone 12'] })</p>
+      </section>
+
+      <section name="trace-and-screenshot-config">
+        <p>CI recommended: trace: 'on-first-retry', screenshot: 'only-on-failure'. This captures diagnostics only when tests fail, keeping artifact size manageable.</p>
+        <p>Visual regression: set expect.toHaveScreenshot.maxDiffPixelRatio >= 0.01 to absorb font rendering noise across platforms.</p>
+        <rule>
+          <statement>Run npx playwright install --with-deps in CI. Missing system libraries are the #1 cause of Playwright CI failures on fresh runners.</statement>
+          <rationale>Playwright requires OS-level browser dependencies. GitHub Actions and other fresh runners don't include these; the action/step silently exits or reports cryptic errors if --with-deps is omitted.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A browser agent gets a task ("scrape product table from URL X" or "verify checkout flow"), generates a Playwright script using role-based locators, runs headless with --trace=on-first-retry, and on failure attaches the trace + screenshot to the task report. For E2E: use Playwright's test runner. For one-off scrapes: use a plain node script.mjs.</p>
+      <rule>
+        <statement>For agentic web tasks, prefer Microsoft playwright-mcp (MCP server) over hand-rolled scripts — it gives the LLM accessibility-tree snapshots which are far more reliable than raw DOM dumps.</statement>
+        <rationale>DOM dumps from page.content() are huge and noisy (scripts, styles, hidden elements). The accessibility tree contains only what users can interact with, dramatically reducing token consumption and hallucination risk.</rationale>
+      </rule>
+      <prompt purpose="playwright-test-generation"><![CDATA[Generate a Playwright test in TypeScript for: <user flow description>.
+Rules:
+- Use page.getByRole / getByLabel / getByText. NO CSS selectors unless no role exists.
+- No page.waitForTimeout. Use auto-wait or expect(locator).toBeVisible.
+- Save auth via storageState in tests/setup.ts; reuse across tests.
+- Headless = true. Trace = 'on-first-retry'. Screenshot = 'only-on-failure'.
+- One assertion per behavior. Output: tests/<flow>.spec.ts.]]></prompt>
+      <prompt purpose="login-and-scrape"><![CDATA[Login + scrape: navigate <URL>, login with env creds (PW_USER/PW_PASS),
+extract the table at selector 'role=table[name="Orders"]', return JSON array.
+Save storageState to ./auth.json on success so subsequent runs skip login.]]></prompt>
+      <reference path="templates/scrape.mjs">Headless scrape script with auth reuse via storageState</reference>
+      <reference path="templates/playwright-prompt.txt">Prompt for generating TypeScript Playwright tests with role-locator rules</reference>
+    </section>
+
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>LLMs adding page.waitForTimeout(2000) "to be safe".</description>
+        <reason>Ban it via CI lint rule. Adds 2 seconds per occurrence, scales with suite size, and masks actual timing problems. Use locator auto-wait or expect(locator).toBeVisible({timeout}).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents broadening selectors when getByRole() throws "strict mode violation: multiple elements".</description>
+        <reason>The correct fix is narrowing with { name: 'specific label' }. Broadening picks an arbitrary element and silently tests the wrong thing.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents committing auth.json to git.</description>
+        <reason>auth.json contains session tokens. Add to .gitignore and pull from secret store at test time. Trace artifacts may also contain PII; gate behind staging-only.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Codegen-generated CSS selectors used without converting to role/text locators.</description>
+        <reason>Codegen generates CSS as a lowest-common-denominator fallback. Force agents to rewrite to role/text after recording.</reason>
+      </antipattern>
+      <antipattern>
+        <description>WebKit headless on Linux has minor parity gaps with macOS Safari.</description>
+        <reason>Run WebKit tests in CI on Linux but validate critical flows against real macOS Safari before release.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Trace viewer artifacts blow up CI: a 5-min run can produce 200MB.</description>
+        <reason>Use trace: 'on-first-retry', not 'on'. This captures diagnostics only when tests fail.</reason>
+      </antipattern>
+    </section>
+
+    <section name="human-in-loop-checkpoint">
+      <rule>
+        <statement>Review the first generated test before scaling to full suite. Fixing 200 brittle CSS selectors after the fact is worse than reviewing 1 test before it becomes the template.</statement>
+        <rationale>Agent-generated test suites clone patterns from the first test. A bad first test produces 200 copies of the same bad pattern.</rationale>
+      </rule>
+    </section>
+
+    <section name="ci-fan-out">
+      <p>Use --shard=1/4 (--shard=2/4 etc.) in CI matrix for parallel fan-out across workers. With 4 shards, a 10-minute suite runs in ~2.5 minutes.</p>
+    </section>
+
+    <section name="hosted-browser-services">
+      <p>Browserbase: SaaS, Playwright CDP API, stealth modes for bot-detection avoidance.</p>
+      <p>Browserless.io: SaaS + OSS, self-hostable, ideal for headless at scale.</p>
+      <p>Microsoft Playwright Testing: cloud parallel runs from CI.</p>
+      <p>BrowserStack Automate: SaaS, real-device cross-browser testing.</p>
+      <p>Argos: visual diff SaaS for Playwright screenshots, OSS + SaaS.</p>
+    </section>
+
+    <templates>
+      <template path="templates/scrape.mjs" purpose="Headless scrape script with auth reuse via storageState"/>
+      <template path="templates/playwright-prompt.txt" purpose="Prompt for generating Playwright TypeScript tests with role-locator rules"/>
+    </templates>
+
+    <see-also>
+      <link href="https://playwright.dev/"/>
+      <link href="https://playwright.dev/docs/best-practices"/>
+      <link href="https://github.com/microsoft/playwright-mcp"/>
+      <link href="https://docs.browserbase.com/"/>
+    </see-also>
+  </content>
+</methodology>
