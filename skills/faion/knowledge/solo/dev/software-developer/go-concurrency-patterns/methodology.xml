@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-concurrency-patterns">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Safe, leak-free concurrency in Go using bounded worker pools, fan-out/fan-in pipelines, and context.Context cancellation. All goroutines have explicit termination paths.</summary>
+    <tags>
+      <tag>go</tag>
+      <tag>concurrency</tag>
+      <tag>goroutines</tag>
+      <tag>channels</tag>
+      <tag>patterns</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+
+  <content>
+    <title>Go Concurrency Patterns</title>
+
+    <summary>Safe, leak-free concurrency in Go using bounded worker pools, fan-out/fan-in pipelines, and context.Context cancellation. All goroutines have explicit termination paths. Channels have documented ownership (one writer, one closer). go test -race is non-negotiable for any concurrent code.</summary>
+
+    <why>
+      <p>Go's goroutine model makes concurrent code easy to write but subtle to get right. The most common failures — goroutine leaks, unbounded concurrency, error swallowing, panic propagation, and channel ownership confusion — are invisible until production. Race conditions only manifest under load. Structural patterns (bounded pools, errgroup, channel direction types) prevent whole classes of bugs at the type level.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Fan-out work over goroutines: HTTP request batchers, ETL pipelines, scrapers, queue workers</item>
+        <item>CPU-bound parallel processing with runtime.NumCPU() workers</item>
+        <item>I/O-bound parallel work (HTTP fetches, DB calls) where bounded pools cap concurrency</item>
+        <item>Streaming pipelines needing backpressure (bounded channels) and clean shutdown via context</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-threaded request handlers — Go's net/http already goroutine-per-request; adding pools is overkill</item>
+        <item>Trivial sequential loops — concurrency adds complexity (panic recovery, error aggregation) that often outweighs gains</item>
+        <item>When errgroup.Group already covers the use case — prefer stdlib over hand-rolled pools</item>
+        <item>Long-running stateful tasks needing crash recovery — use a real queue (NATS, SQS) instead of in-memory channels</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="goroutine-lifecycle">
+      <p>Every `go func()` must have a documented termination path: a channel close, `ctx.Done()`, or a timeout. Add a `runtime.NumGoroutine()` assertion in tests that checks for leaks after `Stop()`.</p>
+
+      <rule>
+        <statement>Every `go func()` must have a documented termination path: a channel close, `ctx.Done()`, or a timeout. Add a `runtime.NumGoroutine()` assertion in tests that checks for leaks after `Stop()`.</statement>
+        <rationale>Goroutines blocking on a channel that never closes silently consume memory. There is no GC for blocked goroutines.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Always `defer wg.Done()` as the very first statement inside a goroutine body.</statement>
+        <rationale>If the goroutine panics before reaching a later `wg.Done()` call, the WaitGroup never decrements and `wg.Wait()` blocks forever.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Add `defer func() { _ = recover() }()` in every long-running worker goroutine to prevent a single panic from crashing the process.</statement>
+        <rationale>An unrecovered panic in any goroutine terminates the entire program, not just that goroutine.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Spawning `len(items)` goroutines unconditionally for a slice.</description>
+        <reason>For large slices this creates thousands of goroutines simultaneously, exhausting memory and scheduler capacity. Use a bounded pool instead.</reason>
+      </antipattern>
+    </section>
+
+    <section name="channel-ownership">
+      <p>One writer, one closer: document channel ownership in a comment at the declaration site. Only the writer closes a channel. Never close from the consumer side.</p>
+
+      <rule>
+        <statement>One writer, one closer: document channel ownership in a comment at the declaration site. Only the writer closes a channel. Never close from the consumer side.</statement>
+        <rationale>Closing a channel from the consumer panics. Closing twice panics. Ownership rules prevent both.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use directional channel types in function signatures: `&lt;-chan T` for read-only parameters, `chan&lt;- T` for write-only parameters.</statement>
+        <rationale>Directional types enforce ownership at compile time; a function receiving `&lt;-chan T` cannot close it.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Size channels deliberately. Document the buffer size rationale in a comment. Never use `make(chan T, 1_000_000)` as a shortcut for unbounded.</statement>
+        <rationale>Unbounded buffering is a memory leak; the buffer just delays the OOM. Explicit sizing forces a decision about backpressure.</rationale>
+      </rule>
+    </section>
+
+    <section name="context-propagation">
+      <p>Every blocking `select` inside a worker must include a `case &lt;-ctx.Done(): return` arm. Never substitute `context.Background()` for a passed context inside a goroutine.</p>
+
+      <rule>
+        <statement>Every blocking `select` inside a worker must include a `case &lt;-ctx.Done(): return` arm. Never substitute `context.Background()` for a passed context inside a goroutine.</statement>
+        <rationale>Omitting `ctx.Done()` means the worker ignores cancellation signals; goroutines leak after the parent operation is cancelled.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Prefer `errgroup.WithContext` from `golang.org/x/sync/errgroup` over hand-rolling `WaitGroup + channel` for fan-out. Use `errgroup.SetLimit` to bound concurrency.</statement>
+        <rationale>`errgroup` cancels sibling goroutines on first error and provides a clean error aggregation path without a separate error channel.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>`for range jobs { job() }` without a `select` on `ctx.Done()`.</description>
+        <reason>The `range` loop blocks until the channel is closed; if the context is cancelled first, the goroutine ignores it and keeps processing.</reason>
+      </antipattern>
+    </section>
+
+    <section name="fan-out-fan-in">
+      <example type="good">
+        <code lang="go"><![CDATA[
+func ProcessItems(ctx context.Context, items []Item) ([]Result, error) {
+    numWorkers := runtime.NumCPU()
+    jobs := make(chan Item, len(items))    // owned by main, closed by main
+    results := make(chan Result, len(items))
+
+    var wg sync.WaitGroup
+    for i := 0; i < numWorkers; i++ {
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            for {
+                select {
+                case <-ctx.Done():
+                    return
+                case item, ok := <-jobs:
+                    if !ok {
+                        return
+                    }
+                    results <- processItem(ctx, item)
+                }
+            }
+        }()
+    }
+
+    for _, item := range items {
+        jobs <- item
+    }
+    close(jobs)  // only writer closes
+
+    go func() {
+        wg.Wait()
+        close(results)
+    }()
+
+    var out []Result
+    for r := range results {
+        out = append(out, r)
+    }
+    return out, nil
+}
+        ]]></code>
+        <note>ctx.Done() in the worker select. jobs closed by the sender (main). results closed by the WaitGroup closer goroutine.</note>
+      </example>
+    </section>
+
+    <section name="bounded-worker-pool">
+      <example type="good">
+        <note>See templates/pool.go for the full leak-safe Pool implementation with context cancellation and error collection.</note>
+        <reference path="templates/pool.go">Leak-safe bounded worker pool with context cancellation and error channel</reference>
+      </example>
+
+      <antipattern>
+        <description>Worker pool with `_ = job(ctx)` discarding errors.</description>
+        <reason>Silently swallows all job errors; callers have no way to detect failures, leading to silent data loss or corruption.</reason>
+      </antipattern>
+    </section>
+
+    <section name="testing">
+      <rule>
+        <statement>Run `go test -race -count=10` for any test that touches channels, goroutines, or shared state. Use `goleak.VerifyTestMain(m)` in test packages that spawn goroutines.</statement>
+        <rationale>Race conditions are non-deterministic; single-run tests miss them. `-race -count=10` runs the test 10 times under the race detector, catching most flaky races.</rationale>
+      </rule>
+    </section>
+
+    <section name="gotchas-and-failures">
+      <p>Goroutine leaks: workers blocking on a channel that never closes silently consume memory; `pprof goroutine` is required maintenance.</p>
+      <p>Unbounded `chan` use creates memory growth — agents default to unbuffered or `make(chan T, 1000000)` without thinking about backpressure.</p>
+      <p>Error swallowing: `_ = job(ctx)` is a common pattern (and present in this methodology's example) — production code needs structured error capture.</p>
+      <p>Panic in a worker takes down the whole process unless every goroutine has `defer recover()` — agents rarely add this.</p>
+      <p>Race conditions with shared maps/slices that aren't `sync.Mutex`-guarded — the race detector catches most, but only if tests exercise the path.</p>
+      <p>Closing a channel from the consumer side panics; closing twice panics. Ownership rules confuse agents.</p>
+      <p>`context.Cancel` propagation is forgotten when a worker spawns a child operation with `context.Background()`.</p>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive Go concurrency work in a tight loop with `go vet`, `staticcheck`, and `go test -race`. The race detector is non-negotiable for any code touching channels or shared state. Have the agent (1) sketch the goroutine topology (who creates, who closes, who reads, who writes) before writing code, (2) implement with explicit `context.Context` propagation and bounded channels, (3) write a stress test (`for i := 0; i &lt; 10000; i++`) that runs under `-race`, (4) profile with `go test -bench` + `pprof` if the path is hot.</p>
+
+      <rule>
+        <statement>Before writing code: sketch the goroutine topology (producer P, N workers W, single collector C) and document channel ownership (P closes jobs; sync.WaitGroup gates close(results)). Ensure context cancellation paths are explicit.</statement>
+        <rationale>Clear topology prevents ownership ambiguity, missed termination paths, and data races.</rationale>
+      </rule>
+
+      <rule>
+        <statement>After implementation: write a stress test that runs under `-race -count=10` and exercises contention (10,000+ items to process, multiple workers, graceful shutdown).</statement>
+        <rationale>Single-run tests miss race conditions; stress tests under `-race -count=10` catch non-deterministic failures.</rationale>
+      </rule>
+    </section>
+
+    <section name="tools-and-references">
+      <p>Tools: `go test -race` (mandatory for concurrent code), `go vet` (stdlib static analysis), `staticcheck` (deeper lints including concurrency rules), `golangci-lint` (aggregator), `go test -bench` + `pprof` (profiling), `dlv` (Delve debugger), `golang.org/x/sync/errgroup` (bounded errgroup), `golang.org/x/sync/semaphore` (weighted limiter), `goleak` (Uber's leak detection in tests).</p>
+
+      <p>References: https://go.dev/blog/pipelines, https://pkg.go.dev/golang.org/x/sync/errgroup, https://github.com/golang/go/wiki/CodeReviewComments#concurrency, https://go.dev/ref/mem (Go memory model), https://github.com/uber-go/goleak</p>
+
+      <p>Best practices: Define channel ownership and document in a comment near declaration. Always `select` on `ctx.Done()` in any blocking receive/send inside a worker. Use `errgroup.WithContext` instead of hand-rolling for fan-out. Bound concurrency with `errgroup.SetLimit` or `semaphore.Weighted` — never spawn `len(items)` goroutines blindly. Avoid sharing mutable state; pass via channels or use `sync.Mutex`/`sync.RWMutex` deliberately. For pipelines, use `&lt;-chan T` (read-only) and `chan&lt;- T` (write-only) types in signatures to enforce direction. Add `goleak.VerifyTestMain(m)` to test packages. Run `go test -race -count=N` (N≥10) for any concurrent code paths.</p>
+    </section>
+
+    <templates>
+      <template path="templates/pool.go" purpose="Leak-safe bounded worker pool with context cancellation and error collection"/>
+    </templates>
+
+    <see-also>
+      <link href="https://go.dev/blog/pipelines"/>
+      <link href="https://pkg.go.dev/golang.org/x/sync/errgroup"/>
+      <link href="https://github.com/golang/go/wiki/CodeReviewComments#concurrency"/>
+      <link href="https://go.dev/ref/mem"/>
+      <link href="https://github.com/uber-go/goleak"/>
+    </see-also>
+  </content>
+</methodology>

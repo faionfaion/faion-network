@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="unattended-upgrades">
+  <metadata>
+    <tier>solo</tier>
+    <group>infra</group>
+    <domain>server-craft</domain>
+    <summary>Automate security patch management on Ubuntu 24.04 with unattended-upgrades: enable daily security updates, schedule auto-reboot at 4 AM, blacklist Docker/databases, clean up old kernels.</summary>
+    <tags>
+      <tag>ubuntu</tag>
+      <tag>security</tag>
+      <tag>automation</tag>
+      <tag>patching</tag>
+      <tag>infrastructure</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+
+  <content>
+    <title>Unattended Upgrades</title>
+
+    <summary>Automate security patch management on Ubuntu 24.04 with `unattended-upgrades`: enable daily security-origin updates, schedule auto-reboot at off-peak hours (4 AM), blacklist packages that require manual intervention (Docker, databases), and clean up old kernels automatically. Services must have `Restart=always` and Docker containers `restart: unless-stopped` to recover after automatic reboots.</summary>
+
+    <why>
+      <p>Unpatched servers are the leading cause of security breaches, and manual patching is easily forgotten by a solo developer. The Ubuntu security pocket receives patches for known CVEs within hours — automatic installation closes the window between disclosure and exploitation without requiring manual SSH sessions.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any production Ubuntu VPS that should stay patched without manual intervention</item>
+        <item>Servers running kernel-level services where CVEs appear frequently (OpenSSL, libc, systemd)</item>
+        <item>Configuring auto-reboot after kernel updates to apply them</item>
+        <item>Auditing whether existing auto-update config is correct</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>During initial server setup before verifying all services have `Restart=always` — auto-reboot will leave services down</item>
+        <item>For database major version upgrades — blacklist the package and upgrade manually after testing</item>
+        <item>When using a managed platform that handles patching (Heroku, Railway) — don't install unattended-upgrades there</item>
+        <item>For Docker CE — version changes can break container runtimes; always blacklist and upgrade manually</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="update-origins">
+      <p>Only enable security pockets. This applies CVE patches without installing feature updates that could break production services.</p>
+
+      <rule>
+        <statement>Unattended-Upgrade::Allowed-Origins MUST include only security pockets: `${distro_id}:${distro_codename}-security` and ESM security endpoints. Never include -updates or -backports.</statement>
+        <rationale>-updates contains non-security bug fixes and minor version bumps. These can change behavior unexpectedly in production without a maintenance window.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="text"><![CDATA[
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}";
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
+};
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="package-blacklist">
+      <rule>
+        <statement>Blacklist Docker CE, database engines, and any package whose upgrade requires manual intervention.</statement>
+        <rationale>Docker CE version changes can break container networking and require daemon restart. Database major versions require migration scripts. Automatic upgrade of these during the night causes silent production outages.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="text"><![CDATA[
+Unattended-Upgrade::Package-Blacklist {
+    "docker-ce";
+    "docker-ce-cli";
+    "containerd.io";
+    "docker-buildx-plugin";
+    "docker-compose-plugin";
+    // "postgresql-16";  // uncomment for DB servers
+};
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="auto-reboot-settings">
+      <rule>
+        <statement>Enable auto-reboot at an off-peak time (4 AM typical). Without auto-reboot, kernel security patches are installed but never applied.</statement>
+        <rationale>Kernel, libc, and systemd patches only take effect after reboot. A server can run with a patched kernel on disk but still be vulnerable via the loaded (old) kernel in memory for weeks.</rationale>
+      </rule>
+
+      <rule>
+        <statement>All systemd services must have Restart=always and Docker containers must have restart: unless-stopped so they recover after the automatic reboot.</statement>
+        <rationale>Auto-reboot is only safe if services reliably restart. A service without Restart=always stays down after the reboot until someone SSHes in to start it manually.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="text"><![CDATA[
+Unattended-Upgrade::Automatic-Reboot          "true";
+Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
+Unattended-Upgrade::Automatic-Reboot-Time      "04:00";
+        ]]></code>
+      </example>
+
+      <example type="good" title="Kernel Update Timeline">
+        <code lang="text"><![CDATA[
+03:00  apt-daily-upgrade runs
+03:01  linux-image-6.8.0-107 installed
+03:01  /var/run/reboot-required created
+03:01  /var/run/reboot-required.pkgs: linux-image-6.8.0-107
+
+04:00  Automatic-Reboot-Time triggers reboot
+04:01  Server boots with new kernel
+04:02  Services restart via Restart=always
+04:03  All services active, new kernel running
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="cleanup-directives">
+      <p>Remove unused dependencies, unused kernel packages, and auto-fix interrupted dpkg operations.</p>
+
+      <example type="good">
+        <code lang="text"><![CDATA[
+Unattended-Upgrade::Remove-Unused-Dependencies        "true";
+Unattended-Upgrade::Remove-New-Unused-Dependencies    "true";
+Unattended-Upgrade::Remove-Unused-Kernel-Packages     "true";
+Unattended-Upgrade::MinimalSteps                      "true";
+Unattended-Upgrade::AutoFixInterruptedDpkg            "true";
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="schedule-20auto-upgrades">
+      <p>Two config files control unattended-upgrades: 50unattended-upgrades (what to update, blacklist, reboot policy, cleanup) and 20auto-upgrades (schedule). Two systemd timers drive execution: apt-daily (update package lists) and apt-daily-upgrade (install). Override timers for exact scheduling.</p>
+
+      <example type="good">
+        <code lang="text"><![CDATA[
+APT::Periodic::Update-Package-Lists      "1";
+APT::Periodic::Download-Upgradeable-Packages "1";
+APT::Periodic::Unattended-Upgrade       "1";
+APT::Periodic::AutocleanInterval        "7";
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="verification">
+      <p>Always verify configuration with --dry-run before relying on automatic execution.</p>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Dry-run: show what would be upgraded
+sudo unattended-upgrade --dry-run --debug 2>&1 | head -40
+
+# Expected output for a clean run:
+# Packages that will be upgraded: libssl3 openssl
+# NOT Unattended-Upgrades-kept-back: docker-ce (blacklisted)
+# Packages that will be removed: (none)
+        ]]></code>
+      </example>
+
+      <example type="good" title="Verifying Docker Packages Are Held Back">
+        <code lang="bash"><![CDATA[
+sudo unattended-upgrade --dry-run --debug 2>&1 | grep -E "Kept|blacklist|docker"
+# Expected:
+# NOT Unattended-Upgrades-kept-back: docker-ce is blacklisted
+# NOT Unattended-Upgrades-kept-back: docker-ce-cli is blacklisted
+        ]]></code>
+      </example>
+
+      <example type="good" title="Checking Reboot-Required Status">
+        <code lang="bash"><![CDATA[
+# Quick check
+[ -f /var/run/reboot-required ] && echo "REBOOT NEEDED" || echo "OK"
+
+# Which packages need it
+cat /var/run/reboot-required.pkgs
+
+# Last upgrade timestamp
+sudo stat /var/log/unattended-upgrades/unattended-upgrades.log | grep Modify
+        ]]></code>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/50unattended-upgrades.conf" purpose="Production config: security origins, Docker blacklist, auto-reboot at 04:00, cleanup"/>
+      <template path="templates/20auto-upgrades.conf" purpose="Schedule: daily update check, download, install, weekly autoclean"/>
+      <template path="templates/apt-daily-timer-override.conf" purpose="Fix apt-daily timer to exact time (2 AM)"/>
+      <template path="templates/apt-daily-upgrade-timer-override.conf" purpose="Fix apt-daily-upgrade timer to exact time (3 AM)"/>
+    </templates>
+
+    <scripts>
+      <script path="scripts/check-reboot-required.sh" purpose="Report reboot-required status, packages needing it, auto-reboot config"/>
+      <script path="scripts/upgrade-status.sh" purpose="Dashboard: config state, pending updates, recent log, timer schedule, blacklist"/>
+    </scripts>
+
+    <see-also>
+      <link href="https://ubuntu.com/server/docs/package-management"/>
+      <link href="https://manpages.ubuntu.com/manpages/focal/man8/unattended-upgrade.8.html"/>
+    </see-also>
+  </content>
+</methodology>
