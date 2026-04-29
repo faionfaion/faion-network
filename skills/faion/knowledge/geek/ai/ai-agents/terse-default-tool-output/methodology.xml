@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="terse-default-tool-output">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Tools default to compact, semantic output with explicit format/verbosity parameters for opt-in verbose payloads to reduce context bloat in long agent loops.</summary>
+    <tags>
+      <tag>tool-design</tag>
+      <tag>output-format</tag>
+      <tag>context-efficiency</tag>
+      <tag>agent-loops</tag>
+    </tags>
+    <category>tool</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Terse Default Tool Output, Verbosity Opt-In</title>
+    <summary>Tools default to compact, semantic output (one-line summary, Markdown table of IDs, count + top-N) and accept an explicit format or verbosity parameter so the agent can opt into raw/full payloads only when reasoning needs the detail. Verbose-by-default tool outputs are the most common cause of context blowup in long agent loops — they bury the signal the model actually uses for the next step. SkillReducer reported 48% description / 39% body compression IMPROVED downstream task quality by 2.8% — verbose context is distraction, not help.</summary>
+    <why>
+      <p>Every token a tool returns becomes a token in the next prompt and every prompt after that until the message is summarised away. A search_logs that returns 50 full rows by default burns ~3-5k tokens per call, and the agent only needed timestamps and IDs to plan its next call. Concise outputs also force the tool author to do the summarisation work where it is cheap and deterministic (server-side) instead of where it is expensive and lossy (model-side). The opt-in escape hatch (format="full") preserves correctness for the rare case where raw fields are load-bearing (audit, exact byte match, debug).</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any tool that can return more than ~500 tokens at the upper bound: list_*, search_*, query_*, log queries, file listings, DB selects.</item>
+        <item>Tools chained inside a long-running agent loop where context budget is finite.</item>
+        <item>Tools whose output the model uses to plan a next action (only IDs + a hint matter).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Tools whose every field is load-bearing for the agent's reasoning (e.g., get_payment_invoice for an audit task) — terseness drops audit-critical data.</item>
+        <item>Tools that return small, fixed-shape responses (get_user(id) returning 5 fields) — adding a verbosity knob is overhead with no win.</item>
+        <item>Final-result tools at the end of the loop where the user wants the full answer.</item>
+      </list>
+    </when-not-to-use>
+    <section name="terse-default-rule">
+      <p>Verbose tool outputs poison every subsequent prompt. The default shape should be the smallest representation that still lets the agent decide what to do next — usually a count plus IDs plus one summary line per result. Full payloads stay one parameter away.</p>
+      <rule testable="true">
+        <statement>Any tool whose worst-case output exceeds ~500 tokens MUST default to a compact shape (summary line, table of IDs, top-N) AND accept a format: Literal["summary","full"] (or equivalent verbosity enum) parameter so the agent can opt into raw payloads on demand.</statement>
+        <rationale>SkillReducer (arXiv 2603.29919) compressed tool descriptions and bodies by ~40% and observed a 2.8% absolute task-quality LIFT — verbose context distracts the model and inflates per-call cost across the rest of the loop. Compact-by-default plus opt-in verbose preserves correctness without the bloat.</rationale>
+      </rule>
+      <example type="good" title="Search tool with summary/full modes">
+        <code lang="python"><![CDATA[
+@tool
+def search_logs(query: str, limit: int = 20,
+                format: Literal["summary","full"] = "summary") -> str | list[dict]:
+    rows = es.search(query, size=limit)
+    if format == "summary":
+        # one line per hit, ~30 tokens total
+        return "\n".join(f"{r.ts} [{r.level}] {r.msg[:80]}" for r in rows)
+    return [r.dict() for r in rows]   # full JSON only when asked
+        ]]></code>
+        <note>Default mode burns ~30 tokens/hit; agent escalates to format="full" only after a summary points it at the row that matters.</note>
+      </example>
+      <example type="bad" title="Verbose search tool without option">
+        <code lang="python"><![CDATA[
+@tool
+def search_logs(query: str, limit: int = 50) -> list[dict]:
+    return [r.dict() for r in es.search(query, size=limit)]
+    # 50 hits * ~80 fields = 5-15k tokens every call
+        ]]></code>
+        <note>Every call dumps full rows into context, even when the agent only needs timestamps to plan.</note>
+      </example>
+      <antipattern>
+        <description>Summary mode that drops the IDs the agent needs to escalate to full mode.</description>
+        <reason>If the summary is not pointable, the agent has to re-search to get the same row. Always include the primary key in the terse shape.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Implicit truncation — silently cutting output to N tokens without telling the agent.</description>
+        <reason>Model thinks it saw all results. Always return an explicit truncated: true flag plus the count it would have returned.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/search_tool.py" purpose="Reference Python tool with format: Literal[summary,full]."/>
+    </templates>
+    <see-also>
+      <link href="https://arxiv.org/html/2603.29919v1">SkillReducer — compression improves agent task quality.</link>
+      <link href="https://medium.com/@shamsul.arefin/building-an-ai-agent-with-mcp-code-execution-from-confusion-to-clarity-6b13fccc8c4b">Shamsul Arefin — MCP code execution: from confusion to clarity.</link>
+      <link href="https://www.harness.io/blog/agent-loop-new-os">Harness — Agent loop new OS.</link>
+    </see-also>
+  </content>
+</methodology>
