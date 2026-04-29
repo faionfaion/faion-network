@@ -1,0 +1,1197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="aws-ec2-ecs">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>AWS compute services: EC2 instances, ECS Fargate, task definitions, and services. Best practices for security, cost optimization, resilience, and networking on AWS.</summary>
+    <tags>
+      <tag>aws</tag>
+      <tag>ec2</tag>
+      <tag>ecs</tag>
+      <tag>fargate</tag>
+      <tag>containers</tag>
+    </tags>
+    <category>aws</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>AWS EC2 &amp; ECS Reference</title>
+    <summary>AWS compute services: EC2 instances, ECS Fargate, task definitions, and services. Use IAM roles (not access keys), run containers as non-root with read-only root filesystem, spread tasks across multiple AZs, and leverage Graviton for up to 40% cost savings.</summary>
+    <why>
+      <p>EC2 and ECS Fargate are the primary compute primitives for containerized workloads on AWS. Choosing between them (or combining them) determines operational overhead, cost, scalability, and security posture. Fargate eliminates node management; EC2 provides full control and lower cost at scale. ECS with proper configuration achieves production-grade reliability without the Kubernetes operational burden.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>EC2: Persistent workloads, custom AMIs, workloads requiring full OS control or specific hardware</item>
+        <item>ECS Fargate: Microservices, auto-scaling containerized workloads, teams wanting no infrastructure management</item>
+        <item>ECS EC2: Cost optimization at scale, specific instance type requirements, GPU workloads</item>
+        <item>ECR: Storing and managing Docker images with integrated IAM and vulnerability scanning</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>ECS Fargate for batch jobs that run infrequently — use Fargate Spot or Lambda for cost efficiency</item>
+        <item>EC2 when you do not want to manage OS patching and node lifecycle — prefer Fargate or managed services</item>
+        <item>ECS when workload complexity warrants Kubernetes (multi-cluster federation, complex service mesh, custom CRDs)</item>
+        <item>EC2 or ECS for simple cron-style tasks — Lambda or ECS Scheduled Tasks are simpler and cheaper</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="Service Overview">
+      <list>
+        <item>EC2 — Virtual machines: Persistent workloads, custom AMIs, full control</item>
+        <item>ECS Fargate — Serverless containers: Microservices, auto-scaling, no infra management</item>
+        <item>ECS EC2 — Containers on EC2: Cost optimization, specific instance requirements</item>
+        <item>ECR — Container registry: Store/manage Docker images</item>
+      </list>
+    </section>
+
+    <section name="EC2 Instance Types (2025)">
+      <note>General Purpose: t3.micro (2 vCPU / 1 GB) for dev/test; t3.small (2 vCPU / 2 GB) for small apps; t3.medium (2 vCPU / 4 GB) for web servers/APIs; m7g.medium (1 vCPU / 4 GB, Graviton3) for balanced workloads; m7g.large (2 vCPU / 8 GB, Graviton3) for production apps.</note>
+      <note>Compute Optimized: c7g.medium (1 vCPU / 2 GB, Graviton3) for CPU-intensive; c7g.large (2 vCPU / 4 GB, Graviton3) for batch processing, gaming.</note>
+      <note>Memory Optimized: r7g.medium (1 vCPU / 8 GB, Graviton3) for in-memory caching; r7g.large (2 vCPU / 16 GB, Graviton3) for databases, analytics.</note>
+    </section>
+
+    <section name="ECS Fargate Task Sizes">
+      <note>256 (.25 vCPU): 512 MB, 1 GB, 2 GB. 512 (.5 vCPU): 1-4 GB. 1024 (1 vCPU): 2-8 GB. 2048 (2 vCPU): 4-16 GB. 4096 (4 vCPU): 8-30 GB. 8192 (8 vCPU): 16-60 GB. 16384 (16 vCPU): 32-120 GB.</note>
+    </section>
+
+    <section name="Best Practices — Security">
+      <rule>
+        <statement>Use IAM roles instead of access keys for EC2/ECS tasks.</statement>
+        <rationale>Instance profiles and task roles rotate credentials automatically via the metadata service. Access keys in environment variables or config files are a major breach vector — they persist, can be leaked in logs, and are difficult to rotate across all services.</rationale>
+      </rule>
+      <rule>
+        <statement>Run containers as non-root users with read-only root filesystem and no privileged mode.</statement>
+        <rationale>Root containers combined with host volume mounts or privileged mode are a complete cluster escape. Non-root + read-only root filesystem limits the blast radius of any container compromise to the task's IAM role permissions.</rationale>
+      </rule>
+      <rule>
+        <statement>Use minimal/distroless base images, enable ECR image scanning, and use immutable image tags in ECR.</statement>
+        <rationale>Distroless images reduce attack surface by removing shells, package managers, and OS utilities. ECR scanning on push catches CVEs before deployment. Immutable tags prevent tag mutation attacks where a CI pipeline pulls a different image than tested.</rationale>
+      </rule>
+      <rule>
+        <statement>Set CPU and memory limits on all tasks and configure health checks with appropriate parameters.</statement>
+        <rationale>Without resource limits, a runaway container can consume all Fargate capacity, causing OOM terminations of other tasks. Health checks enable the ECS service scheduler to detect and replace unhealthy tasks automatically.</rationale>
+      </rule>
+    </section>
+
+    <section name="Best Practices — Cost Optimization">
+      <rule>
+        <statement>Use Graviton instances (up to 40% cost savings) and leverage Spot instances for fault-tolerant workloads.</statement>
+        <rationale>Graviton3 (m7g, c7g, r7g families) delivers better price/performance than x86 equivalents. Spot instances reduce EC2 costs by 60-90% for interruption-tolerant batch and stateless workloads. Fargate Spot provides similar savings for container workloads.</rationale>
+      </rule>
+      <list>
+        <item>Use Graviton instances where possible (up to 40% cost savings)</item>
+        <item>Leverage Spot instances for fault-tolerant workloads</item>
+        <item>Use Fargate Spot for batch processing</item>
+        <item>Right-size task definitions (avoid over-provisioning)</item>
+        <item>Enable bin-packing for EC2 launch type</item>
+        <item>Use Reserved Instances for predictable workloads</item>
+      </list>
+    </section>
+
+    <section name="Best Practices — Resilience">
+      <rule>
+        <statement>Spread tasks across multiple AZs and use ECS Service Auto Scaling with deployment circuit breaker enabled.</statement>
+        <rationale>Single-AZ deployments fail entirely during AZ outages (which occur multiple times per year in large regions). Circuit breaker with rollback prevents bad deployments from replacing healthy tasks — it detects when new tasks fail health checks and automatically rolls back to the previous task definition.</rationale>
+      </rule>
+      <list>
+        <item>Spread tasks across multiple AZs</item>
+        <item>Configure health checks with appropriate parameters</item>
+        <item>Use ECS Service Auto Scaling</item>
+        <item>Enable Container Insights for monitoring</item>
+        <item>Test with AWS Fault Injection Service</item>
+      </list>
+    </section>
+
+    <section name="Best Practices — Networking">
+      <rule>
+        <statement>Place ECS tasks in private subnets, use ALB in public subnets, and configure VPC endpoints for ECR, CloudWatch, and S3.</statement>
+        <rationale>Tasks in public subnets with public IPs are directly reachable from the internet — a significant attack surface. VPC endpoints for ECR/CloudWatch/S3 prevent image pulls and log shipping from traversing the public internet (saves NAT Gateway costs and improves reliability).</rationale>
+      </rule>
+      <list>
+        <item>Place ECS tasks in private subnets</item>
+        <item>Use ALB in public subnets</item>
+        <item>Configure VPC endpoints for ECR, CloudWatch, S3</item>
+        <item>Use security groups with least-privilege rules</item>
+      </list>
+    </section>
+
+    <section name="EC2 Instance Setup Checklist">
+      <checklist>
+        <check>Select appropriate instance type (consider Graviton for cost savings)</check>
+        <check>Choose AMI (Amazon Linux 2023, Ubuntu 24.04, custom)</check>
+        <check>Create/select key pair for SSH access</check>
+        <check>Design VPC and subnet placement</check>
+        <check>Create security groups with least-privilege rules</check>
+        <check>Create IAM instance profile (not access keys)</check>
+        <check>Plan tagging strategy (Name, Environment, Project, Owner)</check>
+        <check>Configure instance metadata service (IMDSv2 required)</check>
+        <check>Set up user data script for initialization</check>
+        <check>Configure EBS volumes (gp3 recommended)</check>
+        <check>Enable detailed monitoring if needed</check>
+        <check>Configure placement group (for performance)</check>
+        <check>Enable termination protection for production</check>
+        <check>Verify instance running and passing status checks</check>
+        <check>Test SSH/SSM connectivity</check>
+        <check>Install and configure CloudWatch agent</check>
+        <check>Configure log shipping to CloudWatch Logs</check>
+        <check>Set up backup schedule (AWS Backup or snapshots)</check>
+        <check>Add to load balancer target group</check>
+      </checklist>
+    </section>
+
+    <section name="ECS Fargate Service Setup Checklist">
+      <checklist>
+        <check>ECR repository created</check>
+        <check>Docker image built and pushed</check>
+        <check>VPC with private subnets configured</check>
+        <check>ALB or NLB created (if public-facing)</check>
+        <check>ECS task execution role created</check>
+        <check>ECS task role created (for AWS API access)</check>
+        <check>CloudWatch log group created</check>
+        <check>Create ECS cluster with Container Insights enabled</check>
+        <check>Configure capacity providers (FARGATE, FARGATE_SPOT)</check>
+        <check>Task definition: network mode awsvpc, image with specific immutable tag</check>
+        <check>Task definition: health check command configured</check>
+        <check>Task definition: readonlyRootFilesystem: true, non-root user</check>
+        <check>Task definition: secrets from Secrets Manager/Parameter Store (not env vars)</check>
+        <check>Task definition: awslogs log driver configured</check>
+        <check>Service: minimumHealthyPercent=100, maximumPercent=200</check>
+        <check>Service: deployment circuit breaker with rollback enabled</check>
+        <check>Service: tasks in private subnets, no public IP</check>
+        <check>Service: load balancer target group with health check grace period</check>
+        <check>Auto Scaling: CPU and memory target tracking policies configured</check>
+        <check>Validate: tasks running, health checks passing, logs streaming</check>
+      </checklist>
+    </section>
+
+    <section name="Security Hardening Checklist">
+      <checklist>
+        <check>IAM: roles not access keys</check>
+        <check>IAM: least-privilege policies</check>
+        <check>IAM: MFA for console access</check>
+        <check>IAM: AWS Access Analyzer enabled</check>
+        <check>Network: tasks in private subnets</check>
+        <check>Network: security groups with minimal rules</check>
+        <check>Network: VPC endpoints for AWS services</check>
+        <check>Network: no direct internet access for tasks</check>
+        <check>Container: scan images for vulnerabilities</check>
+        <check>Container: use immutable image tags</check>
+        <check>Container: run as non-root user</check>
+        <check>Container: read-only root filesystem</check>
+        <check>Container: no privileged containers</check>
+        <check>Container: resource limits configured</check>
+        <check>Secrets: store in Secrets Manager/Parameter Store</check>
+        <check>Secrets: reference in task definition (not environment variables)</check>
+        <check>Secrets: rotate secrets automatically</check>
+        <check>Logging: CloudWatch Logs enabled</check>
+        <check>Logging: Container Insights enabled</check>
+        <check>Logging: CloudTrail logging for API calls</check>
+        <check>Monitoring: alarm on failed deployments and unhealthy targets</check>
+      </checklist>
+    </section>
+
+    <section name="Cost Optimization Checklist">
+      <checklist>
+        <check>EC2: use Graviton instances where possible</check>
+        <check>EC2: right-size instances (use Compute Optimizer)</check>
+        <check>EC2: use Reserved Instances for baseline</check>
+        <check>EC2: use Spot Instances for fault-tolerant workloads</check>
+        <check>EC2: enable instance stop/start scheduling for non-production</check>
+        <check>EC2: delete unused EBS volumes</check>
+        <check>EC2: use gp3 instead of gp2</check>
+        <check>ECS Fargate: right-size task CPU/memory</check>
+        <check>ECS Fargate: use FARGATE_SPOT for batch/dev workloads</check>
+        <check>ECS Fargate: enable auto-scaling (do not over-provision)</check>
+        <check>ECS Fargate: review task execution patterns</check>
+        <check>General: enable Cost Explorer, set billing alarms, tag resources</check>
+      </checklist>
+    </section>
+
+    <section name="CLI Examples — EC2">
+      <example type="good" title="Launch EC2 instance with IMDSv2 required (Graviton)">
+        <code lang="bash"><![CDATA[
+aws ec2 run-instances \
+    --image-id ami-0123456789abcdef0 \
+    --instance-type t4g.micro \
+    --key-name my-key-pair \
+    --security-group-ids sg-0123456789abcdef0 \
+    --subnet-id subnet-0123456789abcdef0 \
+    --iam-instance-profile Name=my-instance-profile \
+    --metadata-options "HttpTokens=required,HttpEndpoint=enabled" \
+    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=my-instance},{Key=Environment,Value=production}]'
+]]></code>
+      </example>
+      <example type="good" title="List running instances with key fields">
+        <code lang="bash"><![CDATA[
+aws ec2 describe-instances \
+    --filters "Name=instance-state-name,Values=running" \
+    --query "Reservations[*].Instances[*].[InstanceId,InstanceType,State.Name,PublicIpAddress,Tags[?Key=='Name'].Value|[0]]" \
+    --output table
+]]></code>
+      </example>
+      <example type="good" title="Security group: HTTPS public, SSH from bastion only">
+        <code lang="bash"><![CDATA[
+# Add HTTPS ingress (public)
+aws ec2 authorize-security-group-ingress \
+    --group-id sg-0123456789abcdef0 \
+    --protocol tcp \
+    --port 443 \
+    --cidr 0.0.0.0/0
+
+# Add SSH ingress (from bastion only)
+aws ec2 authorize-security-group-ingress \
+    --group-id sg-0123456789abcdef0 \
+    --protocol tcp \
+    --port 22 \
+    --source-group sg-bastion123456789
+]]></code>
+      </example>
+      <example type="good" title="Create AMI from instance">
+        <code lang="bash"><![CDATA[
+aws ec2 create-image \
+    --instance-id i-0123456789abcdef0 \
+    --name "my-ami-$(date +%Y%m%d-%H%M%S)" \
+    --description "Production AMI" \
+    --no-reboot
+]]></code>
+      </example>
+    </section>
+
+    <section name="CLI Examples — ECS">
+      <example type="good" title="Create ECS cluster with Fargate + Spot capacity providers">
+        <code lang="bash"><![CDATA[
+aws ecs create-cluster \
+    --cluster-name my-cluster \
+    --capacity-providers FARGATE FARGATE_SPOT \
+    --default-capacity-provider-strategy \
+        capacityProvider=FARGATE,weight=1,base=1 \
+        capacityProvider=FARGATE_SPOT,weight=4 \
+    --settings name=containerInsights,value=enabled
+]]></code>
+      </example>
+      <example type="good" title="Create ECS service with zero-downtime deployment and circuit breaker">
+        <code lang="bash"><![CDATA[
+aws ecs create-service \
+    --cluster my-cluster \
+    --service-name my-service \
+    --task-definition my-app:5 \
+    --desired-count 2 \
+    --launch-type FARGATE \
+    --platform-version LATEST \
+    --network-configuration "awsvpcConfiguration={
+        subnets=[subnet-private1,subnet-private2],
+        securityGroups=[sg-app],
+        assignPublicIp=DISABLED
+    }" \
+    --load-balancers "targetGroupArn=arn:aws:elasticloadbalancing:...,containerName=app,containerPort=8080" \
+    --health-check-grace-period-seconds 60 \
+    --deployment-configuration "minimumHealthyPercent=100,maximumPercent=200,deploymentCircuitBreaker={enable=true,rollback=true}"
+]]></code>
+      </example>
+      <example type="good" title="Register target tracking auto scaling for ECS service">
+        <code lang="bash"><![CDATA[
+aws application-autoscaling register-scalable-target \
+    --service-namespace ecs \
+    --scalable-dimension ecs:service:DesiredCount \
+    --resource-id service/my-cluster/my-service \
+    --min-capacity 2 \
+    --max-capacity 10
+
+aws application-autoscaling put-scaling-policy \
+    --service-namespace ecs \
+    --scalable-dimension ecs:service:DesiredCount \
+    --resource-id service/my-cluster/my-service \
+    --policy-name cpu-target-tracking \
+    --policy-type TargetTrackingScaling \
+    --target-tracking-scaling-policy-configuration '{
+        "TargetValue": 70.0,
+        "PredefinedMetricSpecification": {
+            "PredefinedMetricType": "ECSServiceAverageCPUUtilization"
+        },
+        "ScaleOutCooldown": 60,
+        "ScaleInCooldown": 300
+    }'
+]]></code>
+      </example>
+      <example type="good" title="Execute command in running container (ECS Exec)">
+        <code lang="bash"><![CDATA[
+aws ecs execute-command \
+    --cluster my-cluster \
+    --task task-id \
+    --container app \
+    --interactive \
+    --command "/bin/sh"
+]]></code>
+      </example>
+    </section>
+
+    <section name="CLI Examples — ECR">
+      <example type="good" title="Create ECR repository with scanning and immutable tags">
+        <code lang="bash"><![CDATA[
+aws ecr get-login-password --region us-east-1 | \
+    docker login --username AWS --password-stdin \
+    123456789012.dkr.ecr.us-east-1.amazonaws.com
+
+aws ecr create-repository \
+    --repository-name my-app \
+    --image-scanning-configuration scanOnPush=true \
+    --image-tag-mutability IMMUTABLE
+
+# List repositories
+aws ecr describe-repositories
+
+# List images
+aws ecr list-images --repository-name my-app
+
+# Get image scan results
+aws ecr describe-image-scan-findings \
+    --repository-name my-app \
+    --image-id imageTag=v1.0.0
+
+# Delete untagged images
+aws ecr batch-delete-image \
+    --repository-name my-app \
+    --image-ids "$(aws ecr list-images \
+        --repository-name my-app \
+        --filter tagStatus=UNTAGGED \
+        --query 'imageIds[*]' \
+        --output json)"
+
+# Set lifecycle policy (keep last 10 images)
+aws ecr put-lifecycle-policy \
+    --repository-name my-app \
+    --lifecycle-policy-text '{
+        "rules": [{
+            "rulePriority": 1,
+            "description": "Keep last 10 images",
+            "selection": {
+                "tagStatus": "any",
+                "countType": "imageCountMoreThan",
+                "countNumber": 10
+            },
+            "action": { "type": "expire" }
+        }]
+    }'
+]]></code>
+      </example>
+    </section>
+
+    <section name="CLI Examples — CloudWatch Logs">
+      <example type="good" title="CloudWatch Logs setup and tailing for ECS">
+        <code lang="bash"><![CDATA[
+# Create log group
+aws logs create-log-group --log-group-name /ecs/my-app
+
+# Set retention
+aws logs put-retention-policy \
+    --log-group-name /ecs/my-app \
+    --retention-in-days 30
+
+# Tail logs
+aws logs tail /ecs/my-app --follow
+
+# Get recent logs
+aws logs get-log-events \
+    --log-group-name /ecs/my-app \
+    --log-stream-name ecs/app/task-id \
+    --limit 100
+]]></code>
+      </example>
+    </section>
+
+    <section name="CLI Examples — ECS Tasks">
+      <example type="good" title="List, run, and stop ECS tasks">
+        <code lang="bash"><![CDATA[
+# List running tasks
+aws ecs list-tasks \
+    --cluster my-cluster \
+    --service-name my-service
+
+# Describe tasks
+aws ecs describe-tasks \
+    --cluster my-cluster \
+    --tasks task-id-1 task-id-2
+
+# Run one-off task
+aws ecs run-task \
+    --cluster my-cluster \
+    --task-definition my-migration:1 \
+    --launch-type FARGATE \
+    --network-configuration "awsvpcConfiguration={
+        subnets=[subnet-private1],
+        securityGroups=[sg-task],
+        assignPublicIp=DISABLED
+    }"
+
+# Stop task
+aws ecs stop-task \
+    --cluster my-cluster \
+    --task task-id \
+    --reason "Manual stop"
+
+# Update service (deploy new version)
+aws ecs update-service \
+    --cluster my-cluster \
+    --service my-service \
+    --task-definition my-app:6 \
+    --force-new-deployment
+
+# Scale service
+aws ecs update-service \
+    --cluster my-cluster \
+    --service my-service \
+    --desired-count 4
+
+# List task definitions
+aws ecs list-task-definitions --family-prefix my-app
+
+# Deregister task definition
+aws ecs deregister-task-definition --task-definition my-app:1
+]]></code>
+      </example>
+    </section>
+
+    <section name="CLI Examples — AMI Management">
+      <example type="good" title="Copy AMI to another region and list AMIs">
+        <code lang="bash"><![CDATA[
+# Copy AMI to another region
+aws ec2 copy-image \
+    --source-image-id ami-0123456789abcdef0 \
+    --source-region us-east-1 \
+    --region eu-west-1 \
+    --name "my-ami-eu-copy"
+
+# List AMIs owned by self
+aws ec2 describe-images \
+    --owners self \
+    --query "Images[*].[ImageId,Name,CreationDate]" \
+    --output table
+
+# Deregister AMI
+aws ec2 deregister-image --image-id ami-0123456789abcdef0
+
+# Start/stop/terminate instances
+aws ec2 start-instances --instance-ids i-0123456789abcdef0
+aws ec2 stop-instances --instance-ids i-0123456789abcdef0
+aws ec2 terminate-instances --instance-ids i-0123456789abcdef0
+
+# Wait for instance running
+aws ec2 wait instance-running --instance-ids i-0123456789abcdef0
+
+# Get instance console output
+aws ec2 get-console-output --instance-id i-0123456789abcdef0
+]]></code>
+      </example>
+    </section>
+
+    <section name="Templates — ECS Task Definition (Fargate)">
+      <example type="good" title="Basic web application task definition">
+        <code lang="json"><![CDATA[
+{
+  "family": "my-app",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "app",
+      "image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/my-app:v1.0.0",
+      "essential": true,
+      "portMappings": [{ "containerPort": 8080, "protocol": "tcp" }],
+      "environment": [
+        { "name": "NODE_ENV", "value": "production" },
+        { "name": "PORT", "value": "8080" }
+      ],
+      "secrets": [
+        { "name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:my-app/database-url" },
+        { "name": "API_KEY", "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/my-app/api-key" }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/my-app",
+          "awslogs-region": "REGION",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "linuxParameters": { "initProcessEnabled": true },
+      "readonlyRootFilesystem": true,
+      "user": "1000:1000"
+    }
+  ],
+  "tags": [
+    { "key": "Environment", "value": "production" },
+    { "key": "Project", "value": "my-app" }
+  ]
+}
+]]></code>
+      </example>
+      <example type="good" title="Multi-container task definition (app + sidecar)">
+        <code lang="json"><![CDATA[
+{
+  "family": "my-app-with-proxy",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "app",
+      "image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/my-app:v1.0.0",
+      "essential": true,
+      "portMappings": [{ "containerPort": 8080, "protocol": "tcp" }],
+      "environment": [{ "name": "PORT", "value": "8080" }],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": { "awslogs-group": "/ecs/my-app", "awslogs-region": "REGION", "awslogs-stream-prefix": "app" }
+      },
+      "dependsOn": [{ "containerName": "envoy", "condition": "START" }],
+      "readonlyRootFilesystem": true,
+      "user": "1000:1000"
+    },
+    {
+      "name": "envoy",
+      "image": "envoyproxy/envoy:v1.28-latest",
+      "essential": true,
+      "portMappings": [{ "containerPort": 9901, "protocol": "tcp" }],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:9901/ready || exit 1"],
+        "interval": 10, "timeout": 5, "retries": 3, "startPeriod": 10
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": { "awslogs-group": "/ecs/my-app", "awslogs-region": "REGION", "awslogs-stream-prefix": "envoy" }
+      },
+      "cpu": 256,
+      "memory": 512
+    }
+  ]
+}
+]]></code>
+      </example>
+      <example type="good" title="Background worker task definition">
+        <code lang="json"><![CDATA[
+{
+  "family": "my-worker",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsWorkerRole",
+  "containerDefinitions": [
+    {
+      "name": "worker",
+      "image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/my-worker:v1.0.0",
+      "essential": true,
+      "command": ["python", "-m", "worker.main"],
+      "environment": [{ "name": "QUEUE_URL", "value": "https://sqs.REGION.amazonaws.com/ACCOUNT_ID/my-queue" }],
+      "secrets": [{ "name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:my-app/database-url" }],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": { "awslogs-group": "/ecs/my-worker", "awslogs-region": "REGION", "awslogs-stream-prefix": "ecs" }
+      },
+      "readonlyRootFilesystem": true,
+      "user": "1000:1000"
+    }
+  ]
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="Templates — Terraform Modules">
+      <example type="good" title="ECS cluster Terraform module">
+        <code lang="hcl"><![CDATA[
+# modules/ecs-cluster/main.tf
+
+resource "aws_ecs_cluster" "this" {
+  name = var.cluster_name
+
+  setting {
+    name  = "containerInsights"
+    value = var.container_insights ? "enabled" : "disabled"
+  }
+
+  tags = var.tags
+}
+
+resource "aws_ecs_cluster_capacity_providers" "this" {
+  cluster_name = aws_ecs_cluster.this.name
+
+  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
+
+  default_capacity_provider_strategy {
+    base              = 1
+    weight            = 1
+    capacity_provider = "FARGATE"
+  }
+
+  default_capacity_provider_strategy {
+    weight            = 4
+    capacity_provider = "FARGATE_SPOT"
+  }
+}
+
+variable "cluster_name" {
+  type        = string
+  description = "Name of the ECS cluster"
+}
+
+variable "container_insights" {
+  type        = bool
+  default     = true
+  description = "Enable Container Insights"
+}
+
+variable "tags" {
+  type        = map(string)
+  default     = {}
+  description = "Tags to apply to resources"
+}
+
+output "cluster_id"   { value = aws_ecs_cluster.this.id }
+output "cluster_arn"  { value = aws_ecs_cluster.this.arn }
+output "cluster_name" { value = aws_ecs_cluster.this.name }
+]]></code>
+      </example>
+      <example type="good" title="ECS service Terraform module with auto scaling">
+        <code lang="hcl"><![CDATA[
+# modules/ecs-service/main.tf
+
+resource "aws_ecs_service" "this" {
+  name             = var.service_name
+  cluster          = var.cluster_id
+  task_definition  = aws_ecs_task_definition.this.arn
+  desired_count    = var.desired_count
+  launch_type      = "FARGATE"
+  platform_version = "LATEST"
+
+  network_configuration {
+    subnets          = var.subnet_ids
+    security_groups  = var.security_group_ids
+    assign_public_ip = false
+  }
+
+  dynamic "load_balancer" {
+    for_each = var.target_group_arn != null ? [1] : []
+    content {
+      target_group_arn = var.target_group_arn
+      container_name   = var.container_name
+      container_port   = var.container_port
+    }
+  }
+
+  deployment_configuration {
+    minimum_healthy_percent = 100
+    maximum_percent         = 200
+  }
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  health_check_grace_period_seconds = var.health_check_grace_period
+
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
+
+  tags = var.tags
+}
+
+resource "aws_ecs_task_definition" "this" {
+  family                   = var.service_name
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = var.cpu
+  memory                   = var.memory
+  execution_role_arn       = var.execution_role_arn
+  task_role_arn            = var.task_role_arn
+
+  container_definitions = jsonencode([{
+    name      = var.container_name
+    image     = var.container_image
+    essential = true
+
+    portMappings = [{ containerPort = var.container_port, protocol = "tcp" }]
+    environment  = var.environment_variables
+    secrets      = var.secrets
+    healthCheck  = var.health_check
+
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = var.log_group_name
+        "awslogs-region"        = var.aws_region
+        "awslogs-stream-prefix" = "ecs"
+      }
+    }
+
+    linuxParameters        = { initProcessEnabled = true }
+    readonlyRootFilesystem = true
+    user                   = "1000:1000"
+  }])
+
+  tags = var.tags
+}
+
+resource "aws_appautoscaling_target" "this" {
+  count = var.enable_autoscaling ? 1 : 0
+
+  max_capacity       = var.max_capacity
+  min_capacity       = var.min_capacity
+  resource_id        = "service/${var.cluster_name}/${aws_ecs_service.this.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "cpu" {
+  count = var.enable_autoscaling ? 1 : 0
+
+  name               = "${var.service_name}-cpu-autoscaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.this[0].resource_id
+  scalable_dimension = aws_appautoscaling_target.this[0].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.this[0].service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    target_value       = var.cpu_target_value
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+  }
+}
+]]></code>
+      </example>
+      <example type="good" title="IAM roles for ECS execution and task">
+        <code lang="hcl"><![CDATA[
+# modules/ecs-iam/main.tf
+
+resource "aws_iam_role" "execution" {
+  name = "${var.name}-execution-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{ Action = "sts:AssumeRole", Effect = "Allow", Principal = { Service = "ecs-tasks.amazonaws.com" } }]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "execution" {
+  role       = aws_iam_role.execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_iam_role_policy" "execution_secrets" {
+  name = "${var.name}-execution-secrets"
+  role = aws_iam_role.execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      { Effect = "Allow", Action = ["secretsmanager:GetSecretValue"], Resource = var.secrets_arns },
+      { Effect = "Allow", Action = ["ssm:GetParameters"], Resource = var.ssm_parameter_arns }
+    ]
+  })
+}
+
+resource "aws_iam_role" "task" {
+  name = "${var.name}-task-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{ Action = "sts:AssumeRole", Effect = "Allow", Principal = { Service = "ecs-tasks.amazonaws.com" } }]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy" "task" {
+  name   = "${var.name}-task-policy"
+  role   = aws_iam_role.task.id
+  policy = jsonencode({ Version = "2012-10-17", Statement = var.task_policy_statements })
+}
+
+output "execution_role_arn" { value = aws_iam_role.execution.arn }
+output "task_role_arn"      { value = aws_iam_role.task.arn }
+]]></code>
+      </example>
+    </section>
+
+    <section name="Templates — CloudFormation">
+      <example type="good" title="ECS Fargate service CloudFormation template">
+        <code lang="yaml"><![CDATA[
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ECS Fargate Service
+
+Parameters:
+  ClusterName:    { Type: String }
+  ServiceName:    { Type: String }
+  ContainerImage: { Type: String }
+  DesiredCount:   { Type: Number, Default: 2 }
+  ContainerPort:  { Type: Number, Default: 8080 }
+  Cpu:            { Type: String, Default: '512' }
+  Memory:         { Type: String, Default: '1024' }
+  SubnetIds:      { Type: List<AWS::EC2::Subnet::Id> }
+  SecurityGroupIds: { Type: List<AWS::EC2::SecurityGroup::Id> }
+  TargetGroupArn: { Type: String }
+
+Resources:
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref ServiceName
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      Cpu: !Ref Cpu
+      Memory: !Ref Memory
+      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: app
+          Image: !Ref ContainerImage
+          Essential: true
+          PortMappings: [{ ContainerPort: !Ref ContainerPort, Protocol: tcp }]
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          LinuxParameters: { InitProcessEnabled: true }
+          ReadonlyRootFilesystem: true
+          User: '1000:1000'
+
+  Service:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref ClusterName
+      ServiceName: !Ref ServiceName
+      TaskDefinition: !Ref TaskDefinition
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets: !Ref SubnetIds
+          SecurityGroups: !Ref SecurityGroupIds
+          AssignPublicIp: DISABLED
+      LoadBalancers:
+        - TargetGroupArn: !Ref TargetGroupArn
+          ContainerName: app
+          ContainerPort: !Ref ContainerPort
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker: { Enable: true, Rollback: true }
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/${ServiceName}
+      RetentionInDays: 30
+
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement: [{ Effect: Allow, Principal: { Service: ecs-tasks.amazonaws.com }, Action: sts:AssumeRole }]
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy]
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement: [{ Effect: Allow, Principal: { Service: ecs-tasks.amazonaws.com }, Action: sts:AssumeRole }]
+
+Outputs:
+  ServiceArn:        { Value: !Ref Service }
+  TaskDefinitionArn: { Value: !Ref TaskDefinition }
+]]></code>
+      </example>
+    </section>
+
+    <section name="LLM Prompts">
+      <prompt purpose="Generate ECS Fargate task definition">
+        <![CDATA[
+Generate an ECS Fargate task definition with:
+
+Application: {app_name}
+Image: {ecr_repo}:{tag}
+Port: {port}
+CPU: {cpu_units} (256, 512, 1024, 2048, 4096)
+Memory: {memory_mb}
+Environment: {env} (development, staging, production)
+
+Requirements:
+- {requirement_1}
+- {requirement_2}
+- {requirement_3}
+
+Secrets needed:
+- {secret_1} (source: Secrets Manager / Parameter Store)
+- {secret_2}
+
+AWS Account: {account_id}
+Region: {region}
+
+Include:
+- Health check configuration
+- CloudWatch Logs setup
+- Security hardening (non-root user, read-only filesystem)
+- Proper IAM role references
+]]>
+      </prompt>
+      <prompt purpose="Create ECS service configuration">
+        <![CDATA[
+Create an ECS Fargate service configuration:
+
+Cluster: {cluster_name}
+Service name: {service_name}
+Task definition: {task_family}:{revision}
+
+Deployment:
+- Desired count: {count}
+- Min healthy: {min_percent}%
+- Max percent: {max_percent}%
+- Enable circuit breaker with rollback
+
+Network:
+- VPC: {vpc_id}
+- Subnets: {subnet_ids} (private)
+- Security groups: {sg_ids}
+
+Load balancer:
+- Type: {alb/nlb}
+- Target group ARN: {tg_arn}
+- Health check grace period: {seconds}
+
+Auto scaling:
+- Min: {min_tasks}
+- Max: {max_tasks}
+- Target CPU: {cpu_percent}%
+- Scale out cooldown: {scale_out_seconds}s
+- Scale in cooldown: {scale_in_seconds}s
+]]>
+      </prompt>
+      <prompt purpose="Debug ECS task failures">
+        <![CDATA[
+ECS task is failing to start. Analyze and provide solutions:
+
+Cluster: {cluster}
+Service: {service}
+Task definition: {task_def}
+
+Error message:
+{error_message}
+
+Stopped reason:
+{stopped_reason}
+
+Recent events:
+{events}
+
+Check:
+1. Task definition configuration
+2. IAM permissions (execution role, task role)
+3. Network configuration (subnets, security groups, VPC endpoints)
+4. Container health checks
+5. Resource limits (CPU, memory)
+6. Secrets/parameters access
+7. ECR image pull permissions
+8. CloudWatch Logs permissions
+]]>
+      </prompt>
+      <prompt purpose="Launch EC2 instance">
+        <![CDATA[
+Generate AWS CLI command to launch EC2 instance:
+
+Purpose: {purpose}
+Instance type: {type} (prefer Graviton if compatible)
+AMI: {ami_id or "latest Amazon Linux 2023"}
+
+Network:
+- VPC: {vpc_id}
+- Subnet: {subnet_id}
+- Security groups: {sg_ids}
+- Public IP: {yes/no}
+
+Storage:
+- Root volume: {size}GB {type}
+- Additional volumes: {volumes}
+
+IAM:
+- Instance profile: {profile_name}
+
+Tags:
+- Name: {name}
+- Environment: {env}
+- Project: {project}
+- Owner: {owner}
+
+User data script to:
+- {action_1}
+- {action_2}
+- {action_3}
+]]>
+      </prompt>
+      <prompt purpose="ECS security review">
+        <![CDATA[
+Review ECS configuration for security:
+
+Task definition:
+{task_definition_json}
+
+Service configuration:
+{service_config}
+
+Network:
+- VPC: {vpc_id}
+- Subnets: {subnets}
+- Security groups: {sg_config}
+
+Check for:
+1. IAM least-privilege violations
+2. Network exposure risks
+3. Container hardening gaps
+4. Secrets management issues
+5. Logging/monitoring gaps
+6. Image security concerns
+
+Provide:
+- Risk assessment
+- Remediation steps
+- Priority ranking
+]]>
+      </prompt>
+      <prompt purpose="Analyze and optimize ECS costs">
+        <![CDATA[
+Analyze and optimize ECS costs:
+
+Current setup:
+- Cluster: {cluster}
+- Services: {service_count}
+- Average running tasks: {task_count}
+
+Task configurations:
+{task_configs}
+
+Traffic patterns:
+- Peak hours: {peak}
+- Off-peak hours: {offpeak}
+- Weekend traffic: {weekend}
+
+Current monthly cost: ${cost}
+
+Provide recommendations for:
+1. Right-sizing task definitions
+2. Fargate Spot usage opportunities
+3. Auto-scaling optimization
+4. Reserved capacity options
+5. Bin-packing improvements (if EC2 launch type)
+]]>
+      </prompt>
+      <prompt purpose="Plan migration to ECS Fargate">
+        <![CDATA[
+Plan migration from {source} to ECS Fargate:
+
+Source: {ec2/kubernetes/docker-compose/on-prem}
+
+Current architecture:
+{architecture_description}
+
+Services to migrate:
+1. {service_1}: {description_1}
+2. {service_2}: {description_2}
+3. {service_3}: {description_3}
+
+Dependencies:
+- Databases: {databases}
+- Caches: {caches}
+- Queues: {queues}
+- External services: {external}
+
+Requirements:
+- Zero-downtime migration: {yes/no}
+- Data migration: {requirements}
+- Timeline: {timeline}
+
+Provide:
+1. Migration phases
+2. Task definitions for each service
+3. Network architecture
+4. Rollback strategy
+5. Testing plan
+]]>
+      </prompt>
+      <prompt purpose="Generate Terraform module for ECS service">
+        <![CDATA[
+Generate Terraform module for ECS service:
+
+Module purpose: {purpose}
+
+Inputs:
+- {input_1}: {type} - {description}
+- {input_2}: {type} - {description}
+- {input_3}: {type} - {description}
+
+Resources to create:
+- ECS service
+- Task definition
+- Auto-scaling configuration
+- CloudWatch alarms
+- IAM roles
+
+Outputs:
+- {output_1}
+- {output_2}
+
+Follow:
+- AWS best practices
+- Security hardening
+- Cost optimization defaults
+- Proper tagging
+]]>
+      </prompt>
+    </section>
+
+    <section name="Agent Selection">
+      <list>
+        <item>ECS task definition creation → sonnet: standard configuration pattern</item>
+        <item>EC2 instance type selection → sonnet: performance/cost analysis</item>
+        <item>ECS service scaling policies → sonnet: metric-driven configuration</item>
+        <item>Container health checks → haiku: simple configuration</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-best-practices.html"/>
+      <link href="https://docs.aws.amazon.com/AmazonECS/latest/developerguide/security-tasks-containers.html"/>
+      <link href="https://cloudurable.com/blog/aws-ec2-2025/"/>
+      <link href="https://aws.amazon.com/blogs/containers/best-practices-for-resilience-and-availability-on-amazon-ecs/"/>
+      <link href="https://aws.amazon.com/blogs/security/security-considerations-for-running-containers-on-amazon-ecs/"/>
+    </see-also>
+  </content>
+</methodology>
