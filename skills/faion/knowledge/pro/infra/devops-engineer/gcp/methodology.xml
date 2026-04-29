@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gcp">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>GCP production deployments: Autopilot GKE, Workload Identity Federation for credentials, Private Service Connect for API access.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>kubernetes</tag>
+      <tag>cloud-run</tag>
+      <tag>workload-identity</tag>
+      <tag>iam</tag>
+    </tags>
+    <category>gcp</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>GCP</title>
+    <summary>GCP production deployments: use Autopilot mode for GKE (pay-per-pod, no node management) unless GPU workloads or privileged containers are required; use Workload Identity Federation to eliminate service account keys for all external workloads (GitHub Actions, GitLab CI, AWS); use Private Service Connect instead of VPC Peering for Google-managed service access. Never assign primitive IAM roles (Owner, Editor, Viewer) to service accounts.</summary>
+    <why>
+      <p>Service account keys are the leading cause of GCP credential exposure — Workload Identity Federation eliminates them by mapping external OIDC tokens directly to IAM principals. Autopilot reduces operational overhead by 60-80% vs Standard mode: no node pool sizing, no OS patching, no kubelet config. Spot VMs (formerly Preemptible) save 60-91% on batch and CI workloads with minimal code changes.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Deploying containerized workloads on GKE (prefer Autopilot)</item>
+        <item>Running serverless containers with Cloud Run</item>
+        <item>Authenticating GitHub Actions or other OIDC providers to GCP without long-lived keys</item>
+        <item>Multi-project GCP organization requiring Shared VPC and centralized networking</item>
+        <item>BigQuery/analytics workloads requiring data warehouse integration</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Multi-cloud architecture requiring vendor-neutral IaC — use Terraform + cloud-agnostic abstractions instead of GCP-specific tools (Deployment Manager, Cloud Build)</item>
+        <item>Workloads requiring Windows Server containers — GKE has limited Windows node support</item>
+        <item>Very small workload (&lt; $50/month projected) where the Autopilot per-pod pricing exceeds a minimal VM — Cloud Run or a single e2-micro may be more cost-effective</item>
+        <item>Team has no GCP IAM expertise — incorrect organization-level IAM bindings are hard to audit and undo</item>
+      </list>
+    </when-not-to-use>
+    <section name="gke-mode-selection">
+      <rule>
+        <statement>Use GKE Autopilot for new workloads unless they require GPU, privileged containers, custom node configs, or Windows nodes — Autopilot covers 80%+ of use cases with less operational overhead.</statement>
+        <rationale>Autopilot manages node provisioning, OS patching, and kubelet config. Standard mode requires manual node pool sizing, OS upgrades, and kubelet tuning. The operational difference is 20-40 hours/month for a team managing Standard clusters.</rationale>
+      </rule>
+      <list>
+        <item>Autopilot: pay-per-pod resources, automatic node provisioning, no OS patching, no node pool management</item>
+        <item>Standard: GPU workloads, privileged containers, custom machine types, Windows containers</item>
+        <item>Hybrid (2025): Standard cluster with Autopilot workload profiles — for teams migrating</item>
+      </list>
+    </section>
+    <section name="cost-optimization-spot-vms">
+      <rule>
+        <statement>Use Spot VMs for batch jobs, CI/CD runners, and non-critical background workers — they save 60-91% over on-demand with the only trade-off being preemption.</statement>
+        <rationale>Spot VMs are reclaimed by GCP with a 30-second notice when capacity is needed. This is acceptable for stateless batch workloads that can be retried. The cost savings make CI/CD on GKE economically viable vs managed CI services.</rationale>
+      </rule>
+      <example type="good" title="Node pool for batch/CI workloads">
+        <code lang="yaml"><![CDATA[
+# Node pool for batch/CI workloads
+node_pools:
+  - name: spot-batch
+    machine_type: n2-standard-8
+    spot: true
+    taints:
+      - key: workload
+        value: batch
+        effect: NoSchedule
+    autoscaling:
+      min_node_count: 0
+      max_node_count: 20
+]]></code>
+        <note>Use tolerations in batch job pods to schedule onto spot nodes. Non-batch pods without the toleration automatically land on on-demand nodes.</note>
+      </example>
+    </section>
+    <section name="cloud-run-configuration">
+      <rule>
+        <statement>Set min-instances to 0 for cost-sensitive services and to 1+ for latency-sensitive services — cold starts on Cloud Run take 200ms-2s depending on image size.</statement>
+        <rationale>min-instances=0 means the service sleeps when idle, saving cost but adding cold start latency on first request. min-instances=1 keeps one warm instance, adding ~$5-20/month but eliminating cold starts.</rationale>
+      </rule>
+      <rule>
+        <statement>Set concurrency to 80-100 for typical web apps; lower (1-10) for CPU-intensive or stateful per-request work.</statement>
+        <rationale>Cloud Run bills per-CPU-second. High concurrency means fewer instances needed for the same throughput. But CPU-bound or stateful workloads need isolation per request or they contend for CPU within the instance.</rationale>
+      </rule>
+      <example type="good" title="Blue-green deploy with gradual traffic shift">
+        <code lang="bash"><![CDATA[
+# Blue-green deploy with gradual traffic shift
+gcloud run deploy my-service \
+  --image=gcr.io/project/app:v2 \
+  --no-traffic \
+  --tag=green
+
+# Validate green tag directly
+curl https://green---my-service-xxx.run.app/healthz
+
+# Gradual rollout: 10% to new version
+gcloud run services update-traffic my-service \
+  --to-tags=green=10,latest=90
+
+# Full cutover
+gcloud run services update-traffic my-service \
+  --to-latest
+]]></code>
+      </example>
+    </section>
+    <section name="workload-identity-federation">
+      <rule>
+        <statement>Use Workload Identity Federation for all external workloads (GitHub Actions, GitLab CI, AWS, on-premises) to eliminate service account keys.</statement>
+        <rationale>Service account keys are long-lived credentials that must be rotated, securely stored, and audited. Workload Identity Federation exchanges short-lived OIDC tokens for temporary GCP credentials — no key to steal, no rotation burden.</rationale>
+      </rule>
+      <example type="good" title="Create WIF pool and GitHub provider">
+        <code lang="bash"><![CDATA[
+# Create WIF pool and GitHub provider
+gcloud iam workload-identity-pools create github-pool \
+  --location=global --display-name="GitHub Actions Pool"
+
+gcloud iam workload-identity-pools providers create-oidc github \
+  --workload-identity-pool=github-pool \
+  --location=global \
+  --issuer-uri=https://token.actions.githubusercontent.com \
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
+  --attribute-condition="assertion.repository=='my-org/my-repo'"
+
+# Bind GitHub Actions to a service account
+gcloud iam service-accounts add-iam-policy-binding \
+  my-sa@project.iam.gserviceaccount.com \
+  --role=roles/iam.workloadIdentityUser \
+  --member="principalSet://iam.googleapis.com/projects/PROJECT_NUM/locations/global/workloadIdentityPools/github-pool/attribute.repository/my-org/my-repo"
+]]></code>
+      </example>
+    </section>
+    <section name="gke-workload-identity">
+      <rule>
+        <statement>On GKE, bind Kubernetes ServiceAccounts to GCP service accounts via Workload Identity annotations — never mount service account key files into pods.</statement>
+        <rationale>Key files in pods are readable by any process in the container. WI uses the GKE metadata server to issue short-lived tokens automatically without any secret management.</rationale>
+      </rule>
+      <example type="good" title="K8s ServiceAccount annotation for GKE Workload Identity">
+        <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-ksa
+  namespace: production
+  annotations:
+    iam.gke.io/gcp-service-account: my-gsa@project.iam.gserviceaccount.com
+]]></code>
+      </example>
+    </section>
+    <section name="iam-best-practices">
+      <rule>
+        <statement>Never assign primitive roles (Owner, Editor, Viewer) to service accounts — use predefined roles or custom roles with exactly the permissions needed.</statement>
+        <rationale>Editor role grants write access to almost all GCP resources. A compromised service account with Editor can exfiltrate all data, deploy malicious workloads, and modify IAM policies.</rationale>
+      </rule>
+      <list>
+        <item>Use predefined roles first — Google maintains them for new resource types and APIs</item>
+        <item>Create custom roles for narrow, specific permission sets</item>
+        <item>Apply IAM Conditions for time-based or resource attribute-based restrictions</item>
+        <item>Run IAM Recommender weekly to identify and remove unused permissions</item>
+      </list>
+    </section>
+    <section name="vpc-private-service-connect">
+      <rule>
+        <statement>Use Private Service Connect (not VPC Peering) to access Google-managed APIs and services — PSC gives granular endpoint control with your own internal IP addresses.</statement>
+        <rationale>VPC Peering for Google APIs uses shared IP ranges with limited routing control. PSC creates explicit private endpoints in your VPC that you control, compatible with VPC Service Controls for data exfiltration prevention.</rationale>
+      </rule>
+      <list>
+        <item>Delete the default VPC and create custom VPCs with explicit subnet definitions</item>
+        <item>Use Shared VPC for multi-project networking — centralized firewall management</item>
+        <item>Enable VPC Flow Logs for security analysis and network troubleshooting</item>
+        <item>Cloud Armor for DDoS protection on external load balancers</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/gke-autopilot.tf" purpose="Terraform GKE Autopilot cluster with Workload Identity and private networking"/>
+      <template path="templates/cloud-run-deploy.sh" purpose="Cloud Run blue-green deploy script with traffic splitting"/>
+      <template path="templates/workload-identity-sa.yaml" purpose="K8s ServiceAccount annotation for GKE Workload Identity binding"/>
+      <template path="templates/prompt-cost-review.txt" purpose="LLM prompt for GCP cost optimization review"/>
+    </templates>
+  </content>
+</methodology>
