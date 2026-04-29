@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="quality-gates-confidence">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd</domain>
+    <summary>Six sequential quality gate levels (L1-L6) prevent defects from propagating through SDD phases with measurable confidence thresholds and automated enforcement.</summary>
+    <tags>
+      <tag>quality-gates</tag>
+      <tag>testing</tag>
+      <tag>validation</tag>
+      <tag>confidence</tag>
+      <tag>ci-cd</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Quality Gates &amp; Confidence Checks</title>
+    <summary>Six sequential quality gate levels (L1-L6) prevent defects from propagating through SDD phases. Each gate has a minimum confidence threshold that blocks progression when not met: L1 syntax/format (95%), L2 unit tests (90%), L3 integration tests (85%), L4 code review (80%), L5 staging (85%), L6 production (90%). Confidence score = Automated_Pass × 0.4 + Coverage × 0.2 + Risk_Mitigation × 0.2 + Traceability × 0.2. LLM-generated code enters the L1→L2 validation pipeline immediately after generation; failures trigger targeted re-prompt loops capped at 3 attempts before human escalation.</summary>
+    <why>
+      <p>"Shift left" — catching issues at L1 costs orders of magnitude less than catching them at L5. LLMs produce syntactically valid code that still fails at runtime (hallucinated APIs, wrong function signatures). L1 gates (100% automated) provide instant feedback on linting and type errors. L2 unit tests (100% automated) catch logic errors cheaply. L4 human review focuses on what AI misses: business logic, security context, and architectural consistency. Without hard-block enforcement at L1/L2, teams accumulate technical debt that defeats the purpose of SDD.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Before any phase transition in the SDD workflow — confidence check gates progression</item>
+        <item>After LLM-generated code is produced — run L1 and L2 before human review</item>
+        <item>Setting up CI/CD for an LLM-assisted project — quality gates are the automated enforcement layer</item>
+        <item>When using LLM-as-judge to evaluate AI output before integration</item>
+        <item>When change failure rate spikes — tighten gate enforcement (soft block → hard block)</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Trivial configuration changes — full L1-L6 wastes time</item>
+        <item>Exploratory prototypes that will be discarded — gate overhead exceeds learning value</item>
+        <item>When gate tooling is not set up (no linter config, no test suite) — set up tooling first</item>
+        <item>L5/L6 for local development — these are deployment gates, not development gates</item>
+      </list>
+    </when-not-to-use>
+    <section name="l1-syntax-and-format">
+      <rule>
+        <statement>L1 must be 100% automated and must pass before any human review begins; hard block on failure.</statement>
+        <rationale>Syntax errors and format violations are objectively detectable and correctable by automated tools. Human review of code that fails L1 is wasted effort.</rationale>
+      </rule>
+      <list>
+        <item>Code parses without syntax errors (compiler/interpreter)</item>
+        <item>Linter passes with zero errors (ESLint/ruff/Pylint)</item>
+        <item>Format is valid (Prettier/Black/ruff format)</item>
+        <item>Types are valid (TypeScript/mypy)</item>
+      </list>
+      <p>Confidence required: 95%+. Automation: 100%.</p>
+      <rule>
+        <statement>Cap L1 re-prompt loops at 3 attempts before escalating to human; if logic is wrong, fixing syntax will not fix failing tests.</statement>
+        <rationale>Infinite re-prompt loops for L1 failures indicate a logic problem, not a syntax problem. 3 attempts is sufficient to catch genuine formatting issues; beyond that, human intervention is required.</rationale>
+      </rule>
+    </section>
+    <section name="l2-unit-tests">
+      <rule>
+        <statement>Require 100% pass rate and project-minimum coverage (typically 80%) before proceeding to L3; hard block on failure.</statement>
+        <rationale>Unit test coverage is the cheapest form of defect detection. A 100% pass rate with low coverage is misleading; both thresholds are required.</rationale>
+      </rule>
+      <list>
+        <item>All tests execute (test runner completes)</item>
+        <item>100% pass rate</item>
+        <item>Coverage meets project minimum (typically 80%)</item>
+        <item>Edge cases and boundary conditions covered</item>
+      </list>
+      <p>Confidence required: 90%+. Automation: 100%.</p>
+    </section>
+    <section name="l3-integration-tests">
+      <list>
+        <item>API contracts match spec (Supertest/httpx)</item>
+        <item>Database CRUD operations work against test DB</item>
+        <item>External service integrations behave correctly (mocks/stubs)</item>
+        <item>Data propagates correctly through the system</item>
+      </list>
+      <p>Confidence required: 85%+. Automation: 95%.</p>
+      <rule>
+        <statement>Set up test infrastructure (test DB, mocks) in Wave 1 tasks, not as an afterthought in later waves.</statement>
+        <rationale>Agents skip L3 when test infrastructure is not already in place. Making it a Wave 1 deliverable ensures it is available for all subsequent task validations.</rationale>
+      </rule>
+    </section>
+    <section name="l4-code-review">
+      <list>
+        <item>Logic correctness: algorithm implements spec (human review)</item>
+        <item>Security: no vulnerabilities (SAST tools + human review)</item>
+        <item>Performance: meets NFRs (profiling + review)</item>
+        <item>Maintainability: readable, documented (human review)</item>
+        <item>Patterns: follows project conventions (human + AI review)</item>
+      </list>
+      <p>Confidence required: 80%+. Automation: 50% (AI-assisted). Soft block — human approval can override.</p>
+    </section>
+    <section name="l5-staging-validation">
+      <list>
+        <item>Deployment: deploys without errors in production-like environment</item>
+        <item>Smoke tests: core flows work</item>
+        <item>Load testing: meets performance SLOs (k6/Locust)</item>
+        <item>Security scan: no critical vulnerabilities (DAST tools)</item>
+        <item>Manual QA: UX acceptable</item>
+      </list>
+      <p>Confidence required: 85%+. Automation: 70%.</p>
+    </section>
+    <section name="l6-production-gate">
+      <list>
+        <item>Change approval: approved by CAB or review board</item>
+        <item>Rollback plan: documented and tested</item>
+        <item>Monitoring ready: dashboards and alerts configured</item>
+        <item>Feature flags: can disable if needed</item>
+        <item>Stakeholder sign-off: business owner approved</item>
+      </list>
+      <p>Confidence required: 90%+. Automation: 60%.</p>
+    </section>
+    <section name="confidence-score">
+      <rule>
+        <statement>Calculate confidence as a weighted sum of four objective factors; require artifact evidence (test output, coverage report) rather than agent self-assessment.</statement>
+        <rationale>Agents treating confidence scores as checkboxes self-report inflated values. Requiring actual measurement artifacts (not just agent assertions) produces reliable scores.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[Confidence = (Automated_Pass * 0.4) + (Coverage * 0.2) +
+             (Risk_Mitigation * 0.2) + (Traceability * 0.2)
+
+Factors:
+  Automated_Pass  (40%): % of automated checks passing
+  Coverage        (20%): % of requirements covered by tests
+  Risk_Mitigation (20%): % of identified risks with mitigations
+  Traceability    (20%): % of requirements traceable to implementation]]></code>
+      </example>
+    </section>
+    <section name="pre-phase-confidence-check-template">
+      <example type="good">
+        <code lang="markdown"><![CDATA[## Confidence Check: [Phase Name]
+
+### Prerequisites Met
+- [ ] Previous gate passed (artifact attached)
+- [ ] Required artifacts exist
+- [ ] Dependencies available
+- [ ] Context understood
+
+### Current Confidence: X%
+
+### Proceed?
+- [ ] YES (>= threshold)
+- [ ] NO (< threshold) — Reason: [...]]]></code>
+        <note>Every phase transition requires an explicit confidence check. "Proceed?" is a binary decision, not a sliding scale.</note>
+      </example>
+    </section>
+    <section name="llm-validation-pipeline">
+      <p>Standard flow for validating LLM-generated code:</p>
+      <list>
+        <item>LLM generates code</item>
+        <item>L1 check: if fail, re-prompt with exact lint/type output; cap at 3 re-prompts</item>
+        <item>L2 check: if fail, re-prompt with exact test failure output; cap at 3 re-prompts</item>
+        <item>AI review: secondary model reviews for correctness and completeness</item>
+        <item>Human spot-check: business logic, security implications</item>
+        <item>Merge</item>
+      </list>
+      <rule>
+        <statement>Check LLM output against L1 immediately after generation; do not accumulate multiple files before the first gate check.</statement>
+        <rationale>Early feedback prevents context drift. An agent that writes 10 files before seeing L1 errors must revisit all 10; an agent that sees L1 errors after each file corrects patterns immediately.</rationale>
+      </rule>
+    </section>
+    <section name="llm-as-judge-pattern">
+      <rule>
+        <statement>Use a different model from the one that generated the code for L4 correctness evaluation.</statement>
+        <rationale>Generation model has systematic blind spots for its own output — it will approve its own logic errors. A secondary evaluator with fresh context catches what the generator cannot.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[LLM-as-judge prompt (L4):
+You are an evaluator. Input: spec.md (AC-X list), test-plan.md, implementation diff.
+Score 0-100 on:
+- Correctness: implementation matches all AC? (40%)
+- Completeness: all requirements addressed? (20%)
+- Security: obvious vulnerabilities? (20%)
+- Maintainability: readable, follows patterns? (20%)
+Output: score, factor breakdown, issues blocking L4 approval.
+Threshold: 80% minimum.]]></code>
+      </example>
+    </section>
+    <section name="gate-enforcement-strategies">
+      <list>
+        <item>Hard block (L1, L2): pipeline fails, no proceed — these gates are 100% automated and objective</item>
+        <item>Soft block (L3, L4): warning, require human approval to proceed — human judgment can assess context</item>
+        <item>Advisory: log issues, allow proceed — for non-critical informational checks only</item>
+      </list>
+      <rule>
+        <statement>Define gate pass criteria in constitution.md at project start, not per-feature under deadline pressure.</statement>
+        <rationale>Negotiating thresholds under deadline pressure produces inconsistent standards and technical debt. Fixed, project-level standards prevent this.</rationale>
+      </rule>
+    </section>
+    <templates>
+      <template path="templates/quality-gates.yml" purpose="GitHub Actions workflow implementing L1-L4 gates for Node.js and Python"/>
+      <template path="templates/calculate-confidence.py" purpose="Python dataclass-based confidence score calculator with Gate enum"/>
+      <template path="templates/gate-report.md" purpose="Markdown quality gate report template with per-gate status tables"/>
+      <template path="templates/run-gates.sh" purpose="Shell script running L1-L2 gates locally for Python projects"/>
+    </templates>
+  </content>
+</methodology>

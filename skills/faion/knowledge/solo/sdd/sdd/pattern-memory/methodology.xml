@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="pattern-memory">
+  <metadata>
+    <tier>solo</tier>
+    <group>sdd</group>
+    <domain>sdd</domain>
+    <summary>A system for capturing, storing, and retrieving proven solutions from development sessions so LLM agents apply consistent patterns across tasks and projects.</summary>
+    <tags>
+      <tag>pattern-memory</tag>
+      <tag>learning</tag>
+      <tag>reflexion</tag>
+      <tag>agent-memory</tag>
+      <tag>knowledge-capture</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-29</created>
+  </metadata>
+  <content>
+    <title>Pattern Memory</title>
+    <summary>A system for capturing, storing, and retrieving proven solutions from development sessions so LLM agents apply consistent patterns across tasks and projects. Patterns are stored in `.aidocs/memory/patterns.md` with a confidence score (0.5 initial → 0.9+ proven), graduated by number of successful uses. High-confidence patterns (0.8+) are synced to `CLAUDE.md` for immediate availability in new sessions. The rule: capture when a non-obvious solution works in 2+ distinct contexts; never capture obvious best practices or one-off fixes.</summary>
+    <why>
+      <p>Each task session starts fresh. Without an explicit pattern store, agents rediscover the same solutions independently, producing divergent naming conventions, inconsistent error handling, and duplicated utilities. Hierarchical memory (working → session → project → global) manages context limits while preserving cross-task learning. The Reflexion paper (Shinn et al., 2023) demonstrates that verbal reinforcement via retained examples measurably improves agent reliability on subsequent similar tasks.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>After a successful task execution where a non-obvious solution was applied — capture before the session ends</item>
+        <item>When the same problem appears for the second time in a different context — that is a pattern, not a one-off</item>
+        <item>Before starting a new task wave — inject high-confidence patterns (0.8+) into the task context header</item>
+        <item>During CLAUDE.md maintenance: sync established patterns (0.9+) into the project rules file</item>
+        <item>When onboarding a new agent session that lacks project history — load `patterns.md` as working memory</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Capturing well-known best practices already in framework docs (e.g., "use async/await")</item>
+        <item>One-off fixes specific to a single file or edge case</item>
+        <item>Patterns with confidence below 0.5 (only one use, unverified) — capture as candidate, do not promote</item>
+        <item>Project-specific configuration values (API keys, URLs) — those go in `.env`, not patterns</item>
+      </list>
+    </when-not-to-use>
+    <section name="pattern-vs-code-snippet">
+      <rule>
+        <statement>A pattern must include the problem context, when to apply, and when NOT to apply — not just the code example.</statement>
+        <rationale>Agents conflate "pattern" with "code snippet." A pattern applied in the wrong context is worse than no pattern. The problem context is what enables correct routing.</rationale>
+      </rule>
+      <list>
+        <item>Pattern: high abstraction (problem + context + solution), cross-project reusability, metadata (validation, provenance), evolves over time</item>
+        <item>Code snippet: low abstraction (just code), project-specific, no metadata, static</item>
+      </list>
+    </section>
+    <section name="pattern-categories">
+      <list>
+        <item>Code patterns: error handling, data management, API design, testing approaches</item>
+        <item>Architecture patterns: structural (component org, module boundaries), behavioral (event handling, pub-sub), integration (service communication)</item>
+        <item>Workflow patterns: planning (estimation, decomposition), execution (implementation order, debugging), review (quality gates, code review practices)</item>
+      </list>
+    </section>
+    <section name="confidence-levels">
+      <rule>
+        <statement>Start every new pattern at confidence 0.5; do not promote to patterns.md until at least 2 uses in distinct contexts.</statement>
+        <rationale>Confidence scores are self-assessed by agents and inflate over time without external validation. Requiring 2+ distinct-context uses before promotion prevents premature standardization of single-use fixes.</rationale>
+      </rule>
+      <list>
+        <item>Initial (0.5): first successful use — capture as candidate</item>
+        <item>Validated (0.6-0.7): 2-3 successful uses in similar contexts</item>
+        <item>Established (0.8-0.9): 5+ uses, verified across different contexts — sync to CLAUDE.md</item>
+        <item>Proven (0.9+): 10+ uses, adopted as standard practice</item>
+      </list>
+    </section>
+    <section name="capture-triggers">
+      <rule>
+        <statement>Capture a pattern when: the solution works in 2+ different contexts, solves a problem seen before, includes a non-obvious insight, or prevents a common mistake.</statement>
+        <rationale>Without explicit extraction at task completion, agents never capture patterns. The extraction must be built into the task completion checklist, not left as an optional afterthought.</rationale>
+      </rule>
+      <list>
+        <item>Do capture: solutions to recurring problems, non-obvious approaches, cross-context generalizations, mistake preventers</item>
+        <item>Do not capture: one-off fixes, well-known best practices (already in docs), project-specific configurations, trivial implementations</item>
+      </list>
+    </section>
+    <section name="hierarchical-memory-architecture">
+      <list>
+        <item>Working memory (current task): always loaded, session scope</item>
+        <item>Session memory (current feature): on-demand, conversation scope</item>
+        <item>Project memory (.aidocs/memory/patterns.md): persistent, queried by relevance</item>
+        <item>Global memory: permanent, cross-project — used sparingly</item>
+      </list>
+      <rule>
+        <statement>Filter patterns.md by relevance to the current task domain before injecting into task context.</statement>
+        <rationale>Loading all patterns into every task context wastes tokens. A payment feature task does not need auth patterns injected unless they share a mechanism.</rationale>
+      </rule>
+    </section>
+    <section name="confidence-score-formula">
+      <rule>
+        <statement>Calculate confidence using the weighted formula: base_score × usage_factor × success_factor × recency_factor.</statement>
+        <rationale>Objective scoring prevents subjective inflation. The recency factor ensures patterns that go unused naturally decay rather than cluttering the active pattern store.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[confidence = base_score * usage_factor * success_factor * recency_factor
+
+Where:
+  base_score:      0.5 (initial)
+  usage_factor:    min(usage_count / 10, 1.5)
+  success_factor:  success_rate ^ 0.5
+  recency_factor:  1.0 - (days_since_last_use / 365) * 0.3]]></code>
+      </example>
+      <list>
+        <item>First successful use: set to 0.5</item>
+        <item>Successful reuse: +0.05 to +0.10</item>
+        <item>Failed application: -0.10 to -0.20</item>
+        <item>No use for 90 days: -0.05</item>
+        <item>Peer validation: +0.10</item>
+      </list>
+    </section>
+    <section name="claude-md-sync-rules">
+      <rule>
+        <statement>Sync patterns with confidence 0.8+ and 5+ uses to CLAUDE.md; never include low-confidence or verbose patterns.</statement>
+        <rationale>CLAUDE.md is loaded in every session. Bloating it with unvalidated or verbose patterns wastes context budget and trains agents to ignore the patterns section.</rationale>
+      </rule>
+      <list>
+        <item>Include in CLAUDE.md: high-confidence patterns (0.8+), frequently used (5+ uses), project-specific conventions, critical anti-patterns from mistakes.md</item>
+        <item>Exclude from CLAUDE.md: low-confidence patterns (still validating), obvious patterns (well-known best practices), verbose code examples (link to patterns.md instead)</item>
+      </list>
+      <example type="good">
+        <code lang="markdown"><![CDATA[## Learned Patterns
+
+### PAT-001: Async Error Boundary
+**Confidence:** 0.92 | **Uses:** 15 | **Success:** 93%
+- Wrap async operations with try-catch-finally
+- Manage loading/error/data states explicitly
+- Display appropriate UI for each state
+See: .aidocs/memory/patterns.md#PAT-001]]></code>
+        <note>Concise summary with link to full pattern. Metrics visible at a glance. No inline code in CLAUDE.md.</note>
+      </example>
+    </section>
+    <section name="maintenance">
+      <rule>
+        <statement>Archive patterns unused for 90+ days to patterns-archive.md rather than deleting them.</statement>
+        <rationale>Seasonal or infrequent tasks may need patterns that appear dormant. Archiving preserves them while keeping the active store clean.</rationale>
+      </rule>
+      <list>
+        <item>Review patterns.md after every 5 completed tasks for duplicates and outdated entries</item>
+        <item>Merge patterns that solve the same problem in the same context</item>
+        <item>Add version/context reference to patterns validated against a specific library version</item>
+        <item>Apply confidence decay formula to patterns unused 90+ days</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/pattern-entry.md" purpose="Full PAT-XXX entry template with problem, solution, confidence, provenance"/>
+      <template path="templates/pattern-minimal.md" purpose="Minimal quick-capture template for use during execution"/>
+      <template path="templates/patterns-file.md" purpose="Structure for the main `.aidocs/memory/patterns.md` file"/>
+      <template path="templates/mistakes-file.md" purpose="Structure for `.aidocs/memory/mistakes.md` anti-patterns log"/>
+      <template path="templates/prompt-extract.txt" purpose="Prompts for post-task pattern extraction and periodic review"/>
+      <template path="templates/sync-patterns.sh" purpose="Shell script syncing high-confidence patterns to CLAUDE.md"/>
+    </templates>
+  </content>
+</methodology>
