@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-rate-limiting">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>api-developer</domain>
+    <summary>Rate limit APIs with sliding window, fixed window, or token bucket. Tier-based quotas, per-endpoint limits, standard headers, Redis for distributed deployments.</summary>
+    <tags>
+      <tag>api-design</tag>
+      <tag>rate-limiting</tag>
+      <tag>scaling</tag>
+      <tag>redis</tag>
+      <tag>performance</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>API Rate Limiting</title>
+
+    <summary>Throttle API consumers using sliding window (fairness), fixed window (simplicity), or token bucket (burst control) algorithms. Every 429 response includes X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, and Retry-After headers. Limits are tiered by plan; endpoints with expensive operations use tighter per-route limits. Redis backs distributed deployments.</summary>
+
+    <why>
+      <p>Without rate limiting, a single misbehaving client can saturate server resources and degrade service for all users. Sliding window avoids the boundary spike problem of fixed window. Token bucket allows controlled bursting — ideal for bursty-but-fair use cases like search or export. Standard headers allow clients to back off gracefully without polling.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Public APIs where abuse, scraping, or unintentional client loops can degrade service for paying customers — rate limiting is mandatory before launch.</item>
+        <item>Tiered SaaS pricing models that gate value by request volume (free / plus / pro / enterprise) and need per-key quotas.</item>
+        <item>Cost-sensitive endpoints fronting paid third-party services (LLM inference, geocoding, SMS) where one runaway client triggers real financial loss.</item>
+        <item>Auth and password-reset endpoints where rate limiting + lockout deters credential-stuffing and enumeration attacks.</item>
+        <item>Distributed multi-instance services that must share counters; a Redis / Valkey-backed sliding window is the standard.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Internal-only RPC between trusted services with stable load profiles — circuit breakers and concurrency limits are more useful than per-key rate limits.</item>
+        <item>Pure static asset delivery (CDN handles abuse upstream).</item>
+        <item>Workflows already gated by quotas at a different layer (DB connection pool, job queue concurrency) where adding HTTP rate limits hides the real bottleneck.</item>
+        <item>Endpoints that must process every event (webhooks, IoT telemetry) — back-pressure with 503 + queues, not 429.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="rate-limiting-algorithms">
+      <rule>
+        <statement>Use fixed window only when simplicity is more important than fairness. It allows a burst of 2x the limit at window boundaries (last request of window N + first request of window N+1).</statement>
+        <rationale>Fixed window is O(1) memory per key and requires no external store. The boundary burst is acceptable for non-critical endpoints where occasional spikes are tolerable.</rationale>
+      </rule>
+
+      <example type="good" title="Fixed Window Implementation">
+        <code lang="python"><![CDATA[
+class FixedWindowRateLimiter:
+    def __init__(self, limit: int, window_seconds: int):
+        self.limit = limit
+        self.window = window_seconds
+        self.counters: dict[str, int] = {}
+
+    def is_allowed(self, key: str) -> bool:
+        import time
+        now = int(time.time())
+        window_start = now - (now % self.window)
+        counter_key = f"{key}:{window_start}"
+        count = self.counters.get(counter_key, 0)
+        if count >= self.limit:
+            return False
+        self.counters[counter_key] = count + 1
+        return True
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using fixed window for search, payment, or AI inference endpoints where boundary bursts can cause downstream overload.</description>
+        <reason>A 2x burst at the boundary can overwhelm slow downstream services even when the average rate is within limits.</reason>
+      </antipattern>
+
+      <rule>
+        <statement>Use sliding window for production APIs where fairness across time is required. Implement with a Redis sorted set: each request is a member with score = timestamp; remove expired members before counting.</statement>
+        <rationale>Sliding window has no boundary burst problem. Redis sorted set pipeline makes the check-and-increment atomic, which is required for correctness in distributed deployments.</rationale>
+      </rule>
+
+      <example type="good" title="Sliding Window with Redis">
+        <code lang="python"><![CDATA[
+class SlidingWindowRateLimiter:
+    def __init__(self, limit: int, window_seconds: int, redis_client):
+        self.limit = limit
+        self.window = window_seconds
+        self.redis = redis_client
+
+    async def is_allowed(self, key: str) -> bool:
+        import time
+        now = time.time()
+        pipe = self.redis.pipeline()
+        pipe.zremrangebyscore(key, 0, now - self.window)
+        pipe.zadd(key, {str(now): now})
+        pipe.zcard(key)
+        pipe.expire(key, self.window)
+        _, _, count, _ = await pipe.execute()
+        return count <= self.limit
+]]></code>
+      </example>
+
+      <rule>
+        <statement>Use token bucket when clients need burst capacity above the steady-state rate. Configure bucket_size for the maximum burst and refill_rate for the steady-state requests/second.</statement>
+        <rationale>Token bucket allows a burst of bucket_size requests immediately (e.g. application startup) then throttles to refill_rate. This matches real usage patterns better than fixed quotas for clients that batch work.</rationale>
+      </rule>
+
+      <example type="good" title="Token Bucket Implementation">
+        <code lang="python"><![CDATA[
+class TokenBucketRateLimiter:
+    def __init__(self, bucket_size: int, refill_rate: float):
+        self.bucket_size = bucket_size
+        self.refill_rate = refill_rate  # tokens per second
+        self.buckets: dict = {}
+
+    def is_allowed(self, key: str, tokens: int = 1) -> bool:
+        import time
+        now = time.time()
+        bucket = self.buckets.get(key, {
+            "tokens": self.bucket_size, "last_refill": now
+        })
+        elapsed = now - bucket["last_refill"]
+        bucket["tokens"] = min(
+            self.bucket_size,
+            bucket["tokens"] + elapsed * self.refill_rate
+        )
+        bucket["last_refill"] = now
+        if bucket["tokens"] >= tokens:
+            bucket["tokens"] -= tokens
+            self.buckets[key] = bucket
+            return True
+        return False
+]]></code>
+      </example>
+    </section>
+
+    <section name="response-headers-and-implementation">
+      <rule>
+        <statement>Every rate-limited response must include X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset (Unix timestamp), and Retry-After (seconds) on 429 responses.</statement>
+        <rationale>Standard headers allow clients to implement polite backoff without guessing the reset window. Retry-After is required by RFC 6585 on 429 responses. Without these headers, clients resort to exponential backoff with arbitrary delays.</rationale>
+      </rule>
+
+      <example type="good" title="429 Response with Headers">
+        <code lang="http"><![CDATA[
+HTTP/1.1 429 Too Many Requests
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1735689600
+Retry-After: 60
+Content-Type: application/json
+
+{
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "Too many requests",
+    "retryAfter": 60,
+    "limit": 100,
+    "window": "1h"
+  }
+}
+]]></code>
+      </example>
+
+      <rule>
+        <statement>Implement rate limiting as an HTTP middleware layer, not inside individual route handlers. Extract the rate limit key from authenticated user identity, not IP address.</statement>
+        <rationale>Middleware centralises the enforcement point and ensures no endpoint bypasses rate limiting. IP-based limiting fails behind NAT/proxies where many users share one IP.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Define plan-based tiers (free/plus/pro/enterprise) with separate limit + burst values. Overlay per-endpoint overrides for expensive operations that warrant tighter limits regardless of tier.</statement>
+        <rationale>A single global limit under-serves premium plans and over-serves free plans. Per-endpoint limits protect slow operations (search, export) from consuming the full quota allowance.</rationale>
+      </rule>
+
+      <example type="good" title="Tiered Rate Limit Configuration">
+        <code lang="python"><![CDATA[
+RATE_LIMITS = {
+    "/api/search": {"limit": 10, "window": 60},
+    "/api/export": {"limit": 5, "window": 3600},
+    "/api/users":  {"limit": 100, "window": 60},
+}
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using the same rate limit for all endpoints regardless of computational cost.</description>
+        <reason>A search endpoint that hits a database and an AI model should have a tighter limit than a GET /health check; treating them equally wastes budget on expensive operations and wastes capacity on cheap ones.</reason>
+      </antipattern>
+    </section>
+
+    <section name="failure-modes-and-gotchas">
+      <p>Fixed-window thundering herd: All clients reset at minute boundary; spike at `:00`. Mitigation: sliding window or token bucket.</p>
+      <p>Per-IP only: NAT'd corporate networks share an IP; one customer blocks the rest. Mitigation: prefer API key / user ID; fall back to IP only for unauth.</p>
+      <p>In-memory counters in distributed deploy: Counters per pod allow N×limit traffic. Mitigation: Redis / Valkey with `INCR`/`ZADD` Lua script.</p>
+      <p>Race conditions: Naive `GET counter; INCR if &lt; limit; SET counter` allows over-limit. Use atomic Redis pipelines or `INCR` with TTL.</p>
+      <p>No `Retry-After`: Clients hammer endpoints in tight loops; bandwidth + log spam. Always set the header.</p>
+      <p>Hidden tier mismatches: Free user hits a "pro" endpoint; gets 429 with no upgrade prompt. Surface tier limit + upgrade URL in response.</p>
+      <p>Bucket pollution: Sliding-window ZSET grows unbounded if `EXPIRE` missing; memory leak. Always set TTL.</p>
+      <p>Distributed clock skew: Token-bucket math assumes synchronized time; large skew over-credits or starves. Use Redis time as authoritative.</p>
+      <p>Burst handling: Token bucket with no burst capacity rejects valid bursts (UI page-load fanout). Set bucket &gt; steady-state limit.</p>
+      <p>Weighted endpoints: All endpoints cost 1 token even though some are 100× heavier. Use cost-per-call or per-endpoint limits.</p>
+      <p>Header inconsistency: Mixing `X-RateLimit-*` and IETF `RateLimit-*` confuses SDKs. Pick the IETF draft (`RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`) going forward.</p>
+      <p>Bypass via authenticated proxies: Internal services share a key; one misbehaving service drains the limit. Mitigation: per-service keys.</p>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Identify principals consistently: API key → user ID → IP. Whitelist internal service keys.</item>
+        <item>Sliding window or token bucket in production; fixed window only for trivial cases.</item>
+        <item>Atomic counters via Redis Lua / pipelines. Never `GET; check; SET`.</item>
+        <item>TTL on every counter / ZSET to prevent memory leaks.</item>
+        <item>Per-endpoint group limits. Heavy endpoints (`/search`, `/export`) need stricter caps than `/users/me`.</item>
+        <item>Cost-per-call for non-uniform endpoints (LLM tokens, search depth) — limit by points, not request count.</item>
+        <item>Headers always: IETF `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` on success; `Retry-After` on 429.</item>
+        <item>Problem Details body on 429 with `code: RATE_LIMIT_EXCEEDED`, tier info, upgrade link.</item>
+        <item>Edge limits at CDN / WAF for L7 attacks; app-level limits for business quotas.</item>
+        <item>Logs and metrics: track 429 rate, top consumers, tier saturation; alert on sustained ≥80% utilization.</item>
+        <item>Document limits prominently in API docs with code examples for backoff (exponential + jitter).</item>
+        <item>Burst capacity sized to natural UI fanouts (e.g. dashboard with 6 concurrent calls); too tight breaks pages.</item>
+        <item>Soft warnings — surface `RateLimit-Remaining` &lt; 10% via UI to give end-users runway.</item>
+        <item>Roll out behind feature flags; run shadow mode first (count would-be limits without enforcing).</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>In-process counters in distributed deploys: Agent picks `slowapi` defaults; counters local; total throughput = N×limit. Force Redis backend.</item>
+        <item>Forgetting TTL on ZSET / hash: Memory leaks; Redis OOM later. Lint the script; require `EXPIRE` after every counter write.</item>
+        <item>Naive get-then-set: Race condition over-limits. Reject non-atomic patterns in code review.</item>
+        <item>Missing `Retry-After`: Clients tight-loop. Header auditor blocks merge.</item>
+        <item>Penalizing all clients on a NAT'd IP: Agent rate-limits unauthenticated traffic by IP only; one customer takes down the rest. Use API key when present.</item>
+        <item>Hard-coded limits in middleware: No tier awareness; agent forgets to look up plan. Always read from policy config + key store.</item>
+        <item>429 without Problem Details body: Loose JSON envelope. Use shared `ProblemDetail.from_code(...)`.</item>
+        <item>Bypass paths: `/internal/...` skipped by middleware via overly broad regex. Bypass-detector flags.</item>
+        <item>Counter key collisions: `rate:{user}` collides between endpoint groups. Namespace as `rl:{group}:{principal}`.</item>
+        <item>Time skew: Agent uses `datetime.now()` per pod for token-bucket math; Redis-time is authoritative.</item>
+        <item>Health check rate-limited: `/health` blocked under load → liveness probes restart pods. Always exempt.</item>
+        <item>Counter pollution from canaries: Synthetic monitors share an API key; saturate the limit. Whitelist monitor keys.</item>
+        <item>Scope confusion: Limit applied per request but cost is per token / per row. Switch to weighted limits.</item>
+        <item>Hot Redis key: All traffic hashed to one shard; latency spike. Use `{tag}` hash slots or per-region instances.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive rate-limit work in four stages: (1) a policy-author subagent encodes the limit matrix (tier × endpoint group → algorithm + limit + burst + window) in a single config file referenced by gateway + app middleware; (2) a middleware-author subagent generates ASGI / Express / Gin middleware that reads the policy, talks to Redis, sets `RateLimit-*` and `Retry-After` headers, and returns Problem Details on 429; (3) a load-tester subagent runs k6 / hey / locust against staging to verify limits hold under burst and steady load; (4) a dashboard-builder subagent emits Grafana panels for `429 rate`, `consumed budget per tier`, `top abusers`. `faion-sdd-executor-agent` runs the standard quality gate. Always lift limits behind a feature flag for gradual rollouts.</p>
+
+      <list>
+        <item>Recommended subagent: `faion-sdd-executor-agent` — quality gate runs lint/build/test plus integration tests against a Redis fixture.</item>
+        <item>A purpose-built policy-author — emits `rate-limits.yaml` with per-tier per-endpoint groups; refuses unbounded endpoints.</item>
+        <item>A load-test-runner — generates k6 scripts that ramp to 1.5× limit and assert 429 + `Retry-After` distribution.</item>
+        <item>A redis-script-curator — ships `INCR-with-TTL` and `ZADD-sliding-window` Lua scripts as canonical primitives; agents must reuse, not reinvent.</item>
+        <item>A header-auditor — verifies every successful response from rate-limited endpoints includes `RateLimit-*`; every 429 includes `Retry-After`.</item>
+        <item>A bypass-detector — scans middleware for `if internal:` paths that disable limits; flags missing scope guards.</item>
+        <item>A password-scrubber-agent — catches keys / IPs in tests / logs.</item>
+      </list>
+
+      <p>Prompt pattern for policy authoring:</p>
+      <code lang="text"><![CDATA[
+Add rate limits for the new /api/exports endpoint group.
+Plans: free=10/h burst 2; plus=100/h burst 10; pro=1000/h burst 50.
+Algorithm: sliding window via Redis ZSET.
+Output a diff to rate-limits.yaml only; do not edit middleware.
+Reject configs without burst or without TTL.
+]]></code>
+
+      <p>Prompt pattern for middleware generation:</p>
+      <code lang="text"><![CDATA[
+Generate FastAPI middleware reading rate-limits.yaml.
+Per request:
+- Identify principal: api_key from Authorization header,
+  fallback to X-API-Key, fallback to client IP.
+- Look up tier from key store; default = "free".
+- Apply policy for endpoint group via Redis sliding window.
+- On allow: set RateLimit-Limit/-Remaining/-Reset (IETF draft).
+- On deny: 429 + RFC 9457 Problem Details type
+  https://api.example.com/errors/rate-limit-exceeded + Retry-After.
+- Skip /health and /metrics.
+- Whitelist principals tagged "internal" via key store flag.
+Add an integration test using fakeredis covering burst + steady-state.
+]]></code>
+    </section>
+
+    <templates>
+      <template path="templates/rate_limiter.py" purpose="SlidingWindowRateLimiter and TokenBucketRateLimiter classes with Redis backend"/>
+      <template path="templates/middleware.py" purpose="FastAPI rate-limit middleware with header injection and 429 response"/>
+    </templates>
+
+    <see-also>
+      <link href="https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/"/>
+      <link href="https://datatracker.ietf.org/doc/html/rfc6585"/>
+      <link href="https://stripe.com/docs/rate-limits"/>
+      <link href="https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting"/>
+      <link href="https://developers.cloudflare.com/waf/rate-limiting-rules/"/>
+      <link href="https://redis.io/glossary/rate-limiting/"/>
+      <link href="https://en.wikipedia.org/wiki/Token_bucket"/>
+    </see-also>
+  </content>
+</methodology>
