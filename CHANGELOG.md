@@ -3,6 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+- chore: migrate uv-lockfile-floor to methodology.xml (feature-047 batch A18)
 - chore: migrate test-consumer-contract-from-spec, test-golden-master-legacy-rewrite, test-mutation-feedback-loop to methodology.xml (feature-047 batch A14)
 - chore: migrate task-plan-mode-locked-execution, task-spec-kit-three-step, task-worktree-runtime-isolation to methodology.xml (feature-047 batch A13)
 - chore: migrate test-property-based-llm-invariants, test-self-healing-locators-audited, test-tdd-red-green-split-agents to methodology.xml (feature-047 batch A15)
