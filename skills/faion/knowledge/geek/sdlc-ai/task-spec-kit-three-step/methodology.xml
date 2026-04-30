@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="task-spec-kit-three-step">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Run /speckit.specify → /speckit.plan → /speckit.tasks before any coding; yields spec.md, plan.md, tasks.md in fixed order. Only tasks.md drives the coding agent.</summary>
+    <tags>
+      <tag>spec-kit</tag>
+      <tag>spec-driven-development</tag>
+      <tag>task-lifecycle</tag>
+      <tag>constitution-gate</tag>
+      <tag>artifact-order</tag>
+    </tags>
+    <category>task</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Spec-Kit Three-Step Pipeline (specify → plan → tasks)</title>
+    <summary>Before any agent writes code, run the GitHub spec-kit chain `/speckit.specify` → `/speckit.plan` → `/speckit.tasks` so the workflow yields three versioned artifacts in this fixed order: `spec.md` (WHAT/WHY with explicit `[NEEDS CLARIFICATION]` markers), `plan.md` (HOW + tech rationale + constitution gate evidence), and `tasks.md` (parallelizable work items, each tagged `[P]` if it can run concurrently). Only `tasks.md` is allowed to drive the coding agent — the spec, not the generated code, is the durable source of truth that survives model swaps and context resets.</summary>
+    <why>
+      <p>Free-form chat with an LLM produces code that drifts from intent within 2-3 turns; nothing in the conversation is versioned, the acceptance criteria are unrecoverable, and `[NEEDS CLARIFICATION]` markers never surface so the model silently guesses. Spec-kit injects a constitution of nine immutable principles (library-first, test-first, simplicity gate, anti-abstraction, integration-first testing, etc.) as automated template gates, so the LLM is constrained toward higher-quality output and the spec acts as a deterministic anchor across context swaps. GitHub published the toolkit open-source in Sept 2025; by April 2026 it is the reference implementation of Spec-Driven Development across Claude Code, Codex, Cursor, and Gemini CLI.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any non-trivial feature touching more than ~3 files or one service boundary.</item>
+        <item>High-stakes domains traceable to a regulator or contract: payments, auth, migrations, PII flows.</item>
+        <item>Multi-agent fan-out where each parallel agent needs an isolable task with its own AC.</item>
+        <item>Greenfield modules where the public API surface is the artifact others will depend on.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>True one-line bug fixes, typo corrections, dependency patch bumps — spec ceremony exceeds the change.</item>
+        <item>Throwaway exploratory spike branches whose code is committed but never merged.</item>
+        <item>`npm audit fix` / `cargo update` style mechanical work — Renovate/Dependabot, not spec-kit.</item>
+        <item>Pure ops tasks with no code change (cert renewal, DNS edit) — runbook, not spec.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="three-artifact-order">
+      <p>Spec-kit defines a sequenced pipeline. Each artifact has a different audience, a different gate, and a different update rule. Skipping a stage collapses the contract: the agent loses the WHAT/WHY, the human loses the HOW review, and the merged code has no traceability anchor.</p>
+
+      <rule testable="true">
+        <statement>The agent MUST run `/speckit.specify` before `/speckit.plan`, and `/speckit.plan` before `/speckit.tasks`. The agent MUST NOT edit any source file until `tasks.md` exists, lists the file in scope, and is checked into the feature branch. Any unresolved `[NEEDS CLARIFICATION]` marker in `spec.md` blocks plan generation.</statement>
+        <rationale>The spec is the only artifact that survives model swaps and conversation truncation; the plan is the only artifact that records architectural rationale for review; tasks.md is the only artifact that decomposes the work into parallelizable, AC-anchored units the coding agent can attempt independently. Reordering or skipping breaks the audit chain.</rationale>
+      </rule>
+
+      <example type="good" title="Correct spec-kit chain">
+        <code lang="bash"><![CDATA[
+# feature branch: feat/oauth-google
+$ /speckit.specify "Add OAuth Google login for end-users"
+# → spec.md generated with 4 [NEEDS CLARIFICATION] markers
+# Resolve markers via PM input → re-run specify → 0 markers
+$ /speckit.plan
+# → plan.md picks Authlib, sets redirect rules, records constitution gates
+$ /speckit.tasks
+# → tasks.md emits 11 work items, T-003 and T-007 marked [P]
+# Only NOW does the coding agent open editor on auth/views.py.
+        ]]></code>
+        <note>Each command produces a versioned artifact; coding starts only after tasks.md.</note>
+      </example>
+
+      <example type="bad" title="Skip the chain">
+        <code lang="bash"><![CDATA[
+# Skip the chain — go straight to code
+$ claude "implement Google OAuth login"
+# Agent guesses Authlib vs python-social-auth, picks redirect URI rule
+# without product review, ships code. Two weeks later PM says
+# "we wanted PKCE-only, no client secret in env."
+# Rework cost: 100% of the original work.
+        ]]></code>
+        <note>No spec, no plan, no tasks → no rollback anchor and no traceable AC.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent autopopulates `[NEEDS CLARIFICATION]` markers with plausible defaults to "make progress" instead of blocking on PM resolution.</description>
+        <reason>Defaults stuffed into the spec become invisible assumptions in the merged code; the constitution's "test-first" gate cannot fail what it cannot see.</reason>
+      </antipattern>
+    </section>
+
+    <section name="constitution-gate">
+      <p>Spec-kit's constitution.md ships nine immutable principles (library-first, test-first, simplicity gate, anti-abstraction, integration-first testing, etc.). The plan template embeds them as a checklist; each item must carry a one-sentence justification or an explicit waiver before `/speckit.tasks` will run. The constitution moves "good practice" from advice into machine-checked precondition.</p>
+
+      <rule testable="true">
+        <statement>plan.md MUST contain a "Constitution Gates" section enumerating each principle with one of three values: `pass` (with one-sentence evidence), `waived` (with reviewer name and link to the waiver issue), or `blocked` (which halts the pipeline). The agent MUST NOT generate tasks.md while any gate is `blocked`. Waivers are only valid if signed by a CODEOWNER and reference an issue ID.</statement>
+        <rationale>Without recorded evidence, the gate degenerates into a comment the LLM ignores. By forcing a value plus citation per principle, the plan becomes auditable and the cost of skipping a principle (a CODEOWNER review) is now non-zero — which is what makes the gate behavioural.</rationale>
+      </rule>
+
+      <example type="good" title="Constitution gates table">
+        <code lang="markdown"><![CDATA[
+## Constitution Gates
+
+| Principle | Status | Evidence |
+|-----------|--------|----------|
+| Library-first | pass | New auth code lives in `libs/auth/`, not `apps/web/views/`. |
+| Test-first | pass | T-001..T-004 are pytest cases; T-005+ depend on them. |
+| Simplicity gate | waived | #4112 — multi-tenant requires extra layer; reviewer @ruslan. |
+| Anti-abstraction | pass | Direct Authlib calls; no in-house wrapper. |
+| Integration-first testing | pass | T-006 spins up real Google sandbox via VCR cassette. |
+        ]]></code>
+        <note>Every row has a value and a citation; the pipeline can proceed.</note>
+      </example>
+
+      <example type="bad" title="Aggregate pass without evidence">
+        <code lang="markdown"><![CDATA[
+## Constitution Gates
+
+All gates: pass.
+        ]]></code>
+        <note>Aggregate pass with no per-principle evidence — equivalent to no gate.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent waives a gate by writing "waived" without linking a CODEOWNER-signed issue ID, then generates tasks.md anyway.</description>
+        <reason>Unsigned waivers re-introduce silent assumptions; the next reviewer cannot tell if the bypass was approved or invented by the model.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/spec-skeleton.md" purpose="Minimal spec.md skeleton with required sections and [NEEDS CLARIFICATION] markers."/>
+      <template path="templates/tasks-skeleton.md" purpose="tasks.md skeleton with [P] parallel-marker convention and Closes #N anchor field."/>
+    </templates>
+
+    <see-also>
+      <link href="https://github.com/github/spec-kit">GitHub spec-kit repository (canonical implementation).</link>
+      <link href="https://github.blog/ai-and-ml/generative-ai/spec-driven-development-with-ai-get-started-with-a-new-open-source-toolkit/">GitHub blog: Spec-driven development with AI (Sept 2025).</link>
+      <link href="https://github.com/github/spec-kit/blob/main/spec-driven.md">Spec-Driven Development definition + constitution principles.</link>
+      <link href="https://speckit.org/">speckit.org reference site.</link>
+    </see-also>
+  </content>
+</methodology>
