@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="mr-graph-vs-diff-reviewer">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Choose diff-only AI reviewers for repos under 100k LOC with strong isolation; choose graph-indexed for legacy/polyglot codebases over 500k LOC where cross-module ripple breaks diff-only coverage.</summary>
+    <tags>
+      <tag>code-review</tag>
+      <tag>pull-request</tag>
+      <tag>graph-indexed</tag>
+      <tag>diff-only</tag>
+      <tag>ai-reviewer</tag>
+    </tags>
+    <category>mr</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Graph-Indexed vs Diff-Only AI Reviewers</title>
+    <summary>Two architectures of AI code reviewers co-exist and behave differently. Diff-only reviewers (Sourcery, GitHub Copilot Code Review, Codeball) read the patch plus its nearest neighbours — fast, cheap, blind to cross-file impact. Graph-indexed reviewers (Greptile, CodeRabbit Pro, Qodo Merge 2.0 multi-agent) build a repo-wide knowledge graph and trace ripple effects — slower, expensive, catch cross-module breakage that the diff-only class misses entirely. Pick diff-only for monorepos with strong module isolation and &lt;100k LOC; pick graph-indexed for legacy/polyglot codebases &gt;500k LOC where one rename quietly breaks five callers.</summary>
+    <why>
+      <p>Defaulting to "whatever the marketing page suggests" produces predictable failure: graph-indexed reviewers on a green-field 30k-LOC service slow PRs by minutes for negligible find rate, and diff-only reviewers on a 1M-LOC legacy monolith ship patches that break a downstream consumer in another package. The architecture choice is the dominant cost-vs-coverage knob; the rule below is a decision tree against measurable repo properties (LOC, module isolation, polyglot count, latency target) instead of vendor preference.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Selecting an AI reviewer for a new repo or migrating from a basic comment bot.</item>
+        <item>Re-evaluating after a repo crosses a size or polyglot threshold (e.g. acquisition, framework migration).</item>
+        <item>Auditing an existing reviewer that "feels noisy" or "missed an obvious break" — usually wrong architecture.</item>
+        <item>Cost-control reviews where the reviewer line item exceeds the budget for actual incident-prevention value.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>One-off open-source contribution flow where the maintainer reads every PR manually anyway.</item>
+        <item>Repos with strict zero-third-party-app policy on source — pick a self-hosted PR-Agent variant or skip entirely.</item>
+        <item>Tiny PR pipelines (&lt;5 PRs/day) — the per-PR cost difference is negligible; pick on UX, not architecture.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="architecture-decision">
+      <p>The architectures have different cost curves. Diff-only is O(diff) — fast (&lt;60s), cheap, blind beyond two hops. Graph-indexed is O(repo) on first index, then O(diff × graph-fanout) per PR — slow (minutes), expensive, catches cross-module ripple.</p>
+
+      <rule testable="true">
+        <statement>Pick `graph-indexed` when ANY hold: `LOC &gt; 500_000`, `polyglot_languages &gt; 2`, `module_boundaries == weak`, OR `bug_class == "innocent rename broke downstream"`. Pick `diff-only` when ALL hold: `LOC &lt; 100_000`, `module_boundaries == strong`, `pr_feedback_target_seconds &lt; 60`. For everything in between, default to `diff-only` (cheap baseline) plus on-demand `/review` from a graph-indexed bot for risky PRs.</statement>
+        <rationale>Greptile and CodeRabbit's own case studies converge on the LOC/polyglot threshold; Sourcery and Codeball published 60s feedback as their target, which only diff-only meets. Below 100k LOC the graph adds latency without proportionate find rate.</rationale>
+      </rule>
+
+      <example type="good" title="1.4M LOC polyglot — graph-indexed choice">
+        <code lang="yaml"><![CDATA[
+# .github/reviewer-decision.yml — repo profile drives choice
+repo:
+  loc: 1_400_000
+  languages: [typescript, python, go, kotlin]
+  module_boundaries: weak     # legacy monolith
+  pr_feedback_target_s: 600
+choice: graph_indexed
+vendor: greptile               # or coderabbit, qodo-merge-pro
+        ]]></code>
+        <note>1.4M LOC + polyglot + weak boundaries → graph-indexed catches the cross-module breaks.</note>
+      </example>
+
+      <example type="bad" title="30k LOC TS service — wrong graph-indexed choice">
+        <code lang="yaml"><![CDATA[
+repo:
+  loc: 30_000
+  languages: [typescript]
+  module_boundaries: strong
+  pr_feedback_target_s: 60
+choice: graph_indexed
+vendor: coderabbit_pro
+        ]]></code>
+        <note>30k LOC TS service: graph adds minutes of latency and reviewer cost for no measurable find-rate gain over Sourcery diff-only.</note>
+      </example>
+
+      <antipattern>
+        <description>Stacking both a graph-indexed reviewer AND a diff-only reviewer on every PR by default.</description>
+        <reason>Doubles cost, doubles comment noise, halves human attention on the actual review. Use the graph-indexed bot only on demand (`/review`).</reason>
+      </antipattern>
+
+      <reference path="templates/reviewer-decision.yml">Repo-property checklist that picks the architecture.</reference>
+    </section>
+
+    <section name="reviewer-matrix">
+      <p>Reads `git diff` plus the immediate file context. Sub-minute feedback, low cost, miss cross-module impact.</p>
+
+      <list>
+        <item>Sourcery — diff + Python/JS static analysis, mature suggestion patches.</item>
+        <item>GitHub Copilot Code Review — free tier, diff + nearest-neighbour file context.</item>
+        <item>Codeball — deep-learning classifier; emits `risk_score` 0..1 (auto-merge below 0.05 typical).</item>
+        <item>Qodo Merge `/review` (basic mode) — diff-only when run without graph indexing enabled.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>When choosing a diff-only reviewer, pin a single vendor per repo and set `auto_describe = true`, `auto_review = true`, `auto_improve = false`. Never enable two diff-only reviewers on the same PR.</statement>
+        <rationale>Two diff-only bots produce nearly identical comments — pure noise without coverage gain.</rationale>
+      </rule>
+
+      <p>Builds a repo-wide knowledge graph (call sites, type flows, ownership). First index is minutes; PR-time queries trace ripple effects.</p>
+
+      <list>
+        <item>Greptile — repo graph + retrieval; flagship find: silent cross-package breakage on rename.</item>
+        <item>CodeRabbit Pro — graph + multi-agent verifier (`@coderabbitai` chat, `/resolve`, `/review`).</item>
+        <item>Qodo Merge 2.0 — multi-agent + PR-history context (Feb 2026 release).</item>
+      </list>
+
+      <rule testable="true">
+        <statement>When choosing a graph-indexed reviewer, budget for the index refresh (cron rebuild on `main` push) and configure ownership rules so the bot tags the right CODEOWNER for each file the ripple touches. Disable `/improve`-style auto-suggestion patches by default — graph-indexed comments are dense enough.</statement>
+        <rationale>Stale graph misses recent renames; graph-indexed comment noise plus suggestion-patch noise overwhelms human reviewers and erodes trust.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/reviewer-decision.yml" purpose="Repo-property checklist that picks diff-only vs graph-indexed."/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.greptile.com/what-is-ai-code-review">Greptile — graph-indexed reviewer architecture.</link>
+      <link href="https://www.coderabbit.ai/">CodeRabbit — graph + multi-agent reviewer.</link>
+      <link href="https://docs.sourcery.ai/Code-Review/Overview/">Sourcery — diff + Python static analysis.</link>
+      <link href="https://github.com/sturdy-dev/codeball-action">Codeball — deep-learning classifier, diff-only, score 0..1.</link>
+      <link href="https://docs.github.com/en/copilot/concepts/agents/code-review">GitHub Copilot Code Review documentation.</link>
+      <link href="https://qodo-merge-docs.qodo.ai/tools/review/">Qodo Merge `/review` and `/improve` tooling.</link>
+      <link href="https://en.wikipedia.org/wiki/Qodo">Qodo (formerly CodiumAI) — Qodo 2.0 multi-agent.</link>
+      <link href="https://docs.coderabbit.ai">CodeRabbit chat + slash commands.</link>
+    </see-also>
+  </content>
+</methodology>
