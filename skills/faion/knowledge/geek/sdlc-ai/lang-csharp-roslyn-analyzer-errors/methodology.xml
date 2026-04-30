@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lang-csharp-roslyn-analyzer-errors">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Escalate Roslyn analyzer severities to error and ship PublicApiAnalyzers to prevent LLM-introduced null derefs, async-void, and accidental public API breaks in .NET.</summary>
+    <tags>
+      <tag>csharp</tag>
+      <tag>roslyn</tag>
+      <tag>analyzer</tag>
+      <tag>dotnet</tag>
+      <tag>public-api</tag>
+    </tags>
+    <category>lang</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+    <languages>
+      <language>csharp</language>
+    </languages>
+  </metadata>
+  <content>
+    <title>C# Roslyn Analyzers as Compile Errors + Public API Lock</title>
+    <summary>For every recurring class of LLM-introduced bug in a .NET codebase (null deref, async-void, missing ConfigureAwait, accidental public-API break), enable the corresponding Roslyn analyzer with severity error in .editorconfig and ship Microsoft.CodeAnalysis.PublicApiAnalyzers against checked-in PublicAPI.Shipped.txt + PublicAPI.Unshipped.txt files. The build refuses to compile until each failure mode is fixed, so Copilot/Claude-Code edits cannot land code that violates a known-bad pattern.</summary>
+    <why>
+      <p>Pure-LLM review hallucinates concerns; pure regex linters miss intent. Roslyn analyzers run inside the compiler with full type and flow information, so they reject exactly the syntactic shapes that produced past production incidents — not vague "best practices". When severity is error, the agent's tool-use loop sees a build failure, reads the diagnostic, and self-corrects; when it is warning, the agent learns to ignore it. PublicApiAnalyzers additionally pin the library's public surface: any agent-added public type or method that is not in PublicAPI.Unshipped.txt is a build error, preventing accidental SemVer-major breakage. Together they convert the most common LLM regressions in C# from "spotted in review" to "never typed".</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Production .NET libraries (NuGet packages, internal SDKs) where a SemVer-major break is expensive.</item>
+        <item>.NET services with Copilot/Claude/Codex authoring code regularly.</item>
+        <item>Codebases that have suffered repeated incidents from a single bug class (null deref, async-void, blocking .Result).</item>
+        <item>Multi-target frameworks (net8.0;net9.0) where consistency under all TFMs matters.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Throwaway scripts, scratch console apps, sample/demo projects — bootstrap cost dominates.</item>
+        <item>Internal apps with no public API surface — skip PublicApiAnalyzers, keep the bug-class analyzers.</item>
+        <item>Greenfield prototypes still churning the API every day — pin the analyzer set after the first stable release.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="analyzer-as-error">
+      <p>Roslyn analyzers ship rich, type-aware diagnostics (CA, IDE, VSTHRD, CS rules). Severity is configured per-rule in .editorconfig. When set to error, a violation breaks the build instead of generating a warning the agent will silently dismiss in its tool-use loop.</p>
+
+      <rule testable="true">
+        <statement>Project repos MUST commit a top-level .editorconfig that escalates at least these analyzer ids to error: CS8602/CS8618/CS8625 (nullable reference warnings), CA2007 (missing ConfigureAwait), VSTHRD100 (async-void), VSTHRD002 (synchronous wait on async), CA2016 (missing CancellationToken). MSBuild MUST set TreatWarningsAsErrors=true at minimum for Release. Agents are forbidden from suppressing a diagnostic via #pragma warning disable or [SuppressMessage] without a same-line justification comment.</statement>
+        <rationale>An analyzer at warning severity is invisible to an LLM agent unless the harness surfaces it; at error it becomes a compile failure the agent must address before proceeding (per Microsoft .NET team's "make the bug class structurally impossible" pattern).</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="ini"><![CDATA[
+# .editorconfig (root)
+root = true
+
+[*.cs]
+dotnet_diagnostic.CS8602.severity = error  # null deref
+dotnet_diagnostic.CS8618.severity = error  # uninitialized non-null field
+dotnet_diagnostic.CA2007.severity = error  # missing ConfigureAwait
+dotnet_diagnostic.VSTHRD100.severity = error  # async void
+dotnet_diagnostic.VSTHRD002.severity = error  # .Result / .Wait()
+dotnet_diagnostic.CA2016.severity = error  # forward CancellationToken
+
+# only the rule-specific suppression below is allowed
+[*Tests.cs]
+dotnet_diagnostic.CA2007.severity = none  # tests run in known sync context
+        ]]></code>
+        <note>Bug classes are errors globally; suppression is scoped, narrow, and explained.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="csharp"><![CDATA[
+// Agent suppresses the analyzer to make the build green
+#pragma warning disable CA2007
+public async Task DoWork() => await _client.GetAsync(url);
+#pragma warning restore CA2007
+        ]]></code>
+        <note>Suppression without comment hides the real fix (.ConfigureAwait(false)); the lock is bypassed.</note>
+      </example>
+
+      <antipattern>
+        <description>Setting TreatWarningsAsErrors=false in CI to "unblock" a flaky build instead of repairing the diagnostics.</description>
+        <reason>Once warnings are not errors, every analyzer effectively becomes optional, and the next agent edit that triggers one slips through review.</reason>
+      </antipattern>
+
+      <reference path="templates/.editorconfig">Severity escalation file for the canonical LLM bug classes.</reference>
+    </section>
+
+    <section name="public-api-lock">
+      <p>The Microsoft.CodeAnalysis.PublicApiAnalyzers NuGet ships RS0016 (declared symbol not in shipped/unshipped) and RS0017 (removed shipped API). Each project keeps two text files listing every public symbol; the analyzer emits an error on any drift.</p>
+
+      <rule testable="true">
+        <statement>Every published library project (csproj producing a NuGet package or referenced across team boundaries) MUST add PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" and commit non-empty PublicAPI.Shipped.txt + PublicAPI.Unshipped.txt next to the csproj. RS0016 and RS0017 MUST be error severity. Adding a public symbol requires editing PublicAPI.Unshipped.txt in the same PR; removing one is a SemVer-major decision that requires a human approver label.</statement>
+        <rationale>An LLM agent extending a method's signature (adding a parameter, widening a return type) silently breaks every downstream consumer; PublicApiAnalyzers reduces that to a compile failure with the exact symbol, so the agent must either fix the signature or escalate.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="csharp"><![CDATA[
+// Library.csproj
+<ItemGroup>
+  <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4">
+    <PrivateAssets>all</PrivateAssets>
+  </PackageReference>
+  <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+  <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+</ItemGroup>
+        ]]></code>
+        <note>Files declared as AdditionalFiles; analyzer reads them at compile time.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="csharp"><![CDATA[
+// Agent adds a new public method
+public class OrderService {
+    // existing public API in PublicAPI.Shipped.txt
+    public Task<Order> GetAsync(Guid id) { ... }
+
+    // agent forgot to add this to PublicAPI.Unshipped.txt
+    public Task<Order> GetAsync(Guid id, CancellationToken ct) { ... }
+}
+// build fails: RS0016 OrderService.GetAsync(Guid, CancellationToken) is not in any API file
+        ]]></code>
+        <note>Analyzer catches the new public surface area; agent must update PublicAPI.Unshipped.txt.</note>
+      </example>
+
+      <antipattern>
+        <description>"Fix" RS0017 (removed API) by deleting the corresponding line from PublicAPI.Shipped.txt.</description>
+        <reason>Shipped means already released to consumers; removing the line hides the breaking change instead of recording it. The lift goes through *REMOVED* markers in PublicAPI.Unshipped.txt with explicit human review.</reason>
+      </antipattern>
+
+      <reference path="templates/Directory.Build.props">MSBuild props enabling the analyzer for every csproj.</reference>
+    </section>
+
+    <templates>
+      <template path="templates/.editorconfig" purpose="Severity escalation snippet for the canonical LLM bug classes."/>
+      <template path="templates/Directory.Build.props" purpose="MSBuild props enabling analyzers + public-API analyzer for every project."/>
+    </templates>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/en-us/visualstudio/code-quality/roslyn-analyzers-overview"/>
+      <link href="https://devblogs.microsoft.com/dotnet/github-copilot-testing-for-dotnet/"/>
+      <link href="https://github.com/dotnet/roslyn-analyzers/blob/main/src/PublicApiAnalyzers/Microsoft.CodeAnalysis.PublicApiAnalyzers.md"/>
+      <link href="https://medium.com/workleap/preventing-breaking-changes-in-net-class-libraries-e61ae93b1b46"/>
+    </see-also>
+  </content>
+</methodology>

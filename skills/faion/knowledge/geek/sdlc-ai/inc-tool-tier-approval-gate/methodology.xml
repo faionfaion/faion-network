@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="inc-tool-tier-approval-gate">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Classify every SRE agent tool into T0/T1/T2 tiers and enforce approval gates at the executor layer; unknown tools default to T2; approval is a signed JWT bound to (tool, target, incident_id).</summary>
+    <tags>
+      <tag>incident-response</tag>
+      <tag>approval-gate</tag>
+      <tag>tool-safety</tag>
+      <tag>sre-agent</tag>
+      <tag>governance</tag>
+    </tags>
+    <category>inc</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Tool-Tier Approval Gate (T0/T1/T2)</title>
+    <summary>Classify every tool the SRE agent can invoke into three fixed tiers and enforce the policy at the tool-execution layer (MCP server / wrapper), never at the prompt: T0 read-only (free), T1 safe mutation (auto with mandatory audit), T2 destructive (always requires a signed human approval token). Each tool ships with a tier label in a registry; the executor refuses any T2 call that lacks a verified approval token bound to the same `(tool, target, incident_id)` and TTL ≤ 5 minutes. Unknown tools default to T2.</summary>
+    <why>
+      <p>Prompt-level instructions like "do not delete data without asking" are not safety — they are suggestions a sufficiently confused agent ignores, as the AWS Kiro production-deletion incident showed in 2025. Moving the gate into the executor makes the safety property structural: the agent cannot delete a PVC even if it is jailbroken, because the call refuses without the cryptographic token. The three-tier split is the consensus pattern across PagerDuty, incident.io, FireHydrant, Microsoft Agent Governance Toolkit, and the EU AI Act high-risk classification (Aug 2026 deadline). It also creates a clean audit story: T1 calls log themselves, T2 calls log + token, T0 calls are cheap and free.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Always, for any production agent that can call any side-effecting tool (kubectl, cloud APIs, databases, deploy systems).</item>
+        <item>Designing or reviewing an MCP server that exposes infrastructure tools.</item>
+        <item>Adopting Microsoft's Agent Governance Toolkit, OpenAI Agents SDK, or building a custom tool registry.</item>
+        <item>Preparing for SOC2 or EU AI Act compliance reviews of agentic workflows.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure read-only agents that hold no write credentials anywhere — the gate is unnecessary scaffolding.</item>
+        <item>Single-developer experiments running locally against throwaway resources — overhead exceeds value.</item>
+        <item>Pre-production environments with no real data — adopt as you near customer traffic, not before.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="three-tier-classification">
+      <p>The tool registry assigns each tool to T0 (read-only), T1 (safe mutation, audit-required), or T2 (destructive, human approval required). The executor reads the label at call time. Tools missing from the registry resolve to T2 — unknown tools are dangerous tools.</p>
+
+      <rule testable="true">
+        <statement>The tool executor MUST classify every callable into T0/T1/T2; MUST allow T0 unconditionally with audit; MUST allow T1 unconditionally with audit; MUST refuse T2 unless a signed approval token is supplied; MUST treat any tool absent from the registry as T2; and MUST NOT honor tier overrides from the agent prompt or tool arguments.</statement>
+        <rationale>Centralizing the gate at the executor makes safety a property of the system rather than the prompt. Prompt-level "ask before deleting" instructions are routinely bypassed by jailbreaks, confusion, or follow-up tool-use loops; a registry lookup is mechanical.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="python"><![CDATA[
+TIERS = {
+    "kubectl_get":      Tier.T0,   # read
+    "kubectl_logs":     Tier.T0,
+    "kubectl_restart":  Tier.T1,   # safe-ish mutation
+    "scale_replica":    Tier.T1,
+    "kubectl_delete":   Tier.T2,   # destructive
+    "db_drop_table":    Tier.T2,
+}
+def call(name, args, approval=None):
+    tier = TIERS.get(name, Tier.T2)              # unknown -> T2
+    if tier is Tier.T2 and not verify(approval, name, args):
+        raise PermissionError(f"{name} requires human approval")
+    audit.append(name, args, tier, approval)
+    return _dispatch(name, args)
+        ]]></code>
+        <note>Single chokepoint; missing tool defaults to most-restrictive; audit is mandatory.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="python"><![CDATA[
+# Anti: tier comes from the LLM-supplied argument
+def call(name, args):
+    if args.get("tier") == "destructive" and not args.get("approved"):
+        raise PermissionError(...)
+    return _dispatch(name, args)
+        ]]></code>
+        <note>The agent controls its own gate. A confused or jailbroken LLM passes `approved=true` and the call goes through.</note>
+      </example>
+
+      <antipattern>
+        <description>Granting "auto" status to a T2 tool because "the team trusts the agent now".</description>
+        <reason>Trust is not a property of the tool — it is a property of the action's blast radius. Failover and delete remain T2 forever; only the speed of approval improves.</reason>
+      </antipattern>
+
+      <reference path="templates/tool_registry.py">Reference registry implementation.</reference>
+    </section>
+
+    <section name="approval-token-binding">
+      <p>An approval token is a short-lived JWT issued by the approval service after a verified human action (Slack callback with OAuth user, MFA challenge, signed UI callback). The executor validates the signature and the claim set on every T2 call.</p>
+
+      <rule testable="true">
+        <statement>An approval token MUST be a JWT signed by the approval service; MUST contain `sub` (approver), `tool`, `target`, `incident_id`, `iat`, `exp` (≤ 300 seconds after `iat`), and `jti`; MUST be single-use (server-side `jti` revocation on first acceptance); and MUST be rejected when any claim mismatches the actual call's `(tool, target, incident_id)` arguments.</statement>
+        <rationale>An unscoped or replayable token degrades to a "global yes". Binding to the exact `(tool, target, incident)` triple stops a captured token from being reused on a different cluster, and the 5-minute TTL stops it from being held for a future incident.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="json"><![CDATA[
+{
+  "sub":         "alice@faion.net",
+  "tool":        "kubectl_delete",
+  "target":      "pod/api-7d4f-xz1",
+  "incident_id": "INC-2026-0419-007",
+  "iat":         1714153200,
+  "exp":         1714153500,
+  "jti":         "9b2e...e7"
+}
+        ]]></code>
+        <note>One token, one tool, one target, one incident, 5-minute window, single-use jti.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="text"><![CDATA[
+slack_message: ":+1: from @alice"
+approval_token: "alice-approved"
+        ]]></code>
+        <note>An emoji and a string are not cryptographic evidence. Any process that posts as Alice or knows the string can authorize a delete.</note>
+      </example>
+
+      <antipattern>
+        <description>Reusing the same approval token across "follow-up" actions in the same incident.</description>
+        <reason>Each T2 action is a separate decision; "I approved a pod delete" is not "I approved a namespace delete" thirty seconds later.</reason>
+      </antipattern>
+
+      <reference path="templates/approval_jwt_claims.json">Canonical claim set the executor must validate.</reference>
+    </section>
+
+    <templates>
+      <template path="templates/tool_registry.py" purpose="Reference Python tool registry with tier enum, dispatcher, and approval verifier."/>
+      <template path="templates/approval_jwt_claims.json" purpose="Canonical JWT claim set the executor must validate."/>
+    </templates>
+
+    <see-also>
+      <link href="https://maniak.io/articles/2026-03-11-human-in-the-loop-kagent/">Maniak — human-in-the-loop tier patterns for kagent.</link>
+      <link href="https://particula.tech/blog/ai-agent-production-safety-kiro-incident">Kiro production-deletion incident retro.</link>
+      <link href="https://techcommunity.microsoft.com/blog/linuxandopensourceblog/agent-governance-toolkit-architecture-deep-dive-policy-engines-trust-and-sre-for/4510105">Microsoft Agent Governance Toolkit — signed approvals.</link>
+      <link href="https://policylayer.com/blog/soc2-compliance-ai-agents">SOC2 compliance posture for AI agent approvals.</link>
+    </see-also>
+  </content>
+</methodology>
