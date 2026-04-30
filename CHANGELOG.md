@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 - chore: migrate tracker-ai-triage-classify-route, tracker-github-copilot-workspace, tracker-gitlab-duo-developer-flow to methodology.xml (feature-047 batch A16)
 - chore: migrate uv-lockfile-floor to methodology.xml (feature-047 batch A18)
 - chore: migrate test-consumer-contract-from-spec, test-golden-master-legacy-rewrite, test-mutation-feedback-loop to methodology.xml (feature-047 batch A14)
+- chore: migrate tracker-jira-rovo-mcp-agents, tracker-linear-agent-as-assignee, ts-strict-isolated to methodology.xml (feature-047 batch A17)
 - chore: migrate task-plan-mode-locked-execution, task-spec-kit-three-step, task-worktree-runtime-isolation to methodology.xml (feature-047 batch A13)
 - chore: migrate test-property-based-llm-invariants, test-self-healing-locators-audited, test-tdd-red-green-split-agents to methodology.xml (feature-047 batch A15)
 - chore: migrate pyproject-single-source, sec-codeql-autofix-on-pr, sec-secrets-defense-in-depth to methodology.xml (feature-047 batch A11)

@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tracker-jira-rovo-mcp-agents">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Use Atlassian Rovo Remote MCP as the sole bridge between AI agents and Jira/Confluence/JSM; agents inherit assignee permissions, write to native audit trails, never use shared bot tokens.</summary>
+    <tags>
+      <tag>jira</tag>
+      <tag>atlassian</tag>
+      <tag>mcp</tag>
+      <tag>audit-trail</tag>
+      <tag>permission-inheritance</tag>
+    </tags>
+    <category>tracker</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Jira via Atlassian Rovo MCP, Permission-Inheriting</title>
+    <summary>Use Atlassian's Rovo Remote MCP server (GA April 2026) as the single authenticated bridge between every AI client (Claude Code, Cursor, Codex, third-party agents) and Jira plus Confluence plus Jira Service Management. The agent appears as a real Jira user, inherits the assignee's permissions, never exceeds project configuration, and writes every action to the native Jira audit trail.</summary>
+    <why>
+      <p>April 2026 enterprises that already pay for SOC2 audit-log inheritance through Atlassian get it transparently when their agents speak MCP via Rovo. The mechanism is the OAuth handshake plus a permission-inheritance contract: Atlassian explicitly states agents respect the user's permissions, project configurations, workflows, and audit trails — privilege escalation is impossible because the agent operates as the assignee. This collapses the bot-account anti-pattern (one shared key with admin scope) into the same identity layer Jira already enforces for humans, and removes the need for a parallel approval system because Jira's existing transition rules already encode "who can move this to Done".</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Enterprise Jira Cloud deployments where SOC2/audit-log inheritance is non-negotiable.</item>
+        <item>Teams already on Jira plus JSM (incident queues, on-call data) who want one MCP for engineering and ITSM.</item>
+        <item>Multi-tool agent stacks that must respect existing Atlassian permissions and never bypass project config.</item>
+        <item>Workflow-embedded automation: drop the agent into a status transition (In Design → run designer agent) instead of a side webhook.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Self-hosted Jira Data Center — Rovo MCP is Cloud-only; no on-prem fallback exists.</item>
+        <item>Tight inner-loop tooling that needs lower-latency or lower-cost direct REST API access.</item>
+        <item>Workflows that require the agent to bypass project configuration — impossible by design and should not be retrofitted.</item>
+        <item>Single-author solo projects where the OAuth + workflow-embedding overhead exceeds the value.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="rovo-mcp-as-bridge">
+      <p>Every agent that touches Jira, Confluence, or JSM does it through the Rovo Remote MCP server with the user's OAuth scope; raw REST API tokens and shared bot accounts are forbidden.</p>
+      <p>Atlassian made permission inheritance the contract: when the agent acts as the assignee, it cannot exceed what the assignee can do. Mixing direct REST tokens with MCP breaks that contract because the token has its own scope independent of the user.</p>
+
+      <rule testable="true">
+        <statement>Every agent action against Jira, Confluence, or JSM MUST pass through the Rovo Remote MCP server using the assignee's OAuth grant. Raw REST API access (PAT, api/2/issue calls with a bot user's token) is forbidden in production agents. The agent MUST never request a scope wider than the assignee's role; if it must perform a destructive action the assignee lacks (e.g., issue:delete), it MUST escalate via JSM approval, not by reading a service-account secret. Audit IDs from MCP responses MUST land in the agent's structured log as the linkable record of "who did what".</statement>
+        <rationale>Atlassian's stated guarantee is that agents inherit the user's permissions, project configurations, workflows, and audit trails. A side-channel REST token defeats every word of that guarantee and is the anti-pattern Rovo MCP was built to retire. Storing audit IDs locally is what makes the inherited audit trail usable for incident review.</rationale>
+      </rule>
+
+      <example type="good" title="One bridge, inherited permissions">
+        <code lang="yaml"><![CDATA[
+# claude-code agent config
+mcp_servers:
+  - name: atlassian
+    transport: sse
+    url: https://mcp.atlassian.com/v1/sse
+    auth: oauth2_user_grant       # assignee's session
+forbidden_tools:
+  - direct_rest_api               # any code path that bypasses MCP
+log_fields:
+  - mcp.audit_id                  # Atlassian-issued, links back to issue history
+        ]]></code>
+        <note>One bridge, scoped to the assignee, audit IDs preserved.</note>
+      </example>
+
+      <example type="bad" title="Mixed PAT + MCP split path">
+        <code lang="yaml"><![CDATA[
+mcp_servers:
+  - atlassian                     # used for reads only
+auth_secrets:
+  jira_admin_pat: ${JIRA_PAT}     # PAT used for writes
+write_path: rest/api/3/issue      # bypasses MCP and audit
+        ]]></code>
+        <note>The PAT is admin-scoped, the write bypasses MCP, and the audit log shows "system" instead of the assignee.</note>
+      </example>
+
+      <antipattern>
+        <description>One shared service account with jira-admins group used by every agent.</description>
+        <reason>Audit log says "service-account did everything"; the agent layer is opaque to compliance, and any compromise of the secret grants admin to whoever holds it.</reason>
+      </antipattern>
+    </section>
+
+    <section name="workflow-embedded-trigger">
+      <p>Agents are wired into Jira via on_enter handlers on workflow statuses, not via side webhooks; the human gate is encoded as the next transition's approver, not as a Slack reaction.</p>
+      <p>Putting the trigger inside the Jira workflow keeps automation visible to admins, project leads, and auditors who already read the workflow diagram. Side webhooks hide the agent's involvement and bypass the workflow's transition rules.</p>
+
+      <rule testable="true">
+        <statement>Any agent that runs as part of a Jira ticket lifecycle MUST be wired in as an on_enter handler on a specific workflow status (e.g., In Design, Ready for Implementation). The handler MUST declare permissions: inherit_from_assignee so the agent cannot exceed user scope. The next status transition (advancing past the agent's column) MUST require a human approver encoded in the Jira workflow, NOT a Slack reaction or out-of-band ack. Side webhooks that trigger agent work without a workflow handler are forbidden in production projects.</statement>
+        <rationale>Embedding in the workflow makes the agent's role legible to the same people who already maintain the project — admins, project leads, auditors. Routing the human gate through Jira's transition approver list inherits the existing reviewer matrix instead of duplicating it. April 2026 Atlassian docs make this the canonical extension point precisely because side webhooks were the source of audit gaps in pre-Rovo deployments.</rationale>
+      </rule>
+
+      <example type="good" title="In-workflow agent with human gate">
+        <code lang="yaml"><![CDATA[
+# extracted from project workflow editor
+status: "In Design"
+on_enter:
+  agent: rovo.user-onboarding-designer
+  action: "draft end-to-end onboarding flow"
+  permissions: inherit_from_assignee
+  audit: jira_native
+next_transition: "Ready for Implementation"
+approvers:
+  - role: design-lead
+  - role: pm
+require_all: false                   # one approver advances
+        ]]></code>
+        <note>Agent runs in-workflow, inherits scope, cannot self-advance; the design-lead OR PM moves it forward.</note>
+      </example>
+
+      <example type="bad" title="Side webhook with admin PAT">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/jira-bot.yml
+on:
+  workflow_dispatch:                  # manual runner outside Jira
+jobs:
+  run-agent:
+    secrets: { JIRA_PAT: ${{ secrets.JIRA_PAT }} }   # admin scope
+    steps:
+      - run: agent --transition Done  # agent advances status itself
+        ]]></code>
+        <note>Side webhook, admin PAT, agent self-advances — every part of the Atlassian permission model bypassed.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent posts a Slack message asking for thumbs-up to move the ticket forward.</description>
+        <reason>The approval lives in Slack, not in Jira; the audit log on the issue shows the agent advanced status with no record of who approved. Use Jira's transition approver list instead.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/duo-flow.yaml" purpose="Workflow-status embedding example: agent on In Design enter, inherit permissions, human-gate the next transition."/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.atlassian.com/platform/remote-mcp-server"/>
+      <link href="https://www.atlassian.com/blog/announcements/ai-agents-in-jira"/>
+      <link href="https://github.com/atlassian/atlassian-mcp-server"/>
+    </see-also>
+  </content>
+</methodology>
