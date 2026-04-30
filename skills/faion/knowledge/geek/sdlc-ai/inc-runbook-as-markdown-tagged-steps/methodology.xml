@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="inc-runbook-as-markdown-tagged-steps">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Author alert runbooks as Markdown with agent:auto / agent:approval HTML-comment tags on each remediation step so the SRE agent executes only explicitly safe steps.</summary>
+    <tags>
+      <tag>incident-response</tag>
+      <tag>runbook</tag>
+      <tag>sre-agent</tag>
+      <tag>approval-gate</tag>
+      <tag>oncall</tag>
+    </tags>
+    <category>inc</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Runbook-as-Markdown with Agent Step Tags</title>
+    <summary>Author every alert runbook as a Markdown file in the project repo (`runbooks/&lt;alert-name&gt;.md`) with a fixed section spine — Symptoms / Diagnose / Remediate / Escalate — and machine-parseable HTML-comment tags on each remediation step: `&lt;!-- agent:auto --&gt;` for steps the SRE agent may run unattended and `&lt;!-- agent:approval --&gt;` for steps that must wait for a signed human approval. The agent fetches the runbook keyed by the firing alert name, parses the spine, executes only `agent:auto` steps, and refuses (with a structured request to a human) on any `agent:approval` step. Markdown stays human-readable; the tags are the agent's contract.</summary>
+    <why>
+      <p>Free-form runbooks force the agent to "interpret" prose, which is the leading cause of unsafe actions during incidents (incident.io, PagerDuty, FireHydrant 2025-2026 retros). Tagging each step turns the runbook into a deterministic decision table: any step without `agent:auto` is implicitly forbidden for the agent, eliminating ambiguity. Markdown remains the format SREs already author, so adoption is friction-free, while the comment tags survive every renderer (GitHub, Slack unfurls, Notion). Published case studies report MTTR drops up to 50% once runbooks are agent-consumable, and the `agent:approval` boundary is what AWS Kiro-style "auto-deletion" incidents exploit when missing.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Teams with more than 10 distinct alert types and a stable service catalog.</item>
+        <item>Any oncall workflow where the SRE agent should diagnose unattended but never delete or failover without human consent.</item>
+        <item>Migrating from PDF / Confluence runbooks to a repo-versioned, code-reviewed format.</item>
+        <item>Multi-tool environments (PagerDuty, incident.io, FireHydrant) where one source of truth must drive every agent.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Prototype services with fewer than 5 alerts — runbook authoring overhead exceeds the win.</item>
+        <item>Highly conditional remediations that need real branching logic — write a Python operator instead.</item>
+        <item>One-shot diagnostics during an active incident — write the playbook into the postmortem afterward, not now.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="tagged-step-rule">
+      <p>The runbook spine is fixed: `## Symptoms`, `## Diagnose`, `## Remediate`, `## Escalate`. Diagnose steps are read-only and always agent-runnable. Remediate steps each carry one HTML-comment tag — there is no third option and no default.</p>
+
+      <rule testable="true">
+        <statement>Every bullet under `## Remediate` MUST end with exactly one of `&lt;!-- agent:auto --&gt;` or `&lt;!-- agent:approval --&gt;`. The SRE agent MUST execute `agent:auto` steps unattended, MUST refuse `agent:approval` steps until a signed approval token arrives, and MUST abort the runbook with a `runbook_invalid` error when any remediate step lacks a tag.</statement>
+        <rationale>A runbook without an explicit tag forces the agent to guess; published Kiro-style production deletions trace to "the runbook said it was OK to run" prose interpretations. A closed tag set makes the safety boundary mechanical.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="markdown"><![CDATA[
+## Remediate
+- Scale read replicas: `kubectl scale --replicas=+1 sts/pg-replica` <!-- agent:auto -->
+- Clear stale connections: `psql -c "SELECT pg_terminate_backend(pid) ..."` <!-- agent:auto -->
+- Failover primary: `patroni failover` <!-- agent:approval -->
+- Drop offending table: `psql -c "DROP TABLE audit_2024 ..."` <!-- agent:approval -->
+        ]]></code>
+        <note>Each step is unambiguously routed. Agent runs the first two, requests approval for the last two.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="markdown"><![CDATA[
+## Remediate
+- Restart the database (only if you're sure)
+- Run failover when latency is high
+        ]]></code>
+        <note>No tags, hedged prose. Agent must guess; safe path is to refuse everything, defeating the runbook.</note>
+      </example>
+
+      <antipattern>
+        <description>Adding an implicit "if untagged, treat as auto" default.</description>
+        <reason>Defaults turn forgotten tags into silent escalations of agent privilege; the next contributor will write a destructive untagged step and the agent will run it.</reason>
+      </antipattern>
+
+      <reference path="templates/runbook-template.md">Runbook skeleton with all four sections.</reference>
+    </section>
+
+    <section name="alert-to-runbook-resolution">
+      <p>The alert's `runbook_url` annotation (Prometheus / PagerDuty / Datadog) MUST point to a file inside `runbooks/`. The agent fetches the file at incident creation, validates the spine, and refuses to execute any remediation when the file is missing, untagged, or fails the schema check.</p>
+
+      <rule testable="true">
+        <statement>The agent MUST resolve the runbook path from the alert's `runbook_url` annotation, MUST verify the file contains all four canonical sections, and MUST refuse all remediation (returning `runbook_missing` to the orchestrator) when the lookup fails. The agent MUST NOT invent or "search" for a runbook.</statement>
+        <rationale>Lookup-by-search lets the agent pick a wrong-but-plausible runbook from a similarly named service, which is how cross-service blast radius incidents start. A failed lookup is a feature: it pages the human to author the missing runbook.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="yaml"><![CDATA[
+# Prometheus alert
+- alert: HighDBLatency
+  annotations:
+    runbook_url: "github://faionfaion/ops/runbooks/HighDBLatency.md"
+    summary: "p99 DB latency > 500ms for 5m"
+        ]]></code>
+        <note>Path is explicit, repo-versioned, code-reviewed. Agent validates spine before parsing steps.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="python"><![CDATA[
+# Anti: agent searches for "closest" runbook by alert name
+runbook = vector_search(alert.name, top_k=1)
+agent.execute(runbook.remediate_steps)
+        ]]></code>
+        <note>Vector match silently picks a wrong runbook for a similarly named service; remediation hits the wrong cluster.</note>
+      </example>
+
+      <antipattern>
+        <description>Falling back to a "default runbook" when the lookup misses.</description>
+        <reason>A default runbook for arbitrary alerts cannot encode service-specific safety; "restart the service" applied to a stateful primary is a data-loss event.</reason>
+      </antipattern>
+
+      <reference path="templates/parse_runbook.py">Reference parser used by the agent loader.</reference>
+    </section>
+
+    <templates>
+      <template path="templates/runbook-template.md" purpose="Skeleton runbook with the four-section spine and example tagged steps."/>
+      <template path="templates/parse_runbook.py" purpose="Reference parser that returns (diagnose_steps[], auto_remediate[], approval_remediate[])."/>
+    </templates>
+
+    <see-also>
+      <link href="https://incident.io/blog/automated-runbook-guide">incident.io — automated runbook guide.</link>
+      <link href="https://particula.tech/blog/ai-agent-production-safety-kiro-incident">Kiro incident retro: missing approval boundary on destructive actions.</link>
+      <link href="https://github.com/kjkuan/Runbook.md">Runbook.md project — Markdown-as-runbook tooling.</link>
+      <link href="https://www.pagerduty.com/platform/aiops/">PagerDuty AIOps — runbook source convention.</link>
+    </see-also>
+  </content>
+</methodology>
