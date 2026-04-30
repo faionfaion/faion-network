@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="test-consumer-contract-from-spec">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Generate consumer Pact contracts from OpenAPI/traffic via MCP or skill; commit as canonical and gate provider deploys with can-i-deploy.</summary>
+    <tags>
+      <tag>pact</tag>
+      <tag>consumer-contract</tag>
+      <tag>openapi</tag>
+      <tag>can-i-deploy</tag>
+      <tag>microservices</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Consumer Contract Tests Generated from OpenAPI / Traffic</title>
+    <summary>Pact consumer contracts have one classic weakness: the consumer team has to write them. When that author is an LLM hand-rolling Pact JSON, the contract drifts from the actual provider spec and can-i-deploy becomes noise. The fix is to point an MCP server or skill at the canonical artifact — OpenAPI spec, recorded HTTP traffic, or typed client code — and have it generate the consumer Pact file plus matching client test. The generated contract is then committed as the source of truth and never edited by hand. PactFlow reports up to 60% reduction in test creation time and the AI-generated contracts are deterministic enough to gate provider deploys with can-i-deploy.</summary>
+    <why>
+      <p>A Pact contract is a machine-readable statement of "consumer X expects provider Y to behave like this". When the consumer is a microservice with an OpenAPI spec, the spec already encodes what the consumer will accept; an LLM that infers the Pact from the spec produces a far more accurate contract than one written from a feature ticket. PactFlow's MCP server (2025) and the Pact AI skill bundle this pipeline. The deterministic part — sample request/response from spec — is solved; the LLM only adds matchers and edge cases. Treating the generated artifact as canonical also stops hand-edited Pacts from masking real provider regressions.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Microservices with more than two consumers per provider, where mock drift is a recurring incident driver.</item>
+        <item>Polyglot stacks where each consumer uses a different mock library and contracts diverge silently.</item>
+        <item>Consumer services authored or maintained by a coding agent that has access to the provider's OpenAPI/AsyncAPI spec.</item>
+        <item>Third-party API integrations where you control only the consumer side and need a reproducible mock.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-consumer monolith calling a provider it owns — no contract gap to close, just integration tests.</item>
+        <item>GraphQL providers with strong codegen — schema-diff plus typed client gives the same guarantee cheaper.</item>
+        <item>One-off internal cron-callers or scripts — the Pact broker overhead exceeds the benefit.</item>
+        <item>Providers without any spec artifact (no OpenAPI, no recorded traffic) — generate the spec first, then the Pact.</item>
+      </list>
+    </when-not-to-use>
+    <section name="generate-from-spec">
+      <p>Pact contracts authored by an LLM from a ticket or PR description drift from the provider's actual response shape, mismatch matchers, and produce false greens. The MCP / skill pipeline takes the spec artifact (OpenAPI, AsyncAPI, recorded HAR) plus the client code and emits both the consumer Pact JSON and the matching client test in one pass.</p>
+      <rule testable="true">
+        <statement>Consumer Pact files MUST be produced by a generator (PactFlow MCP, Pact AI skill, or equivalent) that reads OpenAPI / AsyncAPI / recorded traffic. The generator command MUST be committed (Makefile target, npm script, or pact:generate skill). Hand-edits to pacts/*.json MUST fail CI via a checksum or "regenerate to verify" step.</statement>
+        <rationale>PactFlow reports up to 60% creation-time reduction and deterministic output when the spec is the input. Hand edits silently mask provider regressions and break can-i-deploy.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# package.json
+"scripts": {
+  "pact:generate": "pactflow-mcp generate \
+      --spec ./openapi/billing-api.yaml \
+      --consumer billing-ui --provider billing-api \
+      --out pacts/billing-ui-billing-api.json --lang ts"
+}
+# CI: regenerate and diff against committed file
+- run: npm run pact:generate
+- run: git diff --exit-code pacts/
+      ]]></code>
+        <note>Generation is reproducible; CI fails when committed Pact diverges from spec.</note>
+      </example>
+      <example type="bad">
+        <code lang="typescript"><![CDATA[
+// hand-written in a feature PR
+provider.uponReceiving('refund')
+  .withRequest({ method: 'POST', path: '/refund' })
+  .willRespondWith({ status: 200, body: { ok: true } });
+// real API returns { refundId, status, refundedAt }
+      ]]></code>
+        <note>Matchers don't match real schema; provider can break the consumer with a green Pact.</note>
+      </example>
+      <antipattern>
+        <description>Allowing humans to "tweak" generated Pact JSON in the same commit that regenerates it.</description>
+        <reason>Once the generated file is editable, the regen step becomes optional and the contract drifts the same way hand-written ones do.</reason>
+      </antipattern>
+    </section>
+    <section name="canigo-deploy-gate">
+      <p>A generated Pact has no value if the provider deploys without verifying it. Pact Broker's can-i-deploy resolves the question "can provider X version A be deployed to environment E without breaking any consumer that is also in E?". Wiring it into provider CI converts the contract from documentation into a hard gate.</p>
+      <rule testable="true">
+        <statement>The provider repository's release pipeline MUST run pact-broker can-i-deploy --pacticipant &lt;provider&gt; --version $GIT_SHA --to-environment &lt;env&gt; as a required step. Deployment MUST be blocked when any consumer contract for that environment fails verification. The check MUST run before tag/push to the production registry, not after.</statement>
+        <rationale>Without can-i-deploy, broker verification becomes informational only. The Pact ecosystem's central guarantee — "no provider release breaks a deployed consumer" — depends on this single gate.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/release.yml (provider)
+- name: can-i-deploy
+  env: { PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER }} }
+  run: |
+    pact-broker can-i-deploy \
+      --pacticipant billing-api --version ${{ github.sha }} \
+      --to-environment production --retry-while-unknown 6
+- name: publish image
+  if: success()
+  run: docker push billing-api:${{ github.sha }}
+      ]]></code>
+        <note>Image publish runs only if every consumer contract verifies green.</note>
+      </example>
+      <example type="bad">
+        <code lang="yaml"><![CDATA[
+# Provider runs verification, then ignores the result
+- run: pact-verifier --provider billing-api || true
+- run: docker push billing-api:${{ github.sha }}
+      ]]></code>
+        <note>|| true swallows failures; the gate exists in name only.</note>
+      </example>
+      <antipattern>
+        <description>Running can-i-deploy only on the consumer side and not the provider release.</description>
+        <reason>Consumer-side checks block consumer deploys; provider-side checks block production breakage. Both are needed; provider-side is non-negotiable.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/pactflow-mcp-prompt.txt" purpose="MCP/skill prompt that drives PactFlow generation from an OpenAPI spec."/>
+      <template path="templates/canigo-deploy.yml" purpose="GitHub Actions step wiring can-i-deploy as a required check on the provider repo."/>
+    </templates>
+    <see-also>
+      <link href="https://docs.pact.io/ai_tools/pactflow-skill"/>
+      <link href="https://pactflow.io/blog/pactflow-mcp-server/"/>
+      <link href="https://pactflow.io/ai/"/>
+      <link href="https://docs.pact.io/pact_broker/can_i_deploy"/>
+      <link href="https://docs.pact.io/getting_started/versioning_in_the_pact_broker"/>
+    </see-also>
+  </content>
+</methodology>

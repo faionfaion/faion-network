@@ -3,6 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+- chore: migrate test-consumer-contract-from-spec, test-golden-master-legacy-rewrite, test-mutation-feedback-loop to methodology.xml (feature-047 batch A14)
 - chore: migrate task-plan-mode-locked-execution, task-spec-kit-three-step, task-worktree-runtime-isolation to methodology.xml (feature-047 batch A13)
 - chore: migrate pyproject-single-source, sec-codeql-autofix-on-pr, sec-secrets-defense-in-depth to methodology.xml (feature-047 batch A11)
 - chore: migrate mr-codemod-refactor-agent, mr-error-tracker-draft-pr, mr-graph-vs-diff-reviewer to methodology.xml (feature-047 batch A9)
