@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+
+- chore: rebuild catalog after sdlc-ai migration; catalog.py now handles flat-group structure (sdlc-ai); methodology.xml replaces README.md (feature-047)
 - chore: migrate tracker-ai-triage-classify-route, tracker-github-copilot-workspace, tracker-gitlab-duo-developer-flow to methodology.xml (feature-047 batch A16)
 - chore: migrate uv-lockfile-floor to methodology.xml (feature-047 batch A18)
 - chore: migrate test-consumer-contract-from-spec, test-golden-master-legacy-rewrite, test-mutation-feedback-loop to methodology.xml (feature-047 batch A14)

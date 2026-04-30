@@ -33,8 +33,36 @@ TIER_ORDER = ["free", "solo", "pro", "geek"]
 
 def cmd_init() -> None:
     DATA.mkdir(parents=True, exist_ok=True)
-    domains = []
-    methods = []
+
+    prev_domain_desc: dict[str, str] = {}
+    prev_method_desc: dict[str, str] = {}
+    if DOMAINS_CSV.exists():
+        for r in _load_csv(DOMAINS_CSV):
+            key = f"{r['tier']}|{r['group']}|{r['domain']}"
+            if r.get("description", "").strip():
+                prev_domain_desc[key] = r["description"]
+    if METHODS_CSV.exists():
+        for r in _load_csv(METHODS_CSV):
+            key = f"{r['tier']}|{r['group']}|{r['domain']}|{r['methodology']}"
+            if r.get("description", "").strip():
+                prev_method_desc[key] = r["description"]
+
+    domains: list[dict[str, str]] = []
+    methods: list[dict[str, str]] = []
+    skipped_methods = 0
+    flat_groups: set[tuple[str, str]] = set()
+
+    def add_method(tier: str, group: str, domain: str, slug: str, xml_path: Path) -> None:
+        m_key = f"{tier}|{group}|{domain}|{slug}"
+        methods.append({
+            "tier": tier,
+            "group": group,
+            "domain": domain,
+            "methodology": slug,
+            "xml_path": str(xml_path.relative_to(ROOT)),
+            "description": prev_method_desc.get(m_key, ""),
+        })
+
     for tier_dir in sorted(KNOWLEDGE.iterdir()):
         if not tier_dir.is_dir():
             continue
@@ -43,31 +71,44 @@ def cmd_init() -> None:
             if not group_dir.is_dir():
                 continue
             group = group_dir.name
-            for domain_dir in sorted(group_dir.iterdir()):
-                if not domain_dir.is_dir():
+            for child_dir in sorted(group_dir.iterdir()):
+                if not child_dir.is_dir():
                     continue
-                domain = domain_dir.name
-                skill_path = domain_dir / "SKILL.md"
+                child_xml = child_dir / "methodology.xml"
+                if child_xml.exists():
+                    flat_groups.add((tier, group))
+                    add_method(tier, group, group, child_dir.name, child_xml)
+                    continue
+                domain = child_dir.name
+                skill_path = child_dir / "SKILL.md"
+                d_key = f"{tier}|{group}|{domain}"
                 domains.append({
                     "tier": tier,
                     "group": group,
                     "domain": domain,
                     "skill_path": str(skill_path.relative_to(ROOT)) if skill_path.exists() else "",
-                    "description": "",
+                    "description": prev_domain_desc.get(d_key, ""),
                 })
-                for method_dir in sorted(domain_dir.iterdir()):
+                for method_dir in sorted(child_dir.iterdir()):
                     if not method_dir.is_dir():
                         continue
-                    methodology = method_dir.name
-                    readme = method_dir / "README.md"
-                    methods.append({
-                        "tier": tier,
-                        "group": group,
-                        "domain": domain,
-                        "methodology": methodology,
-                        "readme_path": str(readme.relative_to(ROOT)) if readme.exists() else "",
-                        "description": "",
-                    })
+                    xml_path = method_dir / "methodology.xml"
+                    if not xml_path.exists():
+                        skipped_methods += 1
+                        continue
+                    add_method(tier, group, domain, method_dir.name, xml_path)
+
+    for tier, group in flat_groups:
+        d_key = f"{tier}|{group}|{group}"
+        if not any(d["tier"] == tier and d["group"] == group and d["domain"] == group for d in domains):
+            agents_md = KNOWLEDGE / tier / group / "AGENTS.md"
+            domains.append({
+                "tier": tier,
+                "group": group,
+                "domain": group,
+                "skill_path": str(agents_md.relative_to(ROOT)) if agents_md.exists() else "",
+                "description": prev_domain_desc.get(d_key, ""),
+            })
 
     with DOMAINS_CSV.open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=["tier", "group", "domain", "skill_path", "description"])
@@ -77,12 +118,18 @@ def cmd_init() -> None:
     with METHODS_CSV.open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(
             f,
-            fieldnames=["tier", "group", "domain", "methodology", "readme_path", "description"],
+            fieldnames=["tier", "group", "domain", "methodology", "xml_path", "description"],
         )
         w.writeheader()
         w.writerows(methods)
 
-    sys.stdout.write(f"init: domains={len(domains)} methodologies={len(methods)}\n")
+    kept_d = sum(1 for d in domains if d["description"])
+    kept_m = sum(1 for m in methods if m["description"])
+    sys.stdout.write(
+        f"init: domains={len(domains)} (kept_desc={kept_d}) "
+        f"methodologies={len(methods)} (kept_desc={kept_m}) "
+        f"skipped_no_xml={skipped_methods} flat_groups={len(flat_groups)}\n"
+    )
 
 
 def _load_csv(path: Path) -> list[dict[str, str]]:
@@ -154,7 +201,7 @@ def cmd_pick(skip: int = 0, size: int = BATCH_SIZE, out_path: str | None = None)
                 "tier": r["tier"],
                 "group": r["group"],
                 "domain": r["domain"],
-                **({"methodology": r["methodology"], "path": r["readme_path"]}
+                **({"methodology": r["methodology"], "path": r["xml_path"]}
                    if phase == "methodologies"
                    else {"path": r["skill_path"]}),
             }
