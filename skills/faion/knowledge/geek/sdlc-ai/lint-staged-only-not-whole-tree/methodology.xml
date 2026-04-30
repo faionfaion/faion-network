@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lint-staged-only-not-whole-tree">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Pre-commit hooks MUST receive only the staged file set, not the whole repo tree; whole-tree linting belongs in CI. Staged-only scope keeps hooks under 200ms and prevents --no-verify bypass.</summary>
+    <tags>
+      <tag>pre-commit</tag>
+      <tag>lint-staged</tag>
+      <tag>lefthook</tag>
+      <tag>hooks</tag>
+      <tag>staged-files</tag>
+    </tags>
+    <category>lint</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Pre-Commit Linters MUST Run on Staged Files Only</title>
+    <summary>Every linter and formatter wired into a pre-commit hook MUST receive ONLY the staged file set, not the whole repository tree. Use pre-commit's default pass_filenames: true (the framework already passes the staged list as args), lefthook's {staged_files} template, or lint-staged for husky setups. NEVER call eslint ., ruff check ., biome check ., prettier --write ., or mypy . from a pre-commit hook — those rewrite or report on unrelated files, balloon the diff, drag the hook above one second, and push developers and agents toward --no-verify. CI runs the whole-tree variant exactly once per PR as the final pre-merge gate.</summary>
+    <why>
+      <p>Hook latency is the single strongest predictor of bypass behaviour. Lint-staged's maintainers and lefthook's benchmarks show whole-tree hooks on a 1500-file monorepo cost 8–12 seconds per commit while staged-only on 3 files runs in 200ms — the same hook becomes either an invisible floor or a hated blocker depending on this one switch. A whole-tree formatter on a partial-stage commit also rewrites unrelated code that the developer did NOT stage, leaking it into the next commit and breaking `git blame`. The pre-commit framework, lefthook and lint-staged were all designed around this distinction; using them and then bypassing the staged-list is a self-inflicted wound.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Always — every pre-commit hook in every framework MUST be staged-scoped.</item>
+        <item>Especially in monorepos where any hook will encounter thousands of files.</item>
+        <item>When wrapping a custom command in a `local` hook (forwarding $@ is mandatory).</item>
+        <item>When migrating a husky setup off `npm run lint` invocations toward lint-staged.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>The CI pre-merge gate — that runs whole-tree by design as the final defense.</item>
+        <item>One-off "format the entire repo" maintenance commits scheduled as their own PR — these run outside the hook.</item>
+        <item>Tools that fundamentally need the whole project graph (e.g., tsc -p) — these MAY run scoped to a project but never to a single file; use a separate hook with pass_filenames: false.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="staged-scope-rule">
+      <rule testable="true">
+        <statement>Every linter or formatter invoked by a `pre-commit`, `lefthook`, or `husky+lint-staged` hook MUST receive ONLY the staged file paths. With `pre-commit` this means leaving `pass_filenames: true` (default) and never wrapping the command in a way that drops `$@`. With `lefthook`, every `run:` MUST reference `{staged_files}` (or `{push_files}` for pre-push). With husky, every command MUST go through `lint-staged` matching the relevant glob. Calling the lint or format tool with `.` or no argument from a pre-commit hook is forbidden.</statement>
+        <rationale>The PkgPulse 2026 husky-vs-lefthook benchmark, the lint-staged maintainers' own README, and pre-commit.com's pass_filenames docs all converge: whole-tree linting in a hook is the leading cause of --no-verify adoption. A 1500-file monorepo with `eslint .` per commit yields 8-12 second hooks; the same hook on three staged files runs in 200ms. Whole-tree formatters also rewrite unstaged work, polluting the next commit and breaking `git blame`.</rationale>
+      </rule>
+
+      <example type="good" title="lint-staged config with per-glob staged-only commands">
+        <code lang="javascript"><![CDATA[
+// lint-staged.config.js
+export default {
+  "*.{js,ts,jsx,tsx,json,css}": "biome check --write --no-errors-on-unmatched",
+  "*.py": ["ruff check --fix", "ruff format"],
+};
+      ]]></code>
+        <note>Each tool sees only the staged files of its glob. Husky calls `npx lint-staged` and is done in 200ms.</note>
+      </example>
+
+      <example type="bad" title="Whole-tree lint on every commit via husky">
+        <code lang="bash"><![CDATA[
+# .husky/pre-commit
+npm run lint        # which runs `eslint .`
+npm run format      # which runs `prettier --write .`
+      ]]></code>
+        <note>Whole-tree on every commit. Each commit waits ~10 seconds and rewrites unstaged files.</note>
+      </example>
+
+      <antipattern>
+        <description>Wrapping a hook command in `bash -c "ruff check --fix ."` to "make it work the same in CI and locally."</description>
+        <reason>The hook now ignores the staged file list because the wrapper drops $@. The CI/local parity is achieved instead by having a CI step that runs `ruff check .` on the whole tree separately — never by inflating the hook.</reason>
+      </antipattern>
+    </section>
+
+    <section name="ci-whole-tree-gate">
+      <rule testable="true">
+        <statement>The CI pipeline MUST include a separate job that runs each linter/formatter whole-tree (`eslint .`, `ruff check .`, `biome check .`, `mypy .`) against the merged-tree state of the PR. This job is the final pre-merge gate; it MUST be required in branch protection. The hook and the CI job share the same config but have opposite scopes by design.</statement>
+        <rationale>Hooks catch what the developer just touched; CI catches drift introduced by partial-stage workflows or by cross-file refactors that the hook's per-file scope cannot see. Both are needed; conflating them into one whole-tree hook breaks the local feedback loop.</rationale>
+      </rule>
+
+      <example type="good" title="CI whole-tree lint job">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/ci.yml fragment
+- run: ruff check .
+- run: ruff format --check .
+- run: biome check .
+      ]]></code>
+        <note>Whole-tree commands live in CI, not in the local hook.</note>
+      </example>
+    </section>
+
+    <section name="graph-aware-tools-exception">
+      <rule testable="true">
+        <statement>For graph-aware tools (`tsc`, `mypy`, `cargo check`, `pyright`), the pre-commit hook MUST run per-project (one tsconfig.json, one pyproject.toml, one Cargo.toml) and MUST set `pass_filenames: false` so the framework does not pass per-file args. The hook MUST be triggered ONLY when files inside that project change (use pre-commit's `files:` regex or lefthook's `glob:`). Whole-monorepo invocations of these tools belong in CI, not in pre-commit.</statement>
+        <rationale>Calling `tsc index.ts` resolves only that file and reports false negatives because cross-file type contracts are missed. Calling `tsc -p tsconfig.json` from a hook that fires on every commit is correct but slow on large projects; gating on the project's own file glob makes the hook a no-op when the user only edited a sibling project. The pre-commit framework's `files:` regex and `pass_filenames: false` flag exist exactly for this case.</rationale>
+      </rule>
+
+      <example type="good" title="Per-project tsc hook with pass_filenames: false">
+        <code lang="yaml"><![CDATA[
+# .pre-commit-config.yaml
+- repo: local
+  hooks:
+    - id: tsc-api
+      name: tsc (api project)
+      entry: bash -c "cd packages/api && npx tsc --noEmit -p tsconfig.json"
+      language: system
+      files: ^packages/api/.*\.tsx?$
+      pass_filenames: false
+      ]]></code>
+        <note>Hook runs only when files under packages/api/ change; it ignores the file list and uses the project's tsconfig instead.</note>
+      </example>
+
+      <example type="bad" title="tsc with pass_filenames: true misses type graph">
+        <code lang="yaml"><![CDATA[
+- repo: local
+  hooks:
+    - id: tsc
+      entry: npx tsc --noEmit
+      language: system
+      files: \.tsx?$
+      pass_filenames: true   # THE BUG: tsc gets a file list, ignores tsconfig project graph
+      ]]></code>
+        <note>tsc invoked with bare filenames produces unreliable output — the type graph isn't loaded.</note>
+      </example>
+
+      <antipattern>
+        <description>Wiring a single `tsc` hook for an entire monorepo, scoped to all `*.ts` files.</description>
+        <reason>Every commit anywhere in the monorepo triggers a full type-check of every project. Latency goes to minutes, the floor collapses, agents bypass.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/lint-staged.config.js" purpose="lint-staged config wiring biome, prettier, eslint, ruff, mypy with file-glob scoping."/>
+      <template path="templates/lefthook-staged.yml" purpose="lefthook pre-commit using {staged_files} and glob: filters per language."/>
+    </templates>
+
+    <see-also>
+      <link href="https://pre-commit.com/#filtering-files-with-types-and-files">pre-commit framework: filtering files by type / regex.</link>
+      <link href="https://github.com/lint-staged/lint-staged">lint-staged: run linters on staged files.</link>
+      <link href="https://github.com/evilmartians/lefthook">lefthook: {staged_files} / {push_files} template.</link>
+      <link href="https://www.pkgpulse.com/blog/husky-vs-lefthook-vs-lint-staged-git-hooks-nodejs-2026">PkgPulse 2026 — husky vs lefthook vs lint-staged benchmark.</link>
+      <link href="https://pre-commit.com/#hooks-pass_filenames">pre-commit: pass_filenames flag for graph-aware tools.</link>
+      <link href="https://github.com/microsoft/TypeScript/wiki/Performance#using---noemit">TypeScript: --noEmit and project references.</link>
+      <link href="https://docs.astral.sh/ruff/configuration/#using-ruff-in-pre-commit">Astral: ruff in pre-commit (staged-list semantics).</link>
+    </see-also>
+  </content>
+</methodology>
