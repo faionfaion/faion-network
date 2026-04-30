@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="pyproject-single-source">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Concentrate every Python tool's configuration in pyproject.toml. Forbid setup.py, setup.cfg, tox.ini, .flake8, requirements*.txt for new code. One file = one place AI agents read, parse, and mutate.</summary>
+    <tags>
+      <tag>pyproject</tag>
+      <tag>python</tag>
+      <tag>configuration</tag>
+      <tag>tooling</tag>
+      <tag>ruff</tag>
+    </tags>
+    <category>lang</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>`pyproject.toml` as the Single Source of Configuration</title>
+    <summary>Concentrate every Python tool's configuration in `pyproject.toml` — `[build-system]`, `[project]` (PEP 621), `[tool.uv]`, `[tool.ruff]`, type-checker (`[tool.ty]` or `[tool.mypy]`), `[tool.pytest.ini_options]`, `[tool.coverage.run]`, `[tool.bandit]`, `[tool.mutmut]`. Forbid `setup.py`, `setup.cfg`, `tox.ini`, `.flake8`, `requirements*.txt` for Python tooling on new code. One file = one place AI agents have to read, parse, and mutate.</summary>
+    <why>
+      <p>PEP 621 standardizes project metadata in pyproject.toml; Hatchling, setuptools, flit, and uv all consume that table directly. Splitting config into `setup.cfg` + `tox.ini` + `.flake8` + `requirements.txt` is a 2017-era pattern that produces silent inconsistencies — the agent edits one file, forgets the other, and the repo enters a half-migrated state. A single TOML file is parseable, diffable, and machine-mutable; agents reason about it more reliably than about a swarm of legacy config files.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Every new Python project, library, service, or CLI.</item>
+        <item>Migrating any project where `setup.cfg`, `tox.ini`, or `.flake8` still exists alongside `pyproject.toml`.</item>
+        <item>Tooling-heavy repos with ruff + pytest + coverage + bandit + mutmut all configured.</item>
+        <item>Any repo touched by a coding agent — fewer files to discover means less drift.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Build systems with truly exotic native-extension logic where `setup.py` carries imperative build steps that TOML cannot express — keep `setup.py` minimal and put metadata in `[project]`.</item>
+        <item>Vendored read-only mirrors of upstream projects whose layout you cannot change.</item>
+        <item>`tox` users who deliberately keep `tox.ini` for parallelism config that pyproject's `[tool.tox]` does not yet support — the trade-off is local; document it.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="single-file-rule">
+      <p>Every Python tool that supports pyproject.toml must be configured there. Legacy alternatives are deleted, not co-existed-with. A one-line shell check fails the build if any forbidden file reappears.</p>
+
+      <rule testable="true">
+        <statement>The repo contains zero of: `setup.py` (unless required for native build steps), `setup.cfg`, `.flake8`, `pytest.ini`, `tox.ini`, `mypy.ini`, `requirements.txt` (for first-party deps). All replaced by sections inside `pyproject.toml`.</statement>
+        <rationale>PEP 621 provides the standard metadata table; PEP 518 provides the build-system table. Every modern Python tool reads `pyproject.toml`. Multiple config files create silent conflicts an agent will miss when editing one and forgetting another.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# in CI: fail if any forbidden file exists
+test ! -f setup.cfg && \
+test ! -f tox.ini && \
+test ! -f .flake8 && \
+test ! -f pytest.ini && \
+test ! -f mypy.ini && \
+test ! -f requirements.txt
+        ]]></code>
+        <note>One liner blocks the legacy files from sneaking back in via copy-paste.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="text"><![CDATA[
+.
+├── pyproject.toml      # has [tool.ruff]
+├── setup.cfg           # ALSO has [flake8] section
+├── .flake8             # AND a third copy of lint rules
+├── tox.ini             # AND test config diverging from pytest
+└── requirements-dev.txt  # deps not in pyproject.toml
+        ]]></code>
+        <note>Four config files, four sources of truth, every agent edit drifts one of them.</note>
+      </example>
+
+      <antipattern>
+        <description>Adding a new tool's config to a fresh `.toolnamerc` file because "the README said to".</description>
+        <reason>If the tool reads `pyproject.toml` (it almost certainly does in 2026), use `[tool.&lt;name&gt;]`. The dotfile reintroduces the same drift problem the rule is preventing.</reason>
+      </antipattern>
+    </section>
+
+    <section name="canonical-sections">
+      <p>The set of TOML tables every modern Python project should use, and what each one replaces.</p>
+
+      <list>
+        <item>`[build-system]` — PEP 518 build backend (hatchling, setuptools, flit, etc.).</item>
+        <item>`[project]` — PEP 621 metadata: name, version, requires-python, dependencies, optional-dependencies.</item>
+        <item>`[tool.uv]` — uv-specific config: dev-dependencies, sources, indexes.</item>
+        <item>`[tool.ruff]` and `[tool.ruff.lint]` / `[tool.ruff.format]` — replaces flake8 + isort + black + pyupgrade.</item>
+        <item>`[tool.ty]` (or `[tool.mypy]` / `[tool.pyright]`) — type-checker config; pick exactly one.</item>
+        <item>`[tool.pytest.ini_options]` — replaces pytest.ini and tox.ini test sections.</item>
+        <item>`[tool.coverage.run]` and `[tool.coverage.report]` — replaces .coveragerc.</item>
+        <item>`[tool.bandit]`, `[tool.mutmut]` — security and mutation testing.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>When a repo uses pytest + ruff + coverage + a type checker, `pyproject.toml` MUST contain `[tool.pytest.ini_options]`, `[tool.ruff]`, `[tool.coverage.run]`, and exactly one of `[tool.ty]` / `[tool.mypy]` / `[tool.pyright]`. Missing sections mean the tool is reading either defaults or a legacy file.</statement>
+        <rationale>If a tool runs without its TOML section present, it is either using global defaults (silent risk) or an undeclared config file (drift). Both are caught by checking the table is present.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="toml"><![CDATA[
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "my-svc"
+version = "1.0.0"
+requires-python = ">=3.12"
+dependencies = ["fastapi>=0.115"]
+
+[project.optional-dependencies]
+dev = ["pytest>=9", "ruff>=0.15", "ty"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "T20"]
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+addopts = "-ra --strict-markers --strict-config"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+
+[tool.ty.environment]
+python-version = "3.12"
+        ]]></code>
+        <note>Every relevant tool has its table. No setup.cfg, no .flake8, no pytest.ini.</note>
+      </example>
+
+      <antipattern>
+        <description>Configuring `ruff` in pyproject.toml AND keeping `.flake8` for "the parts ruff doesn't cover yet".</description>
+        <reason>Ruff covers all flake8 plugins as `--select` codes; if a rule is missing, request it upstream or use a single dedicated tool. Two parallel lint configs guarantee the agent edits one and breaks the other.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/pyproject.toml" purpose="Reference pyproject.toml with all common tool sections wired up."/>
+      <template path="templates/check-no-legacy.sh" purpose="One-line CI check that fails if forbidden config files exist."/>
+    </templates>
+
+    <see-also>
+      <link href="https://peps.python.org/pep-0621/">PEP 621 — project metadata in pyproject.toml.</link>
+      <link href="https://packaging.python.org/en/latest/specifications/pyproject-toml/">Authoritative pyproject.toml specification.</link>
+      <link href="https://docs.astral.sh/ruff/configuration/">Ruff configuration reference (pyproject.toml schema).</link>
+      <link href="https://docs.pytest.org/en/stable/reference/customize.html">pytest configuration in pyproject.toml.</link>
+    </see-also>
+  </content>
+</methodology>
