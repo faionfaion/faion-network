@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="sec-codeql-autofix-on-pr">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>CodeQL Code Scanning on every PR as a required merge gate. Copilot Autofix proposes AI patches as reviewable suggestions — never auto-merged. AI detections cover Bash, Dockerfile, Terraform.</summary>
+    <tags>
+      <tag>codeql</tag>
+      <tag>sast</tag>
+      <tag>security</tag>
+      <tag>github</tag>
+      <tag>copilot-autofix</tag>
+    </tags>
+    <category>sec</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>CodeQL + Copilot Autofix as the PR-time SAST Gate</title>
+    <summary>Every GitHub repository enables Code Scanning with CodeQL on `push` and `pull_request`. PRs that introduce a new CodeQL alert MUST be blocked from merge by a required check. Copilot Autofix runs automatically on alerts and posts an AI-generated patch as a PR suggestion that a human accepts, edits, or rejects — never auto-merge. For ecosystems CodeQL does not cover (Bash, Dockerfile, Terraform/HCL, PHP), enable AI-powered detections in the same Code Scanning pipeline so the gate is uniform across the stack.</summary>
+    <why>
+      <p>CodeQL is a semantic dataflow engine, not a regex scanner: it follows tainted user input through control flow and catches injection, SSRF, deserialization and auth-bypass classes that pattern matchers miss. Copilot Autofix (GA 2024, expanded with hybrid AI detections in 2026) covers more than 90% of alert types in JavaScript, TypeScript, Java and Python and resolves over two-thirds of findings with little or no editing — GitHub's own measurements report median time-to-fix dropping from 1.5 hours manual to about 28 minutes when Autofix is enabled. The PR-time gate beats nightly scans because the diff is fresh, the author is paged, and the suggestion lands inside the review the human is already doing.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any GitHub-hosted repository with executable code (public OSS gets it free; private repos need GitHub Advanced Security or Copilot Enterprise).</item>
+        <item>Any repo with HTTP, auth, deserialization, SQL/NoSQL, or template rendering surface.</item>
+        <item>Polyglot repos where shell, Dockerfile, Terraform or PHP also need SAST coverage via the AI detections lane.</item>
+        <item>Agent-driven feature work — agents read SARIF via `gh api` and treat new alerts as merge blockers.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Repositories not hosted on GitHub — use Semgrep or SonarQube instead; the Autofix loop is GitHub-specific.</item>
+        <item>Pure documentation, asset, or notebook repositories with no executable surface — overhead exceeds value.</item>
+        <item>Throwaway experimental branches that will never be merged — do not waste minutes on Code Scanning runs there.</item>
+        <item>Mass-renaming refactors that legitimately churn thousands of lines — schedule a one-shot baseline reset, not per-PR Autofix.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pr-blocking-gate">
+      <p>Code Scanning produces SARIF that GitHub turns into per-PR check runs. Branch protection on the default branch lists those check runs as required. Without the required-check wiring, alerts surface but do not block merge — the gate becomes advisory and stops working.</p>
+
+      <rule testable="true">
+        <statement>Every protected branch MUST list the CodeQL check name (for example `CodeQL / Analyze (javascript-typescript)`) as a required status check, and the CodeQL workflow MUST run on `pull_request` for every language matrix entry. A PR introducing one or more new CodeQL alerts MUST fail the check until the alert is dismissed-with-reason or fixed in the same PR.</statement>
+        <rationale>If the check is not required, a PR can be merged with red alerts and the gate is theatre. GitHub's own Advanced Security guidance ties the merge decision to the SARIF diff between base and head — that diff has to be the source of truth for the bot, the human reviewer, and the agent.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="yaml"><![CDATA[
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  analyze:
+    uses: github/codeql-action/.github/workflows/codeql.yml@v3
+        ]]></code>
+        <note>Workflow runs on PR events; the resulting check can be required in branch protection.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="yaml"><![CDATA[
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Monday morning only
+        ]]></code>
+        <note>A weekly scheduled scan never produces a per-PR check — there is nothing to require, and bad code lands during the week.</note>
+      </example>
+
+      <antipattern>
+        <description>Marking the CodeQL check as "informational" because the team is overwhelmed by alerts during onboarding.</description>
+        <reason>Once the gate is advisory, both humans and agents stop reading it; baseline the existing alerts as "won't fix" once, then keep the gate hard for everything new.</reason>
+      </antipattern>
+    </section>
+
+    <section name="autofix-suggestion-loop">
+      <p>Autofix proposes a patch attached to the alert. The patch is treated as a draft fix: it must be opened in the diff, reasoned about, and either committed via the PR suggestion API or rewritten by the author. The merge bot does not consume Autofix suggestions automatically.</p>
+
+      <rule testable="true">
+        <statement>An agent or human MUST treat each Copilot Autofix suggestion as a draft patch: read the alert's data-flow explanation, run the test suite locally with the patch applied, and only then apply via "Commit suggestion" or rewrite. Autofix patches MUST NOT be auto-applied by a bot, and MUST NOT be merged without at least one non-author approval.</statement>
+        <rationale>Autofix achieves more than two-thirds correctness on common alert types but the remaining third either misses a constraint (locale, framework version, custom wrapper) or shifts the bug rather than fixing it; the reviewable-suggestion contract keeps the human or agent in the loop while still cutting median time-to-fix by roughly five times.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+gh api -H "Accept: application/vnd.github+json" \
+  /repos/$OWNER/$REPO/code-scanning/alerts/$ALERT_ID > alert.json
+gh pr checkout $PR
+git apply <(jq -r '.most_recent_instance.fix.diff' alert.json)
+pytest -x
+gh pr review --approve
+        ]]></code>
+        <note>Agent fetches the alert + Autofix patch, applies locally, runs tests, only then surfaces for human approval.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="yaml"><![CDATA[
+- uses: github/codeql-autofix-apply@v1
+  with:
+    auto-merge: true
+        ]]></code>
+        <note>An auto-merge runner on every Autofix suggestion lands incorrect patches and silently rewrites security-sensitive code without review.</note>
+      </example>
+
+      <antipattern>
+        <description>Dismissing Autofix alerts as "false positive" without recording a reason, just to clear the queue.</description>
+        <reason>Dismissals without `--reason` poison the audit trail; pick `false-positive`, `won-t-fix`, or `used-in-tests` so future scans and compliance reviews can replay the decision.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/codeql-workflow.yml" purpose="Minimal GitHub Actions workflow enabling CodeQL on push and PR with autobuild and SARIF upload."/>
+      <template path="templates/branch-protection.json" purpose="Required-status-check JSON snippet for the `gh api` call that wires CodeQL into branch protection."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.github.com/en/code-security/code-scanning/managing-your-code-scanning-configuration/about-code-scanning-with-codeql">GitHub: about Code Scanning with CodeQL.</link>
+      <link href="https://github.blog/security/application-security/github-expands-application-security-coverage-with-ai-powered-detections/">GitHub: AI-powered detections expanding Code Scanning coverage.</link>
+      <link href="https://docs.github.com/en/code-security/code-scanning/managing-code-scanning-alerts/responsible-use-of-code-scanning-autofix">GitHub: responsible use of Code Scanning Autofix.</link>
+      <link href="https://github.blog/news-insights/product-news/found-means-fixed-introducing-code-scanning-autofix-powered-by-github-copilot-and-codeql/">Found means fixed: Copilot + CodeQL Autofix announcement.</link>
+    </see-also>
+  </content>
+</methodology>
