@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="sec-secrets-defense-in-depth">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Two-layer secret scanning: gitleaks pre-commit (fast, local, blocks commit) + TruffleHog --results=verified in CI (confirms live tokens, P0 incident on finding). Rotate before revert.</summary>
+    <tags>
+      <tag>secrets</tag>
+      <tag>security</tag>
+      <tag>gitleaks</tag>
+      <tag>trufflehog</tag>
+      <tag>pre-commit</tag>
+    </tags>
+    <category>sec</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Two-Layer Secret Scanning: Gitleaks + Verified TruffleHog</title>
+    <summary>Run two complementary secret scanners in two different lifecycle stages. Layer one is `gitleaks` as a pre-commit hook on the developer or agent machine: sub-second, regex-based, blocks the commit before any secret enters local git history. Layer two is `trufflehog --results=verified` in CI on every PR: it actively calls the issuing provider (AWS STS, GitHub, Stripe, Slack, OpenAI, Anthropic) to confirm the candidate token is live, and treats verified findings as P0 incidents that trigger immediate rotation before revert.</summary>
+    <why>
+      <p>No single secret scanner wins. Gitleaks is fast and local but cannot tell a real key from a plausible one, so on its own it produces noise that humans and agents learn to bypass. TruffleHog inverts the trade-off — over 800 detector types, 2026's adaptive AI detection, and live verification cuts false positives close to zero, but it is too slow and network-heavy for a pre-commit hook. Layering them turns each tool's weakness into the other's job: gitleaks stops the obvious leaks at write time, TruffleHog confirms the survivors at PR time. GitGuardian's 2026 sprawl report measured 29 million new secrets leaked publicly in 2025 with an 81% surge specifically in AI-service tokens — the failure mode is now agents pasting `sk-...` keys into commits, which is exactly what the two-layer pattern catches.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Every repository, no exception — even single-developer prototypes, because a leaked AWS or OpenAI key costs more than the project earns.</item>
+        <item>Repos where AI agents commit on behalf of humans — verified scanning is the only check that distinguishes a real `sk-ant-` token from a docstring example.</item>
+        <item>Monorepos with mixed languages and config formats where naive pattern matchers miss provider-specific encodings (JWT, .pem, dotenv, terraform tfvars).</item>
+        <item>Migrations of historical secrets — pair with `detect-secrets` baseline so that historical findings can be ratcheted out without blocking every PR.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>There is no NOT case for the two layers themselves; only the depth (1 layer vs 2) varies. A throwaway gist might run only gitleaks pre-commit and skip the CI verifier.</item>
+        <item>Air-gapped repos with no network egress in CI — TruffleHog verification calls providers, which is impossible without egress; substitute provider-specific offline format checks.</item>
+        <item>Generated code drops where every blob is regenerated from a private template store — scan the template store instead of the generated tree.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="precommit-block">
+      <p>The cheapest place to stop a secret is before `git commit` writes it to local history. Once a secret hits any commit object, even a deleted commit, it must be rotated — `git filter-repo` does not undo the leak. Gitleaks runs sub-second on staged files only, so the cost is invisible.</p>
+
+      <rule testable="true">
+        <statement>Every repo MUST install `gitleaks` as a `pre-commit` hook scanning staged content. The hook MUST run by default for every contributor (humans and agents). Agents MUST treat a hook failure as a real finding: rotate first, then scrub from the diff. Bypassing with `git commit --no-verify` is forbidden — fix the root cause and recommit.</statement>
+        <rationale>Defense in depth begins where the secret would otherwise originate; CI scanners catch what slips through but cannot un-publish a token that landed on a public branch. Local-first matches the same "shift-left" pattern that made format/lint hooks effective and that GitGuardian's 2026 sprawl report identifies as the highest-leverage point.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="yaml"><![CDATA[
+- repo: https://github.com/gitleaks/gitleaks
+  rev: v8.21.0
+  hooks:
+    - id: gitleaks
+        ]]></code>
+        <note>Pinned by tag; runs on staged files only.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="bash"><![CDATA[
+git commit -m "wip" --no-verify
+        ]]></code>
+        <note>Bypass turns the hook into theatre; the next CI scan or, worse, an attacker, finds the secret.</note>
+      </example>
+
+      <antipattern>
+        <description>Adding `*.env`, `*.pem`, `credentials.json` to `.gitignore` and considering the problem solved.</description>
+        <reason>`.gitignore` only protects untracked files; once a secret is committed it stays in history regardless. Combine `.gitignore` with the hook plus a gitleaks allowlist.</reason>
+      </antipattern>
+    </section>
+
+    <section name="verified-ci-gate">
+      <p>Pattern matchers cannot tell a real production token from one in an example. TruffleHog calls the issuer (AWS STS, GitHub, Stripe, OpenAI, Anthropic, Slack) to confirm the candidate is live; verified findings are by definition exploitable.</p>
+
+      <rule testable="true">
+        <statement>Every PR MUST run TruffleHog against the diff between `base..head` with `--results=verified` and the job MUST fail the required check on any verified finding. Unverified findings are reported as warnings, not blockers, to keep the gate signal clean. The PR description MUST link the rotation receipt before merge if a verified finding is acknowledged as expected (rare — typically only test fixtures using known invalidated keys).</statement>
+        <rationale>A verified finding is not a "potential secret" — it is a key that the issuer just answered as authentic. Treating it as anything other than P0 is a process bug. Restricting the merge gate to verified findings stops alert fatigue and gives agents a sharp signal they can act on.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="yaml"><![CDATA[
+- name: TruffleHog (verified only)
+  uses: trufflesecurity/trufflehog@main
+  with:
+    base: ${{ github.event.pull_request.base.sha }}
+    head: ${{ github.event.pull_request.head.sha }}
+    extra_args: --results=verified
+        ]]></code>
+        <note>Diff-scoped, verified-only; reproducible signal for the required check.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="yaml"><![CDATA[
+- run: trufflehog filesystem .
+        ]]></code>
+        <note>Whole-tree scan with no verification floods the queue with false positives; team disables the gate.</note>
+      </example>
+
+      <antipattern>
+        <description>Running TruffleHog non-verified and adding everything it finds to the dismiss list.</description>
+        <reason>The dismiss list grows until real secrets land and are auto-suppressed; pairing diff-scope with `--results=verified` gives you a list that stays small and meaningful.</reason>
+      </antipattern>
+    </section>
+
+    <section name="rotation-runbook">
+      <p>Once a credential is on a public branch or any shared remote, the only remediation that matters is rotating the credential at the issuer. History rewrites and force-pushes do not invalidate a token — the token must be revoked.</p>
+
+      <rule testable="true">
+        <statement>The first action on a verified secret finding MUST be rotation at the issuer (AWS IAM key delete, GitHub token revoke, OpenAI/Anthropic key revoke, Stripe key roll). Only after the issuer confirms revocation does the responder rewrite history if desired. The rotation event MUST be logged in the incident channel with the issuer's confirmation ID and the new secret stored in the team secret manager (Vault, 1Password, AWS Secrets Manager). The PR that introduced the leak MUST be closed without merge until the new secret is wired in.</statement>
+        <rationale>An attacker who clones the repo before a force-push still has the leaked token; a `git filter-repo` on the remote does not delete the value from anyone's local copy or any cache, fork, or backup. Issuer-side revocation is the only operation that breaks the attacker's access.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# AWS
+aws iam delete-access-key --access-key-id AKIA... --user-name ci-bot
+# GitHub
+gh api -X DELETE /user/tokens/$TOKEN_ID
+# OpenAI / Anthropic — UI-only, capture confirmation ID in incident channel
+        ]]></code>
+        <note>Each call returns confirmation; the responder pastes the IDs into the incident record.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="bash"><![CDATA[
+git push --force origin main   # delete the commit and call it done
+        ]]></code>
+        <note>The token is still live in caches, forks, and CI logs; no revocation has happened.</note>
+      </example>
+
+      <antipattern>
+        <description>Rotating the secret silently, without logging the issuer's confirmation ID, "to avoid embarrassment."</description>
+        <reason>Future audits cannot prove revocation; SOC2 and ISO 27001 control evidence requires the confirmation artifact.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/gitleaks.toml" purpose="Allowlist + extend-default rules tuned to ignore docs/test fixtures."/>
+      <template path="templates/trufflehog-action.yml" purpose="GitHub Actions step running TruffleHog on PR diff with verified-only output."/>
+      <template path="templates/precommit-secrets.yaml" purpose="`pre-commit` framework block wiring gitleaks into the standard hook chain."/>
+    </templates>
+
+    <see-also>
+      <link href="https://github.com/gitleaks/gitleaks">Gitleaks repository and rule index.</link>
+      <link href="https://www.gitguardian.com/state-of-secrets-sprawl-report-2026">GitGuardian 2026 secrets sprawl report.</link>
+      <link href="https://github.com/trufflesecurity/trufflehog">TruffleHog repository and detector list.</link>
+      <link href="https://blog.gitguardian.com/secret-scanning-tools/">GitGuardian comparison of secret scanners.</link>
+      <link href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-anonymized-urls">GitHub guidance on revoked tokens still appearing in history.</link>
+      <link href="https://github.com/Yelp/detect-secrets">detect-secrets — baseline-driven rollout for legacy repos.</link>
+    </see-also>
+  </content>
+</methodology>
