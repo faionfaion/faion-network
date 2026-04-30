@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gov-sonarqube-ai-code-gate">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Run SonarQube/SonarCloud with the AI Code Assurance gate and connect Sonar MCP to the coding agent so it loops on findings until the gate is green.</summary>
+    <category>gov</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+    <tags>
+      <tag>sonarqube</tag>
+      <tag>quality-gate</tag>
+      <tag>ai-code</tag>
+      <tag>governance</tag>
+      <tag>mcp</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>SonarQube AI Code Quality Gate</title>
+
+    <summary>Repos where a meaningful share of code is AI-generated MUST run SonarQube/SonarCloud with the "Sonar way for AI Code" quality gate (or a custom gate marked Qualified for AI Code Assurance) and connect Sonar's MCP server to the coding agent. The gate enforces stricter thresholds for cognitive complexity, duplication, security-hotspot density, and the AI-code trust score; the agent reads findings via MCP and rewrites until the gate is green. PRs that do not pass the AI-tuned gate cannot be merged, regardless of who or what authored the diff.</summary>
+
+    <why>
+      <p>AI-generated code has a measurably different defect profile than human code: more lookalike bugs (almost-correct copies of training examples), more dead code, shallower tests, and more cognitive-complexity hotspots. Sonar's published April 2026 telemetry puts AI-authored code at 42% of all committed code across observed repos, and the default "Sonar way" gate was never tuned for those failure modes. The "Sonar way for AI Code" gate raises bug-density and duplication thresholds and adds the AI trust score; the MCP server lets the agent itself loop until clean, turning the gate from a blocker into a productive constraint.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any team where AI-authored commits exceed ~25% of weekly diff volume (Copilot, Claude Code, Cursor, Codex, Devin).</item>
+        <item>Regulated industries (finance, healthcare, government) where audit evidence of an AI-aware quality gate is a procurement/SOC2 requirement.</item>
+        <item>Enterprise-scale monorepos that already report quality dashboards to leadership.</item>
+        <item>Any repo emitting libraries to other teams where shallow-test and lookalike-bug regressions are expensive to chase down.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tiny solo projects — overhead exceeds value; ruff + biome + semgrep cover most of the same surface for free.</item>
+        <item>Pure greenfield prototypes under daily API churn — the gate's duplication metric will fight the architecture before it stabilizes.</item>
+        <item>Read-only or vendored mirrors — there is no PR surface to gate.</item>
+        <item>Internal demos / spike branches that will be deleted — bootstrap cost is not recoverable.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="ai-quality-gate">
+      <p>SonarQube ships a default "Sonar way" gate built for human-authored code. The 2026 "Sonar way for AI Code" gate raises thresholds on the metrics where AI code regresses (cognitive complexity, duplication, hotspot density) and adds an AI trust score. Pick the AI gate at project creation, or clone it into a custom one.</p>
+
+      <rule testable="true">
+        <statement>The Sonar project MUST be bound to a quality gate flagged Qualified for AI Code Assurance. The gate MUST set: new-code coverage at least 80%, new-code duplications at most 3%, zero new bugs / vulnerabilities / security hotspots, and AI-trust-score at least the team's published floor. The PR check MUST be a required status check in branch protection. The agent MUST read findings through the SonarQube MCP server and rewrite until clean; merging a failing gate is forbidden.</statement>
+        <rationale>An AI-tuned gate plus an MCP read loop turns a one-shot review into an iterative constraint the agent can satisfy itself; without the AI tuning the gate accepts shallow tests and lookalike duplication that Sonar's 2026 telemetry flags as the dominant AI defect classes.</rationale>
+      </rule>
+
+      <example type="good" title="sonar-project.properties bound to AI gate">
+        <code lang="properties"><![CDATA[
+# sonar-project.properties (committed)
+sonar.projectKey=acme_billing
+sonar.qualitygate=AI Code Assurance - Strict
+sonar.qualitygate.wait=true
+sonar.python.coverage.reportPaths=coverage.xml
+sonar.coverage.exclusions=**/migrations/**
+        ]]></code>
+        <note>qualitygate.wait=true makes the PR check block; AI Code Assurance - Strict is a custom gate cloned from Sonar way for AI Code.</note>
+      </example>
+
+      <example type="bad" title="Default gate with no AI tuning">
+        <code lang="properties"><![CDATA[
+sonar.projectKey=acme_billing
+sonar.qualitygate=Sonar way
+# no qualitygate.wait, no AI gate
+        ]]></code>
+        <note>Default gate accepts AI lookalike-bug density and shallow-test thresholds that the AI gate would reject.</note>
+      </example>
+
+      <antipattern>
+        <description>Granting a per-PR "exception" via the SonarCloud UI to merge a failing gate so the agent can move on.</description>
+        <reason>The exception removes the audit signal — leadership sees green dashboards while the AI defect class compounds; subsequent agents learn the gate is optional.</reason>
+      </antipattern>
+
+      <templates>
+        <template path="templates/sonar-project.properties" purpose="Project config bound to the AI-tuned gate."/>
+        <template path="templates/sonar-quality-gate.json" purpose="Custom AI quality-gate definition."/>
+      </templates>
+
+      <see-also>
+        <link href="https://docs.sonarsource.com/sonarqube-cloud/standards/ai-code-assurance/quality-gates-for-ai-code"/>
+        <link href="https://docs.sonarsource.com/sonarqube-cloud/ai-capabilities/ai-code-assurance"/>
+        <link href="https://securityboulevard.com/2026/03/how-to-optimize-sonarqube-for-reviewing-ai-generated-code/"/>
+      </see-also>
+    </section>
+
+    <section name="suppression-discipline">
+      <p>Sonar findings can be suppressed with <![CDATA[// NOSONAR]]> / <![CDATA[# NOSONAR]]> or by marking the issue "Won't fix" / "False positive" in the UI. AI agents will reach for the cheapest path to green; without discipline they suppress real findings instead of fixing them.</p>
+
+      <rule testable="true">
+        <statement>Inline NOSONAR suppressions MUST appear on the same line as the offending statement and MUST carry a trailing reason=&lt;short text&gt; sunset=YYYY-MM-DD comment. UI-level "Won't fix" / "False positive" transitions MUST be performed by a non-agent identity. Project-level sonar.issue.ignore.* rules require a CODEOWNER review and a linked tracker issue with a closure date. Disabling the AI gate, lowering its thresholds, or marking PRs "exempt" is forbidden.</statement>
+        <rationale>Without a structured suppression contract the agent silently learns that suppression is the cheapest fix; with one, every dismissal becomes a reviewable, expiring artifact.</rationale>
+      </rule>
+
+      <example type="good" title="Narrow, justified, dated suppression">
+        <code lang="python"><![CDATA[
+# Acceptable: narrow, justified, dated.
+secret = os.environ["LEGACY_TOKEN"]  # NOSONAR reason=migrating-to-vault sunset=2026-09-01
+        ]]></code>
+        <note>Reviewer can grep for sunset= and re-open expired suppressions automatically.</note>
+      </example>
+
+      <example type="bad" title="Project-wide rule disable">
+        <code lang="yaml"><![CDATA[
+# sonar-project.properties
+sonar.issue.ignore.multicriteria=e1
+sonar.issue.ignore.multicriteria.e1.ruleKey=python:S2068
+sonar.issue.ignore.multicriteria.e1.resourceKey=**/*.py
+        ]]></code>
+        <note>Project-wide rule disable hides the entire class of findings without a CODEOWNER review or a sunset.</note>
+      </example>
+
+      <antipattern>
+        <description>Adding NOSONAR with no reason text so the agent can ship a clean PR before a deadline.</description>
+        <reason>Untraceable suppressions accumulate; the AI defect class returns to the codebase and the gate becomes cosmetic.</reason>
+      </antipattern>
+
+      <see-also>
+        <link href="https://docs.sonarsource.com/sonarqube-server/latest/user-guide/issues/#issue-resolution"/>
+        <link href="https://blog.codacy.com/sonarqube-alternatives"/>
+      </see-also>
+    </section>
+
+  </content>
+</methodology>

@@ -3,6 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+- chore: migrate gov-sonarqube-ai-code-gate, inc-postmortem-auto-draft-no-publish, inc-read-only-investigation-default to methodology.xml (feature-047 batch A2)
 - chore: migrate nginx-reverse-proxy, ssl-tls-management, server-init-bootstrap to methodology.xml (feature-045 batch FU)
 - chore: migrate secrets-management, shell-productivity, ssh-hardening to methodology.xml (feature-045 batch FV)
 - chore: migrate product-discovery, product-launch, release-planning to methodology.xml (feature-045 batch FT)
