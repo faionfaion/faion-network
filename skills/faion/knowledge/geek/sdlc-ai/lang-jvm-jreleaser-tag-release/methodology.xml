@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lang-jvm-jreleaser-tag-release">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Replace ad-hoc mvn deploy/gradle publish with jreleaser.yml: one git tag triggers signing, Maven Central upload via the new Sonatype Central Portal, GitHub Release, and package-manager dist.</summary>
+    <tags>
+      <tag>jvm</tag>
+      <tag>jreleaser</tag>
+      <tag>maven-central</tag>
+      <tag>release</tag>
+      <tag>java</tag>
+    </tags>
+    <category>lang</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+    <languages>
+      <language>java</language>
+    </languages>
+    <frameworks>
+      <framework>maven</framework>
+      <framework>gradle</framework>
+    </frameworks>
+  </metadata>
+  <content>
+    <title>JVM One-Tag Release via JReleaser</title>
+    <summary>Replace ad-hoc mvn deploy / gradle publish plus hand-edited CHANGELOG.md with a single jreleaser.yml checked into the repo. A pushed git tag (e.g. v1.4.0) triggers one CI workflow that signs artifacts (GPG / Sigstore), uploads to Maven Central via the new Sonatype Central Portal, publishes a GitHub Release with notes generated from conventional commits, and optionally distributes binaries to Homebrew / Scoop / SDKMAN. AI agents never touch deploy YAML — they only land the change behind the tag.</summary>
+    <why>
+      <p>JVM release pipelines historically sprawl across pom.xml/build.gradle, signing keys, Sonatype OSSRH credentials, GitHub release notes, and homebrew taps; an LLM agent editing any one of those silently breaks the others (forgotten gpg.passphrase, wrong nexus-staging URL, stale CHANGELOG.md). JReleaser (Apache 2.0, JVM-native) consolidates the whole flow into one declarative config; failures surface in one workflow log; the canonical input is git tag and jreleaser.yml. With Sonatype OSSRH retired (June 30 2025) and Central Portal mandatory in 2026, releases that hand-roll nexus-staging-maven-plugin are already broken — JReleaser tracks the new endpoint and is the path of least resistance.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Libraries published to Maven Central or another public Maven repo (Central Portal, Gradle Plugin Portal, GitHub Packages).</item>
+        <item>CLIs distributed via Homebrew, Scoop, SDKMAN, Snap, or Chocolatey alongside JARs.</item>
+        <item>Polyglot repos with JVM + Go / Rust / Native binaries needing one release flow (JReleaser supports non-JVM artifacts too).</item>
+        <item>Any team where the release process has at least one "tribal knowledge" step that an agent would skip.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-artifact internal libraries published to a private corporate Nexus where mvn deploy already works — the migration cost exceeds the value.</item>
+        <item>Snapshot-only flows (continuous main → SNAPSHOT pushes) — JReleaser is for tagged releases.</item>
+        <item>Air-gapped environments without outbound HTTPS to GitHub / Maven Central / signing services.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="tag-as-release-trigger">
+      <p>JReleaser reads jreleaser.yml, computes the next version from the tag, builds and signs artifacts, uploads them, drafts/publishes GitHub Release, regenerates package-manager descriptors (Homebrew, Scoop, SDKMAN, Snap), and writes a changelog from conventional commits since the previous tag. Everything is one command in CI.</p>
+
+      <rule testable="true">
+        <statement>Every JVM library or CLI release MUST be triggered by a git tag matching v[0-9]+.[0-9]+.[0-9]+(-rc[0-9]+)? and execute exactly one CI job invoking ./mvnw -DskipTests -Prelease deploy &amp;&amp; jreleaser full-release (or the Gradle equivalent). Manual mvn deploy, manual GitHub Release creation, and manual CHANGELOG.md edits in the release commit are forbidden. AI agents may bump the version in source files, but the publish step must be the workflow.</statement>
+        <rationale>Tag-as-trigger gives a single, auditable provenance line ("commit X tagged v1.4.0 produced artifacts Y") and removes every step a human (or agent) might forget. Per JReleaser docs and JEP-style "one source of truth" guidance.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Local: bump version, commit, tag, push.
+./mvnw versions:set -DnewVersion=1.4.0 -DgenerateBackupPoms=false
+git commit -am "release: 1.4.0"
+git tag v1.4.0
+git push --follow-tags origin main
+# CI takes over: mvn deploy + jreleaser full-release
+        ]]></code>
+        <note>Three commands; everything else is the workflow.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="bash"><![CDATA[
+# Old hand-rolled flow (drift risk)
+./mvnw deploy -P release-sign-artifacts -Dgpg.passphrase=$P
+gh release create v1.4.0 --notes "(empty)"   # changelog forgotten
+# Homebrew tap update missed; SDKMAN not refreshed.
+        ]]></code>
+        <note>Each missing step is silent until a downstream user reports it.</note>
+      </example>
+
+      <antipattern>
+        <description>Triggering JReleaser on push to main instead of on a tag, then editing jreleaser.yml to skip steps when no version bump is detected.</description>
+        <reason>Conflates branch CI with release CI; permission scopes (signing keys, package-manager tokens) leak into every PR and the release log loses its provenance line.</reason>
+      </antipattern>
+
+      <reference path="templates/release.yml">GitHub Actions workflow triggered by tags only.</reference>
+    </section>
+
+    <section name="central-portal-signing">
+      <p>Sonatype OSSRH was retired June 30 2025; new and existing namespaces must publish via the Central Portal (https://central.sonatype.com/api/v1/publisher). JReleaser ships a mavenCentral deployer for this endpoint; the legacy nexus2 deployer points at OSSRH and no longer works for new releases.</p>
+
+      <rule testable="true">
+        <statement>jreleaser.yml MUST configure deploy.maven.mavenCentral.sonatype with url: https://central.sonatype.com/api/v1/publisher and applyMavenCentralRules: true. Signing MUST be enabled (signing.active: ALWAYS, signing.armored: true, with GPG key + passphrase in env vars / OIDC, never in the file). Agents are forbidden from setting signing.active: NEVER to "fix" a CI failure.</statement>
+        <rationale>OSSRH-targeted configs deploy nowhere in 2026; Central Portal rules (POM completeness, sources/javadoc jars, signed checksums) are stricter than legacy OSSRH and JReleaser bakes them in.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="yaml"><![CDATA[
+signing:
+  active: ALWAYS
+  armored: true
+  mode: MEMORY  # key from env, not filesystem
+
+deploy:
+  maven:
+    mavenCentral:
+      sonatype:
+        active: ALWAYS
+        url: https://central.sonatype.com/api/v1/publisher
+        applyMavenCentralRules: true
+        stagingRepositories:
+          - target/staging-deploy
+
+release:
+  github:
+    overwrite: true
+    draft: false
+    changelog:
+      formatted: ALWAYS
+      preset: conventional-commits
+      contributors:
+        format: "- {{contributorName}} ({{contributorUsernameAsLink}})"
+        ]]></code>
+        <note>Central Portal endpoint, signed deploy, conventional-commit notes generated automatically.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="yaml"><![CDATA[
+deploy:
+  maven:
+    nexus2:
+      maven-central:
+        active: ALWAYS
+        url: https://oss.sonatype.org/service/local      # retired
+        snapshotUrl: https://oss.sonatype.org/content/repositories/snapshots
+signing:
+  active: NEVER  # disabled to make CI green
+        ]]></code>
+        <note>Endpoint is dead; signing-disabled release will be rejected by Central Portal anyway.</note>
+      </example>
+
+      <antipattern>
+        <description>Storing the GPG passphrase in jreleaser.yml so the agent can run releases locally for testing.</description>
+        <reason>Secrets in source control leak forever; use JRELEASER_GPG_PASSPHRASE env var, repository secret, or OIDC, and run dry-runs against target/staging-deploy instead.</reason>
+      </antipattern>
+
+      <reference path="templates/jreleaser.yml">Minimum-viable JReleaser config.</reference>
+    </section>
+
+    <templates>
+      <template path="templates/jreleaser.yml" purpose="Minimum-viable config: Maven Central + GitHub Release + GPG signing."/>
+      <template path="templates/release.yml" purpose="GitHub Actions workflow triggered by v* tags, invoking JReleaser."/>
+    </templates>
+
+    <see-also>
+      <link href="https://jreleaser.org/guide/latest/index.html"/>
+      <link href="https://central.sonatype.org/news/20250326_ossrh_sunset/"/>
+      <link href="https://jreleaser.org/guide/latest/reference/deploy/maven/maven-central.html"/>
+    </see-also>
+  </content>
+</methodology>
