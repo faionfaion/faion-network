@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tracker-gitlab-duo-developer-flow">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Drive GitLab issue-to-MR through Duo Agent Platform named flows (Developer + Code Review), label triggers, protected-branch inheritance, and a hard 18.8 version floor.</summary>
+    <tags>
+      <tag>gitlab</tag>
+      <tag>gitlab-duo</tag>
+      <tag>merge-request</tag>
+      <tag>agent-platform</tag>
+      <tag>tracker</tag>
+    </tags>
+    <category>tracker</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>GitLab Duo Agent Platform Developer Flow</title>
+    <summary>Drive every GitLab issue-to-merge-request transition through the GitLab Duo Agent Platform's named flows: Developer Flow turns an issue into an MR, Code Review Flow runs automated review on the MR, Software Development Flow handles multi-step plan-before-execute changes, and CI/CD Flows handle pipeline migrations and failing-build fixes. Every flow respects the GitLab project's protected-branch rules, CODEOWNERS, and approval-rule policies — the human approver still merges. Triggers are issue labels (`agent:implement`) or scheduled pipelines, never raw API calls. Pre-18.8 GitLab versions are explicitly out of scope because of the locking bug plus feature-flag config issues tracked in GitLab incident #21171.</summary>
+    <why>
+      <p>GitLab shipped Duo Agent Platform with named flows precisely to keep agent runs visible to project admins, auditors, and protected-branch enforcers — the same surface that already gates human MRs. The mechanism: by tying triggers to label transitions and scheduled pipelines, every agent action is a first-class GitLab event with full audit, project permissions, and protected-branch enforcement. Side webhooks or out-of-platform API drivers bypass that audit and are the documented anti-pattern in GitLab Duo's reference docs. SAST workflows specifically benefit because Duo's flows can be composed (Developer Flow → Code Review Flow with security standard) so false-positive filtering happens once, on the platform, with a single audit trail.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Self-managed or GitLab.com customers (any tier with Duo) needing GitLab-native agent runs.</item>
+        <item>Pipeline-heavy projects where CI/CD Flows (legacy pipeline conversion, fix-failing-build) compose well with Developer Flow.</item>
+        <item>SAST-heavy workflows where false-positive filtering is the bottleneck and Code Review Flow can be tuned per security standard.</item>
+        <item>On-prem orgs that cannot use Cloud-only platforms (Atlassian Rovo) and need an in-region agent runner.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pre-18.8 GitLab versions — locking bug and feature-flag config issues block reliable runs (incident #21171).</item>
+        <item>Multi-cloud orgs where the agent must read context outside GitLab's data plane; Duo cannot reach that data.</item>
+        <item>Time-critical incident response where Duo's async flow latency is too high for the SLA.</item>
+        <item>Single-author solo projects where the flow setup overhead exceeds value.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="flows-as-trigger-surface">
+      <p>Routing every agent run through a named flow keeps the trigger visible in the project's automation surface and inherits protected-branch and approval-rule enforcement automatically.</p>
+
+      <rule testable="true">
+        <statement>Every coding agent action against a GitLab project MUST be invoked through a named Duo flow declared in `.gitlab/duo-flows.yaml`. Triggers MUST be either (a) issue label transitions (`agent:implement`, `agent:review`) or (b) scheduled pipelines. Direct API calls to `merge_requests` from outside Duo are forbidden in production projects. The flow definition MUST set `require_human_review: true` for any change touching a protected branch and MUST NOT exceed the assignee's project role; protected-branch settings, CODEOWNERS, and approval rules apply to flow output exactly as they apply to human MRs.</statement>
+        <rationale>GitLab Duo's flow contract makes the platform — not external webhooks — the system of record for "an agent did this". Side webhooks or external runners bypass the audit log and protected-branch enforcement, recreating the shared-token anti-pattern Duo was built to retire. Tying triggers to label transitions also gives auditors one surface to review: the project's label history is the agent invocation log.</rationale>
+      </rule>
+
+      <example type="good" title="Two named flows, label-triggered, project rules inherited">
+        <code lang="yaml"><![CDATA[
+# .gitlab/duo-flows.yaml
+flows:
+  developer:
+    trigger: issue_label_added
+    label: "agent:implement"
+    require_human_review: true
+    output: merge_request
+    auto_link_issue: true             # MR body gets "Closes #issue"
+    respect: [protected_branches, codeowners, approval_rules]
+  code_review:
+    trigger: merge_request_opened
+    standards: [security, perf, style]
+        ]]></code>
+        <note>Two named flows, label-triggered, project rules inherited; no external webhook in sight.</note>
+      </example>
+
+      <example type="bad" title="External runner bypassing Duo entirely">
+        <code lang="yaml"><![CDATA[
+# external GitHub Actions runner reaching into GitLab
+on: schedule
+steps:
+  - run: |
+      curl -X POST $GITLAB_URL/api/v4/merge_requests \
+        -H "PRIVATE-TOKEN: $GITLAB_PAT" \
+        --data "..."                    # bypasses Duo entirely
+        ]]></code>
+        <note>External runner, admin PAT, MR appears with no link to a flow; protected-branch checks happen, but the audit log says "PAT user" with zero context.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent flow defined in Duo but invoked via a Slack slash command that takes the user's input verbatim and passes it to the runner.</description>
+        <reason>Slash command bypasses label-trigger discoverability; auditors looking at the project's label history cannot find the run, so reconstructing what happened requires correlating Slack logs with GitLab logs.</reason>
+      </antipattern>
+
+      <reference path="templates/duo-flows.yaml">Working `.gitlab/duo-flows.yaml` config.</reference>
+    </section>
+
+    <section name="flow-composition-and-version-floor">
+      <p>Developer Flow alone produces an MR but does not gate it; the value of Duo's audit story comes from chaining the second flow so review happens on the same platform with the same audit chain.</p>
+
+      <rule testable="true">
+        <statement>The canonical Duo pipeline MUST chain Developer Flow into Code Review Flow: the `agent:implement` label triggers Developer Flow, the resulting MR-opened event triggers Code Review Flow with at least the `security` standard enabled. The project MUST run GitLab 18.8 or later before enabling any Duo flow; pre-18.8 deployments are explicitly out of scope because of the locking bug plus feature-flag misconfiguration documented in GitLab incident #21171. A pre-18.8 detection check MUST run on flow-config load and refuse the run with a "version floor not met" error.</statement>
+        <rationale>The composed pipeline is what GitLab's Duo reference architecture targets — Developer alone misses the SAST false-positive filtering that Code Review Flow's `security` standard delivers. The 18.8 floor is non-negotiable: the locking bug in earlier versions causes the Developer Flow to deadlock on MR creation under concurrent label triggers, producing zombie runs the platform cannot clean up. Refusing at config-load time prevents the deadlock from occurring in production.</rationale>
+      </rule>
+
+      <example type="good" title="Composed pipeline with version-floor check">
+        <code lang="yaml"><![CDATA[
+flows:
+  developer:
+    trigger: { issue_label_added: "agent:implement" }
+    output: merge_request
+  code_review:
+    trigger: { merge_request_opened: any }
+    standards: [security, perf, style]
+require_gitlab_version: ">=18.8"      # refuse to load on older
+on_unmet_version: error_and_disable_flows
+        ]]></code>
+        <note>Composed pipeline + version-floor check; pre-18.8 fails fast.</note>
+      </example>
+
+      <example type="bad" title="Developer Flow without Code Review or version floor">
+        <code lang="yaml"><![CDATA[
+flows:
+  developer:
+    trigger: { issue_label_added: "agent:implement" }
+    output: merge_request
+# Code Review Flow not chained.
+# No version floor declared.
+        ]]></code>
+        <note>MR is opened without security review and the flow is enabled on pre-18.8 GitLab; concurrent label transitions can deadlock.</note>
+      </example>
+
+      <antipattern>
+        <description>Workaround pre-18.8 incident #21171 by adding a custom CI job that polls MRs every minute.</description>
+        <reason>Reintroduces the side-runner anti-pattern; the deadlock symptom is hidden but the audit-trail damage and feature-flag misconfiguration remain. Upgrade GitLab instead.</reason>
+      </antipattern>
+
+      <reference path="templates/duo-flows.yaml">Composed Developer + Code Review Flow config.</reference>
+    </section>
+
+    <templates>
+      <template path="templates/duo-flows.yaml" purpose=".gitlab/duo-flows.yaml config wiring Developer Flow + Code Review Flow with required-human-review and Closes-issue."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.gitlab.com/user/duo_agent_platform/"/>
+      <link href="https://about.gitlab.com/gitlab-duo-agent-platform/"/>
+      <link href="https://www.helpnetsecurity.com/2026/01/16/gitlab-duo-agent-platform-agentic-ai-automation/"/>
+    </see-also>
+  </content>
+</methodology>
