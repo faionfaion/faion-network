@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="pnpm-catalogs">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Use pnpm 9+ workspaces with catalog: protocol to share dependency versions across packages. One entry in pnpm-workspace.yaml controls versions for all packages; eliminates AI-agent version drift.</summary>
+    <tags>
+      <tag>pnpm</tag>
+      <tag>monorepo</tag>
+      <tag>workspaces</tag>
+      <tag>dependency-catalog</tag>
+      <tag>typescript</tag>
+    </tags>
+    <category>lang</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>pnpm Workspaces with Dependency Catalogs</title>
+    <summary>In a TypeScript / JavaScript monorepo, use pnpm 9+ with `workspaces` and the `catalog:` protocol to share external dependency versions across packages. One catalog entry in `pnpm-workspace.yaml` controls the version of `react`, `typescript`, `vitest`, etc., for every workspace package; every `package.json` references those entries with `"react": "catalog:"`. Internal packages link via `"workspace:*"`. The result: zero version drift, one bump updates the world, AI agents cannot accidentally introduce a `react@19.0` / `react@19.1` split by adding a dep to one package.</summary>
+    <why>
+      <p>Multi-package monorepos accumulate "package A wants react 19.0, package B wants react 19.1" merge conflicts because every `package.json` is a private little manifest that diverges over time. Catalogs invert that: the version lives in one place, the manifests reference it. AI agents adding deps via `pnpm add react -F web` automatically pick up the catalog version (when configured), so the next agent on a different package sees the same React. pnpm's filtering (`--filter`) and strict peer-dep model also makes hermetic per-package builds tractable, which is the prerequisite for parallel AI worktrees.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any monorepo with two or more packages.</item>
+        <item>Any team that has fought "package X wants react@19.0, package Y wants react@19.1" merge conflicts.</item>
+        <item>Microfrontend / shared-library workspaces where consistency is an audit concern.</item>
+        <item>Repos with parallel AI agents in worktrees that may add deps independently.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-package apps where npm or Bun is enough — catalogs add ceremony without payoff.</item>
+        <item>Bun-native runtime projects that need `bun.lockb` parity with the runtime — use `bun install`.</item>
+        <item>Yarn 4 PnP shops with working constraints — the migration cost rarely beats the status quo.</item>
+        <item>Hybrid setups that must publish to npm with classic `dependencies` (publish step must replace `catalog:` and `workspace:*` with concrete versions; add a release script before adopting).</item>
+      </list>
+    </when-not-to-use>
+    <section name="catalog-protocol">
+      <p>The pnpm catalog is a central version registry for the workspace. A `package.json` referencing `"react": "catalog:"` resolves to whatever version is declared at the workspace root. Default catalog entries use the bare `catalog:` literal; named catalogs use `catalog:&lt;name&gt;` for variants (e.g., a "next" catalog for canary versions).</p>
+      <rule testable="true">
+        <statement>External dependencies that appear in two or more workspace packages MUST be declared once under `catalog:` (or a named catalog) in `pnpm-workspace.yaml` and referenced with `"&lt;pkg&gt;": "catalog:"` in every package.json. Internal workspace packages MUST be referenced as `"&lt;pkg&gt;": "workspace:*"`. Hard-coded versions (e.g., `"react": "^19.0.0"`) for shared deps are forbidden.</statement>
+        <rationale>Catalogs make version drift impossible by construction: there is exactly one place a version is defined. Without catalogs, agents adding the same dep in two packages will pick whatever range is current that day, producing duplicate trees and subtle compatibility breakages.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[
+# pnpm-workspace.yaml
+packages:
+  - 'packages/*'
+  - 'apps/*'
+catalog:
+  react: ^19.0.0
+  react-dom: ^19.0.0
+  typescript: ^5.7.0
+  vitest: ^3.0.0
+catalogs:
+  next:
+    react: 19.1.0-canary
+        ]]></code>
+        <code lang="jsonc"><![CDATA[
+// packages/web/package.json
+{
+  "dependencies": {
+    "react": "catalog:",
+    "@org/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
+        ]]></code>
+        <note>Bumping React = single line change in pnpm-workspace.yaml; every workspace updates atomically on `pnpm install`.</note>
+      </example>
+      <example type="bad">
+        <code lang="jsonc"><![CDATA[
+// packages/web/package.json
+{ "dependencies": { "react": "^19.0.0", "../shared": "file:../shared" } }
+// packages/admin/package.json
+{ "dependencies": { "react": "^19.1.2" } }     // drift
+        ]]></code>
+        <note>Two React versions, two trees, runtime breakage when shared components cross the boundary.</note>
+      </example>
+      <antipattern>
+        <description>Adding a new shared dep via `pnpm add react -F web@^19.1.2` without updating the catalog.</description>
+        <reason>Bypasses the catalog and reintroduces drift. Add deps via `pnpm add react -F web` (it picks up the catalog default) or update the catalog first if a new version is needed.</reason>
+      </antipattern>
+    </section>
+    <section name="filter-patterns">
+      <p>`pnpm --filter` (or `-F`) lets the agent operate on one package, on a path glob, on packages affected by a git ref, or on the dependency closure of a target. Critical for keeping inner-loop time bounded in a large monorepo.</p>
+      <rule testable="true">
+        <statement>Use `--filter ...{path}` (with the leading dots) to operate on a package AND all of its dependents; `--filter {path}^...` for a package and its dependencies. CI uses `--filter ...[origin/main]` to test only what changed since main.</statement>
+        <rationale>Running `pnpm test` workspace-wide on every commit is unnecessary in monorepos with dozens of packages; filtered runs cut wall-clock time 5–20x while still exercising the affected slice. The leading-dots syntax is exact and standard; agents must use it instead of greps and shell glue.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# install only what `web` needs
+pnpm install --filter web^...
+
+# test web and everything that depends on it
+pnpm --filter ...web test
+
+# test only packages changed since origin/main
+pnpm --filter '...[origin/main]' test
+
+# add a runtime dep to a single package, picking up the catalog version
+pnpm add react -F web
+        ]]></code>
+        <note>Filters are precise; the agent never has to glob package paths by hand.</note>
+      </example>
+      <antipattern>
+        <description>Running `pnpm -r test` on every CI run when only one package changed.</description>
+        <reason>Wastes CI minutes and floods the agent's feedback loop with unrelated output. Use `--filter '...[origin/main]'` so the slice is automatic and minimal.</reason>
+      </antipattern>
+    </section>
+    <templates>
+      <template path="templates/pnpm-workspace.yaml" purpose="Workspace + catalog declaration with the most-shared packages."/>
+      <template path="templates/package-json-fragment.json" purpose="`package.json` fragment showing `catalog:` and `workspace:*` usage."/>
+    </templates>
+    <see-also>
+      <link href="https://pnpm.io/catalogs">pnpm catalogs reference.</link>
+      <link href="https://pnpm.io/workspaces">pnpm workspaces reference.</link>
+      <link href="https://pnpm.io/filtering">pnpm filtering reference.</link>
+      <link href="https://pnpm.io/cli/recursive">pnpm recursive (-r) and filter combinations.</link>
+    </see-also>
+  </content>
+</methodology>
