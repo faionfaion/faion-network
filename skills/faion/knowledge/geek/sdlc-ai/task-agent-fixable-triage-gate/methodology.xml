@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="task-agent-fixable-triage-gate">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Insert a triage gate — agent-fixable label applied by a human or read-only bot — so coding agents only pick up tickets passing spam/duplicate/scope checks. Raises merge rate from ~34% to ~67%.</summary>
+    <tags>
+      <tag>task-lifecycle</tag>
+      <tag>triage</tag>
+      <tag>agent-fleet</tag>
+      <tag>label-gate</tag>
+      <tag>coding-agent</tag>
+    </tags>
+    <category>task</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>`agent-fixable` Triage Gate (Humans Pick, Agents Work)</title>
+    <summary>Agents that turn issues into pull requests (Devin, Copilot Coding Agent, Codex, Cursor Background) waste tokens spinning on tickets they cannot solve: no acceptance criteria, no reproducible bug, blocked on product decisions, or duplicates of an existing issue. Insert a triage gate as a label — agent-fixable (or copilot, devin-pickup) — applied by a human or by a triage bot AFTER spam/duplicate/scope checks. The coding agent only listens for that label, never for "issue opened". Cognition's published Devin numbers show PR merge rate climbing from 34% to 67% over 2025 once gating was added; the same shape works for any coding agent fleet.</summary>
+    <why>
+      <p>Without the gate, the agent reads every new issue, attempts ~60% of them, and merges ~10% — burning ~50x the tokens of the gated path. The label is an explicit cognitive contract: a human (or a triage agent constrained to read-only labelling tools) has confirmed the issue meets the agent's solvability bar. The agent treats the label as a precondition, not a hint, and the orchestrator can route by label across a mixed fleet (Devin + Copilot + Codex). The same label conveniently functions as the audit trail: "who decided this was agent-fixable?" is answered by the GitHub event log.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Issue trackers with more than 50 open items where agents would otherwise pick the wrong ones.</item>
+        <item>Mixed agent fleets (Devin + Copilot + Codex + Cursor) sharing the same backlog.</item>
+        <item>Repos with strict CODEOWNERS where mis-routed agent attempts produce noisy stale PRs.</item>
+        <item>Teams adopting their first coding agent — start with a tiny agent-fixable allowlist, expand as merge rate stabilizes.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Tiny backlogs (fewer than 10 open issues) where a human picks each issue manually anyway.</item>
+        <item>Tickets needing product discovery, not code — those should carry needs-spec, never agent-fixable.</item>
+        <item>One-off prototypes with no merge rate to optimize.</item>
+        <item>Teams that have not yet defined what "fixable by an agent" means — write the criteria first, label after.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="label-as-precondition">
+      <rule testable="true">
+        <statement>The agent dispatch workflow MUST use on: issues: types: [labeled] with an if: github.event.label.name == 'agent-fixable' guard (or the equivalent in GitLab / Jira automation). The agent MUST NOT subscribe to opened, reopened, or edited events. The label MUST be applied by a human or by a triage agent whose tool list does not include code-write capabilities. A passing pre-label checklist (criteria below) MUST exist as a checked artifact (Issue comment, ticket field, or audit log row) before the label lands.</statement>
+        <rationale>The discipline is to make the label expensive to apply (someone with write access to issues must act) and free to remove (anyone with triage rights can demote). That asymmetry is what produces the 34→67% merge-rate jump Cognition reported for Devin in 2025; the same shape works for any agent.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/agent-pickup.yml
+on:
+  issues:
+    types: [labeled]
+jobs:
+  dispatch:
+    if: github.event.label.name == 'agent-fixable'
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh agent run devin --issue ${{ github.event.issue.number }}
+        ]]></code>
+        <note>Single trigger, single guard, audit-ready.</note>
+      </example>
+      <example type="bad">
+        <code lang="yaml"><![CDATA[
+on:
+  issues:
+    types: [opened, edited, reopened]
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh agent run devin --issue ${{ github.event.issue.number }}
+        ]]></code>
+        <note>Every spam ticket and edit-storm dispatches the agent; merge rate collapses, token cost balloons.</note>
+      </example>
+      <antipattern>
+        <description>The triage bot has Edit/Write tools "to also fix typos in the issue body" — same identity that applies the label.</description>
+        <reason>Conflating triage and coding identities defeats the audit trail; the label loses its meaning as a human-or-equivalent decision.</reason>
+      </antipattern>
+      <reference path="templates/agent-pickup.yml">GitHub Actions workflow gated on agent-fixable.</reference>
+      <reference path="templates/triage-checklist.md">Pre-label checklist the human must satisfy.</reference>
+      <see-also>
+        <link href="https://cognition.ai/blog/devin-review">Cognition: Devin merge rate evolution under triage gating.</link>
+        <link href="https://docs.devin.ai/">Devin docs: ticket queue gated by tag/label.</link>
+      </see-also>
+    </section>
+
+    <section name="mixed-fleet-routing">
+      <rule testable="true">
+        <statement>Only one label name (agent-fixable) MUST be applied by humans / triage. Vendor-specific labels (agent:devin, agent:copilot) MAY be added by the router AFTER pickup, never before. Coding agents MUST NOT apply, modify, or remove the agent-fixable label on any issue, including those they are currently working on. A branch-protection / repo-policy rule SHOULD enforce this by rejecting label changes from any actor matching *-bot$ or agent-*.</statement>
+        <rationale>Self-labelling collapses the gate: if the agent can grant itself the precondition, the precondition is no longer a human decision. Keeping the label vendor-neutral lets the router rebalance load without humans relabelling, and lets a failed pickup in vendor A fall through to vendor B without triage churn.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[
+# router config
+on_label: agent-fixable
+route:
+  - if: { issue.path_match: "infra/**" }   then: agent:devin
+  - if: { issue.size: "S" }                 then: agent:copilot
+  - else: agent:codex
+post_pickup:
+  add_label: agent:${selected}
+forbid_label_writes_from:
+  - "*-bot"
+  - "agent-*"
+        ]]></code>
+        <note>One human label, deterministic routing, agents cannot tamper.</note>
+      </example>
+      <example type="bad">
+        <code lang="yaml"><![CDATA[
+# Anti-pattern: agent self-promotes a stale ticket
+on_no_progress:
+  add_label: agent-fixable           # the agent itself
+        ]]></code>
+        <note>Agent re-triggers its own pickup, busy-loops, drains tokens.</note>
+      </example>
+      <antipattern>
+        <description>Letting humans apply both agent-fixable AND agent:devin together "to save the router a step".</description>
+        <reason>Humans don't track agent availability or vendor outages; pinning the vendor at triage time breaks fleet rebalancing and surfaces incidents as "ticket stuck on Devin queue while Copilot is idle".</reason>
+      </antipattern>
+      <see-also>
+        <link href="https://github.com/gastownhall/gastown/discussions/1703">Gastown discussion: agent-fixable label pipeline pattern.</link>
+        <link href="https://docs.github.com/en/copilot/concepts/agents/code-review">GitHub Copilot Coding Agent: assign-by-label flow.</link>
+      </see-also>
+    </section>
+
+    <templates>
+      <template path="templates/agent-pickup.yml" purpose="GitHub Actions workflow that dispatches an agent only on agent-fixable label-add."/>
+      <template path="templates/triage-checklist.md" purpose="Pre-label checklist a human (or read-only triage bot) must satisfy before applying agent-fixable."/>
+    </templates>
+  </content>
+</methodology>
