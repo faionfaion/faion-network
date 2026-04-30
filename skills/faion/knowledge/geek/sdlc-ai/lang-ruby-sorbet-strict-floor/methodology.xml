@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lang-ruby-sorbet-strict-floor">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Declare typed: true or stricter on agent-editable Ruby files, generate Tapioca RBIs, and require srb tc plus tapioca check-shims to pass before PR open.</summary>
+    <tags>
+      <tag>ruby</tag>
+      <tag>sorbet</tag>
+      <tag>tapioca</tag>
+      <tag>static-types</tag>
+      <tag>rails</tag>
+    </tags>
+    <category>lang</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Ruby Sorbet Strict Floor with Tapioca RBI</title>
+    <summary>For any Ruby file an AI agent is allowed to modify autonomously, declare # typed: true (or stricter), generate Tapioca RBIs for every gem and Rails DSL, and require bundle exec srb tc plus bundle exec tapioca check-shims to pass before a PR is opened. Sorbet's typecheck becomes the deterministic refusal channel: agent-hallucinated method calls and wrong arities fail at compile-equivalent time, not at runtime in production.</summary>
+    <why>
+      <p>Ruby is dynamic enough that LLMs reliably invent methods (User.find_by_email_and_active), wrong scopes, or non-existent association names. Sorbet — built by Shopify specifically for very large Ruby codebases — gives Ruby a real static type system. Tapioca closes the metaprogramming gap by runtime-introspecting Rails DSLs (has_many, scope, belongs_to, ActiveRecord columns) and emitting static RBIs Sorbet can read. With # typed: strict on a file, Sorbet refuses untyped methods, T.untyped returns, and missing nilability — exactly the shapes agents emit when guessing. The combined gate (srb tc + tapioca check-shims) makes "tests are green but the call doesn't exist" structurally impossible.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Rails monoliths over ~50 KLOC where agents author non-trivial PRs.</item>
+        <item>Multi-team Ruby orgs where a shared type contract reduces cross-team breakage.</item>
+        <item>Any gem or service consumed by other internal projects (RBI doubles as the consumer-facing type spec).</item>
+        <item>Codebases ratcheting strictness: start at # typed: false baseline, promote files to true then strict per PR.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Toy gems, single-file Sinatra services, and one-off scripts — Sorbet bootstrap and Tapioca regen costs exceed the value.</item>
+        <item>Spike or exploratory branches where the file shape is intentionally fluid.</item>
+        <item>Codebases pinned to Ruby below 3.0 — Sorbet's runtime requires 3.0+ for current versions.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="strict-typed-floor">
+      <p>Sorbet's sigil controls how strictly each file is checked. false runs only constant resolution; true checks method calls and signatures; strict additionally forbids T.untyped returns and untyped instance variables. Files an agent may modify autonomously must hit at least true so the typechecker can refuse hallucinated calls.</p>
+
+      <rule testable="true">
+        <statement>Every Ruby file under directories writable by an AI agent MUST start with # typed: true or # typed: strict. CI MUST run bundle exec srb tc and bundle exec tapioca check-shims; both must exit 0 before merge. Agents are forbidden from downgrading a file's sigil to silence errors; they must fix the type instead.</statement>
+        <rationale>Sorbet at typed: true rejects calls to methods Sorbet does not see in any RBI, which is exactly the failure mode of LLM-invented methods. Without srb tc in CI, the typecheck is advisory and agents will route around it (per Shopify's adoption write-up).</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="ruby"><![CDATA[
+# typed: strict
+# frozen_string_literal: true
+
+class UserMailer
+  extend T::Sig
+
+  sig { params(user: User).returns(Mail::Message) }
+  def self.welcome(user)
+    new.welcome(user)
+  end
+
+  sig { params(user: User).returns(Mail::Message) }
+  def welcome(user)
+    Mail.new(to: user.email, subject: "Welcome")
+  end
+end
+        ]]></code>
+        <note>Explicit sig blocks; strict sigil; no T.untyped returns.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="ruby"><![CDATA[
+# typed: false  # downgraded by agent to silence errors
+class UserMailer
+  def self.welcome(user)
+    Mail.new(to: user.emial, subject: "Welcome")  # typo, runtime crash
+  end
+end
+        ]]></code>
+        <note>Sigil downgrade hides the typo until production; the floor is gone.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent appends T.unsafe(self).method_name(...) to bypass a Sorbet error instead of fixing the type or generating the missing RBI.</description>
+        <reason>T.unsafe blackholes type information past that point, defeating the gate; legitimate uses are rare and require human review with a comment.</reason>
+      </antipattern>
+
+      <reference path="templates/sorbet-config">Sorbet path config with strict-only directories.</reference>
+    </section>
+
+    <section name="tapioca-rbi-pipeline">
+      <p>Sorbet sees only static Ruby; Rails relies on metaprogramming (has_many, scope, attribute readers from columns). Tapioca calls into the running app and emits .rbi files describing those generated methods so Sorbet can typecheck call sites against the real shape. The RBIs MUST be committed; CI re-runs tapioca check-shims to detect drift between checked-in RBIs and the current code.</p>
+
+      <rule testable="true">
+        <statement>Every project ships bin/tapioca; the workflow is tapioca init once, then tapioca gem after Gemfile.lock changes, tapioca dsl after model/concern changes. RBIs (sorbet/rbi/gems/*.rbi, sorbet/rbi/dsl/*.rbi) MUST be committed. CI MUST run bundle exec tapioca check-shims AND bundle exec tapioca dsl --verify — any divergence fails the build.</statement>
+        <rationale>Without check-shims and dsl --verify, an agent can edit code that invalidates a checked-in RBI, get a green local typecheck against the stale RBI, and ship a method call that breaks at boot. The verify pass is the determinism guarantee.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# After adding a new gem
+bundle add stripe
+bin/tapioca gem stripe
+git add sorbet/rbi/gems/stripe@*.rbi Gemfile Gemfile.lock
+git commit -m "deps: add stripe + tapioca rbi"
+
+# After changing an ActiveRecord model
+bin/tapioca dsl User
+git add sorbet/rbi/dsl/user.rbi
+        ]]></code>
+        <note>Each shape change is paired with the matching RBI commit.</note>
+      </example>
+
+      <example type="bad">
+        <code lang="bash"><![CDATA[
+# Agent adds a gem and skips the RBI step
+bundle add stripe
+git add Gemfile Gemfile.lock
+git commit -m "feat: add stripe billing"
+# srb tc passes (stripe types unknown, falls back to T.untyped)
+# Production: NoMethodError on the first Stripe::Charge call.
+        ]]></code>
+        <note>Without RBI, Sorbet can't refute hallucinated Stripe APIs.</note>
+      </example>
+
+      <antipattern>
+        <description>Edit a hand-written shim under sorbet/rbi/shims/ to silence a Sorbet error instead of regenerating the DSL RBI.</description>
+        <reason>Hand-written shims lie about the real shape; tapioca check-shims flags them, but if CI is missing the check, drift compounds silently.</reason>
+      </antipattern>
+
+      <reference path="templates/tapioca.yml">Tapioca config with DSL compilers and gem skiplist.</reference>
+    </section>
+
+    <templates>
+      <template path="templates/sorbet-config" purpose="sorbet/config with strict path includes and ignore list."/>
+      <template path="templates/tapioca.yml" purpose="Tapioca config for DSL compilers, gem RBIs, and shim verification."/>
+    </templates>
+
+    <see-also>
+      <link href="https://sorbet.org/docs/static">Sorbet static type checking reference.</link>
+      <link href="https://shopify.engineering/adopting-sorbet">Shopify's Sorbet adoption write-up.</link>
+      <link href="https://github.com/Shopify/tapioca">Tapioca source and docs.</link>
+      <link href="https://sorbet.org/docs/rbi">Sorbet RBI format reference.</link>
+    </see-also>
+  </content>
+</methodology>
