@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="sec-trivy-pinned-supply-chain-scan">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Run trivy fs + trivy image in CI, block on HIGH/CRITICAL CVEs, generate SBOM on release. SHA-pin the action; never use floating refs or the compromised v0.69.4/v0.30.0 tags.</summary>
+    <tags>
+      <tag>security</tag>
+      <tag>supply-chain</tag>
+      <tag>trivy</tag>
+      <tag>sbom</tag>
+      <tag>container-scanning</tag>
+    </tags>
+    <category>sec</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>Trivy with Pinned-Version Supply-Chain Scan + SBOM</title>
+    <summary>Every container image, Helm chart, Terraform module, Kubernetes manifest, and release tarball passes through trivy fs (filesystem) plus trivy image (containers) in CI. The job fails on HIGH or CRITICAL CVEs and on misconfigurations, blocking merge. Each release tag also generates an SBOM in CycloneDX or SPDX and attaches it to the GitHub Release. Trivy itself is pinned by SHA — the action is referenced as aquasecurity/trivy-action@&lt;sha&gt; and the binary version in CI is set explicitly to a known-clean release, never latest.</summary>
+    <why>
+      <p>The pin is non-negotiable. In March 2026 the aquasecurity/trivy-action repository and a trivy 0.69.4 release were both supply-chain compromised (the "TeamPCP" incident), so any pipeline using floating refs in March 2026 silently shipped a tampered scanner. The hard rule is: SHA-pin the action, version-pin the binary, mirror the DB if practical, and verify the binary's cosign signature before the first run on any new runner image.</p>
+      <p>Trivy is the de-facto multi-purpose scanner in 2026 — vulns, misconfigs, secrets, SBOM — across containers, Kubernetes, IaC, code repos, cloud accounts and OS packages, with weekly DB updates. One scanner replacing four (Anchore + tfsec + dockle + grype) keeps the agent's mental model small and the CI minutes low. SBOMs are no longer optional: the EU Cyber Resilience Act mandates SBOM reporting from September 2026 with full enforcement from December 2027, and US Executive Order 14028 already requires SBOMs for federal procurement. A scan that produces SBOM-as-a-side-effect pays for the regulatory floor and the security gate at once. The pin discipline exists because the scanner is itself a piece of the supply chain — the lessons of the March 2026 compromise apply to every CI tool an agent reaches for.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any repo that produces a container image, IaC artifact, or release tarball.</item>
+        <item>Any agent-driven dependency bump or base-image upgrade — agent runs trivy image on the candidate before opening the PR.</item>
+        <item>Polyglot monorepos that need one scanner across Dockerfile, terraform/, helm/, k8s/, and package-lock.json.</item>
+        <item>Release pipelines that must attach an SBOM for EU CRA or US EO 14028 compliance.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure documentation, asset, or static-blog repos with no container, IaC, or distributable binary — no supply-chain surface to scan.</item>
+        <item>Highly air-gapped environments where Trivy's online DB updates are impossible — switch to a mirrored offline DB or substitute Anchore Enterprise with a private feed; do not run the scanner with stale signatures.</item>
+        <item>Notebook-only research repos where dependency churn is constant and signal-to-noise is too low — use Snyk or Renovate-driven advisories instead and gate at deploy time.</item>
+        <item>The exact tag aquasecurity/trivy@v0.69.4 and aquasecurity/trivy-action@v0.30.0 (compromised) — never use those refs anywhere.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pin-by-sha">
+      <rule testable="true">
+        <statement>Every CI workflow MUST reference aquasecurity/trivy-action by its full 40-character commit SHA, and MUST pass version: with an explicit Trivy release that has been verified by cosign signature against aquasecurity/trivy keys. Floating refs (@main, @v0, @latest) and the known-bad versions trivy@v0.69.4 and trivy-action@v0.30.0 MUST NOT appear anywhere in the repo, including in archived branches and example documentation.</statement>
+        <rationale>SHA pins are immutable; tag pins are not. The 2026 compromise reused legitimate tags after the attacker pushed malicious commits, so pipelines pinned to @v0.30.0 ran the malicious code while believing they were on a known release. SHA pin + signature verification breaks that path.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[
+- name: Trivy fs
+  uses: aquasecurity/trivy-action@b1f3df9b1bf1ec2c0e3d12345abcdef0123456789
+  with:
+    scan-type: fs
+    version: v0.70.2
+        ]]></code>
+        <note>SHA-pinned action; binary version is explicit and post-incident.</note>
+      </example>
+      <example type="bad">
+        <code lang="yaml"><![CDATA[
+- uses: aquasecurity/trivy-action@v0.30.0
+        ]]></code>
+        <note>Tag-pinned to a compromised version; pipeline silently runs the tampered scanner.</note>
+      </example>
+      <antipattern>
+        <description>Bumping the SHA without reviewing release notes or rerunning cosign verification because "Dependabot suggested it."</description>
+        <reason>Automated SHA bumps reintroduce the floating-ref risk in slow motion; require a human or agent review of the upstream changelog and signature on every bump.</reason>
+      </antipattern>
+      <reference path="templates/trivy-action.yml">SHA-pinned action workflow.</reference>
+      <see-also>
+        <link href="https://www.stepsecurity.io/blog/trivy-compromised-a-second-time---malicious-v0-69-4-release">StepSecurity write-up of the 2026 Trivy compromise.</link>
+        <link href="https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions">GitHub: pin third-party actions by SHA.</link>
+      </see-also>
+    </section>
+
+    <section name="fs-and-image-gate">
+      <rule testable="true">
+        <statement>Each PR MUST run trivy fs --severity HIGH,CRITICAL --exit-code 1 . against the source tree and, when the PR builds a container, trivy image --severity HIGH,CRITICAL --exit-code 1 &lt;image-ref&gt; against the built artifact. Either non-zero exit MUST block merge. CVE allowlist entries in .trivyignore MUST include a one-line justification, an owner, and a # sunset:YYYY-MM-DD comment; CI MUST fail if any allowlist entry is past its sunset.</statement>
+        <rationale>Filesystem-only scans miss vulnerabilities introduced by the base image; image-only scans miss source-level CVEs in tooling that never lands in the container. Running both is cheap (seconds in cache) and closes both gaps. Sunset dates prevent the allowlist from becoming a graveyard of forgotten exceptions.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="bash"><![CDATA[
+trivy fs --severity HIGH,CRITICAL --exit-code 1 \
+  --ignorefile .trivyignore .
+trivy image --severity HIGH,CRITICAL --exit-code 1 \
+  --ignorefile .trivyignore $IMAGE_REF
+        ]]></code>
+        <note>Same allowlist, both modes, both gates.</note>
+      </example>
+      <example type="bad">
+        <code lang="bash"><![CDATA[
+trivy image --severity CRITICAL --exit-code 0 $IMAGE_REF
+        ]]></code>
+        <note>--exit-code 0 reduces the scan to a logging step; the gate is informational, not enforcing.</note>
+      </example>
+      <antipattern>
+        <description>Adding a CVE to .trivyignore with the comment "noisy" and no owner.</description>
+        <reason>The allowlist becomes a perpetual cover; require owner + sunset so review is unavoidable.</reason>
+      </antipattern>
+      <reference path="templates/trivy-action.yml">Workflow chaining fs and image modes.</reference>
+      <reference path="templates/.trivyignore">Allowlist template with sunset metadata.</reference>
+      <see-also>
+        <link href="https://trivy.dev/latest/docs/scanner/vulnerability/">Trivy vulnerability scanning reference.</link>
+      </see-also>
+    </section>
+
+    <section name="sbom-on-release">
+      <rule testable="true">
+        <statement>Every git tag matching the release pattern (for example v*.*.*) MUST trigger a workflow that generates a CycloneDX SBOM with trivy sbom --format cyclonedx, signs the SBOM with cosign, and uploads both the SBOM and the signature to the GitHub Release as release assets. The release MUST NOT be marked non-draft until the SBOM upload step succeeds.</statement>
+        <rationale>Tying SBOM generation to the tag event guarantees the SBOM matches the exact artifact shipped, which is what auditors verify. Cosign signing prevents downstream consumers from being fed a swapped SBOM.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="bash"><![CDATA[
+trivy sbom --format cyclonedx --output sbom.cdx.json .
+cosign sign-blob --yes sbom.cdx.json --output-signature sbom.cdx.sig
+gh release upload "$TAG" sbom.cdx.json sbom.cdx.sig
+        ]]></code>
+        <note>SBOM, signature, and upload happen as part of the tagged release pipeline.</note>
+      </example>
+      <example type="bad">
+        <code lang="bash"><![CDATA[
+trivy sbom --format spdx-json . > /tmp/sbom.json
+echo "SBOM generated"
+        ]]></code>
+        <note>Generated but never published or signed; auditors cannot verify the artifact-to-SBOM mapping.</note>
+      </example>
+      <antipattern>
+        <description>Generating the SBOM nightly against main rather than against the tagged commit.</description>
+        <reason>The SBOM diverges from any released artifact between two nightly runs and is no longer admissible evidence; pin generation to the tag event.</reason>
+      </antipattern>
+      <reference path="templates/release-sbom.sh">Tag-triggered SBOM generation script.</reference>
+      <see-also>
+        <link href="https://digital-strategy.ec.europa.eu/en/policies/cyber-resilience-act">EU Cyber Resilience Act overview.</link>
+        <link href="https://www.cisa.gov/sbom">CISA SBOM resource collection.</link>
+        <link href="https://www.docker.com/blog/generate-sboms-with-buildkit/">Docker / BuildKit SBOM generation guide.</link>
+      </see-also>
+    </section>
+
+    <templates>
+      <template path="templates/trivy-action.yml" purpose="GitHub Actions workflow with SHA-pinned action and explicit binary version."/>
+      <template path="templates/.trivyignore" purpose="Project-scoped CVE allowlist with sunset dates and review owners."/>
+      <template path="templates/release-sbom.sh" purpose="Script that runs trivy sbom --format cyclonedx and uploads to a release."/>
+    </templates>
+  </content>
+</methodology>
