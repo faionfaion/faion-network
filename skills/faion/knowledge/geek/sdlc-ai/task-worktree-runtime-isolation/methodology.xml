@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="task-worktree-runtime-isolation">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Each parallel agent run gets its own git worktree, feature branch, file-scope manifest, and runtime sandbox (port, DB, cache namespace). One task → one branch → one worktree → one agent.</summary>
+    <tags>
+      <tag>worktree</tag>
+      <tag>runtime-isolation</tag>
+      <tag>parallel-agents</tag>
+      <tag>sandbox</tag>
+      <tag>git-worktree</tag>
+    </tags>
+    <category>task</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-30</created>
+  </metadata>
+  <content>
+    <title>One Task → One Branch → One Worktree → One Agent (with Runtime Isolation)</title>
+    <summary>Each parallel agent run gets its own git worktree, its own feature branch, its own scoped file-ownership manifest, AND its own runtime sandbox: distinct ports, database name, cache namespace, and secret bundle. The mapping is exactly one task → one branch → one worktree → one agent. The agent is forbidden from editing files outside its declared scope; collisions surface only at merge time, never at edit time. Crucially, worktrees alone do not isolate runtime — port and DB collisions are the documented 2026 failure mode — so the harness MUST allocate a runtime sandbox per worktree, not just a working directory.</summary>
+    <why>
+      <p>`git worktree` shares the `.git` object store across worktrees but gives each worktree its own working tree and HEAD. That eliminates index-lock contention and silent overwrites between concurrent agents working on different branches in the same repo. But two agents that each spin up a dev server on port 3000 still collide; two agents that each run `pytest` against `localhost/test_db` still corrupt each other's data. The published failure mode (penligent.ai, devcenter.upsun.com, augmentcode.com 2026) is exactly this: teams adopt worktrees, see filesystem isolation, and assume runtime isolation came along — it didn't. Adding port/DB/cache namespace allocation per worktree closes the gap. The pattern is the foundation of every parallel-agent harness shipped in 2026 (Claude Code multi-agent, Cursor parallel composers, Windsurf Wave 13).</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Any time more than one agent runs concurrently on the same repository.</item>
+        <item>Multi-feature parallel build (orchestrator dispatches N subagents on different branches).</item>
+        <item>Fan-out / map-reduce subagent dispatch where each leaf does isolated work.</item>
+        <item>Comparison / arena mode (run the same task with different models, compare diffs).</item>
+        <item>Long-running agent jobs where the human still needs to use the main checkout.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>A single agent doing sequential work — one worktree is enough; branching adds no value.</item>
+        <item>Pure read-only research subagents that never write files — shared sandbox is fine, no isolation cost.</item>
+        <item>Tiny scripts under ~50 LOC where the worktree setup overhead dominates the task.</item>
+        <item>Repositories without local services (pure code-only, no DB, no port-bound dev server) — runtime isolation is a no-op there, but worktree isolation still applies.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="worktree-per-task">
+      <p>Concurrent agents writing into the same working tree hit two failure modes: (a) git index-lock contention when two agents stage simultaneously, and (b) silent overwrite when one agent's diff lands on top of another's because they both edited the same file. Worktrees solve (a) outright (each worktree has its own index) and let (b) surface as a normal merge conflict — visible, not silent.</p>
+
+      <rule testable="true">
+        <statement>The harness MUST create one git worktree per dispatched agent, on a unique branch named after the task slug. Each worktree MUST carry a file-scope manifest (e.g. `WT-SCOPE`) listing the path globs the agent is allowed to edit; any Edit/Write outside the manifest aborts the agent. The orchestrator MUST NOT dispatch two agents into the same worktree, and MUST NOT reuse a worktree across tasks.</statement>
+        <rationale>Without the manifest, the agent silently broadens scope and the merge conflict surfaces as "agent A and agent B both edited unrelated files in the same worktree" — equivalent to the no-worktree case. Without the unique branch, `git worktree add` refuses (a branch can be checked out by only one worktree at a time), so the contract is enforced by git itself.</rationale>
+      </rule>
+
+      <example type="good" title="Worktree with scope manifest">
+        <code lang="bash"><![CDATA[
+# orchestrator dispatches feat-billing
+git worktree add ../wt-feat-billing feat-billing
+echo "apps/billing/**" > ../wt-feat-billing/WT-SCOPE
+echo "tests/billing/**" >> ../wt-feat-billing/WT-SCOPE
+claude --cwd ../wt-feat-billing --scope-file WT-SCOPE \
+  --task "implement billing v2"
+        ]]></code>
+        <note>Agent boots in its own worktree, on its own branch, with its scope file declared.</note>
+      </example>
+
+      <example type="bad" title="Two agents in the same checkout">
+        <code lang="bash"><![CDATA[
+# Two agents in the same checkout, no manifest
+( cd repo && claude --task "billing v2" ) &
+( cd repo && claude --task "auth refactor" ) &
+wait
+# Index lock errors, silent overwrites in shared files (settings.py).
+        ]]></code>
+        <note>No worktree, no scope manifest — concurrent edits collide.</note>
+      </example>
+
+      <antipattern>
+        <description>Reusing the same worktree across sequential tasks "to save the venv install" without resetting branch / scope.</description>
+        <reason>Branch state from task N leaks into task N+1; the next merge contains accidental commits from the prior task and the scope file is stale.</reason>
+      </antipattern>
+    </section>
+
+    <section name="runtime-sandbox-allocation">
+      <p>Two agents in two worktrees both running `npm run dev` will both ask for port 3000. Two agents both running `pytest` against `DATABASE_URL=postgres:///app_test` will both truncate the same tables. Filesystem isolation does not extend to OS-level resources; the harness has to allocate them explicitly.</p>
+
+      <rule testable="true">
+        <statement>For every dispatched worktree the harness MUST emit a per-worktree env file containing PORT, DATABASE_URL (with a worktree-unique database name), REDIS_URL (with a unique key prefix or DB index), and SECRETS_PROFILE (a 1Password / vault profile scoped to this worktree). Ports MUST come from a tracked range (e.g. 4000-4999) with a free-port allocator; DB names MUST encode the worktree slug; cache prefixes MUST include the slug. The agent MUST source this env file before any local service starts.</statement>
+        <rationale>This is the difference between "filesystem isolation" and "runtime isolation". Without per-worktree allocation, parallel test suites step on each other's data, parallel dev servers fail to bind, and parallel CI jobs hold the same external rate limits. The penligent.ai 2026 report names this as the dominant production failure mode for worktree-based parallel agents.</rationale>
+      </rule>
+
+      <example type="good" title="Per-worktree env file">
+        <code lang="bash"><![CDATA[
+# .wt-env emitted by spawn function
+PORT=4023
+DATABASE_URL=postgres://dev:dev@localhost:5432/app_wt_billing
+REDIS_URL=redis://localhost:6379/3        # DB index 3 reserved for this slug
+SECRETS_PROFILE=op://dev/wt-billing
+# agent boots: source .wt-env && pnpm dev
+        ]]></code>
+        <note>Each worktree has a deterministic, conflict-free runtime profile.</note>
+      </example>
+
+      <example type="bad" title="Shared parent env for all worktrees">
+        <code lang="bash"><![CDATA[
+# All worktrees inherit the parent shell env
+export DATABASE_URL=postgres://localhost/app_test
+export PORT=3000
+# Three concurrent agents, three concurrent test runs:
+# wt-a TRUNCATE users; wt-b INSERT; wt-c SELECT — random failures.
+        ]]></code>
+        <note>Shared resources, hidden cross-talk, intermittent test failures the agent cannot reproduce.</note>
+      </example>
+
+      <antipattern>
+        <description>Allocating ports randomly per run instead of deterministically per slug, so a re-attached worktree gets a different port and the running dev server is orphaned.</description>
+        <reason>Determinism per slug is what makes the worktree resumable across crashes and restarts; randomness leaks dangling processes that bind ports the next agent expects.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/wt-spawn.sh" purpose="Reusable shell function wt_spawn &lt;slug&gt; that creates worktree + branch + per-worktree env file."/>
+      <template path="templates/wt-env.example" purpose="Per-worktree env file template (PORT, DATABASE_URL, REDIS_URL, SECRETS_PROFILE)."/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.augmentcode.com/guides/git-worktrees-parallel-ai-agent-execution">Augment Code: git worktrees for parallel AI agent execution.</link>
+      <link href="https://devcenter.upsun.com/posts/git-worktrees-for-parallel-ai-coding-agents/">Upsun: worktrees for parallel AI coding agents.</link>
+      <link href="https://www.penligent.ai/hackinglabs/git-worktrees-need-runtime-isolation-for-parallel-ai-agent-development/">Penligent: git worktrees need runtime isolation.</link>
+      <link href="https://docs.bswen.com/blog/2026-03-18-ai-agent-worktree-isolation/">bswen 2026-03 worktree isolation field notes.</link>
+    </see-also>
+  </content>
+</methodology>
